@@ -1,0 +1,1162 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Win32;
+using Newtonsoft.Json;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml.Controls;
+using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Services;
+using XMCL2025.Contracts.Services;
+
+namespace XMCL2025.ViewModels;
+
+public partial class 启动ViewModel : ObservableRecipient
+{
+    private async Task ShowJavaNotFoundMessageAsync()
+    {
+        // 创建并显示消息对话框
+        var dialog = new ContentDialog
+        {
+            Title = "Java运行时环境未找到",
+            Content = "未找到适用于当前游戏版本的Java运行时环境，请先安装相应版本的Java。\n\n游戏版本需要Java " + GetRequiredJavaVersionText(),
+            CloseButtonText = "确定",
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        await dialog.ShowAsync();
+    }
+
+    /// <summary>
+    /// 异步监控游戏进程退出状态
+    /// </summary>
+    /// <param name="process">游戏进程</param>
+    /// <param name="launchCommand">启动命令</param>
+    private async Task MonitorGameProcessExitAsync(Process process, string launchCommand)
+    {
+        try
+        {
+            // 等待进程退出
+            await Task.Run(() => process.WaitForExit());
+            
+            // 进程退出时的处理逻辑
+            int exitCode = process.ExitCode;
+            LaunchStatus += $"\n游戏进程已退出，退出代码: {exitCode}";
+            
+            // 无论退出代码如何，都保存启动命令到temp文件夹
+            try
+            {
+                string tempPath = Path.GetTempPath();
+                string launchCommandPath = Path.Combine(tempPath, $"minecraft_launch_command_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                await File.WriteAllTextAsync(launchCommandPath, launchCommand);
+                Console.WriteLine($"启动命令已保存到: {launchCommandPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"保存启动命令失败: {ex.Message}");
+            }
+            
+            // 检查是否异常退出
+            if (exitCode != 0)
+            {
+                // 异常退出，显示崩溃提示弹窗
+                Console.WriteLine($"游戏异常退出，退出代码: {exitCode}");
+                
+                App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    ContentDialog crashDialog = new ContentDialog
+                    {
+                        Title = "游戏崩溃",
+                        Content = "游戏启动后异常退出。您可以查看命令行窗口了解详细错误信息，启动命令已保存到临时文件夹。",
+                        CloseButtonText = "确定",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    await crashDialog.ShowAsync();
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"监控游戏进程时发生错误: {ex.Message}");
+        }
+        finally
+        {
+            // 释放资源
+            process.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 异步读取进程输出
+    /// </summary>
+    /// <param name="process">游戏进程</param>
+    private async Task ReadProcessOutputAsync(Process process)
+    {
+        try
+        {
+            // 实时读取标准输出
+            while (!process.StandardOutput.EndOfStream)
+            {
+                string line = await process.StandardOutput.ReadLineAsync();
+                if (!string.IsNullOrEmpty(line))
+                {
+                    Console.WriteLine($"[Minecraft Output]: {line}");
+                    // 可以在这里添加输出处理逻辑，例如记录日志
+                }
+            }
+            
+            // 实时读取标准错误
+            while (!process.StandardError.EndOfStream)
+            {
+                string line = await process.StandardError.ReadLineAsync();
+                if (!string.IsNullOrEmpty(line))
+                {
+                    Console.WriteLine($"[Minecraft Error]: {line}");
+                    // 可以在这里添加错误处理逻辑，例如记录错误日志
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"读取进程输出时出错：{ex.Message}");
+        }
+    }
+    
+    private string GetRequiredJavaVersionText()
+    {
+        if (string.IsNullOrEmpty(SelectedVersion)) return "8";
+        string versionStr = SelectedVersion;
+        if (versionStr.StartsWith("1.12") || versionStr.StartsWith("1.11") || versionStr.StartsWith("1.10") || versionStr.StartsWith("1.9") || versionStr.StartsWith("1.8"))
+        {
+            return "8 (jre-legacy)";
+        }
+        else if (versionStr.StartsWith("1.17") || versionStr.StartsWith("1.18"))
+        {
+            return "17";
+        }
+        else if (versionStr.StartsWith("1.19") || versionStr.StartsWith("1.20") || versionStr.StartsWith("1.21"))
+        {
+            return "17 或 21";
+        }
+        return "8 或更高版本";
+    }
+    
+    /// <summary>
+    /// 判断Minecraft版本是否低于1.9
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <returns>如果版本低于1.9则返回true，否则返回false</returns>
+    private bool IsVersionBelow1_9(string versionId)
+    {
+        if (string.IsNullOrEmpty(versionId)) return false;
+        
+        // 简单判断：检查版本号是否以1.0到1.8开头
+        if (versionId.StartsWith("1.0") || versionId.StartsWith("1.1") || versionId.StartsWith("1.2") ||
+            versionId.StartsWith("1.3") || versionId.StartsWith("1.4") || versionId.StartsWith("1.5") ||
+            versionId.StartsWith("1.6") || versionId.StartsWith("1.7") || versionId.StartsWith("1.8"))
+        {
+            return true;
+        }
+        
+        // 对于其他可能的版本格式，使用Version类进行比较
+        try
+        {
+            // 处理"1.8.9"这样的格式
+            string versionStr = versionId;
+            if (versionStr.Contains("-")) // 处理带有后缀的版本，如"1.8.9-forge1.8.9-11.15.1.2318-1.8.9"
+            {
+                versionStr = versionStr.Split('-')[0];
+            }
+            
+            Version version = new Version(versionStr);
+            Version version1_9 = new Version("1.9");
+            return version < version1_9;
+        }
+        catch (Exception)
+        {
+            // 如果版本号格式无法解析，默认返回false
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 判断Minecraft版本是否需要添加AlphaVanillaTweaker启动参数
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <returns>如果版本需要添加参数则返回true，否则返回false</returns>
+    private bool NeedsAlphaVanillaTweaker(string versionId)
+    {
+        if (string.IsNullOrEmpty(versionId)) return false;
+        
+        // 需要添加--tweakClass参数的特定版本列表
+        string[] versionsNeedingTweaker = {
+            "c0.0.11a",
+            "c0.0.13a_03",
+            "c0.0.13a",
+            "c0.30.01c",
+            "inf-20100618",
+            "a1.0.4",
+            "a1.0.5_01"
+        };
+        
+        // 检查当前版本是否在需要添加参数的列表中
+        return versionsNeedingTweaker.Any(v => versionId.StartsWith(v));
+    }
+    private readonly IMinecraftVersionService _minecraftVersionService;
+    private readonly IFileService _fileService;
+    private readonly ILocalSettingsService _localSettingsService;
+    private const string JavaPathKey = "JavaPath";
+    private const string JavaSelectionModeKey = "JavaSelectionMode";
+    private const string JavaVersionsKey = "JavaVersions";
+    private const string SelectedJavaVersionKey = "SelectedJavaVersion";
+
+    /// <summary>
+    /// Java版本信息类
+    /// </summary>
+    public class JavaVersionInfo
+    {
+        /// <summary>
+        /// Java路径
+        /// </summary>
+        public string Path { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Java版本
+        /// </summary>
+        public string Version { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Java主版本号
+        /// </summary>
+        public int MajorVersion { get; set; }
+
+        /// <summary>
+        /// 是否为默认版本
+        /// </summary>
+        public bool IsDefault { get; set; }
+
+        /// <summary>
+        /// 是否为JDK版本
+        /// </summary>
+        public bool IsJDK { get; set; }
+    }
+    private const string EnableVersionIsolationKey = "EnableVersionIsolation";
+
+    [ObservableProperty]
+    private ObservableCollection<string> _installedVersions = new();
+
+    [ObservableProperty]
+    private string _selectedVersion = "";
+
+    [ObservableProperty]
+    private bool _isOfflineMode = true;
+
+    [ObservableProperty]
+    private string _username = "Player";
+
+    [ObservableProperty]
+    private bool _isLaunching = false;
+
+    [ObservableProperty]
+    private string _launchStatus = "准备启动";
+
+    [ObservableProperty]
+    private double _downloadProgress = 0;
+
+
+
+    public 启动ViewModel()
+    {
+        _minecraftVersionService = App.GetService<IMinecraftVersionService>();
+        _fileService = App.GetService<IFileService>();
+        _localSettingsService = App.GetService<ILocalSettingsService>();
+        InitializeAsync().ConfigureAwait(false);
+    }
+
+    private async Task InitializeAsync()
+    {
+        await LoadInstalledVersionsAsync();
+        ShowMinecraftPathInfo();
+    }
+
+    [RelayCommand]
+    private async Task LoadInstalledVersionsAsync()
+    {
+        try
+        {
+            // 获取正确的Minecraft游戏文件夹路径
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            var versionsPath = Path.Combine(minecraftPath, "versions");
+            if (Directory.Exists(versionsPath))
+            {
+                InstalledVersions.Clear();
+                var directories = Directory.GetDirectories(versionsPath);
+                
+                foreach (var dir in directories)
+                {
+                    var versionName = Path.GetFileName(dir);
+                    // 检查版本文件夹中是否存在jar文件和json文件
+                    if (File.Exists(Path.Combine(dir, $"{versionName}.jar")) &&
+                        File.Exists(Path.Combine(dir, $"{versionName}.json")))
+                    {
+                        InstalledVersions.Add(versionName);
+                    }
+                }
+
+                // 按版本号降序排序并选择最新版本
+                if (InstalledVersions.Any())
+                {
+                    SelectedVersion = InstalledVersions.OrderByDescending(v => v).First();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = "加载版本列表失败：" + ex.Message;
+        }
+        finally
+        {
+            ShowMinecraftPathInfo();
+        }
+    }
+
+    // 显示Minecraft版本路径信息
+    private void ShowMinecraftPathInfo()
+    {
+        try
+        {
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            var versionsPath = Path.Combine(minecraftPath, "versions");
+            
+            // 更新启动状态显示路径信息
+            LaunchStatus = $"当前Minecraft版本路径: {versionsPath}";
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = "获取路径信息失败：" + ex.Message;
+        }
+    }
+
+
+    
+    // 当用户点击版本列表时触发
+    partial void OnSelectedVersionChanged(string value)
+    {
+        ShowMinecraftPathInfo();
+    }
+
+    [RelayCommand]
+    private async Task LaunchGameAsync()
+    {
+        if (string.IsNullOrEmpty(SelectedVersion))
+        {
+            LaunchStatus = "请先选择一个版本";
+            return;
+        }
+
+        IsLaunching = true;
+        LaunchStatus = "正在启动游戏...";
+
+        try
+        {
+            // 1. 获取游戏目录路径并记录日志
+            string minecraftPath = _fileService.GetMinecraftDataPath();
+            string versionsDir = Path.Combine(minecraftPath, "versions");
+            string versionDir = Path.Combine(versionsDir, SelectedVersion);
+            string jarPath = Path.Combine(versionDir, $"{SelectedVersion}.jar");
+            string jsonPath = Path.Combine(versionDir, $"{SelectedVersion}.json");
+            string librariesPath = Path.Combine(minecraftPath, "libraries");
+            string assetsPath = Path.Combine(minecraftPath, "assets");
+            
+            // 2. 根据版本隔离设置生成游戏目录
+            bool enableVersionIsolation = await _localSettingsService.ReadSettingAsync<bool>(EnableVersionIsolationKey);
+            string gameDir = enableVersionIsolation 
+                ? Path.Combine(minecraftPath, "versions", SelectedVersion) 
+                : minecraftPath;
+            
+            // 3. 如果启用了版本隔离，确保目录存在
+            if (enableVersionIsolation && !Directory.Exists(gameDir))
+            {
+                Directory.CreateDirectory(gameDir);
+            }
+
+            // 2. 检查必要文件是否存在
+            if (!Directory.Exists(gameDir))
+            {
+                LaunchStatus = $"游戏目录不存在: {gameDir}";
+                return;
+            }
+            
+            if (!Directory.Exists(versionDir))
+            {
+                LaunchStatus = $"版本目录不存在: {versionDir}";
+                return;
+            }
+            
+            if (!File.Exists(jarPath))
+            {
+                LaunchStatus = $"游戏JAR文件不存在: {jarPath}";
+                return;
+            }
+            
+            if (!File.Exists(jsonPath))
+            {
+                LaunchStatus = $"游戏JSON文件不存在: {jsonPath}";
+                return;
+            }
+            
+            // 3. 读取version.json获取版本信息
+            LaunchStatus = $"正在读取版本信息: {jsonPath}";
+            string versionJson = await File.ReadAllTextAsync(jsonPath);
+            VersionInfo versionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(versionJson);
+            
+            if (versionInfo == null)
+            {
+                LaunchStatus = $"解析版本信息失败";
+                return;
+            }
+            
+            // 4. 获取Java路径并记录日志
+            LaunchStatus = "正在查找Java运行时环境...";
+            int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8; // 默认使用Java 8
+            string javaPath = await GetJavaPathAsync(requiredJavaVersion);
+            if (string.IsNullOrEmpty(javaPath))
+            {
+                LaunchStatus = "未找到Java运行时环境，请先安装Java";
+                // 显示消息对话框提示用户
+                await ShowJavaNotFoundMessageAsync();
+                return;
+            }
+            
+            // 5. 确保版本依赖和资源文件可用
+            LaunchStatus = $"正在检查版本依赖和资源文件...";
+            DownloadProgress = 0;
+            // 这里会等待版本补全完成后才继续执行
+            try
+            {
+                await _minecraftVersionService.EnsureVersionDependenciesAsync(SelectedVersion, minecraftPath, progress =>
+                {
+                    DownloadProgress = progress;
+                    LaunchStatus = $"正在准备游戏文件... {progress:F0}%";
+                });
+            }
+            catch (Exception ex)
+            {
+                // 显示详细的错误信息，帮助用户定位问题
+                LaunchStatus = $"准备游戏文件失败: {ex.Message}";
+                Console.WriteLine($"启动失败: {ex.Message}");
+                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"内部错误: {ex.InnerException.Message}");
+                    Console.WriteLine($"内部错误堆栈: {ex.InnerException.StackTrace}");
+                    LaunchStatus += $"\n内部错误: {ex.InnerException.Message}";
+                }
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(versionInfo.MainClass))
+            {
+                LaunchStatus = $"无法获取游戏主类";
+                return;
+            }
+            
+            // 5. 构建Classpath
+            LaunchStatus = $"正在构建Classpath...";
+            HashSet<string> classpathEntries = new HashSet<string>(); // 使用HashSet避免重复
+            
+            // 添加游戏JAR文件
+            classpathEntries.Add(jarPath);
+            
+            // 添加所有依赖库
+            if (versionInfo.Libraries != null)
+            {
+                LaunchStatus += $"\n发现 {versionInfo.Libraries.Count} 个库";
+                int addedCount = 0;
+                int skippedCount = 0;
+                
+                // 判断是否为Fabric版本
+                bool isFabricVersion = SelectedVersion.StartsWith("fabric-");
+                
+                // 如果是Fabric版本，跟踪ASM库的版本
+                Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();
+                Dictionary<string, Library> asmLibraries = new Dictionary<string, Library>();
+                
+                // 第一次遍历：收集所有ASM库
+                if (isFabricVersion)
+                {
+                    foreach (var library in versionInfo.Libraries)
+                    {
+                        if (library.Name.StartsWith("org.ow2.asm:asm:"))
+                        {
+                            string[] parts = library.Name.Split(':');
+                            if (parts.Length >= 3)
+                            {
+                                string version = parts[2];
+                                asmLibraryVersions[library.Name] = version;
+                                asmLibraries[library.Name] = library;
+                            }
+                        }
+                    }
+                    
+                    // 找出最新的ASM版本
+                    string latestAsmVersion = "0.0";
+                    string latestAsmLibraryName = "";
+                    foreach (var kvp in asmLibraryVersions)
+                    {
+                        if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
+                        {
+                            latestAsmVersion = kvp.Value;
+                            latestAsmLibraryName = kvp.Key;
+                        }
+                    }
+                    
+                    LaunchStatus += $"\n检测到Fabric版本，最新ASM版本: {latestAsmVersion}";
+                }
+                
+                // 第二次遍历：添加库到classpath
+                foreach (var library in versionInfo.Libraries)
+                {
+                    // 添加调试信息
+                    bool isJoptSimple = library.Name.Contains("jopt") || library.Name.Contains("joptsimple");
+                    if (isJoptSimple)
+                    {
+                        LaunchStatus += $"\n找到 jopt-simple 库: {library.Name}";
+                    }
+                    
+                    // 检查是否是ASM库，且不是最新版本（仅Fabric版本需要）
+                    bool isOldAsmLibrary = false;
+                    if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
+                    {
+                        // 找出最新的ASM版本
+                        string latestAsmVersion = "0.0";
+                        foreach (var kvp in asmLibraryVersions)
+                        {
+                            if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
+                            {
+                                latestAsmVersion = kvp.Value;
+                            }
+                        }
+                        
+                        // 检查当前库是否是旧版本
+                        string[] parts = library.Name.Split(':');
+                        if (parts.Length >= 3 && parts[2] != latestAsmVersion)
+                        {
+                            isOldAsmLibrary = true;
+                            LaunchStatus += $"\n跳过旧版ASM库: {library.Name}";
+                            skippedCount++;
+                            continue;
+                        }
+                    }
+                    
+                    // 检查规则（简单版本，只处理Windows）
+                    bool isAllowed = true;
+                    if (library.Rules != null)
+                    {
+                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
+                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
+                        {
+                            isAllowed = false;
+                        }
+                    }
+                    
+                    if (!isAllowed)
+                    {
+                        if (isJoptSimple)
+                        {
+                            LaunchStatus += $"\n但被规则过滤掉了!";
+                        }
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // 处理库的情况：
+                    // 1. 检查库名称是否包含classifier（如:natives-windows）
+                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
+                    
+                    if (hasClassifier)
+                    {
+                        // 名称中包含classifier的库（主要是原生库）
+                        // 原生库已在下载阶段解压到natives目录，这里不需要添加到classpath
+                        continue;
+                    }
+                    else
+                    {
+                        // 常规库（包括LWJGL核心库），添加到classpath
+                        if (library.Downloads?.Artifact != null)
+                        {
+                            string libPath = GetLibraryFilePath(library.Name, librariesPath);
+                            if (File.Exists(libPath))
+                            {
+                                bool wasAdded = classpathEntries.Add(libPath);
+                                if (wasAdded)
+                                {
+                                    addedCount++;
+                                    if (isJoptSimple)
+                                    {
+                                        LaunchStatus += $"\n已添加到classpath: {libPath}";
+                                    }
+                                    else if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
+                                    {
+                                        LaunchStatus += $"\n已添加ASM库: {library.Name}";
+                                    }
+                                }
+                                else
+                                {
+                                    // 库已存在于classpath中
+                                    if (isJoptSimple)
+                                    {
+                                        LaunchStatus += $"\n已存在于classpath中: {libPath}";
+                                    }
+                                    skippedCount++;
+                                }
+                            }
+                            else
+                            {
+                                if (isJoptSimple)
+                                {
+                                    LaunchStatus += $"\n但文件不存在: {libPath}";
+                                }
+                                skippedCount++;
+                            }
+                        }
+                        else if (library.Downloads?.Classifiers != null && library.Natives != null)
+                        {
+                            // 这种情况是旧格式的原生库定义，已在下载阶段处理，不需要添加到classpath
+                            continue;
+                        }
+                    }
+                }
+                
+                LaunchStatus += $"\n成功添加 {addedCount} 个库到classpath，跳过 {skippedCount} 个库";
+            }
+            
+            // 构建Classpath字符串（使用分号分隔）
+            string classpath = string.Join(";", classpathEntries);
+
+            // 6. 构建启动参数
+            List<string> args = new List<string>();
+            
+            // 添加JVM参数
+            // 基础JVM参数
+            args.Add("-Dstderr.encoding=UTF-8");
+            args.Add("-Dstdout.encoding=UTF-8");
+            args.Add("-Dfile.encoding=COMPAT");
+            args.Add("-XX:+UseG1GC");
+            args.Add("-XX:-UseAdaptiveSizePolicy");
+            args.Add("-XX:-OmitStackTraceInFastThrow");
+            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
+            args.Add("-Dlog4j2.formatMsgNoLookups=true");
+            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
+            
+            // 处理JVM参数（区分1.12及以下版本和1.13及以上版本）
+            bool hasClasspath = false;
+            if (versionInfo.Arguments != null && versionInfo.Arguments.Jvm != null)
+            {
+                // 1.13及以上版本：使用version.json中的Arguments字段
+                foreach (var jvmArg in versionInfo.Arguments.Jvm)
+                {
+                    if (jvmArg is string argStr)
+                    {
+                        // 替换占位符
+                        string processedArg = argStr
+                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{SelectedVersion}-natives"))
+                            .Replace("${launcher_name}", "XMCL2025")
+                            .Replace("${launcher_version}", "1.0")
+                            .Replace("${classpath}", classpath);
+                        args.Add(processedArg);
+                        
+                        // 检查是否包含classpath
+                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
+                        {
+                            hasClasspath = true;
+                        }
+                    }
+                    // 处理规则对象（暂时简单跳过）
+                }
+            }
+            
+            // 无论如何都确保添加classpath参数
+            if (!hasClasspath)
+            {
+                // 添加classpath参数
+                args.Add($"-cp");
+                args.Add(classpath);
+                // 添加原生库路径
+                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{SelectedVersion}-natives")}");
+                // 添加启动器品牌和版本信息
+                args.Add($"-Dminecraft.launcher.brand=XMCL2025");
+                args.Add($"-Dminecraft.launcher.version=1.0");
+            }
+            
+            // 添加主类
+            args.Add(versionInfo.MainClass);
+            
+            // 游戏基本参数
+            args.Add($"--username");
+            args.Add(Username);
+            args.Add($"--version");
+            args.Add(SelectedVersion);
+            args.Add($"--gameDir");
+            args.Add(gameDir);
+            args.Add($"--assetsDir");
+            args.Add(assetsPath);
+            
+            // 从version.json获取assetIndex
+            string assetIndex = SelectedVersion;
+            if (versionInfo.AssetIndex != null && !string.IsNullOrEmpty(versionInfo.AssetIndex.Id))
+            {
+                assetIndex = versionInfo.AssetIndex.Id;
+            }
+            args.Add($"--assetIndex");
+            args.Add(assetIndex);
+            
+            args.Add($"--uuid");
+            args.Add(Guid.NewGuid().ToString()); // 生成随机UUID
+            args.Add($"--accessToken");
+            args.Add(IsOfflineMode ? "0" : "dummy"); // 离线模式使用0作为令牌
+            args.Add($"--userType");
+            args.Add(IsOfflineMode ? "offline" : "mojang");
+            
+            // 为1.9以下版本添加--userProperties参数
+            if (IsVersionBelow1_9(SelectedVersion))
+            {
+                args.Add("--userProperties");
+                args.Add("{}");
+            }
+
+            // 为特定的早期版本添加AlphaVanillaTweaker参数
+            if (NeedsAlphaVanillaTweaker(SelectedVersion))
+            {
+                args.Add("--tweakClass");
+                args.Add("net.minecraft.launchwrapper.AlphaVanillaTweaker");
+            }
+            
+            // 注：不再从version.json获取游戏参数，因为我们已经手动添加了所有必要的参数
+            // 这样可以避免参数重复和占位符未替换的问题
+
+            // 7. 构建完整的启动命令并显示
+            // 正确处理带空格的参数，添加引号
+            string processedArgs = string.Join(" ", args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
+            string fullCommand = $"\"{javaPath}\" {processedArgs}";
+            LaunchStatus = $"完整启动命令：{fullCommand}";
+            
+            // 保存启动命令到临时变量，以便在进程退出时使用
+            string launchCommand = fullCommand;
+            
+            // 直接执行Java命令，不生成bat文件
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = processedArgs, // 使用已经处理过的带引号的参数列表
+                UseShellExecute = false, // 设置为false以便捕获输出
+                CreateNoWindow = false, // 显示命令行窗口以便用户查看输出
+                WindowStyle = ProcessWindowStyle.Normal,
+                WorkingDirectory = Path.GetDirectoryName(javaPath), // 设置工作目录为Java所在目录
+                RedirectStandardError = true, // 重定向标准错误以便后续分析
+                RedirectStandardOutput = true, // 重定向标准输出以便后续分析
+                StandardErrorEncoding = System.Text.Encoding.UTF8, // 设置编码为UTF-8
+                StandardOutputEncoding = System.Text.Encoding.UTF8 // 设置编码为UTF-8
+            };
+
+            Process gameProcess = new Process { StartInfo = startInfo };
+
+            // 启动进程
+            try
+            {
+                gameProcess.Start();
+                LaunchStatus = "游戏启动命令已执行，命令行窗口已打开！";
+                
+                // 设置EnableRaisingEvents为true
+                gameProcess.EnableRaisingEvents = true;
+                
+                // 异步读取输出（可选，用于实时捕获游戏输出）
+                _ = Task.Run(() => ReadProcessOutputAsync(gameProcess));
+                
+                // 启动异步监控进程退出
+                _ = MonitorGameProcessExitAsync(gameProcess, launchCommand);
+            }
+            catch (Exception ex)
+            {
+                LaunchStatus += $"\n启动游戏进程失败：{ex.Message}";
+                Console.WriteLine($"启动游戏进程失败：{ex.Message}");
+                Console.WriteLine($"错误堆栈：{ex.StackTrace}");
+                return;
+            }
+            // 游戏启动后保持在当前页面，不进行自动导航
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = $"游戏启动异常: {ex.Message}";
+        }
+        finally
+        {
+            IsLaunching = false;
+        }
+    }
+    
+    /// <summary>
+    /// 构建库文件的本地路径
+    /// </summary>
+    private string GetLibraryFilePath(string libraryName, string librariesDirectory, string classifier = null)
+    {
+        // 解析库名称：groupId:artifactId:version
+        var parts = libraryName.Split(':');
+        if (parts.Length < 3)
+        {
+            throw new Exception($"Invalid library name format: {libraryName}");
+        }
+
+        string groupId = parts[0];
+        string artifactId = parts[1];
+        string version = parts[2];
+
+        // 将groupId中的点替换为目录分隔符
+        string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
+
+        // 构建基础文件路径
+        string fileName = $"{artifactId}-{version}";
+        if (!string.IsNullOrEmpty(classifier))
+        {
+            fileName += $"-{classifier}";
+        }
+        fileName += ".jar";
+
+        // 组合完整路径
+        string libraryPath = Path.Combine(librariesDirectory, groupPath, artifactId, version, fileName);
+        
+        return libraryPath;
+    }
+
+    /// <summary>
+    /// 获取Java可执行文件路径
+    /// </summary>
+    private async Task<string> GetJavaPathAsync(int requiredJavaVersion)
+    {
+        try
+        {
+            // 获取用户的Java选择方式
+            JavaSelectionModeType? javaSelectionMode = await _localSettingsService.ReadSettingAsync<JavaSelectionModeType>(JavaSelectionModeKey);
+            if (javaSelectionMode == null)
+            {
+                javaSelectionMode = JavaSelectionModeType.Auto;
+            }
+            LaunchStatus += $"\nJava选择方式: {javaSelectionMode}";
+
+            // 从本地设置中加载Java版本列表
+            var javaVersions = await _localSettingsService.ReadSettingAsync<List<JavaVersionInfo>>(JavaVersionsKey);
+            if (javaVersions == null)
+            {
+                javaVersions = new List<JavaVersionInfo>();
+            }
+            LaunchStatus += $"\n已加载Java版本列表: {javaVersions.Count} 个版本";
+
+            if (javaSelectionMode == JavaSelectionModeType.Auto)
+            {
+                // 自动模式：从列表中选择适合的Java版本
+                // 优先选择与所需主版本号完全匹配的版本，然后选择JDK和最高版本
+                // 如果找不到完全匹配的，再选择主版本号大于所需版本的Java
+                var matchingJava = javaVersions
+                    .Where(j => File.Exists(j.Path))
+                    .OrderByDescending(j => j.MajorVersion == requiredJavaVersion) // 优先完全匹配主版本号
+                    .ThenByDescending(j => j.IsJDK) // 然后优先选择JDK
+                    .ThenBy(j => Math.Abs(j.MajorVersion - requiredJavaVersion)) // 然后选择最接近的版本
+                    .FirstOrDefault();
+                
+                if (matchingJava != null)
+                {
+                    LaunchStatus += $"\n从列表中找到适合的Java版本: {matchingJava.Path} (版本: {matchingJava.Version}, 类型: {(matchingJava.IsJDK ? "JDK" : "JRE")})";
+                    return matchingJava.Path;
+                }
+                else
+                {
+                    LaunchStatus += $"\n列表中未找到适合的Java {requiredJavaVersion} 版本，尝试自动寻找...";
+                }
+            }
+            else
+            {
+                // 手动模式：使用用户选中的Java版本
+                var selectedJavaVersion = await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey);
+                if (!string.IsNullOrEmpty(selectedJavaVersion))
+                {
+                    var selectedJava = javaVersions.FirstOrDefault(j => j.Path == selectedJavaVersion && File.Exists(j.Path));
+                    if (selectedJava != null)
+                    {
+                        LaunchStatus += $"\n使用手动选择的Java版本: {selectedJava.Path}";
+                        return selectedJava.Path;
+                    }
+                    else
+                    {
+                        LaunchStatus += $"\n手动选择的Java版本不存在，尝试自动寻找...";
+                    }
+                }
+            }
+
+            // 兼容旧版：优先检查用户自定义的Java路径
+            string customJavaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+            if (!string.IsNullOrEmpty(customJavaPath) && File.Exists(customJavaPath))
+            {
+                LaunchStatus += $"\n使用自定义Java路径: {customJavaPath}";
+                return customJavaPath;
+            }
+            else if (!string.IsNullOrEmpty(customJavaPath) && !File.Exists(customJavaPath))
+            {
+                LaunchStatus += $"\n自定义Java路径不存在: {customJavaPath}，正在自动寻找...";
+            }
+
+            // 根据requiredJavaVersion寻找匹配的Java版本
+            {
+                LaunchStatus += $"\n正在寻找匹配Java {requiredJavaVersion} 的安装...";
+                
+                // 1. 检查注册表中的Java安装路径（Windows）- 优先查找匹配版本
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    using (var javaKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Runtime Environment"))
+                    {
+                        if (javaKey != null)
+                        {
+                            // 获取所有Java版本
+                            string[] versions = javaKey.GetSubKeyNames();
+                            foreach (string version in versions)
+                            {
+                                using (var versionKey = javaKey.OpenSubKey(version))
+                                {
+                                    if (versionKey != null)
+                                    {
+                                        // 获取Java版本号信息
+                                        string javaHomePath = versionKey.GetValue("JavaHome") as string;
+                                        string javaVersion = versionKey.GetValue("JavaVersion") as string;
+                                        
+                                        if (javaHomePath != null)
+                                        {
+                                            string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
+                                            if (File.Exists(javaPath))
+                                            {
+                                                // 尝试解析版本号
+                                                if (TryParseJavaVersion(javaVersion, out int majorVersion))
+                                                {
+                                                    if (majorVersion == requiredJavaVersion)
+                                                    {
+                                                        LaunchStatus += $"\n找到匹配的Java {requiredJavaVersion} 版本: {javaPath}";
+                                                        return javaPath;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 检查JDK路径
+                    using (var jdkKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Development Kit"))
+                    {
+                        if (jdkKey != null)
+                        {
+                            // 获取所有JDK版本
+                            string[] versions = jdkKey.GetSubKeyNames();
+                            foreach (string version in versions)
+                            {
+                                using (var versionKey = jdkKey.OpenSubKey(version))
+                                {
+                                    if (versionKey != null)
+                                    {
+                                        // 获取Java版本号信息
+                                        string javaHomePath = versionKey.GetValue("JavaHome") as string;
+                                        string javaVersion = versionKey.GetValue("JavaVersion") as string;
+                                        
+                                        if (javaHomePath != null)
+                                        {
+                                            string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
+                                            if (File.Exists(javaPath))
+                                            {
+                                                // 尝试解析版本号
+                                                if (TryParseJavaVersion(javaVersion, out int majorVersion))
+                                                {
+                                                    if (majorVersion == requiredJavaVersion)
+                                                    {
+                                                        LaunchStatus += $"\n找到匹配的Java {requiredJavaVersion} JDK版本: {javaPath}";
+                                                        return javaPath;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 2. 尝试在常见路径中查找匹配版本
+                string[] commonVersionPaths = new string[]
+                {
+                    @$"C:\Program Files\Java\jdk-{requiredJavaVersion}\bin\java.exe",
+                    @$"C:\Program Files\Java\jre-{requiredJavaVersion}\bin\java.exe",
+                    @$"C:\Program Files\Java\jdk1.{requiredJavaVersion}.0_xxx\bin\java.exe",
+                    @$"C:\Program Files\Java\jre1.{requiredJavaVersion}.0_xxx\bin\java.exe"
+                };
+                
+                foreach (string pathPattern in commonVersionPaths)
+                {
+                    string basePath = Path.GetDirectoryName(pathPattern);
+                    if (basePath != null)
+                    {
+                        string parentDir = Path.GetDirectoryName(basePath);
+                        if (parentDir != null)
+                        {
+                            try
+                            {
+                                foreach (string dir in Directory.GetDirectories(parentDir))
+                                {
+                                    string dirName = Path.GetFileName(dir);
+                                    if (dirName.StartsWith($"jdk{requiredJavaVersion}") || dirName.StartsWith($"jre{requiredJavaVersion}") ||
+                                        dirName.StartsWith($"jdk1.{requiredJavaVersion}") || dirName.StartsWith($"jre1.{requiredJavaVersion}"))
+                                    {
+                                        string javaPath = Path.Combine(dir, "bin", "java.exe");
+                                        if (File.Exists(javaPath))
+                                        {
+                                            LaunchStatus += $"\n在常见路径找到匹配的Java {requiredJavaVersion} 版本: {javaPath}";
+                                            return javaPath;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // 忽略目录访问错误
+                                Console.WriteLine($"检查Java路径时出错: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 如果是自定义模式或者自动模式下没有找到匹配版本，继续使用原来的查找逻辑
+            LaunchStatus += $"\n未找到完全匹配的Java版本，尝试寻找兼容版本...";
+            
+            // 检查系统环境变量中的java路径
+            string javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+            if (!string.IsNullOrEmpty(javaHome))
+            {
+                string javaPath = Path.Combine(javaHome, "bin", "java.exe");
+                if (File.Exists(javaPath))
+                {
+                    LaunchStatus += $"\n使用环境变量JAVA_HOME中的Java路径: {javaPath}";
+                    return javaPath;
+                }
+            }
+
+            // 检查注册表中的默认Java版本
+            using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            {
+                using (var javaKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Runtime Environment"))
+                {
+                    if (javaKey != null)
+                    {
+                        string currentVersion = javaKey.GetValue("CurrentVersion") as string;
+                        if (currentVersion != null)
+                        {
+                            using (var versionKey = javaKey.OpenSubKey(currentVersion))
+                            {
+                                if (versionKey != null)
+                                {
+                                    string javaHomePath = versionKey.GetValue("JavaHome") as string;
+                                    if (javaHomePath != null)
+                                    {
+                                        string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
+                                        if (File.Exists(javaPath))
+                                        {
+                                            LaunchStatus += $"\n使用注册表中的默认Java版本: {javaPath}";
+                                            return javaPath;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 尝试在常见路径中查找
+            string[] commonPaths = new string[]
+            {
+                @"C:\Program Files\Java\jdk1.8.0_301\bin\java.exe",
+                @"C:\Program Files\Java\jre1.8.0_301\bin\java.exe",
+                @"C:\Program Files\Java\jdk-17\bin\java.exe",
+                @"C:\Program Files\Java\jre-17\bin\java.exe",
+                @"C:\Program Files\Java\jdk-21\bin\java.exe",
+                @"C:\Program Files\Java\jre-21\bin\java.exe"
+            };
+
+            foreach (string path in commonPaths)
+            {
+                if (File.Exists(path))
+                {
+                    LaunchStatus += $"\n在常见路径找到Java: {path}";
+                    return path;
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = "查找Java路径时出错：" + ex.Message;
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 尝试解析Java版本号
+    /// </summary>
+    /// <param name="javaVersionString">Java版本字符串</param>
+    /// <param name="majorVersion">解析出的主版本号</param>
+    /// <returns>是否解析成功</returns>
+    private bool TryParseJavaVersion(string javaVersionString, out int majorVersion)
+    {
+        majorVersion = 0;
+        
+        if (string.IsNullOrEmpty(javaVersionString))
+        {
+            return false;
+        }
+        
+        try
+        {
+            // 处理不同格式的版本字符串
+            // 格式1: 1.8.0_301
+            if (javaVersionString.StartsWith("1."))
+            {
+                string[] parts = javaVersionString.Split('.');
+                if (parts.Length >= 2)
+                {
+                    return int.TryParse(parts[1], out majorVersion);
+                }
+            }
+            // 格式2: 17.0.1
+            // 格式3: 17
+            else
+            {
+                string[] parts = javaVersionString.Split('.');
+                return int.TryParse(parts[0], out majorVersion);
+            }
+        }
+        catch (Exception)
+        {
+            // 忽略解析错误
+        }
+        
+        return false;
+    }
+    
+
+}

@@ -1,0 +1,1019 @@
+<Page
+    x:Class="XMCL2025.Views.版本管理Page"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="using:XMCL2025.ViewModels"
+    mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea" Padding="40,60,40,20">
+        <Grid.Resources>
+            <!-- 统一的操作按钮样式 -->
+            <Style TargetType="Button" x:Key="ActionButtonStyle">
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="16,0,16,0" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Scale" To="1.02" Duration="0:0:0.1" />
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Scale" To="0.98" Duration="0:0:0.1" />
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundBaseLowBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Foreground">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlDisabledBaseMediumLowBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  Background="{TemplateBinding Background}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                  CornerRadius="{TemplateBinding CornerRadius}"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                    <ContentPresenter.RenderTransform>
+                                        <CompositeTransform ScaleX="1" ScaleY="1" />
+                                    </ContentPresenter.RenderTransform>
+                                </ContentPresenter>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- 默认应用ActionButtonStyle到所有Button元素 -->
+            <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}" />
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,32">
+            <TextBlock x:Name="PageTitle" Style="{StaticResource PageTitleStyle}" FontSize="36" FontWeight="Bold" />
+            <TextBlock x:Name="PageSubtitle" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
+        </StackPanel>
+
+        <!-- 控制区域 -->
+        <Grid Grid.Row="1" Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.ColumnSpacing>12</Grid.ColumnSpacing>
+            
+            <!-- 打开文件夹按钮 -->
+            <Button 
+                Grid.Column="1"
+                Content="打开文件夹"
+                Command="{Binding OpenCurrentFolderCommand}"
+                Style="{StaticResource DefaultButtonStyle}" />
+            
+            <!-- 刷新按钮 -->
+            <Button 
+                Grid.Column="2"
+                Content="刷新数据"
+                Command="{Binding RefreshDataCommand}"
+                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                Style="{StaticResource DefaultButtonStyle}" />
+        </Grid>
+
+        <!-- 加载指示器 -->
+        <ProgressRing
+            Grid.Row="2"
+            Margin="0"
+            IsActive="{Binding IsLoading, Mode=OneWay}"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center"
+            Visibility="{Binding IsLoading, Mode=OneWay}"
+            Width="48"
+            Height="48"
+            Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
+
+        <!-- 主内容区域 - TabView -->
+        <TabView 
+            x:Name="MainTabView"
+            Grid.Row="2"
+            Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+            Background="Transparent"
+            BorderThickness="0"
+            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+            <TabView.Resources>
+                <Style TargetType="TabViewItem">
+                    <Setter Property="IsClosable" Value="False" />
+                </Style>
+            </TabView.Resources>
+            
+            <!-- Mod管理模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="Mod管理" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+
+                    
+                    <!-- Mod列表容器 -->
+                    <Grid Grid.Row="1">
+                        <!-- Mod列表 -->
+                        <ScrollViewer
+                            x:Name="ModListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <ListView 
+                                x:Name="ModListView"
+                                ItemsSource="{Binding Mods, Mode=OneWay}"
+                                SelectionMode="Single"
+                                IsItemClickEnabled="False"
+                                CanReorderItems="False"
+                                AllowDrop="False"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          Padding="{TemplateBinding Padding}"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:ModInfo">
+                                        <Grid Height="60" 
+                                              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="12" 
+                                              Padding="16" 
+                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Mod名称 -->
+                                            <TextBlock 
+                                                Grid.Column="0"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource BodyTextStyle}" 
+                                                VerticalAlignment="Center" 
+                                                FontSize="13" 
+                                                FontWeight="Medium"/>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <Button 
+                                                Grid.Column="1"
+                                                Content="删除" 
+                                                VerticalAlignment="Center" 
+                                                Height="28" 
+                                                Padding="10,0,10,0" 
+                                                FontSize="11" 
+                                                Command="{Binding DataContext.DeleteModCommand, ElementName=ModListView}" 
+                                                CommandParameter="{Binding}" 
+                                                Foreground="White" 
+                                                CornerRadius="6">
+                                                <Button.Resources>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                        <Setter Property="Height" Value="28" />
+                                                        <Setter Property="Padding" Value="10,0,10,0" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="CornerRadius" Value="6" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        
+                        <!-- 空列表提示 -->
+                        <StackPanel 
+                            x:Name="ModEmptyPanel"
+                            Visibility="{Binding IsModListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Margin="0,100,0,0"
+                            Padding="60,40,60,40"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="16"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock 
+                                Text="当前版本没有Mod" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8"/>
+                            <TextBlock 
+                                Text="前往Mod页面下载和安装Mod" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,24,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300"/>
+                            <Button 
+                                Content="前往Mod页面" 
+                                Style="{StaticResource DefaultButtonStyle}" 
+                                Command="{Binding NavigateToModPageCommand}" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,16,0,0" 
+                                Width="160"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <!-- 光影管理模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="光影管理" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+
+                    
+                    <!-- 光影列表容器 -->
+                    <Grid Grid.Row="1">
+                        <!-- 光影列表 -->
+                        <ScrollViewer
+                            x:Name="ShaderListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <ListView 
+                                x:Name="ShaderListView"
+                                ItemsSource="{Binding Shaders, Mode=OneWay}"
+                                SelectionMode="Single"
+                                IsItemClickEnabled="False"
+                                CanReorderItems="False"
+                                AllowDrop="False"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          Padding="{TemplateBinding Padding}"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:ShaderInfo">
+                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 光影名称 -->
+                                            <TextBlock 
+                                                Grid.Column="0"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource BodyTextStyle}" 
+                                                VerticalAlignment="Center" 
+                                                FontSize="13" 
+                                                FontWeight="Medium"/>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <Button 
+                                                Grid.Column="1"
+                                                Content="删除" 
+                                                VerticalAlignment="Center" 
+                                                Height="28" 
+                                                Padding="10,0,10,0" 
+                                                FontSize="11" 
+                                                Command="{Binding DataContext.DeleteShaderCommand, ElementName=ShaderListView}" 
+                                                CommandParameter="{Binding}" 
+                                                Foreground="White" 
+                                                CornerRadius="6">
+                                                <Button.Resources>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                        <Setter Property="Height" Value="28" />
+                                                        <Setter Property="Padding" Value="10,0,10,0" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="CornerRadius" Value="6" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        
+                        <!-- 空列表提示 -->
+                        <StackPanel 
+                            x:Name="ShaderEmptyPanel"
+                            Visibility="{Binding IsShaderListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Margin="0,100,0,0"
+                            Padding="60,40,60,40"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="16"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock 
+                                Text="当前版本没有光影" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8"/>
+                            <TextBlock 
+                                Text="点击上方按钮打开光影文件夹添加光影" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,24,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <!-- 资源包管理模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="资源包管理" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+
+                    
+                    <!-- 资源包列表容器 -->
+                    <Grid Grid.Row="1">
+                        <!-- 资源包列表 -->
+                        <ScrollViewer
+                            x:Name="ResourcePackListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <ListView 
+                                x:Name="ResourcePackListView"
+                                ItemsSource="{Binding ResourcePacks, Mode=OneWay}"
+                                SelectionMode="Single"
+                                IsItemClickEnabled="False"
+                                CanReorderItems="False"
+                                AllowDrop="False"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          Padding="{TemplateBinding Padding}"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:ResourcePackInfo">
+                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 资源包名称 -->
+                                            <TextBlock 
+                                                Grid.Column="0"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource BodyTextStyle}" 
+                                                VerticalAlignment="Center" 
+                                                FontSize="13" 
+                                                FontWeight="Medium"/>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <Button 
+                                                Grid.Column="1"
+                                                Content="删除" 
+                                                VerticalAlignment="Center" 
+                                                Height="28" 
+                                                Padding="10,0,10,0" 
+                                                FontSize="11" 
+                                                Command="{Binding DataContext.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 
+                                                CommandParameter="{Binding}" 
+                                                Foreground="White" 
+                                                CornerRadius="6">
+                                                <Button.Resources>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                        <Setter Property="Height" Value="28" />
+                                                        <Setter Property="Padding" Value="10,0,10,0" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="CornerRadius" Value="6" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        
+                        <!-- 空列表提示 -->
+                        <StackPanel 
+                            x:Name="ResourcePackEmptyPanel"
+                            Visibility="{Binding IsResourcePackListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Margin="0,100,0,0"
+                            Padding="60,40,60,40"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="16"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock 
+                                Text="当前版本没有资源包" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8"/>
+                            <TextBlock 
+                                Text="点击上方按钮打开资源包文件夹添加资源包" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,24,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <!-- 数据包管理模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="数据包管理" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+
+                    
+                    <!-- 数据包列表容器 -->
+                    <Grid Grid.Row="1">
+                        <!-- 数据包列表 -->
+                        <ScrollViewer
+                            x:Name="DataPackListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <ListView 
+                                x:Name="DataPackListView"
+                                ItemsSource="{Binding DataPacks, Mode=OneWay}"
+                                SelectionMode="Single"
+                                IsItemClickEnabled="False"
+                                CanReorderItems="False"
+                                AllowDrop="False"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          Padding="{TemplateBinding Padding}"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:DataPackInfo">
+                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 数据包名称 -->
+                                            <TextBlock 
+                                                Grid.Column="0"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource BodyTextStyle}" 
+                                                VerticalAlignment="Center" 
+                                                FontSize="13" 
+                                                FontWeight="Medium"/>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <Button 
+                                                Grid.Column="1"
+                                                Content="删除" 
+                                                VerticalAlignment="Center" 
+                                                Height="28" 
+                                                Padding="10,0,10,0" 
+                                                FontSize="11" 
+                                                Command="{Binding DataContext.DeleteDataPackCommand, ElementName=DataPackListView}" 
+                                                CommandParameter="{Binding}" 
+                                                Foreground="White" 
+                                                CornerRadius="6">
+                                                <Button.Resources>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                        <Setter Property="Height" Value="28" />
+                                                        <Setter Property="Padding" Value="10,0,10,0" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="CornerRadius" Value="6" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        
+                        <!-- 空列表提示 -->
+                        <StackPanel 
+                            x:Name="DataPackEmptyPanel"
+                            Visibility="{Binding IsDataPackListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Margin="0,100,0,0"
+                            Padding="60,40,60,40"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="16"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock 
+                                Text="当前版本没有数据包" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8"/>
+                            <TextBlock 
+                                Text="点击上方按钮打开数据包文件夹添加数据包" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,24,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <!-- 地图安装模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="地图安装" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+
+                    
+                    <!-- 地图列表容器 -->
+                    <Grid Grid.Row="1">
+                        <!-- 地图列表 -->
+                        <ScrollViewer
+                            x:Name="MapsListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <ListView 
+                                x:Name="MapsListView"
+                                ItemsSource="{Binding Maps, Mode=OneWay}"
+                                SelectionMode="Single"
+                                IsItemClickEnabled="False"
+                                CanReorderItems="False"
+                                AllowDrop="False"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          Padding="{TemplateBinding Padding}"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:MapInfo">
+                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 地图名称 -->
+                                            <TextBlock 
+                                                Grid.Column="0"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource BodyTextStyle}" 
+                                                VerticalAlignment="Center" 
+                                                FontSize="13" 
+                                                FontWeight="Medium"/>
+                                            
+                                            <!-- 删除按钮 -->
+                                            <Button 
+                                                Grid.Column="1"
+                                                Content="删除" 
+                                                VerticalAlignment="Center" 
+                                                Height="28" 
+                                                Padding="10,0,10,0" 
+                                                FontSize="11" 
+                                                Command="{Binding DataContext.DeleteMapCommand, ElementName=MapsListView}" 
+                                                CommandParameter="{Binding}" 
+                                                Foreground="White" 
+                                                CornerRadius="6">
+                                                <Button.Resources>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                        <Setter Property="Height" Value="28" />
+                                                        <Setter Property="Padding" Value="10,0,10,0" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="CornerRadius" Value="6" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        
+                        <!-- 空列表提示 -->
+                        <StackPanel 
+                            x:Name="MapsEmptyPanel"
+                            Visibility="{Binding IsMapListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center" 
+                            Margin="0,100,0,0"
+                            Padding="60,40,60,40"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="16"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock 
+                                Text="当前版本没有地图" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8"/>
+                            <TextBlock 
+                                Text="点击上方按钮打开地图文件夹添加地图" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,24,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</Page> 
+                               

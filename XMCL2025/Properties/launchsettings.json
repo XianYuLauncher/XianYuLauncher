@@ -1,0 +1,10 @@
+﻿{
+    "profiles": {
+      "XMCL2025 (Package)": {
+        "commandName": "MsixPackage"
+      },
+      "XMCL2025 (Unpackaged)": {
+        "commandName": "Project"
+      }
+    }
+}

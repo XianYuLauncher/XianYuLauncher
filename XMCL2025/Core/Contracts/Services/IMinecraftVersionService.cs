@@ -1,0 +1,154 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+
+namespace XMCL2025.Core.Contracts.Services;
+
+public interface IMinecraftVersionService
+{
+    Task<VersionManifest> GetVersionManifestAsync();
+    Task<VersionInfo> GetVersionInfoAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
+    Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
+    Task DownloadVersionAsync(string versionId, string targetDirectory);
+    Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<double> progressCallback = null, bool allowNetwork = true);
+    Task ExtractNativeLibrariesAsync(string versionId, string librariesDirectory, string nativesDirectory);
+    Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null);
+    Task DownloadAllAssetObjectsAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null);
+    Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null);
+    
+    // Mod Loader相关方法
+    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null);
+    
+    // 获取已安装的Minecraft版本
+    Task<List<string>> GetInstalledVersionsAsync(string minecraftDirectory = null);
+}
+
+public class VersionManifest
+{
+    public LatestVersion Latest { get; set; }
+    public List<VersionEntry> Versions { get; set; }
+}
+
+public class LatestVersion
+{
+    public string Release { get; set; }
+    public string Snapshot { get; set; }
+}
+
+public class VersionEntry
+{
+    public string Id { get; set; }
+    public string Type { get; set; }
+    public string Url { get; set; }
+    public string Time { get; set; }
+    public string ReleaseTime { get; set; }
+}
+
+public class VersionInfo
+    {
+        public string Id { get; set; }
+        public string Type { get; set; }
+        public string Time { get; set; }
+        public string ReleaseTime { get; set; }
+        public string Url { get; set; }
+        public Downloads Downloads { get; set; }
+        public List<Library> Libraries { get; set; }
+        public string MainClass { get; set; }
+        public Arguments Arguments { get; set; }
+        public AssetIndex AssetIndex { get; set; }
+        public string Assets { get; set; }
+        [JsonProperty("javaVersion")]
+        public JavaVersion JavaVersion { get; set; }
+        [JsonProperty("inheritsFrom")]
+        public string InheritsFrom { get; set; }
+    }
+    
+    public class JavaVersion
+    {
+        [JsonProperty("majorVersion")]
+        public int MajorVersion { get; set; }
+        public string Component { get; set; }
+    }
+    
+    public class AssetIndex
+    {
+        public string Id { get; set; }
+        public string Sha1 { get; set; }
+        public long Size { get; set; }
+        public long TotalSize { get; set; }
+        public string Url { get; set; }
+    }
+
+    // 资源索引模型（用于解析index.json文件）
+    public class AssetIndexJson
+    {
+        public Dictionary<string, AssetItemMeta> Objects { get; set; } = new Dictionary<string, AssetItemMeta>();
+    }
+
+    // 单个资源元数据模型
+    public class AssetItemMeta
+    {
+        public string Hash { get; set; }
+        public long Size { get; set; }
+    }
+
+public class Library
+{
+    public string Name { get; set; }
+    public LibraryDownloads Downloads { get; set; }
+    public LibraryRules[] Rules { get; set; }
+    public LibraryNative Natives { get; set; }
+    public LibraryExtract Extract { get; set; }
+}
+
+public class LibraryDownloads
+{
+    public DownloadFile Artifact { get; set; }
+    public Dictionary<string, DownloadFile> Classifiers { get; set; }
+}
+
+public class LibraryRules
+{
+    public string Action { get; set; }
+    public LibraryOs Os { get; set; }
+}
+
+public class LibraryOs
+{
+    public string Name { get; set; }
+    public string Version { get; set; }
+    public string Arch { get; set; }
+}
+
+public class LibraryNative
+{
+    public string Windows { get; set; }
+    public string Linux { get; set; }
+    public string Osx { get; set; }
+}
+
+public class LibraryExtract
+{
+    public string[] Exclude { get; set; }
+}
+
+public class Arguments
+{
+    public List<object> Game { get; set; }
+    public List<object> Jvm { get; set; }
+}
+
+public class Downloads
+{
+    public DownloadFile Client { get; set; }
+    public DownloadFile ClientMappings { get; set; }
+    public DownloadFile Server { get; set; }
+    public DownloadFile ServerMappings { get; set; }
+}
+
+public class DownloadFile
+{
+    public string Sha1 { get; set; }
+    public int Size { get; set; }
+    public string Url { get; set; }
+}
