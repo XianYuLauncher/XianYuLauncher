@@ -47,4 +47,44 @@ public sealed partial class ResourceDownloadPage : Page
             await ViewModel.DownloadModCommand.ExecuteAsync(mod);
         }
     }
+    
+    private void ModListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (sender is ScrollViewer scrollViewer)
+        {
+            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
+            var verticalOffset = scrollViewer.VerticalOffset;
+            var scrollableHeight = scrollViewer.ScrollableHeight;
+            var viewportHeight = scrollViewer.ViewportHeight;
+            var shouldLoadMore = !ViewModel.IsModLoadingMore && ViewModel.ModHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+
+            if (shouldLoadMore)
+            {
+                ViewModel.LoadMoreModsCommand.Execute(null);
+            }
+        }
+    }
+
+    private async void ModItem_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Grid grid && grid.DataContext is ModrinthProject mod)
+        {
+            await ViewModel.DownloadModCommand.ExecuteAsync(mod);
+        }
+    }
+
+    private async void ModSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+    }
+
+    private async void LoaderComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+    }
+
+    private async void VersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+    }
 }

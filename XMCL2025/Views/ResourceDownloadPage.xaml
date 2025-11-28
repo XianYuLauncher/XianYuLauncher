@@ -4,7 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:XMCL2025.Helpers"
     xmlns:viewModels="using:XMCL2025.ViewModels"
+    xmlns:models="using:XMCL2025.Core.Models"
     mc:Ignorable="d">
 
     <Grid x:Name="ContentArea" Padding="20">
@@ -51,9 +53,9 @@
                                 <Border CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
                                     <StackPanel>
                                         <TextBlock Text="最新正式版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
-                                        <TextBlock Text="1.21.3" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
+                                        <TextBlock Text="{Binding LatestReleaseVersion, Mode=OneWay}" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
                                         <Button Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                                                Command="{Binding DownloadVersionCommand}" CommandParameter="1.21.3" />
+                                                Command="{Binding DownloadVersionCommand}" CommandParameter="{Binding LatestReleaseVersion, Mode=OneWay}" />
                                     </StackPanel>
                                 </Border>
 
@@ -61,9 +63,9 @@
                                 <Border Grid.Column="2" CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
                                     <StackPanel>
                                         <TextBlock Text="最新快照版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
-                                        <TextBlock Text="24w45a" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
+                                        <TextBlock Text="{Binding LatestSnapshotVersion, Mode=OneWay}" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
                                         <Button Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                                                Command="{Binding DownloadVersionCommand}" CommandParameter="24w45a" />
+                                                Command="{Binding DownloadVersionCommand}" CommandParameter="{Binding LatestSnapshotVersion, Mode=OneWay}" />
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -74,6 +76,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
+
                                 <TextBox 
                                     Grid.Column="0"
                                     x:Name="VersionSearchBox"
@@ -85,9 +88,10 @@
                                 <Button 
                                     Grid.Column="1"
                                     Margin="10,0,0,0"
-                                    Command="{Binding SearchVersionsCommand}">
+                                    Command="{Binding RefreshVersionsCommand}">
                                     <Grid>
-                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" />
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        <ProgressRing IsActive="{Binding IsRefreshing, Mode=OneWay}" Width="20" Height="20" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                                     </Grid>
                                 </Button>
                             </Grid>
@@ -96,8 +100,8 @@
                             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12,0,12,0">
                                 <Grid>
                                     <!-- 加载指示器 -->
-                                    <ProgressRing IsActive="{Binding IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    
+                                    <ProgressRing IsActive="{Binding IsVersionLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                     
                                     <!-- 版本列表 -->
                                     <ListView 
                                         x:Name="VersionListView"
@@ -107,7 +111,7 @@
                                         SelectionMode="None"
                                         Background="Transparent"
                                         BorderThickness="0"
-                                        Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsVersionLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -140,71 +144,197 @@
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <!-- Mod搜索和过滤 -->
-                            <Grid Grid.Row="0" Margin="12,0,12,20">
+                            <Grid Grid.Row="0" Margin="20,10,20,20">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox 
-                                    Grid.Column="0"
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Search Box -->
+                                <AutoSuggestBox
                                     x:Name="ModSearchBox"
-                                    PlaceholderText="搜索Mod..."
-                                    Text="{Binding SearchQuery, Mode=TwoWay}" 
-                                    KeyDown="ModSearchBox_KeyDown" 
-                                    HorizontalAlignment="Stretch" />
-                                    <Button 
-                                        Grid.Column="1"
-                                        Margin="10,0,0,0"
-                                        Command="{Binding SearchModsCommand}">
-                                        <Grid>
-                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" />
-                                        </Grid>
-                                    </Button>
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    PlaceholderText="Search mods..."
+                                    QueryIcon="Find"
+                                    Margin="0,0,10,0"
+                                    Text="{Binding SearchQuery, Mode=TwoWay}"
+                                    QuerySubmitted="ModSearchBox_QuerySubmitted"/>
+
+                                <!-- Mod Loader Filter -->
+                                <ComboBox
+                                    x:Name="LoaderComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    Header="加载器"
+                                    PlaceholderText="加载器"
+                                    Margin="0,0,10,0"
+                                    MinWidth="120"
+                                    SelectedValue="{Binding SelectedLoader, Mode=TwoWay}"
+                                    SelectedValuePath="Tag"
+                                    SelectionChanged="LoaderComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="All" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="Fabric" Tag="fabric" />
+                                    <ComboBoxItem Content="Forge" Tag="forge" />
+                                    <ComboBoxItem Content="Quilt" Tag="quilt" />
+                                    <ComboBoxItem Content="NeoForge" Tag="neoforge" />
+                                </ComboBox>
+
+                                <!-- Version Filter -->
+                                <ComboBox
+                                    x:Name="VersionComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="2"
+                                    Header="版本"
+                                    PlaceholderText="版本"
+                                    Margin="0,0,10,0"
+                                    MinWidth="120"
+                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
+                                    SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
+                                    SelectionChanged="VersionComboBox_SelectionChanged">
+                                </ComboBox>
+
+                                <!-- Sort By -->
+                                <ComboBox
+                                    Grid.Row="0"
+                                    Grid.Column="3"
+                                    Header="Sort"
+                                    PlaceholderText="Most Popular"
+                                    MinWidth="120">
+                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
+                                    <ComboBoxItem Content="Recently Updated"/>
+                                    <ComboBoxItem Content="Most Downloads"/>
+                                    <ComboBoxItem Content="Name A-Z"/>
+                                </ComboBox>
                             </Grid>
 
+                            <!-- Error Message -->
+                            <Grid
+                                Grid.Row="2"
+                                Margin="20,10,20,10"
+                                Background="#FFFDE7E9"
+                                BorderBrush="#FFD53939"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="⚠"
+                                    FontSize="24"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0"
+                                    Foreground="#FFD53939"/>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding ErrorMessage, Mode=OneWay}"
+                                    Foreground="#FFD53939"
+                                    Style="{ThemeResource BodyTextBlockStyle}"
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Loading Indicator -->
+                            <ProgressRing
+                                Grid.Row="2"
+                                Margin="20"
+                                IsActive="{Binding IsModLoading, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="{Binding IsModLoading, Mode=OneWay}"/>
+
                             <!-- Mod列表 -->
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12,0,12,0">
-                                <Grid>
-                                    <!-- 加载指示器 -->
-                                    <ProgressRing IsActive="{Binding IsModLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    
+                            <ScrollViewer 
+                                x:Name="ModListScrollViewer"
+                                Grid.Row="2"
+                                Margin="20"
+                                VerticalScrollBarVisibility="Auto"
+                                ViewChanged="ModListScrollViewer_ScrollChanged">
                                     <!-- Mod列表 -->
                                     <ListView 
                                         x:Name="ModListView"
+                                        SelectionMode="Single"
                                         ItemsSource="{Binding Mods, Mode=OneWay}"
                                         IsItemClickEnabled="True"
                                         ItemClick="ModListView_ItemClick"
-                                        SelectionMode="None"
-                                        Background="Transparent"
-                                        BorderThickness="0"
                                         Visibility="{Binding IsModLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.Resources>
+                                            <Style TargetType="ScrollViewer">
+                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                            </Style>
+                                        </ListView.Resources>
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
-                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                                <Setter Property="Margin" Value="0,0,0,10" />
-                                                <Setter Property="Padding" Value="10" />
-                                                <Setter Property="BorderThickness" Value="0" />
-                                                <Setter Property="Background" Value="Transparent" />
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Margin" Value="0,0,0,12"/>
                                             </Style>
                                         </ListView.ItemContainerStyle>
                                         <ListView.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Padding="10">
-                                                    <TextBlock Text="{Binding Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
-                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                                        <TextBlock Text="{Binding Author}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
-                                                        <TextBlock Text=" | " Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
-                                                        <TextBlock Text="{Binding ProjectType}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                            <DataTemplate x:DataType="models:ModrinthProject">
+                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="ModItem_Tapped">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Mod Icon -->
+                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
+                                                            CornerRadius="32" Background="Transparent">
+                                                        <Image Stretch="UniformToFill">
+                                                            <Image.Source>
+                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
+                                                            </Image.Source>
+                                                        </Image>
+                                                    </Border>
+
+                                                    <!-- Mod Name -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                               FontSize="16" FontWeight="SemiBold"/>
+
+                                                    <!-- Mod Description -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description, Mode=OneWay}"
+                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
+                                                               MaxLines="2" VerticalAlignment="Center"/>
+
+                                                    <!-- Mod Info -->
+                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
-                                                </StackPanel>
+                                                </Grid>
                                             </DataTemplate>
                                         </ListView.ItemTemplate>
+                                        <!-- Loading More Indicator -->
+                                        <ListView.Footer>
+                                            <ProgressRing 
+                                                IsActive="{Binding IsModLoadingMore, Mode=OneWay}" 
+                                                Width="32" Height="32" 
+                                                Margin="0,10,0,10" 
+                                                HorizontalAlignment="Center"/>
+                                        </ListView.Footer>
                                     </ListView>
-                                </Grid>
                             </ScrollViewer>
                         </Grid>
                     </TabViewItem>
