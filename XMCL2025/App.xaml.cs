@@ -111,6 +111,8 @@ public partial class App : Application
             services.AddTransient<版本列表Page>();
             services.AddTransient<版本管理ViewModel>();
             services.AddTransient<版本管理Page>();
+            services.AddTransient<ResourceDownloadViewModel>();
+            services.AddTransient<ResourceDownloadPage>();
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
 

@@ -1,0 +1,269 @@
+<Page
+    x:Class="XMCL2025.Views.ResourceDownloadPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="using:XMCL2025.ViewModels"
+    mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea" Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock x:Name="PageTitle" Text="资源下载" Style="{StaticResource PageTitleStyle}" FontSize="36" FontWeight="Bold" />
+            <TextBlock x:Name="PageSubtitle" Text="下载和管理Minecraft资源" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
+        </StackPanel>
+
+        <!-- 主要内容区域 -->
+        <Grid Grid.Row="1">
+            <!-- TabView控件 -->
+            <TabView 
+                x:Name="ResourceTabView" 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                Height="Auto" 
+                SelectedIndex="0">
+                
+                <!-- 版本下载标签 -->
+                <TabView.TabItems>
+                    <TabViewItem Header="版本下载">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- 最新版本卡片 -->
+                            <Grid Grid.Row="0" Margin="12,5,12,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 最新正式版 -->
+                                <Border CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
+                                    <StackPanel>
+                                        <TextBlock Text="最新正式版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
+                                        <TextBlock Text="1.21.3" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
+                                        <Button Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                                Command="{Binding DownloadVersionCommand}" CommandParameter="1.21.3" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 最新快照版 -->
+                                <Border Grid.Column="2" CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
+                                    <StackPanel>
+                                        <TextBlock Text="最新快照版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
+                                        <TextBlock Text="24w45a" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
+                                        <Button Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                                Command="{Binding DownloadVersionCommand}" CommandParameter="24w45a" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- 搜索和刷新 -->
+                            <Grid Grid.Row="1" Margin="12,0,12,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox 
+                                    Grid.Column="0"
+                                    x:Name="VersionSearchBox"
+                                    PlaceholderText="搜索版本..."
+                                    Text="{Binding SearchText, Mode=TwoWay}" 
+                                    KeyDown="VersionSearchBox_KeyDown" 
+                                    HorizontalAlignment="Stretch" />
+
+                                <Button 
+                                    Grid.Column="1"
+                                    Margin="10,0,0,0"
+                                    Command="{Binding SearchVersionsCommand}">
+                                    <Grid>
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" />
+                                    </Grid>
+                                </Button>
+                            </Grid>
+
+                            <!-- 版本列表 -->
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12,0,12,0">
+                                <Grid>
+                                    <!-- 加载指示器 -->
+                                    <ProgressRing IsActive="{Binding IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    
+                                    <!-- 版本列表 -->
+                                    <ListView 
+                                        x:Name="VersionListView"
+                                        ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="VersionListView_ItemClick"
+                                        SelectionMode="None"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                <Setter Property="Margin" Value="0,0,0,10" />
+                                                <Setter Property="Padding" Value="10" />
+                                                <Setter Property="BorderThickness" Value="0" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Padding="10">
+                                                    <TextBlock Text="{Binding Id}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                        <TextBlock Text="{Binding Type}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                        <TextBlock Text=" | " Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                        <TextBlock Text="{Binding ReleaseTime}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Grid>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabViewItem>
+
+                    <!-- Mod下载标签 -->
+                    <TabViewItem Header="Mod下载">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Mod搜索和过滤 -->
+                            <Grid Grid.Row="0" Margin="12,0,12,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox 
+                                    Grid.Column="0"
+                                    x:Name="ModSearchBox"
+                                    PlaceholderText="搜索Mod..."
+                                    Text="{Binding SearchQuery, Mode=TwoWay}" 
+                                    KeyDown="ModSearchBox_KeyDown" 
+                                    HorizontalAlignment="Stretch" />
+                                    <Button 
+                                        Grid.Column="1"
+                                        Margin="10,0,0,0"
+                                        Command="{Binding SearchModsCommand}">
+                                        <Grid>
+                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" />
+                                        </Grid>
+                                    </Button>
+                            </Grid>
+
+                            <!-- Mod列表 -->
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12,0,12,0">
+                                <Grid>
+                                    <!-- 加载指示器 -->
+                                    <ProgressRing IsActive="{Binding IsModLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    
+                                    <!-- Mod列表 -->
+                                    <ListView 
+                                        x:Name="ModListView"
+                                        ItemsSource="{Binding Mods, Mode=OneWay}"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="ModListView_ItemClick"
+                                        SelectionMode="None"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Visibility="{Binding IsModLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                <Setter Property="Margin" Value="0,0,0,10" />
+                                                <Setter Property="Padding" Value="10" />
+                                                <Setter Property="BorderThickness" Value="0" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Padding="10">
+                                                    <TextBlock Text="{Binding Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                        <TextBlock Text="{Binding Author}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                        <TextBlock Text=" | " Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                        <TextBlock Text="{Binding ProjectType}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Grid>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabViewItem>
+
+                    <!-- 光影下载标签（占位符） -->
+                    <TabViewItem Header="光影下载">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Padding="60,40,60,40">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center" />
+                            <TextBlock 
+                                Text="光影下载功能开发中" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8" />
+                            <TextBlock 
+                                Text="敬请期待后续更新" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,0,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300" />
+                        </StackPanel>
+                    </TabViewItem>
+
+                    <!-- 资源包下载标签（占位符） -->
+                    <TabViewItem Header="资源包下载">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Padding="60,40,60,40">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xE8B7;" 
+                                FontSize="80" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                Margin="0,0,0,24" 
+                                HorizontalAlignment="Center" />
+                            <TextBlock 
+                                Text="资源包下载功能开发中" 
+                                Style="{StaticResource PageTitleStyle}" 
+                                FontSize="20" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                TextAlignment="Center" 
+                                Margin="0,0,0,8" />
+                            <TextBlock 
+                                Text="敬请期待后续更新" 
+                                Style="{StaticResource BodyTextStyle}" 
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                Margin="0,0,0,0" 
+                                TextAlignment="Center" 
+                                MaxWidth="300" />
+                        </StackPanel>
+                    </TabViewItem>
+                </TabView.TabItems>
+            </TabView>
+        </Grid>
+    </Grid>
+</Page>
