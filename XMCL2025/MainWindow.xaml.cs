@@ -1,4 +1,4 @@
-﻿using Windows.UI.ViewManagement;
+using Windows.UI.ViewManagement;
 
 using XMCL2025.Helpers;
 
@@ -16,7 +16,7 @@ public sealed partial class MainWindow : WindowEx
 
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
         Content = null;
-        Title = "AppDisplayName".GetLocalized();
+        Title = "XianYu Launcher";
 
         // Theme change code picked from https://github.com/microsoft/WinUI-Gallery/pull/1239
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();

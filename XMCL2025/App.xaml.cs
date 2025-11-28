@@ -46,6 +46,11 @@ public partial class App : Application
     public static WindowEx MainWindow { get; } = new MainWindow();
 
     public static UIElement? AppTitlebar { get; set; }
+    
+    /// <summary>
+    /// 是否显示彩蛋内容
+    /// </summary>
+    public static bool ShowEasterEgg { get; set; } = false;
 
     public App()
     {
@@ -93,6 +98,9 @@ public partial class App : Application
             
             // Modrinth Service
             services.AddHttpClient<ModrinthService>();
+            
+            // Microsoft Auth Service
+            services.AddHttpClient<MicrosoftAuthService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();

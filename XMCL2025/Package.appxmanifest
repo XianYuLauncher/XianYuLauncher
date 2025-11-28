@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -18,7 +18,7 @@
   <mp:PhoneIdentity PhoneProductId="58726fe7-0cdb-4b29-9c99-12ff6c802233" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
     
   <Properties>
-    <DisplayName>XMCL2025</DisplayName>
+    <DisplayName>XianYu Launcher</DisplayName>
     <PublisherDisplayName>pc</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>

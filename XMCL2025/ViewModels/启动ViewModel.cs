@@ -212,6 +212,7 @@ public partial class 启动ViewModel : ObservableRecipient
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly MicrosoftAuthService _microsoftAuthService;
     private const string JavaPathKey = "JavaPath";
     private const string JavaSelectionModeKey = "JavaSelectionMode";
     private const string JavaVersionsKey = "JavaVersions";
@@ -270,13 +271,37 @@ public partial class 启动ViewModel : ObservableRecipient
     [ObservableProperty]
     private double _downloadProgress = 0;
 
+    /// <summary>
+    /// 当前版本路径，用于彩蛋显示
+    /// </summary>
+    public string CurrentVersionPath
+    {
+        get
+        {
+            try
+            {
+                var minecraftPath = _fileService.GetMinecraftDataPath();
+                var versionsPath = Path.Combine(minecraftPath, "versions");
+                return versionsPath;
+            }
+            catch (Exception ex)
+            {
+                return "获取路径失败：" + ex.Message;
+            }
+        }
+    }
 
+    /// <summary>
+    /// 微软登录测试，用于彩蛋显示
+    /// </summary>
+    public string MicrosoftLoginTest => "微软登录功能已实现，可以通过启动页的测试按钮进行测试";
 
     public 启动ViewModel()
     {
         _minecraftVersionService = App.GetService<IMinecraftVersionService>();
         _fileService = App.GetService<IFileService>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
+        _microsoftAuthService = App.GetService<MicrosoftAuthService>();
         InitializeAsync().ConfigureAwait(false);
     }
 
@@ -1158,5 +1183,85 @@ public partial class 启动ViewModel : ObservableRecipient
         return false;
     }
     
+    /// <summary>
+    /// 显示消息对话框
+    /// </summary>
+    /// <param name="message">消息内容</param>
+    /// <param name="title">对话框标题</param>
+    private async Task ShowMessageAsync(string message, string title = "提示")
+    {
+        // 创建并显示消息对话框
+        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+        {
+            Title = title,
+            Content = message,
+            CloseButtonText = "确定",
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        await dialog.ShowAsync();
+    }
+    
+    // 微软正版登录测试命令
+    [RelayCommand]
+    private async Task TestMicrosoftAuthAsync()
+    {
+        try
+        {
+            LaunchStatus = "正在测试微软登录...";
+            
+            // 1. 获取设备代码
+            var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
+            if (deviceCodeResponse == null)
+            {
+                LaunchStatus = "登录失败: 获取设备代码失败";
+                return;
+            }
+            
+            // 2. 自动打开浏览器到验证URL
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = deviceCodeResponse.VerificationUri,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageAsync($"无法自动打开浏览器，请手动访问验证URL: {deviceCodeResponse.VerificationUri}", "提示");
+            }
+            
+            // 3. 显示8位用户代码给用户
+            await ShowMessageAsync(
+                $"请在浏览器中输入以下8位代码:\n\n{deviceCodeResponse.UserCode}\n\n代码有效期: {deviceCodeResponse.ExpiresIn}秒\n\n请在浏览器中完成授权，此窗口可以关闭", 
+                "微软登录验证");
+            
+            // 4. 后台轮询完成登录
+            LaunchStatus = "正在等待浏览器授权...";
+            var result = await _microsoftAuthService.CompleteMicrosoftLoginAsync(
+                deviceCodeResponse.DeviceCode,
+                deviceCodeResponse.Interval,
+                deviceCodeResponse.ExpiresIn);
+            
+            if (result.Success)
+            {
+                LaunchStatus = $"登录成功！玩家名: {result.Username}, UUID: {result.Uuid}";
+                await ShowMessageAsync($"登录成功！\n\n玩家名: {result.Username}\nUUID: {result.Uuid}", "登录成功");
+            }
+            else
+            {
+                LaunchStatus = $"登录失败: {result.ErrorMessage}";
+                await ShowMessageAsync($"登录失败: {result.ErrorMessage}", "登录失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = $"登录异常: {ex.Message}";
+            await ShowMessageAsync($"登录异常: {ex.Message}", "登录异常");
+        }
+    }
+
 
 }

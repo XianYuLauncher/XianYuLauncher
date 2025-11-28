@@ -19,7 +19,7 @@
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,40">
-            <TextBlock Text="XMCL 2025" Style="{StaticResource TitleTextBlockStyle}" FontSize="48" FontWeight="Bold" />
+            <TextBlock Text="XianYu Launcher" Style="{StaticResource TitleTextBlockStyle}" FontSize="48" FontWeight="Bold" />
             <TextBlock Text="Minecraft 启动器" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,4,0,0" Opacity="0.8" />
         </StackPanel>
 
@@ -104,7 +104,19 @@
                 TextAlignment="Left" 
                 Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
                 FontSize="14"
-                Margin="0,12,0,0" />
+                Margin="0,12,0,0"
+                Visibility="Collapsed" />
+            
+            <!-- 微软正版登录测试按钮 -->
+            <Button 
+                x:Name="MicrosoftAuthTestButton"
+                Content="微软正版登录测试"
+                Command="{x:Bind ViewModel.TestMicrosoftAuthCommand}"
+                HorizontalAlignment="Stretch" 
+                Height="40"
+                FontSize="14"
+                Margin="0,16,0,0"
+                Visibility="Collapsed" />
 
             <!-- 下载进度条 -->
             <ProgressBar 
