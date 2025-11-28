@@ -93,7 +93,7 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="灰色版本表示不兼容当前Mod版本" />
+                <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.VersionSelectionTip, Mode=OneWay}" />
             </StackPanel>
         </ContentDialog>
         <!-- 顶部导航栏 -->
@@ -145,9 +145,9 @@
                     <TextBlock Text="{x:Bind ViewModel.ModDescription, Mode=OneWay}" FontSize="14" TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
-                <!-- 支持的加载器 -->
+                <!-- 支持的加载器/标签 -->
                 <StackPanel Spacing="8">
-                    <TextBlock Text="支持的加载器" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
                     <ItemsControl ItemsSource="{x:Bind ViewModel.SupportedLoaders, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -164,9 +164,9 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <!-- 游戏版本和Mod版本下载列表 -->
+                <!-- 游戏版本和资源包/Mod版本下载列表 -->
                 <StackPanel Spacing="12">
-                    <TextBlock Text="下载Mod" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{x:Bind ViewModel.DownloadSectionText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
                     <!-- 加载状态指示器 -->
                     <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                                   Visibility="{x:Bind ViewModel.IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}"

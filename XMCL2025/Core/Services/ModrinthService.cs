@@ -25,20 +25,22 @@ public class ModrinthService
     }
 
     /// <summary>
-    /// 搜索Mod
+    /// 搜索Mod或资源包
     /// </summary>
     /// <param name="query">搜索关键词</param>
     /// <param name="facets">搜索条件</param>
     /// <param name="index">排序方式</param>
     /// <param name="offset">偏移量</param>
     /// <param name="limit">返回数量</param>
+    /// <param name="projectType">项目类型，默认为mod，资源包为resourcepack</param>
     /// <returns>搜索结果</returns>
     public async Task<ModrinthSearchResult> SearchModsAsync(
         string query = "",
         List<List<string>> facets = null,
         string index = "relevance",
         int offset = 0,
-        int limit = 20)
+        int limit = 20,
+        string projectType = "mod")
     {
         string json = null;
         string url = string.Empty;
@@ -52,7 +54,7 @@ public class ModrinthService
         try
         {
             // 构建基础facets
-            allFacets = new List<List<string>> { new List<string> { "project_type:mod" } };
+            allFacets = new List<List<string>> { new List<string> { $"project_type:{projectType}" } };
             
             // 如果有额外的筛选条件，添加到facets中
             if (facets != null && facets.Count > 0)

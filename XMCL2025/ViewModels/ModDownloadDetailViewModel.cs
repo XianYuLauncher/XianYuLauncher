@@ -61,6 +61,46 @@ namespace XMCL2025.ViewModels
         [ObservableProperty]
         private string _downloadStatus = "";
         
+        // 项目类型：mod 或 resourcepack
+        [ObservableProperty]
+        private string _projectType = "mod";
+        
+        // 显示文本：根据项目类型动态显示"支持的加载器"或"标签"
+        [ObservableProperty]
+        private string _supportedLoadersText = "支持的加载器";
+        
+        // 显示文本：根据项目类型动态显示"Mod下载"或"资源包下载"
+        [ObservableProperty]
+        private string _downloadSectionText = "Mod下载";
+        
+        // 版本选择弹窗提示文本
+        [ObservableProperty]
+        private string _versionSelectionTip = "灰色版本表示不兼容当前Mod版本";
+        
+        // 重写ProjectType的setter，当项目类型变化时更新显示文本
+        partial void OnProjectTypeChanged(string value)
+        {
+            // 根据项目类型设置显示文本
+            switch (value)
+            {
+                case "resourcepack":
+                    SupportedLoadersText = "标签";
+                    DownloadSectionText = "资源包下载";
+                    VersionSelectionTip = "灰色版本表示不兼容当前资源包版本";
+                    break;
+                case "shader":
+                    SupportedLoadersText = "标签";
+                    DownloadSectionText = "光影下载";
+                    VersionSelectionTip = "灰色版本表示不兼容当前光影版本";
+                    break;
+                default:
+                    SupportedLoadersText = "支持的加载器";
+                    DownloadSectionText = "Mod下载";
+                    VersionSelectionTip = "灰色版本表示不兼容当前Mod版本";
+                    break;
+            }
+        }
+        
         private CancellationTokenSource _downloadCancellationTokenSource;
         
         // 自定义下载路径相关属性
@@ -149,7 +189,10 @@ namespace XMCL2025.ViewModels
                 ModLicense = projectDetail.License?.Name ?? "未知许可证";
                 ModAuthor = "团队: " + projectDetail.Team; // 显示团队ID，实际应用中可能需要额外API获取团队名称
                 
-                // 更新支持的加载器
+                // 设置项目类型
+                ProjectType = projectDetail.ProjectType;
+                
+                // 更新支持的加载器/标签
                 SupportedLoaders.Clear();
                 if (projectDetail.Loaders != null)
                 {
@@ -157,6 +200,23 @@ namespace XMCL2025.ViewModels
                     {
                         // 首字母大写处理
                         SupportedLoaders.Add(loader.Substring(0, 1).ToUpper() + loader.Substring(1).ToLower());
+                    }
+                }
+                
+                // 如果是资源包，显示标签而不是加载器
+                if (ProjectType == "resourcepack")
+                {
+                    // 清空加载器列表
+                    SupportedLoaders.Clear();
+                    
+                    // 添加资源包标签
+                    if (projectDetail.Categories != null)
+                    {
+                        foreach (var category in projectDetail.Categories)
+                        {
+                            // 首字母大写处理
+                            SupportedLoaders.Add(category.Substring(0, 1).ToUpper() + category.Substring(1).ToLower());
+                        }
                     }
                 }
                 
@@ -335,28 +395,34 @@ namespace XMCL2025.ViewModels
                     }
                     
                     // 检查版本是否兼容
-                    bool isCompatible = false;
-                    if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
+                bool isCompatible = false;
+                
+                // 如果是资源包或光影，不做兼容性检测，所有版本都兼容
+                if (ProjectType == "resourcepack" || ProjectType == "shader")
+                {
+                    isCompatible = true;
+                }
+                else if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
+                {
+                    // 获取该Mod版本支持的加载器列表
+                    var supportedLoaders = modVersion.Loaders;
+                    
+                    // 兼容性检查需要同时满足游戏版本和加载器类型
+                    // 1. 如果Mod支持所有加载器（包括原版），则直接兼容
+                    // 2. 如果Mod有特定加载器要求，则必须匹配
+                    if (supportedLoaders != null && supportedLoaders.Count > 0)
                     {
-                        // 获取该Mod版本支持的加载器列表
-                        var supportedLoaders = modVersion.Loaders;
-                        
-                        // 兼容性检查需要同时满足游戏版本和加载器类型
-                        // 1. 如果Mod支持所有加载器（包括原版），则直接兼容
-                        // 2. 如果Mod有特定加载器要求，则必须匹配
-                        if (supportedLoaders != null && supportedLoaders.Count > 0)
-                        {
-                            // 检查已安装版本的加载器是否在Mod支持的加载器列表中
-                            // 注意：需要处理大小写，这里统一转为首字母大写进行比较
-                            var formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
-                            isCompatible = supportedLoaders.Contains(formattedLoaderType);
-                        }
-                        else
-                        {
-                            // 如果Mod没有指定加载器要求，则默认兼容
-                            isCompatible = true;
-                        }
+                        // 检查已安装版本的加载器是否在Mod支持的加载器列表中
+                        // 注意：需要处理大小写，这里统一转为首字母大写进行比较
+                        var formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
+                        isCompatible = supportedLoaders.Contains(formattedLoaderType);
                     }
+                    else
+                    {
+                        // 如果Mod没有指定加载器要求，则默认兼容
+                        isCompatible = true;
+                    }
+                }
                     
                     var versionViewModel = new InstalledGameVersionViewModel
                     {
@@ -407,7 +473,8 @@ namespace XMCL2025.ViewModels
                     GameVersion = version,
                     LoaderType = loaderType,
                     LoaderVersion = loaderVersion,
-                    IsCompatible = isCompatible
+                    // 如果是资源包或光影，所有版本都兼容
+                    IsCompatible = (ProjectType == "resourcepack" || ProjectType == "shader") ? true : isCompatible
                 };
                 InstalledGameVersions.Add(versionViewModel);
             }
@@ -511,14 +578,29 @@ namespace XMCL2025.ViewModels
                     versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
                 }
                 
-                // 构建mods文件夹路径
-                string modsDir = Path.Combine(versionDir, "mods");
+                // 根据项目类型选择文件夹名称
+                string targetFolder;
+                switch (ProjectType)
+                {
+                    case "resourcepack":
+                        targetFolder = "resourcepacks";
+                        break;
+                    case "shader":
+                        targetFolder = "shaderpacks";
+                        break;
+                    default:
+                        targetFolder = "mods";
+                        break;
+                }
                 
-                // 创建mods文件夹（如果不存在）
-                _fileService.CreateDirectory(modsDir);
+                // 构建目标文件夹路径
+                string targetDir = Path.Combine(versionDir, targetFolder);
+                
+                // 创建目标文件夹（如果不存在）
+                _fileService.CreateDirectory(targetDir);
                 
                 // 构建完整的文件保存路径
-                savePath = Path.Combine(modsDir, modVersion.FileName);
+                savePath = Path.Combine(targetDir, modVersion.FileName);
             }
             
             // 使用HttpClient下载文件
@@ -559,7 +641,21 @@ namespace XMCL2025.ViewModels
             }
             
             DownloadStatus = "下载完成！";
-            await ShowMessageAsync($"Mod '{modVersion.FileName}' 下载完成！");
+            // 根据项目类型显示不同的文本
+            string projectTypeText;
+            switch (ProjectType)
+            {
+                case "resourcepack":
+                    projectTypeText = "资源包";
+                    break;
+                case "shader":
+                    projectTypeText = "光影";
+                    break;
+                default:
+                    projectTypeText = "Mod";
+                    break;
+            }
+            await ShowMessageAsync($"{projectTypeText} '{modVersion.FileName}' 下载完成！");
         }
             catch (Exception ex)
             {

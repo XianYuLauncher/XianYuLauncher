@@ -29,11 +29,23 @@
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 Height="Auto" 
-                SelectedIndex="0">
+                SelectedIndex="0"
+                SelectionChanged="ResourceTabView_SelectionChanged">
+                <TabView.Resources>
+                    <Style TargetType="TabViewItem">
+                        <Setter Property="IsClosable" Value="False" />
+                    </Style>
+                </TabView.Resources>
                 
                 <!-- 版本下载标签 -->
                 <TabView.TabItems>
-                    <TabViewItem Header="版本下载">
+                    <TabViewItem>
+                        <TabViewItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="" FontSize="16" />
+                                <TextBlock Text="版本下载" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </TabViewItem.Header>
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -42,7 +54,7 @@
                             </Grid.RowDefinitions>
 
                             <!-- 最新版本卡片 -->
-                            <Grid Grid.Row="0" Margin="12,5,12,20">
+                            <Grid Grid.Row="0" Margin="12,10,12,20">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="10" />
@@ -112,6 +124,16 @@
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Visibility="{Binding IsVersionLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.Resources>
+                                            <Style TargetType="ScrollViewer">
+                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                            </Style>
+                                        </ListView.Resources>
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -140,7 +162,13 @@
                     </TabViewItem>
 
                     <!-- Mod下载标签 -->
-                    <TabViewItem Header="Mod下载">
+                    <TabViewItem>
+                        <TabViewItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="" FontSize="16" />
+                                <TextBlock Text="Mod下载" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </TabViewItem.Header>
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -277,6 +305,11 @@
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
                                             </Style>
                                         </ListView.Resources>
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -339,58 +372,388 @@
                         </Grid>
                     </TabViewItem>
 
-                    <!-- 光影下载标签（占位符） -->
-                    <TabViewItem Header="光影下载">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Padding="60,40,60,40">
-                            <FontIcon 
-                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
-                                Glyph="&#xE8B7;" 
-                                FontSize="80" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                Margin="0,0,0,24" 
-                                HorizontalAlignment="Center" />
-                            <TextBlock 
-                                Text="光影下载功能开发中" 
-                                Style="{StaticResource PageTitleStyle}" 
-                                FontSize="20" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                TextAlignment="Center" 
-                                Margin="0,0,0,8" />
-                            <TextBlock 
-                                Text="敬请期待后续更新" 
-                                Style="{StaticResource BodyTextStyle}" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
-                                Margin="0,0,0,0" 
-                                TextAlignment="Center" 
-                                MaxWidth="300" />
-                        </StackPanel>
+                    <!-- 光影下载标签 -->
+                    <TabViewItem>
+                        <TabViewItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="" FontSize="16" />
+                                <TextBlock Text="光影下载" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </TabViewItem.Header>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- 光影搜索和过滤 -->
+                            <Grid Grid.Row="0" Margin="20,10,20,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Search Box -->
+                                <AutoSuggestBox
+                                    x:Name="ShaderPackSearchBox"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    PlaceholderText="Search shader packs..."
+                                    QueryIcon="Find"
+                                    Margin="0,0,10,0"
+                                    Text="{Binding ShaderPackSearchQuery, Mode=TwoWay}"
+                                    QuerySubmitted="ShaderPackSearchBox_QuerySubmitted"/>
+
+                                <!-- Version Filter -->
+                                <ComboBox
+                                    x:Name="ShaderPackVersionComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    Header="版本"
+                                    PlaceholderText="版本"
+                                    Margin="0,0,10,0"
+                                    MinWidth="120"
+                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
+                                    SelectedItem="{Binding SelectedShaderPackVersion, Mode=TwoWay}"
+                                    SelectionChanged="ShaderPackVersionComboBox_SelectionChanged">
+                                </ComboBox>
+
+                                <!-- Sort By -->
+                                <ComboBox
+                                    Grid.Row="0"
+                                    Grid.Column="2"
+                                    Header="Sort"
+                                    PlaceholderText="Most Popular"
+                                    MinWidth="120">
+                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
+                                    <ComboBoxItem Content="Recently Updated"/>
+                                    <ComboBoxItem Content="Most Downloads"/>
+                                    <ComboBoxItem Content="Name A-Z"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Error Message -->
+                            <Grid
+                                Grid.Row="2"
+                                Margin="20,10,20,10"
+                                Background="#FFFDE7E9"
+                                BorderBrush="#FFD53939"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="⚠"
+                                    FontSize="24"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0"
+                                    Foreground="#FFD53939"/>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding ErrorMessage, Mode=OneWay}"
+                                    Foreground="#FFD53939"
+                                    Style="{ThemeResource BodyTextBlockStyle}"
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Loading Indicator -->
+                            <ProgressRing
+                                Grid.Row="2"
+                                Margin="20"
+                                IsActive="{Binding IsShaderPackLoading, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="{Binding IsShaderPackLoading, Mode=OneWay}"/>
+
+                            <!-- 光影列表 -->
+                            <ScrollViewer 
+                                x:Name="ShaderPackListScrollViewer"
+                                Grid.Row="2"
+                                Margin="20"
+                                VerticalScrollBarVisibility="Auto"
+                                ViewChanged="ShaderPackListScrollViewer_ScrollChanged">
+                                    <!-- 光影列表 -->
+                                    <ListView 
+                                        x:Name="ShaderPackListView"
+                                        SelectionMode="Single"
+                                        ItemsSource="{Binding ShaderPacks, Mode=OneWay}"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="ShaderPackListView_ItemClick"
+                                        Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.Resources>
+                                            <Style TargetType="ScrollViewer">
+                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                            </Style>
+                                        </ListView.Resources>
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Margin" Value="0,0,0,12"/>
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ModrinthProject">
+                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="ShaderPackItem_Tapped">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- 光影图标 -->
+                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
+                                                            CornerRadius="32" Background="Transparent">
+                                                        <Image Stretch="UniformToFill">
+                                                            <Image.Source>
+                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
+                                                            </Image.Source>
+                                                        </Image>
+                                                    </Border>
+
+                                                    <!-- 光影名称 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                               FontSize="16" FontWeight="SemiBold"/>
+
+                                                    <!-- 光影描述 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description, Mode=OneWay}"
+                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
+                                                               MaxLines="2" VerticalAlignment="Center"/>
+
+                                                    <!-- 光影信息 -->
+                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                        <!-- Loading More Indicator -->
+                                        <ListView.Footer>
+                                            <ProgressRing 
+                                                IsActive="{Binding IsShaderPackLoadingMore, Mode=OneWay}" 
+                                                Width="32" Height="32" 
+                                                Margin="0,10,0,10" 
+                                                HorizontalAlignment="Center"/>
+                                        </ListView.Footer>
+                                    </ListView>
+                            </ScrollViewer>
+                        </Grid>
                     </TabViewItem>
 
-                    <!-- 资源包下载标签（占位符） -->
-                    <TabViewItem Header="资源包下载">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Padding="60,40,60,40">
-                            <FontIcon 
-                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
-                                Glyph="&#xE8B7;" 
-                                FontSize="80" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                Margin="0,0,0,24" 
-                                HorizontalAlignment="Center" />
-                            <TextBlock 
-                                Text="资源包下载功能开发中" 
-                                Style="{StaticResource PageTitleStyle}" 
-                                FontSize="20" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                TextAlignment="Center" 
-                                Margin="0,0,0,8" />
-                            <TextBlock 
-                                Text="敬请期待后续更新" 
-                                Style="{StaticResource BodyTextStyle}" 
-                                Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
-                                Margin="0,0,0,0" 
-                                TextAlignment="Center" 
-                                MaxWidth="300" />
-                        </StackPanel>
+                    <!-- 资源包下载标签 -->
+                    <TabViewItem>
+                        <TabViewItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="" FontSize="16" />
+                                <TextBlock Text="资源包下载" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </TabViewItem.Header>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- 资源包搜索和过滤 -->
+                            <Grid Grid.Row="0" Margin="20,10,20,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Search Box -->
+                                <AutoSuggestBox
+                                    x:Name="ResourcePackSearchBox"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    PlaceholderText="Search resource packs..."
+                                    QueryIcon="Find"
+                                    Margin="0,0,10,0"
+                                    Text="{Binding ResourcePackSearchQuery, Mode=TwoWay}"
+                                    QuerySubmitted="ResourcePackSearchBox_QuerySubmitted"/>
+
+                                <!-- Version Filter -->
+                                <ComboBox
+                                    x:Name="ResourcePackVersionComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    Header="版本"
+                                    PlaceholderText="版本"
+                                    Margin="0,0,10,0"
+                                    MinWidth="120"
+                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
+                                    SelectedItem="{Binding SelectedResourcePackVersion, Mode=TwoWay}"
+                                    SelectionChanged="ResourcePackVersionComboBox_SelectionChanged">
+                                </ComboBox>
+
+                                <!-- Sort By -->
+                                <ComboBox
+                                    Grid.Row="0"
+                                    Grid.Column="2"
+                                    Header="Sort"
+                                    PlaceholderText="Most Popular"
+                                    MinWidth="120">
+                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
+                                    <ComboBoxItem Content="Recently Updated"/>
+                                    <ComboBoxItem Content="Most Downloads"/>
+                                    <ComboBoxItem Content="Name A-Z"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Error Message -->
+                            <Grid
+                                Grid.Row="2"
+                                Margin="20,10,20,10"
+                                Background="#FFFDE7E9"
+                                BorderBrush="#FFD53939"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="⚠"
+                                    FontSize="24"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0"
+                                    Foreground="#FFD53939"/>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding ErrorMessage, Mode=OneWay}"
+                                    Foreground="#FFD53939"
+                                    Style="{ThemeResource BodyTextBlockStyle}"
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Loading Indicator -->
+                            <ProgressRing
+                                Grid.Row="2"
+                                Margin="20"
+                                IsActive="{Binding IsResourcePackLoading, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="{Binding IsResourcePackLoading, Mode=OneWay}"/>
+
+                            <!-- 资源包列表 -->
+                            <ScrollViewer 
+                                x:Name="ResourcePackListScrollViewer"
+                                Grid.Row="2"
+                                Margin="20"
+                                VerticalScrollBarVisibility="Auto"
+                                ViewChanged="ResourcePackListScrollViewer_ScrollChanged">
+                                    <!-- 资源包列表 -->
+                                    <ListView 
+                                        x:Name="ResourcePackListView"
+                                        SelectionMode="Single"
+                                        ItemsSource="{Binding ResourcePacks, Mode=OneWay}"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="ResourcePackListView_ItemClick"
+                                        Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.Resources>
+                                            <Style TargetType="ScrollViewer">
+                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                            </Style>
+                                        </ListView.Resources>
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Margin" Value="0,0,0,12"/>
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ModrinthProject">
+                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="ResourcePackItem_Tapped">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- 资源包图标 -->
+                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
+                                                            CornerRadius="32" Background="Transparent">
+                                                        <Image Stretch="UniformToFill">
+                                                            <Image.Source>
+                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
+                                                            </Image.Source>
+                                                        </Image>
+                                                    </Border>
+
+                                                    <!-- 资源包名称 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                               FontSize="16" FontWeight="SemiBold"/>
+
+                                                    <!-- 资源包描述 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description, Mode=OneWay}"
+                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
+                                                               MaxLines="2" VerticalAlignment="Center"/>
+
+                                                    <!-- 资源包信息 -->
+                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                        <!-- Loading More Indicator -->
+                                        <ListView.Footer>
+                                            <ProgressRing 
+                                                IsActive="{Binding IsResourcePackLoadingMore, Mode=OneWay}" 
+                                                Width="32" Height="32" 
+                                                Margin="0,10,0,10" 
+                                                HorizontalAlignment="Center"/>
+                                        </ListView.Footer>
+                                    </ListView>
+                            </ScrollViewer>
+                        </Grid>
                     </TabViewItem>
                 </TabView.TabItems>
             </TabView>

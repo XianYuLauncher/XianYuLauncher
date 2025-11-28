@@ -26,6 +26,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private ObservableCollection<Core.Contracts.Services.VersionEntry> _versions = new();
 
     [ObservableProperty]
+    private ObservableCollection<Core.Contracts.Services.VersionEntry> _filteredVersions = new();
+
+    [ObservableProperty]
     private bool _isVersionLoading = false;
     
     [ObservableProperty]
@@ -37,12 +40,30 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _isRefreshing = false;
     
-    // 过滤后的版本列表
-    public ObservableCollection<Core.Contracts.Services.VersionEntry> FilteredVersions =>
-        string.IsNullOrWhiteSpace(SearchText)
-            ? Versions
-            : new ObservableCollection<Core.Contracts.Services.VersionEntry>(
-                Versions.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase)));
+    // 监听SearchText变化，更新过滤结果
+    partial void OnSearchTextChanged(string value)
+    {
+        UpdateFilteredVersions();
+    }
+    
+    /// <summary>
+    /// 更新过滤后的版本列表
+    /// </summary>
+    private void UpdateFilteredVersions()
+    {
+        FilteredVersions.Clear();
+        IEnumerable<Core.Contracts.Services.VersionEntry> filtered = Versions;
+        
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            filtered = Versions.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase));
+        }
+        
+        foreach (var version in filtered)
+        {
+            FilteredVersions.Add(version);
+        }
+    }
 
     // Mod下载相关属性和命令
     [ObservableProperty]
@@ -88,6 +109,56 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     public bool HasMoreResults => ModHasMoreResults;
     
     private const int _modPageSize = 20;
+    
+    // 资源包下载相关属性
+    [ObservableProperty]
+    private string _resourcePackSearchQuery = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _resourcePacks = new();
+    
+    [ObservableProperty]
+    private bool _isResourcePackLoading = false;
+    
+    [ObservableProperty]
+    private bool _isResourcePackLoadingMore = false;
+    
+    [ObservableProperty]
+    private int _resourcePackOffset = 0;
+    
+    [ObservableProperty]
+    private bool _resourcePackHasMoreResults = true;
+    
+    [ObservableProperty]
+    private string _selectedResourcePackVersion = string.Empty;
+    
+    // 为了与资源包页面兼容，添加ResourcePackList属性，指向ResourcePacks集合
+    public ObservableCollection<ModrinthProject> ResourcePackList => ResourcePacks;
+    
+    // 光影下载相关属性
+    [ObservableProperty]
+    private string _shaderPackSearchQuery = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _shaderPacks = new();
+    
+    [ObservableProperty]
+    private bool _isShaderPackLoading = false;
+    
+    [ObservableProperty]
+    private bool _isShaderPackLoadingMore = false;
+    
+    [ObservableProperty]
+    private int _shaderPackOffset = 0;
+    
+    [ObservableProperty]
+    private bool _shaderPackHasMoreResults = true;
+    
+    [ObservableProperty]
+    private string _selectedShaderPackVersion = string.Empty;
+    
+    // 为了与光影页面兼容，添加ShaderPackList属性，指向ShaderPacks集合
+    public ObservableCollection<ModrinthProject> ShaderPackList => ShaderPacks;
 
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
@@ -109,10 +180,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private async Task InitializeAsync()
     {
-        // 初始化时加载版本列表（只加载第一页）
+        // 初始化时只加载版本列表，Mod列表使用延迟加载
         await SearchVersionsCommand.ExecuteAsync(null);
-        // 初始化时加载Mod列表（只加载第一页）
-        await SearchModsCommand.ExecuteAsync(null);
     }
     
     // 版本下载命令
@@ -148,6 +217,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 Versions.Add(version);
             }
+            
+            // 更新过滤后的版本列表
+            UpdateFilteredVersions();
         }
         catch (Exception ex)
         {
@@ -354,5 +426,241 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 导航到Mod下载详情页面
         _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, mod.ProjectId);
+    }
+    
+    // 资源包下载命令
+    [RelayCommand]
+    private async Task SearchResourcePacksAsync()
+    {
+        IsResourcePackLoading = true;
+        ResourcePackOffset = 0;
+        ResourcePackHasMoreResults = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedResourcePackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedResourcePackVersion}" });
+            }
+            
+            // 调用Modrinth API搜索资源包
+            var result = await _modrinthService.SearchModsAsync(
+                query: ResourcePackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ResourcePackOffset,
+                limit: _modPageSize,
+                projectType: "resourcepack"
+            );
+
+            // 更新资源包列表
+            ResourcePacks.Clear();
+            foreach (var hit in result.Hits)
+            {
+                ResourcePacks.Add(hit);
+            }
+            ResourcePackOffset = result.Hits.Count;
+            // 使用total_hits更准确地判断是否还有更多结果
+            ResourcePackHasMoreResults = ResourcePackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsResourcePackLoading = false;
+        }
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanLoadMoreResourcePacks))]
+    public async Task LoadMoreResourcePacksAsync()
+    {
+        if (IsResourcePackLoading || IsResourcePackLoadingMore || !ResourcePackHasMoreResults)
+        {
+            return;
+        }
+
+        IsResourcePackLoadingMore = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedResourcePackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedResourcePackVersion}" });
+            }
+            
+            // 调用Modrinth API加载更多资源包
+            var result = await _modrinthService.SearchModsAsync(
+                query: ResourcePackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ResourcePackOffset,
+                limit: _modPageSize,
+                projectType: "resourcepack"
+            );
+
+            // 追加到现有列表
+            foreach (var hit in result.Hits)
+            {
+                ResourcePacks.Add(hit);
+            }
+            
+            ResourcePackOffset += result.Hits.Count;
+            
+            // 使用total_hits更准确地判断是否还有更多结果
+            ResourcePackHasMoreResults = ResourcePackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsResourcePackLoadingMore = false;
+        }
+    }
+    
+    private bool CanLoadMoreResourcePacks()
+    {
+        return !IsResourcePackLoading && !IsResourcePackLoadingMore && ResourcePackHasMoreResults;
+    }
+    
+    [RelayCommand]
+    private async Task DownloadResourcePackAsync(ModrinthProject resourcePack)
+    {
+        if (resourcePack == null)
+        {
+            return;
+        }
+
+        // 导航到资源包下载详情页面
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, resourcePack.ProjectId);
+    }
+    
+    // 光影下载命令
+    [RelayCommand]
+    private async Task SearchShaderPacksAsync()
+    {
+        IsShaderPackLoading = true;
+        ShaderPackOffset = 0;
+        ShaderPackHasMoreResults = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedShaderPackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedShaderPackVersion}" });
+            }
+            
+            // 调用Modrinth API搜索光影
+            var result = await _modrinthService.SearchModsAsync(
+                query: ShaderPackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ShaderPackOffset,
+                limit: _modPageSize,
+                projectType: "shader"
+            );
+
+            // 更新光影列表
+            ShaderPacks.Clear();
+            foreach (var hit in result.Hits)
+            {
+                ShaderPacks.Add(hit);
+            }
+            ShaderPackOffset = result.Hits.Count;
+            // 使用total_hits更准确地判断是否还有更多结果
+            ShaderPackHasMoreResults = ShaderPackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsShaderPackLoading = false;
+        }
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanLoadMoreShaderPacks))]
+    public async Task LoadMoreShaderPacksAsync()
+    {
+        if (IsShaderPackLoading || IsShaderPackLoadingMore || !ShaderPackHasMoreResults)
+        {
+            return;
+        }
+
+        IsShaderPackLoadingMore = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedShaderPackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedShaderPackVersion}" });
+            }
+            
+            // 调用Modrinth API加载更多光影
+            var result = await _modrinthService.SearchModsAsync(
+                query: ShaderPackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ShaderPackOffset,
+                limit: _modPageSize,
+                projectType: "shader"
+            );
+
+            // 追加到现有列表
+            foreach (var hit in result.Hits)
+            {
+                ShaderPacks.Add(hit);
+            }
+            
+            ShaderPackOffset += result.Hits.Count;
+            
+            // 使用total_hits更准确地判断是否还有更多结果
+            ShaderPackHasMoreResults = ShaderPackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsShaderPackLoadingMore = false;
+        }
+    }
+    
+    private bool CanLoadMoreShaderPacks()
+    {
+        return !IsShaderPackLoading && !IsShaderPackLoadingMore && ShaderPackHasMoreResults;
+    }
+    
+    [RelayCommand]
+    private async Task DownloadShaderPackAsync(ModrinthProject shaderPack)
+    {
+        if (shaderPack == null)
+        {
+            return;
+        }
+
+        // 导航到光影下载详情页面
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, shaderPack.ProjectId);
     }
 }
