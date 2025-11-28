@@ -48,14 +48,9 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe768;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_下载" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.下载ViewModel">
+                <NavigationViewItem x:Uid="Shell_资源下载" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.ResourceDownloadViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_Mod" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.ModViewModel">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe725;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Shell_版本列表" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.版本列表ViewModel">

@@ -22,6 +22,7 @@ public class PageService : IPageService
             Configure<ModLoader选择ViewModel, ModLoader选择Page>();
             Configure<版本列表ViewModel, 版本列表Page>();
             Configure<版本管理ViewModel, 版本管理Page>();
+            Configure<ResourceDownloadViewModel, ResourceDownloadPage>();
         }
 
     public Type GetPageType(string key)
