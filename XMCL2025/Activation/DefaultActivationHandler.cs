@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 using XMCL2025.Contracts.Services;
 using XMCL2025.ViewModels;

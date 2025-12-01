@@ -232,6 +232,15 @@ public class MicrosoftAuthService
         public string Uuid { get; set; }
         public string AccessToken { get; set; }
         public string ErrorMessage { get; set; }
+        
+        // 扩展字段：玩家完整信息
+        public ProfileResponse.Skin[] Skins { get; set; }
+        public ProfileResponse.Cape[] Capes { get; set; }
+        public string IssueInstant { get; set; }
+        public string NotAfter { get; set; }
+        public string[] Roles { get; set; }
+        public int ExpiresIn { get; set; }
+        public string TokenType { get; set; }
     }
     
     #endregion
@@ -482,13 +491,20 @@ public class MicrosoftAuthService
                 };
             }
             
-            // 9. 返回登录结果
+            // 9. 返回登录结果，包含完整信息
             return new LoginResult
             {
                 Success = true,
                 Username = profileResponse.Name,
                 Uuid = profileResponse.Id,
-                AccessToken = minecraftToken
+                AccessToken = minecraftToken,
+                TokenType = minecraftAuthResponse.TokenType,
+                ExpiresIn = minecraftAuthResponse.ExpiresIn,
+                Roles = minecraftAuthResponse.Roles,
+                Skins = profileResponse.Skins,
+                Capes = profileResponse.Capes,
+                IssueInstant = xboxLiveAuthResponse.IssueInstant,
+                NotAfter = xboxLiveAuthResponse.NotAfter
             };
         }
         catch (Exception ex)
