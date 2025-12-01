@@ -76,4 +76,7 @@
   <data name="Shell_版本列表.Content" xml:space="preserve">
     <value>版本列表</value>
   </data>
+  <data name="Shell_角色.Content" xml:space="preserve">
+    <value>角色</value>
+  </data>
 </root>

@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Controls;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
 using XMCL2025.Contracts.Services;
+using System.Collections.Specialized;
 
 namespace XMCL2025.ViewModels;
 
@@ -272,6 +273,18 @@ public partial class 启动ViewModel : ObservableRecipient
     private double _downloadProgress = 0;
 
     /// <summary>
+    /// 角色列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<MinecraftProfile> _profiles = new ObservableCollection<MinecraftProfile>();
+
+    /// <summary>
+    /// 当前选中角色
+    /// </summary>
+    [ObservableProperty]
+    private MinecraftProfile _selectedProfile;
+
+    /// <summary>
     /// 当前版本路径，用于彩蛋显示
     /// </summary>
     public string CurrentVersionPath
@@ -308,7 +321,99 @@ public partial class 启动ViewModel : ObservableRecipient
     private async Task InitializeAsync()
     {
         await LoadInstalledVersionsAsync();
+        LoadProfiles();
         ShowMinecraftPathInfo();
+    }
+
+    /// <summary>
+    /// 角色数据文件路径
+    /// </summary>
+    private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+
+    /// <summary>
+    /// 加载角色列表
+    /// </summary>
+    private void LoadProfiles()
+    {
+        try
+        {
+            if (File.Exists(ProfilesFilePath))
+            {
+                string json = File.ReadAllText(ProfilesFilePath);
+                var profilesList = JsonConvert.DeserializeObject<List<MinecraftProfile>>(json) ?? new List<MinecraftProfile>();
+                
+                // 清空现有列表并添加所有角色
+                Profiles.Clear();
+                foreach (var profile in profilesList)
+                {
+                    Profiles.Add(profile);
+                }
+                
+                // 设置活跃角色
+                if (Profiles.Count > 0)
+                {
+                    SelectedProfile = Profiles.FirstOrDefault(p => p.IsActive) ?? Profiles.First();
+                    // 更新用户名
+                    if (SelectedProfile != null)
+                    {
+                        Username = SelectedProfile.Name;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = "加载角色列表失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 切换角色命令
+    /// </summary>
+    [RelayCommand]
+    private void SwitchProfile(MinecraftProfile profile)
+    {
+        if (profile != null && Profiles.Contains(profile))
+        {
+            // 更新活跃状态
+            foreach (var p in Profiles)
+            {
+                p.IsActive = false;
+            }
+            profile.IsActive = true;
+            
+            // 更新当前选中角色
+            SelectedProfile = profile;
+            Username = profile.Name;
+            
+            // 保存角色列表
+            SaveProfiles();
+        }
+    }
+
+    /// <summary>
+    /// 保存角色列表
+    /// </summary>
+    private void SaveProfiles()
+    {
+        try
+        {
+            string json = JsonConvert.SerializeObject(Profiles, Formatting.Indented);
+            File.WriteAllText(ProfilesFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            LaunchStatus = "保存角色列表失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 导航到角色页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToCharactersPage()
+    {
+        // 这里将在UI层实现导航逻辑
     }
 
     [RelayCommand]
@@ -1247,8 +1352,21 @@ public partial class 启动ViewModel : ObservableRecipient
             
             if (result.Success)
             {
+                // 构建完整的登录信息字符串
+                string fullInfo = $"登录成功！\n\n" +
+                                  $"玩家名: {result.Username}\n" +
+                                  $"UUID: {result.Uuid}\n\n" +
+                                  $"令牌信息:\n" +
+                                  $"  类型: {result.TokenType}\n" +
+                                  $"  有效期: {result.ExpiresIn}秒\n" +
+                                  $"  颁发时间: {result.IssueInstant}\n" +
+                                  $"  过期时间: {result.NotAfter}\n\n" +
+                                  $"玩家角色: {string.Join(", ", result.Roles)}\n\n" +
+                                  $"皮肤数量: {result.Skins?.Length ?? 0}\n" +
+                                  $"披风数量: {result.Capes?.Length ?? 0}";
+                
                 LaunchStatus = $"登录成功！玩家名: {result.Username}, UUID: {result.Uuid}";
-                await ShowMessageAsync($"登录成功！\n\n玩家名: {result.Username}\nUUID: {result.Uuid}", "登录成功");
+                await ShowMessageAsync(fullInfo, "登录成功");
             }
             else
             {

@@ -69,18 +69,52 @@
                     FontSize="14" />
             </StackPanel>
 
-            <!-- 用户名输入（仅离线模式显示） -->
-            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.IsOfflineMode, Mode=OneWay}">
-                <TextBlock Text="用户名" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
-                <TextBox 
-                        x:Name="UsernameTextBox"
-                        Text="{x:Bind ViewModel.Username, Mode=TwoWay}"
-                        PlaceholderText="请输入游戏用户名" 
-                        HorizontalAlignment="Stretch"
-                        Height="40"
-                        Padding="12,0,12,0"
-                        FontSize="14"
-                        MaxLength="16" />
+            <!-- 角色选择 -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="玩家名" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
+                <Button 
+                    x:Name="ProfileButton"
+                    HorizontalAlignment="Stretch"
+                    Height="40"
+                    Padding="12,0,12,0"
+                    FontSize="14">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <!-- 头像 -->
+                        <Border 
+                            Width="24"
+                            Height="24"
+                            CornerRadius="4"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center">
+                            <Image 
+                                x:Name="ProfileAvatar"
+                                Width="24"
+                                Height="24"
+                                Source="ms-appx:///Assets/DefaultAvatar.png"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" 
+                                Stretch="Fill" />
+                        </Border>
+                        <!-- 角色名 -->
+                        <TextBlock 
+                            Text="{x:Bind ViewModel.SelectedProfile.Name, Mode=OneWay}"
+                            VerticalAlignment="Center"
+                            FontSize="14" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="ProfileMenuFlyout" Opening="ProfileMenuFlyout_Opening">
+                            <!-- 角色列表将在代码中动态生成 -->
+                            <!-- 添加角色选项 -->
+                            <MenuFlyoutItem 
+                                Text="添加角色"
+                                Click="AddProfileMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <SymbolIcon Symbol="Add" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
 
             <!-- 启动按钮 -->
