@@ -848,12 +848,25 @@ public partial class 启动ViewModel : ObservableRecipient
             args.Add($"--assetIndex");
             args.Add(assetIndex);
             
+            // 添加用户名参数
+            args.Add($"--username");
+            args.Add(SelectedProfile.Name);
+            
+            // 添加UUID参数，使用角色的Id
             args.Add($"--uuid");
-            args.Add(Guid.NewGuid().ToString()); // 生成随机UUID
-            args.Add($"--accessToken");
-            args.Add(IsOfflineMode ? "0" : "dummy"); // 离线模式使用0作为令牌
-            args.Add($"--userType");
-            args.Add(IsOfflineMode ? "offline" : "mojang");
+            args.Add(SelectedProfile.Id);
+            
+            // 仅在非离线模式下添加accessToken和userType参数
+            if (!SelectedProfile.IsOffline)
+            {
+                // 添加AccessToken参数
+                args.Add($"--accessToken");
+                args.Add(SelectedProfile.AccessToken);
+                
+                // 添加userType参数，微软登录使用"msa"
+                args.Add($"--userType");
+                args.Add("msa");
+            }
             
             // 为1.9以下版本添加--userProperties参数
             if (IsVersionBelow1_9(SelectedVersion))

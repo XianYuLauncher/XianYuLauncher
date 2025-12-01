@@ -116,10 +116,19 @@ public sealed partial class 启动Page : Page
             return;
         }
 
-        // 离线玩家使用默认头像
+        // 离线玩家使用Steve头像
         if (ViewModel.SelectedProfile.IsOffline)
         {
-            ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            // 使用Win2D处理史蒂夫头像，确保清晰显示
+            var steveAvatar = await ProcessSteveAvatarAsync();
+            if (steveAvatar != null)
+            {
+                ProfileAvatar.Source = steveAvatar;
+            }
+            else
+            {
+                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            }
             return;
         }
 
@@ -198,16 +207,6 @@ public sealed partial class 启动Page : Page
     {
         try
         {
-            // 显示调试弹窗，显示请求URL
-            var dialog = new ContentDialog
-            {
-                Title = "调试信息",
-                Content = $"请求Mojang API URL: {mojangUri.AbsoluteUri}",
-                PrimaryButtonText = "确定",
-                XamlRoot = this.Content.XamlRoot
-            };
-            await dialog.ShowAsync();
-
             // 1. 请求Mojang API获取profile信息
             var response = await _httpClient.GetAsync(mojangUri);
             if (!response.IsSuccessStatusCode)
@@ -256,24 +255,14 @@ public sealed partial class 启动Page : Page
                 throw new Exception("未找到皮肤URL");
             }
 
-            // 6. 显示皮肤URL
-            var skinDialog = new ContentDialog
-            {
-                Title = "调试信息",
-                Content = $"皮肤URL: {skinUrl}",
-                PrimaryButtonText = "确定",
-                XamlRoot = this.Content.XamlRoot
-            };
-            await skinDialog.ShowAsync();
-
-            // 7. 下载皮肤纹理
+            // 6. 下载皮肤纹理
             var skinResponse = await _httpClient.GetAsync(skinUrl);
             if (!skinResponse.IsSuccessStatusCode)
             {
                 throw new Exception($"下载皮肤失败，状态码: {skinResponse.StatusCode}");
             }
 
-            // 8. 使用Win2D裁剪头像区域
+            // 7. 使用Win2D裁剪头像区域
             var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl);
             return avatarBitmap;
         }
@@ -295,60 +284,141 @@ public sealed partial class 启动Page : Page
     /// <summary>
     /// 从皮肤纹理中裁剪头像区域
     /// </summary>
-    /// <param name="skinUrl">皮肤URL</param>
+    /// <param name="skinUrl">皮肤URL或本地资源URI</param>
     /// <returns>裁剪后的头像</returns>
     private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl)
     {
         try
         {
-            // 1. 下载皮肤图片到内存流
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(skinUrl);
+            // 1. 创建CanvasDevice
+            var device = CanvasDevice.GetSharedDevice();
+            CanvasBitmap canvasBitmap;
             
-            // 使用ReadAsStreamAsync替代ReadAsBufferAsync
-            using (var stream = await response.Content.ReadAsStreamAsync())
+            var skinUri = new Uri(skinUrl);
+            
+            // 2. 加载皮肤图片
+            if (skinUri.Scheme == "ms-appx")
             {
-                // 2. 创建CanvasDevice和CanvasBitmap
-                var device = CanvasDevice.GetSharedDevice();
-                var canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
-
-                // 3. 创建CanvasRenderTarget用于裁剪，使用更高的分辨率（24x24）以便清晰显示像素
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    24, // 显示宽度
-                    24, // 显示高度
-                    96 // DPI
-                );
-
-                // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
-                using (var ds = renderTarget.CreateDrawingSession())
+                // 从应用包中加载资源，使用StorageFile方式更可靠
+                var file = await StorageFile.GetFileFromApplicationUriAsync(skinUri);
+                using (var stream = await file.OpenReadAsync())
                 {
-                    // 从源图片的(8,8)位置裁剪8x8区域，并放大到24x24
-                    // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
-                    ds.DrawImage(
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小（放大3倍）
-                        new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
-                }
-
-                // 5. 转换为BitmapImage
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    return bitmapImage;
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
                 }
             }
+            else
+            {
+                // 下载网络图片
+                var httpClient = new HttpClient();
+                var response = await httpClient.GetAsync(skinUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+                
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                {
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
+                }
+            }
+
+            // 3. 创建CanvasRenderTarget用于裁剪，使用更高的分辨率（24x24）以便清晰显示像素
+            var renderTarget = new CanvasRenderTarget(
+                device,
+                24, // 显示宽度
+                24, // 显示高度
+                96 // DPI
+            );
+
+            // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
+            using (var ds = renderTarget.CreateDrawingSession())
+            {
+                // 从源图片的(8,8)位置裁剪8x8区域，并放大到24x24
+                // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
+                ds.DrawImage(
+                    canvasBitmap,
+                    new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小（放大3倍）
+                    new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
+                    1.0f, // 不透明度
+                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                );
+            }
+
+            // 5. 转换为BitmapImage
+            using (var outputStream = new InMemoryRandomAccessStream())
+            {
+                await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                outputStream.Seek(0);
+                
+                var bitmapImage = new BitmapImage();
+                await bitmapImage.SetSourceAsync(outputStream);
+                return bitmapImage;
+            }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw new Exception($"裁剪头像失败: {ex.Message}");
+            // 裁剪失败时返回null，让调用者处理
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 处理史蒂夫头像，使用Win2D确保清晰显示
+    /// </summary>
+    /// <returns>处理后的史蒂夫头像</returns>
+    private async Task<BitmapImage> ProcessSteveAvatarAsync()
+    {
+        try
+        {
+            // 1. 创建CanvasDevice
+            var device = CanvasDevice.GetSharedDevice();
+            
+            // 2. 加载史蒂夫头像图片
+            var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
+            var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
+            CanvasBitmap canvasBitmap;
+            
+            using (var stream = await file.OpenReadAsync())
+            {
+                canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
+            }
+
+            // 3. 创建CanvasRenderTarget用于处理，使用合适的分辨率
+            var renderTarget = new CanvasRenderTarget(
+                device,
+                24, // 显示宽度
+                24, // 显示高度
+                96 // DPI
+            );
+
+            // 4. 执行处理，使用最近邻插值保持像素锐利
+            using (var ds = renderTarget.CreateDrawingSession())
+            {
+                // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
+                ds.DrawImage(
+                    canvasBitmap,
+                    new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小
+                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
+                    1.0f, // 不透明度
+                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                );
+            }
+
+            // 5. 转换为BitmapImage
+            using (var outputStream = new InMemoryRandomAccessStream())
+            {
+                await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                outputStream.Seek(0);
+                
+                var bitmapImage = new BitmapImage();
+                await bitmapImage.SetSourceAsync(outputStream);
+                return bitmapImage;
+            }
+        }
+        catch (Exception)
+        {
+            // 处理失败时返回null，让调用者处理
+            return null;
         }
     }
 

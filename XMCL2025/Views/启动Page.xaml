@@ -56,18 +56,7 @@
                 </Grid>
             </StackPanel>
 
-            <!-- 登录模式 -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="登录模式" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
-                <ToggleSwitch 
-                    x:Name="ModeToggleSwitch"
-                    Header="离线模式"
-                    IsOn="{x:Bind ViewModel.IsOfflineMode, Mode=TwoWay}"
-                    Margin="0,4,0,0"
-                    OnContent="开启"
-                    OffContent="关闭"
-                    FontSize="14" />
-            </StackPanel>
+
 
             <!-- 角色选择 -->
             <StackPanel Spacing="10">
