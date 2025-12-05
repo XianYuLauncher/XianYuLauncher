@@ -402,6 +402,7 @@ public partial class 启动ViewModel : ObservableRecipient
     private readonly IFileService _fileService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly MicrosoftAuthService _microsoftAuthService;
+    private readonly INavigationService _navigationService;
     
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
@@ -509,6 +510,7 @@ public partial class 启动ViewModel : ObservableRecipient
         _fileService = App.GetService<IFileService>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
         _microsoftAuthService = App.GetService<MicrosoftAuthService>();
+        _navigationService = App.GetService<INavigationService>();
         InitializeAsync().ConfigureAwait(false);
     }
 
@@ -676,12 +678,57 @@ public partial class 启动ViewModel : ObservableRecipient
         ShowMinecraftPathInfo();
     }
 
+    /// <summary>
+    /// 检测当前地区是否为中国大陆
+    /// </summary>
+    /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+    private bool IsChinaMainland()
+    {
+        try
+        {
+            // 使用RegionInfo检测地区
+            var regionInfo = new System.Globalization.RegionInfo(System.Globalization.CultureInfo.CurrentCulture.Name);
+            return regionInfo.TwoLetterISORegionName == "CN";
+        }
+        catch
+        {
+            // 如果检测失败，默认允许离线登录
+            return true;
+        }
+    }
+
     [RelayCommand]
     private async Task LaunchGameAsync()
     {
         if (string.IsNullOrEmpty(SelectedVersion))
         {
             LaunchStatus = "请先选择一个版本";
+            return;
+        }
+
+        // 检查是否为离线角色且非中国大陆地区
+        if (SelectedProfile != null && SelectedProfile.IsOffline && !IsChinaMainland())
+        {
+            // 显示地区限制弹窗
+            var dialog = new ContentDialog
+            {
+                Title = "地区限制",
+                Content = "当前地区无法使用离线登录，请添加微软账户登录。",
+                PrimaryButtonText = "前往",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+
+            // 处理前往按钮点击事件
+            dialog.PrimaryButtonClick += (sender, args) =>
+            {
+                // 跳转到角色页面
+                _navigationService.NavigateTo("角色");
+            };
+
+            // 显示弹窗
+            await dialog.ShowAsync();
             return;
         }
 
