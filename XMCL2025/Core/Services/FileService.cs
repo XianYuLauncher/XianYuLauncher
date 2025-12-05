@@ -7,6 +7,8 @@ namespace XMCL2025.Core.Services;
 
 public class FileService : IFileService
 {
+    private string? _customMinecraftDataPath;
+    
     public string ReadText(string filePath)
     {
         return File.ReadAllText(filePath);
@@ -35,9 +37,20 @@ public class FileService : IFileService
 
     public string GetMinecraftDataPath()
     {
-        // 返回程序文件夹下的.minecraft文件夹路径
-        string appFolderPath = GetApplicationFolderPath();
-        return Path.Combine(appFolderPath, ".minecraft");
+        // 如果有自定义路径，使用自定义路径，否则使用默认路径
+        if (!string.IsNullOrEmpty(_customMinecraftDataPath))
+        {
+            return _customMinecraftDataPath;
+        }
+        
+        // 返回应用程序本地数据文件夹下的.minecraft文件夹路径
+        string appDataPath = GetAppDataPath();
+        return Path.Combine(appDataPath, ".minecraft");
+    }
+    
+    public void SetMinecraftDataPath(string path)
+    {
+        _customMinecraftDataPath = path;
     }
 
     public string GetApplicationFolderPath()

@@ -155,6 +155,26 @@
                     Opacity="0.7"/>
             </StackPanel>
             
+            <!-- Minecraft 路径设置 -->
+            <TextBlock Text="Minecraft 路径" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
+            <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource XSmallTopMargin}" Spacing="8">
+                    <TextBox 
+                        Text="{x:Bind ViewModel.MinecraftPath, Mode=TwoWay}" 
+                        PlaceholderText="请选择Minecraft游戏目录" 
+                        Width="300" 
+                        Margin="0,0,8,0"/>
+                    <Button 
+                        Content="浏览..." 
+                        Command="{x:Bind ViewModel.BrowseMinecraftPathCommand}"/>
+                </StackPanel>
+                <TextBlock 
+                    Text="Minecraft游戏目录，包含versions、saves等文件夹" 
+                    Style="{ThemeResource CaptionTextBlockStyle}" 
+                    Margin="{StaticResource XSmallTopMargin}" 
+                    Opacity="0.7"/>
+            </StackPanel>
+            
             <!-- 版本隔离设置 -->
             <TextBlock Text="游戏设置" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
             <StackPanel Margin="{StaticResource SmallTopBottomMargin}">

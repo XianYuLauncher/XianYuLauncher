@@ -13,6 +13,7 @@ using System.IO;
 using System.Collections.ObjectModel;
 
 using XMCL2025.Contracts.Services;
+using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Helpers;
 
 namespace XMCL2025.ViewModels;
@@ -52,11 +53,13 @@ public partial class SettingsViewModel : ObservableRecipient
 {
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IFileService _fileService;
     private const string JavaPathKey = "JavaPath";
     private const string SelectedJavaVersionKey = "SelectedJavaVersion";
     private const string JavaVersionsKey = "JavaVersions";
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     private const string JavaSelectionModeKey = "JavaSelectionMode";
+    private const string MinecraftPathKey = "MinecraftPath";
     
 
     /// <summary>
@@ -73,6 +76,9 @@ public partial class SettingsViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string? _javaPath;
+    
+    [ObservableProperty]
+    private string? _minecraftPath;
     
     /// <summary>
     /// 所有检测到的Java版本列表
@@ -115,10 +121,11 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
+        _fileService = fileService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
 
@@ -152,6 +159,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadEnableVersionIsolationAsync().ConfigureAwait(false);
         // 加载Java选择方式
         LoadJavaSelectionModeAsync().ConfigureAwait(false);
+        // 加载Minecraft路径
+        LoadMinecraftPathAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -648,8 +657,46 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             JavaPath = path;
         }
+    }
+    
+    private async Task LoadMinecraftPathAsync()
+    {
+        var path = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathKey);
+        if (!string.IsNullOrEmpty(path))
+        {
+            MinecraftPath = path;
+        }
+        else
+        {
+            // 如果没有保存的路径，使用默认路径
+            MinecraftPath = _fileService.GetMinecraftDataPath();
+        }
+    }
+    
+    partial void OnMinecraftPathChanged(string? value)
+    {
+        if (value != null)
+        {
+            _localSettingsService.SaveSettingAsync(MinecraftPathKey, value).ConfigureAwait(false);
+        }
+    }
+    
+    [RelayCommand]
+    private async Task BrowseMinecraftPathAsync()
+    {
+        var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+        folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
 
+        // 获取当前窗口句柄
+        var window = App.MainWindow;
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
 
+        var folder = await folderPicker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            MinecraftPath = folder.Path;
+        }
     }
 
     /// <summary>

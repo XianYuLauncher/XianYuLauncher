@@ -200,8 +200,8 @@ public class MinecraftVersionService : IMinecraftVersionService
             if (versionId.StartsWith("fabric-"))
             {
                 // 从本地找到Fabric版本JSON文件
-                string defaultMinecraftDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", "XMCL2025", "LocalCache", "minecraft");
-                string versionsDirectory = Path.Combine(minecraftDirectory ?? defaultMinecraftDirectory, "versions");
+                string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
+                string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
                 string versionDirectory = Path.Combine(versionsDirectory, versionId);
                 string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
                 

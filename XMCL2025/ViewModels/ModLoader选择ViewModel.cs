@@ -13,6 +13,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 {
     private readonly INavigationService _navigationService;
     private readonly FabricService _fabricService;
+    private readonly IFileService _fileService;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
@@ -39,6 +40,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     {
         _navigationService = App.GetService<INavigationService>();
         _fabricService = App.GetService<FabricService>();
+        _fileService = App.GetService<IFileService>();
     }
 
     public void OnNavigatedFrom()
@@ -173,9 +175,8 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         {
             IsLoading = true;
             
-            // 获取程序目录下的Minecraft目录
-            string appDirectory = AppContext.BaseDirectory;
-            string minecraftDirectory = Path.Combine(appDirectory, ".minecraft");
+            // 获取用户设置的Minecraft目录
+            string minecraftDirectory = _fileService.GetMinecraftDataPath();
             
             // 创建下载进度回调
             Action<double> progressCallback = (progress) =>
