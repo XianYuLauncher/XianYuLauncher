@@ -321,7 +321,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{detailedMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = detailedMsg
                 };
             }
             
@@ -356,7 +356,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{errorMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = errorMsg
                 };
             }
             
@@ -391,7 +391,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{errorMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = $"{errorMsg}\n\n{responseJson}"
                 };
             }
             
@@ -425,7 +425,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{errorMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = $"{errorMsg}\n\n{responseJson}"
                 };
             }
             
@@ -459,7 +459,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{errorMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = $"{errorMsg}\n\n{responseJson}"
                 };
             }
             
@@ -491,7 +491,7 @@ public class MicrosoftAuthService
                 return new LoginResult
                 {
                     Success = false,
-                    ErrorMessage = $"{errorMsg}\n\n详细信息已保存到临时文件: {tempFilePath}"
+                    ErrorMessage = $"{errorMsg}\n\n{responseJson}"
                 };
             }
             
@@ -531,11 +531,11 @@ public class MicrosoftAuthService
                 tempFilePath = "无法保存错误日志";
             }
             
-            // 返回详细的异常信息，包括错误日志路径
+            // 返回简洁的异常信息
             return new LoginResult
             {
                 Success = false,
-                ErrorMessage = $"登录失败: {ex.Message}\n\n详细信息已保存到临时文件: {tempFilePath}\n\n异常摘要: {ex.GetType().Name}"
+                ErrorMessage = $"登录失败: {ex.Message}"
             };
         }
     }
@@ -605,11 +605,11 @@ public class MicrosoftAuthService
                 tempFilePath = "无法保存错误日志";
             }
             
-            // 返回详细的异常信息，包括错误日志路径
+            // 返回详细的异常信息
             return new LoginResult
             {
                 Success = false,
-                ErrorMessage = $"登录失败: {ex.Message}\n\n详细信息已保存到临时文件: {tempFilePath}\n\n异常摘要: {ex.GetType().Name}"
+                ErrorMessage = $"登录失败: {ex.Message}\n\n异常摘要: {ex.GetType().Name}"
             };
         }
     }

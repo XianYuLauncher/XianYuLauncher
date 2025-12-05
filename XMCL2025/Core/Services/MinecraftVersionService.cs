@@ -1116,6 +1116,8 @@ public class MinecraftVersionService : IMinecraftVersionService
                             if (File.Exists(nativeLibraryPath))
                             {
                                 // 解压原生库文件
+                            try
+                            {
                                 using (var archive = ZipFile.OpenRead(nativeLibraryPath))
                                 {
                                     foreach (var entry in archive.Entries)
@@ -1131,10 +1133,26 @@ public class MinecraftVersionService : IMinecraftVersionService
                                     }
                                 }
                             }
+                            catch (Exception extractEx)
+                            {
+                                _logger.LogError(extractEx, "解压原生库文件失败: {NativeLibraryPath}", nativeLibraryPath);
+                                
+                                // 输出错误文件到TEMP文件夹
+                                string errorLogPath = Path.Combine(Path.GetTempPath(), $"native_extract_error_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                                string errorContent = $"解压原生库文件失败: {nativeLibraryPath}\n" +
+                                                     $"错误时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                                                     $"错误类型: {extractEx.GetType().Name}\n" +
+                                                     $"错误信息: {extractEx.Message}\n" +
+                                                     $"堆栈跟踪: {extractEx.StackTrace}\n" +
+                                                     $"内部错误: {extractEx.InnerException?.Message}\n";
+                                File.WriteAllText(errorLogPath, errorContent);
+                                _logger.LogInformation("错误日志已保存到: {ErrorLogPath}", errorLogPath);
+                            }
+                            }
                             else
                             {
                                 // 记录缺失的原生库文件
-                                Console.WriteLine($"Native library file not found: {nativeLibraryPath}");
+                                _logger.LogWarning("原生库文件不存在: {NativeLibraryPath}", nativeLibraryPath);
                             }
                             continue;
                         }
@@ -1172,17 +1190,29 @@ public class MinecraftVersionService : IMinecraftVersionService
                         else
                         {
                             // 记录缺失的原生库文件
-                            Console.WriteLine($"Native library file not found: {nativeLibraryPath}");
+                            _logger.LogWarning("原生库文件不存在: {NativeLibraryPath}", nativeLibraryPath);
                         }
                     }
                 }
             }
 
-            Console.WriteLine($"Successfully extracted {extractedCount} native library files to {nativesDirectory}");
+            _logger.LogInformation("成功提取 {ExtractedCount} 个原生库文件到 {NativesDirectory}", extractedCount, nativesDirectory);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error extracting native libraries: {ex.Message}");
+            _logger.LogError(ex, "提取原生库失败: {VersionId}", versionId);
+            
+            // 输出错误文件
+            string errorLogPath = Path.Combine(nativesDirectory, $"native_extract_error_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            string errorContent = $"提取原生库失败: {versionId}\n" +
+                                 $"错误时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                                 $"错误类型: {ex.GetType().Name}\n" +
+                                 $"错误信息: {ex.Message}\n" +
+                                 $"堆栈跟踪: {ex.StackTrace}\n" +
+                                 $"内部错误: {ex.InnerException?.Message}\n";
+            File.WriteAllText(errorLogPath, errorContent);
+            _logger.LogInformation("错误日志已保存到: {ErrorLogPath}", errorLogPath);
+            
             throw new Exception($"Failed to extract native libraries for version {versionId}", ex);
         }
     }

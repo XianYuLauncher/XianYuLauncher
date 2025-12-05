@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml.Controls;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
 
@@ -316,7 +317,7 @@ namespace XMCL2025.ViewModels
                 var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
                 if (deviceCodeResponse == null)
                 {
-                    LoginStatus = "获取登录代码失败";
+                    await ShowLoginErrorDialogAsync("获取登录代码失败");
                     return;
                 }
 
@@ -363,12 +364,28 @@ namespace XMCL2025.ViewModels
                 }
                 else
                 {
-                    LoginStatus = $"登录失败：{result.ErrorMessage}";
+                    // 检查是否是账户没有购买Minecraft的错误
+                    if (result.ErrorMessage.Contains("该账号没有购买Minecraft"))
+                    {
+                        // 显示购买提示弹窗
+                        await ShowMinecraftPurchaseDialogAsync();
+                    }
+                    // 检查是否是获取玩家信息失败（可能是没有创建玩家档案）
+                    else if (result.ErrorMessage.Contains("获取玩家信息失败"))
+                    {
+                        // 显示获取玩家信息失败弹窗
+                        await ShowPlayerProfileErrorDialogAsync(result.ErrorMessage);
+                    }
+                    else
+                    {
+                        // 显示其他登录失败弹窗
+                        await ShowLoginErrorDialogAsync(result.ErrorMessage);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                LoginStatus = $"登录异常：{ex.Message}";
+                await ShowLoginErrorDialogAsync($"登录异常：{ex.Message}");
             }
             finally
             {
@@ -433,6 +450,117 @@ namespace XMCL2025.ViewModels
                 // 3. 保存更改
                 SaveProfiles();
             }
+        }
+        
+        /// <summary>
+        /// 显示Minecraft购买提示弹窗
+        /// </summary>
+        private async Task ShowMinecraftPurchaseDialogAsync()
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "账户未购买Minecraft",
+                Content = "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
+                PrimaryButtonText = "购买Minecraft",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close
+            };
+            
+            // 设置XamlRoot，确保弹窗能正确显示
+            dialog.XamlRoot = App.MainWindow.Content.XamlRoot;
+            
+            // 处理主按钮点击事件（购买Minecraft）
+            dialog.PrimaryButtonClick += async (sender, args) =>
+            {
+                try
+                {
+                    // 打开Minecraft购买链接
+                    var uri = new Uri("https://www.xbox.com/zh-CN/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj?ocid=storeforweb");
+                    await Windows.System.Launcher.LaunchUriAsync(uri);
+                }
+                catch (Exception ex)
+                {
+                    // 处理打开链接失败的情况
+                    var errorDialog = new ContentDialog
+                    {
+                        Title = "打开链接失败",
+                        Content = "无法打开购买链接，请手动访问该网址。",
+                        CloseButtonText = "确定",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    await errorDialog.ShowAsync();
+                }
+            };
+            
+            // 显示弹窗
+            await dialog.ShowAsync();
+            
+            // 重置登录状态
+            LoginStatus = "登录已取消";
+        }
+        
+        /// <summary>
+        /// 显示获取玩家信息失败弹窗
+        /// </summary>
+        private async Task ShowPlayerProfileErrorDialogAsync(string errorMessage)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "获取玩家信息失败",
+                Content = "当前微软账户已购买Minecraft，但可能未创建玩家档案。",
+                PrimaryButtonText = "创建档案",
+                CloseButtonText = "确定",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            
+            // 处理创建档案按钮点击事件
+            dialog.PrimaryButtonClick += async (sender, args) =>
+            {
+                try
+                {
+                    // 打开创建档案链接
+                    var uri = new Uri("https://www.minecraft.net/zh-hans/msaprofile/mygames/editprofile");
+                    await Windows.System.Launcher.LaunchUriAsync(uri);
+                }
+                catch (Exception ex)
+                {
+                    // 处理打开链接失败的情况
+                    var errorDialog = new ContentDialog
+                    {
+                        Title = "打开链接失败",
+                        Content = "无法打开创建档案链接，请手动访问该网址。",
+                        CloseButtonText = "确定",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    await errorDialog.ShowAsync();
+                }
+            };
+            
+            await dialog.ShowAsync();
+            
+            // 重置登录状态
+            LoginStatus = "登录已取消";
+        }
+        
+        /// <summary>
+        /// 显示其他登录失败弹窗
+        /// </summary>
+        private async Task ShowLoginErrorDialogAsync(string errorMessage)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "登录失败",
+                Content = errorMessage,
+                CloseButtonText = "确定",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            
+            await dialog.ShowAsync();
+            
+            // 重置登录状态
+            LoginStatus = "登录已取消";
         }
     }
 }
