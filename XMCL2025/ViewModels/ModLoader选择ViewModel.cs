@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XMCL2025.Contracts.Services;
@@ -14,6 +15,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     private readonly INavigationService _navigationService;
     private readonly FabricService _fabricService;
     private readonly IFileService _fileService;
+    private readonly NeoForgeService _neoForgeService;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
@@ -23,6 +25,11 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 
     [ObservableProperty]
     private string? _selectedModLoader;
+
+    // 计算属性：是否选择了NeoForge
+    public bool IsNeoForgeSelected => SelectedModLoader == "NeoForge";
+    // 计算属性：是否选择了非NeoForge
+    public bool IsNotNeoForgeSelected => !string.IsNullOrEmpty(SelectedModLoader) && SelectedModLoader != "NeoForge";
 
     [ObservableProperty]
     private ObservableCollection<string> _availableModLoaderVersions = new();
@@ -36,15 +43,23 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     [ObservableProperty]
     private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
 
+    // 用于管理异步加载任务的CancellationTokenSource
+    private CancellationTokenSource? _cts;
+
     public ModLoader选择ViewModel()
     {
         _navigationService = App.GetService<INavigationService>();
         _fabricService = App.GetService<FabricService>();
         _fileService = App.GetService<IFileService>();
+        _neoForgeService = App.GetService<NeoForgeService>();
     }
 
     public void OnNavigatedFrom()
     {
+        // 取消所有正在进行的任务
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
     }
 
     public void OnNavigatedTo(object parameter)
@@ -72,6 +87,10 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 
     partial void OnSelectedModLoaderChanged(string? value)
     {
+        // 通知计算属性变化
+        OnPropertyChanged(nameof(IsNeoForgeSelected));
+        OnPropertyChanged(nameof(IsNotNeoForgeSelected));
+        
         if (value != null)
         {
             if (value == "无")
@@ -79,6 +98,11 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 // 选择"无"时，不需要加载mod loader版本
                 AvailableModLoaderVersions.Clear();
                 SelectedModLoaderVersion = "无";
+                // 取消之前的任务并停止加载状态
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _cts = null;
+                IsLoading = false;
             }
             else
             {
@@ -89,52 +113,78 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         {
             AvailableModLoaderVersions.Clear();
             SelectedModLoaderVersion = null;
+            // 取消之前的任务并停止加载状态
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = null;
+            IsLoading = false;
         }
     }
 
     private async void LoadModLoaderVersions(string modLoader)
     {
+        // 取消之前的任务
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        
         // 清空版本列表
         AvailableModLoaderVersions.Clear();
         FabricVersionMap.Clear();
         SelectedModLoaderVersion = null;
         
-        switch (modLoader)
+        try
         {
-            case "Forge":
-                AvailableModLoaderVersions.Add("47.2.0");
-                AvailableModLoaderVersions.Add("47.1.0");
-                AvailableModLoaderVersions.Add("47.0.0");
-                break;
-            case "Fabric":
-                await LoadFabricVersionsAsync();
-                break;
-            case "NeoForge":
-                AvailableModLoaderVersions.Add("20.2.80");
-                AvailableModLoaderVersions.Add("20.2.79");
-                AvailableModLoaderVersions.Add("20.2.78");
-                break;
-            case "Quilt":
-                AvailableModLoaderVersions.Add("0.20.0");
-                AvailableModLoaderVersions.Add("0.19.2");
-                AvailableModLoaderVersions.Add("0.19.1");
-                break;
+            IsLoading = true;
+            
+            switch (modLoader)
+            {
+                case "Forge":
+                    AvailableModLoaderVersions.Add("47.2.0");
+                    AvailableModLoaderVersions.Add("47.1.0");
+                    AvailableModLoaderVersions.Add("47.0.0");
+                    break;
+                case "Fabric":
+                    await LoadFabricVersionsAsync(_cts.Token);
+                    break;
+                case "NeoForge":
+                    await LoadNeoForgeVersionsAsync(_cts.Token);
+                    break;
+                case "Quilt":
+                    AvailableModLoaderVersions.Add("0.20.0");
+                    AvailableModLoaderVersions.Add("0.19.2");
+                    AvailableModLoaderVersions.Add("0.19.1");
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync($"加载Mod Loader版本失败: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
     /// <summary>
     /// 从Fabric API获取实际的Fabric版本列表
     /// </summary>
-    private async Task LoadFabricVersionsAsync()
+    private async Task LoadFabricVersionsAsync(CancellationToken cancellationToken)
     {
-        IsLoading = true;
         try
         {
             List<FabricLoaderVersion> fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
             
             // 将版本添加到列表中，并保存映射关系
             foreach (var version in fabricVersions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 string displayVersion = version.Loader.Version;
                 AvailableModLoaderVersions.Add(displayVersion);
                 FabricVersionMap[displayVersion] = version;
@@ -146,13 +196,58 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 SelectedModLoaderVersion = AvailableModLoaderVersions[0];
             }
         }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+        }
         catch (Exception ex)
         {
-            await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
+            // 只有当当前选择的ModLoader仍然是Fabric时才显示错误
+            if (SelectedModLoader == "Fabric")
+            {
+                await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
+            }
         }
-        finally
+    }
+    
+    /// <summary>
+    /// 从NeoForge API获取实际的NeoForge版本列表
+    /// </summary>
+    private async Task LoadNeoForgeVersionsAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            IsLoading = false;
+            Console.WriteLine($"正在填充NeoForge版本列表到UI...");
+            List<string> neoForgeVersions = await _neoForgeService.GetNeoForgeVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // 将版本添加到列表中
+            foreach (var version in neoForgeVersions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                AvailableModLoaderVersions.Add(version);
+            }
+            
+            Console.WriteLine($"NeoForge版本列表填充完成，共{AvailableModLoaderVersions.Count}个版本");
+            
+            // 如果有版本，默认选择第一个
+            if (AvailableModLoaderVersions.Count > 0)
+            {
+                SelectedModLoaderVersion = AvailableModLoaderVersions[0];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+            Console.WriteLine($"NeoForge版本加载任务被取消");
+        }
+        catch (Exception ex)
+        {
+            // 只有当当前选择的ModLoader仍然是NeoForge时才显示错误
+            if (SelectedModLoader == "NeoForge")
+            {
+                await ShowMessageAsync($"获取NeoForge版本列表失败: {ex.Message}");
+            }
         }
     }
 

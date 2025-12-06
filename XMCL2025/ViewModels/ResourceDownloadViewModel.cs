@@ -51,15 +51,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// </summary>
     private void UpdateFilteredVersions()
     {
-        FilteredVersions.Clear();
-        IEnumerable<Core.Contracts.Services.VersionEntry> filtered = Versions;
+        // 使用临时列表存储过滤结果，减少UI更新次数
+        var tempList = new List<Core.Contracts.Services.VersionEntry>();
         
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
-            filtered = Versions.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase));
+            tempList.AddRange(Versions.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase)));
+        }
+        else
+        {
+            tempList.AddRange(Versions);
         }
         
-        foreach (var version in filtered)
+        // 一次性更新FilteredVersions，避免多次UI更新
+        FilteredVersions.Clear();
+        foreach (var version in tempList)
         {
             FilteredVersions.Add(version);
         }
@@ -171,18 +177,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _modrinthService = modrinthService;
         _fabricService = fabricService;
         
-        // 初始化时加载版本列表
-        _ = InitializeAsync();
-        
-        // 初始化时加载可用版本列表
-        _ = LoadAvailableVersionsAsync();
+        // 移除自动加载，改为完全由SelectionChanged事件控制
+        // 这样可以避免版本列表被加载两次
     }
     
-    private async Task InitializeAsync()
-    {
-        // 初始化时只加载版本列表，Mod列表使用延迟加载
-        await SearchVersionsCommand.ExecuteAsync(null);
-    }
+    // 移除InitializeAsync方法，不再自动加载版本列表
     
     // 版本下载命令
     [RelayCommand]
@@ -207,19 +206,22 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var manifest = await _minecraftVersionService.GetVersionManifestAsync();
             var versionList = manifest.Versions.ToList(); // 加载所有版本
             
-            // 更新最新版本信息
+            // 更新最新版本信息（使用延迟更新，减少UI刷新）
             LatestReleaseVersion = versionList.FirstOrDefault(v => v.Type == "release")?.Id ?? string.Empty;
             LatestSnapshotVersion = versionList.FirstOrDefault(v => v.Type == "snapshot")?.Id ?? string.Empty;
             
-            // 更新版本列表
+            // 使用Clear和AddRange的方式更新Versions集合，确保UI正确更新
             Versions.Clear();
             foreach (var version in versionList)
             {
                 Versions.Add(version);
             }
             
-            // 更新过滤后的版本列表
+            // 一次性更新过滤后的版本列表
             UpdateFilteredVersions();
+            
+            // 同时更新可用版本列表，避免重复请求
+            await UpdateAvailableVersionsFromManifest(versionList);
         }
         catch (Exception ex)
         {
@@ -228,6 +230,37 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         finally
         {
             IsVersionLoading = false;
+        }
+    }
+    
+    /// <summary>
+    /// 从已获取的版本列表更新可用版本，避免重复网络请求
+    /// </summary>
+    private async Task UpdateAvailableVersionsFromManifest(List<Core.Contracts.Services.VersionEntry> versionList)
+    {
+        try
+        {
+            var versions = versionList.Select(v => v.Id).Distinct().ToList();
+            
+            // 保存当前选中的版本
+            var currentSelectedVersion = SelectedVersion;
+            
+            // 使用Clear和Add的方式更新AvailableVersions，确保UI正确更新
+            AvailableVersions.Clear();
+            foreach (var version in versions)
+            {
+                AvailableVersions.Add(version);
+            }
+            
+            // 如果当前选中的版本仍然在可用版本列表中，则保留选中状态
+            if (!string.IsNullOrEmpty(currentSelectedVersion) && versions.Contains(currentSelectedVersion))
+            {
+                SelectedVersion = currentSelectedVersion;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
         }
     }
 
@@ -390,24 +423,17 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         try
         {
-            // 获取所有可用的Minecraft版本
-            var manifest = await _minecraftVersionService.GetVersionManifestAsync();
-            var versions = manifest.Versions.Select(v => v.Id).Distinct().ToList();
-            
-            // 保存当前选中的版本
-            var currentSelectedVersion = SelectedVersion;
-            
-            // 更新可用版本列表
-            AvailableVersions.Clear();
-            foreach (var version in versions)
+            // 如果已经加载了版本列表，直接使用
+            if (Versions.Any())
             {
-                AvailableVersions.Add(version);
+                await UpdateAvailableVersionsFromManifest(Versions.ToList());
             }
-            
-            // 如果当前选中的版本仍然在可用版本列表中，则保留选中状态
-            if (!string.IsNullOrEmpty(currentSelectedVersion) && versions.Contains(currentSelectedVersion))
+            else
             {
-                SelectedVersion = currentSelectedVersion;
+                // 如果版本列表为空，重新获取版本列表
+                var manifest = await _minecraftVersionService.GetVersionManifestAsync();
+                var versionList = manifest.Versions.ToList();
+                await UpdateAvailableVersionsFromManifest(versionList);
             }
         }
         catch (Exception ex)
