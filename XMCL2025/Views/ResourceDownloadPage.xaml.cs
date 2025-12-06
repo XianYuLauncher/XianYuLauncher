@@ -1,12 +1,16 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XMCL2025.ViewModels;using XMCL2025.Core.Contracts.Services;using XMCL2025.Core.Models;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XMCL2025.Contracts.ViewModels;using XMCL2025.ViewModels;using XMCL2025.Core.Contracts.Services;using XMCL2025.Core.Models;
 
 namespace XMCL2025.Views;
 
-public sealed partial class ResourceDownloadPage : Page
+public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {
+    // 静态属性，用于存储需要切换的标签页索引
+    public static int TargetTabIndex { get; set; } = 0;
+    
     public ResourceDownloadViewModel ViewModel
     {
         get;
+        set;
     }
 
     // 标记是否已经加载过版本数据
@@ -21,11 +25,51 @@ public sealed partial class ResourceDownloadPage : Page
     // 标记是否已经加载过光影数据
     private bool _shaderPacksLoaded = false;
     
+    // 标记是否已经加载过整合包数据
+    private bool _modpacksLoaded = false;
+    
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
         DataContext = ViewModel;
         InitializeComponent();
+        
+        // 在页面加载完成后检查是否需要切换标签页
+        Loaded += (sender, e) =>
+        {
+            // 使用静态属性TargetTabIndex来控制标签页切换
+            if (TargetTabIndex > 0)
+            {
+                ResourceTabView.SelectedIndex = TargetTabIndex;
+                // 重置TargetTabIndex，避免下次打开时仍然使用旧值
+                TargetTabIndex = 0;
+            }
+        };
+    }
+    
+    /// <summary>
+    /// 导航到页面时调用
+    /// </summary>
+    /// <param name="parameter">导航参数</param>
+    public void OnNavigatedTo(object parameter)
+    {
+        // 直接使用Dispatcher延迟执行，确保TabView已经初始化完成
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            // 检查是否有从NavigateToModPage方法传递的信号
+            if (ViewModel.SelectedTabIndex == 1)
+            {
+                ResourceTabView.SelectedIndex = 1;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// 从页面导航离开时调用
+    /// </summary>
+    public void OnNavigatedFrom()
+    {
+        // 清理资源
     }
     
     /// <summary>
@@ -78,6 +122,13 @@ public sealed partial class ResourceDownloadPage : Page
                     {
                         await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
                         _shaderPacksLoaded = true;
+                    }
+                    break;
+                case "整合包下载":
+                    if (!_modpacksLoaded)
+                    {
+                        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+                        _modpacksLoaded = true;
                     }
                     break;
             }
@@ -269,6 +320,64 @@ public sealed partial class ResourceDownloadPage : Page
         if (sender is Grid grid && grid.DataContext is ModrinthProject shaderPack)
         {
             await ViewModel.DownloadShaderPackCommand.ExecuteAsync(shaderPack);
+        }
+    }
+    
+    /// <summary>
+    /// 整合包搜索提交事件处理程序
+    /// </summary>
+    private async void ModpackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+    }
+    
+    /// <summary>
+    /// 整合包版本筛选变化事件处理程序
+    /// </summary>
+    private async void ModpackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+    }
+    
+    /// <summary>
+    /// 整合包列表滚动事件处理程序，实现滚动加载更多
+    /// </summary>
+    private void ModpackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (sender is ScrollViewer scrollViewer)
+        {
+            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
+            var verticalOffset = scrollViewer.VerticalOffset;
+            var scrollableHeight = scrollViewer.ScrollableHeight;
+            var viewportHeight = scrollViewer.ViewportHeight;
+            var shouldLoadMore = !ViewModel.IsModpackLoadingMore && ViewModel.ModpackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+
+            if (shouldLoadMore)
+            {
+                ViewModel.LoadMoreModpacksCommand.Execute(null);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 整合包列表项点击事件处理程序
+    /// </summary>
+    private async void ModpackListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ModrinthProject modpack)
+        {
+            await ViewModel.DownloadModpackCommand.ExecuteAsync(modpack);
+        }
+    }
+    
+    /// <summary>
+    /// 整合包项点击事件处理程序（触摸设备）
+    /// </summary>
+    private async void ModpackItem_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Grid grid && grid.DataContext is ModrinthProject modpack)
+        {
+            await ViewModel.DownloadModpackCommand.ExecuteAsync(modpack);
         }
     }
 }

@@ -7,7 +7,7 @@
     xmlns:viewModels="using:XMCL2025.ViewModels"
     mc:Ignorable="d">
 
-    <Grid x:Name="ContentArea" Padding="40,60,40,20">
+    <Grid x:Name="ContentArea" Padding="40,60,40,20" AllowDrop="True" DragEnter="ContentArea_DragEnter" DragOver="ContentArea_DragOver" DragLeave="ContentArea_DragLeave" Drop="ContentArea_Drop">
         <Grid.Resources>
             <!-- 统一的操作按钮样式 -->
             <Style TargetType="Button" x:Key="ActionButtonStyle">
@@ -86,6 +86,24 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        
+        <!-- 拖放状态视觉反馈覆盖层 -->
+        <Grid x:Name="DragDropOverlay" Background="{ThemeResource SystemControlAcrylicElementBrush}" BorderThickness="0" CornerRadius="12" Visibility="Collapsed" Canvas.ZIndex="1000" Grid.RowSpan="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Column="1" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" FontSize="100" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
+                <TextBlock Text="释放以添加文件" Style="{StaticResource PageTitleStyle}" FontSize="20" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,32">
@@ -161,22 +179,24 @@
 
                     
                     <!-- Mod列表容器 -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" AllowDrop="True">
                         <!-- Mod列表 -->
                         <ScrollViewer
                             x:Name="ModListScrollViewer"
                             Margin="0"
                             VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled">
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
                             <ListView 
                                 x:Name="ModListView"
                                 ItemsSource="{Binding Mods, Mode=OneWay}"
                                 SelectionMode="Single"
                                 IsItemClickEnabled="False"
                                 CanReorderItems="False"
-                                AllowDrop="False"
+                                AllowDrop="True"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                VerticalAlignment="Stretch">
                                 <ListView.Resources>
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -308,7 +328,7 @@
                                 TextAlignment="Center" 
                                 Margin="0,0,0,8"/>
                             <TextBlock 
-                                Text="前往Mod页面下载和安装Mod" 
+                                Text="拖动要添加的Mod至启动器以添加Mod" 
                                 Style="{StaticResource BodyTextStyle}" 
                                 Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                                 Margin="0,0,24,0" 
@@ -343,22 +363,24 @@
 
                     
                     <!-- 光影列表容器 -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" AllowDrop="True">
                         <!-- 光影列表 -->
                         <ScrollViewer
                             x:Name="ShaderListScrollViewer"
                             Margin="0"
                             VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled">
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
                             <ListView 
                                 x:Name="ShaderListView"
                                 ItemsSource="{Binding Shaders, Mode=OneWay}"
                                 SelectionMode="Single"
                                 IsItemClickEnabled="False"
                                 CanReorderItems="False"
-                                AllowDrop="False"
+                                AllowDrop="True"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                VerticalAlignment="Stretch">
                                 <ListView.Resources>
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -487,12 +509,19 @@
                                 TextAlignment="Center" 
                                 Margin="0,0,0,8"/>
                             <TextBlock 
-                                Text="点击上方按钮打开光影文件夹添加光影" 
+                                Text="拖动要添加的光影至启动器以添加光影" 
                                 Style="{StaticResource BodyTextStyle}" 
                                 Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                                 Margin="0,0,24,0" 
                                 TextAlignment="Center" 
                                 MaxWidth="300"/>
+                            <Button 
+                                Content="前往光影页面" 
+                                Style="{StaticResource DefaultButtonStyle}" 
+                                Command="{Binding NavigateToShaderPageCommand}" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,16,0,0" 
+                                Width="160"/>
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -515,22 +544,24 @@
 
                     
                     <!-- 资源包列表容器 -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" AllowDrop="True">
                         <!-- 资源包列表 -->
                         <ScrollViewer
                             x:Name="ResourcePackListScrollViewer"
                             Margin="0"
                             VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled">
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
                             <ListView 
                                 x:Name="ResourcePackListView"
                                 ItemsSource="{Binding ResourcePacks, Mode=OneWay}"
                                 SelectionMode="Single"
                                 IsItemClickEnabled="False"
                                 CanReorderItems="False"
-                                AllowDrop="False"
+                                AllowDrop="True"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                VerticalAlignment="Stretch">
                                 <ListView.Resources>
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -659,12 +690,20 @@
                                 TextAlignment="Center" 
                                 Margin="0,0,0,8"/>
                             <TextBlock 
-                                Text="点击上方按钮打开资源包文件夹添加资源包" 
+                                Text="拖动要添加的资源包至启动器以添加资源包" 
                                 Style="{StaticResource BodyTextStyle}" 
+                                FontSize="14" 
                                 Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                                 Margin="0,0,24,0" 
                                 TextAlignment="Center" 
                                 MaxWidth="300"/>
+                            <Button 
+                                Content="前往资源包页面" 
+                                Style="{StaticResource DefaultButtonStyle}" 
+                                Command="{Binding NavigateToResourcePackPageCommand}" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,16,0,0" 
+                                Width="160"/>
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -687,22 +726,24 @@
 
                     
                     <!-- 数据包列表容器 -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" AllowDrop="True">
                         <!-- 数据包列表 -->
                         <ScrollViewer
                             x:Name="DataPackListScrollViewer"
                             Margin="0"
                             VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled">
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
                             <ListView 
                                 x:Name="DataPackListView"
                                 ItemsSource="{Binding DataPacks, Mode=OneWay}"
                                 SelectionMode="Single"
                                 IsItemClickEnabled="False"
                                 CanReorderItems="False"
-                                AllowDrop="False"
+                                AllowDrop="True"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                VerticalAlignment="Stretch">
                                 <ListView.Resources>
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -831,23 +872,31 @@
                                 TextAlignment="Center" 
                                 Margin="0,0,0,8"/>
                             <TextBlock 
-                                Text="点击上方按钮打开数据包文件夹添加数据包" 
+                                Text="拖动要添加的数据包至启动器以添加数据包" 
                                 Style="{StaticResource BodyTextStyle}" 
+                                FontSize="14" 
                                 Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                                 Margin="0,0,24,0" 
                                 TextAlignment="Center" 
                                 MaxWidth="300"/>
+                            <Button 
+                                Content="前往数据包页面" 
+                                Style="{StaticResource DefaultButtonStyle}" 
+                                Command="{Binding NavigateToDataPackPageCommand}" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,16,0,0" 
+                                Width="160"/>
                         </StackPanel>
                     </Grid>
                 </Grid>
             </TabViewItem>
 
-            <!-- 地图安装模块 -->
+            <!-- 地图管理模块 -->
             <TabViewItem>
                 <TabViewItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <FontIcon Glyph="" FontSize="16" />
-                        <TextBlock Text="地图安装" VerticalAlignment="Center" />
+                        <TextBlock Text="地图管理" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>
@@ -859,22 +908,24 @@
 
                     
                     <!-- 地图列表容器 -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1" AllowDrop="True">
                         <!-- 地图列表 -->
                         <ScrollViewer
                             x:Name="MapsListScrollViewer"
                             Margin="0"
                             VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled">
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
                             <ListView 
-                                x:Name="MapsListView"
+                                x:Name="MapListView"
                                 ItemsSource="{Binding Maps, Mode=OneWay}"
                                 SelectionMode="Single"
                                 IsItemClickEnabled="False"
                                 CanReorderItems="False"
-                                AllowDrop="False"
+                                AllowDrop="True"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                VerticalAlignment="Stretch">
                                 <ListView.Resources>
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -956,7 +1007,7 @@
                                                 Height="28" 
                                                 Padding="10,0,10,0" 
                                                 FontSize="11" 
-                                                Command="{Binding DataContext.DeleteMapCommand, ElementName=MapsListView}" 
+                                                Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" 
                                                 CommandParameter="{Binding}" 
                                                 Foreground="White" 
                                                 CornerRadius="6">
@@ -1003,12 +1054,19 @@
                                 TextAlignment="Center" 
                                 Margin="0,0,0,8"/>
                             <TextBlock 
-                                Text="点击上方按钮打开地图文件夹添加地图" 
+                                Text="拖动要添加的地图至启动器以添加地图" 
                                 Style="{StaticResource BodyTextStyle}" 
                                 Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                                 Margin="0,0,24,0" 
                                 TextAlignment="Center" 
                                 MaxWidth="300"/>
+                            <Button 
+                                Content="前往地图页面" 
+                                Style="{StaticResource DefaultButtonStyle}" 
+                                Command="{Binding NavigateToMapPageCommand}" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,16,0,0" 
+                                Width="160"/>
                         </StackPanel>
                     </Grid>
                 </Grid>

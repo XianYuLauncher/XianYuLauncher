@@ -165,6 +165,35 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     // 为了与光影页面兼容，添加ShaderPackList属性，指向ShaderPacks集合
     public ObservableCollection<ModrinthProject> ShaderPackList => ShaderPacks;
+    
+    // 整合包下载相关属性
+    [ObservableProperty]
+    private string _modpackSearchQuery = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _modpacks = new();
+    
+    [ObservableProperty]
+    private bool _isModpackLoading = false;
+    
+    [ObservableProperty]
+    private bool _isModpackLoadingMore = false;
+    
+    [ObservableProperty]
+    private int _modpackOffset = 0;
+    
+    [ObservableProperty]
+    private bool _modpackHasMoreResults = true;
+    
+    [ObservableProperty]
+    private string _selectedModpackVersion = string.Empty;
+    
+    // 为了与整合包页面兼容，添加ModpackList属性，指向Modpacks集合
+    public ObservableCollection<ModrinthProject> ModpackList => Modpacks;
+    
+    // TabView选中索引，用于控制显示哪个标签页
+    [ObservableProperty]
+    private int _selectedTabIndex = 0;
 
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
@@ -179,6 +208,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
+    }
+    
+    /// <summary>
+    /// 重置ViewModel状态
+    /// </summary>
+    public void Reset()
+    {
+        // 保留SelectedTabIndex不变，这样可以在导航时保持之前的选中状态
+        // 或者根据需要重置为默认值
+        // SelectedTabIndex = 0;
     }
     
     // 移除InitializeAsync方法，不再自动加载版本列表
@@ -688,5 +727,123 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 导航到光影下载详情页面
         _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, shaderPack.ProjectId);
+    }
+    
+    // 整合包下载命令
+    [RelayCommand]
+    private async Task SearchModpacksAsync()
+    {
+        IsModpackLoading = true;
+        ModpackOffset = 0;
+        ModpackHasMoreResults = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedModpackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedModpackVersion}" });
+            }
+            
+            // 调用Modrinth API搜索整合包，明确指定projectType为modpack
+            var result = await _modrinthService.SearchModsAsync(
+                query: ModpackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ModpackOffset,
+                limit: _modPageSize,
+                projectType: "modpack"
+            );
+
+            // 更新整合包列表
+            Modpacks.Clear();
+            foreach (var hit in result.Hits)
+            {
+                Modpacks.Add(hit);
+            }
+            ModpackOffset = result.Hits.Count;
+            // 使用total_hits更准确地判断是否还有更多结果
+            ModpackHasMoreResults = ModpackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsModpackLoading = false;
+        }
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanLoadMoreModpacks))]
+    public async Task LoadMoreModpacksAsync()
+    {
+        if (IsModpackLoading || IsModpackLoadingMore || !ModpackHasMoreResults)
+        {
+            return;
+        }
+
+        IsModpackLoadingMore = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedModpackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedModpackVersion}" });
+            }
+            
+            // 调用Modrinth API加载更多整合包，明确指定projectType为modpack
+            var result = await _modrinthService.SearchModsAsync(
+                query: ModpackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: ModpackOffset,
+                limit: _modPageSize,
+                projectType: "modpack"
+            );
+
+            // 追加到现有列表
+            foreach (var hit in result.Hits)
+            {
+                Modpacks.Add(hit);
+            }
+            
+            ModpackOffset += result.Hits.Count;
+            
+            // 使用total_hits更准确地判断是否还有更多结果
+            ModpackHasMoreResults = ModpackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsModpackLoadingMore = false;
+        }
+    }
+    
+    private bool CanLoadMoreModpacks()
+    {
+        return !IsModpackLoading && !IsModpackLoadingMore && ModpackHasMoreResults;
+    }
+    
+    [RelayCommand]
+    private async Task DownloadModpackAsync(ModrinthProject modpack)
+    {
+        if (modpack == null)
+        {
+            return;
+        }
+
+        // 导航到整合包下载详情页面
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, modpack.ProjectId);
     }
 }

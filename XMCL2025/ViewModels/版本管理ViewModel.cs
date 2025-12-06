@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.System;
 using XMCL2025.Contracts.Services;
@@ -156,50 +158,54 @@ public class ResourcePackInfo
 }
 
 /// <summary>
-/// 数据包信息类
-/// </summary>
-public class DataPackInfo
-{
-    /// <summary>
-    /// 数据包文件名
+    /// 数据包信息类
     /// </summary>
-    public string FileName { get; set; }
-    
-    /// <summary>
-    /// 数据包显示名称
-    /// </summary>
-    public string Name { get; set; }
-    
-    /// <summary>
-    /// 数据包文件完整路径
-    /// </summary>
-    public string FilePath { get; private set; }
-    
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    public bool IsEnabled { get; private set; }
-    
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="filePath">文件路径</param>
-    public DataPackInfo(string filePath)
+    public class DataPackInfo
     {
-        // 确保文件路径是完整的，没有被截断
-        FilePath = filePath;
-        FileName = Path.GetFileName(filePath);
-        IsEnabled = !FileName.EndsWith(".disabled");
+        /// <summary>
+        /// 数据包文件名
+        /// </summary>
+        public string FileName { get; set; }
         
-        // 提取显示名称（去掉.disabled后缀）
-        string displayName = FileName;
-        if (displayName.EndsWith(".disabled"))
+        /// <summary>
+        /// 数据包显示名称
+        /// </summary>
+        public string Name { get; set; }
+        
+        /// <summary>
+        /// 数据包文件完整路径
+        /// </summary>
+        public string FilePath { get; private set; }
+        
+        /// <summary>
+        /// 是否启用
+        /// </summary>
+        public bool IsEnabled { get; private set; }
+        
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        public DataPackInfo(string filePath)
         {
-            displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            // 确保文件路径是完整的，没有被截断
+            FilePath = filePath;
+            FileName = Path.GetFileName(filePath);
+            IsEnabled = !FileName.EndsWith(".disabled");
+            
+            // 提取显示名称（去掉.disabled后缀和.zip扩展名）
+            string displayName = FileName;
+            if (displayName.EndsWith(".disabled"))
+            {
+                displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            }
+            if (displayName.EndsWith(".zip"))
+            {
+                displayName = displayName.Substring(0, displayName.Length - ".zip".Length);
+            }
+            Name = displayName;
         }
-        Name = displayName;
     }
-}
 
 /// <summary>
 /// 地图信息类
@@ -319,6 +325,42 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     /// 地图列表是否为空
     /// </summary>
     public bool IsMapListEmpty => Maps.Count == 0;
+    
+    // 当资源列表变化时，通知空状态属性变化
+    partial void OnModsChanged(ObservableCollection<ModInfo> value)
+    {
+        OnPropertyChanged(nameof(IsModListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsModListEmpty));
+    }
+    
+    partial void OnShadersChanged(ObservableCollection<ShaderInfo> value)
+    {
+        OnPropertyChanged(nameof(IsShaderListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsShaderListEmpty));
+    }
+    
+    partial void OnResourcePacksChanged(ObservableCollection<ResourcePackInfo> value)
+    {
+        OnPropertyChanged(nameof(IsResourcePackListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
+    }
+    
+    partial void OnDataPacksChanged(ObservableCollection<DataPackInfo> value)
+    {
+        OnPropertyChanged(nameof(IsDataPackListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsDataPackListEmpty));
+    }
+    
+    partial void OnMapsChanged(ObservableCollection<MapInfo> value)
+    {
+        OnPropertyChanged(nameof(IsMapListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
+    }
 
     /// <summary>
     /// 状态信息
@@ -343,6 +385,13 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
+        
+        // 监听集合变化事件，用于更新空状态
+        Mods.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsModListEmpty));
+        Shaders.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsShaderListEmpty));
+        ResourcePacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
+        DataPacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsDataPackListEmpty));
+        Maps.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
     }
 
     /// <summary>
@@ -488,8 +537,63 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     [RelayCommand]
     private void NavigateToModPage()
     {
-        // 导航到ModPage
-        _navigationService.NavigateTo(typeof(ModViewModel).FullName!);
+        // 设置ResourceDownloadPage的TargetTabIndex为1（Mod下载标签页）
+        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 1;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+    
+    /// <summary>
+    /// 导航到光影页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToShaderPage()
+    {
+        // 设置ResourceDownloadPage的TargetTabIndex为2（光影下载标签页）
+        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 2;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+    
+    /// <summary>
+    /// 导航到资源包页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToResourcePackPage()
+    {
+        // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页）
+        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+    
+    /// <summary>
+    /// 导航到数据包页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToDataPackPage()
+    {
+        // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页，数据包和资源包共用一个页面）
+        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+    
+    /// <summary>
+    /// 导航到地图页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToMapPage()
+    {
+        // 地图下载页面尚未实现，暂时导航到资源下载页面
+        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 0;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
     }
 
     #endregion
@@ -693,45 +797,31 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
             return;
         }
 
-        // 数据包通常存储在世界文件夹中，这里简化处理
-        var savesPath = Path.Combine(MinecraftPath, "saves");
-        if (Directory.Exists(savesPath))
+        // 从版本根目录加载数据包，与其他资源类型保持一致
+        var dataPacksPath = GetVersionSpecificPath("datapacks");
+        if (Directory.Exists(dataPacksPath))
         {
-            // 这里只显示第一个世界的数据包
-            var worlds = Directory.GetDirectories(savesPath);
-            if (worlds.Length > 0)
+            // 获取所有数据包文件夹和zip文件
+            var dataPackFolders = Directory.GetDirectories(dataPacksPath);
+            var dataPackZips = Directory.GetFiles(dataPacksPath, "*.zip");
+            
+            // 创建新的数据包列表，减少CollectionChanged事件触发次数
+            var newDataPacks = new ObservableCollection<DataPackInfo>();
+            
+            // 添加所有数据包文件夹
+            foreach (var dataPackFolder in dataPackFolders)
             {
-                var dataPacksPath = Path.Combine(worlds[0], "datapacks");
-                if (Directory.Exists(dataPacksPath))
-                {
-                    // 获取所有数据包文件夹和zip文件
-                    var dataPackFolders = Directory.GetDirectories(dataPacksPath);
-                    var dataPackZips = Directory.GetFiles(dataPacksPath, "*.zip");
-                    
-                    // 创建新的数据包列表，减少CollectionChanged事件触发次数
-                    var newDataPacks = new ObservableCollection<DataPackInfo>();
-                    
-                    // 添加所有数据包文件夹
-                    foreach (var dataPackFolder in dataPackFolders)
-                    {
-                        newDataPacks.Add(new DataPackInfo(dataPackFolder));
-                    }
-                    
-                    // 添加所有数据包zip文件
-                    foreach (var dataPackZip in dataPackZips)
-                    {
-                        newDataPacks.Add(new DataPackInfo(dataPackZip));
-                    }
-                    
-                    // 替换整个DataPacks集合，只触发一次CollectionChanged事件
-                    DataPacks = newDataPacks;
-                }
-                else
-                {
-                    // 清空数据包列表
-                    DataPacks.Clear();
-                }
+                newDataPacks.Add(new DataPackInfo(dataPackFolder));
             }
+            
+            // 添加所有数据包zip文件
+            foreach (var dataPackZip in dataPackZips)
+            {
+                newDataPacks.Add(new DataPackInfo(dataPackZip));
+            }
+            
+            // 替换整个DataPacks集合，只触发一次CollectionChanged事件
+            DataPacks = newDataPacks;
         }
         else
         {
@@ -846,16 +936,33 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
         
         try
         {
-            // 删除地图文件夹
-            if (Directory.Exists(map.FilePath))
+            // 显示二次确认弹窗
+            var dialog = new ContentDialog
             {
-                Directory.Delete(map.FilePath, true);
+                Title = "确认删除",
+                Content = $"确定要删除地图 '{map.Name}' 吗？此操作不可恢复。",
+                PrimaryButtonText = "确定删除",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                // 使用WinRT API删除地图文件夹，更符合UWP/WinUI安全模型
+                if (Directory.Exists(map.FilePath))
+                {
+                    var folder = await StorageFolder.GetFolderFromPathAsync(map.FilePath);
+                    await folder.DeleteAsync(StorageDeleteOption.PermanentDelete);
+                }
+                
+                // 从列表中移除
+                Maps.Remove(map);
+                
+                StatusMessage = $"已删除地图: {map.Name}";
             }
-            
-            // 从列表中移除
-            Maps.Remove(map);
-            
-            StatusMessage = $"已删除地图: {map.Name}";
         }
         catch (Exception ex)
         {
@@ -865,6 +972,245 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
 
     #endregion
 
+    #region 拖放处理
+    
+    /// <summary>
+    /// 处理拖放文件
+    /// </summary>
+    /// <param name="storageItems">拖放的存储项</param>
+    public async Task HandleDragDropFilesAsync(IReadOnlyList<IStorageItem> storageItems)
+    {
+        if (storageItems == null || storageItems.Count == 0)
+        {
+            return;
+        }
+        
+        if (SelectedVersion == null)
+        {
+            StatusMessage = "请先选择一个版本";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            StatusMessage = "正在处理拖放文件...";
+            
+            int successCount = 0;
+            int errorCount = 0;
+            
+            foreach (var item in storageItems)
+            {
+                if (await ProcessDragDropItemAsync(item))
+                {
+                    successCount++;
+                }
+                else
+                {
+                    errorCount++;
+                }
+            }
+            
+            StatusMessage = $"拖放文件处理完成：成功 {successCount} 个，失败 {errorCount} 个";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"处理拖放文件失败：{ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    
+    /// <summary>
+    /// 处理单个拖放项
+    /// </summary>
+    /// <param name="item">拖放的存储项</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropItemAsync(IStorageItem item)
+    {
+        try
+        {
+            if (item is StorageFile file)
+            {
+                // 处理文件
+                return await ProcessDragDropFileAsync(file);
+            }
+            else if (item is StorageFolder folder)
+            {
+                // 处理文件夹
+                return await ProcessDragDropFolderAsync(folder);
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"处理文件 {item.Name} 失败：{ex.Message}";
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 处理单个拖放文件
+    /// </summary>
+    /// <param name="file">拖放的文件</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropFileAsync(StorageFile file)
+    {
+        string fileExtension = file.FileType.ToLower();
+        string folderType = string.Empty;
+        bool isSupported = false;
+        
+        // 根据文件类型确定目标文件夹
+        switch (fileExtension)
+        {
+            case ".jar":
+                // Mod文件
+                folderType = "mods";
+                isSupported = true;
+                break;
+            case ".zip":
+                // 检查zip文件是否为资源包、光影或数据包
+                // 这里简化处理，根据当前选中的Tab来判断
+                folderType = GetFolderTypeBySelectedTab();
+                isSupported = true;
+                break;
+            default:
+                // 不支持的文件类型
+                StatusMessage = $"不支持的文件类型：{fileExtension}";
+                return false;
+        }
+        
+        if (!isSupported)
+        {
+            StatusMessage = $"不支持的文件类型：{fileExtension}";
+            return false;
+        }
+        
+        // 获取目标文件夹路径
+        string targetFolderPath = GetVersionSpecificPath(folderType);
+        // 确保目标文件夹存在
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+        
+        // 复制文件到目标文件夹
+        string targetFilePath = Path.Combine(targetFolderPath, file.Name);
+        await file.CopyAsync(await StorageFolder.GetFolderFromPathAsync(targetFolderPath), file.Name, NameCollisionOption.ReplaceExisting);
+        
+        // 刷新对应类型的资源列表
+        await RefreshResourceListByFolderType(folderType);
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// 处理单个拖放文件夹
+    /// </summary>
+    /// <param name="folder">拖放的文件夹</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropFolderAsync(StorageFolder folder)
+    {
+        // 根据当前选中的Tab确定目标文件夹类型
+        string folderType = GetFolderTypeBySelectedTab();
+        
+        // 获取目标文件夹路径
+        string targetFolderPath = GetVersionSpecificPath(folderType);
+        // 确保目标文件夹存在
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+        
+        // 复制文件夹到目标文件夹
+        string targetFolderFullPath = Path.Combine(targetFolderPath, folder.Name);
+        await CopyFolderAsync(folder, await StorageFolder.GetFolderFromPathAsync(targetFolderPath));
+        
+        // 刷新对应类型的资源列表
+        await RefreshResourceListByFolderType(folderType);
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// 根据当前选中的Tab获取文件夹类型
+    /// </summary>
+    /// <returns>文件夹类型</returns>
+    private string GetFolderTypeBySelectedTab()
+    {
+        switch (SelectedTabIndex)
+        {
+            case 0: // Mod管理
+                return "mods";
+            case 1: // 光影管理
+                return "shaderpacks";
+            case 2: // 资源包管理
+                return "resourcepacks";
+            case 3: // 数据包管理
+                return "datapacks";
+            case 4: // 地图安装
+                return "saves";
+            default:
+                return "mods"; // 默认使用mods文件夹
+        }
+    }
+    
+    /// <summary>
+    /// 根据文件夹类型刷新对应类型的资源列表
+    /// </summary>
+    /// <param name="folderType">文件夹类型</param>
+    private async Task RefreshResourceListByFolderType(string folderType)
+    {
+        switch (folderType)
+        {
+            case "mods":
+                await LoadModsAsync();
+                break;
+            case "shaderpacks":
+                await LoadShadersAsync();
+                break;
+            case "resourcepacks":
+                await LoadResourcePacksAsync();
+                break;
+            case "datapacks":
+                await LoadDataPacksAsync();
+                break;
+            case "saves":
+                await LoadMapsAsync();
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 复制文件夹
+    /// </summary>
+    /// <param name="sourceFolder">源文件夹</param>
+    /// <param name="destinationFolder">目标文件夹</param>
+    private async Task CopyFolderAsync(StorageFolder sourceFolder, StorageFolder destinationFolder)
+    {
+        // 创建目标文件夹
+        var targetFolder = await destinationFolder.CreateFolderAsync(sourceFolder.Name, CreationCollisionOption.ReplaceExisting);
+        
+        // 复制文件
+        var files = await sourceFolder.GetFilesAsync();
+        foreach (var file in files)
+        {
+            await file.CopyAsync(targetFolder, file.Name, NameCollisionOption.ReplaceExisting);
+        }
+        
+        // 递归复制子文件夹
+        var subfolders = await sourceFolder.GetFoldersAsync();
+        foreach (var subfolder in subfolders)
+        {
+            await CopyFolderAsync(subfolder, targetFolder);
+        }
+    }
+    
+    #endregion
+    
     #region 通用方法
 
     /// <summary>
