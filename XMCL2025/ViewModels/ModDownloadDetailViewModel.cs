@@ -1,9 +1,15 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Controls;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
@@ -60,6 +66,25 @@ namespace XMCL2025.ViewModels
 
         [ObservableProperty]
         private string _downloadStatus = "";
+
+        // 整合包安装相关属性
+        [ObservableProperty]
+        private bool _isInstalling = false;
+
+        [ObservableProperty]
+        private bool _isModpackInstallDialogOpen = false;
+
+        [ObservableProperty]
+        private double _installProgress = 0;
+
+        [ObservableProperty]
+        private string _installProgressText = "0%";
+
+        [ObservableProperty]
+        private string _installStatus = "";
+
+        // 安装取消令牌源
+        private CancellationTokenSource _installCancellationTokenSource;
         
         // 项目类型：mod 或 resourcepack
         [ObservableProperty]
@@ -93,6 +118,11 @@ namespace XMCL2025.ViewModels
                     DownloadSectionText = "光影下载";
                     VersionSelectionTip = "灰色版本表示不兼容当前光影版本";
                     break;
+                case "modpack":
+                    SupportedLoadersText = "支持的加载器";
+                    DownloadSectionText = "整合包下载";
+                    VersionSelectionTip = "灰色版本表示不兼容当前整合包版本";
+                    break;
                 default:
                     SupportedLoadersText = "支持的加载器";
                     DownloadSectionText = "Mod下载";
@@ -122,15 +152,35 @@ namespace XMCL2025.ViewModels
         // 用于显示消息对话框
         public async Task ShowMessageAsync(string message)
         {
-            ContentDialog dialog = new ContentDialog
+            try
             {
-                Title = "提示",
-                Content = message,
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot
-            };
-            
-            await dialog.ShowAsync();
+                // 确保所有其他对话框已关闭
+                IsDownloadDialogOpen = false;
+                IsVersionSelectionDialogOpen = false;
+                IsModpackInstallDialogOpen = false;
+                IsInstalling = false; // 确保安装状态已重置
+                
+                // 等待足够长的时间，确保所有对话框完全关闭
+                // WinUI 3 需要时间来处理 ContentDialog 的关闭事件
+                await Task.Delay(200);
+                
+                // 创建并显示消息对话框
+                ContentDialog dialog = new ContentDialog
+                {
+                    Title = "提示",
+                    Content = message,
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                // 如果仍然遇到对话框冲突，记录错误但不崩溃
+                System.Diagnostics.Debug.WriteLine("显示消息对话框失败: " + ex.Message);
+                // 可以考虑使用其他方式显示消息，如状态栏通知
+            }
         }
 
         public ModDownloadDetailViewModel(ModrinthService modrinthService, IMinecraftVersionService minecraftVersionService)
@@ -324,10 +374,19 @@ namespace XMCL2025.ViewModels
 
         // 打开下载弹窗命令
         [RelayCommand]
-        public void OpenDownloadDialog(ModVersionViewModel modVersion)
+        public async Task OpenDownloadDialog(ModVersionViewModel modVersion)
         {
             SelectedModVersion = modVersion;
-            IsDownloadDialogOpen = true;
+            
+            // 如果是整合包，直接进入整合包安装流程，跳过普通下载弹窗
+            if (ProjectType == "modpack")
+            {
+                await InstallModpackAsync(modVersion);
+            }
+            else
+            {
+                IsDownloadDialogOpen = true;
+            }
         }
 
 
@@ -538,11 +597,28 @@ namespace XMCL2025.ViewModels
             DownloadStatus = "下载已取消";
         }
 
+        // 取消安装命令
+        [RelayCommand]
+        public void CancelInstall()
+        {
+            _installCancellationTokenSource?.Cancel();
+            IsInstalling = false;
+            InstallStatus = "安装已取消";
+            IsModpackInstallDialogOpen = false;
+        }
+
         [RelayCommand]
         public async Task DownloadModAsync(ModVersionViewModel modVersion)
         {
+            // 如果是整合包，使用整合包安装流程
+            if (ProjectType == "modpack")
+            {
+                await InstallModpackAsync(modVersion);
+                return;
+            }
+
             IsDownloading = true;
-        DownloadStatus = "正在准备下载...";
+            DownloadStatus = "正在准备下载...";
         
         try
         {
@@ -651,6 +727,9 @@ namespace XMCL2025.ViewModels
                 case "shader":
                     projectTypeText = "光影";
                     break;
+                case "modpack":
+                    projectTypeText = "整合包";
+                    break;
                 default:
                     projectTypeText = "Mod";
                     break;
@@ -665,6 +744,308 @@ namespace XMCL2025.ViewModels
             finally
             {
                 IsDownloading = false;
+            }
+        }
+
+        // 整合包安装方法
+        private async Task InstallModpackAsync(ModVersionViewModel modVersion)
+        {
+            IsInstalling = true;
+            IsModpackInstallDialogOpen = true;
+            InstallStatus = "正在准备整合包安装...";
+            InstallProgress = 0;
+            InstallProgressText = "0%";
+            _installCancellationTokenSource = new CancellationTokenSource();
+
+            try
+            {
+                if (modVersion == null)
+                {
+                    throw new Exception("未选择要安装的整合包版本");
+                }
+
+                string tempDir = string.Empty;
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+
+                try
+                {
+                    // 1. 下载.mrpack文件
+                    InstallStatus = "正在下载整合包...";
+                    tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    string mrpackPath = Path.Combine(tempDir, modVersion.FileName);
+                    Directory.CreateDirectory(tempDir);
+
+                    // 下载文件
+                    using (HttpClient client = new HttpClient())
+                    {
+                        using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                            long totalRead = 0;
+
+                            using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
+                            using (Stream fileStream = new FileStream(mrpackPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            {
+                                byte[] buffer = new byte[8192];
+                                int bytesRead;
+
+                                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _installCancellationTokenSource.Token)) > 0)
+                                {
+                                    await fileStream.WriteAsync(buffer, 0, bytesRead, _installCancellationTokenSource.Token);
+                                    totalRead += bytesRead;
+
+                                    // 更新安装进度（0%-30%用于下载）
+                                    InstallProgress = (double)totalRead / totalBytes * 30;
+                                    InstallProgressText = $"{InstallProgress:F1}%";
+                                }
+                            }
+                        }
+                    }
+
+                    InstallStatus = "下载完成，正在解压整合包...";
+                    InstallProgress = 30;
+                    InstallProgressText = "30%";
+
+                    // 2. 解压.mrpack文件
+                    string extractDir = Path.Combine(tempDir, "extract");
+                    Directory.CreateDirectory(extractDir);
+                    await Task.Run(() =>
+                    {
+                        using (ZipArchive archive = ZipFile.OpenRead(mrpackPath))
+                        {
+                            archive.ExtractToDirectory(extractDir);
+                        }
+                    }, _installCancellationTokenSource.Token);
+
+                    InstallStatus = "解压完成，正在解析整合包信息...";
+                    InstallProgress = 40;
+                    InstallProgressText = "40%";
+
+                    // 3. 解析modrinth.index.json文件
+                    string indexPath = Path.Combine(extractDir, "modrinth.index.json");
+                    if (!File.Exists(indexPath))
+                    {
+                        throw new Exception("整合包中缺少modrinth.index.json文件，无法安装");
+                    }
+
+                    string indexJson = await File.ReadAllTextAsync(indexPath, _installCancellationTokenSource.Token);
+                    dynamic indexData = JsonConvert.DeserializeObject(indexJson);
+
+                    // 4. 提取依赖信息
+                    string minecraftVersion = string.Empty;
+                    string modLoader = string.Empty;
+                    string modLoaderVersion = string.Empty;
+
+                    // 获取Minecraft版本
+                    if (indexData.dependencies != null && indexData.dependencies.minecraft != null)
+                    {
+                        minecraftVersion = indexData.dependencies.minecraft.ToString();
+                    }
+                    else
+                    {
+                        throw new Exception("整合包中缺少Minecraft版本依赖信息");
+                    }
+
+                    // 获取Mod Loader信息
+                    if (indexData.dependencies != null)
+                    {
+                        if (indexData.dependencies["fabric-loader"] != null)
+                        {
+                            modLoader = "fabric-loader";
+                            modLoaderVersion = indexData.dependencies["fabric-loader"].ToString();
+                        }
+                        else if (indexData.dependencies["forge"] != null)
+                        {
+                            modLoader = "forge";
+                            modLoaderVersion = indexData.dependencies["forge"].ToString();
+                        }
+                        else if (indexData.dependencies["neoforge"] != null)
+                        {
+                            modLoader = "neoforge";
+                            modLoaderVersion = indexData.dependencies["neoforge"].ToString();
+                        }
+                    }
+
+                    // 检查Mod Loader兼容性
+                    if (string.IsNullOrEmpty(modLoader))
+                    {
+                        throw new Exception("整合包中缺少Mod Loader依赖信息");
+                    }
+
+                    // 仅支持fabric-loader
+                    if (modLoader != "fabric-loader")
+                    {
+                        throw new Exception($"当前仅支持fabric-loader，不支持{modLoader}");
+                    }
+
+                    InstallStatus = $"正在下载Minecraft {minecraftVersion} 和 Fabric Loader {modLoaderVersion}...";
+                    InstallProgress = 50;
+                    InstallProgressText = "50%";
+
+                    // 5. 构建整合包版本名称
+                    // 修改为：{整合包名}-{MC版本ID}-{mod加载器名}
+                    string modpackName = ModName.Replace(" ", "-");
+                    string fabricVersionId = $"fabric-{minecraftVersion}-{modLoaderVersion}";
+                    // 提取mod加载器名称（从fabric-loader中提取fabric）
+                    string modLoaderName = modLoader.Split('-')[0]; // 从fabric-loader中提取fabric
+                    string modpackVersionId = $"{modpackName}-{minecraftVersion}-{modLoaderName}";
+
+                    // 6. 下载Fabric版本
+                    await _minecraftVersionService.DownloadModLoaderVersionAsync(
+                        minecraftVersion, "Fabric", modLoaderVersion, minecraftPath, progress =>
+                        {
+                            // 更新进度（50%-80%用于版本下载）
+                            InstallProgress = 50 + (progress / 100) * 30;
+                            InstallProgressText = $"{InstallProgress:F1}%";
+                        }, _installCancellationTokenSource.Token);
+
+                    InstallStatus = "版本下载完成，正在部署整合包文件...";
+                    InstallProgress = 80;
+                    InstallProgressText = "80%";
+
+                    string versionsDir = Path.Combine(minecraftPath, "versions");
+                    string fabricVersionDir = Path.Combine(versionsDir, fabricVersionId);
+                    string modpackVersionDir = Path.Combine(versionsDir, modpackVersionId);
+
+                    // 确保整合包版本目录存在
+                    Directory.CreateDirectory(modpackVersionDir);
+
+                    // 7. 复制overrides目录内容到版本目录
+                    string overridesDir = Path.Combine(extractDir, "overrides");
+                    if (Directory.Exists(overridesDir))
+                    {
+                        await Task.Run(() =>
+                        {
+                            CopyDirectory(overridesDir, modpackVersionDir);
+                        }, _installCancellationTokenSource.Token);
+                    }
+
+                    // 8. 复制fabric版本的JSON文件并重命名
+                    string fabricJsonPath = Path.Combine(fabricVersionDir, $"{fabricVersionId}.json");
+                    string modpackJsonPath = Path.Combine(modpackVersionDir, $"{modpackVersionId}.json");
+                    string modpackJarPath = Path.Combine(modpackVersionDir, $"{modpackVersionId}.jar");
+
+                    if (File.Exists(fabricJsonPath))
+                    {
+                        // 读取Fabric JSON并修改ID
+                        string fabricJson = await File.ReadAllTextAsync(fabricJsonPath, _installCancellationTokenSource.Token);
+                        dynamic fabricData = JsonConvert.DeserializeObject(fabricJson);
+                        
+                        // 修改整合包版本ID
+                        fabricData.id = modpackVersionId;
+                        
+                        // 修改jar字段，指向整合包专属的JAR文件
+                        fabricData.jar = modpackVersionId;
+                        
+                        string modpackJson = JsonConvert.SerializeObject(fabricData, Formatting.Indented);
+                        await File.WriteAllTextAsync(modpackJsonPath, modpackJson, _installCancellationTokenSource.Token);
+                    }
+                    else
+                    {
+                        throw new Exception("Fabric版本JSON文件不存在");
+                    }
+
+                    // 9. 直接下载JAR文件到整合包版本目录
+                    // 使用原始的JAR下载逻辑，直接从Mojang服务器下载
+                    // modpackJarPath变量已在第924行定义
+                    
+                    // 获取Minecraft版本信息，包含JAR下载URL和SHA1
+                    var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(minecraftVersion, minecraftPath);
+                    
+                    if (versionInfo?.Downloads?.Client != null)
+                    {
+                        var clientDownload = versionInfo.Downloads.Client;
+                        
+                        // 更新安装状态
+                        InstallStatus = $"正在下载Minecraft {minecraftVersion} JAR文件...";
+                        
+                        // 直接下载JAR文件到整合包版本目录
+                        using (var response = await new HttpClient().GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            
+                            using (var stream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
+                            using (var fileStream = new FileStream(modpackJarPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            {
+                                await stream.CopyToAsync(fileStream, 81920, _installCancellationTokenSource.Token);
+                            }
+                        }
+                        
+                        // 验证JAR文件的SHA1哈希值
+                        var downloadedBytes = await File.ReadAllBytesAsync(modpackJarPath, _installCancellationTokenSource.Token);
+                        using (var sha1 = System.Security.Cryptography.SHA1.Create())
+                        {
+                            var hashBytes = sha1.ComputeHash(downloadedBytes);
+                            var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+                            
+                            if (hashString != clientDownload.Sha1)
+                            {
+                                File.Delete(modpackJarPath);
+                                throw new Exception($"JAR文件SHA1哈希验证失败，下载的文件可能已损坏。");
+                            }
+                        }
+                    }
+
+                    InstallStatus = "整合包安装完成！";
+                    InstallProgress = 100;
+                    InstallProgressText = "100%";
+                    
+                    // 先关闭安装弹窗，再显示成功消息
+                    IsModpackInstallDialogOpen = false;
+                    await Task.Delay(100); // 等待弹窗完全关闭
+                    await ShowMessageAsync($"整合包 '{ModName}' 安装成功！");
+                }
+                finally
+                {
+                    // 清理临时文件
+                    if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+                    {
+                        Directory.Delete(tempDir, true);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                InstallStatus = "安装已取消";
+                IsModpackInstallDialogOpen = false;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+                InstallStatus = "安装失败！";
+                
+                // 先关闭安装弹窗，再显示错误消息
+                IsModpackInstallDialogOpen = false;
+                await Task.Delay(100); // 等待弹窗完全关闭
+                await ShowMessageAsync($"整合包安装失败: {ex.Message}");
+            }
+            finally
+            {
+                IsInstalling = false;
+                IsModpackInstallDialogOpen = false;
+                _installCancellationTokenSource.Dispose();
+            }
+        }
+
+        // 复制目录的辅助方法
+        private void CopyDirectory(string sourceDir, string destinationDir)
+        {
+            // 创建目标目录
+            Directory.CreateDirectory(destinationDir);
+
+            // 获取源目录中的所有文件
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                string destFile = Path.Combine(destinationDir, Path.GetFileName(file));
+                File.Copy(file, destFile, true);
+            }
+
+            // 递归复制子目录
+            foreach (string subDir in Directory.GetDirectories(sourceDir))
+            {
+                string destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
+                CopyDirectory(subDir, destSubDir);
             }
         }
     }

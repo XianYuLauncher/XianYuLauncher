@@ -853,8 +853,10 @@ public partial class 启动ViewModel : ObservableRecipient
                 int addedCount = 0;
                 int skippedCount = 0;
                 
-                // 判断是否为Fabric版本
-                bool isFabricVersion = SelectedVersion.StartsWith("fabric-");
+                // 判断是否为Fabric相关版本（包括Fabric原生版本和整合包版本）
+                bool isFabricVersion = SelectedVersion.StartsWith("fabric-") || 
+                                      (SelectedVersion.Contains("-fabric") && !SelectedVersion.StartsWith("fabric-") && versionInfo.Libraries != null && 
+                                       versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
                 
                 // 如果是Fabric版本，跟踪ASM库的版本
                 Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();

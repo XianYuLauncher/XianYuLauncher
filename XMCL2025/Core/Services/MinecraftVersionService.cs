@@ -353,7 +353,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     }
 
     /// <summary>
-    /// 下载Mod Loader版本
+    /// 下载Mod Loader版本（接口实现）
     /// </summary>
     /// <param name="minecraftVersionId">Minecraft版本ID</param>
     /// <param name="modLoaderType">Mod Loader类型（如Fabric、Forge等）</param>
@@ -361,6 +361,20 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
     public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null)
+    {
+        await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 下载Mod Loader版本（带取消令牌）
+    /// </summary>
+    /// <param name="minecraftVersionId">Minecraft版本ID</param>
+    /// <param name="modLoaderType">Mod Loader类型（如Fabric、Forge等）</param>
+    /// <param name="modLoaderVersion">Mod Loader版本</param>
+    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="progressCallback">进度回调</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -380,10 +394,10 @@ public class MinecraftVersionService : IMinecraftVersionService
             switch (modLoaderType)
             {
                 case "Fabric":
-                    await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback);
+                    await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken);
                     break;
                 case "NeoForge":
-                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback);
+                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken);
                     break;
                 case "Forge":
                 case "Quilt":
@@ -432,7 +446,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载Fabric版本
     /// </summary>
-    private async Task DownloadFabricVersionAsync(string minecraftVersionId, string fabricVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback)
+    private async Task DownloadFabricVersionAsync(string minecraftVersionId, string fabricVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1795,7 +1809,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载NeoForge版本
     /// </summary>
-    private async Task DownloadNeoForgeVersionAsync(string minecraftVersionId, string neoforgeVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback)
+    private async Task DownloadNeoForgeVersionAsync(string minecraftVersionId, string neoforgeVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default)
     {
         try
         {
