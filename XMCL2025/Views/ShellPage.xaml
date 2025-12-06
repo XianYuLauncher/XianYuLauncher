@@ -48,7 +48,7 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe768;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_资源下载" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.ResourceDownloadViewModel">
+                <NavigationViewItem x:Uid="Shell_资源下载" Content="下载" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.ResourceDownloadViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
                     </NavigationViewItem.Icon>

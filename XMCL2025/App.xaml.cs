@@ -101,6 +101,9 @@ public partial class App : Application
             
             // Microsoft Auth Service
             services.AddHttpClient<MicrosoftAuthService>();
+            
+            // NeoForge Service
+            services.AddHttpClient<NeoForgeService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();

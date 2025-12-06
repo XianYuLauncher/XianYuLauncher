@@ -1,4 +1,4 @@
-using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using XMCL2025.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XMCL2025.Core.Models; using System.Linq; using System.Text.RegularExpressions;
+using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XMCL2025.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XMCL2025.Core.Models; using System.Linq; using System.Text.RegularExpressions;
 
 namespace XMCL2025.Core.Services;
 
@@ -296,16 +296,26 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             if (versionInfo?.Downloads?.Client == null)
             {
-                throw new Exception($"Client download information not found for version {versionId}");
+                throw new Exception($"Client download information not found for version {versionId}. This version may not be available for download.");
             }
 
             // 下载JAR文件
             var clientDownload = versionInfo.Downloads.Client;
             var jarPath = Path.Combine(targetDirectory, $"{versionId}.jar");
 
+            // 创建目标目录（如果不存在）
+            Directory.CreateDirectory(targetDirectory);
+
             using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
             {
-                response.EnsureSuccessStatusCode();
+                try
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    throw new Exception($"Failed to download JAR file for version {versionId}. HTTP Error: {httpEx.StatusCode} - {httpEx.Message}. URL: {clientDownload.Url}", httpEx);
+                }
                 
                 using (var stream = await response.Content.ReadAsStreamAsync())
                 using (var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -324,7 +334,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 if (hashString != clientDownload.Sha1)
                 {
                     File.Delete(jarPath);
-                    throw new Exception($"SHA1 hash mismatch for version {versionId} JAR file");
+                    throw new Exception($"SHA1 hash mismatch for version {versionId} JAR file. Expected: {clientDownload.Sha1}, Got: {hashString}. The downloaded file may be corrupted.");
                 }
             }
 
@@ -334,7 +344,11 @@ public class MinecraftVersionService : IMinecraftVersionService
         }
         catch (Exception ex)
         {
-            throw new Exception($"Failed to download version {versionId}", ex);
+            if (ex.InnerException != null)
+            {
+                throw new Exception($"Failed to download version {versionId}: {ex.Message}. Inner error: {ex.InnerException.Message}", ex);
+            }
+            throw new Exception($"Failed to download version {versionId}: {ex.Message}", ex);
         }
     }
 
@@ -368,8 +382,10 @@ public class MinecraftVersionService : IMinecraftVersionService
                 case "Fabric":
                     await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback);
                     break;
-                case "Forge":
                 case "NeoForge":
+                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback);
+                    break;
+                case "Forge":
                 case "Quilt":
                     // 这些Mod Loader的实现将在后续添加
                     await ShowNotImplementedMessageAsync(modLoaderType);
@@ -387,7 +403,29 @@ public class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogError(ex, "下载Mod Loader版本失败: {ModLoaderType} {ModLoaderVersion} for Minecraft {MinecraftVersion}", 
                 modLoaderType, modLoaderVersion, minecraftVersionId);
-            throw new Exception($"下载{modLoaderType}版本失败: {ex.Message}", ex);
+            
+            // 检查是否已经是详细错误信息，如果是则直接抛出
+            // 否则，添加额外的上下文信息
+            if (ex.Message.Contains("内部错误:") || ex.Message.Contains("HTTP状态码:") || ex.Message.Contains("建议:"))
+            {
+                // 已经是详细错误信息，直接抛出
+                throw;
+            }
+            else
+            {
+                // 提供更详细的错误信息
+                string detailedMessage = $"下载{modLoaderType}版本失败: {minecraftVersionId} - {modLoaderType} {modLoaderVersion}\n" +
+                                        $"错误信息: {ex.Message}\n";
+                if (ex.InnerException != null)
+                {
+                    detailedMessage += $"内部错误: {ex.InnerException.Message}\n";
+                }
+                
+                // 添加建议
+                detailedMessage += "\n建议: 请检查您的网络连接，确保版本号正确，或者尝试使用其他版本。";
+                
+                throw new Exception(detailedMessage, ex);
+            }
         }
     }
 
@@ -403,12 +441,52 @@ public class MinecraftVersionService : IMinecraftVersionService
             // 1. 获取原版Minecraft版本信息
             _logger.LogInformation("开始获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
             string minecraftDirectory = Path.GetDirectoryName(versionsDirectory);
-            var originalVersionInfo = await GetVersionInfoAsync(minecraftVersionId, minecraftDirectory);
+            
+            // 直接从Mojang API获取完整的原版版本信息
+            VersionInfo originalVersionInfo = null;
+            string versionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
+            
+            using (var manifestResponse = await _httpClient.GetAsync(versionManifestUrl))
+            {
+                manifestResponse.EnsureSuccessStatusCode();
+                var manifestContent = await manifestResponse.Content.ReadAsStringAsync();
+                dynamic manifest = JsonConvert.DeserializeObject(manifestContent);
+                
+                // 找到目标版本的url
+                string versionJsonUrl = null;
+                foreach (var version in manifest.versions)
+                {
+                    if (version.id != null && version.id.ToString() == minecraftVersionId)
+                    {
+                        versionJsonUrl = version.url?.ToString();
+                        break;
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(versionJsonUrl))
+                {
+                    throw new Exception($"无法找到Minecraft版本 {minecraftVersionId} 的URL");
+                }
+                
+                // 获取并解析原版version.json
+                using (var versionResponse = await _httpClient.GetAsync(versionJsonUrl))
+                {
+                    versionResponse.EnsureSuccessStatusCode();
+                    var versionContent = await versionResponse.Content.ReadAsStringAsync();
+                    originalVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionContent);
+                }
+            }
             
             // 检查originalVersionInfo是否为null
             if (originalVersionInfo == null)
             {
                 throw new Exception($"获取原版Minecraft版本信息失败: {minecraftVersionId}");
+            }
+            
+            // 检查Downloads.Client是否存在
+            if (originalVersionInfo.Downloads == null || originalVersionInfo.Downloads.Client == null)
+            {
+                throw new Exception($"Client download information not found for version {minecraftVersionId}. This version may not be available for download.");
             }
 
             // 2. 使用新的API获取完整的Fabric配置信息
@@ -1712,5 +1790,449 @@ public class MinecraftVersionService : IMinecraftVersionService
             Console.WriteLine($"Error ensuring asset index: {ex.Message}");
             throw;
         }
+    }
+    
+    /// <summary>
+    /// 下载NeoForge版本
+    /// </summary>
+    private async Task DownloadNeoForgeVersionAsync(string minecraftVersionId, string neoforgeVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback)
+    {
+        try
+        {
+            _logger.LogInformation("开始下载NeoForge版本: {NeoForgeVersion} for Minecraft {MinecraftVersion}", neoforgeVersion, minecraftVersionId);
+            
+            // 1. 获取原版Minecraft版本信息
+            _logger.LogInformation("开始获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            string minecraftDirectory = Path.GetDirectoryName(versionsDirectory);
+            
+            // 直接从Mojang API获取完整的原版版本信息
+            VersionInfo originalVersionInfo = null;
+            string versionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
+            
+            using (var manifestResponse = await _httpClient.GetAsync(versionManifestUrl))
+            {
+                manifestResponse.EnsureSuccessStatusCode();
+                var manifestContent = await manifestResponse.Content.ReadAsStringAsync();
+                dynamic manifest = JsonConvert.DeserializeObject(manifestContent);
+                
+                // 找到目标版本的url
+                string versionJsonUrl = null;
+                if (manifest?.versions != null)
+                {
+                    foreach (var version in manifest.versions)
+                    {
+                        if (version?.id != null && version.id.ToString() == minecraftVersionId)
+                        {
+                            versionJsonUrl = version.url?.ToString();
+                            break;
+                        }
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(versionJsonUrl))
+                {
+                    throw new Exception($"无法找到Minecraft版本 {minecraftVersionId} 的URL");
+                }
+                
+                // 获取并解析原版version.json
+                using (var versionResponse = await _httpClient.GetAsync(versionJsonUrl))
+                {
+                    versionResponse.EnsureSuccessStatusCode();
+                    var versionContent = await versionResponse.Content.ReadAsStringAsync();
+                    originalVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionContent);
+                }
+            }
+            
+            // 检查originalVersionInfo是否为null
+            if (originalVersionInfo == null)
+            {
+                throw new Exception($"获取原版Minecraft版本信息失败: {minecraftVersionId}");
+            }
+            
+            // 检查Downloads.Client是否存在
+            if (originalVersionInfo.Downloads == null || originalVersionInfo.Downloads.Client == null)
+            {
+                throw new Exception($"Client download information not found for version {minecraftVersionId}. This version may not be available for download.");
+            }
+            
+            // 2. 创建NeoForge版本目录并直接下载原版文件
+            _logger.LogInformation("创建NeoForge版本目录");
+            string neoforgeVersionId = $"neoforge-{minecraftVersionId}-{neoforgeVersion}";
+            string neoforgeVersionDirectory = Path.Combine(versionsDirectory, neoforgeVersionId);
+            Directory.CreateDirectory(neoforgeVersionDirectory);
+            _logger.LogInformation("已创建NeoForge版本目录: {NeoforgeVersionDirectory}", neoforgeVersionDirectory);
+            
+            // 直接下载原版核心文件到NeoForge目录
+            _logger.LogInformation("直接下载原版Minecraft核心文件到NeoForge目录");
+            if (originalVersionInfo?.Downloads?.Client == null)
+            {
+                throw new Exception($"Client download information not found for version {minecraftVersionId}. This version may not be available for download.");
+            }
+            
+            var clientDownload = originalVersionInfo.Downloads.Client;
+            string neoforgeJarPath = Path.Combine(neoforgeVersionDirectory, $"{neoforgeVersionId}.jar");
+            
+            // 下载原版jar文件，直接保存为NeoForge命名格式
+            using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
+            {
+                try
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    throw new Exception($"Failed to download JAR file for version {minecraftVersionId}. HTTP Error: {httpEx.StatusCode} - {httpEx.Message}. URL: {clientDownload.Url}", httpEx);
+                }
+                
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                using (var fileStream = new FileStream(neoforgeJarPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await stream.CopyToAsync(fileStream);
+                }
+            }
+            
+            // 验证JAR文件的SHA1哈希
+            var downloadedBytes = await File.ReadAllBytesAsync(neoforgeJarPath);
+            using (var sha1 = System.Security.Cryptography.SHA1.Create())
+            {
+                var hashBytes = sha1.ComputeHash(downloadedBytes);
+                var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+                
+                if (hashString != clientDownload.Sha1)
+                {
+                    File.Delete(neoforgeJarPath);
+                    throw new Exception($"SHA1 hash mismatch for version {minecraftVersionId} JAR file. Expected: {clientDownload.Sha1}, Got: {hashString}. The downloaded file may be corrupted.");
+                }
+            }
+            
+            progressCallback?.Invoke(20); // 20% 进度用于原版文件下载
+            
+            // 3. 下载NeoForge安装器
+            _logger.LogInformation("开始下载NeoForge安装器");
+            string neoforgeDownloadUrl = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforgeVersion}/neoforge-{neoforgeVersion}-installer.jar";
+            string cacheDirectory = Path.Combine(_fileService.GetAppDataPath(), "cache", "neoforge");
+            Directory.CreateDirectory(cacheDirectory);
+            string installerPath = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-installer.jar");
+            
+            // 确保在下载前清理旧文件（如果存在）
+            if (File.Exists(installerPath))
+            {
+                try
+                {
+                    File.Delete(installerPath);
+                    _logger.LogInformation("已删除旧的安装器文件: {InstallerPath}", installerPath);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "无法删除旧的安装器文件: {InstallerPath}，将使用新文件名", installerPath);
+                    // 使用带有时间戳的新文件名避免冲突
+                    installerPath = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-installer-{DateTime.Now.Ticks}.jar");
+                }
+            }
+            
+            // 下载安装器
+            await DownloadFileAsync(neoforgeDownloadUrl, installerPath, (progress) => {
+                double totalProgress = 20 + (progress * 30 / 100); // 20% - 50% 进度用于安装器下载
+                progressCallback?.Invoke(totalProgress);
+            });
+            progressCallback?.Invoke(50); // 50% 进度用于安装器下载完成
+            
+            // 4. 拆包installer.jar
+            _logger.LogInformation("开始拆包NeoForge安装器");
+            string extractDirectory = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-{DateTime.Now.Ticks}");
+            Directory.CreateDirectory(extractDirectory);
+            
+            try
+            {
+                // 提取关键文件
+                ExtractNeoForgeInstallerFiles(installerPath, extractDirectory);
+            }
+            finally
+            {
+                // 提取完成后删除安装器文件，释放资源
+                if (File.Exists(installerPath))
+                {
+                    try
+                    {
+                        File.Delete(installerPath);
+                        _logger.LogInformation("已删除临时安装器文件: {InstallerPath}", installerPath);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogWarning(ex, "无法删除临时安装器文件: {InstallerPath}", installerPath);
+                    }
+                }
+            }
+            progressCallback?.Invoke(60); // 60% 进度用于拆包完成
+            
+            // 5. 解析install_profile.json
+            _logger.LogInformation("开始解析install_profile.json");
+            string installProfilePath = Path.Combine(extractDirectory, "install_profile.json");
+            string installProfileContent = File.ReadAllText(installProfilePath);
+            
+            // 使用JObject而不是dynamic类型，避免运行时绑定错误
+            JObject installProfile = JObject.Parse(installProfileContent);
+            
+            // 验证MC_SLIM字段
+            if (!installProfile.TryGetValue("MC_SLIM", StringComparison.OrdinalIgnoreCase, out JToken mcSlimToken))
+            {
+                _logger.LogWarning("install_profile.json中未找到MC_SLIM字段，使用默认值");
+            }
+            else
+            {
+                string mcSlimField = mcSlimToken.ToString();
+                _logger.LogInformation("验证MC_SLIM字段: {McSlimField}", mcSlimField);
+            }
+            
+            // 6. 合并版本JSON
+            _logger.LogInformation("开始合并版本JSON");
+            string neoforgeJsonPath = Path.Combine(extractDirectory, "version.json");
+            
+            // 直接使用已经获取到的原版VersionInfo对象，转换为JSON字符串
+            string originalJsonContent = JsonConvert.SerializeObject(originalVersionInfo);
+            
+            string neoforgeJsonContent = File.ReadAllText(neoforgeJsonPath);
+            
+            var originalJson = JsonConvert.DeserializeObject<VersionInfo>(originalJsonContent);
+            var neoforgeJson = JsonConvert.DeserializeObject<VersionInfo>(neoforgeJsonContent);
+            
+            // 合并JSON
+            var mergedJson = MergeVersionJson(originalJson, neoforgeJson);
+            progressCallback?.Invoke(80); // 80% 进度用于JSON合并完成
+            
+            // 7. 保存合并后的JSON文件
+            _logger.LogInformation("开始保存合并后的JSON文件");
+            // 目录已在流程早期创建，直接使用
+            string mergedJsonPath = Path.Combine(neoforgeVersionDirectory, $"{neoforgeVersionId}.json");
+            
+            // 保存合并后的JSON
+            File.WriteAllText(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
+            
+            // 8. JAR文件已经直接下载到NeoForge目录，不需要复制操作
+            
+            // 清理临时提取目录
+            try
+            {
+                Directory.Delete(extractDirectory, true);
+                _logger.LogInformation("已清理临时提取目录: {ExtractDirectory}", extractDirectory);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "无法清理临时提取目录: {ExtractDirectory}", extractDirectory);
+            }
+            
+            progressCallback?.Invoke(100); // 100% 进度用于完成
+            _logger.LogInformation("NeoForge版本创建完成: {NeoForgeVersionId}", neoforgeVersionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载NeoForge版本失败: {NeoForgeVersion} for Minecraft {MinecraftVersion}", neoforgeVersion, minecraftVersionId);
+            
+            // 构建详细的错误信息
+            string detailedMessage = $"下载NeoForge版本失败: {neoforgeVersion} for Minecraft {minecraftVersionId}\n" +
+                                    $"错误信息: {ex.Message}\n";
+            
+            // 添加内部异常信息（如果有）
+            if (ex.InnerException != null)
+            {
+                detailedMessage += $"内部错误: {ex.InnerException.Message}\n";
+            }
+            
+            // 添加建议
+            detailedMessage += "\n建议: ";
+            if (ex.Message.Contains("404") || ex.Message.Contains("not found"))
+            {
+                detailedMessage += "请检查NeoForge版本是否存在，或者尝试使用其他版本。";
+            }
+            else if (ex.Message.Contains("network") || ex.Message.Contains("timeout"))
+            {
+                detailedMessage += "请检查您的网络连接，确保网络畅通，然后重试。";
+            }
+            else if (ex.Message.Contains("permission") || ex.Message.Contains("access denied"))
+            {
+                detailedMessage += "请检查应用程序的文件访问权限，确保有足够的权限写入文件。";
+            }
+            else
+            {
+                detailedMessage += "请检查日志文件获取更多详细信息，或者尝试重新下载。";
+            }
+            
+            // 抛出带有详细信息的新异常
+            throw new Exception(detailedMessage, ex);
+        }
+    }
+    
+    /// <summary>
+    /// 下载文件（通用方法）
+    /// </summary>
+    private async Task DownloadFileAsync(string url, string targetPath, Action<double> progressCallback = null)
+    {
+        try
+        {
+            _logger.LogInformation("开始下载文件: {Url} to {TargetPath}", url, targetPath);
+            
+            // 发送HTTP请求
+            using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+            {
+                try
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    string statusCode = response.StatusCode.ToString();
+                    string reasonPhrase = response.ReasonPhrase ?? "Unknown reason";
+                    string errorMessage = $"下载文件失败: {url}\nHTTP状态码: {statusCode}\n错误原因: {reasonPhrase}\n详细信息: {httpEx.Message}";
+                    _logger.LogError(httpEx, errorMessage);
+                    throw new Exception(errorMessage, httpEx);
+                }
+                
+                // 获取文件总大小
+                long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                long downloadedBytes = 0;
+                
+                // 确保目标目录存在
+                string targetDirectory = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDirectory))
+                {
+                    Directory.CreateDirectory(targetDirectory);
+                }
+                
+                // 读取响应内容
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    var buffer = new byte[8192];
+                    int bytesRead;
+                    
+                    // 下载文件并报告进度
+                    while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead);
+                        downloadedBytes += bytesRead;
+                        
+                        // 计算进度
+                        if (totalBytes > 0)
+                        {
+                            double progress = (double)downloadedBytes / totalBytes * 100;
+                            progressCallback?.Invoke(progress);
+                        }
+                    }
+                }
+            }
+            
+            _logger.LogInformation("文件下载完成: {TargetPath}", targetPath);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "下载文件失败: {Url}", url);
+            throw; // 已经在上面处理过，直接抛出
+        }
+        catch (IOException ex)
+        {
+            string errorMessage = $"保存文件失败: {targetPath}\n请检查磁盘空间和写入权限\n详细信息: {ex.Message}";
+            _logger.LogError(ex, errorMessage);
+            throw new Exception(errorMessage, ex);
+        }
+        catch (Exception ex)
+        {
+            string errorMessage = $"下载文件时发生错误: {url}\n详细信息: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\n内部错误: {ex.InnerException.Message}";
+            }
+            _logger.LogError(ex, errorMessage);
+            throw new Exception(errorMessage, ex);
+        }
+    }
+    
+    /// <summary>
+    /// 提取NeoForge安装器文件
+    /// </summary>
+    private void ExtractNeoForgeInstallerFiles(string installerPath, string extractDirectory)
+    {
+        try
+        {
+            _logger.LogInformation("开始提取NeoForge安装器文件: {InstallerPath} to {ExtractDirectory}", installerPath, extractDirectory);
+            
+            using (var archive = ZipFile.OpenRead(installerPath))
+            {
+                // 提取install_profile.json
+                ExtractFileFromArchive(archive, "install_profile.json", extractDirectory);
+                
+                // 提取version.json
+                ExtractFileFromArchive(archive, "version.json", extractDirectory);
+                
+                // 提取data/client.lzma
+                string dataDirectory = Path.Combine(extractDirectory, "data");
+                Directory.CreateDirectory(dataDirectory);
+                ExtractFileFromArchive(archive, "data/client.lzma", dataDirectory);
+            }
+            
+            _logger.LogInformation("NeoForge安装器文件提取完成");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "提取NeoForge安装器文件失败: {InstallerPath}", installerPath);
+            throw new Exception($"提取NeoForge安装器文件失败: {installerPath}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 从ZIP包中提取文件
+    /// </summary>
+    private void ExtractFileFromArchive(ZipArchive archive, string entryName, string destinationPath)
+    {
+        var entry = archive.GetEntry(entryName);
+        if (entry == null)
+        {
+            throw new Exception($"未找到ZIP条目: {entryName}");
+        }
+        
+        string fullDestinationPath = Path.Combine(destinationPath, Path.GetFileName(entryName));
+        entry.ExtractToFile(fullDestinationPath, true);
+        _logger.LogInformation("提取文件: {EntryName} to {FullDestinationPath}", entryName, fullDestinationPath);
+    }
+    
+    /// <summary>
+    /// 合并版本JSON
+    /// </summary>
+    private VersionInfo MergeVersionJson(VersionInfo original, VersionInfo neoforge)
+    {
+        _logger.LogInformation("开始合并版本JSON");
+        
+        // 确保输入参数不为null
+        if (original == null || neoforge == null)
+        {
+            throw new ArgumentNullException(original == null ? nameof(original) : nameof(neoforge));
+        }
+        
+        // 构建合并后的JSON
+        var merged = new VersionInfo
+        {
+            Id = neoforge.Id ?? "",
+            Type = neoforge.Type ?? "",
+            Time = neoforge.Time ?? "",
+            ReleaseTime = neoforge.ReleaseTime ?? "",
+            Url = original.Url ?? "",
+            InheritsFrom = original.InheritsFrom ?? original.Id ?? "",
+            MainClass = neoforge.MainClass ?? "",
+            Arguments = neoforge.Arguments,
+            AssetIndex = original.AssetIndex,
+            Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id ?? "",
+            Downloads = original.Downloads, // 使用原版下载信息
+            Libraries = new List<Library>(original.Libraries ?? new List<Library>()),
+            JavaVersion = neoforge.JavaVersion ?? original.JavaVersion
+        };
+        
+        // 追加NeoForge的依赖库
+        if (neoforge.Libraries != null)
+        {
+            merged.Libraries.AddRange(neoforge.Libraries);
+            _logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge.Libraries.Count);
+        }
+        
+        _logger.LogInformation("版本JSON合并完成");
+        return merged;
     }
 }
