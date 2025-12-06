@@ -36,12 +36,31 @@ namespace XMCL2025.Views
                 {
                     await DownloadDialog.ShowAsync();
                 }
+                else
+                {
+                    DownloadDialog.Hide();
+                }
             }
             else if (e.PropertyName == nameof(ViewModel.IsVersionSelectionDialogOpen))
             {
                 if (ViewModel.IsVersionSelectionDialogOpen)
                 {
                     await VersionSelectionDialog.ShowAsync();
+                }
+                else
+                {
+                    VersionSelectionDialog.Hide();
+                }
+            }
+            else if (e.PropertyName == nameof(ViewModel.IsModpackInstallDialogOpen))
+            {
+                if (ViewModel.IsModpackInstallDialogOpen)
+                {
+                    await ModpackInstallDialog.ShowAsync();
+                }
+                else
+                {
+                    ModpackInstallDialog.Hide();
                 }
             }
         }
@@ -157,6 +176,12 @@ namespace XMCL2025.Views
         private void VersionSelectionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             ViewModel.IsVersionSelectionDialogOpen = false;
+        }
+
+        // 整合包安装弹窗 - 取消按钮点击事件
+        private void ModpackInstallDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.CancelInstallCommand.Execute(null);
         }
     }
 }

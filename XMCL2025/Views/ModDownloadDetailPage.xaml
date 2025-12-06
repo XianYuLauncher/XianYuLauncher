@@ -96,6 +96,27 @@
                 <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.VersionSelectionTip, Mode=OneWay}" />
             </StackPanel>
         </ContentDialog>
+
+        <!-- 整合包安装进度弹窗 -->
+        <ContentDialog
+            x:Name="ModpackInstallDialog"
+            Title="整合包安装中"
+            CloseButtonText="取消"
+            IsPrimaryButtonEnabled="False"
+            IsSecondaryButtonEnabled="False"
+            DefaultButton="None"
+            CloseButtonClick="ModpackInstallDialog_CloseButtonClick">
+            <StackPanel Spacing="16" Width="400">
+                <!-- 安装状态文本 -->
+                <TextBlock FontSize="16" Text="{x:Bind ViewModel.InstallStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />
+                
+                <!-- 进度条 -->
+                <ProgressBar Value="{x:Bind ViewModel.InstallProgress, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
+                
+                <!-- 进度百分比文本 -->
+                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.InstallProgressText, Mode=OneWay}" HorizontalTextAlignment="Center" />
+            </StackPanel>
+        </ContentDialog>
         <!-- 顶部导航栏 -->
         <Grid Padding="0,16,0,0">
             <Button Content="&lt; 返回" 

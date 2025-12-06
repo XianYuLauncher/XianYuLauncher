@@ -18,6 +18,7 @@ public interface IMinecraftVersionService
     
     // Mod Loader相关方法
     Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null);
+    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, System.Threading.CancellationToken cancellationToken = default);
     
     // 获取已安装的Minecraft版本
     Task<List<string>> GetInstalledVersionsAsync(string minecraftDirectory = null);
