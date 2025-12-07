@@ -131,16 +131,7 @@
                 Margin="0,12,0,0"
                 Visibility="Collapsed" />
             
-            <!-- 微软正版登录测试按钮 -->
-            <Button 
-                x:Name="MicrosoftAuthTestButton"
-                Content="微软正版登录测试"
-                Command="{x:Bind ViewModel.TestMicrosoftAuthCommand}"
-                HorizontalAlignment="Stretch" 
-                Height="40"
-                FontSize="14"
-                Margin="0,16,0,0"
-                Visibility="Collapsed" />
+
 
             <!-- 下载进度条 -->
             <ProgressBar 

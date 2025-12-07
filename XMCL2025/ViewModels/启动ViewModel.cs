@@ -1090,7 +1090,7 @@ public partial class 启动ViewModel : ObservableRecipient
                         // 替换占位符
                         string processedArg = argStr
                             .Replace("${natives_directory}", Path.Combine(versionDir, $"{SelectedVersion}-natives"))
-                            .Replace("${launcher_name}", "XMCL2025")
+                            .Replace("${launcher_name}", "XianYuLauncher")
                             .Replace("${launcher_version}", "1.0")
                             .Replace("${classpath}", classpath);
                         args.Add(processedArg);
@@ -1114,7 +1114,7 @@ public partial class 启动ViewModel : ObservableRecipient
                 // 添加原生库路径
                 args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{SelectedVersion}-natives")}");
                 // 添加启动器品牌和版本信息
-                args.Add($"-Dminecraft.launcher.brand=XMCL2025");
+                args.Add($"-Dminecraft.launcher.brand=XianYuLauncher");
                 args.Add($"-Dminecraft.launcher.version=1.0");
             }
             

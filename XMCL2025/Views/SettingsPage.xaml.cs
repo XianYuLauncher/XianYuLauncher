@@ -33,7 +33,7 @@ public sealed partial class SettingsPage : Page
             var contentDialog = new ContentDialog
             {
                 Title = "测试彩蛋",
-                Content = "彩蛋已激活！启动页面的微软登录测试按钮和当前版本路径将在下次打开时显示。",
+                Content = "彩蛋已激活！启动页面的当前版本路径将在下次打开时显示。",
                 CloseButtonText = "确定",
                 XamlRoot = App.MainWindow.Content.XamlRoot
             };

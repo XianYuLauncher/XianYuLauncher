@@ -44,7 +44,6 @@ public sealed partial class 启动Page : Page
         if (App.ShowEasterEgg)
         {
             StatusTextBlock.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
-            MicrosoftAuthTestButton.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
         }
     }
 
