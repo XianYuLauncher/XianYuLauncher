@@ -13,7 +13,7 @@
   <Identity
     Name="58726fe7-0cdb-4b29-9c99-12ff6c802233"
     Publisher="CN=XianYu"
-    Version="1.0.5.0" />
+    Version="1.0.0.0" />
     
   <mp:PhoneIdentity PhoneProductId="58726fe7-0cdb-4b29-9c99-12ff6c802233" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
     

@@ -53,65 +53,70 @@ public class MinecraftVersionService : IMinecraftVersionService
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             
-            // 1. 检查是否为Fabric版本（以fabric-开头）
-            if (versionId.StartsWith("fabric-"))
+            // 1. 检查是否为ModLoader版本（Fabric或NeoForge）
+            bool isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+            
+            if (isModLoaderVersion)
             {
-                // 从本地找到Fabric版本JSON文件
+                // 从本地找到ModLoader版本JSON文件
                 
                 if (File.Exists(jsonPath))
                 {
-                    _logger.LogInformation("从本地文件获取Fabric版本信息: {JsonPath}", jsonPath);
+                    _logger.LogInformation("从本地文件获取{ModLoaderType}版本信息: {JsonPath}", versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", jsonPath);
                     string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                    var fabricVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+                    var modLoaderVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
                     
                     // 处理继承关系
-                    if (!string.IsNullOrEmpty(fabricVersionInfo.InheritsFrom))
+                    if (!string.IsNullOrEmpty(modLoaderVersionInfo.InheritsFrom))
                     {
-                        _logger.LogInformation("Fabric版本{VersionId}继承自{InheritsFrom}，正在获取父版本信息", versionId, fabricVersionInfo.InheritsFrom);
+                        _logger.LogInformation("{ModLoaderType}版本{VersionId}继承自{InheritsFrom}，正在获取父版本信息", 
+                            versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", versionId, modLoaderVersionInfo.InheritsFrom);
                         // 递归获取父版本信息，但不允许网络请求
                         try
                         {
-                            var parentVersionInfo = await GetVersionInfoAsync(fabricVersionInfo.InheritsFrom, minecraftDirectory, allowNetwork: false);
+                            var parentVersionInfo = await GetVersionInfoAsync(modLoaderVersionInfo.InheritsFrom, minecraftDirectory, allowNetwork: false);
                             
                             // 合并版本信息
-                            if (fabricVersionInfo.Libraries == null)
+                            if (modLoaderVersionInfo.Libraries == null)
                             {
-                                fabricVersionInfo.Libraries = parentVersionInfo.Libraries;
+                                modLoaderVersionInfo.Libraries = parentVersionInfo.Libraries;
                             } else if (parentVersionInfo.Libraries != null)
                             {
                                 // 创建一个新的库列表，先添加父版本的库，再添加当前版本的库
                                 var mergedLibraries = new List<Library>(parentVersionInfo.Libraries);
-                                mergedLibraries.AddRange(fabricVersionInfo.Libraries);
-                                fabricVersionInfo.Libraries = mergedLibraries;
+                                mergedLibraries.AddRange(modLoaderVersionInfo.Libraries);
+                                // 去重依赖库，避免重复
+                                modLoaderVersionInfo.Libraries = mergedLibraries.DistinctBy(lib => lib.Name).ToList();
                             }
                             
                             // 合并其他必要的属性
-                            if (string.IsNullOrEmpty(fabricVersionInfo.MainClass))
-                                fabricVersionInfo.MainClass = parentVersionInfo.MainClass;
-                            if (fabricVersionInfo.Arguments == null)
-                                fabricVersionInfo.Arguments = parentVersionInfo.Arguments;
-                            if (fabricVersionInfo.AssetIndex == null)
-                                fabricVersionInfo.AssetIndex = parentVersionInfo.AssetIndex;
-                            if (string.IsNullOrEmpty(fabricVersionInfo.Assets))
-                                fabricVersionInfo.Assets = parentVersionInfo.Assets;
-                            if (fabricVersionInfo.Downloads == null)
-                                fabricVersionInfo.Downloads = parentVersionInfo.Downloads;
-                            if (fabricVersionInfo.JavaVersion == null)
-                                fabricVersionInfo.JavaVersion = parentVersionInfo.JavaVersion;
-                            if (string.IsNullOrEmpty(fabricVersionInfo.Type))
-                                fabricVersionInfo.Type = parentVersionInfo.Type;
+                            if (string.IsNullOrEmpty(modLoaderVersionInfo.MainClass))
+                                modLoaderVersionInfo.MainClass = parentVersionInfo.MainClass;
+                            if (modLoaderVersionInfo.Arguments == null)
+                                modLoaderVersionInfo.Arguments = parentVersionInfo.Arguments;
+                            if (modLoaderVersionInfo.AssetIndex == null)
+                                modLoaderVersionInfo.AssetIndex = parentVersionInfo.AssetIndex;
+                            if (string.IsNullOrEmpty(modLoaderVersionInfo.Assets))
+                                modLoaderVersionInfo.Assets = parentVersionInfo.Assets;
+                            if (modLoaderVersionInfo.Downloads == null)
+                                modLoaderVersionInfo.Downloads = parentVersionInfo.Downloads;
+                            if (modLoaderVersionInfo.JavaVersion == null)
+                                modLoaderVersionInfo.JavaVersion = parentVersionInfo.JavaVersion;
+                            if (string.IsNullOrEmpty(modLoaderVersionInfo.Type))
+                                modLoaderVersionInfo.Type = parentVersionInfo.Type;
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning("获取父版本信息失败，但继续执行，假设所有必要信息都已包含在Fabric版本信息中: {ExceptionMessage}", ex.Message);
-                            // 如果获取父版本信息失败，继续执行，假设Fabric版本信息已经包含了所有必要的信息
+                            _logger.LogWarning("获取父版本信息失败，但继续执行，假设所有必要信息都已包含在{ModLoaderType}版本信息中: {ExceptionMessage}", 
+                                versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", ex.Message);
+                            // 如果获取父版本信息失败，继续执行，假设ModLoader版本信息已经包含了所有必要的信息
                         }
                     }
                     
-                    // 修复Fabric依赖库的URL - 确保所有Fabric依赖库都有完整的下载URL
-                    if (fabricVersionInfo.Libraries != null)
+                    // 修复ModLoader依赖库的URL - 确保所有依赖库都有完整的下载URL
+                    if (modLoaderVersionInfo.Libraries != null)
                     {
-                        foreach (var library in fabricVersionInfo.Libraries)
+                        foreach (var library in modLoaderVersionInfo.Libraries)
                         {
                             if (library.Downloads?.Artifact?.Url != null)
                             {
@@ -129,7 +134,9 @@ public class MinecraftVersionService : IMinecraftVersionService
                                         string baseUrl = library.Downloads.Artifact.Url;
                                         string fullUrl = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
                                         
-                                        _logger.LogInformation("修复Fabric依赖库URL: {OldUrl} -> {NewUrl}", library.Downloads.Artifact.Url, fullUrl);
+                                        _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}", 
+                                            versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", 
+                                            library.Downloads.Artifact.Url, fullUrl);
                                         library.Downloads.Artifact.Url = fullUrl;
                                     }
                                 }
@@ -137,7 +144,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                         }
                     }
                     
-                    return fabricVersionInfo;
+                    return modLoaderVersionInfo;
                 }
             }
             
@@ -196,10 +203,12 @@ public class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            // 检查是否为Fabric版本（以fabric-开头）
-            if (versionId.StartsWith("fabric-"))
+            // 检查是否为ModLoader版本（Fabric或NeoForge）
+            bool isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+            
+            if (isModLoaderVersion)
             {
-                // 从本地找到Fabric版本JSON文件
+                // 从本地找到ModLoader版本JSON文件
                 string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
                 string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
                 string versionDirectory = Path.Combine(versionsDirectory, versionId);
@@ -211,7 +220,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
             }
             
-            // 如果不是Fabric版本或本地文件不存在，且允许网络请求，则从官方API获取
+            // 如果不是ModLoader版本或本地文件不存在，且允许网络请求，则从官方API获取
             if (allowNetwork)
             {
                 var manifest = await GetVersionManifestAsync();
@@ -1972,27 +1981,11 @@ public class MinecraftVersionService : IMinecraftVersionService
             string extractDirectory = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-{DateTime.Now.Ticks}");
             Directory.CreateDirectory(extractDirectory);
             
-            try
-            {
-                // 提取关键文件
-                ExtractNeoForgeInstallerFiles(installerPath, extractDirectory);
-            }
-            finally
-            {
-                // 提取完成后删除安装器文件，释放资源
-                if (File.Exists(installerPath))
-                {
-                    try
-                    {
-                        File.Delete(installerPath);
-                        _logger.LogInformation("已删除临时安装器文件: {InstallerPath}", installerPath);
-                    }
-                    catch (IOException ex)
-                    {
-                        _logger.LogWarning(ex, "无法删除临时安装器文件: {InstallerPath}", installerPath);
-                    }
-                }
-            }
+            // 提取关键文件
+            ExtractNeoForgeInstallerFiles(installerPath, extractDirectory);
+            
+            // 保留安装器文件，不删除
+            _logger.LogInformation("NeoForge安装器文件已保留: {InstallerPath}", installerPath);
             progressCallback?.Invoke(60); // 60% 进度用于拆包完成
             
             // 5. 解析install_profile.json
@@ -2014,6 +2007,56 @@ public class MinecraftVersionService : IMinecraftVersionService
                 _logger.LogInformation("验证MC_SLIM字段: {McSlimField}", mcSlimField);
             }
             
+            // 解析install_profile.json中的libraries字段
+            List<Library> installProfileLibraries = new List<Library>();
+            if (installProfile.TryGetValue("libraries", StringComparison.OrdinalIgnoreCase, out JToken librariesToken))
+            {
+                _logger.LogInformation("解析install_profile.json中的libraries字段");
+                JArray librariesArray = librariesToken as JArray;
+                if (librariesArray != null)
+                {
+                    foreach (JToken libToken in librariesArray)
+                    {
+                        Library library = libToken.ToObject<Library>();
+                        if (library != null && !string.IsNullOrEmpty(library.Name))
+                        {
+                            installProfileLibraries.Add(library);
+                            _logger.LogInformation("添加install_profile依赖库: {LibraryName}", library.Name);
+                        }
+                    }
+                }
+                _logger.LogInformation("共解析到 {LibraryCount} 个install_profile依赖库", installProfileLibraries.Count);
+            }
+            
+            // 6. 下载install_profile.json中的libraries依赖
+            if (installProfileLibraries.Count > 0)
+            {
+                _logger.LogInformation("开始下载install_profile.json中的依赖库");
+                int totalLibraries = installProfileLibraries.Count;
+                int downloadedLibraries = 0;
+                
+                foreach (var library in installProfileLibraries)
+                {
+                    try
+                    {
+                        if (library.Downloads?.Artifact != null)
+                        {
+                            _logger.LogInformation("下载依赖库: {LibraryName}", library.Name);
+                            string libraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
+                            await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath);
+                        }
+                        downloadedLibraries++;
+                        double libraryProgress = 60 + (downloadedLibraries * 20.0 / totalLibraries); // 60-80% 用于下载install_profile依赖库
+                        progressCallback?.Invoke(libraryProgress);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "下载依赖库失败: {LibraryName}", library.Name);
+                        // 继续下载其他库，不中断整个过程
+                    }
+                }
+            }
+            
             // 6. 合并版本JSON
             _logger.LogInformation("开始合并版本JSON");
             string neoforgeJsonPath = Path.Combine(extractDirectory, "version.json");
@@ -2026,8 +2069,8 @@ public class MinecraftVersionService : IMinecraftVersionService
             var originalJson = JsonConvert.DeserializeObject<VersionInfo>(originalJsonContent);
             var neoforgeJson = JsonConvert.DeserializeObject<VersionInfo>(neoforgeJsonContent);
             
-            // 合并JSON
-            var mergedJson = MergeVersionJson(originalJson, neoforgeJson);
+            // 合并JSON，同时传递install_profile.json中的libraries
+            var mergedJson = MergeVersionJson(originalJson, neoforgeJson, installProfileLibraries);
             progressCallback?.Invoke(80); // 80% 进度用于JSON合并完成
             
             // 7. 保存合并后的JSON文件
@@ -2227,7 +2270,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 合并版本JSON
     /// </summary>
-    private VersionInfo MergeVersionJson(VersionInfo original, VersionInfo neoforge)
+    private VersionInfo MergeVersionJson(VersionInfo original, VersionInfo neoforge, List<Library> installProfileLibraries = null)
     {
         _logger.LogInformation("开始合并版本JSON");
         
@@ -2261,6 +2304,17 @@ public class MinecraftVersionService : IMinecraftVersionService
             merged.Libraries.AddRange(neoforge.Libraries);
             _logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge.Libraries.Count);
         }
+        
+        // 追加install_profile.json中的依赖库
+        if (installProfileLibraries != null && installProfileLibraries.Count > 0)
+        {
+            merged.Libraries.AddRange(installProfileLibraries);
+            _logger.LogInformation("合并了 {LibraryCount} 个install_profile依赖库", installProfileLibraries.Count);
+        }
+        
+        // 去重依赖库，避免重复
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        _logger.LogInformation("去重后依赖库总数: {LibraryCount}", merged.Libraries.Count);
         
         _logger.LogInformation("版本JSON合并完成");
         return merged;

@@ -715,6 +715,67 @@ public partial class 启动ViewModel : ObservableRecipient
         }
     }
 
+    /// <summary>
+    /// 检查并刷新令牌（如果需要）
+    /// </summary>
+    private async Task CheckAndRefreshTokenIfNeededAsync()
+    {
+        // 检查是否为在线角色
+        if (SelectedProfile != null && !SelectedProfile.IsOffline)
+        {
+            try
+            {
+                // 检查网络连接
+                var connectionProfile = Windows.Networking.Connectivity.NetworkInformation.GetInternetConnectionProfile();
+                bool isInternetAvailable = connectionProfile != null && 
+                                         connectionProfile.GetNetworkConnectivityLevel() == Windows.Networking.Connectivity.NetworkConnectivityLevel.InternetAccess;
+                
+                if (!isInternetAvailable)
+                {
+                    // 没联网，跳过令牌刷新
+                    return;
+                }
+                
+                // 计算令牌剩余有效期
+                var issueTime = SelectedProfile.IssueInstant;
+                var expiresIn = SelectedProfile.ExpiresIn;
+                var expiryTime = issueTime.AddSeconds(expiresIn);
+                var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                
+                // 如果剩余有效期小于1小时，刷新令牌
+                if (timeUntilExpiry < TimeSpan.FromHours(1))
+                {
+                    // 显示InfoBar消息
+                    IsLaunchSuccessInfoBarOpen = true;
+                    LaunchSuccessMessage = $"{SelectedVersion} 正在进行微软账户续签...";
+                    
+                    // 调用令牌刷新方法
+                    var 角色管理ViewModel = App.GetService<角色管理ViewModel>();
+                    // 更新当前角色到角色管理ViewModel
+                    角色管理ViewModel.CurrentProfile = SelectedProfile;
+                    // 刷新令牌
+                    await 角色管理ViewModel.ForceRefreshTokenAsync();
+                    
+                    // 刷新成功，更新当前角色信息
+                    SelectedProfile = 角色管理ViewModel.CurrentProfile;
+                    
+                    // 更新InfoBar消息
+                    LaunchSuccessMessage = $"{SelectedVersion} 微软账户续签成功...";
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                // 网络异常，跳过刷新，继续启动
+                Console.WriteLine($"网络异常，跳过令牌刷新: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // 其他刷新失败，继续启动，但记录错误
+                Console.WriteLine($"令牌刷新失败: {ex.Message}");
+            }
+        }
+    }
+
     [RelayCommand]
     private async Task LaunchGameAsync()
     {
@@ -824,7 +885,10 @@ public partial class 启动ViewModel : ObservableRecipient
                 return;
             }
             
-            // 5. 确保版本依赖和资源文件可用
+            // 5. 检查并刷新令牌（如果需要）
+            await CheckAndRefreshTokenIfNeededAsync();
+            
+            // 6. 确保版本依赖和资源文件可用
             LaunchStatus = $"正在检查版本依赖和资源文件...";
             DownloadProgress = 0;
             
@@ -1000,21 +1064,27 @@ public partial class 启动ViewModel : ObservableRecipient
                     }
                     
                     // 处理库的情况：
-                    // 1. 检查库名称是否包含classifier（如:natives-windows）
+                    // 1. 检查库名称是否包含classifier（如:natives-windows或@zip）
                     bool hasClassifier = library.Name.Count(c => c == ':') > 2;
                     
-                    if (hasClassifier)
+                    // 2. 检查是否为原生库（根据library.Name是否包含natives-前缀来判断）
+                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
+                    
+                    if (isNativeLibrary)
                     {
-                        // 名称中包含classifier的库（主要是原生库）
+                        // 名称中包含classifier的原生库
                         // 原生库已在下载阶段解压到natives目录，这里不需要添加到classpath
                         continue;
                     }
                     else
                     {
-                        // 常规库（包括LWJGL核心库），添加到classpath
+                        // 常规库（包括带有classifier的常规库，如NeoForge的universal库），添加到classpath
                         if (library.Downloads?.Artifact != null)
                         {
-                            string libPath = GetLibraryFilePath(library.Name, librariesPath);
+                            // 对于带有classifier的库，需要特殊处理文件名
+                            string classifier = hasClassifier ? library.Name.Split(':')[3] : null;
+                            string libPath = GetLibraryFilePath(library.Name, librariesPath, classifier);
+                            
                             if (File.Exists(libPath))
                             {
                                 bool wasAdded = classpathEntries.Add(libPath);
@@ -1029,6 +1099,10 @@ public partial class 启动ViewModel : ObservableRecipient
                                     {
                                         LaunchStatus += $"\n已添加ASM库: {library.Name}";
                                     }
+                                    else if (library.Name.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        LaunchStatus += $"\n已添加NeoForge库: {library.Name}";
+                                    }
                                 }
                                 else
                                 {
@@ -1042,11 +1116,32 @@ public partial class 启动ViewModel : ObservableRecipient
                             }
                             else
                             {
-                                if (isJoptSimple)
+                                // 如果库文件不存在，尝试使用不带classifier的文件名
+                                string libPathWithoutClassifier = GetLibraryFilePath(library.Name, librariesPath, null);
+                                if (File.Exists(libPathWithoutClassifier))
                                 {
-                                    LaunchStatus += $"\n但文件不存在: {libPath}";
+                                    bool wasAdded = classpathEntries.Add(libPathWithoutClassifier);
+                                    if (wasAdded)
+                                    {
+                                        addedCount++;
+                                        if (isJoptSimple)
+                                        {
+                                            LaunchStatus += $"\n已添加到classpath（使用不带classifier的文件名）: {libPathWithoutClassifier}";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        skippedCount++;
+                                    }
                                 }
-                                skippedCount++;
+                                else
+                                {
+                                    if (isJoptSimple)
+                                    {
+                                        LaunchStatus += $"\n但文件不存在: {libPath}";
+                                    }
+                                    skippedCount++;
+                                }
                             }
                         }
                         else if (library.Downloads?.Classifiers != null && library.Natives != null)

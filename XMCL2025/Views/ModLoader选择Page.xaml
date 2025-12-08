@@ -61,71 +61,49 @@
                 </ListView>
         </StackPanel>
 
-        <!-- 使用Grid布局，避免控件隐藏时占位 -->
-        <Grid Grid.Row="2">
-            <!-- NeoForge特殊提示 -->
-            <StackPanel Margin="0,0,0,24" Visibility="{x:Bind ViewModel.IsNeoForgeSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock Text="NeoForge版本选择" Style="{StaticResource BodyTextBlockStyle}" Margin="0,0,0,8" FontWeight="SemiBold" FontSize="16" />
-                <Border 
-                    Background="{ThemeResource SystemControlBackgroundAccentBrush}" 
-                    BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="8" 
-                    Padding="16" 
-                    HorizontalAlignment="Stretch">
-                    <TextBlock 
-                        Text="NeoForge版本列表暂时不可用，请等待后续更新。" 
-                        Style="{StaticResource BodyTextBlockStyle}" 
-                        Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" 
-                        TextWrapping="WrapWholeWords" />
-                </Border>
-            </StackPanel>
+        <!-- Mod Loader版本选择 -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,24">
+            <TextBlock Text="选择Mod Loader版本:" Style="{StaticResource BodyTextBlockStyle}" Margin="0,0,0,8" FontWeight="SemiBold" FontSize="16" />
             
-            <!-- 其他Mod Loader版本选择 -->
-            <StackPanel Margin="0,0,0,24" Visibility="{x:Bind ViewModel.IsNotNeoForgeSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock Text="选择Mod Loader版本:" Style="{StaticResource BodyTextBlockStyle}" Margin="0,0,0,8" FontWeight="SemiBold" FontSize="16" />
-                
-                <!-- 加载指示器 -->
-                <ProgressRing
-                    x:Name="LoadingProgressRing"
-                    IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
-                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Width="48"
-                    Height="48" />
-                
-                <!-- 版本列表容器 -->
-                <StackPanel Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
-                    <!-- 版本列表 -->
-                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                        <ListView
-                            x:Name="ModLoaderVersionListView"
-                            ItemsSource="{x:Bind ViewModel.AvailableModLoaderVersions, Mode=OneWay}"
-                            SelectedItem="{x:Bind ViewModel.SelectedModLoaderVersion, Mode=TwoWay}"
-                            SelectionMode="Single"
-                            BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            MinHeight="180"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <ListView.ItemContainerStyle>
-                                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                </Style>
-                            </ListView.ItemContainerStyle>
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="x:String">
-                                    <TextBlock Text="{x:Bind}" Padding="12,10" FontSize="15" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </ScrollViewer>
-                    
-
-                </StackPanel>
+            <!-- 加载指示器 -->
+            <ProgressRing
+                x:Name="LoadingProgressRing"
+                IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="48"
+                Height="48" />
+            
+            <!-- 版本列表容器 -->
+            <StackPanel Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                <!-- 版本列表 -->
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                    <ListView
+                        x:Name="ModLoaderVersionListView"
+                        ItemsSource="{x:Bind ViewModel.AvailableModLoaderVersions, Mode=OneWay}"
+                        SelectedItem="{x:Bind ViewModel.SelectedModLoaderVersion, Mode=TwoWay}"
+                        SelectionMode="Single"
+                        BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        MinHeight="180"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        IsEnabled="{x:Bind ViewModel.SelectedModLoader, Converter={StaticResource StringNullOrEmptyToBoolConverter}, Mode=OneWay}">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{x:Bind}" Padding="12,10" FontSize="15" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </ScrollViewer>
             </StackPanel>
-        </Grid>
+        </StackPanel>
 
         <!-- 确认按钮 -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
@@ -138,5 +116,26 @@
                 Command="{x:Bind ViewModel.ConfirmSelectionCommand}"
                 MinWidth="120" />
         </StackPanel>
+        
+        <!-- 下载进度弹窗 -->
+        <ContentDialog
+            x:Name="DownloadProgressDialog"
+            Title="版本下载中"
+            CloseButtonText="取消"
+            IsPrimaryButtonEnabled="False"
+            IsSecondaryButtonEnabled="False"
+            DefaultButton="None"
+            CloseButtonClick="DownloadProgressDialog_CloseButtonClick">
+            <StackPanel Spacing="16" Width="400">
+                <!-- 下载状态文本 -->
+                <TextBlock FontSize="16" Text="{x:Bind ViewModel.DownloadStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />
+                
+                <!-- 进度条 -->
+                <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
+                
+                <!-- 进度百分比文本 -->
+                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" HorizontalTextAlignment="Center" />
+            </StackPanel>
+        </ContentDialog>
     </Grid>
 </Page>
