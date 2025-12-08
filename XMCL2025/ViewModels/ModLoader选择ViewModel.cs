@@ -42,9 +42,25 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 
     [ObservableProperty]
     private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
-
+    
+    // 下载进度相关属性
+    [ObservableProperty]
+    private bool _isDownloadDialogOpen = false;
+    
+    [ObservableProperty]
+    private string _downloadStatus = "准备开始下载...";
+    
+    [ObservableProperty]
+    private double _downloadProgress = 0;
+    
+    [ObservableProperty]
+    private string _downloadProgressText = "0%";
+    
     // 用于管理异步加载任务的CancellationTokenSource
     private CancellationTokenSource? _cts;
+    
+    // 用于管理下载任务的CancellationTokenSource
+    private CancellationTokenSource? _downloadCts;
 
     public ModLoader选择ViewModel()
     {
@@ -268,7 +284,13 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 
         try
         {
-            IsLoading = true;
+            // 初始化下载状态
+            DownloadStatus = "准备开始下载...";
+            DownloadProgress = 0;
+            DownloadProgressText = "0%";
+            
+            // 显示下载弹窗
+            IsDownloadDialogOpen = true;
             
             // 获取用户设置的Minecraft目录
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
@@ -276,9 +298,23 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             // 创建下载进度回调
             Action<double> progressCallback = (progress) =>
             {
-                // 更新下载进度（可以添加一个Progress属性来绑定UI）
-                // 由于当前ViewModel没有进度属性，这里暂时不实现
+                // 更新下载进度
+                DownloadProgress = progress;
+                DownloadProgressText = $"{progress:F0}%";
+                
+                // 更新下载状态文本
+                if (SelectedModLoader == "无")
+                {
+                    DownloadStatus = $"正在下载原版Minecraft {SelectedMinecraftVersion}...";
+                }
+                else
+                {
+                    DownloadStatus = $"正在下载 {SelectedModLoader} {SelectedModLoaderVersion} 版本...";
+                }
             };
+            
+            // 创建下载任务的CancellationTokenSource
+            _downloadCts = new CancellationTokenSource();
             
             // 调用下载服务
             var minecraftVersionService = App.GetService<IMinecraftVersionService>();
@@ -301,6 +337,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 if (string.IsNullOrEmpty(SelectedModLoaderVersion))
                 {
                     await ShowMessageAsync("请选择Mod Loader版本");
+                    IsDownloadDialogOpen = false;
                     return;
                 }
                 
@@ -309,9 +346,13 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                     SelectedModLoader,
                     SelectedModLoaderVersion,
                     minecraftDirectory,
-                    progressCallback);
+                    progressCallback,
+                    _downloadCts.Token);
                 successMessage = $"{SelectedModLoader} {SelectedModLoaderVersion} 版本下载完成！\n\nMinecraft版本: {SelectedMinecraftVersion}\nMod Loader: {SelectedModLoader}\nMod Loader版本: {SelectedModLoaderVersion}";
             }
+            
+            // 隐藏下载弹窗
+            IsDownloadDialogOpen = false;
             
             // 显示下载完成消息
             await ShowMessageAsync(successMessage);
@@ -319,13 +360,24 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             // 返回上一页
             _navigationService.GoBack();
         }
+        catch (OperationCanceledException)
+        {
+            // 下载被取消
+            IsDownloadDialogOpen = false;
+            await ShowMessageAsync("下载已取消");
+        }
         catch (Exception ex)
         {
+            // 隐藏下载弹窗
+            IsDownloadDialogOpen = false;
             await ShowMessageAsync($"下载失败: {ex.Message}");
         }
         finally
         {
-            IsLoading = false;
+            // 释放CancellationTokenSource
+            _downloadCts?.Cancel();
+            _downloadCts?.Dispose();
+            _downloadCts = null;
         }
     }
     
