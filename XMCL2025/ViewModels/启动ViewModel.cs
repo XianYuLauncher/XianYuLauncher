@@ -1267,8 +1267,20 @@ public partial class 启动ViewModel : ObservableRecipient
                 args.Add("net.minecraft.launchwrapper.AlphaVanillaTweaker");
             }
             
-            // 注：不再从version.json获取游戏参数，因为我们已经手动添加了所有必要的参数
-            // 这样可以避免参数重复和占位符未替换的问题
+            // 添加version.json中的游戏参数（特别是NeoForge所需的参数）
+            if (versionInfo.Arguments != null && versionInfo.Arguments.Game != null)
+            {
+                foreach (var gameArg in versionInfo.Arguments.Game)
+                {
+                    if (gameArg is string argStr)
+                    {
+                        // 直接添加游戏参数，不需要替换占位符
+                        args.Add(argStr);
+                        LaunchStatus += $"\n添加游戏参数: {argStr}";
+                    }
+                    // 处理规则对象（暂时简单跳过）
+                }
+            }
 
             // 7. 构建完整的启动命令并显示
             // 正确处理带空格的参数，添加引号
