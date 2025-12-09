@@ -1167,8 +1167,8 @@ public partial class 启动ViewModel : ObservableRecipient
                 LaunchStatus += $"\n成功添加 {addedCount} 个库到classpath，跳过 {skippedCount} 个库";
             }
             
-            // 构建Classpath字符串（使用分号分隔）
-            string classpath = string.Join(";", classpathEntries);
+            // 构建Classpath字符串（使用分号分隔，每个路径用双引号包裹）
+            string classpath = string.Join(";", classpathEntries.Select(path => $"\"{path}\""));
 
             // 6. 构建启动参数
             List<string> args = new List<string>();
@@ -1196,11 +1196,11 @@ public partial class 启动ViewModel : ObservableRecipient
                     {
                         // 替换占位符
                                 string processedArg = argStr
-                                    .Replace("${natives_directory}", Path.Combine(versionDir, $"{SelectedVersion}-natives"))
+                                    .Replace("${natives_directory}", $"\"{Path.Combine(versionDir, $"{SelectedVersion}-natives")}\"")
                                     .Replace("${launcher_name}", "XianYuLauncher")
                                     .Replace("${launcher_version}", "1.0")
                                     .Replace("${classpath}", classpath)
-                                    .Replace("${library_directory}", librariesPath);
+                                    .Replace("${library_directory}", $"\"{librariesPath}\"");
                                 args.Add(processedArg);
                         
                         // 检查是否包含classpath
@@ -1220,7 +1220,7 @@ public partial class 启动ViewModel : ObservableRecipient
                 args.Add($"-cp");
                 args.Add(classpath);
                 // 添加原生库路径
-                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{SelectedVersion}-natives")}");
+                args.Add($"-Djava.library.path=\"{Path.Combine(versionDir, $"{SelectedVersion}-natives")}\"");
                 // 添加启动器品牌和版本信息
                 args.Add($"-Dminecraft.launcher.brand=XianYuLauncher");
                 args.Add($"-Dminecraft.launcher.version=1.0");
@@ -1233,9 +1233,9 @@ public partial class 启动ViewModel : ObservableRecipient
             args.Add($"--version");
             args.Add(SelectedVersion);
             args.Add($"--gameDir");
-            args.Add(gameDir);
+            args.Add($"\"{gameDir}\"");
             args.Add($"--assetsDir");
-            args.Add(assetsPath);
+            args.Add($"\"{assetsPath}\"");
             
             // 从version.json获取assetIndex
             string assetIndex = SelectedVersion;
