@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 
 using XMCL2025.Activation;
 using XMCL2025.Contracts.Services;
+using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Views;
 
 namespace XMCL2025.Services;

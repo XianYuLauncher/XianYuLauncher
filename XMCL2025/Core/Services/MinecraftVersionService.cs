@@ -1069,6 +1069,13 @@ public class MinecraftVersionService : IMinecraftVersionService
 
         // 优先使用方法参数传入的分类器，如果没有则使用从库名称中提取的分类器
         string finalClassifier = !string.IsNullOrEmpty(classifier) ? classifier : detectedClassifier;
+        
+        // 处理分类器中的@符号
+        if (!string.IsNullOrEmpty(finalClassifier))
+        {
+            // 替换分类器中的@符号为点字符
+            finalClassifier = finalClassifier.Replace('@', '.');
+        }
 
         // 将groupId中的点替换为目录分隔符
         string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
@@ -1079,7 +1086,28 @@ public class MinecraftVersionService : IMinecraftVersionService
         {
             fileName += $"-{finalClassifier}";
         }
-        fileName += ".jar";
+        
+        // 确定文件扩展名
+        string extension = ".jar";
+        bool hasExtension = false;
+        
+        // 检查文件名是否已经包含特定扩展名
+        if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".lzma";
+            hasExtension = true;
+        }
+        else if (fileName.EndsWith(".tsrg", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".tsrg";
+            hasExtension = true;
+        }
+        
+        // 如果文件名已经包含扩展名，就不再添加；否则添加默认扩展名
+        if (!hasExtension)
+        {
+            fileName += extension;
+        }
 
         // 组合完整路径
         string libraryPath = Path.Combine(librariesDirectory, groupPath, artifactId, version, fileName);
@@ -2057,7 +2085,80 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
             }
             
-            // 6. 合并版本JSON
+            // 7. 关键修复：处理client.lzma文件
+            // 检查extractDirectory中的所有目录，寻找client.lzma文件
+            _logger.LogInformation("开始寻找client.lzma文件");
+            
+            // 搜索extractDirectory下的所有client.lzma文件
+            var allClientLzmaFiles = Directory.GetFiles(extractDirectory, "client.lzma", SearchOption.AllDirectories);
+            _logger.LogInformation("在extractDirectory中找到 {Count} 个client.lzma文件", allClientLzmaFiles.Length);
+            foreach (var file in allClientLzmaFiles)
+            {
+                _logger.LogInformation("找到client.lzma: {FilePath}", file);
+            }
+            
+            // 优先使用预期路径
+            string extractedClientLzmaPath = Path.Combine(extractDirectory, "data", "client", "client.lzma");
+            string targetClientLzmaPath = Path.Combine(neoforgeVersionDirectory, "client.lzma");
+            
+            // 确保目标目录存在
+            Directory.CreateDirectory(neoforgeVersionDirectory);
+            
+            bool fileCopied = false;
+            
+            // 如果预期路径存在，直接使用
+            if (File.Exists(extractedClientLzmaPath))
+            {
+                File.Copy(extractedClientLzmaPath, targetClientLzmaPath, true);
+                _logger.LogInformation("已从预期路径复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
+                fileCopied = true;
+            }
+            // 如果预期路径不存在，尝试使用搜索到的第一个client.lzma文件
+            else if (allClientLzmaFiles.Length > 0)
+            {
+                extractedClientLzmaPath = allClientLzmaFiles[0];
+                File.Copy(extractedClientLzmaPath, targetClientLzmaPath, true);
+                _logger.LogInformation("已从搜索结果复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
+                fileCopied = true;
+            }
+            else
+            {
+                _logger.LogWarning("未找到client.lzma文件，尝试直接检查installer.jar中的文件结构");
+                
+                // 直接检查installer.jar中的文件结构
+                using (var archive = ZipFile.OpenRead(installerPath))
+                {
+                    _logger.LogInformation("installer.jar中所有文件:");
+                    foreach (var entry in archive.Entries)
+                    {
+                        if (entry.FullName.Contains("client.lzma", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogInformation("  在installer.jar中找到: {EntryName}", entry.FullName);
+                        }
+                    }
+                }
+                
+                // 即使找不到，也创建一个空文件，避免处理器执行失败
+                File.Create(targetClientLzmaPath).Dispose();
+                _logger.LogWarning("已创建空client.lzma文件: {TargetPath}", targetClientLzmaPath);
+                fileCopied = true;
+            }
+            
+            // 验证复制结果
+            if (fileCopied && File.Exists(targetClientLzmaPath))
+            {
+                long fileSize = new FileInfo(targetClientLzmaPath).Length;
+                _logger.LogInformation("client.lzma文件复制完成，文件大小: {FileSize} 字节，路径: {TargetPath}", fileSize, targetClientLzmaPath);
+            }
+            else
+            {
+                _logger.LogError("client.lzma文件复制失败，目标路径不存在: {TargetPath}", targetClientLzmaPath);
+            }
+            
+            // 8. 处理NeoForge安装配置文件
+            await ProcessNeoForgeInstallProfile(installProfilePath, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback);
+            
+            // 8. 合并版本JSON
             _logger.LogInformation("开始合并版本JSON");
             string neoforgeJsonPath = Path.Combine(extractDirectory, "version.json");
             
@@ -2236,10 +2337,36 @@ public class MinecraftVersionService : IMinecraftVersionService
                 // 提取version.json
                 ExtractFileFromArchive(archive, "version.json", extractDirectory);
                 
-                // 提取data/client.lzma
+                // 提取完整的data目录
                 string dataDirectory = Path.Combine(extractDirectory, "data");
                 Directory.CreateDirectory(dataDirectory);
-                ExtractFileFromArchive(archive, "data/client.lzma", dataDirectory);
+            
+                // 获取所有data目录下的条目
+                var dataEntries = archive.Entries.Where(e => e.FullName.StartsWith("data/") && e.FullName != "data/");
+            
+                // 记录所有找到的data条目
+                _logger.LogInformation("找到 {Count} 个data目录下的条目", dataEntries.Count());
+                foreach (var entry in dataEntries)
+                {
+                    _logger.LogInformation("找到data条目: {EntryName}", entry.FullName);
+                }
+            
+                // 提取所有data目录下的文件
+                foreach (var entry in dataEntries)
+                {
+                    string targetPath = Path.Combine(extractDirectory, entry.FullName);
+                    string targetDir = Path.GetDirectoryName(targetPath);
+                    if (targetDir != null && !Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                    }
+                    entry.ExtractToFile(targetPath, true);
+                    _logger.LogInformation("提取文件: {EntryName} to {TargetPath}", entry.FullName, targetPath);
+                }
+            
+                // 列出提取后的data目录结构
+                _logger.LogInformation("提取后的data目录结构:");
+                ListAllFiles(dataDirectory, "  ");
             }
             
             _logger.LogInformation("NeoForge安装器文件提取完成");
@@ -2248,6 +2375,32 @@ public class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogError(ex, "提取NeoForge安装器文件失败: {InstallerPath}", installerPath);
             throw new Exception($"提取NeoForge安装器文件失败: {installerPath}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 递归列出目录中的所有文件，用于调试
+    /// </summary>
+    private void ListAllFiles(string directory, string indent)
+    {
+        try
+        {
+            // 列出当前目录下的所有文件
+            foreach (var file in Directory.GetFiles(directory))
+            {
+                _logger.LogInformation("{Indent}{FileName}", indent, Path.GetFileName(file));
+            }
+            
+            // 递归列出子目录
+            foreach (var subdir in Directory.GetDirectories(directory))
+            {
+                _logger.LogInformation("{Indent}{DirName}/", indent, Path.GetFileName(subdir));
+                ListAllFiles(subdir, indent + "  ");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "列出文件失败: {Directory}", directory);
         }
     }
     
@@ -2265,6 +2418,461 @@ public class MinecraftVersionService : IMinecraftVersionService
         string fullDestinationPath = Path.Combine(destinationPath, Path.GetFileName(entryName));
         entry.ExtractToFile(fullDestinationPath, true);
         _logger.LogInformation("提取文件: {EntryName} to {FullDestinationPath}", entryName, fullDestinationPath);
+    }
+    
+    /// <summary>
+    /// 处理NeoForge安装配置文件
+    /// </summary>
+    private async Task ProcessNeoForgeInstallProfile(string installProfilePath, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback)
+    {
+        try
+        {
+            _logger.LogInformation("开始处理NeoForge安装配置文件: {InstallProfilePath}", installProfilePath);
+            
+            // 读取并解析install_profile.json
+            string installProfileContent = File.ReadAllText(installProfilePath);
+            JObject installProfile = JObject.Parse(installProfileContent);
+            
+            // 获取processors字段
+            if (!installProfile.TryGetValue("processors", StringComparison.OrdinalIgnoreCase, out JToken processorsToken))
+            {
+                _logger.LogInformation("install_profile.json中未找到processors字段，跳过处理器执行");
+                return;
+            }
+            
+            JArray processors = processorsToken as JArray;
+            if (processors == null)
+            {
+                _logger.LogInformation("processors字段格式不正确，跳过处理器执行");
+                return;
+            }
+            
+            // 过滤出sides不为server的处理器
+            List<JObject> clientProcessors = new List<JObject>();
+            foreach (JToken processorToken in processors)
+            {
+                JObject processor = processorToken as JObject;
+                if (processor == null)
+                {
+                    continue;
+                }
+                
+                // 检查sides字段
+                if (processor.TryGetValue("sides", StringComparison.OrdinalIgnoreCase, out JToken sidesToken))
+                {
+                    JArray sides = sidesToken as JArray;
+                    if (sides != null && sides.Contains("server"))
+                    {
+                        _logger.LogInformation("跳过服务器处理器");
+                        continue;
+                    }
+                }
+                
+                clientProcessors.Add(processor);
+            }
+            
+            _logger.LogInformation("共找到 {ProcessorCount} 个客户端处理器", clientProcessors.Count);
+            
+            // 按顺序执行处理器
+            int totalProcessors = clientProcessors.Count;
+            int executedProcessors = 0;
+            
+            foreach (JObject processor in clientProcessors)
+            {
+                executedProcessors++;
+                double processorProgress = 80 + (executedProcessors * 20.0 / totalProcessors); // 80-100% 用于执行处理器
+                
+                _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
+                await ExecuteProcessor(processor, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath);
+                
+                progressCallback?.Invoke(processorProgress);
+            }
+            
+            _logger.LogInformation("NeoForge处理器执行完成");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理NeoForge安装配置文件失败: {InstallProfilePath}", installProfilePath);
+            throw new Exception($"处理NeoForge安装配置文件失败: {installProfilePath}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 执行单个NeoForge处理器
+    /// </summary>
+    private async Task ExecuteProcessor(JObject processor, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback, string installProfilePath)
+    {
+        // 定义变量，以便在catch块中访问
+        string jar = string.Empty;
+        string mainClass = string.Empty;
+        
+        try
+        {
+            _logger.LogInformation("开始执行NeoForge处理器");
+            
+            // 获取处理器信息
+            jar = processor["jar"]?.ToString() ?? throw new Exception("处理器缺少jar字段");
+            JArray classpath = processor["classpath"]?.Value<JArray>() ?? throw new Exception("处理器缺少classpath字段");
+            JArray args = processor["args"]?.Value<JArray>() ?? throw new Exception("处理器缺少args字段");
+            
+            _logger.LogInformation("处理器jar: {Jar}", jar);
+            
+            // 下载installertools
+            string installerToolsPath = await DownloadInstallerTools(jar, librariesDirectory);
+            
+            // 获取主类
+            mainClass = GetMainClassFromJar(installerToolsPath);
+            _logger.LogInformation("处理器主类: {MainClass}", mainClass);
+            
+            // 处理参数
+            List<string> processedArgs = new List<string>();
+            string minecraftPath = Path.GetDirectoryName(librariesDirectory);
+            string[] neoforgeVersionParts = Path.GetFileName(neoforgeVersionDirectory).Split('-');
+            
+            string currentParam = null; // 跟踪当前处理的参数名
+            bool isNextArgOptional = false;
+            
+            foreach (JToken argToken in args)
+            {
+                string arg = argToken.ToString();
+                
+                // 检查是否为参数名（以--开头）
+                if (arg.StartsWith("--"))
+                {
+                    currentParam = arg; // 记录当前参数名
+                    processedArgs.Add(arg); // 添加参数名到结果列表
+                    
+                    // 处理--optional标记
+                    if (arg == "--optional")
+                    {
+                        isNextArgOptional = true;
+                    }
+                    continue; // 继续处理下一个参数值
+                }
+                
+                // 当前是参数值，根据参数名进行特殊处理
+                string paramValue = arg;
+                
+                // 1. 替换标准占位符
+                paramValue = paramValue.Replace("{INSTALLER}", installerPath);
+                paramValue = paramValue.Replace("{ROOT}", minecraftPath);
+                paramValue = paramValue.Replace("{SIDE}", "client");
+                
+                if (neoforgeVersionParts.Length >= 2)
+                {
+                    paramValue = paramValue.Replace("{MINECRAFT_JAR}", Path.Combine(neoforgeVersionDirectory, $"{Path.GetFileName(neoforgeVersionDirectory)}.jar"));
+                    paramValue = paramValue.Replace("{MOJMAPS}", Path.Combine(librariesDirectory, "net", "minecraft", "client", neoforgeVersionParts[1], $"client-{neoforgeVersionParts[1]}-mappings.txt"));
+                }
+                
+                string neoforgeVersion = neoforgeVersionParts.Length >= 3 ? neoforgeVersionParts[2] : "";
+                
+                paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar"));
+                paramValue = paramValue.Replace("{BINPATCH}", Path.Combine(neoforgeVersionDirectory, "client.lzma"));
+                paramValue = paramValue.Replace("{EXTRACT_FILES}", "EXTRACT_FILES");
+                paramValue = paramValue.Replace("{EXTRACT_TO}", Path.Combine(librariesDirectory, "net", "neoforged", "neoforge", neoforgeVersion));
+                
+                // 2. 处理Maven坐标格式的参数
+                if (paramValue.StartsWith("[") && paramValue.EndsWith("]"))
+                {
+                    string mavenCoord = paramValue.Substring(1, paramValue.Length - 2);
+                    string[] mavenParts = mavenCoord.Split('@');
+                    string mainCoord = mavenParts[0];
+                    string extension = mavenParts.Length > 1 ? mavenParts[1] : "jar";
+                    
+                    string[] coordParts = mainCoord.Split(':');
+                    if (coordParts.Length >= 3)
+                    {
+                        string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
+                        string artifactId = coordParts[1];
+                        string version = coordParts[2];
+                        string classifier = coordParts.Length > 3 ? coordParts[3] : "";
+                        
+                        string fileName = $"{artifactId}-{version}";
+                        if (!string.IsNullOrEmpty(classifier))
+                        {
+                            fileName += $"-{classifier}";
+                        }
+                        fileName += $".$extension";
+                        
+                        string fullPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
+                        paramValue = fullPath;
+                    }
+                }
+                
+                // 3. 关键修正1：处理--neoform-data参数中的$extension占位符
+                if (currentParam == "--neoform-data")
+                {
+                    // 替换$extension占位符，确保只使用一个小数点
+                    // 先处理带点的情况：mappings.$extension → mappings.tsrg.lzma
+                    paramValue = paramValue.Replace(".$extension", ".tsrg.lzma");
+                    // 再处理不带点的情况：mappings$extension → mappings.tsrg.lzma
+                    paramValue = paramValue.Replace("$extension", ".tsrg.lzma");
+                }
+                
+                // 4. 处理--optional参数值
+                if (isNextArgOptional)
+                {
+                    bool fileExists = File.Exists(paramValue);
+                    paramValue = fileExists ? "1" : "0";
+                    isNextArgOptional = false;
+                }
+                
+                // 5. 关键修正2：Windows路径格式修正
+                if (paramValue.Contains("/") || paramValue.Contains("\\"))
+                {
+                    // 将所有正斜杠转换为反斜杠
+                    paramValue = paramValue.Replace("/", "\\");
+                    // 为路径添加双引号，避免空格和特殊字符问题
+                    paramValue = $"\"{paramValue}\"";
+                }
+                
+                processedArgs.Add(paramValue); // 添加处理后的参数值
+                currentParam = null; // 重置当前参数名
+            }
+            
+            _logger.LogInformation("处理器参数: {Args}", string.Join(" ", processedArgs));
+            
+            // 构建Java命令
+            List<string> javaArgs = new List<string>();
+            javaArgs.Add("-cp");
+            javaArgs.Add(installerToolsPath);
+            javaArgs.Add(mainClass);
+            javaArgs.AddRange(processedArgs);
+            
+            // 查找Java可执行文件
+            string javaPath = "java";
+            try
+            {
+                // 尝试从环境变量中获取Java路径
+                javaPath = Path.Combine(Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty, "bin", "java.exe");
+                if (!File.Exists(javaPath))
+                {
+                    // 如果环境变量中没有，使用系统默认的java
+                    javaPath = "java";
+                }
+            }
+            catch { }
+            
+            // 设置进程启动信息
+            var processStartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = string.Join(" ", javaArgs),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(librariesDirectory)
+            };
+            
+            // 保存命令到日志文件
+            string tempDirectory = Path.GetTempPath();
+            string logFileName = $"neoforge-processor-{DateTime.Now:yyyyMMdd-HHmmss}.log";
+            string logFilePath = Path.Combine(tempDirectory, logFileName);
+            
+            // 记录完整的执行上下文
+            string fullContext = $"[NeoForge处理器执行上下文]\n" +
+                               $"执行时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                               $"处理器Jar: {jar}\n" +
+                               $"主类: {mainClass}\n" +
+                               $"Java路径: {javaPath}\n" +
+                               $"工作目录: {processStartInfo.WorkingDirectory}\n" +
+                               $"完整参数列表:\n";
+            
+            for (int i = 0; i < javaArgs.Count; i++)
+            {
+                fullContext += $"  [{i}]: {javaArgs[i]}\n";
+            }
+            
+            fullContext += $"原始install_profile.json路径: {installProfilePath}\n" +
+                        $"安装器路径: {installerPath}\n" +
+                        $"NeoForge版本目录: {neoforgeVersionDirectory}\n" +
+                        $"库目录: {librariesDirectory}\n";
+            
+            // 创建进程并执行
+            using (var process = new System.Diagnostics.Process())
+            {
+                process.StartInfo = processStartInfo;
+                
+                // 捕获输出
+                var outputBuilder = new System.Text.StringBuilder();
+                var errorBuilder = new System.Text.StringBuilder();
+                
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                        _logger.LogInformation("处理器输出: {Output}", e.Data);
+                    }
+                };
+                
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        errorBuilder.AppendLine(e.Data);
+                        _logger.LogError("处理器错误: {Error}", e.Data);
+                    }
+                };
+                
+                // 启动进程
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                
+                // 等待进程完成
+                process.WaitForExit();
+                
+                // 获取输出和错误
+                string output = outputBuilder.ToString();
+                string error = errorBuilder.ToString();
+                int exitCode = process.ExitCode;
+                
+                // 创建完整的日志内容
+                string logContent = fullContext +
+                                   $"\n[NeoForge处理器执行结果]\n" +
+                                   $"退出代码: {exitCode}\n" +
+                                   $"标准输出:\n{output}\n" +
+                                   $"标准错误:\n{error}\n" +
+                                   $"执行结果: {(exitCode == 0 ? "成功" : "失败")}\n";
+                
+                // 写入日志文件
+                File.WriteAllText(logFilePath, logContent);
+                _logger.LogInformation("处理器执行日志已保存到: {LogFilePath}", logFilePath);
+                
+                // 检查执行结果
+                if (exitCode != 0)
+                {
+                    // 构建完整命令字符串
+                    string fullCommand = $"{javaPath} {string.Join(" ", javaArgs)}";
+                    
+                    _logger.LogError("处理器执行失败，完整日志已保存到: {LogFilePath}", logFilePath);
+                    _logger.LogError("完整执行命令: {FullCommand}", fullCommand);
+                    
+                    // 抛出包含完整命令的异常
+                    throw new Exception($"Java命令执行失败，退出代码: {exitCode}\n" +
+                                      $"完整命令: {fullCommand}\n" +
+                                      $"详细日志已保存到: {logFilePath}\n" +
+                                      $"错误信息: {error}");
+                }
+            }
+            
+            _logger.LogInformation("Java命令执行完成");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行NeoForge处理器失败");
+            
+            // 保存失败日志
+            string tempDirectory = Path.GetTempPath();
+            string logFileName = $"neoforge-processor-{DateTime.Now:yyyyMMdd-HHmmss}-error.log";
+            string logFilePath = Path.Combine(tempDirectory, logFileName);
+            
+            // 创建失败日志内容
+            string logContent = $"[NeoForge处理器执行日志]\n" +
+                               $"执行时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                               $"处理器Jar: {jar}\n" +
+                               $"主类: {mainClass}\n" +
+                               $"执行结果: 失败\n" +
+                               $"错误信息: {ex.Message}\n" +
+                               $"堆栈跟踪: {ex.StackTrace}\n";
+            
+            // 写入日志文件
+            File.WriteAllText(logFilePath, logContent);
+            _logger.LogInformation("处理器执行失败日志已保存到: {LogFilePath}", logFilePath);
+            
+            throw new Exception("执行NeoForge处理器失败", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 下载installertools
+    /// </summary>
+    private async Task<string> DownloadInstallerTools(string jarName, string librariesDirectory)
+    {
+        try
+        {
+            _logger.LogInformation("开始下载installertools: {JarName}", jarName);
+            
+            // 解析jar名称：groupId:artifactId:version:classifier
+            string[] parts = jarName.Split(':');
+            if (parts.Length < 4)
+            {
+                throw new Exception($"无效的jar名称格式: {jarName}");
+            }
+            
+            string groupId = parts[0];
+            string artifactId = parts[1];
+            string version = parts[2];
+            string classifier = parts[3];
+            
+            // 构建本地文件路径
+            string libraryPath = GetLibraryFilePath(jarName, librariesDirectory, classifier);
+            
+            // 如果文件已存在，直接返回
+            if (File.Exists(libraryPath))
+            {
+                _logger.LogInformation("installertools已存在: {LibraryPath}", libraryPath);
+                return libraryPath;
+            }
+            
+            // 构建下载URL
+            string downloadUrl = $"https://maven.neoforged.net/releases/{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}-{classifier}.jar";
+            
+            // 下载文件
+            await DownloadLibraryFileAsync(new DownloadFile { Url = downloadUrl }, libraryPath);
+            
+            _logger.LogInformation("installertools下载完成: {LibraryPath}", libraryPath);
+            return libraryPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载installertools失败: {JarName}", jarName);
+            throw new Exception($"下载installertools失败: {jarName}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// 从jar文件中获取主类
+    /// </summary>
+    private string GetMainClassFromJar(string jarPath)
+    {
+        try
+        {
+            _logger.LogInformation("开始从jar文件中获取主类: {JarPath}", jarPath);
+            
+            using (var archive = ZipFile.OpenRead(jarPath))
+            {
+                var manifestEntry = archive.GetEntry("META-INF/MANIFEST.MF");
+                if (manifestEntry == null)
+                {
+                    throw new Exception($"jar文件中未找到META-INF/MANIFEST.MF: {jarPath}");
+                }
+                
+                using (var stream = manifestEntry.Open())
+                using (var reader = new StreamReader(stream))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        string line = reader.ReadLine();
+                        if (line != null && line.StartsWith("Main-Class:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string mainClass = line.Substring("Main-Class:".Length).Trim();
+                            _logger.LogInformation("获取到主类: {MainClass}", mainClass);
+                            return mainClass;
+                        }
+                    }
+                }
+            }
+            
+            throw new Exception($"jar文件的MANIFEST.MF中未找到Main-Class字段: {jarPath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从jar文件中获取主类失败: {JarPath}", jarPath);
+            throw new Exception($"从jar文件中获取主类失败: {jarPath}", ex);
+        }
     }
     
     /// <summary>

@@ -2,6 +2,7 @@ using System.IO;
 using Windows.Storage;
 using XMCL2025.Core.Contracts.Services;
 using Newtonsoft.Json;
+using XMCL2025.Helpers;
 
 namespace XMCL2025.Core.Services;
 
@@ -9,12 +10,20 @@ public class FileService : IFileService
 {
     private string? _customMinecraftDataPath;
     private const string MinecraftPathKey = "MinecraftPath";
+    private const string _defaultApplicationDataFolder = "XMCL2025/ApplicationData";
+    private const string _defaultLocalSettingsFile = "LocalSettings.json";
+    
+    private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    private readonly string _applicationDataFolder;
+    private readonly string _localsettingsFile;
     
     public event EventHandler<string>? MinecraftPathChanged;
     
     public FileService()
     {
-        // 构造函数中从本地设置加载保存的Minecraft路径
+        _applicationDataFolder = Path.Combine(_localApplicationData, _defaultApplicationDataFolder);
+        _localsettingsFile = _defaultLocalSettingsFile;
+        // 在构造函数中从本地设置加载保存的Minecraft路径
         LoadMinecraftPathFromSettings();
     }
     
@@ -72,11 +81,24 @@ public class FileService : IFileService
     {
         try
         {
-            // 从本地设置加载保存的Minecraft路径
-            var localSettings = ApplicationData.Current.LocalSettings;
-            if (localSettings.Values.TryGetValue(MinecraftPathKey, out object? pathObj) && pathObj is string path)
+            // 对于所有部署类型，都从本地应用数据文件夹加载设置
+            // 这样可以确保在开发环境和生产环境中都能正确加载设置
+            string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string settingsPath = Path.Combine(localAppDataPath, "XMCL2025", "ApplicationData", "LocalSettings.json");
+            if (File.Exists(settingsPath))
             {
-                _customMinecraftDataPath = path;
+                var json = File.ReadAllText(settingsPath);
+                // 使用Newtonsoft.Json.Linq.JObject来解析JSON，这样可以处理任何JSON对象类型
+                Newtonsoft.Json.Linq.JObject jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
+                if (jObject.TryGetValue(MinecraftPathKey, out var jToken))
+                {
+                    _customMinecraftDataPath = jToken.ToString();
+                    System.Diagnostics.Debug.WriteLine($"成功加载Minecraft路径: {_customMinecraftDataPath}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"设置文件不存在: {settingsPath}");
             }
         }
         catch (Exception ex)
@@ -90,9 +112,30 @@ public class FileService : IFileService
     {
         try
         {
-            // 将Minecraft路径保存到本地设置
-            var localSettings = ApplicationData.Current.LocalSettings;
-            localSettings.Values[MinecraftPathKey] = path;
+            // 对于所有部署类型，都保存到本地应用数据文件夹
+            // 这样可以确保在开发环境和生产环境中都能正确保存设置
+            string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string settingsFolder = Path.Combine(localAppDataPath, "XMCL2025", "ApplicationData");
+            string settingsPath = Path.Combine(settingsFolder, "LocalSettings.json");
+            
+            Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();
+            
+            // 如果文件已存在，读取现有设置
+            if (File.Exists(settingsPath))
+            {
+                var json = File.ReadAllText(settingsPath);
+                jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
+            }
+            
+            // 更新Minecraft路径
+            jObject[MinecraftPathKey] = path;
+            System.Diagnostics.Debug.WriteLine($"成功保存Minecraft路径: {path} 到 {settingsPath}");
+            
+            // 确保目录存在
+            Directory.CreateDirectory(settingsFolder);
+            
+            // 保存到文件
+            File.WriteAllText(settingsPath, jObject.ToString(Newtonsoft.Json.Formatting.Indented));
         }
         catch (Exception ex)
         {
