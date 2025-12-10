@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -120,6 +121,31 @@ public sealed partial class 版本管理Page : Page
             // 直接隐藏
             DragDropOverlay.Visibility = Visibility.Collapsed;
             DragDropOverlay.Opacity = 0;
+        }
+    }
+    
+    #endregion
+    
+    #region Mod开关事件处理
+    
+    /// <summary>
+    /// 处理Mod启用/禁用开关的Toggled事件
+    /// </summary>
+    /// <param name="sender">发送事件的ToggleSwitch控件</param>
+    /// <param name="e">事件参数</param>
+    private async void ModToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch toggleSwitch)
+        {
+            // 获取ToggleSwitch的IsOn值
+            bool isOn = toggleSwitch.IsOn;
+            
+            // 直接从父级Grid获取DataContext
+            if (VisualTreeHelper.GetParent(toggleSwitch) is FrameworkElement parentElement && parentElement.DataContext is ViewModels.ModInfo modInfo)
+            {
+                // 直接调用ViewModel的方法来处理开关状态变化，传递当前IsOn值
+                await ViewModel.ToggleModEnabledAsync(modInfo, isOn);
+            }
         }
     }
     

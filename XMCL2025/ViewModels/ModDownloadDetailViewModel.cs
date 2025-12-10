@@ -305,26 +305,27 @@ namespace XMCL2025.ViewModels
                                 .Where(v => v.Loaders.Contains(loader));
                             
                             // 为每个版本创建ModVersionViewModel
-                            foreach (var version in loaderVersions)
-                            {
-                                // 获取第一个下载文件
-                                var file = version.Files?.FirstOrDefault();
-                                if (file != null)
+                                foreach (var version in loaderVersions)
                                 {
-                                    var modVersionViewModel = new ModVersionViewModel
+                                    // 获取第一个下载文件
+                                    var file = version.Files?.FirstOrDefault();
+                                    if (file != null)
                                     {
-                                        VersionNumber = version.VersionNumber,
-                                        ReleaseDate = version.DatePublished,
-                                        Changelog = version.Name,
-                                        DownloadUrl = file.Url.ToString(),
-                                        FileName = file.Filename,
-                                        Loaders = version.Loaders.Select(l => l.Substring(0, 1).ToUpper() + l.Substring(1).ToLower()).ToList(),
-                                        VersionType = version.VersionType,
-                                        GameVersion = gameVersion // 设置该Mod版本支持的游戏版本
-                                    };
-                                    loaderViewModel.ModVersions.Add(modVersionViewModel);
+                                        var modVersionViewModel = new ModVersionViewModel
+                                        {
+                                            VersionNumber = version.VersionNumber,
+                                            ReleaseDate = version.DatePublished,
+                                            Changelog = version.Name,
+                                            DownloadUrl = file.Url.ToString(),
+                                            FileName = file.Filename,
+                                            Loaders = version.Loaders.Select(l => l.Substring(0, 1).ToUpper() + l.Substring(1).ToLower()).ToList(),
+                                            VersionType = version.VersionType,
+                                            GameVersion = gameVersion, // 设置该Mod版本支持的游戏版本
+                                            IconUrl = ModIconUrl // 设置图标URL
+                                        };
+                                        loaderViewModel.ModVersions.Add(modVersionViewModel);
+                                    }
                                 }
-                            }
                             
                             gameVersionViewModel.Loaders.Add(loaderViewModel);
                         }
@@ -716,6 +717,35 @@ namespace XMCL2025.ViewModels
                 }
             }
             
+            // 下载图标到本地
+            if (!string.IsNullOrEmpty(ModIconUrl) && !ModIconUrl.StartsWith("ms-appx:"))
+            {
+                try
+                {
+                    // 构建图标保存路径
+                    string minecraftPath = _fileService.GetMinecraftDataPath();
+                    string iconDir = Path.Combine(minecraftPath, "icons", ProjectType);
+                    _fileService.CreateDirectory(iconDir);
+                    
+                    // 使用项目ID和文件名生成唯一图标文件名
+                    string iconFileName = $"{ModId}_{Path.GetFileNameWithoutExtension(modVersion.FileName)}_icon.png";
+                    string iconSavePath = Path.Combine(iconDir, iconFileName);
+                    
+                    // 下载图标
+                    DownloadStatus = "正在下载图标...";
+                    using (HttpClient client = new HttpClient())
+                    {
+                        var iconBytes = await client.GetByteArrayAsync(ModIconUrl);
+                        await File.WriteAllBytesAsync(iconSavePath, iconBytes);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 图标下载失败不影响主文件下载，记录错误即可
+                    System.Diagnostics.Debug.WriteLine("图标下载失败: " + ex.Message);
+                }
+            }
+            
             DownloadStatus = "下载完成！";
             // 根据项目类型显示不同的文本
             string projectTypeText;
@@ -1095,6 +1125,10 @@ namespace XMCL2025.ViewModels
         // 添加游戏版本属性，用于记录该Mod版本支持的游戏版本
         [ObservableProperty]
         private string _gameVersion;
+        
+        // 图标URL属性
+        [ObservableProperty]
+        private string _iconUrl;
     }
 
     // 加载器视图模型

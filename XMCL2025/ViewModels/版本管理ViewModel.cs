@@ -18,27 +18,48 @@ namespace XMCL2025.ViewModels;
 /// <summary>
 /// Mod信息类
 /// </summary>
-public class ModInfo
+public partial class ModInfo : ObservableObject
 {
     /// <summary>
     /// Mod文件名
     /// </summary>
-    public string FileName { get; set; }
+    [ObservableProperty]
+    private string _fileName;
     
     /// <summary>
-    /// Mod显示名称
-    /// </summary>
-    public string Name { get; set; }
-    
-    /// <summary>
-    /// Mod文件完整路径
-    /// </summary>
-    public string FilePath { get; private set; }
+        /// Mod文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
     
     /// <summary>
     /// 是否启用
     /// </summary>
-    public bool IsEnabled { get; private set; }
+    [ObservableProperty]
+    private bool _isEnabled;
+    
+    /// <summary>
+    /// Mod图标
+    /// </summary>
+    [ObservableProperty]
+    private string _icon;
+    
+    /// <summary>
+    /// Mod显示名称
+    /// </summary>
+    public string Name
+    {
+        get
+        {
+            // 提取显示名称（去掉.jar扩展名）
+            string displayName = Path.GetFileNameWithoutExtension(FileName);
+            // 去掉.disabled后缀（如果存在）
+            if (displayName.EndsWith(".disabled"))
+            {
+                displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            }
+            return displayName;
+        }
+    }
     
     /// <summary>
     /// 构造函数
@@ -50,18 +71,6 @@ public class ModInfo
         FilePath = filePath;
         FileName = Path.GetFileName(filePath);
         IsEnabled = !FileName.EndsWith(".disabled");
-        
-        // 提取显示名称（去掉.disabled后缀和.jar扩展名）
-        string displayName = FileName;
-        if (displayName.EndsWith(".disabled"))
-        {
-            displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
-        }
-        if (displayName.EndsWith(".jar"))
-        {
-            displayName = displayName.Substring(0, displayName.Length - ".jar".Length);
-        }
-        Name = displayName;
     }
 }
 
@@ -81,14 +90,19 @@ public class ShaderInfo
     public string Name { get; set; }
     
     /// <summary>
-    /// 光影文件完整路径
-    /// </summary>
-    public string FilePath { get; private set; }
+        /// 光影文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
     
     /// <summary>
     /// 是否启用
     /// </summary>
     public bool IsEnabled { get; private set; }
+    
+    /// <summary>
+    /// 光影图标路径
+    /// </summary>
+    public string Icon { get; set; }
     
     /// <summary>
     /// 构造函数
@@ -127,14 +141,19 @@ public class ResourcePackInfo
     public string Name { get; set; }
     
     /// <summary>
-    /// 资源包文件完整路径
-    /// </summary>
-    public string FilePath { get; private set; }
+        /// 资源包文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
     
     /// <summary>
     /// 是否启用
     /// </summary>
     public bool IsEnabled { get; private set; }
+    
+    /// <summary>
+    /// 资源包图标路径
+    /// </summary>
+    public string Icon { get; set; }
     
     /// <summary>
     /// 构造函数
@@ -175,12 +194,17 @@ public class ResourcePackInfo
         /// <summary>
         /// 数据包文件完整路径
         /// </summary>
-        public string FilePath { get; private set; }
+        public string FilePath { get; set; }
         
         /// <summary>
         /// 是否启用
         /// </summary>
         public bool IsEnabled { get; private set; }
+        
+        /// <summary>
+        /// 数据包图标路径
+        /// </summary>
+        public string Icon { get; set; }
         
         /// <summary>
         /// 构造函数
@@ -223,14 +247,19 @@ public class MapInfo
     public string Name { get; set; }
     
     /// <summary>
-    /// 地图文件完整路径
-    /// </summary>
-    public string FilePath { get; private set; }
+        /// 地图文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
     
     /// <summary>
     /// 是否启用
     /// </summary>
     public bool IsEnabled { get; private set; }
+    
+    /// <summary>
+    /// 地图图标路径
+    /// </summary>
+    public string Icon { get; set; }
     
     /// <summary>
     /// 构造函数
@@ -468,43 +497,93 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     #region Mod管理
 
     /// <summary>
-    /// 加载mod列表
-    /// </summary>
-    private async Task LoadModsAsync()
-    {
-        if (SelectedVersion == null)
+        /// 检查本地图标是否存在并返回图标路径
+        /// </summary>
+        /// <param name="filePath">文件完整路径</param>
+        /// <param name="resourceType">资源类型（mods, resourcepacks, shaderpacks, datapacks, maps）</param>
+        /// <returns>图标路径，如果不存在则返回null</returns>
+        private string GetLocalIconPath(string filePath, string resourceType)
         {
-            return;
-        }
-
-        var modsPath = GetVersionSpecificPath("mods");
-        if (Directory.Exists(modsPath))
-        {
-            // 创建新的mod列表，减少CollectionChanged事件触发次数
-            var newMods = new ObservableCollection<ModInfo>();
-            
-            // 获取所有mod文件（.jar和.jar.disabled）
-            var modFiles = Directory.GetFiles(modsPath, "*.jar*");
-            
-            // 遍历所有mod文件
-            foreach (var modFile in modFiles)
+            try
             {
-                // 只处理.jar和.jar.disabled文件
-                if (modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"))
+                // 获取Minecraft数据路径
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                // 构建图标目录路径
+                string iconDir = Path.Combine(minecraftPath, "icons", resourceType);
+                
+                // 获取文件名
+                string fileName = Path.GetFileName(filePath);
+                // 复制一份用于处理
+                string baseFileName = fileName;
+                
+                // 去掉.disabled后缀（如果存在）
+                if (baseFileName.EndsWith(".disabled"))
                 {
-                    newMods.Add(new ModInfo(modFile));
+                    baseFileName = baseFileName.Substring(0, baseFileName.Length - ".disabled".Length);
+                }
+                
+                // 去掉文件扩展名
+                string fileBaseName = Path.GetFileNameWithoutExtension(baseFileName);
+                
+                // 搜索匹配的图标文件（格式：*_fileName_icon.png）
+                string[] iconFiles = Directory.GetFiles(iconDir, $"*_{fileBaseName}_icon.png");
+                if (iconFiles.Length > 0)
+                {
+                    // 返回第一个匹配的图标文件路径
+                    return iconFiles[0];
                 }
             }
+            catch (Exception ex)
+            {
+                // 忽略错误，返回null
+                System.Diagnostics.Debug.WriteLine("获取本地图标失败: " + ex.Message);
+            }
             
-            // 替换整个Mods集合，只触发一次CollectionChanged事件
-            Mods = newMods;
+            // 返回null，表示没有本地图标
+            return null;
         }
-        else
+
+        /// <summary>
+        /// 加载mod列表
+        /// </summary>
+        private async Task LoadModsAsync()
         {
-            // 清空mod列表
-            Mods.Clear();
+            if (SelectedVersion == null)
+            {
+                return;
+            }
+
+            var modsPath = GetVersionSpecificPath("mods");
+            if (Directory.Exists(modsPath))
+            {
+                // 创建新的mod列表，减少CollectionChanged事件触发次数
+                var newMods = new ObservableCollection<ModInfo>();
+                
+                // 获取所有mod文件（.jar和.jar.disabled）
+                var modFiles = Directory.GetFiles(modsPath, "*.jar*");
+                
+                // 遍历所有mod文件
+                foreach (var modFile in modFiles)
+                {
+                    // 只处理.jar和.jar.disabled文件
+                    if (modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"))
+                    {
+                        var modInfo = new ModInfo(modFile);
+                        // 检查本地图标
+                        modInfo.Icon = GetLocalIconPath(modFile, "mod");
+                        newMods.Add(modInfo);
+                    }
+                }
+                
+                // 替换整个Mods集合，只触发一次CollectionChanged事件
+                Mods = newMods;
+            }
+            else
+            {
+                // 清空mod列表
+                Mods.Clear();
+            }
         }
-    }
 
     /// <summary>
     /// 打开mod文件夹命令
@@ -516,35 +595,99 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     }
     
     /// <summary>
-    /// 删除mod命令
-    /// </summary>
-    /// <param name="mod">要删除的mod</param>
-    [RelayCommand]
-    private async Task DeleteModAsync(ModInfo mod)
-    {
-        if (mod == null)
+        /// 切换mod启用状态
+        /// </summary>
+        /// <param name="mod">要切换状态的mod</param>
+        /// <param name="isOn">开关的新状态</param>
+        public async Task ToggleModEnabledAsync(ModInfo mod, bool isOn)
         {
-            return;
-        }
-        
-        try
-        {
-            // 删除文件
-            if (File.Exists(mod.FilePath))
+            if (mod == null)
             {
-                File.Delete(mod.FilePath);
+                return;
             }
             
-            // 从列表中移除
-            Mods.Remove(mod);
-            
-            StatusMessage = $"已删除mod: {mod.Name}";
+            try
+            {
+                // 构建新的文件名和路径
+                string newFileName;
+                string newFilePath;
+                string oldFilePath = mod.FilePath;
+                
+                // 直接基于isOn值决定新的状态，而不是mod.IsEnabled
+                if (isOn)
+                {
+                    // 启用状态：确保文件名没有.disabled后缀
+                    if (mod.FileName.EndsWith(".disabled"))
+                    {
+                        newFileName = mod.FileName.Substring(0, mod.FileName.Length - ".disabled".Length);
+                        newFilePath = Path.Combine(Path.GetDirectoryName(mod.FilePath), newFileName);
+                    }
+                    else
+                    {
+                        // 已经是启用状态，无需操作
+                        return;
+                    }
+                }
+                else
+                {
+                    // 禁用状态：添加.disabled后缀
+                    newFileName = mod.FileName + ".disabled";
+                    newFilePath = Path.Combine(Path.GetDirectoryName(mod.FilePath), newFileName);
+                }
+                
+                // 重命名文件
+                if (File.Exists(oldFilePath))
+                {
+                    // 执行文件重命名
+                    File.Move(oldFilePath, newFilePath);
+                    
+                    // 更新mod信息，确保状态一致性
+                    mod.IsEnabled = isOn;
+                    mod.FileName = newFileName;
+                    mod.FilePath = newFilePath; // 更新FilePath，确保下次操作能找到正确的文件
+                    
+                    StatusMessage = $"已{(isOn ? "启用" : "禁用")}mod: {mod.Name}";
+                }
+            }
+            catch (Exception ex)
+            {
+                // 恢复状态，确保UI与实际文件状态一致
+                // 重新从文件名判断实际状态
+                mod.IsEnabled = !mod.FileName.EndsWith(".disabled");
+                StatusMessage = $"切换mod状态失败：{ex.Message}";
+            }
         }
-        catch (Exception ex)
+        
+        /// <summary>
+        /// 删除mod命令
+        /// </summary>
+        /// <param name="mod">要删除的mod</param>
+        [RelayCommand]
+        private async Task DeleteModAsync(ModInfo mod)
         {
-            StatusMessage = $"删除mod失败：{ex.Message}";
+            if (mod == null)
+            {
+                return;
+            }
+            
+            try
+            {
+                // 删除文件
+                if (File.Exists(mod.FilePath))
+                {
+                    File.Delete(mod.FilePath);
+                }
+                
+                // 从列表中移除
+                Mods.Remove(mod);
+                
+                StatusMessage = $"已删除mod: {mod.Name}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"删除mod失败：{ex.Message}";
+            }
         }
-    }
     
     /// <summary>
     /// 导航到Mod页面命令
@@ -616,46 +759,52 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     #region 光影管理
 
     /// <summary>
-    /// 加载光影列表
-    /// </summary>
-    private async Task LoadShadersAsync()
-    {
-        if (SelectedVersion == null)
+        /// 加载光影列表
+        /// </summary>
+        private async Task LoadShadersAsync()
         {
-            return;
-        }
+            if (SelectedVersion == null)
+            {
+                return;
+            }
 
-        var shadersPath = GetVersionSpecificPath("shaderpacks");
-        if (Directory.Exists(shadersPath))
-        {
-            // 获取所有光影文件夹和zip文件
-            var shaderFolders = Directory.GetDirectories(shadersPath);
-            var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
-            
-            // 创建新的光影列表，减少CollectionChanged事件触发次数
-            var newShaders = new ObservableCollection<ShaderInfo>();
-            
-            // 添加所有光影文件夹
-            foreach (var shaderFolder in shaderFolders)
+            var shadersPath = GetVersionSpecificPath("shaderpacks");
+            if (Directory.Exists(shadersPath))
             {
-                newShaders.Add(new ShaderInfo(shaderFolder));
+                // 获取所有光影文件夹和zip文件
+                var shaderFolders = Directory.GetDirectories(shadersPath);
+                var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
+                
+                // 创建新的光影列表，减少CollectionChanged事件触发次数
+                var newShaders = new ObservableCollection<ShaderInfo>();
+                
+                // 添加所有光影文件夹
+                foreach (var shaderFolder in shaderFolders)
+                {
+                    var shaderInfo = new ShaderInfo(shaderFolder);
+                    // 检查本地图标
+                    shaderInfo.Icon = GetLocalIconPath(shaderFolder, "shader");
+                    newShaders.Add(shaderInfo);
+                }
+                
+                // 添加所有光影zip文件
+                foreach (var shaderZip in shaderZips)
+                {
+                    var shaderInfo = new ShaderInfo(shaderZip);
+                    // 检查本地图标
+                    shaderInfo.Icon = GetLocalIconPath(shaderZip, "shader");
+                    newShaders.Add(shaderInfo);
+                }
+                
+                // 替换整个Shaders集合，只触发一次CollectionChanged事件
+                Shaders = newShaders;
             }
-            
-            // 添加所有光影zip文件
-            foreach (var shaderZip in shaderZips)
+            else
             {
-                newShaders.Add(new ShaderInfo(shaderZip));
+                // 清空光影列表
+                Shaders.Clear();
             }
-            
-            // 替换整个Shaders集合，只触发一次CollectionChanged事件
-            Shaders = newShaders;
         }
-        else
-        {
-            // 清空光影列表
-            Shaders.Clear();
-        }
-    }
 
     /// <summary>
     /// 打开光影文件夹命令
@@ -713,46 +862,52 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     #region 资源包管理
 
     /// <summary>
-    /// 加载资源包列表
-    /// </summary>
-    private async Task LoadResourcePacksAsync()
-    {
-        if (SelectedVersion == null)
+        /// 加载资源包列表
+        /// </summary>
+        private async Task LoadResourcePacksAsync()
         {
-            return;
-        }
+            if (SelectedVersion == null)
+            {
+                return;
+            }
 
-        var resourcePacksPath = GetVersionSpecificPath("resourcepacks");
-        if (Directory.Exists(resourcePacksPath))
-        {
-            // 获取所有资源包文件夹和zip文件
-            var resourcePackFolders = Directory.GetDirectories(resourcePacksPath);
-            var resourcePackZips = Directory.GetFiles(resourcePacksPath, "*.zip");
-            
-            // 创建新的资源包列表，减少CollectionChanged事件触发次数
-            var newResourcePacks = new ObservableCollection<ResourcePackInfo>();
-            
-            // 添加所有资源包文件夹
-            foreach (var resourcePackFolder in resourcePackFolders)
+            var resourcePacksPath = GetVersionSpecificPath("resourcepacks");
+            if (Directory.Exists(resourcePacksPath))
             {
-                newResourcePacks.Add(new ResourcePackInfo(resourcePackFolder));
+                // 获取所有资源包文件夹和zip文件
+                var resourcePackFolders = Directory.GetDirectories(resourcePacksPath);
+                var resourcePackZips = Directory.GetFiles(resourcePacksPath, "*.zip");
+                
+                // 创建新的资源包列表，减少CollectionChanged事件触发次数
+                var newResourcePacks = new ObservableCollection<ResourcePackInfo>();
+                
+                // 添加所有资源包文件夹
+                foreach (var resourcePackFolder in resourcePackFolders)
+                {
+                    var resourcePackInfo = new ResourcePackInfo(resourcePackFolder);
+                    // 检查本地图标
+                    resourcePackInfo.Icon = GetLocalIconPath(resourcePackFolder, "resourcepack");
+                    newResourcePacks.Add(resourcePackInfo);
+                }
+                
+                // 添加所有资源包zip文件
+                foreach (var resourcePackZip in resourcePackZips)
+                {
+                    var resourcePackInfo = new ResourcePackInfo(resourcePackZip);
+                    // 检查本地图标
+                    resourcePackInfo.Icon = GetLocalIconPath(resourcePackZip, "resourcepack");
+                    newResourcePacks.Add(resourcePackInfo);
+                }
+                
+                // 替换整个ResourcePacks集合，只触发一次CollectionChanged事件
+                ResourcePacks = newResourcePacks;
             }
-            
-            // 添加所有资源包zip文件
-            foreach (var resourcePackZip in resourcePackZips)
+            else
             {
-                newResourcePacks.Add(new ResourcePackInfo(resourcePackZip));
+                // 清空资源包列表
+                ResourcePacks.Clear();
             }
-            
-            // 替换整个ResourcePacks集合，只触发一次CollectionChanged事件
-            ResourcePacks = newResourcePacks;
         }
-        else
-        {
-            // 清空资源包列表
-            ResourcePacks.Clear();
-        }
-    }
 
     /// <summary>
     /// 打开资源包文件夹命令
@@ -803,47 +958,53 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     #region 数据包管理
 
     /// <summary>
-    /// 加载数据包列表
-    /// </summary>
-    private async Task LoadDataPacksAsync()
-    {
-        if (SelectedVersion == null)
+        /// 加载数据包列表
+        /// </summary>
+        private async Task LoadDataPacksAsync()
         {
-            return;
-        }
+            if (SelectedVersion == null)
+            {
+                return;
+            }
 
-        // 从版本根目录加载数据包，与其他资源类型保持一致
-        var dataPacksPath = GetVersionSpecificPath("datapacks");
-        if (Directory.Exists(dataPacksPath))
-        {
-            // 获取所有数据包文件夹和zip文件
-            var dataPackFolders = Directory.GetDirectories(dataPacksPath);
-            var dataPackZips = Directory.GetFiles(dataPacksPath, "*.zip");
-            
-            // 创建新的数据包列表，减少CollectionChanged事件触发次数
-            var newDataPacks = new ObservableCollection<DataPackInfo>();
-            
-            // 添加所有数据包文件夹
-            foreach (var dataPackFolder in dataPackFolders)
+            // 从版本根目录加载数据包，与其他资源类型保持一致
+            var dataPacksPath = GetVersionSpecificPath("datapacks");
+            if (Directory.Exists(dataPacksPath))
             {
-                newDataPacks.Add(new DataPackInfo(dataPackFolder));
+                // 获取所有数据包文件夹和zip文件
+                var dataPackFolders = Directory.GetDirectories(dataPacksPath);
+                var dataPackZips = Directory.GetFiles(dataPacksPath, "*.zip");
+                
+                // 创建新的数据包列表，减少CollectionChanged事件触发次数
+                var newDataPacks = new ObservableCollection<DataPackInfo>();
+                
+                // 添加所有数据包文件夹
+                foreach (var dataPackFolder in dataPackFolders)
+                {
+                    var dataPackInfo = new DataPackInfo(dataPackFolder);
+                    // 检查本地图标
+                    dataPackInfo.Icon = GetLocalIconPath(dataPackFolder, "datapack");
+                    newDataPacks.Add(dataPackInfo);
+                }
+                
+                // 添加所有数据包zip文件
+                foreach (var dataPackZip in dataPackZips)
+                {
+                    var dataPackInfo = new DataPackInfo(dataPackZip);
+                    // 检查本地图标
+                    dataPackInfo.Icon = GetLocalIconPath(dataPackZip, "datapack");
+                    newDataPacks.Add(dataPackInfo);
+                }
+                
+                // 替换整个DataPacks集合，只触发一次CollectionChanged事件
+                DataPacks = newDataPacks;
             }
-            
-            // 添加所有数据包zip文件
-            foreach (var dataPackZip in dataPackZips)
+            else
             {
-                newDataPacks.Add(new DataPackInfo(dataPackZip));
+                // 清空数据包列表
+                DataPacks.Clear();
             }
-            
-            // 替换整个DataPacks集合，只触发一次CollectionChanged事件
-            DataPacks = newDataPacks;
         }
-        else
-        {
-            // 清空数据包列表
-            DataPacks.Clear();
-        }
-    }
 
     /// <summary>
     /// 打开数据包文件夹命令
@@ -894,39 +1055,42 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     #region 地图安装
 
     /// <summary>
-    /// 加载地图列表
-    /// </summary>
-    private async Task LoadMapsAsync()
-    {
-        if (SelectedVersion == null)
+        /// 加载地图列表
+        /// </summary>
+        private async Task LoadMapsAsync()
         {
-            return;
-        }
-
-        var savesPath = GetVersionSpecificPath("saves");
-        if (Directory.Exists(savesPath))
-        {
-            // 获取所有地图文件夹
-            var mapFolders = Directory.GetDirectories(savesPath);
-            
-            // 创建新的地图列表，减少CollectionChanged事件触发次数
-            var newMaps = new ObservableCollection<MapInfo>();
-            
-            // 添加所有地图文件夹
-            foreach (var mapFolder in mapFolders)
+            if (SelectedVersion == null)
             {
-                newMaps.Add(new MapInfo(mapFolder));
+                return;
             }
-            
-            // 替换整个Maps集合，只触发一次CollectionChanged事件
-            Maps = newMaps;
+
+            var savesPath = GetVersionSpecificPath("saves");
+            if (Directory.Exists(savesPath))
+            {
+                // 获取所有地图文件夹
+                var mapFolders = Directory.GetDirectories(savesPath);
+                
+                // 创建新的地图列表，减少CollectionChanged事件触发次数
+                var newMaps = new ObservableCollection<MapInfo>();
+                
+                // 添加所有地图文件夹
+                foreach (var mapFolder in mapFolders)
+                {
+                    var mapInfo = new MapInfo(mapFolder);
+                    // 检查本地图标
+                    mapInfo.Icon = GetLocalIconPath(mapFolder, "maps");
+                    newMaps.Add(mapInfo);
+                }
+                
+                // 替换整个Maps集合，只触发一次CollectionChanged事件
+                Maps = newMaps;
+            }
+            else
+            {
+                // 清空地图列表
+                Maps.Clear();
+            }
         }
-        else
-        {
-            // 清空地图列表
-            Maps.Clear();
-        }
-    }
 
     /// <summary>
     /// 打开地图文件夹命令

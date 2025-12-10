@@ -1346,12 +1346,154 @@ public class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
+    /// <summary>
+    /// 确保NeoForge版本依赖完整，包括检查和执行NeoForge处理器
+    /// </summary>
+    private async Task EnsureNeoForgeDependenciesAsync(string versionId, string minecraftDirectory, string librariesDirectory, Action<double> progressCallback, Action<string> currentDownloadCallback)
+    {
+        try
+        {
+            // 检查是否是NeoForge版本
+            if (!versionId.StartsWith("neoforge-"))
+            {
+                return;
+            }
+            
+            _logger.LogInformation("开始检查NeoForge版本依赖: {VersionId}", versionId);
+            currentDownloadCallback?.Invoke("正在执行NeoforgeProcessor");
+            
+            // 解析NeoForge版本信息
+            string[] versionParts = versionId.Split('-');
+            if (versionParts.Length < 3)
+            {
+                _logger.LogWarning("无效的NeoForge版本格式: {VersionId}", versionId);
+                return;
+            }
+            
+            string neoforgeVersion = versionParts[2];
+            string minecraftVersion = versionParts[1];
+            
+            // 检查minecraft-client-patched JAR是否存在
+            string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
+            
+            if (File.Exists(patchedJarPath))
+            {
+                _logger.LogInformation("minecraft-client-patched JAR已存在，跳过NeoForge处理器执行: {PatchedJarPath}", patchedJarPath);
+                return;
+            }
+            
+            _logger.LogInformation("minecraft-client-patched JAR不存在，开始执行NeoForge处理器: {PatchedJarPath}", patchedJarPath);
+            
+            // 报告NeoForge处理器执行开始，占1%进度
+            progressCallback?.Invoke(1);
+            
+            // 1. 查找并下载NeoForge安装器（带损坏检查和重试机制）
+            string cacheDirectory = Path.Combine(_fileService.GetAppDataPath(), "cache", "neoforge");
+            Directory.CreateDirectory(cacheDirectory);
+            
+            string neoforgeDownloadUrl = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforgeVersion}/neoforge-{neoforgeVersion}-installer.jar";
+            string installerPath = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-installer.jar");
+            
+            // 设置最大重试次数
+            int maxRetries = 3;
+            bool isInstallerValid = false;
+            
+            for (int retry = 0; retry < maxRetries && !isInstallerValid; retry++)
+            {
+                // 检查安装器是否存在或损坏
+                if (!File.Exists(installerPath) || !IsZipFileValid(installerPath))
+                {
+                    if (retry > 0)
+                    {
+                        _logger.LogWarning("NeoForge安装器损坏或不存在，正在重试下载 ({Retry}/{MaxRetries}): {InstallerPath}", retry + 1, maxRetries, installerPath);
+                    } else
+                    {
+                        _logger.LogInformation("NeoForge安装器不存在或损坏，开始下载: {InstallerUrl}", neoforgeDownloadUrl);
+                    }
+                    
+                    // 下载安装器
+                    await DownloadFileAsync(neoforgeDownloadUrl, installerPath);
+                    _logger.LogInformation("NeoForge安装器下载完成: {InstallerPath}", installerPath);
+                }
+                
+                // 验证下载的安装器是否有效
+                isInstallerValid = IsZipFileValid(installerPath);
+                if (isInstallerValid)
+                {
+                    _logger.LogInformation("NeoForge安装器验证通过: {InstallerPath}", installerPath);
+                }
+            }
+            
+            if (!isInstallerValid)
+            {
+                throw new Exception($"NeoForge安装器下载失败，经过 {maxRetries} 次重试后仍无效: {installerPath}");
+            }
+            
+            // 2. 拆包NeoForge安装器
+            string extractDirectory = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-{DateTime.Now.Ticks}");
+            Directory.CreateDirectory(extractDirectory);
+            
+            ExtractNeoForgeInstallerFiles(installerPath, extractDirectory);
+            
+            // 3. 处理client.lzma文件
+            // 尝试两种可能的路径: data/client.lzma (新路径) 和 data/client/client.lzma (旧路径)
+            string[] possibleClientLzmaPaths = {
+                Path.Combine(extractDirectory, "data", "client.lzma"),
+                Path.Combine(extractDirectory, "data", "client", "client.lzma")
+            };
+            
+            string extractedClientLzmaPath = possibleClientLzmaPaths.FirstOrDefault(p => File.Exists(p));
+            
+            if (extractedClientLzmaPath == null)
+            {
+                // 如果两种路径都不存在，列出目录结构以便调试
+                string dataDirectory = Path.Combine(extractDirectory, "data");
+                if (Directory.Exists(dataDirectory))
+                {
+                    _logger.LogWarning("data目录结构:");
+                    ListAllFiles(dataDirectory, "  ");
+                }
+                
+                throw new Exception($"client.lzma文件不存在于临时目录，尝试了以下路径: {string.Join(", ", possibleClientLzmaPaths)}");
+            }
+            
+            _logger.LogInformation("找到client.lzma文件: {ExtractedClientLzmaPath}", extractedClientLzmaPath);
+            
+            // 4. 执行NeoForge处理器
+            string installProfilePath = Path.Combine(extractDirectory, "install_profile.json");
+            // 定义NeoForge版本目录路径
+            string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            string neoforgeVersionDirectory = Path.Combine(versionsDirectory, versionId);
+            await ProcessNeoForgeInstallProfile(installProfilePath, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, extractDirectory);
+            
+            // 5. 清理临时提取目录
+            try
+            {
+                Directory.Delete(extractDirectory, true);
+                _logger.LogInformation("已清理临时提取目录: {ExtractDirectory}", extractDirectory);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "无法清理临时提取目录: {ExtractDirectory}", extractDirectory);
+            }
+            
+            _logger.LogInformation("NeoForge处理器执行完成: {VersionId}", versionId);
+            progressCallback?.Invoke(1); // 保持1%进度
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行NeoForge处理器失败: {VersionId}", versionId);
+            throw new Exception($"执行NeoForge处理器失败 (版本: {versionId}): {ex.Message}", ex);
+        }
+    }
+
     public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null)
     {
         try
         {
             // 设计新的进度分配方案（更平滑的过渡）：
             // - 初始化阶段：0-5%
+            // - NeoForge处理器执行：1%（独立于其他阶段）
             // - 依赖库下载：5-45%
             // - 资源索引处理：45-50%
             // - 资源对象下载：50-100%
@@ -1365,7 +1507,10 @@ public class MinecraftVersionService : IMinecraftVersionService
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string nativesDirectory = Path.Combine(versionDirectory, $"{versionId}-natives");
             
-            // 1. 下载缺失的依赖库 (5-45%)
+            // 1. 执行NeoForge处理器（如果需要），占1%进度
+            await EnsureNeoForgeDependenciesAsync(versionId, minecraftDirectory, librariesDirectory, progressCallback, currentDownloadCallback);
+            
+            // 2. 下载缺失的依赖库 (5-45%)
             try
             {
                 await DownloadLibrariesAsync(versionId, librariesDirectory, (progress) =>
@@ -2097,8 +2242,13 @@ public class MinecraftVersionService : IMinecraftVersionService
                 _logger.LogInformation("找到client.lzma: {FilePath}", file);
             }
             
-            // 优先使用预期路径
-            string extractedClientLzmaPath = Path.Combine(extractDirectory, "data", "client", "client.lzma");
+            // 尝试两种可能的路径: data/client.lzma (新路径) 和 data/client/client.lzma (旧路径)
+            string[] possibleClientLzmaPaths = {
+                Path.Combine(extractDirectory, "data", "client.lzma"),
+                Path.Combine(extractDirectory, "data", "client", "client.lzma")
+            };
+            
+            string extractedClientLzmaPath = possibleClientLzmaPaths.FirstOrDefault(p => File.Exists(p));
             string targetClientLzmaPath = Path.Combine(neoforgeVersionDirectory, "client.lzma");
             
             // 确保目标目录存在
@@ -2106,11 +2256,11 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             bool fileCopied = false;
             
-            // 如果预期路径存在，直接使用
-            if (File.Exists(extractedClientLzmaPath))
+            // 如果找到client.lzma文件，复制到目标路径
+            if (extractedClientLzmaPath != null)
             {
                 File.Copy(extractedClientLzmaPath, targetClientLzmaPath, true);
-                _logger.LogInformation("已从预期路径复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
+                _logger.LogInformation("已复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
                 fileCopied = true;
             }
             // 如果预期路径不存在，尝试使用搜索到的第一个client.lzma文件
@@ -2156,7 +2306,7 @@ public class MinecraftVersionService : IMinecraftVersionService
             }
             
             // 8. 处理NeoForge安装配置文件
-            await ProcessNeoForgeInstallProfile(installProfilePath, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback);
+            await ProcessNeoForgeInstallProfile(installProfilePath, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, extractDirectory);
             
             // 8. 合并版本JSON
             _logger.LogInformation("开始合并版本JSON");
@@ -2423,7 +2573,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 处理NeoForge安装配置文件
     /// </summary>
-    private async Task ProcessNeoForgeInstallProfile(string installProfilePath, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback)
+    private async Task ProcessNeoForgeInstallProfile(string installProfilePath, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback, string extractDirectory)
     {
         try
         {
@@ -2483,7 +2633,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 double processorProgress = 80 + (executedProcessors * 20.0 / totalProcessors); // 80-100% 用于执行处理器
                 
                 _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
-                await ExecuteProcessor(processor, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath);
+                await ExecuteProcessor(processor, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath, extractDirectory);
                 
                 progressCallback?.Invoke(processorProgress);
             }
@@ -2500,7 +2650,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 执行单个NeoForge处理器
     /// </summary>
-    private async Task ExecuteProcessor(JObject processor, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback, string installProfilePath)
+    private async Task ExecuteProcessor(JObject processor, string installerPath, string neoforgeVersionDirectory, string librariesDirectory, Action<double> progressCallback, string installProfilePath, string extractDirectory)
     {
         // 定义变量，以便在catch块中访问
         string jar = string.Empty;
@@ -2567,7 +2717,18 @@ public class MinecraftVersionService : IMinecraftVersionService
                 string neoforgeVersion = neoforgeVersionParts.Length >= 3 ? neoforgeVersionParts[2] : "";
                 
                 paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar"));
-                paramValue = paramValue.Replace("{BINPATCH}", Path.Combine(neoforgeVersionDirectory, "client.lzma"));
+                // 直接使用临时目录中的client.lzma文件，而不是版本目录中的文件
+                // 尝试两种可能的路径: data/client.lzma (新路径) 和 data/client/client.lzma (旧路径)
+                string[] possibleClientLzmaPaths = {
+                    Path.Combine(extractDirectory, "data", "client.lzma"),
+                    Path.Combine(extractDirectory, "data", "client", "client.lzma")
+                };
+                string tempClientLzmaPath = possibleClientLzmaPaths.FirstOrDefault(p => File.Exists(p));
+                if (tempClientLzmaPath == null)
+                {
+                    throw new Exception($"client.lzma文件不存在于临时目录，尝试了以下路径: {string.Join(", ", possibleClientLzmaPaths)}");
+                }
+                paramValue = paramValue.Replace("{BINPATCH}", tempClientLzmaPath);
                 paramValue = paramValue.Replace("{EXTRACT_FILES}", "EXTRACT_FILES");
                 paramValue = paramValue.Replace("{EXTRACT_TO}", Path.Combine(librariesDirectory, "net", "neoforged", "neoforge", neoforgeVersion));
                 
@@ -2622,6 +2783,11 @@ public class MinecraftVersionService : IMinecraftVersionService
                 {
                     // 将所有正斜杠转换为反斜杠
                     paramValue = paramValue.Replace("/", "\\");
+                    // 移除路径末尾的反斜杠，避免NeoForge处理器错误
+                    if (paramValue.EndsWith("\\"))
+                    {
+                        paramValue = paramValue.Substring(0, paramValue.Length - 1);
+                    }
                     // 为路径添加双引号，避免空格和特殊字符问题
                     paramValue = $"\"{paramValue}\"";
                 }
@@ -2833,6 +2999,32 @@ public class MinecraftVersionService : IMinecraftVersionService
         }
     }
     
+    /// <summary>
+    /// 检查ZIP文件是否有效
+    /// </summary>
+    private bool IsZipFileValid(string zipFilePath)
+    {
+        try
+        {
+            if (!File.Exists(zipFilePath))
+            {
+                return false;
+            }
+            
+            // 尝试打开ZIP文件并读取其条目
+            using (var archive = ZipFile.OpenRead(zipFilePath))
+            {
+                // 检查是否有至少一个条目
+                return archive.Entries.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ZIP文件无效: {ZipFilePath}", zipFilePath);
+            return false;
+        }
+    }
+
     /// <summary>
     /// 从jar文件中获取主类
     /// </summary>

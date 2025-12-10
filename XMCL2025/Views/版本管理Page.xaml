@@ -31,6 +31,8 @@
         <!-- 转换器引用 -->
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:PathToUriConverter x:Key="PathToUriConverter" />
+        <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
         
 
     </Grid.Resources>
@@ -166,22 +168,29 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
-                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
                                                         <VisualStateManager.VisualStateGroups>
                                                             <VisualStateGroup x:Name="CommonStates">
                                                                 <VisualState x:Name="Normal" />
                                                                 <VisualState x:Name="PointerOver">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Pressed">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListMediumBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Selected">
                                                                     <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightListAccentLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
                                                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
                                                                         </ObjectAnimationUsingKeyFrames>
@@ -208,27 +217,59 @@
                                     <DataTemplate x:DataType="viewModels:ModInfo">
                                         <Grid Height="60" 
                                               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="12" 
-                                              Padding="16" 
+                                              CornerRadius="8" 
+                                              Padding="16,8,16,8" 
                                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- Mod图标 -->
+                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <FontIcon 
+                                                    Glyph="" 
+                                                    FontSize="20" 
+                                                    VerticalAlignment="Center" 
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                <Image 
+                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                    Width="24" 
+                                                    Height="24" 
+                                                    Stretch="UniformToFill"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            </Grid>
+                                            
                                             <!-- Mod名称 -->
                                             <TextBlock 
-                                                Grid.Column="0"
+                                                Grid.Column="1"
                                                 Text="{Binding Name}" 
-                                                Style="{StaticResource BodyTextStyle}" 
                                                 VerticalAlignment="Center" 
-                                                FontSize="13" 
-                                                FontWeight="Medium"/>
+                                                FontSize="14" 
+                                                FontWeight="Medium"
+                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+                                            
+                                            <!-- 启用/禁用开关 -->
+                                            <ToggleSwitch 
+                                                Grid.Column="2"
+                                                IsOn="{Binding IsEnabled, Mode=OneWay}" 
+                                                OnContent="启用" 
+                                                OffContent="禁用" 
+                                                VerticalAlignment="Center" 
+                                                HorizontalAlignment="Center"
+                                                Margin="12,0,12,0" 
+                                                Toggled="ModToggleSwitch_Toggled"
+                                                RequestedTheme="Default" 
+                                                Width="70"/>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="1"
+                                                Grid.Column="3"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteModCommand, ElementName=ModListView}" 
@@ -380,25 +421,43 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ShaderInfo">
                                         <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- 光影图标 -->
+                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <FontIcon 
+                                                    Glyph="" 
+                                                    FontSize="20" 
+                                                    VerticalAlignment="Center" 
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                <Image 
+                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                    Width="24" 
+                                                    Height="24" 
+                                                    Stretch="UniformToFill"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            </Grid>
+                                            
                                             <!-- 光影名称 -->
                                             <TextBlock 
-                                                Grid.Column="0"
+                                                Grid.Column="1"
                                                 Text="{Binding Name}" 
-                                                Style="{StaticResource BodyTextStyle}" 
                                                 VerticalAlignment="Center" 
-                                                FontSize="13" 
-                                                FontWeight="Medium"/>
+                                                FontSize="14" 
+                                                FontWeight="Medium"
+                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="1"
+                                                Grid.Column="2"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteShaderCommand, ElementName=ShaderListView}" 
@@ -550,25 +609,43 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ResourcePackInfo">
                                         <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- 资源包图标 -->
+                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <FontIcon 
+                                                    Glyph="" 
+                                                    FontSize="20" 
+                                                    VerticalAlignment="Center" 
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                <Image 
+                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                    Width="24" 
+                                                    Height="24" 
+                                                    Stretch="UniformToFill"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            </Grid>
+                                            
                                             <!-- 资源包名称 -->
                                             <TextBlock 
-                                                Grid.Column="0"
+                                                Grid.Column="1"
                                                 Text="{Binding Name}" 
-                                                Style="{StaticResource BodyTextStyle}" 
                                                 VerticalAlignment="Center" 
-                                                FontSize="13" 
-                                                FontWeight="Medium"/>
+                                                FontSize="14" 
+                                                FontWeight="Medium"
+                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="1"
+                                                Grid.Column="2"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 
@@ -721,25 +798,43 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:DataPackInfo">
                                         <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- 数据包图标 -->
+                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <FontIcon 
+                                                    Glyph="" 
+                                                    FontSize="20" 
+                                                    VerticalAlignment="Center" 
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                <Image 
+                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                    Width="24" 
+                                                    Height="24" 
+                                                    Stretch="UniformToFill"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            </Grid>
+                                            
                                             <!-- 数据包名称 -->
                                             <TextBlock 
-                                                Grid.Column="0"
+                                                Grid.Column="1"
                                                 Text="{Binding Name}" 
-                                                Style="{StaticResource BodyTextStyle}" 
                                                 VerticalAlignment="Center" 
-                                                FontSize="13" 
-                                                FontWeight="Medium"/>
+                                                FontSize="14" 
+                                                FontWeight="Medium"
+                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="1"
+                                                Grid.Column="2"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteDataPackCommand, ElementName=DataPackListView}" 
@@ -892,25 +987,43 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:MapInfo">
                                         <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="12" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- 地图图标 -->
+                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <FontIcon 
+                                                    Glyph="" 
+                                                    FontSize="20" 
+                                                    VerticalAlignment="Center" 
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                <Image 
+                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                    Width="24" 
+                                                    Height="24" 
+                                                    Stretch="UniformToFill"
+                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            </Grid>
+                                            
                                             <!-- 地图名称 -->
                                             <TextBlock 
-                                                Grid.Column="0"
+                                                Grid.Column="1"
                                                 Text="{Binding Name}" 
-                                                Style="{StaticResource BodyTextStyle}" 
                                                 VerticalAlignment="Center" 
-                                                FontSize="13" 
-                                                FontWeight="Medium"/>
+                                                FontSize="14" 
+                                                FontWeight="Medium"
+                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="1"
+                                                Grid.Column="2"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" 
