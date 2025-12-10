@@ -10,6 +10,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -403,6 +404,7 @@ public partial class 启动ViewModel : ObservableRecipient
     private readonly ILocalSettingsService _localSettingsService;
     private readonly MicrosoftAuthService _microsoftAuthService;
     private readonly INavigationService _navigationService;
+    private readonly ILogger<启动ViewModel> _logger;
     
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
@@ -529,6 +531,7 @@ public partial class 启动ViewModel : ObservableRecipient
         _localSettingsService = App.GetService<ILocalSettingsService>();
         _microsoftAuthService = App.GetService<MicrosoftAuthService>();
         _navigationService = App.GetService<INavigationService>();
+        _logger = App.GetService<ILogger<启动ViewModel>>();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1090,9 +1093,19 @@ public partial class 启动ViewModel : ObservableRecipient
                     }
                     else
                     {
-                        // 常规库（包括带有classifier的常规库，如NeoForge的universal库），添加到classpath
+                        // 常规库，添加到classpath
                         if (library.Downloads?.Artifact != null)
                         {
+                            // 检查是否为neoforge-universal.jar，如果是则跳过
+                            if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
+                                (library.Name.Contains("universal", StringComparison.OrdinalIgnoreCase) || 
+                                 library.Name.Contains("installertools", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                _logger.LogInformation("跳过添加neoforge-universal或installertools到classpath");
+                                skippedCount++;
+                                continue;
+                            }
+                            
                             // 对于带有classifier的库，需要特殊处理文件名
                             string classifier = hasClassifier ? library.Name.Split(':')[3] : null;
                             string libPath = GetLibraryFilePath(library.Name, librariesPath, classifier);
@@ -1217,13 +1230,13 @@ public partial class 启动ViewModel : ObservableRecipient
             if (!hasClasspath)
             {
                 // 添加classpath参数
-                args.Add($"-cp");
+                args.Add("-cp");
                 args.Add(classpath);
                 // 添加原生库路径
                 args.Add($"-Djava.library.path=\"{Path.Combine(versionDir, $"{SelectedVersion}-natives")}\"");
                 // 添加启动器品牌和版本信息
-                args.Add($"-Dminecraft.launcher.brand=XianYuLauncher");
-                args.Add($"-Dminecraft.launcher.version=1.0");
+                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
+                args.Add("-Dminecraft.launcher.version=1.0");
             }
             
             // 添加主类
@@ -1254,17 +1267,14 @@ public partial class 启动ViewModel : ObservableRecipient
             args.Add($"--uuid");
             args.Add(SelectedProfile.Id);
             
-            // 仅在非离线模式下添加accessToken和userType参数
-            if (!SelectedProfile.IsOffline)
-            {
-                // 添加AccessToken参数
-                args.Add($"--accessToken");
-                args.Add(SelectedProfile.AccessToken);
-                
-                // 添加userType参数，微软登录使用"msa"
-                args.Add($"--userType");
-                args.Add("msa");
-            }
+            // 为所有玩家添加accessToken和userType参数
+            // 添加AccessToken参数，离线玩家使用默认值
+            args.Add($"--accessToken");
+            args.Add(string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken);
+            
+            // 添加userType参数，离线玩家使用"offline"，微软登录使用"msa"
+            args.Add($"--userType");
+            args.Add(SelectedProfile.IsOffline ? "offline" : "msa");
             
             // 为1.9以下版本添加--userProperties参数
             if (IsVersionBelow1_9(SelectedVersion))
@@ -1421,7 +1431,28 @@ public partial class 启动ViewModel : ObservableRecipient
         {
             fileName += $"-{classifier}";
         }
-        fileName += ".jar";
+        
+        // 确定文件扩展名
+        string extension = ".jar";
+        bool hasExtension = false;
+        
+        // 检查文件名是否已经包含特定扩展名
+        if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".lzma";
+            hasExtension = true;
+        }
+        else if (fileName.EndsWith(".tsrg", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".tsrg";
+            hasExtension = true;
+        }
+        
+        // 如果文件名已经包含扩展名，就不再添加；否则添加默认扩展名
+        if (!hasExtension)
+        {
+            fileName += extension;
+        }
 
         // 组合完整路径
         string libraryPath = Path.Combine(librariesDirectory, groupPath, artifactId, version, fileName);
