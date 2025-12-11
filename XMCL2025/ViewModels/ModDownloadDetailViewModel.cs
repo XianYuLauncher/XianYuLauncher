@@ -123,6 +123,11 @@ namespace XMCL2025.ViewModels
                     DownloadSectionText = "整合包下载";
                     VersionSelectionTip = "灰色版本表示不兼容当前整合包版本";
                     break;
+                case "datapack":
+                    SupportedLoadersText = "标签";
+                    DownloadSectionText = "数据包下载";
+                    VersionSelectionTip = "灰色版本表示不兼容当前数据包版本";
+                    break;
                 default:
                     SupportedLoadersText = "支持的加载器";
                     DownloadSectionText = "Mod下载";
@@ -253,13 +258,20 @@ namespace XMCL2025.ViewModels
                     }
                 }
                 
-                // 如果是资源包，显示标签而不是加载器
-                if (ProjectType == "resourcepack")
+                // 检查是否为资源包、数据包或光影，显示标签而不是加载器
+                if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader" || 
+                    (projectDetail.Loaders != null && projectDetail.Loaders.Contains("datapack")))
                 {
+                    // 如果是数据包，确保ProjectType被正确设置
+                    if (projectDetail.Loaders != null && projectDetail.Loaders.Contains("datapack"))
+                    {
+                        ProjectType = "datapack";
+                    }
+                    
                     // 清空加载器列表
                     SupportedLoaders.Clear();
                     
-                    // 添加资源包标签
+                    // 添加标签
                     if (projectDetail.Categories != null)
                     {
                         foreach (var category in projectDetail.Categories)
@@ -373,6 +385,19 @@ namespace XMCL2025.ViewModels
         [ObservableProperty]
         private bool _isVersionSelectionDialogOpen;
 
+        // 存档选择相关属性
+        [ObservableProperty]
+        private bool _isSaveSelectionDialogOpen;
+
+        [ObservableProperty]
+        private ObservableCollection<string> _saveNames = new ObservableCollection<string>();
+
+        [ObservableProperty]
+        private string _selectedSaveName;
+
+        [ObservableProperty]
+        private string _saveSelectionTip = "选择要安装数据包的存档";
+
         // 打开下载弹窗命令
         [RelayCommand]
         public async Task OpenDownloadDialog(ModVersionViewModel modVersion)
@@ -387,6 +412,286 @@ namespace XMCL2025.ViewModels
             else
             {
                 IsDownloadDialogOpen = true;
+            }
+        }
+        
+        // 保存当前正在下载的Mod版本，用于存档选择后继续下载
+        private ModVersionViewModel _currentDownloadingModVersion;
+        
+        // 显示存档选择弹窗
+        private async Task ShowSaveSelectionDialog()
+        {
+            try
+            {
+                // 清空之前的存档列表
+                SaveNames.Clear();
+                
+                // 获取Minecraft数据路径
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                
+                // 构建saves目录路径 - 对于模组加载器版本，saves目录在versions目录下的具体版本文件夹内
+                string savesPath;
+                
+                // 如果选择了已安装的版本，使用该版本的路径
+                if (SelectedInstalledVersion != null)
+                {
+                    // 构建完整的版本路径：.minecraft/versions/{versionName}
+                    string versionDir = Path.Combine(minecraftPath, "versions", $"{SelectedInstalledVersion.LoaderType.ToLower()}-{SelectedInstalledVersion.GameVersion}-{SelectedInstalledVersion.LoaderVersion}");
+                    
+                    // 如果直接按版本号命名的文件夹不存在，尝试使用版本号作为文件夹名
+                    if (!Directory.Exists(versionDir))
+                    {
+                        versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
+                    }
+                    
+                    // 构建saves目录路径：.minecraft/versions/{versionName}/saves
+                    savesPath = Path.Combine(versionDir, "saves");
+                }
+                else
+                {
+                    // 默认情况下，使用根目录下的saves文件夹
+                    savesPath = Path.Combine(minecraftPath, "saves");
+                }
+                
+                // 检查saves目录是否存在
+                if (Directory.Exists(savesPath))
+                {
+                    // 获取所有存档目录名称
+                    string[] saveDirectories = Directory.GetDirectories(savesPath);
+                    
+                    // 提取存档目录名称并排序
+                    List<string> saveNames = new List<string>();
+                    foreach (string saveDir in saveDirectories)
+                    {
+                        saveNames.Add(Path.GetFileName(saveDir));
+                    }
+                    
+                    // 按名称排序
+                    saveNames.Sort();
+                    
+                    // 更新SaveNames属性
+                    foreach (string saveName in saveNames)
+                    {
+                        SaveNames.Add(saveName);
+                    }
+                }
+                else
+                {
+                    // 如果saves目录不存在，尝试在versions目录下查找所有版本的saves目录
+                    string versionsPath = Path.Combine(minecraftPath, "versions");
+                    if (Directory.Exists(versionsPath))
+                    {
+                        // 获取所有版本目录
+                        string[] versionDirectories = Directory.GetDirectories(versionsPath);
+                        
+                        foreach (string versionDir in versionDirectories)
+                        {
+                            string versionSavesPath = Path.Combine(versionDir, "saves");
+                            if (Directory.Exists(versionSavesPath))
+                            {
+                                // 获取该版本下的所有存档目录名称
+                                string[] saveDirectories = Directory.GetDirectories(versionSavesPath);
+                                
+                                foreach (string saveDir in saveDirectories)
+                                {
+                                    string saveName = Path.GetFileName(saveDir);
+                                    // 确保存档名称唯一，避免重复
+                                    if (!SaveNames.Contains(saveName))
+                                    {
+                                        SaveNames.Add(saveName);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 按名称排序
+                        var sortedSaveNames = SaveNames.OrderBy(s => s).ToList();
+                        SaveNames.Clear();
+                        foreach (string saveName in sortedSaveNames)
+                        {
+                            SaveNames.Add(saveName);
+                        }
+                    }
+                }
+                
+                // 清空之前的选择
+                SelectedSaveName = null;
+                
+                // 打开存档选择弹窗
+                IsSaveSelectionDialogOpen = true;
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageAsync($"加载存档列表失败: {ex.Message}");
+                IsSaveSelectionDialogOpen = false;
+            }
+        }
+        
+        // 存档选择后完成数据包下载
+        public async Task CompleteDatapackDownloadAsync()
+        {
+            try
+            {
+                if (_currentDownloadingModVersion == null)
+                {
+                    throw new Exception("未找到正在下载的Mod版本");
+                }
+                
+                if (string.IsNullOrEmpty(SelectedSaveName))
+                {
+                    IsDownloading = false;
+                    DownloadStatus = "下载已取消";
+                    return;
+                }
+                
+                // 获取Minecraft数据路径
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                
+                // 构建存档文件夹路径
+                string savesDir;
+                
+                // 如果选择了已安装的版本，使用该版本的路径
+                if (SelectedInstalledVersion != null)
+                {
+                    // 构建完整的版本路径：.minecraft/versions/{versionName}
+                    string versionDir = Path.Combine(minecraftPath, "versions", $"{SelectedInstalledVersion.LoaderType.ToLower()}-{SelectedInstalledVersion.GameVersion}-{SelectedInstalledVersion.LoaderVersion}");
+                    
+                    // 如果直接按版本号命名的文件夹不存在，尝试使用版本号作为文件夹名
+                    if (!Directory.Exists(versionDir))
+                    {
+                        versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
+                    }
+                    
+                    // 构建saves目录路径：.minecraft/versions/{versionName}/saves
+                    savesDir = Path.Combine(versionDir, "saves");
+                }
+                else
+                {
+                    // 默认情况下，使用根目录下的saves文件夹
+                    savesDir = Path.Combine(minecraftPath, "saves");
+                }
+                
+                string selectedSaveDir = Path.Combine(savesDir, SelectedSaveName);
+                string targetDir = Path.Combine(selectedSaveDir, "datapacks");
+                
+                // 创建目标文件夹（如果不存在）
+                _fileService.CreateDirectory(targetDir);
+                
+                // 构建完整的文件保存路径
+                string savePath = Path.Combine(targetDir, _currentDownloadingModVersion.FileName);
+                
+                // 执行下载
+                await PerformDownload(_currentDownloadingModVersion, savePath);
+                
+                // 清空当前正在下载的Mod版本
+                _currentDownloadingModVersion = null;
+            }
+            catch (Exception ex)
+            {
+                IsDownloading = false;
+                DownloadStatus = $"下载失败: {ex.Message}";
+                await ShowMessageAsync($"下载失败: {ex.Message}");
+                _currentDownloadingModVersion = null;
+            }
+        }
+        
+        // 执行实际下载操作
+        private async Task PerformDownload(ModVersionViewModel modVersion, string savePath)
+        {
+            try
+            {
+                // 使用HttpClient下载文件
+                using (HttpClient client = new HttpClient())
+                {
+                    // 获取文件大小
+                    using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                        
+                        using (Stream contentStream = await response.Content.ReadAsStreamAsync())
+                        using (Stream fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            long totalRead = 0;
+                            byte[] buffer = new byte[8192];
+                            int bytesRead;
+                            
+                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                            {
+                                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                                totalRead += bytesRead;
+                                
+                                // 更新下载进度
+                                if (totalBytes > 0)
+                                {
+                                    DownloadProgress = (double)totalRead / totalBytes * 100;
+                                    DownloadStatus = $"正在下载... {DownloadProgress:F1}%";
+                                }
+                                else
+                                {
+                                    DownloadProgress = 0;
+                                    DownloadStatus = $"正在下载... {totalRead / 1024} KB";
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 下载图标到本地
+                if (!string.IsNullOrEmpty(ModIconUrl) && !ModIconUrl.StartsWith("ms-appx:"))
+                {
+                    try
+                    {
+                        // 构建图标保存路径
+                        string minecraftPath = _fileService.GetMinecraftDataPath();
+                        string iconDir = Path.Combine(minecraftPath, "icons", ProjectType);
+                        _fileService.CreateDirectory(iconDir);
+                        
+                        // 使用项目ID和文件名生成唯一图标文件名
+                        string iconFileName = $"{ModId}_{Path.GetFileNameWithoutExtension(modVersion.FileName)}_icon.png";
+                        string iconSavePath = Path.Combine(iconDir, iconFileName);
+                        
+                        // 下载图标
+                        DownloadStatus = "正在下载图标...";
+                        using (HttpClient client = new HttpClient())
+                        {
+                            var iconBytes = await client.GetByteArrayAsync(ModIconUrl);
+                            await File.WriteAllBytesAsync(iconSavePath, iconBytes);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 图标下载失败不影响主文件下载，记录错误即可
+                        System.Diagnostics.Debug.WriteLine("图标下载失败: " + ex.Message);
+                    }
+                }
+                
+                DownloadStatus = "下载完成！";
+                // 根据项目类型显示不同的文本
+                string projectTypeText;
+                switch (ProjectType)
+                {
+                    case "resourcepack":
+                        projectTypeText = "资源包";
+                        break;
+                    case "shader":
+                        projectTypeText = "光影";
+                        break;
+                    case "modpack":
+                        projectTypeText = "整合包";
+                        break;
+                    case "datapack":
+                        projectTypeText = "数据包";
+                        break;
+                    default:
+                        projectTypeText = "Mod";
+                        break;
+                }
+                await ShowMessageAsync($"{projectTypeText} '{modVersion.FileName}' 下载完成！");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"下载文件失败: {ex.Message}");
             }
         }
 
@@ -457,10 +762,18 @@ namespace XMCL2025.ViewModels
                     // 检查版本是否兼容
                 bool isCompatible = false;
                 
-                // 如果是资源包或光影，不做兼容性检测，所有版本都兼容
-                if (ProjectType == "resourcepack" || ProjectType == "shader")
+                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
+                bool isDatapack = ProjectType == "datapack" || 
+                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                
+                // 如果是资源包、光影或数据包，只基于游戏版本号进行兼容性检测
+                if (ProjectType == "resourcepack" || ProjectType == "shader" || isDatapack)
                 {
-                    isCompatible = true;
+                    // 数据包和资源包、光影一样，只基于游戏版本号兼容
+                    if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
+                    {
+                        isCompatible = true;
+                    }
                 }
                 else if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
                 {
@@ -657,114 +970,53 @@ namespace XMCL2025.ViewModels
                 
                 // 根据项目类型选择文件夹名称
                 string targetFolder;
-                switch (ProjectType)
+                
+                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
+                bool isDatapack = ProjectType == "datapack" || 
+                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                
+                if (isDatapack)
                 {
-                    case "resourcepack":
-                        targetFolder = "resourcepacks";
-                        break;
-                    case "shader":
-                        targetFolder = "shaderpacks";
-                        break;
-                    default:
-                        targetFolder = "mods";
-                        break;
-                }
-                
-                // 构建目标文件夹路径
-                string targetDir = Path.Combine(versionDir, targetFolder);
-                
-                // 创建目标文件夹（如果不存在）
-                _fileService.CreateDirectory(targetDir);
-                
-                // 构建完整的文件保存路径
-                savePath = Path.Combine(targetDir, modVersion.FileName);
-            }
-            
-            // 使用HttpClient下载文件
-            using (HttpClient client = new HttpClient())
-            {
-                // 获取文件大小
-                using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
-                {
-                    response.EnsureSuccessStatusCode();
-                    long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                    // 保存当前正在下载的Mod版本
+                    _currentDownloadingModVersion = modVersion;
                     
-                    using (Stream contentStream = await response.Content.ReadAsStreamAsync())
-                    using (Stream fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    // 数据包特殊处理：需要选择存档
+                    // 打开存档选择弹窗
+                    await ShowSaveSelectionDialog();
+                    
+                    // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                    // 这里直接返回，等待用户选择存档后再继续
+                    return;
+                }
+                else
+                {
+                    // 非数据包类型，使用常规逻辑
+                    switch (ProjectType)
                     {
-                        long totalRead = 0;
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        
-                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            await fileStream.WriteAsync(buffer, 0, bytesRead);
-                            totalRead += bytesRead;
-                            
-                            // 更新下载进度
-                            if (totalBytes > 0)
-                            {
-                                DownloadProgress = (double)totalRead / totalBytes * 100;
-                                DownloadStatus = $"正在下载... {DownloadProgress:F1}%";
-                            }
-                            else
-                            {
-                                DownloadProgress = 0;
-                                DownloadStatus = $"正在下载... {totalRead / 1024} KB";
-                            }
-                        }
+                        case "resourcepack":
+                            targetFolder = "resourcepacks";
+                            break;
+                        case "shader":
+                            targetFolder = "shaderpacks";
+                            break;
+                        default:
+                            targetFolder = "mods";
+                            break;
                     }
+                    
+                    // 构建目标文件夹路径
+                    string targetDir = Path.Combine(versionDir, targetFolder);
+                    
+                    // 创建目标文件夹（如果不存在）
+                    _fileService.CreateDirectory(targetDir);
+                    
+                    // 构建完整的文件保存路径
+                    savePath = Path.Combine(targetDir, modVersion.FileName);
                 }
             }
             
-            // 下载图标到本地
-            if (!string.IsNullOrEmpty(ModIconUrl) && !ModIconUrl.StartsWith("ms-appx:"))
-            {
-                try
-                {
-                    // 构建图标保存路径
-                    string minecraftPath = _fileService.GetMinecraftDataPath();
-                    string iconDir = Path.Combine(minecraftPath, "icons", ProjectType);
-                    _fileService.CreateDirectory(iconDir);
-                    
-                    // 使用项目ID和文件名生成唯一图标文件名
-                    string iconFileName = $"{ModId}_{Path.GetFileNameWithoutExtension(modVersion.FileName)}_icon.png";
-                    string iconSavePath = Path.Combine(iconDir, iconFileName);
-                    
-                    // 下载图标
-                    DownloadStatus = "正在下载图标...";
-                    using (HttpClient client = new HttpClient())
-                    {
-                        var iconBytes = await client.GetByteArrayAsync(ModIconUrl);
-                        await File.WriteAllBytesAsync(iconSavePath, iconBytes);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // 图标下载失败不影响主文件下载，记录错误即可
-                    System.Diagnostics.Debug.WriteLine("图标下载失败: " + ex.Message);
-                }
-            }
-            
-            DownloadStatus = "下载完成！";
-            // 根据项目类型显示不同的文本
-            string projectTypeText;
-            switch (ProjectType)
-            {
-                case "resourcepack":
-                    projectTypeText = "资源包";
-                    break;
-                case "shader":
-                    projectTypeText = "光影";
-                    break;
-                case "modpack":
-                    projectTypeText = "整合包";
-                    break;
-                default:
-                    projectTypeText = "Mod";
-                    break;
-            }
-            await ShowMessageAsync($"{projectTypeText} '{modVersion.FileName}' 下载完成！");
+            // 执行下载
+            await PerformDownload(modVersion, savePath);
         }
             catch (Exception ex)
             {
@@ -1013,6 +1265,81 @@ namespace XMCL2025.ViewModels
                             {
                                 File.Delete(modpackJarPath);
                                 throw new Exception($"JAR文件SHA1哈希验证失败，下载的文件可能已损坏。");
+                            }
+                        }
+                    }
+
+                    // 10. 处理files字段中的文件
+                    if (indexData.files != null)
+                    {
+                        var files = indexData.files as Newtonsoft.Json.Linq.JArray;
+                        if (files != null && files.Count > 0)
+                        {
+                            InstallStatus = "正在下载整合包文件...";
+                            InstallProgress = 80;
+                            InstallProgressText = "80%";
+                            
+                            int totalFiles = files.Count;
+                            int downloadedFiles = 0;
+                            
+                            foreach (var fileItem in files)
+                            {
+                                // 检查是否取消
+                                _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
+                                
+                                // 获取downloads数组和path字段
+                                var downloads = fileItem["downloads"] as Newtonsoft.Json.Linq.JArray;
+                                var path = fileItem["path"]?.ToString();
+                                
+                                if (downloads != null && downloads.Count > 0 && !string.IsNullOrEmpty(path))
+                                {
+                                    // 获取第一个下载链接
+                                    string downloadUrl = downloads[0]?.ToString();
+                                    if (!string.IsNullOrEmpty(downloadUrl))
+                                    {
+                                        // 构建目标路径
+                                        string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
+                                        string targetDir = Path.GetDirectoryName(targetPath);
+                                        Directory.CreateDirectory(targetDir);
+                                        
+                                        // 获取当前下载的文件名，用于显示进度
+                                        string fileName = Path.GetFileName(path);
+                                        InstallStatus = $"正在下载整合包文件: {fileName}...";
+                                        
+                                        // 下载文件 - 优化版本
+                                        using (HttpClient client = new HttpClient())
+                                        {
+                                            // 设置User-Agent
+                                            client.DefaultRequestHeaders.UserAgent.ParseAdd("XMCL2025/1.0");
+                                            
+                                            // 设置超时
+                                            client.Timeout = TimeSpan.FromMinutes(5);
+                                            
+                                            using (HttpResponseMessage response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                                            {
+                                                response.EnsureSuccessStatusCode();
+                                                
+                                                using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
+                                                // 使用FileOptions.Asynchronous启用异步IO
+                                                using (FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, FileOptions.Asynchronous))
+                                                {
+                                                    // 增大缓冲区大小
+                                                    byte[] buffer = new byte[65536]; // 64KB缓冲区
+                                                    int bytesRead;
+                                                    
+                                                    // 使用CopyToAsync，它内部有优化
+                                                    await contentStream.CopyToAsync(fileStream, buffer.Length, _installCancellationTokenSource.Token);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // 更新进度
+                                        downloadedFiles++;
+                                        double progress = 80 + ((double)downloadedFiles / totalFiles) * 20;
+                                        InstallProgress = progress;
+                                        InstallProgressText = $"{progress:F1}%";
+                                    }
+                                }
                             }
                         }
                     }

@@ -63,6 +63,17 @@ namespace XMCL2025.Views
                     ModpackInstallDialog.Hide();
                 }
             }
+            else if (e.PropertyName == nameof(ViewModel.IsSaveSelectionDialogOpen))
+            {
+                if (ViewModel.IsSaveSelectionDialogOpen)
+                {
+                    await SaveSelectionDialog.ShowAsync();
+                }
+                else
+                {
+                    SaveSelectionDialog.Hide();
+                }
+            }
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -176,6 +187,21 @@ namespace XMCL2025.Views
         private void VersionSelectionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             ViewModel.IsVersionSelectionDialogOpen = false;
+        }
+
+        // 存档选择弹窗 - 确认按钮点击事件
+        private async void SaveSelectionDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.IsSaveSelectionDialogOpen = false;
+            // 继续下载流程，调用ViewModel中的方法完成下载
+            await ViewModel.CompleteDatapackDownloadAsync();
+        }
+
+        // 存档选择弹窗 - 取消按钮点击事件
+        private void SaveSelectionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.IsSaveSelectionDialogOpen = false;
+            ViewModel.SelectedSaveName = null;
         }
 
         // 整合包安装弹窗 - 取消按钮点击事件

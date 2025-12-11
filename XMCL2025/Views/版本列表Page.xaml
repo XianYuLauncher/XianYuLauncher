@@ -40,76 +40,7 @@
                 Command="{Binding LoadVersionsCommand}"
                 IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
                 Style="{StaticResource DefaultButtonStyle}"
-                HorizontalAlignment="Right"
-                Height="36"
-                Padding="16,0,16,0"
-                FontSize="14"
-                CornerRadius="8"
-                BorderThickness="1"
-                Background="{ThemeResource SystemControlHighlightAccentBrush}"
-                Foreground="White">
-                <Button.Resources>
-                    <Style TargetType="Button">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Grid>
-                                        <VisualStateManager.VisualStateGroups>
-                                            <VisualStateGroup x:Name="CommonStates">
-                                                <VisualState x:Name="Normal" />
-                                                <VisualState x:Name="PointerOver">
-                                                    <Storyboard>
-                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
-                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
-                                                        </ObjectAnimationUsingKeyFrames>
-                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
-                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Scale" To="1.02" Duration="0:0:0.1" />
-                                                    </Storyboard>
-                                                </VisualState>
-                                                <VisualState x:Name="Pressed">
-                                                    <Storyboard>
-                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
-                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
-                                                        </ObjectAnimationUsingKeyFrames>
-                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
-                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Scale" To="0.98" Duration="0:0:0.1" />
-                                                    </Storyboard>
-                                                </VisualState>
-                                                <VisualState x:Name="Disabled">
-                                                    <Storyboard>
-                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
-                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundBaseLowBrush}" />
-                                                        </ObjectAnimationUsingKeyFrames>
-                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Foreground">
-                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlDisabledBaseMediumLowBrush}" />
-                                                        </ObjectAnimationUsingKeyFrames>
-                                                    </Storyboard>
-                                                </VisualState>
-                                            </VisualStateGroup>
-                                        </VisualStateManager.VisualStateGroups>
-                                        <ContentPresenter x:Name="ContentPresenter"
-                                                          Background="{TemplateBinding Background}"
-                                                          Foreground="{TemplateBinding Foreground}"
-                                                          BorderBrush="{TemplateBinding BorderBrush}"
-                                                          BorderThickness="{TemplateBinding BorderThickness}"
-                                                          CornerRadius="{TemplateBinding CornerRadius}"
-                                                          Content="{TemplateBinding Content}"
-                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                          Padding="{TemplateBinding Padding}"
-                                                          RenderTransformOrigin="0.5,0.5">
-                                            <ContentPresenter.RenderTransform>
-                                                <CompositeTransform ScaleX="1" ScaleY="1" />
-                                            </ContentPresenter.RenderTransform>
-                                        </ContentPresenter>
-                                    </Grid>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </Button.Resources>
-            </Button>
+                HorizontalAlignment="Right" />
         </Grid>
 
         <!-- 版本列表 -->
