@@ -1,4 +1,4 @@
-using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XMCL2025.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XMCL2025.Core.Models; using System.Linq; using System.Text.RegularExpressions;
+using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XMCL2025.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XMCL2025.Core.Models; using System.Linq; using System.Text.RegularExpressions; using XMCL2025.Core.Services.DownloadSource; using XMCL2025.ViewModels; using XMCL2025.Contracts.Services;
 
 namespace XMCL2025.Core.Services;
 
@@ -9,15 +9,21 @@ public class MinecraftVersionService : IMinecraftVersionService
     private readonly HttpClient _httpClient;
     private readonly ILogger<MinecraftVersionService> _logger;
     private readonly IFileService _fileService;
+    private readonly ILocalSettingsService _localSettingsService;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
 
-    private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
-
-    public MinecraftVersionService(ILogger<MinecraftVersionService> logger, IFileService fileService)
+    public MinecraftVersionService(
+        ILogger<MinecraftVersionService> logger, 
+        IFileService fileService,
+        ILocalSettingsService localSettingsService,
+        DownloadSourceFactory downloadSourceFactory)
     {
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
         _logger = logger;
         _fileService = fileService;
+        _localSettingsService = localSettingsService;
+        _downloadSourceFactory = downloadSourceFactory;
     }
 
     public async Task<VersionManifest> GetVersionManifestAsync()
@@ -25,10 +31,24 @@ public class MinecraftVersionService : IMinecraftVersionService
         try
         {
             _logger.LogInformation("正在获取Minecraft版本清单");
+            
+            // 获取当前版本列表源设置（枚举类型）
+            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
+            var versionListSource = versionListSourceEnum.ToString();
+            _logger.LogInformation("当前版本列表源: {VersionListSource}", versionListSource);
+            
+            // 根据设置获取对应的下载源
+            var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+            var versionManifestUrl = downloadSource.GetVersionManifestUrl();
+            _logger.LogInformation("使用版本清单URL: {VersionManifestUrl}", versionManifestUrl);
+            
+            // 添加Debug输出，显示当前下载源和请求URL
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载MC版本列表，下载源: {downloadSource.Name}，请求URL: {versionManifestUrl}");
+            
             // 添加超时机制
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
             {
-                var response = await _httpClient.GetStringAsync(VersionManifestUrl, cts.Token);
+                var response = await _httpClient.GetStringAsync(versionManifestUrl, cts.Token);
                 var manifest = JsonConvert.DeserializeObject<VersionManifest>(response);
                 _logger.LogInformation("成功获取Minecraft版本清单，共{VersionCount}个版本", manifest.Versions.Count);
                 return manifest;
@@ -37,7 +57,7 @@ public class MinecraftVersionService : IMinecraftVersionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取Minecraft版本清单失败");
-            throw new Exception("Failed to get version manifest from Mojang API", ex);
+            throw new Exception("Failed to get version manifest", ex);
         }
     }
 
@@ -54,7 +74,27 @@ public class MinecraftVersionService : IMinecraftVersionService
             string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             
             // 1. 检查是否为ModLoader版本（Fabric或NeoForge）
-            bool isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+            bool isModLoaderVersion = false;
+            string modLoaderType = string.Empty;
+            
+            // 先尝试从配置文件读取
+            VersionConfig config = ReadVersionConfig(Path.GetDirectoryName(jsonPath));
+            if (config != null)
+            {
+                isModLoaderVersion = true;
+                modLoaderType = config.ModLoaderType;
+                _logger.LogInformation("从配置文件识别为{ModLoaderType}版本: {VersionId}", modLoaderType, versionId);
+            }
+            // 回退到旧的名称识别逻辑
+            else
+            {
+                isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+                if (isModLoaderVersion)
+                {
+                    modLoaderType = versionId.StartsWith("fabric-") ? "fabric" : "neoforge";
+                    _logger.LogInformation("从版本名称识别为{ModLoaderType}版本: {VersionId}", modLoaderType, versionId);
+                }
+            }
             
             if (isModLoaderVersion)
             {
@@ -62,7 +102,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 
                 if (File.Exists(jsonPath))
                 {
-                    _logger.LogInformation("从本地文件获取{ModLoaderType}版本信息: {JsonPath}", versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", jsonPath);
+                    _logger.LogInformation("从本地文件获取{ModLoaderType}版本信息: {JsonPath}", modLoaderType, jsonPath);
                     string jsonContent = await File.ReadAllTextAsync(jsonPath);
                     var modLoaderVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
                     
@@ -70,7 +110,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                     if (!string.IsNullOrEmpty(modLoaderVersionInfo.InheritsFrom))
                     {
                         _logger.LogInformation("{ModLoaderType}版本{VersionId}继承自{InheritsFrom}，正在获取父版本信息", 
-                            versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", versionId, modLoaderVersionInfo.InheritsFrom);
+                            modLoaderType, versionId, modLoaderVersionInfo.InheritsFrom);
                         // 递归获取父版本信息，但不允许网络请求
                         try
                         {
@@ -108,7 +148,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                         catch (Exception ex)
                         {
                             _logger.LogWarning("获取父版本信息失败，但继续执行，假设所有必要信息都已包含在{ModLoaderType}版本信息中: {ExceptionMessage}", 
-                                versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", ex.Message);
+                                modLoaderType, ex.Message);
                             // 如果获取父版本信息失败，继续执行，假设ModLoader版本信息已经包含了所有必要的信息
                         }
                     }
@@ -135,7 +175,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                                         string fullUrl = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
                                         
                                         _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}", 
-                                            versionId.StartsWith("fabric-") ? "Fabric" : "NeoForge", 
+                                            modLoaderType, 
                                             library.Downloads.Artifact.Url, fullUrl);
                                         library.Downloads.Artifact.Url = fullUrl;
                                     }
@@ -159,7 +199,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 return localVersionInfo;
             }
             
-            // 3. 如果本地文件不存在，才从官方API获取（仅当允许网络请求时）
+            // 3. 如果本地文件不存在，才从API获取（仅当允许网络请求时）
             if (allowNetwork)
             {
                 try
@@ -174,7 +214,13 @@ public class MinecraftVersionService : IMinecraftVersionService
                             throw new Exception($"Version {versionId} not found");
                         }
 
-                        var response = await _httpClient.GetStringAsync(versionEntry.Url, cts.Token);
+                        // 获取当前版本列表源设置，转换版本信息URL
+                        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
+                        var versionListSource = versionListSourceEnum.ToString();
+                        var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+                        var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
+                        
+                        var response = await _httpClient.GetStringAsync(versionInfoUrl, cts.Token);
                         var apiVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(response);
                         _logger.LogInformation("成功获取Minecraft版本{VersionId}的详细信息", versionId);
                         return apiVersionInfo;
@@ -204,14 +250,32 @@ public class MinecraftVersionService : IMinecraftVersionService
         try
         {
             // 检查是否为ModLoader版本（Fabric或NeoForge）
-            bool isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+            bool isModLoaderVersion = false;
+            
+            // 先尝试从配置文件读取
+            string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
+            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
+            string versionDirectory = Path.Combine(versionsDirectory, versionId);
+            VersionConfig config = ReadVersionConfig(versionDirectory);
+            if (config != null)
+            {
+                isModLoaderVersion = true;
+                _logger.LogInformation("从配置文件识别为{ModLoaderType}版本: {VersionId}", config.ModLoaderType, versionId);
+            }
+            // 回退到旧的名称识别逻辑
+            else
+            {
+                isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
+                if (isModLoaderVersion)
+                {
+                    string modLoaderType = versionId.StartsWith("fabric-") ? "fabric" : "neoforge";
+                    _logger.LogInformation("从版本名称识别为{ModLoaderType}版本: {VersionId}", modLoaderType, versionId);
+                }
+            }
             
             if (isModLoaderVersion)
             {
                 // 从本地找到ModLoader版本JSON文件
-                string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
-                string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
-                string versionDirectory = Path.Combine(versionsDirectory, versionId);
                 string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
                 
                 if (File.Exists(jsonPath))
@@ -220,7 +284,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
             }
             
-            // 如果不是ModLoader版本或本地文件不存在，且允许网络请求，则从官方API获取
+            // 如果不是ModLoader版本或本地文件不存在，且允许网络请求，则从API获取
             if (allowNetwork)
             {
                 var manifest = await GetVersionManifestAsync();
@@ -230,7 +294,13 @@ public class MinecraftVersionService : IMinecraftVersionService
                     throw new Exception($"Version {versionId} not found");
                 }
 
-                return await _httpClient.GetStringAsync(versionEntry.Url);
+                // 获取当前版本列表源设置，转换版本信息URL
+                var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
+                var versionListSource = versionListSourceEnum.ToString();
+                var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+                var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
+
+                return await _httpClient.GetStringAsync(versionInfoUrl);
             }
             else
             {
@@ -716,6 +786,19 @@ public class MinecraftVersionService : IMinecraftVersionService
 
             // 更新进度为100%
             progressCallback?.Invoke(100);
+            // 生成配置文件
+            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            {
+                ModLoaderType = "fabric",
+                ModLoaderVersion = fabricVersion, // 完整Fabric版本号
+                MinecraftVersion = minecraftVersionId,
+                CreatedAt = DateTime.Now
+            };
+            string configPath = Path.Combine(fabricVersionDirectory, "XianYuL.cfg");
+            System.IO.File.WriteAllText(configPath, Newtonsoft.Json.JsonConvert.SerializeObject(versionConfig, Newtonsoft.Json.Formatting.Indented));
+            _logger.LogInformation("已生成版本配置文件: {ConfigPath}", configPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已生成版本配置文件: {configPath}");
+            
             _logger.LogInformation("Fabric版本创建完成: {FabricVersionId}", fabricVersionId);
         }
         catch (Exception ex)
@@ -1355,6 +1438,28 @@ public class MinecraftVersionService : IMinecraftVersionService
     }
 
     /// <summary>
+    /// 从版本目录读取配置文件，获取ModLoader信息
+    /// </summary>
+    private VersionConfig ReadVersionConfig(string versionDirectory)
+    {
+        try
+        {
+            string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+            if (System.IO.File.Exists(configPath))
+            {
+                string configContent = System.IO.File.ReadAllText(configPath);
+                var config = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionConfig>(configContent);
+                return config;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "读取版本配置文件失败");
+        }
+        return null;
+    }
+    
+    /// <summary>
     /// 确保NeoForge版本依赖完整，包括检查和执行NeoForge处理器
     /// </summary>
     private async Task EnsureNeoForgeDependenciesAsync(string versionId, string minecraftDirectory, string librariesDirectory, Action<double> progressCallback, Action<string> currentDownloadCallback)
@@ -1362,24 +1467,44 @@ public class MinecraftVersionService : IMinecraftVersionService
         try
         {
             // 检查是否是NeoForge版本
-            if (!versionId.StartsWith("neoforge-"))
+            bool isNeoForgeVersion = false;
+            string neoforgeVersion = string.Empty;
+            string minecraftVersion = string.Empty;
+            
+            // 先尝试从配置文件读取
+            string versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+            VersionConfig config = ReadVersionConfig(versionDirectory);
+            if (config != null && config.ModLoaderType == "neoforge")
+            {
+                isNeoForgeVersion = true;
+                neoforgeVersion = config.ModLoaderVersion;
+                minecraftVersion = config.MinecraftVersion;
+                _logger.LogInformation("从配置文件识别为NeoForge版本: {VersionId}, 版本号: {NeoforgeVersion}", versionId, neoforgeVersion);
+            }
+            // 回退到旧的名称识别逻辑
+            else if (versionId.StartsWith("neoforge-"))
+            {
+                isNeoForgeVersion = true;
+                // 解析NeoForge版本信息
+                string[] versionParts = versionId.Split('-');
+                if (versionParts.Length < 3)
+                {
+                    _logger.LogWarning("无效的NeoForge版本格式: {VersionId}", versionId);
+                    return;
+                }
+                
+                neoforgeVersion = string.Join("-", versionParts.Skip(2)); // 完整版本号，包含后缀
+                minecraftVersion = versionParts[1];
+                _logger.LogInformation("从版本名称识别为NeoForge版本: {VersionId}, 版本号: {NeoforgeVersion}", versionId, neoforgeVersion);
+            }
+            
+            if (!isNeoForgeVersion)
             {
                 return;
             }
             
             _logger.LogInformation("开始检查NeoForge版本依赖: {VersionId}", versionId);
             currentDownloadCallback?.Invoke("正在执行NeoforgeProcessor");
-            
-            // 解析NeoForge版本信息
-            string[] versionParts = versionId.Split('-');
-            if (versionParts.Length < 3)
-            {
-                _logger.LogWarning("无效的NeoForge版本格式: {VersionId}", versionId);
-                return;
-            }
-            
-            string neoforgeVersion = versionParts[2];
-            string minecraftVersion = versionParts[1];
             
             // 检查minecraft-client-patched JAR是否存在
             string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
@@ -1399,7 +1524,14 @@ public class MinecraftVersionService : IMinecraftVersionService
             string cacheDirectory = Path.Combine(_fileService.GetAppDataPath(), "cache", "neoforge");
             Directory.CreateDirectory(cacheDirectory);
             
-            string neoforgeDownloadUrl = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforgeVersion}/neoforge-{neoforgeVersion}-installer.jar";
+            // 获取当前下载源设置
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            
+            // 根据下载源获取NeoForge安装包URL
+            string neoforgeDownloadUrl = downloadSource.GetNeoForgeInstallerUrl(neoforgeVersion);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源: {downloadSource.Name}，NeoForge安装器URL: {neoforgeDownloadUrl}");
+            
             string installerPath = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-installer.jar");
             
             // 设置最大重试次数
@@ -2129,7 +2261,22 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             // 3. 下载NeoForge安装器
             _logger.LogInformation("开始下载NeoForge安装器");
-            string neoforgeDownloadUrl = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforgeVersion}/neoforge-{neoforgeVersion}-installer.jar";
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始下载NeoForge安装器");
+            
+            // 获取当前下载源设置（下载源，而非版本列表源）
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源类型: {downloadSourceType}");
+            
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到的下载源: {downloadSource.Name}");
+            
+            // 根据下载源获取NeoForge安装包URL
+            string neoforgeDownloadUrl = downloadSource.GetNeoForgeInstallerUrl(neoforgeVersion);
+            _logger.LogInformation("使用下载源: {DownloadSource}，NeoForge安装器URL: {NeoforgeDownloadUrl}", downloadSource.Name, neoforgeDownloadUrl);
+            
+            // 添加Debug输出，显示当前下载源和请求URL
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载NeoForge安装包，下载源: {downloadSource.Name}，请求URL: {neoforgeDownloadUrl}");
+            
             string cacheDirectory = Path.Combine(_fileService.GetAppDataPath(), "cache", "neoforge");
             Directory.CreateDirectory(cacheDirectory);
             string installerPath = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-installer.jar");
@@ -2159,33 +2306,50 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             // 4. 拆包installer.jar
             _logger.LogInformation("开始拆包NeoForge安装器");
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始拆包NeoForge安装器");
+            
             string extractDirectory = Path.Combine(cacheDirectory, $"neoforge-{neoforgeVersion}-{DateTime.Now.Ticks}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 拆包目标目录: {extractDirectory}");
+            
             Directory.CreateDirectory(extractDirectory);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 已创建拆包目标目录");
             
             // 提取关键文件
             ExtractNeoForgeInstallerFiles(installerPath, extractDirectory);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 已完成NeoForge安装器文件提取");
             
             // 保留安装器文件，不删除
             _logger.LogInformation("NeoForge安装器文件已保留: {InstallerPath}", installerPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] NeoForge安装器文件已保留: {installerPath}");
+            
             progressCallback?.Invoke(60); // 60% 进度用于拆包完成
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 拆包完成，进度更新到60%");
             
             // 5. 解析install_profile.json
             _logger.LogInformation("开始解析install_profile.json");
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始解析install_profile.json");
+            
             string installProfilePath = Path.Combine(extractDirectory, "install_profile.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] install_profile.json路径: {installProfilePath}");
+            
             string installProfileContent = File.ReadAllText(installProfilePath);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 已读取install_profile.json内容");
             
             // 使用JObject而不是dynamic类型，避免运行时绑定错误
             JObject installProfile = JObject.Parse(installProfileContent);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 已解析install_profile.json为JObject");
             
             // 验证MC_SLIM字段
             if (!installProfile.TryGetValue("MC_SLIM", StringComparison.OrdinalIgnoreCase, out JToken mcSlimToken))
             {
                 _logger.LogWarning("install_profile.json中未找到MC_SLIM字段，使用默认值");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] install_profile.json中未找到MC_SLIM字段，使用默认值");
             }
             else
             {
                 string mcSlimField = mcSlimToken.ToString();
                 _logger.LogInformation("验证MC_SLIM字段: {McSlimField}", mcSlimField);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 验证MC_SLIM字段: {mcSlimField}");
             }
             
             // 解析install_profile.json中的libraries字段
@@ -2193,9 +2357,13 @@ public class MinecraftVersionService : IMinecraftVersionService
             if (installProfile.TryGetValue("libraries", StringComparison.OrdinalIgnoreCase, out JToken librariesToken))
             {
                 _logger.LogInformation("解析install_profile.json中的libraries字段");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 解析install_profile.json中的libraries字段");
+                
                 JArray librariesArray = librariesToken as JArray;
                 if (librariesArray != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到 {librariesArray.Count} 个依赖库");
+                    
                     foreach (JToken libToken in librariesArray)
                     {
                         Library library = libToken.ToObject<Library>();
@@ -2203,18 +2371,24 @@ public class MinecraftVersionService : IMinecraftVersionService
                         {
                             installProfileLibraries.Add(library);
                             _logger.LogInformation("添加install_profile依赖库: {LibraryName}", library.Name);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加install_profile依赖库: {library.Name}");
                         }
                     }
                 }
                 _logger.LogInformation("共解析到 {LibraryCount} 个install_profile依赖库", installProfileLibraries.Count);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 共解析到 {installProfileLibraries.Count} 个install_profile依赖库");
             }
             
             // 6. 下载install_profile.json中的libraries依赖
             if (installProfileLibraries.Count > 0)
             {
                 _logger.LogInformation("开始下载install_profile.json中的依赖库");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 开始下载install_profile.json中的依赖库");
+                
                 int totalLibraries = installProfileLibraries.Count;
                 int downloadedLibraries = 0;
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始下载 {totalLibraries} 个依赖库");
                 
                 foreach (var library in installProfileLibraries)
                 {
@@ -2223,32 +2397,52 @@ public class MinecraftVersionService : IMinecraftVersionService
                         if (library.Downloads?.Artifact != null)
                         {
                             _logger.LogInformation("下载依赖库: {LibraryName}", library.Name);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载依赖库: {library.Name}");
+                            
                             string libraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库保存路径: {libraryPath}");
+                            
                             await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库下载完成: {library.Name}");
                         }
                         downloadedLibraries++;
                         double libraryProgress = 60 + (downloadedLibraries * 20.0 / totalLibraries); // 60-80% 用于下载install_profile依赖库
                         progressCallback?.Invoke(libraryProgress);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库下载进度: {downloadedLibraries}/{totalLibraries}，当前整体进度: {libraryProgress:F0}%");
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "下载依赖库失败: {LibraryName}", library.Name);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载依赖库失败: {library.Name}，错误: {ex.Message}");
                         // 继续下载其他库，不中断整个过程
                     }
                 }
+                
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 依赖库下载完成");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 没有需要下载的依赖库");
             }
             
             // 7. 关键修复：处理client.lzma文件
             // 检查extractDirectory中的所有目录，寻找client.lzma文件
             _logger.LogInformation("开始寻找client.lzma文件");
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始处理client.lzma文件");
             
             // 搜索extractDirectory下的所有client.lzma文件
             var allClientLzmaFiles = Directory.GetFiles(extractDirectory, "client.lzma", SearchOption.AllDirectories);
             _logger.LogInformation("在extractDirectory中找到 {Count} 个client.lzma文件", allClientLzmaFiles.Length);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 在extractDirectory中找到 {allClientLzmaFiles.Length} 个client.lzma文件");
             foreach (var file in allClientLzmaFiles)
             {
                 _logger.LogInformation("找到client.lzma: {FilePath}", file);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到client.lzma: {file}");
             }
+            
+            // 更新进度到65%，表示正在处理client.lzma文件
+            progressCallback?.Invoke(65);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 正在处理client.lzma文件，进度更新到65%");
             
             // 尝试两种可能的路径: data/client.lzma (新路径) 和 data/client/client.lzma (旧路径)
             string[] possibleClientLzmaPaths = {
@@ -2264,11 +2458,16 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             bool fileCopied = false;
             
+            // 更新进度到70%，表示正在复制client.lzma文件
+            progressCallback?.Invoke(70);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 正在复制client.lzma文件，进度更新到70%");
+            
             // 如果找到client.lzma文件，复制到目标路径
             if (extractedClientLzmaPath != null)
             {
                 File.Copy(extractedClientLzmaPath, targetClientLzmaPath, true);
                 _logger.LogInformation("已复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已复制client.lzma文件: {extractedClientLzmaPath} -> {targetClientLzmaPath}");
                 fileCopied = true;
             }
             // 如果预期路径不存在，尝试使用搜索到的第一个client.lzma文件
@@ -2277,11 +2476,13 @@ public class MinecraftVersionService : IMinecraftVersionService
                 extractedClientLzmaPath = allClientLzmaFiles[0];
                 File.Copy(extractedClientLzmaPath, targetClientLzmaPath, true);
                 _logger.LogInformation("已从搜索结果复制client.lzma文件: {ExtractedPath} -> {TargetPath}", extractedClientLzmaPath, targetClientLzmaPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已从搜索结果复制client.lzma文件: {extractedClientLzmaPath} -> {targetClientLzmaPath}");
                 fileCopied = true;
             }
             else
             {
                 _logger.LogWarning("未找到client.lzma文件，尝试直接检查installer.jar中的文件结构");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 未找到client.lzma文件，尝试直接检查installer.jar中的文件结构");
                 
                 // 直接检查installer.jar中的文件结构
                 using (var archive = ZipFile.OpenRead(installerPath))
@@ -2292,6 +2493,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                         if (entry.FullName.Contains("client.lzma", StringComparison.OrdinalIgnoreCase))
                         {
                             _logger.LogInformation("  在installer.jar中找到: {EntryName}", entry.FullName);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 在installer.jar中找到: {entry.FullName}");
                         }
                     }
                 }
@@ -2299,6 +2501,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 // 即使找不到，也创建一个空文件，避免处理器执行失败
                 File.Create(targetClientLzmaPath).Dispose();
                 _logger.LogWarning("已创建空client.lzma文件: {TargetPath}", targetClientLzmaPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已创建空client.lzma文件: {targetClientLzmaPath}");
                 fileCopied = true;
             }
             
@@ -2307,16 +2510,27 @@ public class MinecraftVersionService : IMinecraftVersionService
             {
                 long fileSize = new FileInfo(targetClientLzmaPath).Length;
                 _logger.LogInformation("client.lzma文件复制完成，文件大小: {FileSize} 字节，路径: {TargetPath}", fileSize, targetClientLzmaPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] client.lzma文件复制完成，文件大小: {fileSize} 字节，路径: {targetClientLzmaPath}");
             }
             else
             {
                 _logger.LogError("client.lzma文件复制失败，目标路径不存在: {TargetPath}", targetClientLzmaPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] client.lzma文件复制失败，目标路径不存在: {targetClientLzmaPath}");
             }
             
-            // 8. 处理NeoForge安装配置文件
+            // 更新进度到75%，准备解析install_profile.json
+            progressCallback?.Invoke(75);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] client.lzma文件处理完成，进度更新到75%");
+            
+            // 更新进度到80%，准备执行处理器
+            progressCallback?.Invoke(80);
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 准备执行处理器，进度更新到80%");
+            
+            // 9. 处理NeoForge安装配置文件（包括执行处理器）
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始处理NeoForge安装配置文件，执行处理器");
             await ProcessNeoForgeInstallProfile(installProfilePath, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, extractDirectory);
             
-            // 8. 合并版本JSON
+            // 10. 合并版本JSON
             _logger.LogInformation("开始合并版本JSON");
             string neoforgeJsonPath = Path.Combine(extractDirectory, "version.json");
             
@@ -2330,9 +2544,8 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             // 合并JSON，同时传递install_profile.json中的libraries
             var mergedJson = MergeVersionJson(originalJson, neoforgeJson, installProfileLibraries);
-            progressCallback?.Invoke(80); // 80% 进度用于JSON合并完成
             
-            // 7. 保存合并后的JSON文件
+            // 11. 保存合并后的JSON文件
             _logger.LogInformation("开始保存合并后的JSON文件");
             // 目录已在流程早期创建，直接使用
             string mergedJsonPath = Path.Combine(neoforgeVersionDirectory, $"{neoforgeVersionId}.json");
@@ -2340,9 +2553,9 @@ public class MinecraftVersionService : IMinecraftVersionService
             // 保存合并后的JSON
             File.WriteAllText(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
             
-            // 8. JAR文件已经直接下载到NeoForge目录，不需要复制操作
+            // JAR文件已经直接下载到NeoForge目录，不需要复制操作
             
-            // 清理临时提取目录
+            // 12. 清理临时提取目录
             try
             {
                 Directory.Delete(extractDirectory, true);
@@ -2354,6 +2567,19 @@ public class MinecraftVersionService : IMinecraftVersionService
             }
             
             progressCallback?.Invoke(100); // 100% 进度用于完成
+            // 生成配置文件
+            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            {
+                ModLoaderType = "neoforge",
+                ModLoaderVersion = neoforgeVersion, // 完整版本号，如21.11.0-beta
+                MinecraftVersion = minecraftVersionId,
+                CreatedAt = DateTime.Now
+            };
+            string configPath = Path.Combine(neoforgeVersionDirectory, "XianYuL.cfg");
+            System.IO.File.WriteAllText(configPath, Newtonsoft.Json.JsonConvert.SerializeObject(versionConfig, Newtonsoft.Json.Formatting.Indented));
+            _logger.LogInformation("已生成版本配置文件: {ConfigPath}", configPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已生成版本配置文件: {configPath}");
+            
             _logger.LogInformation("NeoForge版本创建完成: {NeoForgeVersionId}", neoforgeVersionId);
         }
         catch (Exception ex)
@@ -2616,20 +2842,41 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
                 
                 // 检查sides字段
+                bool isServerProcessor = false;
                 if (processor.TryGetValue("sides", StringComparison.OrdinalIgnoreCase, out JToken sidesToken))
                 {
                     JArray sides = sidesToken as JArray;
-                    if (sides != null && sides.Contains("server"))
+                    if (sides != null)
                     {
-                        _logger.LogInformation("跳过服务器处理器");
-                        continue;
+                        // 正确检查JArray中是否包含"server"字符串
+                        foreach (var side in sides)
+                        {
+                            string sideValue = side.ToString();
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器side值: {sideValue}");
+                            if (sideValue.Equals("server", StringComparison.OrdinalIgnoreCase))
+                            {
+                                isServerProcessor = true;
+                                break;
+                            }
+                        }
                     }
                 }
                 
+                if (isServerProcessor)
+                {
+                    _logger.LogInformation("跳过服务器处理器");
+                    System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过服务器处理器");
+                    continue;
+                }
+                
                 clientProcessors.Add(processor);
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 添加客户端处理器");
             }
             
             _logger.LogInformation("共找到 {ProcessorCount} 个客户端处理器", clientProcessors.Count);
+            
+            // 添加Debug输出，显示处理器数量
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 共找到 {clientProcessors.Count} 个客户端处理器");
             
             // 按顺序执行处理器
             int totalProcessors = clientProcessors.Count;
@@ -2641,9 +2888,12 @@ public class MinecraftVersionService : IMinecraftVersionService
                 double processorProgress = 80 + (executedProcessors * 20.0 / totalProcessors); // 80-100% 用于执行处理器
                 
                 _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 执行处理器 {executedProcessors}/{totalProcessors}");
+                
                 await ExecuteProcessor(processor, installerPath, neoforgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath, extractDirectory);
                 
                 progressCallback?.Invoke(processorProgress);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器 {executedProcessors}/{totalProcessors} 执行完成，当前进度: {processorProgress:F0}%");
             }
             
             _logger.LogInformation("NeoForge处理器执行完成");
@@ -2685,10 +2935,36 @@ public class MinecraftVersionService : IMinecraftVersionService
             // 处理参数
             List<string> processedArgs = new List<string>();
             string minecraftPath = Path.GetDirectoryName(librariesDirectory);
-            string[] neoforgeVersionParts = Path.GetFileName(neoforgeVersionDirectory).Split('-');
             
             string currentParam = null; // 跟踪当前处理的参数名
             bool isNextArgOptional = false;
+            
+            // 正确提取完整的NeoForge版本号（处理带-beta等后缀的情况）
+            string minecraftVersion = "";
+            string neoforgeVersion = "";
+            
+            // 优先从配置文件读取版本信息
+            VersionConfig config = ReadVersionConfig(neoforgeVersionDirectory);
+            if (config != null && config.ModLoaderType == "neoforge")
+            {
+                minecraftVersion = config.MinecraftVersion;
+                neoforgeVersion = config.ModLoaderVersion;
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从配置文件提取的Minecraft版本: {minecraftVersion}");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从配置文件提取的完整NeoForge版本: {neoforgeVersion}");
+            }
+            // 回退到旧的目录名称分割逻辑
+            else
+            {
+                string[] neoforgeVersionParts = Path.GetFileName(neoforgeVersionDirectory).Split('-');
+                if (neoforgeVersionParts.Length >= 3)
+                {
+                    minecraftVersion = neoforgeVersionParts[1];
+                    // 从第2个元素开始，将所有剩余元素合并为完整的NeoForge版本号
+                    neoforgeVersion = string.Join("-", neoforgeVersionParts.Skip(2));
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 从目录名称提取的Minecraft版本: {minecraftVersion}");
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 从目录名称提取的完整NeoForge版本: {neoforgeVersion}");
+                }
+            }
             
             foreach (JToken argToken in args)
             {
@@ -2716,13 +2992,11 @@ public class MinecraftVersionService : IMinecraftVersionService
                 paramValue = paramValue.Replace("{ROOT}", minecraftPath);
                 paramValue = paramValue.Replace("{SIDE}", "client");
                 
-                if (neoforgeVersionParts.Length >= 2)
+                if (!string.IsNullOrEmpty(minecraftVersion))
                 {
                     paramValue = paramValue.Replace("{MINECRAFT_JAR}", Path.Combine(neoforgeVersionDirectory, $"{Path.GetFileName(neoforgeVersionDirectory)}.jar"));
-                    paramValue = paramValue.Replace("{MOJMAPS}", Path.Combine(librariesDirectory, "net", "minecraft", "client", neoforgeVersionParts[1], $"client-{neoforgeVersionParts[1]}-mappings.txt"));
+                    paramValue = paramValue.Replace("{MOJMAPS}", Path.Combine(librariesDirectory, "net", "minecraft", "client", minecraftVersion, $"client-{minecraftVersion}-mappings.txt"));
                 }
-                
-                string neoforgeVersion = neoforgeVersionParts.Length >= 3 ? neoforgeVersionParts[2] : "";
                 
                 paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar"));
                 // 直接使用临时目录中的client.lzma文件，而不是版本目录中的文件
@@ -2969,6 +3243,9 @@ public class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogInformation("开始下载installertools: {JarName}", jarName);
             
+            // 添加Debug输出
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始下载installertools: {jarName}");
+            
             // 解析jar名称：groupId:artifactId:version:classifier
             string[] parts = jarName.Split(':');
             if (parts.Length < 4)
@@ -2988,16 +3265,20 @@ public class MinecraftVersionService : IMinecraftVersionService
             if (File.Exists(libraryPath))
             {
                 _logger.LogInformation("installertools已存在: {LibraryPath}", libraryPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] installertools已存在: {libraryPath}");
                 return libraryPath;
             }
             
             // 构建下载URL
             string downloadUrl = $"https://maven.neoforged.net/releases/{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}-{classifier}.jar";
             
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载installertools: {downloadUrl}");
+            
             // 下载文件
             await DownloadLibraryFileAsync(new DownloadFile { Url = downloadUrl }, libraryPath);
             
             _logger.LogInformation("installertools下载完成: {LibraryPath}", libraryPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] installertools下载完成: {libraryPath}");
             return libraryPath;
         }
         catch (Exception ex)

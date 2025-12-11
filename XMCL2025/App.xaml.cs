@@ -11,6 +11,7 @@ using XMCL2025.Activation;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
+using XMCL2025.Core.Services.DownloadSource;
 using XMCL2025.Helpers;
 using XMCL2025.Models;
 using XMCL2025.Services;
@@ -88,12 +89,14 @@ public partial class App : Application
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();
+            services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>();
             
             // HTTP Client
             services.AddHttpClient();
             
             // Fabric Service
+            services.AddHttpClient<FabricService>();
             services.AddSingleton<FabricService>();
             
             // Modrinth Service
@@ -104,6 +107,7 @@ public partial class App : Application
             
             // NeoForge Service
             services.AddHttpClient<NeoForgeService>();
+            services.AddSingleton<NeoForgeService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();
