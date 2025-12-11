@@ -96,6 +96,34 @@
                 <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.VersionSelectionTip, Mode=OneWay}" />
             </StackPanel>
         </ContentDialog>
+        
+        <!-- 存档选择弹窗 -->
+        <ContentDialog
+            x:Name="SaveSelectionDialog"
+            Title="选择存档"
+            PrimaryButtonText="确认"
+            CloseButtonText="取消"
+            DefaultButton="Primary"
+            PrimaryButtonClick="SaveSelectionDialog_PrimaryButtonClick"
+            CloseButtonClick="SaveSelectionDialog_CloseButtonClick">
+            <StackPanel Spacing="12">
+                <TextBlock FontSize="14" Text="请选择要安装数据包的存档：" />
+                <ListView
+                    ItemsSource="{x:Bind ViewModel.SaveNames, Mode=OneWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedSaveName, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    MaxHeight="300">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="8">
+                                <TextBlock Text="{Binding}" FontSize="16" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.SaveSelectionTip, Mode=OneWay}" />
+            </StackPanel>
+        </ContentDialog>
 
         <!-- 整合包安装进度弹窗 -->
         <ContentDialog

@@ -60,6 +60,66 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     private const string JavaSelectionModeKey = "JavaSelectionMode";
     private const string MinecraftPathKey = "MinecraftPath";
+    private const string DownloadSourceKey = "DownloadSource";
+    private const string VersionListSourceKey = "VersionListSource";
+    
+    /// <summary>
+    /// 下载源枚举
+    /// </summary>
+    public enum DownloadSourceType
+    {
+        /// <summary>
+        /// 官方源
+        /// </summary>
+        Official,
+        /// <summary>
+        /// BMCLAPI源
+        /// </summary>
+        BMCLAPI
+    }
+    
+    /// <summary>
+    /// 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceType _downloadSource = DownloadSourceType.Official;
+    
+    /// <summary>
+    /// 下载源选择命令
+    /// </summary>
+    public ICommand SwitchDownloadSourceCommand
+    {
+        get;
+    }
+    
+    /// <summary>
+    /// 版本列表源枚举
+    /// </summary>
+    public enum VersionListSourceType
+    {
+        /// <summary>
+        /// 官方源
+        /// </summary>
+        Official,
+        /// <summary>
+        /// BMCLAPI源
+        /// </summary>
+        BMCLAPI
+    }
+    
+    /// <summary>
+    /// 版本列表源
+    /// </summary>
+    [ObservableProperty]
+    private VersionListSourceType _versionListSource = VersionListSourceType.Official;
+    
+    /// <summary>
+    /// 版本列表源选择命令
+    /// </summary>
+    public ICommand SwitchVersionListSourceCommand
+    {
+        get;
+    }
     
 
     /// <summary>
@@ -147,6 +207,24 @@ public partial class SettingsViewModel : ObservableRecipient
                     JavaSelectionMode = mode;
                 }
             });
+        
+        SwitchDownloadSourceCommand = new RelayCommand<string>(
+            (param) =>
+            {
+                if (Enum.TryParse<DownloadSourceType>(param, out var source) && DownloadSource != source)
+                {
+                    DownloadSource = source;
+                }
+            });
+        
+        SwitchVersionListSourceCommand = new RelayCommand<string>(
+            (param) =>
+            {
+                if (Enum.TryParse<VersionListSourceType>(param, out var source) && VersionListSource != source)
+                {
+                    VersionListSource = source;
+                }
+            });
 
         // 初始化Java版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
@@ -161,6 +239,42 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadJavaSelectionModeAsync().ConfigureAwait(false);
         // 加载Minecraft路径
         LoadMinecraftPathAsync().ConfigureAwait(false);
+        // 加载下载源设置
+        LoadDownloadSourceAsync().ConfigureAwait(false);
+        // 加载版本列表源设置
+        LoadVersionListSourceAsync().ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载下载源设置
+    /// </summary>
+    private async Task LoadDownloadSourceAsync()
+    {
+        DownloadSource = await _localSettingsService.ReadSettingAsync<DownloadSourceType>(DownloadSourceKey);
+    }
+    
+    /// <summary>
+    /// 当下载源变化时保存
+    /// </summary>
+    partial void OnDownloadSourceChanged(DownloadSourceType value)
+    {
+        _localSettingsService.SaveSettingAsync(DownloadSourceKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载版本列表源设置
+    /// </summary>
+    private async Task LoadVersionListSourceAsync()
+    {
+        VersionListSource = await _localSettingsService.ReadSettingAsync<VersionListSourceType>(VersionListSourceKey);
+    }
+    
+    /// <summary>
+    /// 当版本列表源变化时保存
+    /// </summary>
+    partial void OnVersionListSourceChanged(VersionListSourceType value)
+    {
+        _localSettingsService.SaveSettingAsync(VersionListSourceKey, value).ConfigureAwait(false);
     }
     
     /// <summary>

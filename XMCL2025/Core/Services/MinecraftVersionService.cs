@@ -315,6 +315,9 @@ public class MinecraftVersionService : IMinecraftVersionService
             // 创建目标目录（如果不存在）
             Directory.CreateDirectory(targetDirectory);
 
+            // 设置64KB缓冲区大小，提高下载速度
+            const int bufferSize = 65536;
+
             using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
             {
                 try
@@ -327,9 +330,10 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
                 
                 using (var stream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                // 使用异步文件IO，提高磁盘写入速度
+                using (var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous))
                 {
-                    await stream.CopyToAsync(fileStream);
+                    await stream.CopyToAsync(fileStream, bufferSize);
                 }
             }
 
@@ -786,15 +790,19 @@ public class MinecraftVersionService : IMinecraftVersionService
 
             _logger.LogInformation("开始下载库文件: {LibraryName} from {DownloadUrl}", library.Name, artifact.Url);
 
+            // 设置64KB缓冲区大小，提高下载速度
+            const int bufferSize = 65536;
+            
             // 下载文件
             using (var response = await _httpClient.GetAsync(artifact.Url, HttpCompletionOption.ResponseHeadersRead))
             {
                 response.EnsureSuccessStatusCode();
 
                 using (var stream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(libraryPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                // 使用异步文件IO，提高磁盘写入速度
+                using (var fileStream = new FileStream(libraryPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous))
                 {
-                    await stream.CopyToAsync(fileStream);
+                    await stream.CopyToAsync(fileStream, bufferSize);
                 }
             }
 

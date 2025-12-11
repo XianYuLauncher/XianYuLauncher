@@ -1290,16 +1290,45 @@ public partial class 启动ViewModel : ObservableRecipient
                 args.Add("net.minecraft.launchwrapper.AlphaVanillaTweaker");
             }
             
-            // 添加version.json中的游戏参数（特别是NeoForge所需的参数）
+            // 检查version.json中是否有游戏参数（用于NeoForge等ModLoader）
             if (versionInfo.Arguments != null && versionInfo.Arguments.Game != null)
             {
+                // 添加version.json中的额外游戏参数（特别是NeoForge所需的参数）
                 foreach (var gameArg in versionInfo.Arguments.Game)
                 {
                     if (gameArg is string argStr)
                     {
-                        // 直接添加游戏参数，不需要替换占位符
-                        args.Add(argStr);
-                        LaunchStatus += $"\n添加游戏参数: {argStr}";
+                        // 跳过已经手动添加的基本参数
+                        if (argStr.StartsWith("--version") || 
+                            argStr.StartsWith("--gameDir") || 
+                            argStr.StartsWith("--assetsDir") || 
+                            argStr.StartsWith("--assetIndex") || 
+                            argStr.StartsWith("--username") || 
+                            argStr.StartsWith("--uuid") || 
+                            argStr.StartsWith("--accessToken") || 
+                            argStr.StartsWith("--userType") || 
+                            argStr == "--userProperties" || 
+                            argStr == "{}" ||
+                            argStr.StartsWith("--tweakClass"))
+                        {
+                            continue;
+                        }
+                        
+                        // 替换占位符
+                        string processedArg = argStr
+                            .Replace("${auth_player_name}", SelectedProfile.Name)
+                            .Replace("${version_name}", SelectedVersion)
+                            .Replace("${game_directory}", $"\"{gameDir}\"")
+                            .Replace("${assets_root}", $"\"{assetsPath}\"")
+                            .Replace("${assets_index_name}", versionInfo.AssetIndex?.Id ?? SelectedVersion)
+                            .Replace("${auth_uuid}", SelectedProfile.Id)
+                            .Replace("${auth_access_token}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
+                            .Replace("${auth_xuid}", "") // Xuid属性不存在，使用默认空值
+                            .Replace("${clientid}", "0") // ClientId属性不存在，使用默认值0
+                            .Replace("${version_type}", versionInfo.Type ?? "release");
+                        
+                        args.Add(processedArg);
+                        LaunchStatus += $"\n添加游戏参数: {processedArg}";
                     }
                     // 处理规则对象（暂时简单跳过）
                 }

@@ -28,6 +28,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     // 标记是否已经加载过整合包数据
     private bool _modpacksLoaded = false;
     
+    // 标记是否已经加载过数据包数据
+    private bool _datapacksLoaded = false;
+    
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
@@ -129,6 +132,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                     {
                         await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
                         _modpacksLoaded = true;
+                    }
+                    break;
+                case "数据包下载":
+                    if (!_datapacksLoaded)
+                    {
+                        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+                        _datapacksLoaded = true;
                     }
                     break;
             }
@@ -378,6 +388,64 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         if (sender is Grid grid && grid.DataContext is ModrinthProject modpack)
         {
             await ViewModel.DownloadModpackCommand.ExecuteAsync(modpack);
+        }
+    }
+    
+    /// <summary>
+    /// 数据包搜索提交事件处理程序
+    /// </summary>
+    private async void DatapackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+    }
+    
+    /// <summary>
+    /// 数据包版本筛选变化事件处理程序
+    /// </summary>
+    private async void DatapackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+    }
+    
+    /// <summary>
+    /// 数据包列表滚动事件处理程序，实现滚动加载更多
+    /// </summary>
+    private void DatapackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (sender is ScrollViewer scrollViewer)
+        {
+            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
+            var verticalOffset = scrollViewer.VerticalOffset;
+            var scrollableHeight = scrollViewer.ScrollableHeight;
+            var viewportHeight = scrollViewer.ViewportHeight;
+            var shouldLoadMore = !ViewModel.IsDatapackLoadingMore && ViewModel.DatapackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+
+            if (shouldLoadMore)
+            {
+                ViewModel.LoadMoreDatapacksCommand.Execute(null);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 数据包列表项点击事件处理程序
+    /// </summary>
+    private async void DatapackListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ModrinthProject datapack)
+        {
+            await ViewModel.DownloadDatapackCommand.ExecuteAsync(datapack);
+        }
+    }
+    
+    /// <summary>
+    /// 数据包项点击事件处理程序（触摸设备）
+    /// </summary>
+    private async void DatapackItem_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Grid grid && grid.DataContext is ModrinthProject datapack)
+        {
+            await ViewModel.DownloadDatapackCommand.ExecuteAsync(datapack);
         }
     }
 }

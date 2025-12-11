@@ -166,12 +166,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     // 为了与光影页面兼容，添加ShaderPackList属性，指向ShaderPacks集合
     public ObservableCollection<ModrinthProject> ShaderPackList => ShaderPacks;
     
-    // 整合包下载相关属性
+    // 整合包相关属性
     [ObservableProperty]
     private string _modpackSearchQuery = string.Empty;
     
     [ObservableProperty]
-    private ObservableCollection<ModrinthProject> _modpacks = new();
+    private ObservableCollection<ModrinthProject> _modpacks = new ObservableCollection<ModrinthProject>();
     
     [ObservableProperty]
     private bool _isModpackLoading = false;
@@ -188,8 +188,33 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedModpackVersion = string.Empty;
     
-    // 为了与整合包页面兼容，添加ModpackList属性，指向Modpacks集合
+    // 兼容旧页面的整合包列表
     public ObservableCollection<ModrinthProject> ModpackList => Modpacks;
+    
+    // 数据包相关属性
+    [ObservableProperty]
+    private string _datapackSearchQuery = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _datapacks = new ObservableCollection<ModrinthProject>();
+    
+    [ObservableProperty]
+    private bool _isDatapackLoading = false;
+    
+    [ObservableProperty]
+    private bool _isDatapackLoadingMore = false;
+    
+    [ObservableProperty]
+    private int _datapackOffset = 0;
+    
+    [ObservableProperty]
+    private bool _datapackHasMoreResults = true;
+    
+    [ObservableProperty]
+    private string _selectedDatapackVersion = string.Empty;
+    
+    // 兼容旧页面的数据包列表
+    public ObservableCollection<ModrinthProject> DatapackList => Datapacks;
     
     // TabView选中索引，用于控制显示哪个标签页
     [ObservableProperty]
@@ -845,5 +870,123 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 导航到整合包下载详情页面
         _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, modpack.ProjectId);
+    }
+    
+    // 数据包搜索命令
+    [RelayCommand]
+    private async Task SearchDatapacksAsync()
+    {
+        IsDatapackLoading = true;
+        DatapackOffset = 0;
+        DatapackHasMoreResults = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedDatapackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedDatapackVersion}" });
+            }
+            
+            // 调用Modrinth API搜索数据包，明确指定projectType为datapack
+            var result = await _modrinthService.SearchModsAsync(
+                query: DatapackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: DatapackOffset,
+                limit: _modPageSize,
+                projectType: "datapack"
+            );
+
+            // 更新数据包列表
+            Datapacks.Clear();
+            foreach (var hit in result.Hits)
+            {
+                Datapacks.Add(hit);
+            }
+            DatapackOffset = result.Hits.Count;
+            // 使用total_hits更准确地判断是否还有更多结果
+            DatapackHasMoreResults = DatapackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsDatapackLoading = false;
+        }
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanLoadMoreDatapacks))]
+    public async Task LoadMoreDatapacksAsync()
+    {
+        if (IsDatapackLoading || IsDatapackLoadingMore || !DatapackHasMoreResults)
+        {
+            return;
+        }
+
+        IsDatapackLoadingMore = true;
+
+        try
+        {
+            // 构建facets参数
+            var facets = new List<List<string>>();
+            
+            // 如果有版本筛选条件，添加到facets中
+            if (!string.IsNullOrEmpty(SelectedDatapackVersion))
+            {
+                facets.Add(new List<string> { $"versions:{SelectedDatapackVersion}" });
+            }
+            
+            // 调用Modrinth API加载更多数据包，明确指定projectType为datapack
+            var result = await _modrinthService.SearchModsAsync(
+                query: DatapackSearchQuery,
+                facets: facets,
+                index: "relevance",
+                offset: DatapackOffset,
+                limit: _modPageSize,
+                projectType: "datapack"
+            );
+
+            // 追加到现有列表
+            foreach (var hit in result.Hits)
+            {
+                Datapacks.Add(hit);
+            }
+            
+            DatapackOffset += result.Hits.Count;
+            
+            // 使用total_hits更准确地判断是否还有更多结果
+            DatapackHasMoreResults = DatapackOffset < result.TotalHits;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsDatapackLoadingMore = false;
+        }
+    }
+    
+    private bool CanLoadMoreDatapacks()
+    {
+        return !IsDatapackLoading && !IsDatapackLoadingMore && DatapackHasMoreResults;
+    }
+    
+    [RelayCommand]
+    private async Task DownloadDatapackAsync(ModrinthProject datapack)
+    {
+        if (datapack == null)
+        {
+            return;
+        }
+
+        // 导航到数据包下载详情页面
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, datapack.ProjectId);
     }
 }
