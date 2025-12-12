@@ -119,4 +119,30 @@ public class OfficialDownloadSource : IDownloadSource
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库 {libraryName} 构建官方下载URL: {fullUrl}");
         return fullUrl;
     }
+    
+    /// <summary>
+    /// 获取客户端JAR下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JAR下载URL</returns>
+    public string GetClientJarUrl(string versionId, string originalUrl)
+    {
+        // 官方源直接使用原始URL
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JAR下载URL: {originalUrl}");
+        return originalUrl;
+    }
+    
+    /// <summary>
+    /// 获取客户端JSON下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JSON下载URL</returns>
+    public string GetClientJsonUrl(string versionId, string originalUrl)
+    {
+        // 官方源直接使用原始URL
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JSON下载URL: {originalUrl}");
+        return originalUrl;
+    }
 }

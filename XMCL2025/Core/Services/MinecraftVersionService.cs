@@ -299,6 +299,9 @@ public class MinecraftVersionService : IMinecraftVersionService
                 var versionListSource = versionListSourceEnum.ToString();
                 var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
                 var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
+                
+                // 添加调试信息
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JSON配置文件, 下载源: {downloadSource.Name}, 版本: {versionId}, 下载URL: {versionInfoUrl}");
 
                 return await _httpClient.GetStringAsync(versionInfoUrl);
             }
@@ -380,15 +383,26 @@ public class MinecraftVersionService : IMinecraftVersionService
 
             // 下载JAR文件
             var clientDownload = versionInfo.Downloads.Client;
-            var jarPath = Path.Combine(targetDirectory, $"{versionId}.jar");
+            
+            // 使用自定义版本名称（如果提供）作为文件名，否则使用原始版本ID
+            string finalVersionName = customVersionName ?? versionId;
+            var jarPath = Path.Combine(targetDirectory, $"{finalVersionName}.jar");
 
             // 创建目标目录（如果不存在）
             Directory.CreateDirectory(targetDirectory);
 
             // 设置64KB缓冲区大小，提高下载速度
             const int bufferSize = 65536;
+            
+            // 获取当前配置的下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            
+            // 使用下载源获取客户端JAR的下载URL
+            var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR核心文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}, 下载URL: {clientJarUrl}");
 
-            using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
+            using (var response = await _httpClient.GetAsync(clientJarUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 try
                 {
@@ -421,8 +435,9 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
             }
 
-            // 保存原始版本JSON文件
-            var jsonPath = Path.Combine(targetDirectory, $"{versionId}.json");
+            // 保存原始版本JSON文件，使用自定义版本名称（如果提供）
+            var jsonPath = Path.Combine(targetDirectory, $"{finalVersionName}.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JSON配置文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}");
             await File.WriteAllTextAsync(jsonPath, versionInfoJson);
         }
         catch (Exception ex)
@@ -540,9 +555,16 @@ public class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("开始获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
             string minecraftDirectory = Path.GetDirectoryName(versionsDirectory);
             
-            // 直接从Mojang API获取完整的原版版本信息
+            // 直接从下载源获取完整的原版版本信息
             VersionInfo originalVersionInfo = null;
-            string versionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
+            
+            // 获取当前配置的下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            
+            // 使用下载源获取版本清单URL
+            string versionManifestUrl = downloadSource.GetVersionManifestUrl();
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {downloadSource.Name}, 版本清单URL: {versionManifestUrl}");
             
             using (var manifestResponse = await _httpClient.GetAsync(versionManifestUrl))
             {
@@ -566,8 +588,12 @@ public class MinecraftVersionService : IMinecraftVersionService
                     throw new Exception($"无法找到Minecraft版本 {minecraftVersionId} 的URL");
                 }
                 
+                // 使用下载源获取版本JSON的下载URL
+                string resolvedVersionJsonUrl = downloadSource.GetVersionInfoUrl(minecraftVersionId, versionJsonUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {downloadSource.Name}, 版本JSON URL: {resolvedVersionJsonUrl}");
+                
                 // 获取并解析原版version.json
-                using (var versionResponse = await _httpClient.GetAsync(versionJsonUrl))
+                using (var versionResponse = await _httpClient.GetAsync(resolvedVersionJsonUrl))
                 {
                     versionResponse.EnsureSuccessStatusCode();
                     var versionContent = await versionResponse.Content.ReadAsStringAsync();
@@ -611,7 +637,11 @@ public class MinecraftVersionService : IMinecraftVersionService
                 var clientDownload = originalVersionInfo.Downloads.Client;
                 var jarPath = Path.Combine(fabricVersionDirectory, $"{fabricVersionId}.jar");
 
-                using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
+                // 使用下载源获取客户端JAR的下载URL
+                var clientJarUrl = downloadSource.GetClientJarUrl(minecraftVersionId, clientDownload.Url);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR核心文件(Fabric), 下载源: {downloadSource.Name}, 版本: {fabricVersionId}, 下载URL: {clientJarUrl}");
+                
+                using (var response = await _httpClient.GetAsync(clientJarUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
                     
@@ -2196,9 +2226,16 @@ public class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("开始获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
             string minecraftDirectory = Path.GetDirectoryName(versionsDirectory);
             
-            // 直接从Mojang API获取完整的原版版本信息
+            // 直接从下载源获取完整的原版版本信息
             VersionInfo originalVersionInfo = null;
-            string versionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
+            
+            // 获取当前配置的下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            
+            // 使用下载源获取版本清单URL
+            string versionManifestUrl = downloadSource.GetVersionManifestUrl();
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {downloadSource.Name}, 版本清单URL: {versionManifestUrl}");
             
             using (var manifestResponse = await _httpClient.GetAsync(versionManifestUrl))
             {
@@ -2225,8 +2262,12 @@ public class MinecraftVersionService : IMinecraftVersionService
                     throw new Exception($"无法找到Minecraft版本 {minecraftVersionId} 的URL");
                 }
                 
+                // 使用下载源获取版本JSON的下载URL
+                string resolvedVersionJsonUrl = downloadSource.GetVersionInfoUrl(minecraftVersionId, versionJsonUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {downloadSource.Name}, 版本JSON URL: {resolvedVersionJsonUrl}");
+                
                 // 获取并解析原版version.json
-                using (var versionResponse = await _httpClient.GetAsync(versionJsonUrl))
+                using (var versionResponse = await _httpClient.GetAsync(resolvedVersionJsonUrl))
                 {
                     versionResponse.EnsureSuccessStatusCode();
                     var versionContent = await versionResponse.Content.ReadAsStringAsync();
@@ -2264,7 +2305,11 @@ public class MinecraftVersionService : IMinecraftVersionService
             string neoforgeJarPath = Path.Combine(neoforgeVersionDirectory, $"{neoforgeVersionId}.jar");
             
             // 下载原版jar文件，直接保存为NeoForge命名格式
-            using (var response = await _httpClient.GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead))
+            // 使用下载源获取客户端JAR的下载URL
+            var clientJarUrl = downloadSource.GetClientJarUrl(minecraftVersionId, clientDownload.Url);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR核心文件(NeoForge), 下载源: {downloadSource.Name}, 版本: {neoforgeVersionId}, 下载URL: {clientJarUrl}");
+            
+            using (var response = await _httpClient.GetAsync(clientJarUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 try
                 {
@@ -2272,7 +2317,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                 }
                 catch (HttpRequestException httpEx)
                 {
-                    throw new Exception($"Failed to download JAR file for version {minecraftVersionId}. HTTP Error: {httpEx.StatusCode} - {httpEx.Message}. URL: {clientDownload.Url}", httpEx);
+                    throw new Exception($"Failed to download JAR file for version {minecraftVersionId}. HTTP Error: {httpEx.StatusCode} - {httpEx.Message}. URL: {clientJarUrl}", httpEx);
                 }
                 
                 using (var stream = await response.Content.ReadAsStreamAsync())
@@ -2301,13 +2346,6 @@ public class MinecraftVersionService : IMinecraftVersionService
             // 3. 下载NeoForge安装器
             _logger.LogInformation("开始下载NeoForge安装器");
             System.Diagnostics.Debug.WriteLine("[DEBUG] 开始下载NeoForge安装器");
-            
-            // 获取当前下载源设置（下载源，而非版本列表源）
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源类型: {downloadSourceType}");
-            
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到的下载源: {downloadSource.Name}");
             
             // 根据下载源获取NeoForge安装包URL
             string neoforgeDownloadUrl = downloadSource.GetNeoForgeInstallerUrl(neoforgeVersion);

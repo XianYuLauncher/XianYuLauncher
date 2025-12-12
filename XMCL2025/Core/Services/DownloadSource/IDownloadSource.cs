@@ -53,4 +53,20 @@ public interface IDownloadSource
     /// <param name="originalUrl">原始URL（如果有）</param>
     /// <returns>依赖库下载URL</returns>
     string GetLibraryUrl(string libraryName, string originalUrl = null);
+    
+    /// <summary>
+    /// 获取客户端JAR下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JAR下载URL</returns>
+    string GetClientJarUrl(string versionId, string originalUrl);
+    
+    /// <summary>
+    /// 获取客户端JSON下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JSON下载URL</returns>
+    string GetClientJsonUrl(string versionId, string originalUrl);
 }
