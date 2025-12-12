@@ -129,6 +129,34 @@ public class BmclapiDownloadSource : IDownloadSource
     }
     
     /// <summary>
+    /// 获取客户端JAR下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JAR下载URL</returns>
+    public string GetClientJarUrl(string versionId, string originalUrl)
+    {
+        // 构建BMCLAPI的客户端JAR下载URL
+        string bmclapiUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/client";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前URL: {originalUrl}, 转换后客户端JAR下载URL: {bmclapiUrl}");
+        return bmclapiUrl;
+    }
+    
+    /// <summary>
+    /// 获取客户端JSON下载URL
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="originalUrl">原始URL</param>
+    /// <returns>客户端JSON下载URL</returns>
+    public string GetClientJsonUrl(string versionId, string originalUrl)
+    {
+        // 构建BMCLAPI的客户端JSON下载URL
+        string bmclapiUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/json";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前URL: {originalUrl}, 转换后客户端JSON下载URL: {bmclapiUrl}");
+        return bmclapiUrl;
+    }
+    
+    /// <summary>
     /// 将官方URL转换为BMCLAPI URL
     /// </summary>
     /// <param name="originalUrl">原始官方URL</param>

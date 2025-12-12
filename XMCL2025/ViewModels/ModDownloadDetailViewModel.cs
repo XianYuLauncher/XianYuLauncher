@@ -1228,46 +1228,10 @@ namespace XMCL2025.ViewModels
                         throw new Exception("Fabric版本JSON文件不存在");
                     }
 
-                    // 9. 直接下载JAR文件到整合包版本目录
-                    // 使用原始的JAR下载逻辑，直接从Mojang服务器下载
-                    // modpackJarPath变量已在第924行定义
-                    
-                    // 获取Minecraft版本信息，包含JAR下载URL和SHA1
-                    var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(minecraftVersion, minecraftPath);
-                    
-                    if (versionInfo?.Downloads?.Client != null)
-                    {
-                        var clientDownload = versionInfo.Downloads.Client;
-                        
-                        // 更新安装状态
-                        InstallStatus = $"正在下载Minecraft {minecraftVersion} JAR文件...";
-                        
-                        // 直接下载JAR文件到整合包版本目录
-                        using (var response = await new HttpClient().GetAsync(clientDownload.Url, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
-                        {
-                            response.EnsureSuccessStatusCode();
-                            
-                            using (var stream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
-                            using (var fileStream = new FileStream(modpackJarPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                            {
-                                await stream.CopyToAsync(fileStream, 81920, _installCancellationTokenSource.Token);
-                            }
-                        }
-                        
-                        // 验证JAR文件的SHA1哈希值
-                        var downloadedBytes = await File.ReadAllBytesAsync(modpackJarPath, _installCancellationTokenSource.Token);
-                        using (var sha1 = System.Security.Cryptography.SHA1.Create())
-                        {
-                            var hashBytes = sha1.ComputeHash(downloadedBytes);
-                            var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-                            
-                            if (hashString != clientDownload.Sha1)
-                            {
-                                File.Delete(modpackJarPath);
-                                throw new Exception($"JAR文件SHA1哈希验证失败，下载的文件可能已损坏。");
-                            }
-                        }
-                    }
+                    // 9. 整合包版本使用Fabric版本的JAR文件引用
+                    // Fabric等mod加载器使用原版核心文件，不需要专门下载JAR文件
+                    // 只需要确保JSON文件中的jar字段指向正确的JAR文件即可
+                    // （已经在第1221行设置了fabricData.jar = modpackVersionId）
 
                     // 10. 处理files字段中的文件
                     if (indexData.files != null)
