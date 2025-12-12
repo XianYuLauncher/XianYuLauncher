@@ -19,10 +19,41 @@ namespace XMCL2025.Helpers
         /// <returns>画刷</returns>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            // 始终返回相同的背景色，不管mod是否启用
-            // 只使用第一个画刷名称，忽略第二个
-            string[] brushNames = parameter?.ToString().Split(',') ?? new string[] { "CardBackgroundFillColorDefaultBrush" };
-            string brushName = brushNames.Length > 0 ? brushNames[0] : "CardBackgroundFillColorDefaultBrush";
+            bool boolValue = value is bool && (bool)value;
+            
+            // 解析参数，获取true和false对应的画刷名称
+            string trueBrushName = "CardBackgroundFillColorSelectedBrush";
+            string falseBrushName = "CardBackgroundFillColorDefaultBrush";
+            
+            if (parameter != null)
+            {
+                string paramStr = parameter.ToString();
+                if (!string.IsNullOrEmpty(paramStr))
+                {
+                    // 检查是否包含两个参数
+                    if (paramStr.Contains(","))
+                    {
+                        string[] parts = paramStr.Split(',');
+                        if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+                        {
+                            trueBrushName = parts[0].Trim();
+                        }
+                        if (parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                            falseBrushName = parts[1].Trim();
+                        }
+                    }
+                    else
+                    {
+                        // 只有一个参数时，同时用作true和false的画刷
+                        trueBrushName = paramStr.Trim();
+                        falseBrushName = paramStr.Trim();
+                    }
+                }
+            }
+            
+            // 根据布尔值选择画刷名称
+            string brushName = boolValue ? trueBrushName : falseBrushName;
             
             try
             {

@@ -6,14 +6,18 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:XMCL2025.ViewModels"
     xmlns:helpers="using:XMCL2025.Helpers"
-    mc:Ignorable="d">
+    xmlns:core="using:XMCL2025.Core.Models"
+    mc:Ignorable="d"
+    HorizontalAlignment="Stretch">
 
     <Page.Resources>
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+        <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
+        <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+        <helpers:ModLoaderToIconConverter x:Key="ModLoaderToIconConverter" />
     </Page.Resources>
-
-
 
     <Grid x:Name="ContentArea" Padding="24">
         <Grid.RowDefinitions>
@@ -25,85 +29,151 @@
 
         <!-- 页面标题 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock Text="选择Mod Loader" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,0">
+            <TextBlock Text="选择Mod Loader" FontSize="28" FontWeight="SemiLight" />
+            <TextBlock Margin="0,8,0,0" FontSize="16">
                 <Run Text="当前Minecraft版本: " />
                 <Run Text="{x:Bind ViewModel.SelectedMinecraftVersion, Mode=OneWay}" FontWeight="SemiBold" />
             </TextBlock>
         </StackPanel>
 
-        <!-- Mod Loader选择 -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,24">
-            <TextBlock Text="选择Mod Loader:" Style="{StaticResource BodyTextBlockStyle}" Margin="0,0,0,8" FontWeight="SemiBold" FontSize="16" />
-            
-            <ListView
-                x:Name="ModLoaderListView"
-                ItemsSource="{x:Bind ViewModel.AvailableModLoaders, Mode=OneWay}"
-                SelectedItem="{x:Bind ViewModel.SelectedModLoader, Mode=TwoWay}"
-                SelectionMode="Single"
+        <!-- 版本名称编辑卡片 -->
+        <Grid Grid.Row="1" Margin="0,0,0,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="版本名称:" Margin="0,0,0,12" FontWeight="SemiBold" FontSize="16" />
+            <Border 
+                Grid.Row="1"
+                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                MinHeight="140"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                </Style>
-            </ListView.ItemContainerStyle>
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
-                        <StackPanel Padding="12,10" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind}" FontSize="16" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-                </ListView>
-        </StackPanel>
-
-        <!-- Mod Loader版本选择 -->
-        <StackPanel Grid.Row="2" Margin="0,0,0,24">
-            <TextBlock Text="选择Mod Loader版本:" Style="{StaticResource BodyTextBlockStyle}" Margin="0,0,0,8" FontWeight="SemiBold" FontSize="16" />
-            
-            <!-- 加载指示器 -->
-            <ProgressRing
-                x:Name="LoadingProgressRing"
-                IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Width="48"
-                Height="48" />
-            
-            <!-- 版本列表容器 -->
-            <StackPanel Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
-                <!-- 版本列表 -->
-                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                    <ListView
-                        x:Name="ModLoaderVersionListView"
-                        ItemsSource="{x:Bind ViewModel.AvailableModLoaderVersions, Mode=OneWay}"
-                        SelectedItem="{x:Bind ViewModel.SelectedModLoaderVersion, Mode=TwoWay}"
-                        SelectionMode="Single"
-                        BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+                Padding="16">
+                <StackPanel>
+                    <TextBlock Text="自定义版本名称，下载时将使用此名称创建版本文件夹、jar文件和json文件。" 
+                               FontSize="14"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Margin="0,0,0,8" />
+                    <TextBox 
+                        Text="{x:Bind ViewModel.VersionName, Mode=TwoWay}"
+                        PlaceholderText="例如: 1.21.10-fabric-0.15.3"
+                        FontSize="16"
+                        Padding="12"
+                        Background="{ThemeResource TextControlBackground}"
+                        BorderBrush="{ThemeResource TextControlBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="8"
-                        MinHeight="180"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        IsEnabled="{x:Bind ViewModel.SelectedModLoader, Converter={StaticResource StringNullOrEmptyToBoolConverter}, Mode=OneWay}">
-                        <ListView.ItemContainerStyle>
-                            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            </Style>
-                        </ListView.ItemContainerStyle>
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="x:String">
-                                <TextBlock Text="{x:Bind}" Padding="12,10" FontSize="15" />
+                        CornerRadius="4" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Mod Loader选择区域 -->
+        <Grid Grid.Row="2" Margin="0,0,0,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="选择Mod Loader:" Margin="0,0,0,16" FontWeight="SemiBold" FontSize="16" />
+            
+            <!-- Mod Loader Expander列表 -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch">
+                <Grid HorizontalAlignment="Stretch">
+                    <!-- 每个Mod Loader作为一个Expander -->
+                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.ModLoaderItems, Mode=OneWay}" 
+                                  HorizontalAlignment="Stretch">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Spacing="12" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="core:ModLoaderItem">
+                                <Expander 
+                                    x:Name="ModLoaderExpander"
+                                    IsExpanded="{x:Bind IsSelected, Mode=TwoWay}" 
+                                    BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="0"
+                                    RequestedTheme="Default"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch">
+                                    <Expander.Header>
+                                        <!-- Expander头部，用于选择ModLoader -->
+                                        <Grid 
+                                            Padding="16,12" 
+                                            CornerRadius="8 8 0 0"
+                                            HorizontalAlignment="Stretch"
+                                            DataContext="{x:Bind}">
+                                            <Grid.Background>
+                                                <SolidColorBrush Color="Transparent" />
+                                            </Grid.Background>
+                                            <TextBlock 
+                                                Text="{x:Bind Name, Mode=OneWay}" 
+                                                FontSize="16" 
+                                                FontWeight="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToFontWeightConverter}}"
+                                                VerticalAlignment="Center" 
+                                                HorizontalAlignment="Stretch" />
+                                        </Grid>
+                                    </Expander.Header>
+                                    
+                                    <!-- Expander内容，包含版本列表和加载指示器 -->
+                                    <Grid Padding="16,12" MinHeight="100" HorizontalAlignment="Stretch">
+                                        <!-- 加载指示器 -->
+                                        <ProgressRing
+                                            IsActive="{x:Bind IsLoading, Mode=OneWay}"
+                                            Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Width="48"
+                                            Height="48" />
+                                        
+                                        <!-- 版本列表 -->
+                                        <ListView
+                                            x:Name="ModLoaderListView"
+                                            ItemsSource="{x:Bind Versions, Mode=OneWay}"
+                                            SelectedItem="{x:Bind SelectedVersion, Mode=TwoWay}"
+                                            SelectionMode="Single"
+                                            Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
+                                            MaxHeight="200"
+                                            Width="Auto"
+                                            Tag="{x:Bind Mode=OneWay}"> <!-- 将整个ModLoaderItem作为Tag -->
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Grid HorizontalAlignment="Stretch">
+                                                        <Border Padding="12,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="6" Margin="0,4,0,4" HorizontalAlignment="Stretch">
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                                                                <!-- ModLoader图标 -->
+                                                                <Image 
+                                                                    Source="{Binding ElementName=ModLoaderListView, Path=Tag.IconUrl}" 
+                                                                    Width="20" 
+                                                                    Height="20" 
+                                                                    Margin="0,0,12,0" 
+                                                                    VerticalAlignment="Center"
+                                                                    Stretch="UniformToFill" 
+                                                                    Visibility="Visible"/>
+                                                                
+                                                                <!-- 版本号 -->
+                                                                <TextBlock Text="{x:Bind}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+
+                                        </ListView>
+                                    </Grid>
+                                </Expander>
                             </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </ScrollViewer>
-            </StackPanel>
-        </StackPanel>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
 
         <!-- 确认按钮 -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">

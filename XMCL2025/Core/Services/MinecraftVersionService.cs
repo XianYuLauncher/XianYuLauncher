@@ -358,7 +358,7 @@ public class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null)
     {
         try
         {
@@ -443,9 +443,9 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <param name="modLoaderVersion">Mod Loader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, string customVersionName = null)
     {
-        await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None);
+        await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None, customVersionName);
     }
 
     /// <summary>
@@ -457,7 +457,8 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, CancellationToken cancellationToken = default)
+    /// <param name="customVersionName">自定义版本名称</param>
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null)
     {
         try
         {
@@ -477,10 +478,10 @@ public class MinecraftVersionService : IMinecraftVersionService
             switch (modLoaderType)
             {
                 case "Fabric":
-                    await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken);
+                    await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 case "NeoForge":
-                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken);
+                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 case "Forge":
                 case "Quilt":
@@ -529,7 +530,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载Fabric版本
     /// </summary>
-    private async Task DownloadFabricVersionAsync(string minecraftVersionId, string fabricVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default)
+    private async Task DownloadFabricVersionAsync(string minecraftVersionId, string fabricVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null)
     {
         try
         {
@@ -595,7 +596,7 @@ public class MinecraftVersionService : IMinecraftVersionService
             dynamic fabricProfile = JsonConvert.DeserializeObject(fabricProfileJson);
 
             // 3. 创建Fabric版本的JSON文件
-            string fabricVersionId = $"fabric-{minecraftVersionId}-{fabricVersion}";
+            string fabricVersionId = customVersionName ?? $"fabric-{minecraftVersionId}-{fabricVersion}";
             string fabricVersionDirectory = Path.Combine(versionsDirectory, fabricVersionId);
             
             // 创建版本ID子目录
@@ -1068,7 +1069,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                             continue;
                         }
                         
-                        await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath);
+                        await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath, library.Name);
                         downloadedFiles++;
                         
                         if (totalFilesToCheck > 0)
@@ -1090,7 +1091,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                             continue;
                         }
                         
-                        await DownloadLibraryFileAsync(library.Downloads.Classifiers[nativeClassifier], nativeLibraryPath);
+                        await DownloadLibraryFileAsync(library.Downloads.Classifiers[nativeClassifier], nativeLibraryPath, library.Name);
                         downloadedFiles++;
                         
                         if (totalFilesToCheck > 0)
@@ -1212,7 +1213,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载单个库文件
     /// </summary>
-    private async Task DownloadLibraryFileAsync(DownloadFile downloadFile, string targetPath)
+    private async Task DownloadLibraryFileAsync(DownloadFile downloadFile, string targetPath, string libraryName = null)
     {
         // 如果文件已存在且哈希匹配，则跳过下载
         if (File.Exists(targetPath) && !string.IsNullOrEmpty(downloadFile.Sha1))
@@ -1230,12 +1231,22 @@ public class MinecraftVersionService : IMinecraftVersionService
             }
         }
 
+        // 获取当前下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+        
+        // 使用下载源获取正确的库文件URL
+        string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
+        
+        _logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {Url}", downloadSource.Name, downloadUrl);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {downloadUrl}");
+        
         // 下载文件 - 增加超时时间到60秒以适应较大的库文件
         using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
         {
             try
             {
-                using (var response = await _httpClient.GetAsync(downloadFile.Url, HttpCompletionOption.ResponseHeadersRead, cts.Token))
+                using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token))
                 {
                     response.EnsureSuccessStatusCode();
                     
@@ -1247,10 +1258,38 @@ public class MinecraftVersionService : IMinecraftVersionService
                     }
                 }
             }
+            catch (HttpRequestException ex) when (downloadUrl.Contains("bmclapi2.bangbang93.com"))
+            {
+                // 如果是BMCLAPI下载失败，切换到官方源重试
+                _logger.LogWarning("BMCLAPI下载失败: {Url}，错误: {ErrorMessage}，正在切换到官方源重试", downloadUrl, ex.Message);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] BMCLAPI下载失败: {downloadUrl}，错误: {ex.Message}，正在切换到官方源重试");
+                
+                // 使用官方源获取URL
+                var officialSource = _downloadSourceFactory.GetSource("official");
+                string officialUrl = officialSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
+                
+                _logger.LogInformation("使用官方源重试下载库文件: {Url}", officialUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用官方源重试下载库文件: {officialUrl}");
+                
+                // 使用官方源重试下载
+                using (var retryCts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+                {
+                    using (var response = await _httpClient.GetAsync(officialUrl, HttpCompletionOption.ResponseHeadersRead, retryCts.Token))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        
+                        using (var stream = await response.Content.ReadAsStreamAsync())
+                        using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            await stream.CopyToAsync(fileStream);
+                        }
+                    }
+                }
+            }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("下载文件超时: {Url}", downloadFile.Url);
-                throw new TimeoutException($"Download timed out for {downloadFile.Url}");
+                _logger.LogWarning("下载文件超时: {Url}", downloadUrl);
+                throw new TimeoutException($"Download timed out for {downloadUrl}");
             }
         }
 
@@ -2147,7 +2186,7 @@ public class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载NeoForge版本
     /// </summary>
-    private async Task DownloadNeoForgeVersionAsync(string minecraftVersionId, string neoforgeVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default)
+    private async Task DownloadNeoForgeVersionAsync(string minecraftVersionId, string neoforgeVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null)
     {
         try
         {
@@ -2209,7 +2248,7 @@ public class MinecraftVersionService : IMinecraftVersionService
             
             // 2. 创建NeoForge版本目录并直接下载原版文件
             _logger.LogInformation("创建NeoForge版本目录");
-            string neoforgeVersionId = $"neoforge-{minecraftVersionId}-{neoforgeVersion}";
+            string neoforgeVersionId = customVersionName ?? $"neoforge-{minecraftVersionId}-{neoforgeVersion}";
             string neoforgeVersionDirectory = Path.Combine(versionsDirectory, neoforgeVersionId);
             Directory.CreateDirectory(neoforgeVersionDirectory);
             _logger.LogInformation("已创建NeoForge版本目录: {NeoforgeVersionDirectory}", neoforgeVersionDirectory);
@@ -2402,7 +2441,7 @@ public class MinecraftVersionService : IMinecraftVersionService
                             string libraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
                             System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库保存路径: {libraryPath}");
                             
-                            await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath);
+                            await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath, library.Name);
                             System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库下载完成: {library.Name}");
                         }
                         downloadedLibraries++;
@@ -3269,13 +3308,20 @@ public class MinecraftVersionService : IMinecraftVersionService
                 return libraryPath;
             }
             
-            // 构建下载URL
-            string downloadUrl = $"https://maven.neoforged.net/releases/{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}-{classifier}.jar";
+            // 构建Maven坐标
+            string mavenCoordinate = $"{groupId}:{artifactId}:{version}:{classifier}";
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载installertools: {downloadUrl}");
+            // 获取当前下载源设置
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            
+            // 使用下载源获取正确的下载URL
+            string downloadUrl = downloadSource.GetLibraryUrl(mavenCoordinate);
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载installertools: {downloadUrl}");
             
             // 下载文件
-            await DownloadLibraryFileAsync(new DownloadFile { Url = downloadUrl }, libraryPath);
+            await DownloadLibraryFileAsync(new DownloadFile { Url = downloadUrl }, libraryPath, mavenCoordinate);
             
             _logger.LogInformation("installertools下载完成: {LibraryPath}", libraryPath);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] installertools下载完成: {libraryPath}");

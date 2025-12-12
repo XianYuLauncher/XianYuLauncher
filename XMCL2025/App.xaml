@@ -13,8 +13,10 @@
             <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:BoolNegationConverter x:Key="BoolNegationConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" xmlns:helpers="using:XMCL2025.Helpers" />
+            <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:BoolToTextConverter x:Key="BoolToTextConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:DateTimeConverter x:Key="DateTimeConverter" xmlns:helpers="using:XMCL2025.Helpers" />
+            <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:UriToImageSourceConverter x:Key="UriToImageSourceConverter" xmlns:helpers="using:XMCL2025.Helpers" />

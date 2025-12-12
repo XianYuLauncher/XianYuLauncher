@@ -45,4 +45,12 @@ public interface IDownloadSource
     /// <param name="neoForgeVersion">NeoForge版本号</param>
     /// <returns>NeoForge安装包URL</returns>
     string GetNeoForgeInstallerUrl(string neoForgeVersion);
+    
+    /// <summary>
+    /// 获取依赖库下载URL
+    /// </summary>
+    /// <param name="libraryName">库名称</param>
+    /// <param name="originalUrl">原始URL（如果有）</param>
+    /// <returns>依赖库下载URL</returns>
+    string GetLibraryUrl(string libraryName, string originalUrl = null);
 }

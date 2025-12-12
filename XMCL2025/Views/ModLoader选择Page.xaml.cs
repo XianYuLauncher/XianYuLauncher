@@ -43,4 +43,15 @@ public sealed partial class ModLoader选择Page : Page
         // 取消下载任务
         // ViewModel会在ConfirmSelectionAsync方法中处理取消逻辑
     }
+    
+    /// <summary>
+    /// ModLoader项点击事件处理，用于选择ModLoader并加载版本列表
+    /// </summary>
+    private async void ModLoaderItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Border border && border.DataContext is XMCL2025.Core.Models.ModLoaderItem modLoaderItem)
+        {
+            await ViewModel.SelectModLoaderCommand.ExecuteAsync(modLoaderItem);
+        }
+    }
 }

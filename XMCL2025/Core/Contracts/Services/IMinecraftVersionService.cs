@@ -9,7 +9,7 @@ public interface IMinecraftVersionService
     Task<VersionManifest> GetVersionManifestAsync();
     Task<VersionInfo> GetVersionInfoAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
     Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
-    Task DownloadVersionAsync(string versionId, string targetDirectory);
+    Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null);
     Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<double> progressCallback = null, bool allowNetwork = true);
     Task ExtractNativeLibrariesAsync(string versionId, string librariesDirectory, string nativesDirectory);
     Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null);
@@ -17,8 +17,8 @@ public interface IMinecraftVersionService
     Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null);
     
     // Mod Loader相关方法
-    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null);
-    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, System.Threading.CancellationToken cancellationToken = default);
+    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, string customVersionName = null);
+    Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, System.Threading.CancellationToken cancellationToken = default, string customVersionName = null);
     
     // 获取已安装的Minecraft版本
     Task<List<string>> GetInstalledVersionsAsync(string minecraftDirectory = null);

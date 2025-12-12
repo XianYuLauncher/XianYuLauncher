@@ -21,10 +21,33 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     private string _selectedMinecraftVersion = "";
 
     [ObservableProperty]
-    private ObservableCollection<string> _availableModLoaders = new();
+    private ObservableCollection<ModLoaderItem> _modLoaderItems = new();
 
     [ObservableProperty]
-    private string? _selectedModLoader;
+    private ModLoaderItem? _selectedModLoaderItem;
+    
+    /// <summary>
+    /// 当SelectedModLoaderItem变化时触发
+    /// </summary>
+    partial void OnSelectedModLoaderItemChanged(ModLoaderItem? oldValue, ModLoaderItem? newValue);
+    
+    partial void OnSelectedModLoaderItemChanged(ModLoaderItem? oldValue, ModLoaderItem? newValue)
+    {
+        // 通知计算属性变化
+        OnPropertyChanged(nameof(SelectedModLoader));
+        OnPropertyChanged(nameof(SelectedModLoaderVersion));
+        OnPropertyChanged(nameof(IsNeoForgeSelected));
+        OnPropertyChanged(nameof(IsNotNeoForgeSelected));
+        
+        // 更新版本名称
+        UpdateVersionName();
+    }
+
+    // 计算属性：当前选中的ModLoader名称
+    public string? SelectedModLoader => SelectedModLoaderItem?.Name;
+
+    // 计算属性：当前选中的ModLoader版本
+    public string? SelectedModLoaderVersion => SelectedModLoaderItem?.SelectedVersion;
 
     // 计算属性：是否选择了NeoForge
     public bool IsNeoForgeSelected => SelectedModLoader == "NeoForge";
@@ -32,16 +55,11 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     public bool IsNotNeoForgeSelected => !string.IsNullOrEmpty(SelectedModLoader) && SelectedModLoader != "NeoForge";
 
     [ObservableProperty]
-    private ObservableCollection<string> _availableModLoaderVersions = new();
-
-    [ObservableProperty]
-    private string? _selectedModLoaderVersion;
-
-    [ObservableProperty]
-    private bool _isLoading = false;
-
-    [ObservableProperty]
     private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
+    
+    // 自定义版本名称
+    [ObservableProperty]
+    private string _versionName = "";
     
     // 下载进度相关属性
     [ObservableProperty]
@@ -57,7 +75,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     private string _downloadProgressText = "0%";
     
     // 用于管理异步加载任务的CancellationTokenSource
-    private CancellationTokenSource? _cts;
+    private Dictionary<string, CancellationTokenSource> _ctsMap = new();
     
     // 用于管理下载任务的CancellationTokenSource
     private CancellationTokenSource? _downloadCts;
@@ -73,9 +91,12 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     public void OnNavigatedFrom()
     {
         // 取消所有正在进行的任务
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
+        foreach (var cts in _ctsMap.Values)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+        _ctsMap.Clear();
     }
 
     public void OnNavigatedTo(object parameter)
@@ -83,94 +104,226 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         if (parameter is string version)
         {
             SelectedMinecraftVersion = version;
+            VersionName = SelectedMinecraftVersion; // 初始化版本名称
             LoadModLoaders();
         }
     }
 
     private void LoadModLoaders()
     {
-        // 模拟可用的mod loader列表
-        AvailableModLoaders.Clear();
-        AvailableModLoaders.Add("无"); // 添加"无"选项
-        AvailableModLoaders.Add("Forge");
-        AvailableModLoaders.Add("Fabric");
-        AvailableModLoaders.Add("NeoForge");
-        AvailableModLoaders.Add("Quilt");
+        // 清空现有列表
+        ModLoaderItems.Clear();
+        
+        // 创建mod loader项并添加到列表
+        var noItem = new ModLoaderItem("无") { IsSelected = true };
+        var forgeItem = new ModLoaderItem("Forge");
+        var fabricItem = new ModLoaderItem("Fabric");
+        var neoForgeItem = new ModLoaderItem("NeoForge");
+        var quiltItem = new ModLoaderItem("Quilt");
+        
+        // 为每个项添加PropertyChanged事件监听
+        AddPropertyChangedHandler(noItem);
+        AddPropertyChangedHandler(forgeItem);
+        AddPropertyChangedHandler(fabricItem);
+        AddPropertyChangedHandler(neoForgeItem);
+        AddPropertyChangedHandler(quiltItem);
+        
+        // 添加到列表
+        ModLoaderItems.Add(noItem);
+        ModLoaderItems.Add(forgeItem);
+        ModLoaderItems.Add(fabricItem);
+        ModLoaderItems.Add(neoForgeItem);
+        ModLoaderItems.Add(quiltItem);
         
         // 默认选择"无"
-        SelectedModLoader = "无";
+        SelectedModLoaderItem = ModLoaderItems[0];
+        
+        // 初始化"无"选项的版本
+        SelectedModLoaderItem.SelectedVersion = "无";
+    }
+    
+    /// <summary>
+    /// 为ModLoaderItem添加PropertyChanged事件处理程序
+    /// </summary>
+    /// <param name="modLoaderItem">ModLoaderItem实例</param>
+    private void AddPropertyChangedHandler(ModLoaderItem modLoaderItem)
+    {
+        modLoaderItem.PropertyChanged += async (sender, e) =>
+        {
+            if (sender is ModLoaderItem item)
+            {
+                if (e.PropertyName == nameof(ModLoaderItem.IsSelected) && item.IsSelected)
+                {
+                    // 当IsSelected变为true时，设置为当前选中的ModLoader并加载版本
+                    SelectedModLoaderItem = item;
+                    await ExpandModLoaderAsync(item);
+                }
+                else if (e.PropertyName == nameof(ModLoaderItem.SelectedVersion))
+                {
+                    // 当SelectedVersion变化时，更新版本名称
+                    UpdateVersionName();
+                }
+            }
+        };
     }
 
-    partial void OnSelectedModLoaderChanged(string? value)
+    [RelayCommand]
+    public async Task SelectModLoaderAsync(ModLoaderItem modLoaderItem)
     {
+        // 取消之前的选择
+        foreach (var item in ModLoaderItems)
+        {
+            item.IsSelected = false;
+        }
+        
+        // 选择当前mod loader
+        modLoaderItem.IsSelected = true;
+        SelectedModLoaderItem = modLoaderItem;
+        
         // 通知计算属性变化
         OnPropertyChanged(nameof(IsNeoForgeSelected));
         OnPropertyChanged(nameof(IsNotNeoForgeSelected));
         
-        if (value != null)
+        // 如果是"无"选项，设置默认版本
+        if (modLoaderItem.Name == "无")
         {
-            if (value == "无")
-            {
-                // 选择"无"时，不需要加载mod loader版本
-                AvailableModLoaderVersions.Clear();
-                SelectedModLoaderVersion = "无";
-                // 取消之前的任务并停止加载状态
-                _cts?.Cancel();
-                _cts?.Dispose();
-                _cts = null;
-                IsLoading = false;
-            }
-            else
-            {
-                LoadModLoaderVersions(value);
-            }
+            modLoaderItem.SelectedVersion = "无";
+            // 直接调用UpdateVersionName，确保版本名称更新
+            UpdateVersionName();
+            return;
         }
-        else
+        
+        // 触发版本加载
+        await ExpandModLoaderAsync(modLoaderItem);
+        // 直接调用UpdateVersionName，确保版本名称更新
+        UpdateVersionName();
+    }
+    
+    /// <summary>
+    /// 更新自定义版本名称
+    /// </summary>
+    private void UpdateVersionName()
+    {
+        if (string.IsNullOrEmpty(SelectedModLoader))
         {
-            AvailableModLoaderVersions.Clear();
-            SelectedModLoaderVersion = null;
-            // 取消之前的任务并停止加载状态
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
-            IsLoading = false;
+            VersionName = SelectedMinecraftVersion;
+            return;
+        }
+        
+        switch (SelectedModLoader)
+        {
+            case "无":
+                VersionName = SelectedMinecraftVersion;
+                break;
+            case "Fabric":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-fabric-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-fabric";
+                }
+                break;
+            case "NeoForge":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-neoforge-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-neoforge";
+                }
+                break;
+            case "Forge":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-forge-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-forge";
+                }
+                break;
+            case "Quilt":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-quilt-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-quilt";
+                }
+                break;
+            default:
+                VersionName = SelectedMinecraftVersion;
+                break;
         }
     }
 
-    private async void LoadModLoaderVersions(string modLoader)
+    [RelayCommand]
+    private async Task ExpandModLoaderAsync(ModLoaderItem modLoaderItem)
     {
-        // 取消之前的任务
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
+        // 如果是"无"选项，不需要加载版本
+        if (modLoaderItem.Name == "无")
+        {
+            return;
+        }
         
-        // 清空版本列表
-        AvailableModLoaderVersions.Clear();
-        FabricVersionMap.Clear();
-        SelectedModLoaderVersion = null;
+        // 如果已经加载过，不再重复加载
+        if (modLoaderItem.HasLoaded)
+        {
+            return;
+        }
+        
+        // 取消该mod loader之前的加载任务
+        if (_ctsMap.TryGetValue(modLoaderItem.Name, out var existingCts))
+        {
+            existingCts.Cancel();
+            existingCts.Dispose();
+        }
+        
+        // 创建新的CancellationTokenSource
+        var cts = new CancellationTokenSource();
+        _ctsMap[modLoaderItem.Name] = cts;
         
         try
         {
-            IsLoading = true;
+            // 设置加载状态
+            modLoaderItem.IsLoading = true;
             
-            switch (modLoader)
+            // 清空版本列表
+            modLoaderItem.Versions.Clear();
+            modLoaderItem.SelectedVersion = null;
+            
+            // 加载对应mod loader的版本
+            switch (modLoaderItem.Name)
             {
                 case "Forge":
-                    AvailableModLoaderVersions.Add("47.2.0");
-                    AvailableModLoaderVersions.Add("47.1.0");
-                    AvailableModLoaderVersions.Add("47.0.0");
+                    modLoaderItem.Versions.Add("47.2.0");
+                    modLoaderItem.Versions.Add("47.1.0");
+                    modLoaderItem.Versions.Add("47.0.0");
                     break;
                 case "Fabric":
-                    await LoadFabricVersionsAsync(_cts.Token);
+                    await LoadFabricVersionsAsync(modLoaderItem, cts.Token);
                     break;
                 case "NeoForge":
-                    await LoadNeoForgeVersionsAsync(_cts.Token);
+                    await LoadNeoForgeVersionsAsync(modLoaderItem, cts.Token);
                     break;
                 case "Quilt":
-                    AvailableModLoaderVersions.Add("0.20.0");
-                    AvailableModLoaderVersions.Add("0.19.2");
-                    AvailableModLoaderVersions.Add("0.19.1");
+                    modLoaderItem.Versions.Add("0.20.0");
+                    modLoaderItem.Versions.Add("0.19.2");
+                    modLoaderItem.Versions.Add("0.19.1");
                     break;
+            }
+            
+            // 设置已加载状态
+            modLoaderItem.HasLoaded = true;
+            
+            // 默认选择第一个版本
+            if (modLoaderItem.Versions.Count > 0 && string.IsNullOrEmpty(modLoaderItem.SelectedVersion))
+            {
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
             }
         }
         catch (OperationCanceledException)
@@ -179,37 +332,41 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         }
         catch (Exception ex)
         {
-            await ShowMessageAsync($"加载Mod Loader版本失败: {ex.Message}");
+            await ShowMessageAsync($"加载{modLoaderItem.Name}版本失败: {ex.Message}");
         }
         finally
         {
-            IsLoading = false;
+            // 重置加载状态
+            modLoaderItem.IsLoading = false;
+            
+            // 移除已完成的任务
+            _ctsMap.Remove(modLoaderItem.Name);
         }
     }
 
     /// <summary>
     /// 从Fabric API获取实际的Fabric版本列表
     /// </summary>
-    private async Task LoadFabricVersionsAsync(CancellationToken cancellationToken)
+    private async Task LoadFabricVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
     {
         try
         {
             List<FabricLoaderVersion> fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(SelectedMinecraftVersion);
             cancellationToken.ThrowIfCancellationRequested();
             
-            // 将版本添加到列表中，并保存映射关系
+            // 将版本添加到对应mod loader的列表中，并保存映射关系
             foreach (var version in fabricVersions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string displayVersion = version.Loader.Version;
-                AvailableModLoaderVersions.Add(displayVersion);
+                modLoaderItem.Versions.Add(displayVersion);
                 FabricVersionMap[displayVersion] = version;
             }
             
             // 如果有版本，默认选择第一个
-            if (AvailableModLoaderVersions.Count > 0)
+            if (modLoaderItem.Versions.Count > 0)
             {
-                SelectedModLoaderVersion = AvailableModLoaderVersions[0];
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
             }
         }
         catch (OperationCanceledException)
@@ -229,7 +386,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     /// <summary>
     /// 从NeoForge API获取实际的NeoForge版本列表
     /// </summary>
-    private async Task LoadNeoForgeVersionsAsync(CancellationToken cancellationToken)
+    private async Task LoadNeoForgeVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
     {
         try
         {
@@ -237,19 +394,19 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             List<string> neoForgeVersions = await _neoForgeService.GetNeoForgeVersionsAsync(SelectedMinecraftVersion);
             cancellationToken.ThrowIfCancellationRequested();
             
-            // 将版本添加到列表中
+            // 将版本添加到对应mod loader的列表中
             foreach (var version in neoForgeVersions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                AvailableModLoaderVersions.Add(version);
+                modLoaderItem.Versions.Add(version);
             }
             
-            Console.WriteLine($"NeoForge版本列表填充完成，共{AvailableModLoaderVersions.Count}个版本");
+            Console.WriteLine($"NeoForge版本列表填充完成，共{modLoaderItem.Versions.Count}个版本");
             
             // 如果有版本，默认选择第一个
-            if (AvailableModLoaderVersions.Count > 0)
+            if (modLoaderItem.Versions.Count > 0)
             {
-                SelectedModLoaderVersion = AvailableModLoaderVersions[0];
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
             }
         }
         catch (OperationCanceledException)
@@ -323,13 +480,13 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             if (SelectedModLoader == "无")
             {
                 // 下载原版Minecraft
-                // 创建版本目录：.minecraft/versions/{版本ID}/
+                // 创建版本目录：.minecraft/versions/{自定义版本名称}/
                 string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
-                string versionDirectory = Path.Combine(versionsDirectory, SelectedMinecraftVersion);
+                string versionDirectory = Path.Combine(versionsDirectory, VersionName);
                 Directory.CreateDirectory(versionDirectory);
                 
-                await minecraftVersionService.DownloadVersionAsync(SelectedMinecraftVersion, versionDirectory);
-                successMessage = $"原版Minecraft {SelectedMinecraftVersion} 下载完成！";
+                await minecraftVersionService.DownloadVersionAsync(SelectedMinecraftVersion, versionDirectory, VersionName);
+                successMessage = $"原版Minecraft {SelectedMinecraftVersion} 下载完成！版本名称: {VersionName}";
             }
             else
             {
@@ -347,8 +504,9 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                     SelectedModLoaderVersion,
                     minecraftDirectory,
                     progressCallback,
-                    _downloadCts.Token);
-                successMessage = $"{SelectedModLoader} {SelectedModLoaderVersion} 版本下载完成！\n\nMinecraft版本: {SelectedMinecraftVersion}\nMod Loader: {SelectedModLoader}\nMod Loader版本: {SelectedModLoaderVersion}";
+                    _downloadCts.Token,
+                    VersionName);
+                successMessage = $"{SelectedModLoader} {SelectedModLoaderVersion} 版本下载完成！\n\nMinecraft版本: {SelectedMinecraftVersion}\nMod Loader: {SelectedModLoader}\nMod Loader版本: {SelectedModLoaderVersion}\n自定义版本名称: {VersionName}";
             }
             
             // 隐藏下载弹窗
