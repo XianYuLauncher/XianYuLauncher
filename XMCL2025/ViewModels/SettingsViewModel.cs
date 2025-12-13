@@ -169,14 +169,31 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     public bool CanRefreshJavaVersions => !IsLoadingJavaVersions;
 
-
-
+    /// <summary>
+    /// 切换主题命令
+    /// </summary>
     public ICommand SwitchThemeCommand
     {
         get;
     }
-    
-    public ICommand SwitchJavaSelectionModeCommand
+
+    /// <summary>
+    /// 鸣谢人员列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<AcknowledgmentPerson> _acknowledgmentPersons;
+
+    /// <summary>
+    /// 添加鸣谢人员命令
+    /// </summary>
+    [RelayCommand]
+    private void AddAcknowledgmentPerson()
+    {
+        int count = AcknowledgmentPersons.Count + 1;
+        AcknowledgmentPersons.Add(new AcknowledgmentPerson($"鸣谢人员{count}", $"提供支持{count}"));
+    }
+
+        public ICommand SwitchJavaSelectionModeCommand
     {
         get;
     }
@@ -226,6 +243,12 @@ public partial class SettingsViewModel : ObservableRecipient
                 }
             });
 
+        // 初始化鸣谢人员列表
+        AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>
+        {
+            new AcknowledgmentPerson("bangbang93", "提供了BMCLAPI")
+        };
+        
         // 初始化Java版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
         

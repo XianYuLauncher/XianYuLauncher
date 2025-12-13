@@ -1173,25 +1173,21 @@ namespace XMCL2025.ViewModels
                     string modLoaderName = modLoader.Split('-')[0]; // 从fabric-loader中提取fabric
                     string modpackVersionId = $"{modpackName}-{minecraftVersion}-{modLoaderName}";
 
-                    // 6. 下载Fabric版本
+                    // 6. 直接下载整合包版本，使用customVersionName参数创建整合包版本目录
                     await _minecraftVersionService.DownloadModLoaderVersionAsync(
                         minecraftVersion, "Fabric", modLoaderVersion, minecraftPath, progress =>
                         {
                             // 更新进度（50%-80%用于版本下载）
                             InstallProgress = 50 + (progress / 100) * 30;
                             InstallProgressText = $"{InstallProgress:F1}%";
-                        }, _installCancellationTokenSource.Token);
+                        }, _installCancellationTokenSource.Token, modpackVersionId);
 
                     InstallStatus = "版本下载完成，正在部署整合包文件...";
                     InstallProgress = 80;
                     InstallProgressText = "80%";
 
                     string versionsDir = Path.Combine(minecraftPath, "versions");
-                    string fabricVersionDir = Path.Combine(versionsDir, fabricVersionId);
                     string modpackVersionDir = Path.Combine(versionsDir, modpackVersionId);
-
-                    // 确保整合包版本目录存在
-                    Directory.CreateDirectory(modpackVersionDir);
 
                     // 7. 复制overrides目录内容到版本目录
                     string overridesDir = Path.Combine(extractDir, "overrides");
@@ -1202,36 +1198,6 @@ namespace XMCL2025.ViewModels
                             CopyDirectory(overridesDir, modpackVersionDir);
                         }, _installCancellationTokenSource.Token);
                     }
-
-                    // 8. 复制fabric版本的JSON文件并重命名
-                    string fabricJsonPath = Path.Combine(fabricVersionDir, $"{fabricVersionId}.json");
-                    string modpackJsonPath = Path.Combine(modpackVersionDir, $"{modpackVersionId}.json");
-                    string modpackJarPath = Path.Combine(modpackVersionDir, $"{modpackVersionId}.jar");
-
-                    if (File.Exists(fabricJsonPath))
-                    {
-                        // 读取Fabric JSON并修改ID
-                        string fabricJson = await File.ReadAllTextAsync(fabricJsonPath, _installCancellationTokenSource.Token);
-                        dynamic fabricData = JsonConvert.DeserializeObject(fabricJson);
-                        
-                        // 修改整合包版本ID
-                        fabricData.id = modpackVersionId;
-                        
-                        // 修改jar字段，指向整合包专属的JAR文件
-                        fabricData.jar = modpackVersionId;
-                        
-                        string modpackJson = JsonConvert.SerializeObject(fabricData, Formatting.Indented);
-                        await File.WriteAllTextAsync(modpackJsonPath, modpackJson, _installCancellationTokenSource.Token);
-                    }
-                    else
-                    {
-                        throw new Exception("Fabric版本JSON文件不存在");
-                    }
-
-                    // 9. 整合包版本使用Fabric版本的JAR文件引用
-                    // Fabric等mod加载器使用原版核心文件，不需要专门下载JAR文件
-                    // 只需要确保JSON文件中的jar字段指向正确的JAR文件即可
-                    // （已经在第1221行设置了fabricData.jar = modpackVersionId）
 
                     // 10. 处理files字段中的文件
                     if (indexData.files != null)
