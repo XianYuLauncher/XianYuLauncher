@@ -4,7 +4,7 @@ namespace XMCL2025.Core.Services;
 
 
 
-public class MinecraftVersionService : IMinecraftVersionService
+public partial class MinecraftVersionService : IMinecraftVersionService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MinecraftVersionService> _logger;
@@ -539,8 +539,10 @@ public class MinecraftVersionService : IMinecraftVersionService
                     await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 case "Forge":
+                    await DownloadForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                    break;
                 case "Quilt":
-                    // 这些Mod Loader的实现将在后续添加
+                    // Quilt的实现将在后续添加
                     await ShowNotImplementedMessageAsync(modLoaderType);
                     break;
                 default:
