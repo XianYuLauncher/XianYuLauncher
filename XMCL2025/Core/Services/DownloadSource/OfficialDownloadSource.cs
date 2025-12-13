@@ -76,6 +76,7 @@ public class OfficialDownloadSource : IDownloadSource
         // 如果提供了原始URL，直接使用
         if (!string.IsNullOrEmpty(originalUrl))
         {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用官方源下载库文件，原始URL: {originalUrl}");
             return originalUrl;
         }
         

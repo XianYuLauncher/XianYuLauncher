@@ -319,6 +319,56 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <!-- 开发人员区域 -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20" Spacing="20" VerticalAlignment="Center">
+                                    <!-- 圆形头像区域 -->
+                                    <Ellipse Width="80" Height="80">
+                                        <Ellipse.Fill>
+                                            <ImageBrush ImageSource="ms-appx:///Assets/Icons/Contributors/SpiritStudio.png" Stretch="Uniform" />
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                    <!-- 作者名称占位符 -->
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="SpiritStudio" Style="{ThemeResource TitleTextBlockStyle}" FontSize="20" />
+                                        <TextBlock Text="感谢所有参与项目开发的工作室成员" Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.7" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 鸣谢区域 -->
+                                <StackPanel Margin="0,0,0,20">
+                                    <!-- 鸣谢标题 -->
+                                    <TextBlock Text="鸣谢" Style="{ThemeResource TitleTextBlockStyle}" FontSize="14" Margin="0,0,0,8" />
+                                    <!-- 鸣谢人员列表，每行最多3个 -->
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.AcknowledgmentPersons, Mode=OneWay}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="3" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Margin" Value="8" />
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="viewModels:AcknowledgmentPerson">
+                                                <StackPanel Width="96" Height="100" HorizontalAlignment="Center" VerticalAlignment="Top">
+                                                    <!-- 圆形头像 -->
+                                                    <Ellipse Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                                        <Ellipse.Fill>
+                                                            <ImageBrush ImageSource="ms-appx:///Assets/Icons/Contributors/bangbang93.jpg" Stretch="Uniform" />
+                                                        </Ellipse.Fill>
+                                                    </Ellipse>
+                                                    <!-- 姓名 -->
+                                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" HorizontalAlignment="Center" Margin="0,0,0,4" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                                    <!-- 支持信息 -->
+                                                    <TextBlock Text="{x:Bind SupportInfo, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontSize="10" HorizontalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Opacity="0.5" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
                                 <!-- 关于信息 -->
                                 <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
 
