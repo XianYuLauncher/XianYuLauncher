@@ -146,4 +146,31 @@ public class OfficialDownloadSource : IDownloadSource
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JSON下载URL: {originalUrl}");
         return originalUrl;
     }
+    
+    /// <summary>
+    /// 获取Forge版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>Forge版本列表URL</returns>
+    public string GetForgeVersionsUrl(string minecraftVersion)
+    {
+        // 官方Forge版本列表URL改为maven-metadata.xml
+        string url = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Forge版本列表URL: {url}");
+        return url;
+    }
+    
+    /// <summary>
+    /// 获取Forge安装包URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="forgeVersion">Forge版本号</param>
+    /// <returns>Forge安装包URL</returns>
+    public string GetForgeInstallerUrl(string minecraftVersion, string forgeVersion)
+    {
+        // 构建官方Forge安装包URL，格式为：https://files.minecraftforge.net/maven/net/minecraftforge/forge/{mcVersion}-{forgeVersion}/forge-{mcVersion}-{forgeVersion}-installer.jar
+        string url = $"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Forge {forgeVersion} 安装包URL: {url}");
+        return url;
+    }
 }

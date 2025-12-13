@@ -177,4 +177,31 @@ public class BmclapiDownloadSource : IDownloadSource
         
         return bmclapiUrl;
     }
+    
+    /// <summary>
+    /// 获取Forge版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>BMCLAPI Forge版本列表URL</returns>
+    public string GetForgeVersionsUrl(string minecraftVersion)
+    {
+        // BMCLAPI Forge版本列表URL格式：https://bmclapi2.bangbang93.com/forge/minecraft/{minecraftVersion}
+        string url = $"https://bmclapi2.bangbang93.com/forge/minecraft/{minecraftVersion}";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Forge版本列表URL: {url}");
+        return url;
+    }
+    
+    /// <summary>
+    /// 获取Forge安装包URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="forgeVersion">Forge版本号</param>
+    /// <returns>BMCLAPI Forge安装包URL</returns>
+    public string GetForgeInstallerUrl(string minecraftVersion, string forgeVersion)
+    {
+        // BMCLAPI Forge安装包URL格式：https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar
+        string url = $"https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Forge {forgeVersion} 安装包URL: {url}");
+        return url;
+    }
 }

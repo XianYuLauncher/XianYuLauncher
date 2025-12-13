@@ -108,6 +108,10 @@ public partial class App : Application
             // NeoForge Service
             services.AddHttpClient<NeoForgeService>();
             services.AddSingleton<NeoForgeService>();
+            
+            // Forge Service
+            services.AddHttpClient<ForgeService>();
+            services.AddSingleton<ForgeService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();
