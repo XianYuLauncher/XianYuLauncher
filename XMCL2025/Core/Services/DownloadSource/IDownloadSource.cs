@@ -47,6 +47,21 @@ public interface IDownloadSource
     string GetNeoForgeInstallerUrl(string neoForgeVersion);
     
     /// <summary>
+    /// 获取Forge版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>Forge版本列表URL</returns>
+    string GetForgeVersionsUrl(string minecraftVersion);
+    
+    /// <summary>
+    /// 获取Forge安装包URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="forgeVersion">Forge版本号</param>
+    /// <returns>Forge安装包URL</returns>
+    string GetForgeInstallerUrl(string minecraftVersion, string forgeVersion);
+    
+    /// <summary>
     /// 获取依赖库下载URL
     /// </summary>
     /// <param name="libraryName">库名称</param>

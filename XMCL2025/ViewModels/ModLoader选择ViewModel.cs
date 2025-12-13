@@ -16,6 +16,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     private readonly FabricService _fabricService;
     private readonly IFileService _fileService;
     private readonly NeoForgeService _neoForgeService;
+    private readonly ForgeService _forgeService;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
@@ -86,6 +87,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         _fabricService = App.GetService<FabricService>();
         _fileService = App.GetService<IFileService>();
         _neoForgeService = App.GetService<NeoForgeService>();
+        _forgeService = App.GetService<ForgeService>();
     }
 
     public void OnNavigatedFrom()
@@ -300,9 +302,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             switch (modLoaderItem.Name)
             {
                 case "Forge":
-                    modLoaderItem.Versions.Add("47.2.0");
-                    modLoaderItem.Versions.Add("47.1.0");
-                    modLoaderItem.Versions.Add("47.0.0");
+                    await LoadForgeVersionsAsync(modLoaderItem, cts.Token);
                     break;
                 case "Fabric":
                     await LoadFabricVersionsAsync(modLoaderItem, cts.Token);
@@ -420,6 +420,47 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
             if (SelectedModLoader == "NeoForge")
             {
                 await ShowMessageAsync($"获取NeoForge版本列表失败: {ex.Message}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 从Forge API获取实际的Forge版本列表
+    /// </summary>
+    private async Task LoadForgeVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
+    {
+        try
+        {
+            Console.WriteLine($"正在填充Forge版本列表到UI...");
+            List<string> forgeVersions = await _forgeService.GetForgeVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // 将版本添加到对应mod loader的列表中
+            foreach (var version in forgeVersions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                modLoaderItem.Versions.Add(version);
+            }
+            
+            Console.WriteLine($"Forge版本列表填充完成，共{modLoaderItem.Versions.Count}个版本");
+            
+            // 如果有版本，默认选择第一个
+            if (modLoaderItem.Versions.Count > 0)
+            {
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+            Console.WriteLine($"Forge版本加载任务被取消");
+        }
+        catch (Exception ex)
+        {
+            // 只有当当前选择的ModLoader仍然是Forge时才显示错误
+            if (SelectedModLoader == "Forge")
+            {
+                await ShowMessageAsync($"获取Forge版本列表失败: {ex.Message}");
             }
         }
     }
