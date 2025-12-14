@@ -1440,7 +1440,7 @@ public partial class 启动ViewModel : ObservableRecipient
     /// </summary>
     private string GetLibraryFilePath(string libraryName, string librariesDirectory, string classifier = null)
     {
-        // 解析库名称：groupId:artifactId:version
+        // 解析库名称：groupId:artifactId:version[:classifier]
         var parts = libraryName.Split(':');
         if (parts.Length < 3)
         {
@@ -1450,23 +1450,72 @@ public partial class 启动ViewModel : ObservableRecipient
         string groupId = parts[0];
         string artifactId = parts[1];
         string version = parts[2];
+        string detectedClassifier = null;
+        
+        // 检查版本号是否包含@符号，可能包含classifier信息
+        if (version.Contains('@'))
+        {
+            // 分割版本号和分类器
+            string[] versionParts = version.Split('@');
+            if (versionParts.Length == 2)
+            {
+                version = versionParts[0];
+                detectedClassifier = versionParts[1];
+            }
+        }
+
+        // 处理分类器中的$extension占位符
+        if (!string.IsNullOrEmpty(detectedClassifier) && detectedClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
+        {
+            // 对于mcp_config，直接清空分类器，后续会添加正确的.zip扩展名
+            if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+            {
+                detectedClassifier = ""; // 清空分类器，避免添加-zip
+            }
+            else
+            {
+                detectedClassifier = "jar"; // 默认使用jar
+            }
+        }
+
+        // 如果库名称中包含分类器（即有4个或更多部分），则提取分类器
+        if (parts.Length >= 4)
+        {
+            detectedClassifier = parts[3];
+        }
+
+        // 优先使用方法参数传入的分类器，如果没有则使用从库名称中提取的分类器
+        string finalClassifier = !string.IsNullOrEmpty(classifier) ? classifier : detectedClassifier;
 
         // 将groupId中的点替换为目录分隔符
         string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
 
         // 构建基础文件路径
         string fileName = $"{artifactId}-{version}";
-        if (!string.IsNullOrEmpty(classifier))
+        if (!string.IsNullOrEmpty(finalClassifier))
         {
-            fileName += $"-{classifier}";
+            fileName += $"-{finalClassifier}";
         }
         
         // 确定文件扩展名
         string extension = ".jar";
         bool hasExtension = false;
         
+        // 检查并移除分类器中的"zip"，因为它应该是扩展名而不是分类器
+        if (finalClassifier != null && finalClassifier.Equals("zip", StringComparison.OrdinalIgnoreCase))
+        {
+            finalClassifier = ""; // 移除zip分类器
+            fileName = $"{artifactId}-{version}"; // 重新构建文件名
+        }
+        
+        // 特殊处理mcp_config文件，确保使用正确的zip扩展名
+        if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".zip";
+            hasExtension = false; // 确保添加扩展名
+        }
         // 检查文件名是否已经包含特定扩展名
-        if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
+        else if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
         {
             extension = ".lzma";
             hasExtension = true;
@@ -1474,6 +1523,11 @@ public partial class 启动ViewModel : ObservableRecipient
         else if (fileName.EndsWith(".tsrg", StringComparison.OrdinalIgnoreCase))
         {
             extension = ".tsrg";
+            hasExtension = true;
+        }
+        else if (fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".zip";
             hasExtension = true;
         }
         
