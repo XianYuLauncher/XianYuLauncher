@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Models;
 using XMCL2025.Core.Services.DownloadSource;
@@ -46,6 +47,19 @@ public partial class MinecraftVersionService
             _logger.LogInformation("创建Forge版本目录: {VersionDirectory}", forgeVersionDirectory);
             Directory.CreateDirectory(forgeVersionDirectory);
             progressCallback?.Invoke(5); // 5% - 版本目录创建完成
+            
+            // 立即生成版本配置文件，确保处理器执行前能获取正确的版本信息
+            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            {
+                ModLoaderType = "forge",
+                ModLoaderVersion = forgeVersion,
+                MinecraftVersion = minecraftVersionId,
+                CreatedAt = DateTime.Now
+            };
+            string configPath = Path.Combine(forgeVersionDirectory, "XianYuL.cfg");
+            File.WriteAllText(configPath, JsonConvert.SerializeObject(versionConfig, Formatting.Indented));
+            _logger.LogInformation("已生成版本配置文件: {ConfigPath}", configPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已生成Forge版本配置文件: {configPath}");
 
             // 2. 获取原版Minecraft版本信息
             _logger.LogInformation("开始获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
@@ -96,18 +110,13 @@ public partial class MinecraftVersionService
             progressCallback?.Invoke(35); // 35% - JAR文件下载完成
             _logger.LogInformation("原版Minecraft核心文件下载完成: {JarPath}", jarPath);
 
-            // 4. 下载原版Minecraft JSON文件
-            _logger.LogInformation("开始获取原版Minecraft JSON文件内容");
-            string originalVersionJson = await GetVersionInfoJsonAsync(minecraftVersionId);
-            string originalJsonPath = Path.Combine(forgeVersionDirectory, $"{minecraftVersionId}.json");
-            await File.WriteAllTextAsync(originalJsonPath, originalVersionJson);
-            progressCallback?.Invoke(45); // 45% - JSON文件下载完成
-            _logger.LogInformation("原版Minecraft JSON文件内容已保存: {JsonPath}", originalJsonPath);
+            // 跳过单独保存原版JSON文件，因为后续会合并生成完整的版本JSON
+            progressCallback?.Invoke(45); // 45% - 跳过原版JSON单独保存
 
             // 5. 下载Forge Installer JAR包
             _logger.LogInformation("开始下载Forge Installer JAR包");
             
-            // 使用下载源工厂获取Forge安装包URL
+            // 使用下载源工厂获取Forge安装包URL（支持双下载源）
             string forgeInstallerUrl = downloadSource.GetForgeInstallerUrl(minecraftVersionId, forgeVersion);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: Forge Installer, 下载源: {downloadSource.Name}, 版本: {minecraftVersionId}-{forgeVersion}, 下载URL: {forgeInstallerUrl}");
             
@@ -116,9 +125,11 @@ public partial class MinecraftVersionService
             string cacheDirectory = Path.Combine(appDataPath, "cache", "forge");
             Directory.CreateDirectory(cacheDirectory);
             _logger.LogInformation("使用Forge缓存目录: {CacheDirectory}", cacheDirectory);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge缓存目录: {cacheDirectory}");
             
-            // 设置Forge安装包路径
+            // 设置Forge安装包路径（与NeoForge命名格式保持一致）
             string forgeInstallerPath = Path.Combine(cacheDirectory, $"forge-{minecraftVersionId}-{forgeVersion}-installer.jar");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge安装包保存路径: {forgeInstallerPath}");
             
             // 下载Forge Installer JAR
             using (var response = await _httpClient.GetAsync(forgeInstallerUrl, HttpCompletionOption.ResponseHeadersRead))
@@ -153,11 +164,19 @@ public partial class MinecraftVersionService
             _logger.LogInformation("开始解压Forge Installer至缓存目录");
             string extractedPath = Path.Combine(cacheDirectory, $"extracted-{minecraftVersionId}-{forgeVersion}");
             Directory.CreateDirectory(extractedPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge Installer解压路径: {extractedPath}");
+            
+            // 记录解压前目录状态
+            string[] beforeExtractFiles = Directory.GetFiles(cacheDirectory);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解压前缓存目录文件数量: {beforeExtractFiles.Length}");
             
             using (ZipArchive archive = ZipFile.OpenRead(forgeInstallerPath))
             {
                 int totalEntries = archive.Entries.Count;
                 int extractedEntries = 0;
+                int versionJsonCount = 0;
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge Installer包含{totalEntries}个文件");
                 
                 foreach (ZipArchiveEntry entry in archive.Entries)
                 {
@@ -167,32 +186,299 @@ public partial class MinecraftVersionService
                     Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
                     entry.ExtractToFile(destinationPath, overwrite: true);
                     
+                    // 检查是否是version.json文件
+                    if (entry.Name.Equals("version.json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        versionJsonCount++;
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 已解压version.json文件: {destinationPath}");
+                    }
+                    
                     extractedEntries++;
                     double progress = 75 + ((double)extractedEntries / totalEntries) * 15; // 75% - 90% 用于解压
                     progressCallback?.Invoke(progress);
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 解压完成，共解压{extractedEntries}个文件，其中包含{versionJsonCount}个version.json文件");
             }
+            
+            // 列出解压目录中的关键文件
+            string[] extractedFiles = Directory.GetFiles(extractedPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解压后目录文件列表 ({extractedFiles.Length}个文件):");
+            foreach (string file in extractedFiles)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+            }
+            
+            // 检查子目录
+            string[] extractedDirectories = Directory.GetDirectories(extractedPath);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解压后目录子目录列表 ({extractedDirectories.Length}个目录):");
+            foreach (string dir in extractedDirectories)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(dir)}");
+                // 列出data目录中的文件（如果存在）
+                if (Path.GetFileName(dir).Equals("data", StringComparison.OrdinalIgnoreCase))
+                {
+                    string[] dataFiles = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG]   data目录包含{dataFiles.Length}个文件:");
+                    foreach (string dataFile in dataFiles)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG]     {Path.GetRelativePath(dir, dataFile)}");
+                    }
+                }
+            }
+            
             progressCallback?.Invoke(90); // 90% - 解压完成
             _logger.LogInformation("Forge Installer解压完成: {ExtractedPath}", extractedPath);
 
-            // 7. 生成版本配置文件
-            _logger.LogInformation("生成Forge版本配置文件");
-            var versionConfig = new VersionConfig
+            // 8. 读取install_profile.json文件
+            _logger.LogInformation("读取Forge install_profile.json文件");
+            string installProfilePath = Path.Combine(extractedPath, "install_profile.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 尝试读取install_profile.json路径: {installProfilePath}");
+            
+            // 检查文件是否存在
+            if (File.Exists(installProfilePath))
             {
-                ModLoaderType = "forge",
-                ModLoaderVersion = forgeVersion,
-                MinecraftVersion = minecraftVersionId,
-                CreatedAt = DateTime.Now
-            };
-            string configPath = Path.Combine(forgeVersionDirectory, "XianYuL.cfg");
-            await File.WriteAllTextAsync(configPath, JsonConvert.SerializeObject(versionConfig, Formatting.Indented));
-            progressCallback?.Invoke(95); // 95% - 配置文件生成完成
-            _logger.LogInformation("Forge版本配置文件已生成: {ConfigPath}", configPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到install_profile.json文件，大小: {new FileInfo(installProfilePath).Length}字节");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到install_profile.json文件，列出当前目录所有文件:");
+                string[] dirFiles = Directory.GetFiles(extractedPath);
+                foreach (string file in dirFiles)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+                }
+                throw new Exception($"install_profile.json文件不存在: {installProfilePath}");
+            }
+            
+            string installProfileContent = await File.ReadAllTextAsync(installProfilePath);
+            JObject installProfile = JObject.Parse(installProfileContent);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功解析install_profile.json文件");
+            progressCallback?.Invoke(91); // 91% - install_profile.json读取完成
 
-            // 8. 记录缓存目录路径，便于调试
+            // 9. 提取客户端处理器和依赖库
+            _logger.LogInformation("提取Forge客户端处理器和依赖库");
+            JArray processors = installProfile["processors"]?.Value<JArray>() ?? throw new Exception("install_profile.json中未找到processors字段");
+            List<JObject> clientProcessors = new List<JObject>();
+            
+            // 提取install_profile.json中的依赖库
+            List<Library> installProfileLibraries = new List<Library>();
+            JArray profileLibraries = installProfile["libraries"]?.Value<JArray>() ?? new JArray();
+            foreach (JObject libObj in profileLibraries)
+            {
+                var lib = libObj.ToObject<Library>();
+                if (lib != null && !string.IsNullOrEmpty(lib.Name))
+                {
+                    installProfileLibraries.Add(lib);
+                    _logger.LogInformation("添加install_profile依赖库: {LibraryName}", lib.Name);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加install_profile依赖库: {lib.Name}");
+                }
+            }
+            
+            // 筛选客户端处理器（支持server字段和sides字段判断，与NeoForge保持一致）
+            foreach (JObject processor in processors)
+            {
+                bool isServerProcessor = false;
+                
+                // 1. 检查server字段
+                if (processor.ContainsKey("server"))
+                {
+                    isServerProcessor = processor["server"]?.Value<bool>() ?? false;
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器server字段值: {isServerProcessor}");
+                }
+                // 2. 检查sides字段
+                else if (processor.ContainsKey("sides"))
+                {
+                    JArray sides = processor["sides"]?.Value<JArray>();
+                    if (sides != null)
+                    {
+                        isServerProcessor = !sides.Any(side => side.ToString() == "client");
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器sides字段: {string.Join(",", sides.Select(s => s.ToString()))}, 是否为服务器处理器: {isServerProcessor}");
+                    }
+                }
+                
+                if (isServerProcessor)
+                {
+                    _logger.LogInformation("跳过服务器处理器");
+                    System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过服务器处理器");
+                    continue;
+                }
+                
+                clientProcessors.Add(processor);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加客户端处理器: {processor}");
+            }
+            _logger.LogInformation("共找到 {ProcessorCount} 个客户端处理器", clientProcessors.Count);
+            
+            // 10. 下载install_profile.json中的依赖库（与NeoForge流程保持一致）
+            if (installProfileLibraries.Count > 0)
+            {
+                _logger.LogInformation("开始下载install_profile.json中的依赖库");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始下载 {installProfileLibraries.Count} 个install_profile依赖库");
+                
+                int totalLibraries = installProfileLibraries.Count;
+                int downloadedLibraries = 0;
+                
+                foreach (var library in installProfileLibraries)
+                {
+                    try
+                    {
+                        if (library.Downloads?.Artifact != null)
+                        {
+                            _logger.LogInformation("下载依赖库: {LibraryName}", library.Name);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载依赖库: {library.Name}");
+                            
+                            string libraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库保存路径: {libraryPath}");
+                            
+                            await DownloadLibraryFileAsync(library.Downloads.Artifact, libraryPath, library.Name);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库下载完成: {library.Name}");
+                        }
+                        downloadedLibraries++;
+                        double libraryProgress = 91 + (downloadedLibraries * 1.0 / totalLibraries); // 91-92% 用于下载install_profile依赖库
+                        progressCallback?.Invoke(libraryProgress);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖库下载进度: {downloadedLibraries}/{totalLibraries}，当前整体进度: {libraryProgress:F1}%");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "下载依赖库失败: {LibraryName}", library.Name);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载依赖库失败: {library.Name}，错误: {ex.Message}");
+                        // 继续下载其他库，不中断整个过程
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine("[DEBUG] install_profile依赖库下载完成");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 没有需要下载的install_profile依赖库");
+            }
+            
+            progressCallback?.Invoke(92); // 92% - 处理器和依赖库提取完成
+
+            // 11. 合并版本JSON（在执行处理器之前完成，避免处理器执行失败导致JSON未合并）
+            _logger.LogInformation("开始合并Forge版本JSON");
+            
+            // 从解压目录读取Forge version.json
+            string forgeJsonPath = Path.Combine(extractedPath, "version.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 尝试读取Forge version.json路径: {forgeJsonPath}");
+            
+            // 详细检查version.json文件
+            if (File.Exists(forgeJsonPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到Forge version.json文件，大小: {new FileInfo(forgeJsonPath).Length}字节");
+                
+                // 读取并显示文件前500字节内容
+                using (var reader = new StreamReader(forgeJsonPath))
+                {
+                    char[] buffer = new char[500];
+                    int read = await reader.ReadAsync(buffer, 0, buffer.Length);
+                    string preview = new string(buffer, 0, read);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge version.json前500字节预览: {preview}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到Forge version.json文件，列出解压目录所有文件:");
+                string[] dirFiles = Directory.GetFiles(extractedPath);
+                foreach (string file in dirFiles)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+                }
+                
+                // 检查子目录中是否有version.json
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 检查解压目录子目录中的version.json:");
+                string[] subDirs = Directory.GetDirectories(extractedPath);
+                foreach (string subDir in subDirs)
+                {
+                    string subDirJsonPath = Path.Combine(subDir, "version.json");
+                    if (File.Exists(subDirJsonPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   在子目录{Path.GetFileName(subDir)}中找到version.json: {subDirJsonPath}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   子目录{Path.GetFileName(subDir)}中未找到version.json");
+                    }
+                }
+                
+                throw new Exception($"version.json文件不存在: {forgeJsonPath}");
+            }
+            
+            // 解析两个JSON文件
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始解析原版JSON和Forge JSON");
+            var originalJson = originalVersionInfo; // 已在步骤2获取
+            string forgeJsonContent = await File.ReadAllTextAsync(forgeJsonPath);
+            var forgeJson = JsonConvert.DeserializeObject<VersionInfo>(forgeJsonContent);
+            
+            // 合并JSON
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始合并JSON，原版JSON ID: {originalJson?.Id}, Forge JSON ID: {forgeJson?.Id}");
+            var mergedJson = MergeVersionJson(originalJson, forgeJson, installProfileLibraries);
+            
+            // 保存合并后的JSON - 直接使用目录名作为文件名
+            string versionDirName = Path.GetFileName(forgeVersionDirectory);
+            string mergedJsonPath = Path.Combine(forgeVersionDirectory, $"{versionDirName}.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 保存合并后的JSON到: {mergedJsonPath}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后JSON ID: {mergedJson?.Id}");
+            
+            await File.WriteAllTextAsync(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后的JSON文件大小: {new FileInfo(mergedJsonPath).Length}字节");
+            
+            _logger.LogInformation("Forge版本JSON合并完成: {MergedJsonPath}", mergedJsonPath);
+            progressCallback?.Invoke(94); // 94% - JSON合并完成
+            
+            // 11. 执行Forge处理器（在JSON合并之后执行）
+            _logger.LogInformation("开始执行Forge客户端处理器");
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始执行Forge客户端处理器");
+            int totalProcessors = clientProcessors.Count;
+            int executedProcessors = 0;
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 共找到 {totalProcessors} 个客户端处理器");
+            
+            foreach (JObject processor in clientProcessors)
+            {
+                executedProcessors++;
+                double processorProgress = 94 + (executedProcessors * 4.0 / totalProcessors); // 94-98% 用于执行处理器
+                
+                _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 执行处理器 {executedProcessors}/{totalProcessors}");
+                
+                // 调用通用处理器执行方法
+                await ExecuteProcessor(processor, forgeInstallerPath, forgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath, extractedPath, "forge");
+                
+                progressCallback?.Invoke(processorProgress);
+                _logger.LogInformation("处理器 {ProcessorIndex}/{TotalProcessors} 执行完成", executedProcessors, totalProcessors);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器 {executedProcessors}/{totalProcessors} 执行完成");
+            }
+            
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 所有Forge客户端处理器执行完成");
+            
+            // 12. 清理可能存在的错误命名的JSON文件
+            string minecraftVersionJsonPath = Path.Combine(forgeVersionDirectory, $"{minecraftVersionId}.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 检查是否需要清理错误命名的JSON: {minecraftVersionJsonPath}");
+            if (File.Exists(minecraftVersionJsonPath))
+            {
+                _logger.LogInformation("清理可能存在的错误命名JSON文件: {JsonPath}", minecraftVersionJsonPath);
+                File.Delete(minecraftVersionJsonPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已删除错误命名的JSON文件");
+            }
+            
+            // 列出最终版本目录中的所有文件
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 最终版本目录{forgeVersionDirectory}中的文件列表:");
+            string[] finalVersionFiles = Directory.GetFiles(forgeVersionDirectory);
+            foreach (string file in finalVersionFiles)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+            }
+
+            // 跳过重复的配置文件创建，因为已经在流程早期创建
+            progressCallback?.Invoke(99); // 99% - 配置文件已在早期生成
+
+            // 13. 记录缓存目录路径，便于调试
             _logger.LogInformation("Forge缓存目录: {CacheDirectory}", cacheDirectory);
             _logger.LogInformation("Forge安装包路径: {ForgeInstallerPath}", forgeInstallerPath);
             _logger.LogInformation("Forge安装包解压路径: {ExtractedPath}", extractedPath);
+            
+            // 14. 完成下载
             progressCallback?.Invoke(100); // 100% - 下载完成
             _logger.LogInformation("Forge版本下载完成: {ForgeVersion} for Minecraft {MinecraftVersion}", forgeVersion, minecraftVersionId);
         }
