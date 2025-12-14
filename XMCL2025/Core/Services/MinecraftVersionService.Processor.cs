@@ -29,12 +29,18 @@ namespace XMCL2025.Core.Services
             
             try
             {
-                _logger.LogInformation("开始执行{ModLoaderType}处理器", modLoaderType);
+                _logger.LogInformation("开始执行{ModLoaderType}处理器");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始执行{modLoaderType}处理器: {processor}");
                 
                 // 获取处理器信息
                 jar = processor["jar"]?.ToString() ?? throw new Exception("处理器缺少jar字段");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器jar: {jar}");
+                
                 JArray classpath = processor["classpath"]?.Value<JArray>() ?? throw new Exception("处理器缺少classpath字段");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器classpath: {string.Join(", ", classpath.Select(cp => cp.ToString()))}");
+                
                 JArray args = processor["args"]?.Value<JArray>() ?? throw new Exception("处理器缺少args字段");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器原始args: {string.Join(", ", args.Select(a => a.ToString()))}");
                 
                 _logger.LogInformation("处理器jar: {Jar}", jar);
                 
@@ -51,6 +57,35 @@ namespace XMCL2025.Core.Services
                 
                 string currentParam = null; // 跟踪当前处理的参数名
                 bool isNextArgOptional = false;
+                
+                // 读取install_profile.json中的data字段，获取MC_OFF值
+                JObject installProfile = JObject.Parse(File.ReadAllText(installProfilePath));
+                JObject data = installProfile["data"]?.Value<JObject>() ?? new JObject();
+                JObject mcOff = data["MC_OFF"]?.Value<JObject>() ?? new JObject();
+                string mcOffClient = mcOff["client"]?.ToString() ?? string.Empty;
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从install_profile.json获取MC_OFF client值: {mcOffClient}");
+                
+                // 解析MC_OFF的Maven坐标，转换为本地路径
+                string mcOffLocalPath = string.Empty;
+                if (!string.IsNullOrEmpty(mcOffClient) && mcOffClient.StartsWith("[") && mcOffClient.EndsWith("]"))
+                {
+                    string mavenCoord = mcOffClient.Substring(1, mcOffClient.Length - 2);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析MC_OFF Maven坐标: {mavenCoord}");
+                    
+                    // 处理Maven坐标，转换为本地库路径
+                    string[] coordParts = mavenCoord.Split(':');
+                    if (coordParts.Length >= 4)
+                    {
+                        string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
+                        string artifactId = coordParts[1];
+                        string version = coordParts[2];
+                        string classifier = coordParts[3];
+                        
+                        string fileName = $"{artifactId}-{version}-{classifier}.jar";
+                        mcOffLocalPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] MC_OFF转换为本地路径: {mcOffLocalPath}");
+                    }
+                }
                 
                 // 正确提取完整的ModLoader版本号（处理带-beta等后缀的情况）
                 string minecraftVersion = "";
@@ -105,6 +140,13 @@ namespace XMCL2025.Core.Services
                     paramValue = paramValue.Replace("{ROOT}", minecraftPath);
                     paramValue = paramValue.Replace("{SIDE}", "client");
                     
+                    // 替换MC_OFF占位符
+                    if (!string.IsNullOrEmpty(mcOffLocalPath))
+                    {
+                        paramValue = paramValue.Replace("{MC_OFF}", mcOffLocalPath);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换{currentParam}参数中的{{MC_OFF}}为: {mcOffLocalPath}");
+                    }
+                    
                     if (!string.IsNullOrEmpty(minecraftVersion))
                     {
                         paramValue = paramValue.Replace("{MINECRAFT_JAR}", Path.Combine(modLoaderVersionDirectory, $"{Path.GetFileName(modLoaderVersionDirectory)}.jar"));
@@ -115,8 +157,67 @@ namespace XMCL2025.Core.Services
                     string modLoaderGroup = modLoaderType == "neoforge" ? "net/neoforged" : "net/minecraftforge";
                     string modLoaderPrefix = modLoaderType == "neoforge" ? "neoforge" : "forge";
                     
-                    // 替换PATCHED占位符
-                    paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, modLoaderGroup.Replace('/', Path.DirectorySeparatorChar), $"{modLoaderPrefix}-client-patched", modLoaderVersion, $"{modLoaderPrefix}-client-patched-{modLoaderVersion}.jar"));
+                    // 替换PATCHED占位符 - 分别处理NeoForge和Forge的不同格式
+                    if (modLoaderType == "neoforge")
+                    {
+                        // NeoForge使用minecraft-client-patched，而非neoforge-client-patched
+                        paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, modLoaderGroup.Replace('/', Path.DirectorySeparatorChar), "minecraft-client-patched", modLoaderVersion, $"minecraft-client-patched-{modLoaderVersion}.jar"));
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] NeoForge PATCHED路径: {paramValue}");
+                    }
+                    else if (modLoaderType == "forge")
+                    {
+                        // 优先从install_profile.json的data字段获取PATCHED值
+                        string patchedLocalPath = string.Empty;
+                        JObject patched = data["PATCHED"]?.Value<JObject>() ?? new JObject();
+                        string patchedClient = patched["client"]?.ToString() ?? string.Empty;
+                        
+                        if (!string.IsNullOrEmpty(patchedClient) && patchedClient.StartsWith("[") && patchedClient.EndsWith("]"))
+                        {
+                            string mavenCoord = patchedClient.Substring(1, patchedClient.Length - 2);
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 从install_profile.json获取Forge PATCHED client值: {mavenCoord}");
+                            
+                            // 解析PATCHED的Maven坐标
+                            string[] coordParts = mavenCoord.Split(':');
+                            if (coordParts.Length >= 4)
+                            {
+                                string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
+                                string artifactId = coordParts[1];
+                                string fullVersion = coordParts[2];
+                                string classifier = coordParts[3];
+                                
+                                string fileName = $"{artifactId}-{fullVersion}-{classifier}.jar";
+                                patchedLocalPath = Path.Combine(librariesDirectory, groupId, artifactId, fullVersion, fileName);
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从Maven坐标构建的Forge PATCHED路径: {patchedLocalPath}");
+                            }
+                        }
+                        
+                        // 如果从install_profile获取失败，使用原有的解析逻辑作为回退
+                        if (string.IsNullOrEmpty(patchedLocalPath))
+                        {
+                            // Forge使用特定的格式：net/minecraftforge/forge/{MC版本号}-{forge版本号}/forge-{MC版本号}-{forge版本号}-client.jar
+                            // 注意：需要从modLoaderVersion中解析出完整的版本号
+                            if (!string.IsNullOrEmpty(minecraftVersion) && !string.IsNullOrEmpty(modLoaderVersion))
+                            {
+                                string fullForgeVersion = $"{minecraftVersion}-{modLoaderVersion}";
+                                patchedLocalPath = Path.Combine(librariesDirectory, modLoaderGroup.Replace('/', Path.DirectorySeparatorChar), "forge", fullForgeVersion, $"forge-{fullForgeVersion}-client.jar");
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本信息构建的Forge PATCHED路径: {patchedLocalPath}");
+                            }
+                            else
+                            {
+                                // 最终回退方案
+                                patchedLocalPath = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, modLoaderGroup.Replace('/', Path.DirectorySeparatorChar), "forge", modLoaderVersion, $"forge-{modLoaderVersion}-client.jar"));
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge PATCHED路径（最终回退）: {patchedLocalPath}");
+                            }
+                        }
+                        
+                        paramValue = paramValue.Replace("{PATCHED}", patchedLocalPath);
+                    }
+                    else
+                    {
+                        // 其他ModLoader类型使用默认格式
+                        paramValue = paramValue.Replace("{PATCHED}", Path.Combine(librariesDirectory, modLoaderGroup.Replace('/', Path.DirectorySeparatorChar), $"{modLoaderPrefix}-client-patched", modLoaderVersion, $"{modLoaderPrefix}-client-patched-{modLoaderVersion}.jar"));
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 默认ModLoader PATCHED路径: {paramValue}");
+                    }
                     
                     // 3. 直接使用临时目录中的client.lzma文件
                     // 尝试两种可能的路径: data/client.lzma (新路径) 和 data/client/client.lzma (旧路径)
@@ -197,10 +298,45 @@ namespace XMCL2025.Core.Services
                 
                 _logger.LogInformation("处理器参数: {Args}", string.Join(" ", processedArgs));
                 
+                // 构建完整的classpath，包括所有依赖库
+                List<string> fullClassPath = new List<string>();
+                
+                // 添加installerTools到classpath
+                fullClassPath.Add(installerToolsPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加installerTools到classpath: {installerToolsPath}");
+                
+                // 添加classpath数组中的所有依赖库
+                foreach (var classpathEntry in classpath)
+                {
+                    string classpathMavenCoord = classpathEntry.ToString();
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理classpath条目: {classpathMavenCoord}");
+                    
+                    // 将Maven坐标转换为本地文件路径
+                    string libraryPath = GetLibraryFilePath(classpathMavenCoord, librariesDirectory);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 转换为本地路径: {libraryPath}");
+                    
+                    // 检查文件是否存在
+                    if (File.Exists(libraryPath))
+                    {
+                        fullClassPath.Add(libraryPath);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加到classpath: {libraryPath}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("classpath文件不存在: {LibraryPath}，坐标: {ClasspathMavenCoord}", libraryPath, classpathMavenCoord);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 警告: classpath文件不存在: {libraryPath}，坐标: {classpathMavenCoord}");
+                    }
+                }
+                
+                // 使用平台特定的路径分隔符
+                string classPathSeparator = Path.PathSeparator.ToString();
+                string combinedClassPath = string.Join(classPathSeparator, fullClassPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 完整classpath: {combinedClassPath}");
+                
                 // 构建Java命令
                 List<string> javaArgs = new List<string>();
                 javaArgs.Add("-cp");
-                javaArgs.Add(installerToolsPath);
+                javaArgs.Add(combinedClassPath);
                 javaArgs.Add(mainClass);
                 javaArgs.AddRange(processedArgs);
                 
@@ -356,6 +492,11 @@ namespace XMCL2025.Core.Services
         /// </summary>
         private async Task<string> DownloadInstallerTools(string jarName, string librariesDirectory)
         {
+            // 定义变量，以便在catch块中访问
+            string downloadSourceName = string.Empty;
+            string downloadUrl = string.Empty;
+            string mavenCoordinate = string.Empty;
+            
             try
             {
                 _logger.LogInformation("开始下载installertools: {JarName}", jarName);
@@ -363,20 +504,29 @@ namespace XMCL2025.Core.Services
                 // 添加Debug输出
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始下载installertools: {jarName}");
                 
+                // 处理jar名称中的$extension占位符
+                string processedJarName = jarName.Replace("$extension", "jar");
+                
                 // 解析jar名称：groupId:artifactId:version:classifier
-                string[] parts = jarName.Split(':');
-                if (parts.Length < 4)
+                string[] parts = processedJarName.Split(':');
+                string groupId = string.Empty;
+                string artifactId = string.Empty;
+                string version = string.Empty;
+                string classifier = string.Empty;
+                
+                // 处理不同的jar名称格式
+                if (parts.Length < 3)
                 {
-                    throw new Exception($"无效的jar名称格式: {jarName}");
+                    throw new Exception($"无效的jar名称格式: {processedJarName}，格式应为groupId:artifactId:version[:classifier]");
                 }
                 
-                string groupId = parts[0];
-                string artifactId = parts[1];
-                string version = parts[2];
-                string classifier = parts[3];
+                groupId = parts[0];
+                artifactId = parts[1];
+                version = parts[2];
+                classifier = parts.Length >= 4 ? parts[3] : "";
                 
                 // 构建本地文件路径
-                string libraryPath = GetLibraryFilePath(jarName, librariesDirectory, classifier);
+                string libraryPath = GetLibraryFilePath(processedJarName, librariesDirectory, classifier);
                 
                 // 如果文件已存在，直接返回
                 if (File.Exists(libraryPath))
@@ -387,16 +537,23 @@ namespace XMCL2025.Core.Services
                 }
                 
                 // 构建Maven坐标
-                string mavenCoordinate = $"{groupId}:{artifactId}:{version}:{classifier}";
+                mavenCoordinate = parts.Length >= 4 
+                    ? $"{groupId}:{artifactId}:{version}:{classifier}" 
+                    : $"{groupId}:{artifactId}:{version}";
                 
                 // 获取当前下载源设置
                 var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
                 var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+                downloadSourceName = downloadSource.Name;
                 
                 // 使用下载源获取正确的下载URL
-                string downloadUrl = downloadSource.GetLibraryUrl(mavenCoordinate);
+                downloadUrl = downloadSource.GetLibraryUrl(mavenCoordinate);
                 
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载installertools: {downloadUrl}");
+                // 修复URL中的$extension占位符
+                downloadUrl = downloadUrl.Replace("$extension", "jar");
+                
+                _logger.LogInformation("使用下载源 {DownloadSource} 下载installertools，URL: {DownloadUrl}", downloadSourceName, downloadUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSourceName} 下载installertools: {downloadUrl}");
                 
                 // 下载文件
                 await DownloadLibraryFileAsync(new DownloadFile { Url = downloadUrl }, libraryPath, mavenCoordinate);
@@ -407,8 +564,19 @@ namespace XMCL2025.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "下载installertools失败: {JarName}", jarName);
-                throw new Exception($"下载installertools失败: {jarName}", ex);
+                _logger.LogError(ex, "下载installertools失败: {JarName}，处理后名称: {ProcessedJarName}，下载源: {DownloadSource}，URL: {DownloadUrl}，Maven坐标: {MavenCoordinate}", 
+                    jarName, jarName.Replace("$extension", "jar"), downloadSourceName, downloadUrl, mavenCoordinate);
+                
+                throw new Exception($"下载installertools失败: {jarName}\n" +
+                                  $"详细信息:\n" +
+                                  $"  原始jar名称: {jarName}\n" +
+                                  $"  处理后jar名称: {jarName.Replace("$extension", "jar")}\n" +
+                                  $"  下载源: {downloadSourceName}\n" +
+                                  $"  Maven坐标: {mavenCoordinate}\n" +
+                                  $"  完整URL: {downloadUrl}\n" +
+                                  $"  错误类型: {ex.GetType().Name}\n" +
+                                  $"  错误信息: {ex.Message}\n" +
+                                  $"  堆栈跟踪: {ex.StackTrace}", ex);
             }
         }
         

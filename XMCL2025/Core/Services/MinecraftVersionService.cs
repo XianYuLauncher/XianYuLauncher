@@ -1336,8 +1336,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // 使用下载源获取正确的库文件URL
         string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
         
+        // 修复URL中的$extension占位符
+        downloadUrl = downloadUrl.Replace("$extension", "jar");
+        
         _logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {Url}", downloadSource.Name, downloadUrl);
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {downloadUrl}");
+        
+        // 修复官方源重试时的URL
+        string officialUrl = string.Empty;
         
         // 下载文件 - 增加超时时间到60秒以适应较大的库文件
         using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
@@ -1364,7 +1370,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 
                 // 使用官方源获取URL
                 var officialSource = _downloadSourceFactory.GetSource("official");
-                string officialUrl = officialSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
+                officialUrl = officialSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
+                
+                // 修复官方源URL中的$extension占位符
+                officialUrl = officialUrl.Replace("$extension", "jar");
                 
                 _logger.LogInformation("使用官方源重试下载库文件: {Url}", officialUrl);
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用官方源重试下载库文件: {officialUrl}");
@@ -1782,6 +1791,83 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             throw new Exception($"执行NeoForge处理器失败 (版本: {versionId}): {ex.Message}", ex);
         }
     }
+    
+    /// <summary>
+    /// 确保Forge版本依赖完整，包括检查和执行Forge处理器
+    /// </summary>
+    private async Task EnsureForgeDependenciesAsync(string versionId, string minecraftDirectory, string librariesDirectory, Action<double> progressCallback, Action<string> currentDownloadCallback)
+    {
+        try
+        {
+            // 检查是否是Forge版本
+            bool isForgeVersion = false;
+            string forgeVersion = string.Empty;
+            string minecraftVersion = string.Empty;
+            
+            // 先尝试从配置文件读取
+            string versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+            VersionConfig config = ReadVersionConfig(versionDirectory);
+            if (config != null && config.ModLoaderType == "forge")
+            {
+                isForgeVersion = true;
+                forgeVersion = config.ModLoaderVersion;
+                minecraftVersion = config.MinecraftVersion;
+                _logger.LogInformation("从配置文件识别为Forge版本: {VersionId}, 版本号: {ForgeVersion}", versionId, forgeVersion);
+            }
+            // 回退到旧的名称识别逻辑
+            else if (versionId.StartsWith("forge-"))
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置文件读取失败，回退到旧的名称识别逻辑来判断Forge版本: {versionId}");
+                isForgeVersion = true;
+                
+                // 从版本名称提取版本信息
+                string[] versionParts = versionId.Split('-');
+                if (versionParts.Length < 3)
+                {
+                    _logger.LogWarning("无效的Forge版本格式: {VersionId}", versionId);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 无效的Forge版本格式: {versionId}");
+                    return;
+                }
+                
+                minecraftVersion = versionParts[1];
+                forgeVersion = string.Join("-", versionParts.Skip(2));
+                _logger.LogInformation("从版本名称识别为Forge版本: {VersionId}, 版本号: {ForgeVersion}", versionId, forgeVersion);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的Minecraft版本: {minecraftVersion}");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的完整Forge版本: {forgeVersion}");
+            }
+            
+            if (!isForgeVersion)
+            {
+                return;
+            }
+            
+            _logger.LogInformation("开始检查Forge版本依赖: {VersionId}", versionId);
+            currentDownloadCallback?.Invoke("正在检查Forge依赖");
+            
+            // 检查Forge客户端库是否存在
+            string fullForgeVersion = $"{minecraftVersion}-{forgeVersion}";
+            string forgeClientJarPath = Path.Combine(librariesDirectory, "net", "minecraftforge", "forge", fullForgeVersion, $"forge-{fullForgeVersion}-client.jar");
+            
+            if (!File.Exists(forgeClientJarPath))
+            {
+                _logger.LogInformation("Forge客户端库不存在，准备执行Forge处理器: {ForgeClientJarPath}", forgeClientJarPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge客户端库不存在，准备执行Forge处理器: {forgeClientJarPath}");
+                
+                // 执行Forge版本下载和处理器逻辑
+                await DownloadForgeVersionAsync(minecraftVersion, forgeVersion, Path.Combine(minecraftDirectory, "versions"), librariesDirectory, progressCallback, CancellationToken.None, versionId);
+            }
+            else
+            {
+                _logger.LogInformation("Forge客户端库已存在，跳过Forge处理器执行: {ForgeClientJarPath}", forgeClientJarPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge客户端库已存在，跳过Forge处理器执行: {forgeClientJarPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行Forge处理器失败: {VersionId}", versionId);
+            throw new Exception($"执行Forge处理器失败 (版本: {versionId}): {ex.Message}", ex);
+        }
+    }
 
     public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null)
     {
@@ -1806,7 +1892,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 1. 执行NeoForge处理器（如果需要），占1%进度
             await EnsureNeoForgeDependenciesAsync(versionId, minecraftDirectory, librariesDirectory, progressCallback, currentDownloadCallback);
             
-            // 2. 下载缺失的依赖库 (5-45%)
+            // 2. 执行Forge处理器（如果需要），占1%进度
+            await EnsureForgeDependenciesAsync(versionId, minecraftDirectory, librariesDirectory, progressCallback, currentDownloadCallback);
+            
+            // 3. 下载缺失的依赖库 (5-45%)
             try
             {
                 await DownloadLibrariesAsync(versionId, librariesDirectory, (progress) =>
@@ -2679,8 +2768,52 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 10. 合并版本JSON
             _logger.LogInformation("开始合并版本JSON");
             string neoforgeJsonPath = Path.Combine(extractDirectory, "version.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 尝试读取NeoForge version.json路径: {neoforgeJsonPath}");
+            
+            // 详细检查version.json文件
+            if (File.Exists(neoforgeJsonPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到NeoForge version.json文件，大小: {new FileInfo(neoforgeJsonPath).Length}字节");
+                
+                // 读取并显示文件前500字节内容
+                using (var reader = new StreamReader(neoforgeJsonPath))
+                {
+                    char[] buffer = new char[500];
+                    int read = reader.Read(buffer, 0, buffer.Length);
+                    string preview = new string(buffer, 0, read);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] NeoForge version.json前500字节预览: {preview}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到NeoForge version.json文件，列出解压目录所有文件:");
+                string[] dirFiles = Directory.GetFiles(extractDirectory);
+                foreach (string file in dirFiles)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+                }
+                
+                // 检查子目录中是否有version.json
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 检查解压目录子目录中的version.json:");
+                string[] subDirs = Directory.GetDirectories(extractDirectory);
+                foreach (string subDir in subDirs)
+                {
+                    string subDirJsonPath = Path.Combine(subDir, "version.json");
+                    if (File.Exists(subDirJsonPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   在子目录{Path.GetFileName(subDir)}中找到version.json: {subDirJsonPath}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   子目录{Path.GetFileName(subDir)}中未找到version.json");
+                    }
+                }
+                
+                throw new Exception($"version.json文件不存在: {neoforgeJsonPath}");
+            }
             
             // 直接使用已经获取到的原版VersionInfo对象，转换为JSON字符串
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始处理原版JSON和NeoForge JSON");
             string originalJsonContent = JsonConvert.SerializeObject(originalVersionInfo);
             
             string neoforgeJsonContent = File.ReadAllText(neoforgeJsonPath);
@@ -2689,15 +2822,27 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             var neoforgeJson = JsonConvert.DeserializeObject<VersionInfo>(neoforgeJsonContent);
             
             // 合并JSON，同时传递install_profile.json中的libraries
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始合并JSON，原版JSON ID: {originalJson?.Id}, NeoForge JSON ID: {neoforgeJson?.Id}");
             var mergedJson = MergeVersionJson(originalJson, neoforgeJson, installProfileLibraries);
             
             // 11. 保存合并后的JSON文件
             _logger.LogInformation("开始保存合并后的JSON文件");
             // 目录已在流程早期创建，直接使用
             string mergedJsonPath = Path.Combine(neoforgeVersionDirectory, $"{neoforgeVersionId}.json");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 保存合并后的JSON到: {mergedJsonPath}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后JSON ID: {mergedJson?.Id}");
             
             // 保存合并后的JSON
             File.WriteAllText(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后的JSON文件大小: {new FileInfo(mergedJsonPath).Length}字节");
+            
+            // 列出最终版本目录中的所有文件
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 最终NeoForge版本目录{neoforgeVersionDirectory}中的文件列表:");
+            string[] finalVersionFiles = Directory.GetFiles(neoforgeVersionDirectory);
+            foreach (string file in finalVersionFiles)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
+            }
             
             // JAR文件已经直接下载到NeoForge目录，不需要复制操作
             
@@ -3088,22 +3233,22 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             JavaVersion = neoforge.JavaVersion ?? original.JavaVersion
         };
         
-        // 追加NeoForge的依赖库
+        // 追加ModLoader的依赖库（仅使用安装器中version.json内的libraries）
         if (neoforge.Libraries != null)
         {
             merged.Libraries.AddRange(neoforge.Libraries);
-            _logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge.Libraries.Count);
+            _logger.LogInformation("合并了 {LibraryCount} 个ModLoader依赖库", neoforge.Libraries.Count);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并了 {neoforge.Libraries.Count} 个ModLoader依赖库");
         }
         
-        // 追加install_profile.json中的依赖库
-        if (installProfileLibraries != null && installProfileLibraries.Count > 0)
-        {
-            merged.Libraries.AddRange(installProfileLibraries);
-            _logger.LogInformation("合并了 {LibraryCount} 个install_profile依赖库", installProfileLibraries.Count);
-        }
+        // 注意：不再合并install_profile.json中的依赖库，这些库仅用于执行处理器，而非启动游戏
+        // install_profile依赖库只在处理器执行阶段使用，不应包含在最终的游戏启动JSON中
+        System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过合并install_profile.json中的依赖库，这些库仅用于执行处理器");
         
         // 去重依赖库，避免重复
         merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        _logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后总依赖库数量: {merged.Libraries.Count}");
         _logger.LogInformation("去重后依赖库总数: {LibraryCount}", merged.Libraries.Count);
         
         _logger.LogInformation("版本JSON合并完成");
