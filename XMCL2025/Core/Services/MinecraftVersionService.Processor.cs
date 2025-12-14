@@ -58,9 +58,11 @@ namespace XMCL2025.Core.Services
                 string currentParam = null; // 跟踪当前处理的参数名
                 bool isNextArgOptional = false;
                 
-                // 读取install_profile.json中的data字段，获取MC_OFF值
+                // 读取install_profile.json中的data字段，获取MC_OFF和MAPPINGS值
                 JObject installProfile = JObject.Parse(File.ReadAllText(installProfilePath));
                 JObject data = installProfile["data"]?.Value<JObject>() ?? new JObject();
+                
+                // 处理MC_OFF值
                 JObject mcOff = data["MC_OFF"]?.Value<JObject>() ?? new JObject();
                 string mcOffClient = mcOff["client"]?.ToString() ?? string.Empty;
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 从install_profile.json获取MC_OFF client值: {mcOffClient}");
@@ -84,6 +86,42 @@ namespace XMCL2025.Core.Services
                         string fileName = $"{artifactId}-{version}-{classifier}.jar";
                         mcOffLocalPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] MC_OFF转换为本地路径: {mcOffLocalPath}");
+                    }
+                }
+                
+                // 处理MAPPINGS值
+                JObject mappings = data["MAPPINGS"]?.Value<JObject>() ?? new JObject();
+                string mappingsClient = mappings["client"]?.ToString() ?? string.Empty;
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从install_profile.json获取MAPPINGS client值: {mappingsClient}");
+                
+                // 解析MAPPINGS的Maven坐标，转换为本地路径
+                string mappingsLocalPath = string.Empty;
+                if (!string.IsNullOrEmpty(mappingsClient) && mappingsClient.StartsWith("[") && mappingsClient.EndsWith("]"))
+                {
+                    string mavenCoord = mappingsClient.Substring(1, mappingsClient.Length - 2);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析MAPPINGS Maven坐标: {mavenCoord}");
+                    
+                    // 处理Maven坐标，转换为本地库路径
+                    string[] coordParts = mavenCoord.Split(':');
+                    if (coordParts.Length >= 4)
+                    {
+                        string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
+                        string artifactId = coordParts[1];
+                        string version = coordParts[2];
+                        string classifier = coordParts[3];
+                        
+                        // 确定文件扩展名
+                        string extension = ".txt";
+                        if (classifier.Contains("@"))
+                        {
+                            string[] classifierParts = classifier.Split('@');
+                            classifier = classifierParts[0];
+                            extension = "." + classifierParts[1]; // 直接拼接字符串
+                        }
+                        
+                        string fileName = $"{artifactId}-{version}-{classifier}{extension}";
+                        mappingsLocalPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] MAPPINGS转换为本地路径: {mappingsLocalPath}");
                     }
                 }
                 
@@ -140,11 +178,51 @@ namespace XMCL2025.Core.Services
                     paramValue = paramValue.Replace("{ROOT}", minecraftPath);
                     paramValue = paramValue.Replace("{SIDE}", "client");
                     
-                    // 替换MC_OFF占位符
-                    if (!string.IsNullOrEmpty(mcOffLocalPath))
+                    // 通用占位符处理：自动处理所有{XXXX}格式的占位符
+                    // 使用正则表达式提取所有{XXXX}格式的占位符
+                    var placeholderRegex = new System.Text.RegularExpressions.Regex(@"\{(\w+)\}");
+                    var matches = placeholderRegex.Matches(paramValue);
+                    
+                    foreach (System.Text.RegularExpressions.Match match in matches)
                     {
-                        paramValue = paramValue.Replace("{MC_OFF}", mcOffLocalPath);
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换{currentParam}参数中的{{MC_OFF}}为: {mcOffLocalPath}");
+                        string placeholderName = match.Groups[1].Value;
+                        string placeholder = match.Value;
+                        
+                        // 检查install_profile.json的data字段中是否有对应的键
+                        JObject dataItem = data[placeholderName]?.Value<JObject>();
+                        if (dataItem != null)
+                        {
+                            string dataClientValue = dataItem["client"]?.ToString() ?? string.Empty;
+                            if (!string.IsNullOrEmpty(dataClientValue) && dataClientValue.StartsWith("[") && dataClientValue.EndsWith("]"))
+                            {
+                                // 解析Maven坐标，转换为本地路径
+                                string mavenCoord = dataClientValue.Substring(1, dataClientValue.Length - 2);
+                                string[] coordParts = mavenCoord.Split(':');
+                                if (coordParts.Length >= 4)
+                                {
+                                    string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
+                                    string artifactId = coordParts[1];
+                                    string version = coordParts[2];
+                                    string classifier = coordParts[3];
+                                    
+                                    // 确定文件扩展名
+                                    string extension = ".jar"; // 默认使用jar
+                                    if (classifier.Contains("@"))
+                                    {
+                                        string[] classifierParts = classifier.Split('@');
+                                        classifier = classifierParts[0];
+                                        extension = "." + classifierParts[1];
+                                    }
+                                    
+                                    string fileName = $"{artifactId}-{version}-{classifier}{extension}";
+                                    string localPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
+                                    
+                                    // 替换占位符
+                                    paramValue = paramValue.Replace(placeholder, localPath);
+                                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换{currentParam}参数中的{placeholder}为: {localPath}");
+                                }
+                            }
+                        }
                     }
                     
                     if (!string.IsNullOrEmpty(minecraftVersion))
@@ -238,32 +316,89 @@ namespace XMCL2025.Core.Services
                     if (paramValue.StartsWith("[") && paramValue.EndsWith("]"))
                     {
                         string mavenCoord = paramValue.Substring(1, paramValue.Length - 2);
-                        string[] mavenParts = mavenCoord.Split('@');
-                        string mainCoord = mavenParts[0];
-                        string extension = mavenParts.Length > 1 ? mavenParts[1] : "jar";
-                        
-                        string[] coordParts = mainCoord.Split(':');
-                        if (coordParts.Length >= 3)
+                        string[] mainParts = mavenCoord.Split(':');
+                        if (mainParts.Length < 3)
                         {
-                            string groupId = coordParts[0].Replace('.', Path.DirectorySeparatorChar);
-                            string artifactId = coordParts[1];
-                            string version = coordParts[2];
-                            string classifier = coordParts.Length > 3 ? coordParts[3] : "";
-                            
-                            string fileName = $"{artifactId}-{version}";
-                            if (!string.IsNullOrEmpty(classifier))
-                            {
-                                fileName += $"-{classifier}";
-                            }
-                            fileName += $".$extension";
-                            
-                            string fullPath = Path.Combine(librariesDirectory, groupId, artifactId, version, fileName);
-                            paramValue = fullPath;
+                            // 无效的Maven坐标，跳过处理
+                            continue;
                         }
+                        
+                        string groupId = mainParts[0];
+                        string artifactId = mainParts[1];
+                        string version = mainParts[2];
+                        string classifier = mainParts.Length > 3 ? mainParts[3] : "";
+                        string extension = "jar"; // 默认扩展名
+                        
+                        // 检查版本号是否包含@符号，可能包含extension信息
+                        if (version.Contains('@'))
+                        {
+                            string[] versionParts = version.Split('@');
+                            version = versionParts[0];
+                            extension = versionParts[1];
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本号中提取extension: {extension}");
+                        }
+                        
+                        // 处理extension中的$extension占位符
+                        if (extension.Equals("$extension", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // 根据artifactId判断正确的扩展名
+                            if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+                            {
+                                extension = "zip";
+                            }
+                            else if (artifactId.Equals("forge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                extension = "jar";
+                            }
+                            else
+                            {
+                                // 检查是否包含"patched"或"installer"等关键词
+                                if (mavenCoord.Contains("patched", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    extension = "jar";
+                                }
+                                else
+                                {
+                                    extension = "zip";
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换extension占位符$extension为: {extension}");
+                        }
+                        
+                        // 构建文件名
+                        string fileName = $"{artifactId}-{version}";
+                        if (!string.IsNullOrEmpty(classifier))
+                        {
+                            fileName += $"-{classifier}";
+                        }
+                        fileName += $".{extension}"; // 使用正确的字符串插值语法
+                        
+                        // 构建完整路径
+                        string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
+                        string fullPath = Path.Combine(librariesDirectory, groupPath, artifactId, version, fileName);
+                        paramValue = fullPath;
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理Maven坐标 {mavenCoord} 为路径: {fullPath}");
                     }
                     
-                    // 5. 处理--neoform-data参数中的$extension占位符（NeoForge专用）
-                    if (currentParam == "--neoform-data")
+                    // 5. 处理--input参数中的$extension占位符
+                    if (currentParam == "--input")
+                    {
+                        // 替换--input参数中的$extension占位符
+                        if (paramValue.Contains("$extension"))
+                        {
+                            // 根据文件名判断正确的扩展名
+                            string correctExtension = ".jar"; // 默认使用jar
+                            if (paramValue.Contains("mcp_config", StringComparison.OrdinalIgnoreCase))
+                            {
+                                correctExtension = ".zip"; // mcp_config通常是zip格式
+                            }
+                            paramValue = paramValue.Replace(".$extension", correctExtension);
+                            paramValue = paramValue.Replace("$extension", correctExtension.TrimStart('.'));
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换--input参数中的$extension占位符，处理后路径: {paramValue}");
+                        }
+                    }
+                    // 6. 处理--neoform-data参数中的$extension占位符（NeoForge专用）
+                    else if (currentParam == "--neoform-data")
                     {
                         // 替换$extension占位符，确保只使用一个小数点
                         paramValue = paramValue.Replace(".$extension", ".tsrg.lzma");

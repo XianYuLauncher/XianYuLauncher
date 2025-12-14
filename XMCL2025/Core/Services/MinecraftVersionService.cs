@@ -1249,6 +1249,34 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         string artifactId = parts[1];
         string version = parts[2];
         string detectedClassifier = null;
+        
+        // 检查版本号是否包含@符号，可能包含classifier信息
+        if (version.Contains('@'))
+        {
+            // 分割版本号和分类器
+            string[] versionParts = version.Split('@');
+            if (versionParts.Length == 2)
+            {
+                version = versionParts[0];
+                detectedClassifier = versionParts[1];
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本号中提取分类器: {detectedClassifier}");
+            }
+        }
+
+        // 处理分类器中的$extension占位符
+        if (!string.IsNullOrEmpty(detectedClassifier) && detectedClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
+        {
+            // 对于mcp_config，直接清空分类器，后续会添加正确的.zip扩展名
+            if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+            {
+                detectedClassifier = ""; // 清空分类器，避免添加-zip
+            }
+            else
+            {
+                detectedClassifier = "jar"; // 默认使用jar
+            }
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换分类器中的$extension占位符为: {detectedClassifier}");
+        }
 
         // 如果库名称中包含分类器（即有4个或更多部分），则提取分类器
         if (parts.Length >= 4)
@@ -1259,11 +1287,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // 优先使用方法参数传入的分类器，如果没有则使用从库名称中提取的分类器
         string finalClassifier = !string.IsNullOrEmpty(classifier) ? classifier : detectedClassifier;
         
-        // 处理分类器中的@符号
+        // 处理分类器中的@符号和$extension占位符
         if (!string.IsNullOrEmpty(finalClassifier))
         {
             // 替换分类器中的@符号为点字符
             finalClassifier = finalClassifier.Replace('@', '.');
+            // 处理分类器中的$extension占位符
+            if (finalClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
+            {
+                finalClassifier = "zip"; // 默认使用zip作为备选扩展名
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换分类器中的$extension占位符为: {finalClassifier}");
+            }
         }
 
         // 将groupId中的点替换为目录分隔符
@@ -1280,8 +1314,22 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         string extension = ".jar";
         bool hasExtension = false;
         
+        // 检查并移除分类器中的"zip"，因为它应该是扩展名而不是分类器
+        if (finalClassifier != null && finalClassifier.Equals("zip", StringComparison.OrdinalIgnoreCase))
+        {
+            finalClassifier = ""; // 移除zip分类器
+            fileName = $"{artifactId}-{version}"; // 重新构建文件名
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 移除zip分类器，重新构建文件名: {fileName}");
+        }
+        
+        // 特殊处理mcp_config文件，确保使用正确的zip扩展名
+        if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".zip";
+            hasExtension = false; // 确保添加扩展名
+        }
         // 检查文件名是否已经包含特定扩展名
-        if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
+        else if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
         {
             extension = ".lzma";
             hasExtension = true;
@@ -1291,11 +1339,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             extension = ".tsrg";
             hasExtension = true;
         }
+        else if (fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            extension = ".zip";
+            hasExtension = true;
+        }
         
         // 如果文件名已经包含扩展名，就不再添加；否则添加默认扩展名
         if (!hasExtension)
         {
             fileName += extension;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加扩展名，处理后文件名: {fileName}");
         }
 
         // 组合完整路径
