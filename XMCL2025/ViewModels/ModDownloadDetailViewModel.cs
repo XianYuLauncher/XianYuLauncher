@@ -1155,27 +1155,42 @@ namespace XMCL2025.ViewModels
                         throw new Exception("整合包中缺少Mod Loader依赖信息");
                     }
 
-                    // 仅支持fabric-loader
-                    if (modLoader != "fabric-loader")
+                    // 动态确定modLoader类型
+                    string modLoaderType = "";
+                    string modLoaderName = "";
+                    
+                    if (modLoader == "fabric-loader")
                     {
-                        throw new Exception($"当前仅支持fabric-loader，不支持{modLoader}");
+                        modLoaderType = "Fabric";
+                        modLoaderName = "fabric";
+                    }
+                    else if (modLoader == "forge")
+                    {
+                        modLoaderType = "Forge";
+                        modLoaderName = "forge";
+                    }
+                    else if (modLoader == "neoforge")
+                    {
+                        modLoaderType = "NeoForge";
+                        modLoaderName = "neoforge";
+                    }
+                    else
+                    {
+                        throw new Exception($"不支持的Mod Loader类型: {modLoader}");
                     }
 
-                    InstallStatus = $"正在下载Minecraft {minecraftVersion} 和 Fabric Loader {modLoaderVersion}...";
+                    InstallStatus = $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...";
                     InstallProgress = 50;
                     InstallProgressText = "50%";
 
                     // 5. 构建整合包版本名称
-                    // 修改为：{整合包名}-{MC版本ID}-{mod加载器名}
+                    // 格式：{整合包名}-{MC版本ID}-{mod加载器名}
                     string modpackName = ModName.Replace(" ", "-");
-                    string fabricVersionId = $"fabric-{minecraftVersion}-{modLoaderVersion}";
-                    // 提取mod加载器名称（从fabric-loader中提取fabric）
-                    string modLoaderName = modLoader.Split('-')[0]; // 从fabric-loader中提取fabric
                     string modpackVersionId = $"{modpackName}-{minecraftVersion}-{modLoaderName}";
 
                     // 6. 直接下载整合包版本，使用customVersionName参数创建整合包版本目录
                     await _minecraftVersionService.DownloadModLoaderVersionAsync(
-                        minecraftVersion, "Fabric", modLoaderVersion, minecraftPath, progress =>
+                        minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
                         {
                             // 更新进度（50%-80%用于版本下载）
                             InstallProgress = 50 + (progress / 100) * 30;
