@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -232,54 +233,193 @@ public class ResourcePackInfo
     }
 
 /// <summary>
-/// 地图信息类
-/// </summary>
-public class MapInfo
-{
-    /// <summary>
-    /// 地图文件名
+    /// 地图信息类
     /// </summary>
-    public string FileName { get; set; }
-    
-    /// <summary>
-    /// 地图显示名称
-    /// </summary>
-    public string Name { get; set; }
-    
-    /// <summary>
-        /// 地图文件完整路径
+    public class MapInfo
+    {
+        /// <summary>
+        /// 地图文件名
+        /// </summary>
+        public string FileName { get; set; }
+        
+        /// <summary>
+        /// 地图显示名称
+        /// </summary>
+        public string Name { get; set; }
+        
+        /// <summary>
+        ///     地图文件完整路径
         /// </summary>
         public string FilePath { get; set; }
-    
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    public bool IsEnabled { get; private set; }
-    
-    /// <summary>
-    /// 地图图标路径
-    /// </summary>
-    public string Icon { get; set; }
-    
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="filePath">文件路径</param>
-    public MapInfo(string filePath)
-    {
-        // 确保文件路径是完整的，没有被截断
-        FilePath = filePath;
-        FileName = Path.GetFileName(filePath);
-        IsEnabled = !FileName.EndsWith(".disabled");
         
-        // 提取显示名称（去掉.disabled后缀）
-        string displayName = FileName;
-        if (displayName.EndsWith(".disabled"))
+        /// <summary>
+        /// 是否启用
+        /// </summary>
+        public bool IsEnabled { get; private set; }
+        
+        /// <summary>
+        /// 地图图标路径
+        /// </summary>
+        public string Icon { get; set; }
+        
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        public MapInfo(string filePath)
         {
-            displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            // 确保文件路径是完整的，没有被截断
+            FilePath = filePath;
+            FileName = Path.GetFileName(filePath);
+            IsEnabled = !FileName.EndsWith(".disabled");
+            
+            // 提取显示名称（去掉.disabled后缀）
+            string displayName = FileName;
+            if (displayName.EndsWith(".disabled"))
+            {
+                displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            }
+            Name = displayName;
         }
-        Name = displayName;
     }
+    
+    /// <summary>
+    /// 截图信息类
+    /// </summary>
+    public class ScreenshotInfo
+    {
+        /// <summary>
+        /// 截图文件名
+        /// </summary>
+        public string FileName { get; set; }
+        
+        /// <summary>
+        /// 截图显示名称
+        /// </summary>
+        public string Name { get; set; }
+        
+        /// <summary>
+        /// 截图文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
+        
+        /// <summary>
+        /// 截图文件创建时间（用于排序）
+        /// </summary>
+        public DateTime OriginalCreationTime { get; private set; }
+        
+        /// <summary>
+        /// 格式化后的创建时间字符串
+        /// </summary>
+        public string CreationTime { get; private set; }
+        
+        /// <summary>
+        /// 截图文件大小
+        /// </summary>
+        private long _fileSize;
+        
+        /// <summary>
+        /// 格式化后的文件大小字符串
+        /// </summary>
+        public string FileSize { get; private set; }
+        
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        public ScreenshotInfo(string filePath)
+        {
+            // 确保文件路径是完整的，没有被截断
+            FilePath = filePath;
+            FileName = Path.GetFileName(filePath);
+            
+            // 提取显示名称（去掉.png扩展名）
+            string displayName = Path.GetFileNameWithoutExtension(FileName);
+            Name = displayName;
+            
+            // 获取文件信息
+            var fileInfo = new FileInfo(filePath);
+            OriginalCreationTime = fileInfo.CreationTime;
+            _fileSize = fileInfo.Length;
+            
+            // 格式化创建时间
+            CreationTime = OriginalCreationTime.ToString("yyyy-MM-dd HH:mm:ss");
+            
+            // 格式化文件大小
+            if (_fileSize < 1024)
+            {
+                FileSize = $"{_fileSize} bytes";
+            }
+            else if (_fileSize < 1024 * 1024)
+            {
+                FileSize = $"{(_fileSize / 1024):N0} KB";
+            }
+            else
+            {
+                FileSize = $"{(_fileSize / (1024 * 1024)):N2} MB";
+            }
+        }
+    }
+
+/// <summary>
+/// 版本设置数据模型，用于存储XianYuL.cfg中的配置信息
+/// </summary>
+public class VersionSettings
+{
+    /// <summary>
+    /// ModLoader类型（fabric, neoforge, forge）
+    /// </summary>
+    public string ModLoaderType { get; set; }
+    
+    /// <summary>
+    /// ModLoader版本号
+    /// </summary>
+    public string ModLoaderVersion { get; set; }
+    
+    /// <summary>
+    /// Minecraft版本号
+    /// </summary>
+    public string MinecraftVersion { get; set; }
+    
+    /// <summary>
+    /// 配置文件创建时间
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// 是否自动分配内存
+    /// </summary>
+    public bool AutoMemoryAllocation { get; set; } = true;
+    
+    /// <summary>
+    /// 初始堆内存（GB）
+    /// </summary>
+    public double InitialHeapMemory { get; set; } = 6;
+    
+    /// <summary>
+    /// 最大堆内存（GB）
+    /// </summary>
+    public double MaximumHeapMemory { get; set; } = 12;
+    
+    /// <summary>
+    /// Java路径
+    /// </summary>
+    public string JavaPath { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 是否使用全局Java设置
+    /// </summary>
+    public bool UseGlobalJavaSetting { get; set; } = true;
+    
+    /// <summary>
+    /// 启动窗口宽度
+    /// </summary>
+    public int WindowWidth { get; set; } = 1920;
+    
+    /// <summary>
+    /// 启动窗口高度
+    /// </summary>
+    public int WindowHeight { get; set; } = 1080;
 }
 
 public partial class 版本管理ViewModel : ObservableRecipient, INavigationAware
@@ -355,6 +495,17 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     /// </summary>
     public bool IsMapListEmpty => Maps.Count == 0;
     
+    /// <summary>
+    /// 截图列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ScreenshotInfo> _screenshots = new();
+    
+    /// <summary>
+    /// 截图列表是否为空
+    /// </summary>
+    public bool IsScreenshotListEmpty => Screenshots.Count == 0;
+    
     // 当资源列表变化时，通知空状态属性变化
     partial void OnModsChanged(ObservableCollection<ModInfo> value)
     {
@@ -390,6 +541,13 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
         // 为新集合添加事件监听
         value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
     }
+    
+    partial void OnScreenshotsChanged(ObservableCollection<ScreenshotInfo> value)
+    {
+        OnPropertyChanged(nameof(IsScreenshotListEmpty));
+        // 为新集合添加事件监听
+        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsScreenshotListEmpty));
+    }
 
     /// <summary>
     /// 状态信息
@@ -408,6 +566,48 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     /// </summary>
     [ObservableProperty]
     private int _selectedTabIndex = 0;
+    
+    /// <summary>
+    /// 是否自动分配内存
+    /// </summary>
+    [ObservableProperty]
+    private bool _autoMemoryAllocation = true;
+    
+    /// <summary>
+    /// 初始堆内存（GB）
+    /// </summary>
+    [ObservableProperty]
+    private double _initialHeapMemory = 6;
+    
+    /// <summary>
+    /// 最大堆内存（GB）
+    /// </summary>
+    [ObservableProperty]
+    private double _maximumHeapMemory = 12;
+    
+    /// <summary>
+    /// Java设置模式
+    /// </summary>
+    [ObservableProperty]
+    private bool _useGlobalJavaSetting = true;
+    
+    /// <summary>
+    /// Java路径
+    /// </summary>
+    [ObservableProperty]
+    private string _javaPath = string.Empty;
+    
+    /// <summary>
+    /// 启动窗口宽度
+    /// </summary>
+    [ObservableProperty]
+    private int _windowWidth = 1920;
+    
+    /// <summary>
+    /// 启动窗口高度
+    /// </summary>
+    [ObservableProperty]
+    private int _windowHeight = 1080;
 
     public 版本管理ViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService)
     {
@@ -424,6 +624,74 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
         ResourcePacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
         DataPacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsDataPackListEmpty));
         Maps.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
+    }
+    
+    // 设置文件名称
+    private const string SettingsFileName = "XianYuL.cfg";
+    
+    // 属性变化时自动保存设置
+    partial void OnAutoMemoryAllocationChanged(bool value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnInitialHeapMemoryChanged(double value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnMaximumHeapMemoryChanged(double value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnJavaPathChanged(string value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnWindowWidthChanged(int value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnWindowHeightChanged(int value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnUseGlobalJavaSettingChanged(bool value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 浏览Java路径命令
+    /// </summary>
+    [RelayCommand]
+    private async Task BrowseJavaAsync()
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            picker.FileTypeFilter.Add(".exe");
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
+            
+            // 获取当前窗口句柄
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                JavaPath = file.Path;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"浏览Java路径失败：{ex.Message}";
+        }
     }
     
     /// <summary>
@@ -461,6 +729,161 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     }
 
     /// <summary>
+    /// 获取设置文件路径
+    /// </summary>
+    /// <returns>设置文件路径</returns>
+    private string GetSettingsFilePath()
+    {
+        if (SelectedVersion == null)
+        {
+            return string.Empty;
+        }
+        
+        return Path.Combine(SelectedVersion.Path, SettingsFileName);
+    }
+    
+    /// <summary>
+    /// 加载版本设置
+    /// </summary>
+    private async Task LoadSettingsAsync()
+    {
+        if (SelectedVersion == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            string settingsFilePath = GetSettingsFilePath();
+            if (File.Exists(settingsFilePath))
+            {
+                // 读取设置文件
+                string jsonContent = await File.ReadAllTextAsync(settingsFilePath);
+                var settings = JsonSerializer.Deserialize<VersionSettings>(jsonContent);
+                
+                if (settings != null)
+                {
+                    // 更新ViewModel属性
+                    AutoMemoryAllocation = settings.AutoMemoryAllocation;
+                    InitialHeapMemory = settings.InitialHeapMemory;
+                    MaximumHeapMemory = settings.MaximumHeapMemory;
+                    UseGlobalJavaSetting = settings.UseGlobalJavaSetting;
+                    JavaPath = settings.JavaPath;
+                    WindowWidth = settings.WindowWidth;
+                    WindowHeight = settings.WindowHeight;
+                }
+            }
+            else
+            {
+                // 设置文件不存在，创建默认设置文件
+                await SaveSettingsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"加载设置失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 保存版本设置
+    /// </summary>
+    private async Task SaveSettingsAsync()
+    {
+        if (SelectedVersion == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            string settingsFilePath = GetSettingsFilePath();
+            VersionSettings settings;
+            
+            // 检查文件是否已存在
+            if (File.Exists(settingsFilePath))
+            {
+                // 文件已存在，读取现有配置
+                string existingJson = await File.ReadAllTextAsync(settingsFilePath);
+                settings = JsonSerializer.Deserialize<VersionSettings>(existingJson) ?? new VersionSettings();
+            }
+            else
+            {
+                // 文件不存在，创建新配置
+                settings = new VersionSettings();
+                
+                // 设置默认的ModLoader信息
+                string versionName = SelectedVersion.Name;
+                if (versionName.Contains("fabric-"))
+                {
+                    var parts = versionName.Split('-');
+                    if (parts.Length >= 3)
+                    {
+                        settings.ModLoaderType = "fabric";
+                        settings.MinecraftVersion = parts[1];
+                        settings.ModLoaderVersion = parts[2];
+                    }
+                }
+                else if (versionName.Contains("neoforge-"))
+                {
+                    var parts = versionName.Split('-');
+                    if (parts.Length >= 3)
+                    {
+                        settings.ModLoaderType = "neoforge";
+                        settings.MinecraftVersion = parts[1];
+                        settings.ModLoaderVersion = parts[2];
+                    }
+                }
+                else if (versionName.Contains("forge-"))
+                {
+                    var parts = versionName.Split('-');
+                    if (parts.Length >= 3)
+                    {
+                        settings.ModLoaderType = "forge";
+                        settings.MinecraftVersion = parts[1];
+                        settings.ModLoaderVersion = parts[2];
+                    }
+                }
+                else
+                {
+                    // 原版Minecraft版本
+                    settings.ModLoaderType = "vanilla";
+                    settings.MinecraftVersion = versionName;
+                }
+                
+                settings.CreatedAt = DateTime.Now;
+            }
+            
+            // 更新设置对象
+            settings.AutoMemoryAllocation = AutoMemoryAllocation;
+            settings.InitialHeapMemory = InitialHeapMemory;
+            settings.MaximumHeapMemory = MaximumHeapMemory;
+            settings.JavaPath = JavaPath;
+            settings.WindowWidth = WindowWidth;
+            settings.WindowHeight = WindowHeight;
+            
+            // 添加Java设置模式
+            settings.UseGlobalJavaSetting = UseGlobalJavaSetting;
+            
+            // 序列化到JSON
+            string jsonContent = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            
+            // 确保版本目录存在
+            if (!Directory.Exists(SelectedVersion.Path))
+            {
+                Directory.CreateDirectory(SelectedVersion.Path);
+            }
+            
+            // 保存到文件
+            await File.WriteAllTextAsync(settingsFilePath, jsonContent);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存设置失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
     /// 加载版本数据
     /// </summary>
     private async Task LoadVersionDataAsync()
@@ -481,6 +904,10 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
             await LoadResourcePacksAsync();
             await LoadDataPacksAsync();
             await LoadMapsAsync();
+            await LoadScreenshotsAsync();
+            
+            // 加载版本设置
+            await LoadSettingsAsync();
 
             StatusMessage = $"已加载版本 {SelectedVersion.Name} 的数据";
         }
@@ -1077,8 +1504,19 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                 foreach (var mapFolder in mapFolders)
                 {
                     var mapInfo = new MapInfo(mapFolder);
-                    // 检查本地图标
-                    mapInfo.Icon = GetLocalIconPath(mapFolder, "maps");
+                    
+                    // 检查地图文件夹中是否存在icon.png文件
+                    string iconPath = Path.Combine(mapFolder, "icon.png");
+                    if (File.Exists(iconPath))
+                    {
+                        mapInfo.Icon = iconPath;
+                    }
+                    // 保持原有逻辑作为备选
+                    else
+                    {
+                        mapInfo.Icon = GetLocalIconPath(mapFolder, "maps");
+                    }
+                    
                     newMaps.Add(mapInfo);
                 }
                 
@@ -1457,6 +1895,56 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     }
     
     /// <summary>
+    /// 加载截图列表
+    /// </summary>
+    private async Task LoadScreenshotsAsync()
+    {
+        if (SelectedVersion == null)
+        {
+            return;
+        }
+
+        var screenshotsPath = GetVersionSpecificPath("screenshots");
+        if (Directory.Exists(screenshotsPath))
+        {
+            // 获取所有png图片文件
+            var screenshotFiles = Directory.GetFiles(screenshotsPath, "*.png");
+            
+            // 创建新的截图列表，减少CollectionChanged事件触发次数
+            var newScreenshots = new ObservableCollection<ScreenshotInfo>();
+            
+            // 添加所有截图
+            foreach (var screenshotFile in screenshotFiles)
+            {
+                var screenshotInfo = new ScreenshotInfo(screenshotFile);
+                newScreenshots.Add(screenshotInfo);
+            }
+            
+            // 按创建时间倒序排序
+            var sortedScreenshots = new ObservableCollection<ScreenshotInfo>(
+                newScreenshots.OrderByDescending(s => s.OriginalCreationTime)
+            );
+            
+            // 替换整个Screenshots集合，只触发一次CollectionChanged事件
+            Screenshots = sortedScreenshots;
+        }
+        else
+        {
+            // 清空截图列表
+            Screenshots.Clear();
+        }
+    }
+    
+    /// <summary>
+    /// 打开截图文件夹命令
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenScreenshotsFolderAsync()
+    {
+        await OpenFolderByTypeAsync("screenshots");
+    }
+    
+    /// <summary>
     /// 刷新数据命令
     /// </summary>
     [RelayCommand]
@@ -1473,21 +1961,116 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     {
         switch (SelectedTabIndex)
         {
-            case 0: // Mod管理
+            case 0: // 设置
+                // 设置tab没有对应的文件夹，跳过
+                break;
+            case 1: // Mod管理
                 await OpenFolderByTypeAsync("mods");
                 break;
-            case 1: // 光影管理
+            case 2: // 光影管理
                 await OpenShaderFolderAsync();
                 break;
-            case 2: // 资源包管理
+            case 3: // 资源包管理
                 await OpenResourcePackFolderAsync();
                 break;
-            case 3: // 数据包管理
+            case 4: // 数据包管理
                 await OpenDataPackFolderAsync();
                 break;
-            case 4: // 地图安装
+            case 5: // 截图管理
+                await OpenScreenshotsFolderAsync();
+                break;
+            case 6: // 地图管理
                 await OpenMapsFolderAsync();
                 break;
+        }
+    }
+    
+    /// <summary>
+    /// 删除截图命令
+    /// </summary>
+    /// <param name="screenshot">要删除的截图</param>
+    [RelayCommand]
+    private async Task DeleteScreenshotAsync(ScreenshotInfo screenshot)
+    {
+        if (screenshot == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            // 显示二次确认弹窗
+            var dialog = new ContentDialog
+            {
+                Title = "确认删除",
+                Content = $"确定要删除截图 '{screenshot.Name}' 吗？此操作不可恢复。",
+                PrimaryButtonText = "确定删除",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                // 删除文件
+                if (File.Exists(screenshot.FilePath))
+                {
+                    File.Delete(screenshot.FilePath);
+                }
+                
+                // 从列表中移除
+                Screenshots.Remove(screenshot);
+                
+                StatusMessage = $"已删除截图: {screenshot.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"删除截图失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 另存为截图命令
+    /// </summary>
+    /// <param name="screenshot">要另存为的截图</param>
+    [RelayCommand]
+    private async Task SaveScreenshotAsAsync(ScreenshotInfo screenshot)
+    {
+        if (screenshot == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            // 创建文件选择器
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
+            picker.FileTypeChoices.Add("PNG图片", new List<string>() { ".png" });
+            picker.SuggestedFileName = screenshot.Name;
+            
+            // 获取窗口句柄
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            
+            // 显示文件选择器
+            var file = await picker.PickSaveFileAsync();
+            if (file != null)
+            {
+                // 复制文件
+                // 使用StorageFile API来复制文件，确保异步操作正确执行
+                var sourceFile = await StorageFile.GetFileFromPathAsync(screenshot.FilePath);
+                await sourceFile.CopyAndReplaceAsync(file);
+                
+                StatusMessage = $"截图已保存至: {file.Path}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存截图失败：{ex.Message}";
         }
     }
 

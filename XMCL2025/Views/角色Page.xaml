@@ -114,9 +114,8 @@
                                         <FontIcon 
                                             FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                             Glyph="&#xE109;" 
-                                            FontSize="16" 
-                                            Foreground="White" />
-                                        <TextBlock Text="添加账户" FontSize="14" Foreground="White" VerticalAlignment="Center" />
+                                            FontSize="16" /> 
+                                        <TextBlock Text="添加账户" FontSize="14" VerticalAlignment="Center" /> 
                                     </StackPanel>
                                     <Button.Flyout>
                                         <MenuFlyout>

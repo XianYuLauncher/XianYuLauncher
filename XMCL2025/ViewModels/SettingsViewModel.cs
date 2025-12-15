@@ -14,6 +14,7 @@ using System.Collections.ObjectModel;
 
 using XMCL2025.Contracts.Services;
 using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Services;
 using XMCL2025.Helpers;
 
 namespace XMCL2025.ViewModels;
@@ -121,6 +122,30 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
     
+    /// <summary>
+    /// 材质类型
+    /// </summary>
+    [ObservableProperty]
+    private XMCL2025.Core.Services.MaterialType _materialType = XMCL2025.Core.Services.MaterialType.Mica;
+    
+    /// <summary>
+    /// 材质类型列表，用于ComboBox数据源
+    /// </summary>
+    public List<XMCL2025.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XMCL2025.Core.Services.MaterialType>().ToList();
+    
+    /// <summary>
+    /// 材质类型选择命令
+    /// </summary>
+    public ICommand SwitchMaterialTypeCommand
+    {
+        get;
+    }
+    
+    private readonly MaterialService _materialService;
+    
+    // 标志位：是否是初始化加载材质设置
+    private bool _isInitializingMaterial = true;
+    
 
     /// <summary>
     /// 是否开启版本隔离
@@ -198,11 +223,12 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
         _fileService = fileService;
+        _materialService = materialService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
 
@@ -266,6 +292,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadDownloadSourceAsync().ConfigureAwait(false);
         // 加载版本列表源设置
         LoadVersionListSourceAsync().ConfigureAwait(false);
+        // 加载材质类型设置
+        LoadMaterialTypeAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -298,6 +326,50 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnVersionListSourceChanged(VersionListSourceType value)
     {
         _localSettingsService.SaveSettingAsync(VersionListSourceKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载材质类型设置
+    /// </summary>
+    private async Task LoadMaterialTypeAsync()
+    {
+        // 使用MaterialService加载材质设置
+        MaterialType = await _materialService.LoadMaterialTypeAsync();
+        // 移除设置页打开时的材质刷新，避免窗口闪烁
+        // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
+    }
+    
+    /// <summary>
+    /// 当材质类型变化时保存并切换窗口材质
+    /// </summary>
+    partial void OnMaterialTypeChanged(XMCL2025.Core.Services.MaterialType value)
+    {
+        try
+        {
+            // 保存设置（异步调用，不等待完成，避免阻塞UI）
+            _materialService.SaveMaterialTypeAsync(value).ConfigureAwait(false);
+            
+            // 只有当不是初始化加载材质时，才应用材质到主窗口
+            // 避免设置页打开时窗口闪烁
+            if (!_isInitializingMaterial)
+            {
+                // 应用材质到主窗口
+                var window = App.MainWindow;
+                if (window != null)
+                {
+                    _materialService.ApplyMaterialToWindow(window, value);
+                }
+            }
+            else
+            {
+                // 初始化完成，重置标志位
+                _isInitializingMaterial = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"切换窗口材质失败: {ex.Message}");
+        }
     }
     
     /// <summary>

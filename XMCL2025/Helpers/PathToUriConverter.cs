@@ -27,13 +27,19 @@ namespace XMCL2025.Helpers
                         (uriResult.Scheme == Uri.UriSchemeHttp || 
                          uriResult.Scheme == Uri.UriSchemeHttps || 
                          uriResult.Scheme == "ms-appx" ||
-                         uriResult.Scheme == "ms-appdata"))
+                         uriResult.Scheme == "ms-appdata" ||
+                         uriResult.Scheme == Uri.UriSchemeFile))
                     {
                         return uriResult;
                     }
                     
-                    // 将本地文件路径转换为Uri
-                    return new Uri(path);
+                    // 将本地文件路径转换为Uri（添加file:///协议）
+                    if (System.IO.Path.IsPathRooted(path))
+                    {
+                        return new Uri($"file:///{path.Replace('\\', '/')}");
+                    }
+                    
+                    return null;
                 }
                 catch (Exception ex)
                 {

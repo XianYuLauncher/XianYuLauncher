@@ -23,6 +23,9 @@ namespace XMCL2025.ViewModels;
 
 public partial class 启动ViewModel : ObservableRecipient
 {
+    // 分辨率设置字段
+    private int _windowWidth = 1920;
+    private int _windowHeight = 1080;
     private async Task ShowJavaNotFoundMessageAsync()
     {
         // 创建并显示消息对话框
@@ -35,6 +38,46 @@ public partial class 启动ViewModel : ObservableRecipient
         };
         
         await dialog.ShowAsync();
+    }
+    
+    /// <summary>
+    /// 将初始堆内存转换为JVM参数格式
+    /// </summary>
+    /// <param name="memoryGB">内存大小（GB）</param>
+    /// <returns>格式化后的初始堆参数，如"-Xms6G"或"-Xms8192M"</returns>
+    private string GetInitialHeapParam(double memoryGB)
+    {
+        if (memoryGB % 1 == 0)
+        {
+            // 整数GB，直接使用GB单位
+            return $"-Xms{(int)memoryGB}G";
+        }
+        else
+        {
+            // 小数GB，转换为MB
+            int memoryMB = (int)(memoryGB * 1024);
+            return $"-Xms{memoryMB}M";
+        }
+    }
+    
+    /// <summary>
+    /// 将最大堆内存转换为JVM参数格式
+    /// </summary>
+    /// <param name="memoryGB">内存大小（GB）</param>
+    /// <returns>格式化后的最大堆参数，如"-Xmx12G"或"-Xmx16384M"</returns>
+    private string GetMaximumHeapParam(double memoryGB)
+    {
+        if (memoryGB % 1 == 0)
+        {
+            // 整数GB，直接使用GB单位
+            return $"-Xmx{(int)memoryGB}G";
+        }
+        else
+        {
+            // 小数GB，转换为MB
+            int memoryMB = (int)(memoryGB * 1024);
+            return $"-Xmx{memoryMB}M";
+        }
     }
 
     /// <summary>
@@ -888,10 +931,66 @@ public partial class 启动ViewModel : ObservableRecipient
                 return;
             }
             
-            // 4. 获取Java路径并记录日志
+            // 4. 读取XianYuL.cfg配置文件，应用版本特定设置
+            bool useGlobalJavaSetting = true;
+            string versionJavaPath = string.Empty;
+            string settingsFileName = "XianYuL.cfg";
+            string settingsFilePath = Path.Combine(versionDir, settingsFileName);
+            
+            if (File.Exists(settingsFilePath))
+            {
+                try
+                {
+                    // 读取配置文件
+                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
+                    
+                    // 使用Newtonsoft.Json进行反序列化，保持属性名大小写
+                    var settings = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(settingsJson);
+                    
+                    if (settings != null)
+                    {
+                        // 处理Java设置，尝试多种可能的属性名大小写
+                        bool? useGlobalSetting = null;
+                        string? configJavaPath = null;
+                        
+                        // 尝试不同的属性名大小写
+                        try { useGlobalSetting = settings.UseGlobalJavaSetting; } catch { }
+                        if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useGlobalJavaSetting; } catch { }
+                        if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useglobaljavasetting; } catch { }
+                        
+                        try { configJavaPath = settings.JavaPath; } catch { }
+                        if (configJavaPath == null) try { configJavaPath = settings.javaPath; } catch { }
+                        if (configJavaPath == null) try { configJavaPath = settings.javapath; } catch { }
+                        
+                        // 使用获取到的值或默认值
+                        useGlobalJavaSetting = useGlobalSetting ?? true;
+                        versionJavaPath = configJavaPath ?? string.Empty;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LaunchStatus += $"\n读取配置文件失败：{ex.Message}";
+                }
+            }
+            
+            // 5. 获取Java路径并记录日志
             LaunchStatus = "正在查找Java运行时环境...";
             int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8; // 默认使用Java 8
-            string javaPath = await GetJavaPathAsync(requiredJavaVersion);
+            string javaPath = string.Empty;
+            
+            // 检查是否使用版本特定的Java路径
+            if (!useGlobalJavaSetting && !string.IsNullOrEmpty(versionJavaPath))
+            {
+                // 使用版本特定的Java路径
+                javaPath = versionJavaPath;
+                LaunchStatus += $"\n使用版本特定Java路径: {javaPath}";
+            }
+            else
+            {
+                // 使用全局Java设置
+                javaPath = await GetJavaPathAsync(requiredJavaVersion);
+            }
+            
             if (string.IsNullOrEmpty(javaPath))
             {
                 LaunchStatus = "未找到Java运行时环境，请先安装Java";
@@ -1198,6 +1297,91 @@ public partial class 启动ViewModel : ObservableRecipient
             args.Add("-Dlog4j2.formatMsgNoLookups=true");
             args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
             
+            // 读取XianYuL.cfg配置文件，应用版本特定设置
+            // 注意：settingsFileName和settingsFilePath已经在前面定义过了
+            
+            if (File.Exists(settingsFilePath))
+            {
+                try
+                {
+                    // 读取配置文件
+                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
+                    
+                    // 使用Newtonsoft.Json进行反序列化，保持属性名大小写
+                    var settings = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(settingsJson);
+                    
+                    if (settings != null)
+                    {
+                        // 处理内存分配设置，尝试多种可能的属性名大小写
+                        bool? autoMemoryAllocation = null;
+                        double? initialHeapMemory = null;
+                        double? maximumHeapMemory = null;
+                        int? windowWidth = null;
+                        int? windowHeight = null;
+                        
+                        // 尝试不同的属性名大小写
+                        try { autoMemoryAllocation = settings.AutoMemoryAllocation; } catch { } 
+                        if (!autoMemoryAllocation.HasValue) try { autoMemoryAllocation = settings.autoMemoryAllocation; } catch { } 
+                        if (!autoMemoryAllocation.HasValue) try { autoMemoryAllocation = settings.automemoryallocation; } catch { } 
+                        
+                        try { initialHeapMemory = settings.InitialHeapMemory; } catch { } 
+                        if (!initialHeapMemory.HasValue) try { initialHeapMemory = settings.initialHeapMemory; } catch { } 
+                        if (!initialHeapMemory.HasValue) try { initialHeapMemory = settings.initialheapmemory; } catch { } 
+                        
+                        try { maximumHeapMemory = settings.MaximumHeapMemory; } catch { } 
+                        if (!maximumHeapMemory.HasValue) try { maximumHeapMemory = settings.maximumHeapMemory; } catch { } 
+                        if (!maximumHeapMemory.HasValue) try { maximumHeapMemory = settings.maximumheapmemory; } catch { } 
+                        
+                        try { windowWidth = settings.WindowWidth; } catch { } 
+                        if (!windowWidth.HasValue) try { windowWidth = settings.windowWidth; } catch { } 
+                        if (!windowWidth.HasValue) try { windowWidth = settings.windowwidth; } catch { } 
+                        
+                        try { windowHeight = settings.WindowHeight; } catch { } 
+                        if (!windowHeight.HasValue) try { windowHeight = settings.windowHeight; } catch { } 
+                        if (!windowHeight.HasValue) try { windowHeight = settings.windowheight; } catch { } 
+                        
+                        // 使用获取到的值或默认值
+                        bool finalAutoMemoryAllocation = autoMemoryAllocation ?? true;
+                        double finalInitialHeapMemory = initialHeapMemory ?? 6.0;
+                        double finalMaximumHeapMemory = maximumHeapMemory ?? 12.0;
+                        int finalWindowWidth = windowWidth ?? 1920;
+                        int finalWindowHeight = windowHeight ?? 1080;
+                        
+                        if (finalAutoMemoryAllocation)
+                        {
+                            // 自动分配内存：让JVM自动管理内存，不添加-Xms/-Xmx参数
+                            LaunchStatus += $"\n使用JVM自动内存管理，不添加-Xms/-Xmx参数";
+                        }
+                        else
+                        {
+                            // 手动分配内存：添加用户设置的-Xms/-Xmx参数
+                            // 将GB转换为MB，处理小数情况
+                            string initialHeapParam = GetInitialHeapParam(finalInitialHeapMemory);
+                            string maximumHeapParam = GetMaximumHeapParam(finalMaximumHeapMemory);
+                            
+                            args.Add(initialHeapParam);
+                            args.Add(maximumHeapParam);
+                            LaunchStatus += $"\n手动分配内存：初始堆 {finalInitialHeapMemory}G，最大堆 {finalMaximumHeapMemory}G";
+                            LaunchStatus += $"\n转换为JVM参数：{initialHeapParam} {maximumHeapParam}";
+                        }
+                        
+                        // 处理分辨率设置
+                        // 保存分辨率设置，稍后添加到游戏参数
+                        _windowWidth = finalWindowWidth;
+                        _windowHeight = finalWindowHeight;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LaunchStatus += $"\n读取配置文件失败：{ex.Message}";
+                }
+            }
+            else
+            {
+                // 未找到配置文件，使用JVM自动内存管理
+                LaunchStatus += $"\n未找到配置文件，使用JVM自动内存管理，不添加-Xms/-Xmx参数";
+            }
+            
             // 处理JVM参数（区分1.12及以下版本和1.13及以上版本）
             bool hasClasspath = false;
             // 状态变量：标记下一个参数是否是-p的值
@@ -1402,6 +1586,13 @@ public partial class 启动ViewModel : ObservableRecipient
                     // 处理规则对象（暂时简单跳过）
                 }
             }
+            
+            // 添加分辨率参数
+            args.Add($"--width");
+            args.Add(_windowWidth.ToString());
+            args.Add($"--height");
+            args.Add(_windowHeight.ToString());
+            LaunchStatus += $"\n添加分辨率参数: --width {_windowWidth} --height {_windowHeight}";
 
             // 7. 构建完整的启动命令并显示
             // 正确处理带空格的参数，添加引号

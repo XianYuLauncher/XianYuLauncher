@@ -253,34 +253,6 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
-
-                <!-- 测试令牌状态功能卡片 -->
-                <Border
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="20">
-                    <StackPanel Spacing="16">
-                        <TextBlock
-                            Text="令牌状态测试"
-                            Style="{StaticResource TitleTextBlockStyle}"
-                            FontSize="18"
-                            FontWeight="SemiBold" />
-                        
-                        <StackPanel Spacing="12">
-                            <TextBlock
-                                Text="测试当前access token的过期状态"
-                                Style="{StaticResource BodyTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondary}" />
-                            
-                            <Button
-                                Content="测试令牌状态"
-                                Click="TestTokenStatusButton_Click" 
-                                IsEnabled="True" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
             </StackPanel>
         </ScrollViewer>
         

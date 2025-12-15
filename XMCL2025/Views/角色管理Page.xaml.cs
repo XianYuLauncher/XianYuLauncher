@@ -281,51 +281,6 @@ namespace XMCL2025.Views
             }
         }
 
-        /// <summary>
-        /// 测试令牌状态按钮点击事件
-        /// </summary>
-        /// <param name="sender">触发事件的控件</param>
-        /// <param name="e">路由事件参数</param>
-        private async void TestTokenStatusButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            try
-            {
-                // 直接执行令牌刷新
-                string message = "正在刷新令牌...";
-                
-                try
-                {
-                    // 保存刷新前的令牌信息
-                    var beforeRefreshIssueTime = ViewModel.CurrentProfile.IssueInstant;
-                    var beforeRefreshExpiryTime = beforeRefreshIssueTime.AddSeconds(ViewModel.CurrentProfile.ExpiresIn);
-                    
-                    // 调用LoadCapesAsync会自动触发令牌刷新
-                    await ViewModel.ForceRefreshTokenAsync();
-                    
-                    // 刷新后重新计算有效期
-                    var afterRefreshIssueTime = ViewModel.CurrentProfile.IssueInstant;
-                    var afterRefreshExpiryTime = afterRefreshIssueTime.AddSeconds(ViewModel.CurrentProfile.ExpiresIn);
-                    var timeUntilExpiry = afterRefreshExpiryTime - DateTime.UtcNow;
-                    
-                    // 构建成功消息
-                    message = "令牌刷新成功！\n\n";
-                    message += $"刷新前颁发时间：{beforeRefreshIssueTime.ToLocalTime()}\n";
-                    message += $"刷新前过期时间：{beforeRefreshExpiryTime.ToLocalTime()}\n\n";
-                    message += $"刷新后颁发时间：{afterRefreshIssueTime.ToLocalTime()}\n";
-                    message += $"刷新后过期时间：{afterRefreshExpiryTime.ToLocalTime()}\n\n";
-                    message += $"新令牌剩余有效期：\n{timeUntilExpiry.Days}天{timeUntilExpiry.Hours}小时{timeUntilExpiry.Minutes}分钟{timeUntilExpiry.Seconds}秒\n";
-                }
-                catch (Exception refreshEx)
-                {
-                    message = $"令牌刷新失败：{refreshEx.Message}\n请重新登录！";
-                }
-                
-                await ShowMessageAsync("令牌刷新结果", message);
-            }
-            catch (Exception ex)
-            {
-                await ShowMessageAsync("操作失败", $"执行令牌刷新时发生错误：{ex.Message}");
-            }
-        }
+
     }
 }

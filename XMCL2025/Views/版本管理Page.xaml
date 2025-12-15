@@ -117,6 +117,159 @@
                 </Style>
             </TabView.Resources>
             
+            <!-- 设置模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="设置" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- 设置内容 -->
+                    <ScrollViewer Grid.Row="1" Margin="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Padding="0,0,0,24">
+                            <!-- 内存分配设置 -->
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- 标题 -->
+                                <TextBlock Grid.Row="0" Grid.ColumnSpan="4" Text="内存分配" FontSize="16" FontWeight="Bold" Margin="0,0,0,16" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
+                                
+                                <!-- 自动分配开关 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="自动分配" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <ToggleSwitch Grid.Row="1" Grid.Column="1" IsOn="{Binding AutoMemoryAllocation, Mode=TwoWay}" OnContent="开启" OffContent="关闭" Margin="0,0,16,16" />
+                                
+                                <!-- 初始堆内存 -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="初始堆内存 (-Xms)" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="2" Grid.Column="1" 
+                                           Value="{Binding InitialHeapMemory, Mode=TwoWay}" 
+                                           Minimum="1" 
+                                           Maximum="64" 
+                                           SpinButtonPlacementMode="Inline" 
+                                           HorizontalAlignment="Stretch" 
+                                           Margin="0,0,16,16" 
+                                           PlaceholderText="6.0"
+                                           IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="GB" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                
+                                <!-- 最大堆内存 -->
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="最大堆内存 (-Xmx)" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="3" Grid.Column="1" 
+                                           Value="{Binding MaximumHeapMemory, Mode=TwoWay}" 
+                                           Minimum="1" 
+                                           Maximum="64" 
+                                           SpinButtonPlacementMode="Inline" 
+                                           HorizontalAlignment="Stretch" 
+                                           Margin="0,0,16,0" 
+                                           PlaceholderText="12.0"
+                                           IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                <TextBlock Grid.Row="3" Grid.Column="2" Text="GB" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                            </Grid>
+                            
+                            <!-- Java设置 -->
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- 标题 -->
+                                <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Java设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,16" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
+                                
+                                <!-- Java设置模式 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Java设置模式" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
+                                    <RadioButton 
+                                        Content="跟随全局设置" 
+                                        GroupName="JavaSettingMode" 
+                                        IsChecked="{Binding UseGlobalJavaSetting, Mode=TwoWay}" 
+                                        VerticalAlignment="Center" />
+                                    <RadioButton 
+                                        Content="单选Java" 
+                                        GroupName="JavaSettingMode" 
+                                        IsChecked="{Binding UseGlobalJavaSetting, Mode=TwoWay, Converter={StaticResource BoolNegationConverter}}" 
+                                        VerticalAlignment="Center" />
+                                </StackPanel>
+                                
+                                <!-- Java路径 -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Java路径" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <Grid Grid.Row="2" Grid.Column="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox 
+                                        Grid.Column="0" 
+                                        Text="{Binding JavaPath, Mode=TwoWay}" 
+                                        PlaceholderText="选择Java路径" 
+                                        IsEnabled="{Binding UseGlobalJavaSetting, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" 
+                                        Margin="0,0,8,0" />
+                                    <Button 
+                                        Grid.Column="1" 
+                                        Content="浏览" 
+                                        Command="{Binding BrowseJavaCommand}" 
+                                        Style="{StaticResource DefaultButtonStyle}" 
+                                        Height="32" 
+                                        Padding="10,0,10,0" 
+                                        IsEnabled="{Binding UseGlobalJavaSetting, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                </Grid>
+                            </Grid>
+                            
+                            <!-- 启动分辨率设置 -->
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- 标题 -->
+                                <TextBlock Grid.Row="0" Grid.ColumnSpan="6" Text="启动分辨率" FontSize="16" FontWeight="Bold" Margin="0,0,0,16" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
+                                
+                                <!-- 宽度 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="宽度" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="1" Grid.Column="1" Value="{Binding WindowWidth, Mode=TwoWay}" Minimum="800" Maximum="4096" Width="120" Margin="0,0,8,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="px" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                
+                                <!-- 高度 -->
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="高度" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="1" Grid.Column="4" Value="{Binding WindowHeight, Mode=TwoWay}" Minimum="600" Maximum="2160" Width="120" Margin="0,0,8,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="5" Text="px" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" />
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabViewItem>
+
             <!-- Mod管理模块 -->
             <TabViewItem>
                 <TabViewItem.Header>
@@ -380,18 +533,22 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
-                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
                                                         <VisualStateManager.VisualStateGroups>
                                                             <VisualStateGroup x:Name="CommonStates">
                                                                 <VisualState x:Name="Normal" />
                                                                 <VisualState x:Name="PointerOver">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Pressed">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListMediumBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Selected">
@@ -568,18 +725,22 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
-                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
                                                         <VisualStateManager.VisualStateGroups>
                                                             <VisualStateGroup x:Name="CommonStates">
                                                                 <VisualState x:Name="Normal" />
                                                                 <VisualState x:Name="PointerOver">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Pressed">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListMediumBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Selected">
@@ -757,18 +918,22 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
-                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
                                                         <VisualStateManager.VisualStateGroups>
                                                             <VisualStateGroup x:Name="CommonStates">
                                                                 <VisualState x:Name="Normal" />
                                                                 <VisualState x:Name="PointerOver">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Pressed">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListMediumBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Selected">
@@ -895,6 +1060,209 @@
                 </Grid>
             </TabViewItem>
 
+
+
+            <!-- 截图管理模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="" FontSize="16" />
+                        <TextBlock Text="截图管理" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- 截图列表容器 -->
+                    <Grid Grid.Row="1" AllowDrop="True">
+                        <!-- 截图列表 -->
+                        <ScrollViewer
+                            x:Name="ScreenshotsListScrollViewer"
+                            Margin="0"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            AllowDrop="True">
+                            <StackPanel>
+                                <!-- 截图列表 -->
+                                <ListView 
+                                    x:Name="ScreenshotsListView"
+                                    ItemsSource="{Binding Screenshots}"
+                                    SelectionMode="Single"
+                                    IsItemClickEnabled="False"
+                                    CanReorderItems="False"
+                                    AllowDrop="True"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Stretch">
+                                <ListView.Resources>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <Storyboard>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
+                                                                        </ObjectAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                          Content="{TemplateBinding Content}"
+                                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                          AutomationProperties.AccessibilityView="Raw" />
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:ScreenshotInfo">
+                                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="8" 
+                                              Padding="16" 
+                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                              BorderThickness="1">
+                                            <Grid.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="删除" 
+                                                                   Command="{Binding DataContext.DeleteScreenshotCommand, ElementName=ScreenshotsListView}" 
+                                                                   CommandParameter="{Binding}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Delete" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="另存为" 
+                                                                   Command="{Binding DataContext.SaveScreenshotAsCommand, ElementName=ScreenshotsListView}" 
+                                                                   CommandParameter="{Binding}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Save" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Grid.ContextFlyout>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            
+                                            <!-- 截图预览 -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,12" Height="300">
+                                                <Border CornerRadius="4">
+                                                    <Image 
+                                                        Source="{Binding FilePath, Converter={StaticResource PathToUriConverter}}" 
+                                                        Stretch="UniformToFill"
+                                                        HorizontalAlignment="Stretch"
+                                                        VerticalAlignment="Stretch">
+                                                    </Image>
+                                                </Border>
+                                            </Grid>
+                                            
+                                            <!-- 截图信息 -->
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Center" Spacing="16">
+                                                <TextBlock 
+                                                    Text="{Binding Name}" 
+                                                    VerticalAlignment="Center" 
+                                                    FontSize="14" 
+                                                    FontWeight="Medium"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    HorizontalAlignment="Left"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" Margin="0,0,0,0">
+                                                    <TextBlock 
+                                                        Text="{Binding CreationTime}" 
+                                                        VerticalAlignment="Center" 
+                                                        FontSize="12" 
+                                                        FontWeight="Normal"
+                                                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                                                    <TextBlock 
+                                                        Text="{Binding FileSize}" 
+                                                        VerticalAlignment="Center" 
+                                                        FontSize="12" 
+                                                        FontWeight="Normal"
+                                                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            
+                            <!-- 空状态提示 -->
+                            <StackPanel 
+                                x:Name="ScreenshotsEmptyGrid"
+                                Visibility="{Binding IsScreenshotListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                                HorizontalAlignment="Center" 
+                                VerticalAlignment="Center" 
+                                Margin="0,100,0,0"
+                                Padding="60,40,60,40"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                CornerRadius="16"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                                <FontIcon 
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                    Glyph="" 
+                                    FontSize="80" 
+                                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                    Margin="0,0,0,24" 
+                                    HorizontalAlignment="Center"/>
+                                <TextBlock 
+                                    Text="当前版本没有截图" 
+                                    Style="{StaticResource PageTitleStyle}" 
+                                    FontSize="20" 
+                                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                    TextAlignment="Center" 
+                                    Margin="0,0,0,8"/>
+                                <TextBlock 
+                                    Text="游戏截图将显示在这里" 
+                                    Style="{StaticResource BodyTextStyle}" 
+                                    Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                                    Margin="0,0,24,0" 
+                                    TextAlignment="Center" 
+                                    MaxWidth="300"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
             <!-- 地图管理模块 -->
             <TabViewItem>
                 <TabViewItem.Header>
@@ -946,18 +1314,22 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
-                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
+                                                    <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="8">
                                                         <VisualStateManager.VisualStateGroups>
                                                             <VisualStateGroup x:Name="CommonStates">
                                                                 <VisualState x:Name="Normal" />
                                                                 <VisualState x:Name="PointerOver">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListLowBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Pressed">
                                                                     <Storyboard>
-                                                                        <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Background">
+                                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlBackgroundListMediumBrush}" />
+                                                                        </ObjectAnimationUsingKeyFrames>
                                                                     </Storyboard>
                                                                 </VisualState>
                                                                 <VisualState x:Name="Selected">

@@ -478,6 +478,82 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JSON配置文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}");
             await File.WriteAllTextAsync(jsonPath, versionInfoJson);
             
+            // 创建XianYuL.cfg配置文件
+            string settingsFileName = "XianYuL.cfg";
+            string settingsFilePath = Path.Combine(targetDirectory, settingsFileName);
+            
+            // 检查文件是否已存在
+            if (File.Exists(settingsFilePath))
+            {
+                // 文件已存在，跳过创建
+                return;
+            }
+            
+            // 解析版本ID，提取Minecraft版本和ModLoader信息
+            string minecraftVersion = string.Empty;
+            string modLoaderType = string.Empty;
+            string modLoaderVersion = string.Empty;
+            
+            // 尝试从finalVersionName中提取信息
+            string versionName = finalVersionName;
+            
+            // 处理ModLoader版本格式（如fabric-1.20.1-0.15.7）
+            if (versionName.Contains("fabric-"))
+            {
+                var parts = versionName.Split('-');
+                if (parts.Length >= 3)
+                {
+                    modLoaderType = "fabric";
+                    minecraftVersion = parts[1];
+                    modLoaderVersion = parts[2];
+                }
+            }
+            else if (versionName.Contains("neoforge-"))
+            {
+                var parts = versionName.Split('-');
+                if (parts.Length >= 3)
+                {
+                    modLoaderType = "neoforge";
+                    minecraftVersion = parts[1];
+                    modLoaderVersion = parts[2];
+                }
+            }
+            else if (versionName.Contains("forge-"))
+            {
+                var parts = versionName.Split('-');
+                if (parts.Length >= 3)
+                {
+                    modLoaderType = "forge";
+                    minecraftVersion = parts[1];
+                    modLoaderVersion = parts[2];
+                }
+            }
+            else
+            {
+                // 原版Minecraft版本
+                minecraftVersion = versionName;
+                modLoaderType = "vanilla";
+            }
+            
+            // 完整配置
+            var versionConfig = new
+            {
+                ModLoaderType = modLoaderType,
+                ModLoaderVersion = modLoaderVersion,
+                MinecraftVersion = minecraftVersion,
+                CreatedAt = DateTime.Now,
+                AutoMemoryAllocation = true,
+                InitialHeapMemory = 6.0,
+                MaximumHeapMemory = 12.0,
+                JavaPath = string.Empty,
+                WindowWidth = 1920,
+                WindowHeight = 1080
+            };
+            
+            // 序列化到JSON
+            string settingsJson = System.Text.Json.JsonSerializer.Serialize(versionConfig, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(settingsFilePath, settingsJson);
+            
             progressCallback?.Invoke(100); // 100% - 下载完成
         }
         catch (Exception ex)

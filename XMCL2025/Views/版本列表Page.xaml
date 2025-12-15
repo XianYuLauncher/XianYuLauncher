@@ -203,15 +203,16 @@
                                 <!-- 版本类型标签 -->
                                 <Border 
                                     Grid.Row="0" Grid.Column="1"
-                                    Background="{ThemeResource SystemControlHighlightAccentBrush}"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     CornerRadius="8"
                                     Padding="12,4,12,4"
                                     HorizontalAlignment="Right"
-                                    BorderThickness="0">
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
                                     <TextBlock 
                                         Text="{Binding Type}" 
                                         Style="{StaticResource BodyTextStyle}" 
-                                        Foreground="White" 
+                                        Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" 
                                         FontWeight="SemiBold" 
                                         FontSize="12" />
                                 </Border>
