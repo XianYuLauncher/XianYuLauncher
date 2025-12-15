@@ -1,5 +1,6 @@
 using Windows.UI.ViewManagement;
 
+using XMCL2025.Core.Services;
 using XMCL2025.Helpers;
 
 namespace XMCL2025;
@@ -22,6 +23,25 @@ public sealed partial class MainWindow : WindowEx
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         settings = new UISettings();
         settings.ColorValuesChanged += Settings_ColorValuesChanged; // cannot use FrameworkElement.ActualThemeChanged event
+
+        // 应用材质设置
+        ApplyMaterialSettings();
+    }
+
+    /// <summary>
+    /// 应用材质设置
+    /// </summary>
+    private async void ApplyMaterialSettings()
+    {
+        try
+        {
+            var materialService = App.GetService<MaterialService>();
+            await materialService.LoadAndApplyMaterialAsync(this);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"应用材质设置失败: {ex.Message}");
+        }
     }
 
     // this handles updating the caption button colors correctly when indows system theme is changed

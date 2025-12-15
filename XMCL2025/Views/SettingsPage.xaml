@@ -87,6 +87,29 @@
                                         </RadioButton>
                                     </StackPanel>
                                 </StackPanel>
+                                
+                                <!-- 材质设置 -->
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <TextBlock Text="窗口材质" />
+
+                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
+                                        <ComboBox
+                                            ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}"
+                                            SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}"
+                                            Width="300">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <TextBlock 
+                                            Text="选择窗口材质，不同材质在视觉效果和性能上有所差异" 
+                                            Style="{ThemeResource CaptionTextBlockStyle}" 
+                                            Margin="0,4,0,0" 
+                                            Opacity="0.7"/>
+                                    </StackPanel>
+                                </StackPanel>
 
                                 <!-- Minecraft 路径设置 -->
                                 <TextBlock Text="Minecraft 路径" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />

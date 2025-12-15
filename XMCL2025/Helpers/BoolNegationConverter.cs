@@ -15,6 +15,10 @@ public class BoolNegationConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)
     {
-        throw new NotImplementedException();
+        if (value is bool boolValue)
+        {
+            return !boolValue;
+        }
+        return false;
     }
 }

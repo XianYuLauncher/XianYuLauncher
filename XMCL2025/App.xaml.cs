@@ -91,6 +91,7 @@ public partial class App : Application
             services.AddSingleton<IFileService, FileService>();
             services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>();
+            services.AddSingleton<MaterialService>();
             
             // HTTP Client
             services.AddHttpClient();
