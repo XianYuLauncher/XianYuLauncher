@@ -1200,6 +1200,9 @@ public partial class 启动ViewModel : ObservableRecipient
             
             // 处理JVM参数（区分1.12及以下版本和1.13及以上版本）
             bool hasClasspath = false;
+            // 状态变量：标记下一个参数是否是-p的值
+            bool isNextArgPValue = false;
+            
             if (versionInfo.Arguments != null && versionInfo.Arguments.Jvm != null)
             {
                 // 1.13及以上版本：使用version.json中的Arguments字段
@@ -1207,14 +1210,80 @@ public partial class 启动ViewModel : ObservableRecipient
                 {
                     if (jvmArg is string argStr)
                     {
+                        // 获取不带.jar后缀的版本名称
+                        string versionName = Path.GetFileNameWithoutExtension(jarPath);
+                        
                         // 替换占位符
-                                string processedArg = argStr
-                                    .Replace("${natives_directory}", $"\"{Path.Combine(versionDir, $"{SelectedVersion}-natives")}\"")
-                                    .Replace("${launcher_name}", "XianYuLauncher")
-                                    .Replace("${launcher_version}", "1.0")
-                                    .Replace("${classpath}", classpath)
-                                    .Replace("${library_directory}", $"\"{librariesPath}\"");
-                                args.Add(processedArg);
+                        string processedArg = argStr
+                            .Replace("${natives_directory}", $"\"{Path.Combine(versionDir, $"{SelectedVersion}-natives")}\"")
+                            .Replace("${launcher_name}", "XianYuLauncher")
+                            .Replace("${launcher_version}", "1.0")
+                            .Replace("${classpath}", classpath)
+                            .Replace("${classpath_separator}", ";") // 添加对classpath_separator的处理
+                            .Replace("${version_name}", versionName); // 添加对${version_name}占位符的处理
+                        
+                        // 检查是否是-p参数的标记
+                        if (processedArg == "-p")
+                        {
+                            // 这是-p参数标记，下一个参数是路径值
+                            isNextArgPValue = true;
+                            args.Add(processedArg); // 直接添加-p参数
+                            continue; // 跳过后续处理，等待处理下一个参数
+                        }
+                        
+                        // 检查是否是-p参数的值
+                        if (isNextArgPValue)
+                        {
+                            // 这是-p参数的值，如"${library_directory}/path/to/file.jar;..."
+                            // 替换${library_directory}为实际路径
+                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
+                            
+                            // 替换所有/为反斜杠
+                            processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
+                            
+                            // 移除末尾的空格
+                            processedArg = processedArg.Trim();
+                            
+                            // 用引号包裹-p参数的值
+                            processedArg = $"\"{processedArg}\"";
+                            
+                            // 重置状态变量
+                            isNextArgPValue = false;
+                        }
+                        // 处理-D参数（如-DlibraryDirectory）
+                        else if (processedArg.StartsWith("-D"))
+                        {
+                            // 检查是否包含=${library_directory}
+                            if (processedArg.Contains("=${library_directory}"))
+                            {
+                                // 替换${library_directory}为带引号的路径
+                                processedArg = processedArg.Replace("${library_directory}", $"\"{librariesPath}\"");
+                            }
+                            // 处理其他-D参数中的路径
+                            else if (processedArg.Contains("=") && processedArg.Contains("${"))
+                            {
+                                // 这里可以添加其他-D参数的处理
+                            }
+                        }
+                        // 处理其他包含${library_directory}的参数
+                        else if (processedArg.Contains("${library_directory}"))
+                        {
+                            // 替换${library_directory}为实际路径
+                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
+                            
+                            // 只在路径中替换/为\，不在JVM模块参数中替换
+                            if (processedArg.Contains(".jar") || processedArg.Contains(".zip"))
+                            {
+                                processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
+                            }
+                        }
+                        else
+                        {
+                            // 其他参数，不替换/为\
+                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
+                        }
+                        
+                        args.Add(processedArg);
                         
                         // 检查是否包含classpath
                         if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
@@ -1355,7 +1424,7 @@ public partial class 启动ViewModel : ObservableRecipient
                 UseShellExecute = false, // 设置为false以便捕获输出
                 CreateNoWindow = true, // 隐藏命令行窗口
                 WindowStyle = ProcessWindowStyle.Hidden, // 设置窗口样式为隐藏
-                WorkingDirectory = Path.GetDirectoryName(javaPath), // 设置工作目录为Java所在目录
+                WorkingDirectory = versionDir, // 设置工作目录为当前版本目录，解决mod启动崩溃问题
                 RedirectStandardError = true, // 重定向标准错误以便后续分析
                 RedirectStandardOutput = true, // 重定向标准输出以便后续分析
                 StandardErrorEncoding = System.Text.Encoding.UTF8, // 设置编码为UTF-8

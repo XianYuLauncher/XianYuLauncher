@@ -435,14 +435,8 @@ namespace XMCL2025.ViewModels
                 // 如果选择了已安装的版本，使用该版本的路径
                 if (SelectedInstalledVersion != null)
                 {
-                    // 构建完整的版本路径：.minecraft/versions/{versionName}
-                    string versionDir = Path.Combine(minecraftPath, "versions", $"{SelectedInstalledVersion.LoaderType.ToLower()}-{SelectedInstalledVersion.GameVersion}-{SelectedInstalledVersion.LoaderVersion}");
-                    
-                    // 如果直接按版本号命名的文件夹不存在，尝试使用版本号作为文件夹名
-                    if (!Directory.Exists(versionDir))
-                    {
-                        versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
-                    }
+                    // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
+                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
                     
                     // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesPath = Path.Combine(versionDir, "saves");
@@ -553,14 +547,8 @@ namespace XMCL2025.ViewModels
                 // 如果选择了已安装的版本，使用该版本的路径
                 if (SelectedInstalledVersion != null)
                 {
-                    // 构建完整的版本路径：.minecraft/versions/{versionName}
-                    string versionDir = Path.Combine(minecraftPath, "versions", $"{SelectedInstalledVersion.LoaderType.ToLower()}-{SelectedInstalledVersion.GameVersion}-{SelectedInstalledVersion.LoaderVersion}");
-                    
-                    // 如果直接按版本号命名的文件夹不存在，尝试使用版本号作为文件夹名
-                    if (!Directory.Exists(versionDir))
-                    {
-                        versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
-                    }
+                    // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
+                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
                     
                     // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesDir = Path.Combine(versionDir, "saves");
@@ -711,6 +699,9 @@ namespace XMCL2025.ViewModels
                 // 注意：这里我们直接使用modVersion.GameVersion，因为每个ModVersionViewModel现在都知道它支持的游戏版本
                 var supportedGameVersionIds = new HashSet<string> { modVersion.GameVersion };
                 
+                // 获取Minecraft数据路径
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                
                 // 处理每个已安装版本
                 foreach (var installedVersion in installedVersions)
                 {
@@ -719,43 +710,65 @@ namespace XMCL2025.ViewModels
                     string loaderType = "Vanilla";
                     string loaderVersion = "";
                     
-                    // 区分不同的加载器版本
-                    if (installedVersion.StartsWith("fabric-"))
+                    // 1. 优先从XianYuL.cfg文件获取加载器类型
+                    string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
+                    string xianYuLConfigPath = Path.Combine(versionDir, "XianYuL.cfg");
+                    bool hasValidConfig = false;
+                    
+                    if (File.Exists(xianYuLConfigPath))
                     {
-                        // Fabric版本格式：fabric-mcversion-loaderversion
-                        var parts = installedVersion.Split('-');
-                        if (parts.Length >= 3)
+                        try
                         {
-                            gameVersion = parts[1];
+                            string configContent = await File.ReadAllTextAsync(xianYuLConfigPath);
+                            dynamic configData = JsonConvert.DeserializeObject(configContent);
+                            if (configData.ModLoaderType != null)
+                            {
+                                string modLoaderTypeFromConfig = configData.ModLoaderType.ToString();
+                                // 首字母大写处理
+                                loaderType = char.ToUpper(modLoaderTypeFromConfig[0]) + modLoaderTypeFromConfig.Substring(1).ToLower();
+                                hasValidConfig = true;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // 配置文件读取失败，继续使用旧逻辑
+                        }
+                    }
+                    
+                    // 2. 如果没有有效的XianYuL.cfg或读取失败，使用版本名搜索
+                    if (!hasValidConfig)
+                    {
+                        // 区分不同的加载器版本
+                        if (installedVersion.Contains("fabric"))
+                        {
                             loaderType = "Fabric";
-                            loaderVersion = parts[2];
                         }
-                    }
-                    else if (installedVersion.StartsWith("forge-"))
-                    {
-                        // Forge版本格式：forge-mcversion-loaderversion
-                        var parts = installedVersion.Split('-');
-                        if (parts.Length >= 3)
+                        else if (installedVersion.Contains("forge"))
                         {
-                            gameVersion = parts[1];
                             loaderType = "Forge";
-                            loaderVersion = parts[2];
                         }
-                    }
-                    else if (installedVersion.StartsWith("neoforge-"))
-                    {
-                        // NeoForge版本格式：neoforge-mcversion-loaderversion
-                        var parts = installedVersion.Split('-');
-                        if (parts.Length >= 3)
+                        else if (installedVersion.Contains("neoforge"))
                         {
-                            gameVersion = parts[1];
                             loaderType = "NeoForge";
-                            loaderVersion = parts[2];
                         }
                     }
-                    else
+                    
+                    // 3. 解析游戏版本（简化处理，直接提取数字部分）
+                    // 从版本名中提取游戏版本号，处理各种格式
+                    string[] versionParts = installedVersion.Split('-');
+                    foreach (var part in versionParts)
                     {
-                        // 原版Minecraft版本
+                        // 检查是否为有效的游戏版本格式（如1.21, 1.20.6等）
+                        if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d+\.\d+(\.\d+)?$"))
+                        {
+                            gameVersion = part;
+                            break;
+                        }
+                    }
+                    
+                    // 如果没有提取到有效游戏版本，直接使用版本名
+                    if (string.IsNullOrEmpty(gameVersion))
+                    {
                         gameVersion = installedVersion;
                     }
                     
@@ -802,7 +815,8 @@ namespace XMCL2025.ViewModels
                         GameVersion = gameVersion,
                         LoaderType = loaderType,
                         LoaderVersion = loaderVersion,
-                        IsCompatible = isCompatible
+                        IsCompatible = isCompatible,
+                        OriginalVersionName = installedVersion
                     };
                     InstalledGameVersions.Add(versionViewModel);
                 }
@@ -823,31 +837,98 @@ namespace XMCL2025.ViewModels
         {
             InstalledGameVersions = new ObservableCollection<InstalledGameVersionViewModel>();
 
-            // 模拟已安装的游戏版本
-            var mockVersions = new List<(string version, string loaderType, string loaderVersion, bool isCompatible)>
+            // 模拟已安装的游戏版本，使用更真实的版本文件夹命名格式
+            var mockVersions = new List<string>
             {
-                ("1.21", "Fabric", "0.15.0", true),
-                ("1.21", "Forge", "51.0.0", false),
-                ("1.21", "NeoForge", "21.0.0", true),
-                ("1.20.6", "Fabric", "0.15.0", true),
-                ("1.20.6", "Forge", "50.1.0", true),
-                ("1.20.4", "Fabric", "0.14.22", false),
-                ("1.20.4", "Forge", "49.1.0", false),
-                ("1.20.1", "Fabric", "0.14.21", false),
-                ("1.20.1", "Forge", "47.1.0", false),
-                ("1.19.4", "Fabric", "0.14.20", false),
-                ("1.19.4", "Forge", "45.1.0", false),
+                "fabric-1.21-0.15.0",
+                "forge-1.21-51.0.0",
+                "neoforge-1.21-21.0.0",
+                "fabric-1.20.6-0.15.0",
+                "forge-1.20.6-50.1.0",
+                "fabric-1.20.4-0.14.22",
+                "forge-1.20.4-49.1.0",
+                "fabric-1.20.1-0.14.21",
+                "forge-1.20.1-47.1.0",
+                "fabric-1.19.4-0.14.20",
+                "forge-1.19.4-45.1.0",
             };
 
-            foreach (var (version, loaderType, loaderVersion, isCompatible) in mockVersions)
+            foreach (var installedVersion in mockVersions)
             {
+                // 模拟解析逻辑，与真实逻辑保持一致
+                string gameVersion = string.Empty;
+                string loaderType = "Vanilla";
+                string loaderVersion = "";
+                
+                // 从版本名中提取游戏版本号
+                string[] versionParts = installedVersion.Split('-');
+                foreach (var part in versionParts)
+                {
+                    if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d+\.\d+(\.\d+)?$"))
+                    {
+                        gameVersion = part;
+                        break;
+                    }
+                }
+                
+                // 如果没有提取到有效游戏版本，直接使用版本名
+                if (string.IsNullOrEmpty(gameVersion))
+                {
+                    gameVersion = installedVersion;
+                }
+                
+                // 提取加载器类型
+                if (installedVersion.Contains("fabric"))
+                {
+                    loaderType = "Fabric";
+                }
+                else if (installedVersion.Contains("forge"))
+                {
+                    loaderType = "Forge";
+                }
+                else if (installedVersion.Contains("neoforge"))
+                {
+                    loaderType = "NeoForge";
+                }
+                
+                // 兼容性检查
+                bool isCompatible = false;
+                bool isDatapack = ProjectType == "datapack" || 
+                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                
+                // 如果是资源包、光影或数据包，只基于游戏版本号进行兼容性检测
+                if (ProjectType == "resourcepack" || ProjectType == "shader" || isDatapack)
+                {
+                    // 检查游戏版本是否匹配
+                    if (gameVersion == modVersion.GameVersion)
+                    {
+                        isCompatible = true;
+                    }
+                }
+                else
+                {
+                    // 获取该Mod版本支持的加载器列表
+                    var supportedLoaders = modVersion.Loaders;
+                    
+                    if (supportedLoaders != null && supportedLoaders.Count > 0)
+                    {
+                        // 检查加载器是否匹配
+                        isCompatible = supportedLoaders.Contains(loaderType);
+                    }
+                    else
+                    {
+                        // 如果Mod没有指定加载器要求，则默认兼容
+                        isCompatible = true;
+                    }
+                }
+                
                 var versionViewModel = new InstalledGameVersionViewModel
                 {
-                    GameVersion = version,
+                    GameVersion = gameVersion,
                     LoaderType = loaderType,
                     LoaderVersion = loaderVersion,
-                    // 如果是资源包或光影，所有版本都兼容
-                    IsCompatible = (ProjectType == "resourcepack" || ProjectType == "shader") ? true : isCompatible
+                    IsCompatible = isCompatible,
+                    OriginalVersionName = installedVersion
                 };
                 InstalledGameVersions.Add(versionViewModel);
             }
@@ -959,14 +1040,8 @@ namespace XMCL2025.ViewModels
                 // 获取Minecraft数据路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 
-                // 构建游戏版本文件夹路径
-                string versionDir = Path.Combine(minecraftPath, "versions", $"{SelectedInstalledVersion.LoaderType.ToLower()}-{SelectedInstalledVersion.GameVersion}-{SelectedInstalledVersion.LoaderVersion}");
-                
-                // 如果直接按版本号命名的文件夹不存在，尝试使用版本号作为文件夹名
-                if (!Directory.Exists(versionDir))
-                {
-                    versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.GameVersion);
-                }
+                // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
+                string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
                 
                 // 根据项目类型选择文件夹名称
                 string targetFolder;
@@ -1366,6 +1441,9 @@ namespace XMCL2025.ViewModels
 
         [ObservableProperty]
         private bool _isCompatible;
+
+        [ObservableProperty]
+        private string _originalVersionName;
 
         public string DisplayName => $"{GameVersion} - {LoaderType} {LoaderVersion}";
     }
