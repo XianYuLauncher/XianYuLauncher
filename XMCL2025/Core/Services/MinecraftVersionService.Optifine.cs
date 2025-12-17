@@ -396,15 +396,20 @@ public partial class MinecraftVersionService
             _logger.LogInformation("开始处理临时版本目录");
             string installerTempVersionsDirectory = Path.Combine(tempMinecraftDirectory, "versions");
             
-            // 查找临时目录中与optifineVersionId匹配的版本目录
-            string installerTempOptifineVersionDirectory = Path.Combine(installerTempVersionsDirectory, optifineVersionId);
+            // 生成标准的Optifine版本名称，用于查找临时目录
+            // Optifine安装器总是使用标准格式创建目录，无论用户是否提供了自定义名称
+            string standardOptifineVersionId = $"{minecraftVersionId}-OptiFine_{optifineType}_{optifinePatch}";
+            
+            // 查找临时目录中与标准Optifine版本名称匹配的版本目录
+            string installerTempOptifineVersionDirectory = Path.Combine(installerTempVersionsDirectory, standardOptifineVersionId);
             if (Directory.Exists(installerTempOptifineVersionDirectory))
             {
                 _logger.LogInformation("找到匹配的临时Optifine版本目录: {InstallerTempOptifineVersionDirectory}", installerTempOptifineVersionDirectory);
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到匹配的临时Optifine版本目录: {installerTempOptifineVersionDirectory}");
                 
                 // 7.2.1 复制jar文件到原目录
-                string installerTempJarPath = Path.Combine(installerTempOptifineVersionDirectory, $"{optifineVersionId}.jar");
+                // 临时目录中的文件名使用标准Optifine版本名称
+                string installerTempJarPath = Path.Combine(installerTempOptifineVersionDirectory, $"{standardOptifineVersionId}.jar");
                 string destJarPath = Path.Combine(optifineVersionDirectory, $"{optifineVersionId}.jar");
                 if (File.Exists(installerTempJarPath))
                 {
@@ -414,7 +419,8 @@ public partial class MinecraftVersionService
                 }
                 
                 // 7.2.2 处理json文件，合并而非直接替换
-                string installerTempJsonPath = Path.Combine(installerTempOptifineVersionDirectory, $"{optifineVersionId}.json");
+                // 临时目录中的文件名使用标准Optifine版本名称
+                string installerTempJsonPath = Path.Combine(installerTempOptifineVersionDirectory, $"{standardOptifineVersionId}.json");
                 string destJsonPath = Path.Combine(optifineVersionDirectory, $"{optifineVersionId}.json");
                 if (File.Exists(installerTempJsonPath))
                 {
