@@ -27,15 +27,32 @@ public sealed partial class 启动Page : Page
     private const string DefaultAvatarPath = "ms-appx:///Assets/DefaultAvatar.png";
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
-
+    private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
     public 启动Page()
     {
         ViewModel = App.GetService<启动ViewModel>();
         _navigationService = App.GetService<INavigationService>();
         InitializeComponent();
-        LoadAvatar();
+        
+        // 预加载处理过的史蒂夫头像，确保加载过程中显示清晰的占位头像
+        _ = PreloadProcessedSteveAvatarAsync();
     }
-
+    
+    /// <summary>
+    /// 预加载处理过的史蒂夫头像
+    /// </summary>
+    private async Task PreloadProcessedSteveAvatarAsync()
+    {
+        try
+        {
+            _processedSteveAvatar = await ProcessSteveAvatarAsync();
+        }
+        catch (Exception)
+        {
+            // 预加载失败时，会在需要时重新处理
+        }
+    }
+    
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
@@ -45,6 +62,10 @@ public sealed partial class 启动Page : Page
         {
             StatusTextBlock.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
         }
+        
+        // 每次导航到该页面时都加载头像
+        // 对于正版玩家，会先显示缓存头像，然后后台静默刷新
+        LoadAvatar();
     }
 
     /// <summary>
@@ -115,63 +136,128 @@ public sealed partial class 启动Page : Page
             return;
         }
 
-        // 离线玩家使用Steve头像
+        // 1. 离线玩家使用Steve头像
         if (ViewModel.SelectedProfile.IsOffline)
         {
-            // 使用Win2D处理史蒂夫头像，确保清晰显示
+            // 先显示原始Steve头像
+            ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            
+            // 异步处理Steve头像，确保清晰显示
             var steveAvatar = await ProcessSteveAvatarAsync();
             if (steveAvatar != null)
             {
                 ProfileAvatar.Source = steveAvatar;
             }
-            else
-            {
-                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
-            }
             return;
         }
 
-        // 正版玩家从Mojang API获取头像
+        // 2. 正版玩家处理逻辑：
+        //    - 先显示缓存头像（如果存在）
+        //    - 然后后台异步刷新新头像
+        //    - 刷新成功后更新显示
         try
         {
-            // 尝试从缓存加载头像
+            // 2.1 尝试从缓存加载头像
             var cachedAvatar = await LoadAvatarFromCache(ViewModel.SelectedProfile.Id);
             if (cachedAvatar != null)
             {
+                // 显示缓存头像
                 ProfileAvatar.Source = cachedAvatar;
-                return;
+                
+                // 2.2 后台异步刷新新头像，实现静默刷新效果
+                _ = RefreshAvatarInBackgroundAsync();
             }
-
-            // 缓存中没有，从Mojang API获取
+            else
+            {
+                // 缓存不存在，直接从网络加载
+                await LoadAvatarFromNetworkAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // 加载失败，使用默认头像
+            ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            
+            // 后台尝试刷新
+            _ = RefreshAvatarInBackgroundAsync();
+        }
+    }
+    
+    /// <summary>
+    /// 从网络加载头像
+    /// </summary>
+    private async Task LoadAvatarFromNetworkAsync()
+    {
+        try
+        {
+            // 显示处理过的史蒂夫头像作为加载状态
+            if (_processedSteveAvatar != null)
+            {
+                // 使用预加载的处理过的史蒂夫头像
+                ProfileAvatar.Source = _processedSteveAvatar;
+            }
+            else
+            {
+                // 预加载未完成，临时使用处理过的史蒂夫头像
+                var tempProcessedSteve = await ProcessSteveAvatarAsync();
+                if (tempProcessedSteve != null)
+                {
+                    ProfileAvatar.Source = tempProcessedSteve;
+                    // 更新预加载的头像
+                    _processedSteveAvatar = tempProcessedSteve;
+                }
+                else
+                {
+                    // 处理失败，使用原始史蒂夫头像
+                    ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                }
+            }
+            
+            // 从Mojang API获取头像
             var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
             var bitmap = await GetAvatarFromMojangApiAsync(mojangUri);
             if (bitmap != null)
             {
                 ProfileAvatar.Source = bitmap;
-                // 保存到缓存
-                await SaveAvatarToCache(ViewModel.SelectedProfile.Id, bitmap);
+                // 缓存已在CropAvatarFromSkinAsync方法中保存
             }
             else
             {
                 ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // 显示错误信息
-            var errorDialog = new ContentDialog
-            {
-                Title = "加载失败",
-                Content = $"加载头像失败: {ex.Message}",
-                PrimaryButtonText = "确定",
-                XamlRoot = this.Content.XamlRoot
-            };
-            await errorDialog.ShowAsync();
-            
-            // 加载失败，使用默认头像
             ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
         }
     }
+    
+    /// <summary>
+    /// 后台异步刷新头像
+    /// </summary>
+    private async Task RefreshAvatarInBackgroundAsync()
+    {
+        try
+        {
+            // 从Mojang API获取最新头像
+            var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+            var bitmap = await GetAvatarFromMojangApiAsync(mojangUri);
+            if (bitmap != null)
+            {
+                // 刷新成功，更新UI
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    ProfileAvatar.Source = bitmap;
+                });
+            }
+        }
+        catch (Exception)
+        {
+            // 静默刷新失败，不显示错误，保持原有头像
+        }
+    }
+    
+
 
     /// <summary>
     /// 从缓存加载头像
@@ -262,7 +348,9 @@ public sealed partial class 启动Page : Page
             }
 
             // 7. 使用Win2D裁剪头像区域
-            var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl);
+            // 提取UUID从mojangUri
+            string uuid = Path.GetFileName(mojangUri.ToString());
+            var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl, uuid);
             return avatarBitmap;
         }
         catch (Exception ex)
@@ -284,8 +372,9 @@ public sealed partial class 启动Page : Page
     /// 从皮肤纹理中裁剪头像区域
     /// </summary>
     /// <param name="skinUrl">皮肤URL或本地资源URI</param>
+    /// <param name="uuid">玩家UUID，用于保存头像到缓存</param>
     /// <returns>裁剪后的头像</returns>
-    private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl)
+    private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl, string uuid = null)
     {
         try
         {
@@ -343,7 +432,26 @@ public sealed partial class 启动Page : Page
                 );
             }
 
-            // 5. 转换为BitmapImage
+            // 5. 如果提供了UUID，保存头像到缓存
+            if (!string.IsNullOrEmpty(uuid))
+            {
+                try
+                {
+                    var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
+                    var avatarFile = await cacheFolder.CreateFileAsync($"{uuid}.png", CreationCollisionOption.ReplaceExisting);
+                    
+                    using (var fileStream = await avatarFile.OpenAsync(FileAccessMode.ReadWrite))
+                    {
+                        await renderTarget.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
+                    }
+                }
+                catch (Exception)
+                {
+                    // 保存缓存失败，不影响主流程
+                }
+            }
+
+            // 6. 转换为BitmapImage
             using (var outputStream = new InMemoryRandomAccessStream())
             {
                 await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
@@ -421,13 +529,7 @@ public sealed partial class 启动Page : Page
         }
     }
 
-    /// <summary>
-    /// 保存头像到缓存
-    /// </summary>
-    private async Task SaveAvatarToCache(string uuid, BitmapImage bitmap)
-    {
-        // 简化实现，暂时不保存头像到缓存
-    }
+
 
     /// <summary>
     /// 将BitmapImage转换为SoftwareBitmap

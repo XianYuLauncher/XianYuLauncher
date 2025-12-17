@@ -1193,7 +1193,10 @@ public partial class 启动ViewModel : ObservableRecipient
                     else
                     {
                         // 常规库，添加到classpath
-                        if (library.Downloads?.Artifact != null)
+                        bool isOptifineLibrary = library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase);
+                        
+                        // 对于Optifine库，即使没有Artifact也添加到classpath
+                        if (library.Downloads?.Artifact != null || isOptifineLibrary)
                         {
                             // 检查是否为neoforge-universal.jar，如果是则跳过
                             if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
@@ -1227,6 +1230,11 @@ public partial class 启动ViewModel : ObservableRecipient
                                     {
                                         LaunchStatus += $"\n已添加NeoForge库: {library.Name}";
                                     }
+                                    else if (isOptifineLibrary)
+                                    {
+                                        LaunchStatus += $"\n已添加Optifine库: {library.Name}";
+                                        _logger.LogInformation("已添加Optifine库到classpath: {LibraryName}", library.Name);
+                                    }
                                 }
                                 else
                                 {
@@ -1252,6 +1260,11 @@ public partial class 启动ViewModel : ObservableRecipient
                                         {
                                             LaunchStatus += $"\n已添加到classpath（使用不带classifier的文件名）: {libPathWithoutClassifier}";
                                         }
+                                        else if (isOptifineLibrary)
+                                        {
+                                            LaunchStatus += $"\n已添加Optifine库（使用不带classifier的文件名）: {library.Name}";
+                                            _logger.LogInformation("已添加Optifine库到classpath（使用不带classifier的文件名）: {LibraryName}", library.Name);
+                                        }
                                     }
                                     else
                                     {
@@ -1264,6 +1277,11 @@ public partial class 启动ViewModel : ObservableRecipient
                                     {
                                         LaunchStatus += $"\n但文件不存在: {libPath}";
                                     }
+                                    else if (isOptifineLibrary)
+                                    {
+                                        LaunchStatus += $"\nOptifine库文件不存在: {libPath}";
+                                        _logger.LogError("Optifine库文件不存在: {LibPath}", libPath);
+                                    }
                                     skippedCount++;
                                 }
                             }
@@ -1272,6 +1290,31 @@ public partial class 启动ViewModel : ObservableRecipient
                         {
                             // 这种情况是旧格式的原生库定义，已在下载阶段处理，不需要添加到classpath
                             continue;
+                        }
+                        else if (isOptifineLibrary)
+                        {
+                            // 对于Optifine库，如果上面的条件都不满足，也尝试添加
+                            string libPath = GetLibraryFilePath(library.Name, librariesPath, null);
+                            if (File.Exists(libPath))
+                            {
+                                bool wasAdded = classpathEntries.Add(libPath);
+                                if (wasAdded)
+                                {
+                                    addedCount++;
+                                    LaunchStatus += $"\n已添加Optifine库: {library.Name}";
+                                    _logger.LogInformation("已添加Optifine库到classpath: {LibraryName}", library.Name);
+                                }
+                                else
+                                {
+                                    skippedCount++;
+                                }
+                            }
+                            else
+                            {
+                                LaunchStatus += $"\nOptifine库文件不存在: {libPath}";
+                                _logger.LogError("Optifine库文件不存在: {LibPath}", libPath);
+                                skippedCount++;
+                            }
                         }
                     }
                 }
@@ -1561,8 +1604,7 @@ public partial class 启动ViewModel : ObservableRecipient
                             argStr.StartsWith("--accessToken") || 
                             argStr.StartsWith("--userType") || 
                             argStr == "--userProperties" || 
-                            argStr == "{}" ||
-                            argStr.StartsWith("--tweakClass"))
+                            argStr == "{}")
                         {
                             continue;
                         }

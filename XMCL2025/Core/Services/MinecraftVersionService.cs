@@ -223,6 +223,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                         
                         var response = await _httpClient.GetStringAsync(versionInfoUrl, cts.Token);
+                        
+                        // 添加Debug输出，显示获取到的原始JSON内容（前500个字符）
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到Minecraft版本{versionId}的原始JSON内容:\n{response.Substring(0, Math.Min(500, response.Length))}...");
+                        
                         var apiVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(response);
                         _logger.LogInformation("成功获取Minecraft版本{VersionId}的详细信息", versionId);
                         return apiVersionInfo;
@@ -403,6 +407,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
             // 创建目标目录（如果不存在）
             Directory.CreateDirectory(targetDirectory);
+            
+            // 检查并创建launcher_profiles.json文件
+            EnsureLauncherProfileJson(minecraftDirectory);
 
             // 设置64KB缓冲区大小，提高下载速度
             const int bufferSize = 65536;
@@ -601,6 +608,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             string librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
             Directory.CreateDirectory(versionsDirectory);
             Directory.CreateDirectory(librariesDirectory);
+            
+            // 检查并创建launcher_profiles.json文件
+            EnsureLauncherProfileJson(minecraftDirectory);
 
             double progress = 0;
             progressCallback?.Invoke(progress);
@@ -616,6 +626,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     break;
                 case "Forge":
                     await DownloadForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                    break;
+                case "Optifine":
+                    // 解析Optifine版本为type和patch，使用特殊格式"type:patch"
+                    string[] optifineParts = modLoaderVersion.Split(':', 2);
+                    if (optifineParts.Length != 2)
+                    {
+                        throw new Exception($"无效的Optifine版本格式: {modLoaderVersion}，格式应为type:patch");
+                    }
+                    string optifineType = optifineParts[0];
+                    string optifinePatch = optifineParts[1];
+                    await DownloadOptifineVersionAsync(minecraftVersionId, optifineType, optifinePatch, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 case "Quilt":
                     // Quilt的实现将在后续添加
@@ -3375,6 +3396,18 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // install_profile依赖库只在处理器执行阶段使用，不应包含在最终的游戏启动JSON中
         System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过合并install_profile.json中的依赖库，这些库仅用于执行处理器");
         
+        // 为Optifine相关库处理downloads字段
+        foreach (var library in merged.Libraries)
+        {
+            // 如果是Optifine相关库且downloads为null，添加空的downloads对象
+            if (library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase) && library.Downloads == null)
+            {
+                // 为Optifine库添加空的downloads对象，确保启动器能将它们包含在类路径中
+                library.Downloads = new LibraryDownloads();
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Optifine库添加空downloads对象: {library.Name}");
+            }
+        }
+        
         // 去重依赖库，避免重复
         merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         _logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
@@ -3383,5 +3416,85 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         
         _logger.LogInformation("版本JSON合并完成");
         return merged;
+    }
+    
+    /// <summary>
+    /// 检查并创建launcher_profiles.json文件
+    /// </summary>
+    /// <param name="minecraftDirectory">Minecraft目录路径</param>
+    private async Task EnsureLauncherProfileJsonAsync(string minecraftDirectory)
+    {
+        try
+        {
+            // 构建launcher_profiles.json文件路径
+            string launcherProfilePath = Path.Combine(minecraftDirectory, "launcher_profiles.json");
+            
+            // 检查文件是否已存在
+            if (File.Exists(launcherProfilePath))
+            {
+                _logger.LogInformation("launcher_profiles.json文件已存在，跳过创建");
+                return;
+            }
+            
+            // 创建默认的launcher_profiles.json内容
+            string defaultContent = @"{
+   ""profiles"": {
+     ""None"": {
+       ""name"": ""None""
+     }
+   },
+   ""selectedProfile"": ""None""
+}";
+            
+            // 写入文件
+            await File.WriteAllTextAsync(launcherProfilePath, defaultContent);
+            _logger.LogInformation("创建launcher_profiles.json文件成功: {LauncherProfilePath}", launcherProfilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建launcher_profiles.json文件失败");
+            // 记录Debug信息
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 创建launcher_profiles.json文件失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 检查并创建launcher_profiles.json文件（同步版本）
+    /// </summary>
+    /// <param name="minecraftDirectory">Minecraft目录路径</param>
+    private void EnsureLauncherProfileJson(string minecraftDirectory)
+    {
+        try
+        {
+            // 构建launcher_profiles.json文件路径
+            string launcherProfilePath = Path.Combine(minecraftDirectory, "launcher_profiles.json");
+            
+            // 检查文件是否已存在
+            if (File.Exists(launcherProfilePath))
+            {
+                _logger.LogInformation("launcher_profiles.json文件已存在，跳过创建");
+                return;
+            }
+            
+            // 创建默认的launcher_profiles.json内容
+            string defaultContent = @"{
+   ""profiles"": {
+     ""None"": {
+       ""name"": ""None""
+     }
+   },
+   ""selectedProfile"": ""None""
+}";
+            
+            // 写入文件
+            File.WriteAllText(launcherProfilePath, defaultContent);
+            _logger.LogInformation("创建launcher_profiles.json文件成功: {LauncherProfilePath}", launcherProfilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建launcher_profiles.json文件失败");
+            // 记录Debug信息
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 创建launcher_profiles.json文件失败: {ex.Message}");
+        }
     }
 }

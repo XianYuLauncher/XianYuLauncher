@@ -1,0 +1,196 @@
+OAuth 2
+🧑‍🔬 供开发者阅读的文章
+
+如果你看不懂这个页面在说些什么，直接关闭这篇文章或者浏览其它文章即可。
+
+忽略此文章并不会影响你正常使用 LittleSkin 的基础功能。
+
+LittleSkin 实现了 OAuth 2 服务端。通过 OAuth 2，你可以在你的应用中集成「使用 LittleSkin 账户登录」这样的功能，并请求读取和修改用户在 LittleSkin 上的数据。
+
+✨ 为启动器等应用带来了新的可能
+
+LittleSkin 现已支持通过 OAuth 获取用以访问 Yggdrasil API 的 Minecraft 令牌。
+
+创建 OAuth 2 应用
+在你的应用中集成 OAuth 2 之前，你需要先在 LittleSkin 创建应用。
+
+通过提供：
+
+应用名称（将被展示在用户的授权界面上）
+回调 URL / redirect_uri
+若要添加多条回调 URL，每条 URL 之间可使用半角逗号 , 分隔
+你将会被分配到：
+
+客户端 ID / client_id
+客户端 Secret / client_secret
+获取访问令牌
+对于需要鉴权的 API，需要先向用户请求授权，获取到访问令牌（Access Token）后，再向对应的 API 发起请求。
+
+LittleSkin 支持以下授权请求方式：
+
+授权代码授予（Authorization Code Grant）
+使用授权代码流（Authorization Code Flow）获取访问令牌，适用于有后端的场景
+设备授权授予（Device Authorization Grant）
+使用设备代码流（Device Code Flow）获取访问令牌，适用于无后端或其他受限制的场景
+使用访问令牌进行鉴权
+在请求需要鉴权的 API 时，将访问令牌作为 Bearer Token 放入 HTTP 请求的 Authorization 头中，即可完成鉴权。
+
+例如，使用访问令牌请求用户信息：
+
+
+GET https://littleskin.cn/api/user HTTP/1.1
+Accept: application/json
+Authorization: Bearer {{access_token}}
+✅ 如访问令牌有效，LittleSkin 将正常返回 API 响应；
+❌ 如访问令牌无效，LittleSkin 将返回 HTTP 401 Unauthorized 错误；
+⛔ 如应用访问了用户未授权的资源，LittleSkin 将返回 HTTP 200 OK，但 JSON 响应中将包含一个 code 参数，其值为 403。
+如要了解更多 API 的用法，请参阅 LittleSkin API。
+
+不要解码令牌
+
+请不要在代码中解码或验证任何不由你直接签发的令牌，即使其看起来像是某种你熟悉的形式——除非文档中明确说明你可以这么做。
+
+LittleSkin 签发的令牌可以是任何形式，在代码中解码令牌可能导致你的应用在未来无法正常工作。因此，除非文档中明确说明你可以从令牌中获取信息，否则请始终将令牌视为不透明的字符串。
+
+建议在请求中添加 Accept 头
+
+我们建议始终在请求 API 时在 HTTP 请求中添加 Accept: application/json 头。
+
+一般情况下，即使不添加这个头，LittleSkin API 也将返回 JSON 响应，但在部分错误情况下可能会返回意想不到的响应。因此，除文档中特别说明的情况外，请在请求中添加这个头。
+通过授权代码流获取 OAuth 访问令牌
+🧑‍🔬 供开发者阅读的文章
+
+如果你看不懂这个页面在说些什么，直接关闭这篇文章或者浏览其它文章即可。
+
+忽略此文章并不会影响你正常使用 LittleSkin 的基础功能。
+
+授权代码授予（Authorization Code Grant） 使用 授权代码流（Authorization Code Flow） 获取访问令牌（Access Token），是最常见的 OAuth 2.0 认证流。
+
+若要了解关于 OAuth 2.0 授权代码授予和授权代码流的更多信息，请参阅 RFC 6749。
+
+适用场景
+
+应用通过后端服务器获取访问令牌
+在第三方网站实现「通过 LittleSkin 账号登录」✨
+⚠ 部分功能尚未实现
+
+目前 LittleSkin 尚未支持 PKCE。如果你希望在无后端的 SPA 或原生应用中获取访问令牌，请考虑使用 设备代码流。
+
+请求授权代码
+应用需要按以下格式拼接授权 URL，并引导用户在浏览器中访问：
+
+
+https://littleskin.cn/oauth/authorize?client_id={{client_id}}&redirect_uri={{redirect_uri}}&response_type=code&scope={{scope}}
+参数	值
+client_id	...
+redirect_uri	...
+response_type	固定值 code
+scope	要申请的权限列表，多个权限节点间以空格分隔
+若 scope 参数为空，则默认为 User.Read。
+
+了解有效的 scope 权限列表
+
+要了解具体的每个 API 要求申请的权限，请查阅 LittleSkin API。
+
+在用户完成授权后，LittleSkin 将会将用户重定向至回调 URL (redirect_uri)，并在 URL 的 Query String 中包含一个名为 code 的参数。这个参数的值即为本次授权的授权代码。
+
+兑换访问令牌
+获取到授权代码后，应用需要向 LittleSkin 发送如下请求，以授权代码兑换访问令牌：
+
+
+// 请求体中的换行只是为了方便阅读，实际发起请求时不应换行，下同
+POST https://littleskin.cn/oauth/token HTTP/1.1
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&
+client_id={{client_id}}&
+client_secret={{client_secret}}&
+redirect_uri={{redirect_uri}}&
+code={{code}}
+如果请求成功，LittleSkin 将返回如下响应：
+
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "token_type": "Bearer",
+  "expires_in": 259200,
+  "access_token": "******",
+  "refresh_token": "******"
+}
+参数	值
+token_type	令牌类型，固定值 Bearer
+expires_in	令牌的有效时间（秒）
+access_token	访问令牌
+refresh_token	刷新令牌
+🎉 至此即完成了授权代码流的所有流程，成功获取到了访问令牌。
+
+刷新访问令牌
+为了延长单次授权的有效期，可在访问令牌有效期及过期后一段时间内请求刷新访问令牌，以获取一个新的访问令牌。
+
+
+POST https://littleskin.cn/oauth/token HTTP/1.1
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&
+refresh_token={{refresh_token}}&
+client_id={{client_id}}&
+client_secret={{client_secret}}&
+参数	值
+grant_type	固定值 refresh_token
+refresh_token	先前获取到的刷新令牌
+client_id	...
+client_secret	...
+如果请求成功，将返回如下响应：
+
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "token_type": "Bearer",
+  "expires_in": 259200,
+  "access_token": "******",
+  "refresh_token": "******"
+}
+值	解释
+token_type	令牌类型，固定值 Bearer
+expires_in	令牌的有效时间（秒）
+access_token	新的访问令牌
+refresh_token	新的刷新令牌
+访问令牌刷新后，原先的访问令牌和刷新令牌将立即失效，之后所有的 API 请求都必须使用新的访问令牌。
+
+错误响应
+在 OAuth 2 授权过程中，如发生错误，LittleSkin 将返回错误响应。
+
+错误响应中会包含以下参数，以告知导致错误的原因。这些参数在授权流的不同环节中可能出现于不同位置。
+
+参数	值
+error	RFC 6749 中规定的错误类型
+error_description	人类可读的错误描述文本
+如错误在授权过程中发生，LittleSkin 会将用户重定向至回调 URL，并在 Query String 中包含上述参数：
+
+
+https://example.com/oauth/littleskin/callback?error={{error}}&error_description={{error_description}}
+如错误在兑换访问令牌时中发生，LittleSkin 会返回如下错误响应，并在响应体中包含上述参数：
+
+
+HTTP/1.1 400 Bad Request // server_error 时为 500 Internal Error
+Content-Type: application/json
+
+{
+    "error": "error type",
+    "error_description": "error description"
+}
+错误类型
+以下仅列举了错误响应中的 error 参数的部分常见值，更多错误类型和原因请参考 RFC 6749。
+
+错误类型	原因
+access_denied	用户拒绝授权
+invalid_client	应用未注册或未申请白名单
+invalid_request	请求参数有误，如缺少必要参数、参数值不合法等
+invalid_scope	请求的 scope 不合法，请查阅 LittleSkin API
+server_error	服务器内部错误，请 联系 LittleSkin 运营组

@@ -10,6 +10,7 @@ public interface IMinecraftVersionService
     Task<VersionInfo> GetVersionInfoAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
     Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
     Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null);
+    Task DownloadVersionAsync(string versionId, string targetDirectory, Action<double> progressCallback = null, string customVersionName = null);
     Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<double> progressCallback = null, bool allowNetwork = true);
     Task ExtractNativeLibrariesAsync(string versionId, string librariesDirectory, string nativesDirectory);
     Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null);
@@ -47,16 +48,27 @@ public class VersionEntry
 
 public class VersionInfo
     {
+        [JsonProperty("id")]
         public string Id { get; set; }
+        [JsonProperty("type")]
         public string Type { get; set; }
+        [JsonProperty("time")]
         public string Time { get; set; }
+        [JsonProperty("releaseTime")]
         public string ReleaseTime { get; set; }
+        [JsonProperty("url")]
         public string Url { get; set; }
+        [JsonProperty("downloads")]
         public Downloads Downloads { get; set; }
+        [JsonProperty("libraries")]
         public List<Library> Libraries { get; set; }
+        [JsonProperty("mainClass")]
         public string MainClass { get; set; }
+        [JsonProperty("arguments")]
         public Arguments Arguments { get; set; }
+        [JsonProperty("assetIndex")]
         public AssetIndex AssetIndex { get; set; }
+        [JsonProperty("assets")]
         public string Assets { get; set; }
         [JsonProperty("javaVersion")]
         public JavaVersion JavaVersion { get; set; }
@@ -68,88 +80,122 @@ public class VersionInfo
     {
         [JsonProperty("majorVersion")]
         public int MajorVersion { get; set; }
+        [JsonProperty("component")]
         public string Component { get; set; }
     }
     
     public class AssetIndex
     {
+        [JsonProperty("id")]
         public string Id { get; set; }
+        [JsonProperty("sha1")]
         public string Sha1 { get; set; }
+        [JsonProperty("size")]
         public long Size { get; set; }
+        [JsonProperty("totalSize")]
         public long TotalSize { get; set; }
+        [JsonProperty("url")]
         public string Url { get; set; }
     }
 
     // 资源索引模型（用于解析index.json文件）
     public class AssetIndexJson
     {
+        [JsonProperty("objects")]
         public Dictionary<string, AssetItemMeta> Objects { get; set; } = new Dictionary<string, AssetItemMeta>();
     }
 
     // 单个资源元数据模型
     public class AssetItemMeta
     {
+        [JsonProperty("hash")]
         public string Hash { get; set; }
+        [JsonProperty("size")]
         public long Size { get; set; }
     }
 
 public class Library
 {
+    [JsonProperty("name")]
     public string Name { get; set; }
+    [JsonProperty("downloads")]
     public LibraryDownloads Downloads { get; set; }
+    [JsonProperty("rules")]
     public LibraryRules[] Rules { get; set; }
+    [JsonProperty("natives")]
     public LibraryNative Natives { get; set; }
+    [JsonProperty("extract")]
     public LibraryExtract Extract { get; set; }
 }
 
 public class LibraryDownloads
 {
+    [JsonProperty("artifact")]
     public DownloadFile Artifact { get; set; }
+    [JsonProperty("classifiers")]
     public Dictionary<string, DownloadFile> Classifiers { get; set; }
 }
 
 public class LibraryRules
 {
+    [JsonProperty("action")]
     public string Action { get; set; }
+    [JsonProperty("os")]
     public LibraryOs Os { get; set; }
 }
 
 public class LibraryOs
 {
+    [JsonProperty("name")]
     public string Name { get; set; }
+    [JsonProperty("version")]
     public string Version { get; set; }
+    [JsonProperty("arch")]
     public string Arch { get; set; }
 }
 
 public class LibraryNative
 {
+    [JsonProperty("windows")]
     public string Windows { get; set; }
+    [JsonProperty("linux")]
     public string Linux { get; set; }
+    [JsonProperty("osx")]
     public string Osx { get; set; }
 }
 
 public class LibraryExtract
 {
+    [JsonProperty("exclude")]
     public string[] Exclude { get; set; }
 }
 
 public class Arguments
 {
+    [JsonProperty("game")]
     public List<object> Game { get; set; }
+    [JsonProperty("jvm")]
     public List<object> Jvm { get; set; }
 }
 
 public class Downloads
 {
+    [JsonProperty("client")]
     public DownloadFile Client { get; set; }
+    [JsonProperty("client_mappings")]
     public DownloadFile ClientMappings { get; set; }
+    [JsonProperty("server")]
     public DownloadFile Server { get; set; }
+    [JsonProperty("server_mappings")]
     public DownloadFile ServerMappings { get; set; }
 }
 
 public class DownloadFile
 {
+    [JsonProperty("sha1")]
     public string Sha1 { get; set; }
+    [JsonProperty("size")]
     public int Size { get; set; }
+    [JsonProperty("url")]
     public string Url { get; set; }
 }

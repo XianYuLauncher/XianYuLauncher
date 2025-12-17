@@ -7,6 +7,7 @@
     xmlns:viewModels="using:XMCL2025.ViewModels"
     xmlns:helpers="using:XMCL2025.Helpers"
     xmlns:core="using:XMCL2025.Core.Models"
+    xmlns:services="using:XMCL2025.Core.Services"
     mc:Ignorable="d"
     HorizontalAlignment="Stretch">
 
@@ -108,13 +109,35 @@
                                             <Grid.Background>
                                                 <SolidColorBrush Color="Transparent" />
                                             </Grid.Background>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
                                             <TextBlock 
+                                                Grid.Column="0"
                                                 Text="{x:Bind Name, Mode=OneWay}" 
                                                 FontSize="16" 
                                                 FontWeight="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToFontWeightConverter}}"
                                                 VerticalAlignment="Center" 
                                                 HorizontalAlignment="Stretch" />
-                                        </Grid>
+                                            <Button
+                                                Grid.Column="1"
+                                                Width="24"
+                                                Height="24"
+                                                Padding="0"
+                                                Margin="-8,0,0,0"
+                                                Background="Transparent"
+                                                BorderBrush="Transparent"
+                                                Foreground="{ThemeResource TextFillColorSecondary}"
+                                                Click="CancelModLoader_Click"
+                                                Tag="{Binding}"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                ToolTipService.ToolTip="取消选择">
+                                                <FontIcon Glyph="&#xE711;" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Button>
+                                            </Grid>
                                     </Expander.Header>
                                     
                                     <!-- Expander内容，包含版本列表和加载指示器 -->
@@ -143,27 +166,51 @@
                                             Width="Auto"
                                             Tag="{x:Bind Mode=OneWay}"> <!-- 将整个ModLoaderItem作为Tag -->
                                             <ListView.ItemTemplate>
-                                                <DataTemplate x:DataType="x:String">
-                                                    <Grid HorizontalAlignment="Stretch">
-                                                        <Border Padding="12,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="6" Margin="0,4,0,4" HorizontalAlignment="Stretch">
-                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
-                                                                <!-- ModLoader图标 -->
-                                                                <Image 
-                                                                    Source="{Binding ElementName=ModLoaderListView, Path=Tag.IconUrl}" 
-                                                                    Width="20" 
-                                                                    Height="20" 
-                                                                    Margin="0,0,12,0" 
-                                                                    VerticalAlignment="Center"
-                                                                    Stretch="UniformToFill" 
-                                                                    Visibility="Visible"/>
-                                                                
-                                                                <!-- 版本号 -->
-                                                                <TextBlock Text="{x:Bind}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ListView.ItemTemplate>
+                                                        <DataTemplate x:DataType="x:String">
+                                                            <Grid HorizontalAlignment="Stretch">
+                                                                <Border Padding="12,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="6" Margin="0,4,0,4" HorizontalAlignment="Stretch">
+                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                                                                        <!-- ModLoader图标 -->
+                                                                        <Image 
+                                                                            Source="{Binding ElementName=ModLoaderListView, Path=Tag.IconUrl}" 
+                                                                            Width="20" 
+                                                                            Height="20" 
+                                                                            Margin="0,0,12,0" 
+                                                                            VerticalAlignment="Center"
+                                                                            Stretch="UniformToFill" 
+                                                                            Visibility="Visible"/>
+                                                                                                                                    <!-- 内容区域，使用Grid布局，分为版本号和兼容信息两列 -->
+                                                                        <Grid HorizontalAlignment="Stretch">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            
+                                                                            <!-- 版本号 -->
+                                                                            <TextBlock 
+                                                                                Grid.Column="0" 
+                                                                                Text="{x:Bind}" 
+                                                                                FontSize="15" 
+                                                                                VerticalAlignment="Center" 
+                                                                                HorizontalAlignment="Left" />
+                                                                            
+                                                                            <!-- Optifine兼容信息 -->
+                                                                            <TextBlock 
+                                                                                Grid.Column="1" 
+                                                                                FontSize="12" 
+                                                                                Foreground="{ThemeResource TextFillColorSecondary}" 
+                                                                                VerticalAlignment="Center" 
+                                                                                HorizontalAlignment="Right" 
+                                                                                Margin="8,0,0,0"
+                                                                                Tag="{x:Bind}" 
+                                                                                Loaded="CompatibleInfoTextBlock_Loaded">
+                                                                            </TextBlock>
+                                                                        </Grid>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ListView.ItemTemplate>
 
                                         </ListView>
                                     </Grid>
