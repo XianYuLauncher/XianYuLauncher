@@ -30,7 +30,7 @@
 
         <!-- 页面标题 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock Text="下载Minecraft" FontSize="28" FontWeight="SemiLight" />
+            <TextBlock Text="下载Minecraft" FontSize="28" FontWeight="Bold" />
             <TextBlock Margin="0,8,0,0" FontSize="16">
                 <Run Text="当前Minecraft版本: " />
                 <Run Text="{x:Bind ViewModel.SelectedMinecraftVersion, Mode=OneWay}" FontWeight="SemiBold" />
