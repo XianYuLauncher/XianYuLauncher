@@ -113,6 +113,9 @@ public partial class App : Application
             // Forge Service
             services.AddHttpClient<ForgeService>();
             services.AddSingleton<ForgeService>();
+            
+            // Optifine Service
+            services.AddSingleton<OptifineService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();

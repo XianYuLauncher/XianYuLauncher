@@ -73,9 +73,18 @@ namespace XMCL2025.Core.Services
                 switch (materialType)
                 {
                     case MaterialType.Mica:
+                        // 设置Mica Base材质
+                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
+                        {
+                            Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.Base
+                        };
+                        break;
                     case MaterialType.MicaAlt:
-                        // 设置Mica材质
-                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
+                        // 设置Mica Alt材质
+                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
+                        {
+                            Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.BaseAlt
+                        };
                         break;
                     case MaterialType.Acrylic:
                         // 设置Acrylic材质

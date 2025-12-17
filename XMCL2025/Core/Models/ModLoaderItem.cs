@@ -1,8 +1,45 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using XMCL2025.Core.Services;
 
 namespace XMCL2025.Core.Models;
+
+/// <summary>
+/// 用于保存Optifine版本信息，包括版本名和兼容的Forge版本
+/// </summary>
+public class OptifineVersionInfo
+{
+    /// <summary>
+    /// Optifine版本名（Type_Patch格式）
+    /// </summary>
+    public string VersionName { get; set; }
+    
+    /// <summary>
+    /// 兼容的Forge版本
+    /// </summary>
+    public string CompatibleForgeVersion { get; set; }
+    
+    /// <summary>
+    /// 完整的Optifine版本对象
+    /// </summary>
+    public OptifineVersion FullVersion { get; set; }
+    
+    /// <summary>
+    /// 显示的兼容信息
+    /// </summary>
+    public string CompatibleInfo
+    {
+        get
+        {
+            if (CompatibleForgeVersion == "Forge N/A")
+            {
+                return "不兼容Forge";
+            }
+            return $"兼容 {CompatibleForgeVersion}";
+        }
+    }
+}
 
 /// <summary>
 /// 表示一个ModLoader项，包含其名称、版本列表、加载状态等信息
@@ -14,6 +51,11 @@ public class ModLoaderItem : INotifyPropertyChanged
     private bool _isLoading;
     private bool _hasLoaded;
     private string? _selectedVersion;
+    
+    /// <summary>
+    /// 保存Optifine完整版本信息的字典
+    /// </summary>
+    private Dictionary<string, OptifineVersionInfo> _optifineVersionInfoDict = new();
 
     /// <summary>
     /// 属性变化事件
@@ -24,36 +66,36 @@ public class ModLoaderItem : INotifyPropertyChanged
     /// ModLoader名称
     /// </summary>
     public string Name 
-    { 
-        get => _name; 
-        set => SetProperty(ref _name, value); 
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
     }
 
     /// <summary>
     /// 是否被选中
     /// </summary>
     public bool IsSelected 
-    { 
-        get => _isSelected; 
-        set => SetProperty(ref _isSelected, value); 
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
     }
 
     /// <summary>
     /// 是否正在加载版本列表
     /// </summary>
     public bool IsLoading 
-    { 
-        get => _isLoading; 
-        set => SetProperty(ref _isLoading, value); 
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
     }
 
     /// <summary>
     /// 是否已加载过版本列表
     /// </summary>
     public bool HasLoaded 
-    { 
-        get => _hasLoaded; 
-        set => SetProperty(ref _hasLoaded, value); 
+    {
+        get => _hasLoaded;
+        set => SetProperty(ref _hasLoaded, value);
     }
 
     /// <summary>
@@ -65,9 +107,69 @@ public class ModLoaderItem : INotifyPropertyChanged
     /// 当前选中的ModLoader版本
     /// </summary>
     public string? SelectedVersion 
-    { 
-        get => _selectedVersion; 
-        set => SetProperty(ref _selectedVersion, value); 
+    {
+        get => _selectedVersion;
+        set => SetProperty(ref _selectedVersion, value);
+    }
+    
+    /// <summary>
+    /// 获取Optifine版本的兼容信息
+    /// </summary>
+    /// <param name="versionName">Optifine版本名</param>
+    /// <returns>兼容信息</returns>
+    public string GetOptifineCompatibleInfo(string versionName)
+    {
+        if (Name != "Optifine") return string.Empty;
+        
+        if (_optifineVersionInfoDict.TryGetValue(versionName, out var info))
+        {
+            return info.CompatibleInfo;
+        }
+        return string.Empty;
+    }
+    
+    /// <summary>
+    /// 获取Optifine版本的完整信息
+    /// </summary>
+    /// <param name="versionName">Optifine版本名</param>
+    /// <returns>OptifineVersionInfo对象</returns>
+    public OptifineVersionInfo? GetOptifineVersionInfo(string versionName)
+    {
+        if (Name != "Optifine") return null;
+        
+        _optifineVersionInfoDict.TryGetValue(versionName, out var info);
+        return info;
+    }
+    
+    /// <summary>
+    /// 获取当前版本的显示信息（包含兼容信息）
+    /// </summary>
+    /// <param name="versionName">版本名</param>
+    /// <returns>显示信息</returns>
+    public string GetVersionDisplayInfo(string versionName)
+    {
+        if (Name == "Optifine")
+        {
+            return versionName;
+        }
+        return versionName;
+    }
+    
+    /// <summary>
+    /// 添加Optifine版本信息
+    /// </summary>
+    /// <param name="info">Optifine版本信息</param>
+    public void AddOptifineVersionInfo(OptifineVersionInfo info)
+    {
+        _optifineVersionInfoDict[info.VersionName] = info;
+    }
+    
+    /// <summary>
+    /// 清空Optifine版本信息
+    /// </summary>
+    public void ClearOptifineVersionInfo()
+    {
+        _optifineVersionInfoDict.Clear();
     }
 
     /// <summary>
@@ -85,6 +187,8 @@ public class ModLoaderItem : INotifyPropertyChanged
                     return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
                 case "NeoForge":
                     return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
+                case "Optifine":
+                    return "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico";
                 default:
                     return "";
             }
