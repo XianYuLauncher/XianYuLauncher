@@ -30,7 +30,7 @@
 
         <!-- 页面标题 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock Text="选择Mod Loader" FontSize="28" FontWeight="SemiLight" />
+            <TextBlock Text="下载Minecraft" FontSize="28" FontWeight="SemiLight" />
             <TextBlock Margin="0,8,0,0" FontSize="16">
                 <Run Text="当前Minecraft版本: " />
                 <Run Text="{x:Bind ViewModel.SelectedMinecraftVersion, Mode=OneWay}" FontWeight="SemiBold" />
@@ -76,7 +76,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock Text="选择Mod Loader:" Margin="0,0,0,16" FontWeight="SemiBold" FontSize="16" />
+            <TextBlock Text="选择附属组件:" Margin="0,0,0,16" FontWeight="SemiBold" FontSize="16" />
             
             <!-- Mod Loader Expander列表 -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch">
