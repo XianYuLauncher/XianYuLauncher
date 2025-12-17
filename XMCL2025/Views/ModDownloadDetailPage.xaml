@@ -61,9 +61,63 @@
             PrimaryButtonClick="DownloadDialog_PrimaryButtonClick"
             SecondaryButtonClick="DownloadDialog_SecondaryButtonClick"
             CloseButtonClick="DownloadDialog_CloseButtonClick">
-            <StackPanel Spacing="12">
+            <StackPanel Spacing="16">
                 <TextBlock FontSize="14" Text="请选择下载方式：" />
-                <!-- 下载功能已实现 -->
+                
+                <!-- 前置Mod列表 -->
+                <StackPanel Visibility="{x:Bind ViewModel.DependencyProjects.Count > 0, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!-- 加载状态 -->
+                    <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingDependencies}" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center" 
+                                  Height="32" 
+                                  Width="32" 
+                                  Margin="0,8" 
+                                  Visibility="{x:Bind ViewModel.IsLoadingDependencies, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    
+                    <!-- 依赖项卡片列表 -->
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.DependencyProjects, Mode=OneWay}" 
+                                  Visibility="{x:Bind ViewModel.IsLoadingDependencies, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter='Inverse'}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button x:Name="DependencyCardButton" 
+                                        Background="{ThemeResource CardBackgroundFillColorDefault}" 
+                                        CornerRadius="8" 
+                                        Padding="12" 
+                                        BorderThickness="1" 
+                                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                                        Width="380"
+                                        HorizontalAlignment="Left"
+                                        Command="{Binding ElementName=PageRoot, Path=ViewModel.NavigateToDependencyCommand}" 
+                                        CommandParameter="{Binding ProjectId}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Width="356">
+                                            <!-- 图标 -->
+                                            <Border CornerRadius="4" Width="40" Height="40" Background="Transparent">
+                                                <Image Source="{Binding IconUrl}" Width="40" Height="40" Stretch="UniformToFill" />
+                                            </Border>
+                                            
+                                            <!-- 文本内容 -->
+                                            <StackPanel Orientation="Vertical" Spacing="4" VerticalAlignment="Center" Width="300">
+                                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" 
+                                                           Width="300" HorizontalAlignment="Left" />
+                                                <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" 
+                                                           TextTrimming="CharacterEllipsis" MaxLines="2" 
+                                                           Width="300" HorizontalAlignment="Left" 
+                                                           TextWrapping="WrapWholeWords" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </StackPanel>
         </ContentDialog>
 

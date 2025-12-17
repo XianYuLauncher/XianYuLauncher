@@ -11,7 +11,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using XMCL2025.Contracts.Services;
 using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Models;
 using XMCL2025.Core.Services;
 
 namespace XMCL2025.ViewModels
@@ -70,18 +72,95 @@ namespace XMCL2025.ViewModels
         // 整合包安装相关属性
         [ObservableProperty]
         private bool _isInstalling = false;
-
+        
         [ObservableProperty]
         private bool _isModpackInstallDialogOpen = false;
-
+        
         [ObservableProperty]
         private double _installProgress = 0;
-
+        
         [ObservableProperty]
         private string _installProgressText = "0%";
-
+        
         [ObservableProperty]
         private string _installStatus = "";
+        
+        // 导航到依赖Mod的命令
+        [RelayCommand]
+        public void NavigateToDependency(string projectId)
+        {
+            if (!string.IsNullOrEmpty(projectId))
+            {
+                // 导航前关闭下载弹窗
+                IsDownloadDialogOpen = false;
+                
+                // 获取导航服务
+                var navigationService = App.GetService<INavigationService>();
+                navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, projectId);
+            }
+        }
+        
+        // 获取依赖详情的方法
+        public async Task LoadDependencyDetailsAsync(ModrinthVersion modrinthVersion)
+        {
+            DependencyProjects.Clear();
+            
+            if (modrinthVersion?.Dependencies == null || modrinthVersion.Dependencies.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 该Mod版本没有依赖项");
+                return;
+            }
+            
+            // 筛选出必填的依赖项
+            var requiredDependencies = modrinthVersion.Dependencies
+                .Where(d => !string.IsNullOrEmpty(d.ProjectId) && d.DependencyType == "required")
+                .ToList();
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {requiredDependencies.Count} 个必填前置mod");
+            
+            IsLoadingDependencies = true;
+            
+            try
+            {
+                for (int i = 0; i < requiredDependencies.Count; i++)
+                {
+                    var dependency = requiredDependencies[i];
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载第 {i + 1} 个前置mod，项目ID: {dependency.ProjectId}");
+                    
+                    try
+                    {
+                        // 调用Modrinth API获取依赖项目详情
+                        string apiUrl = $"https://api.modrinth.com/v2/project/{dependency.ProjectId}";
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在访问API: {apiUrl}");
+                        
+                        var projectDetail = await _modrinthService.GetProjectDetailAsync(dependency.ProjectId);
+                        
+                        // 创建依赖项目对象
+                        var dependencyProject = new DependencyProject
+                        {
+                            ProjectId = dependency.ProjectId,
+                            IconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                            Title = projectDetail.Title,
+                            Description = projectDetail.Description
+                        };
+                        
+                        DependencyProjects.Add(dependencyProject);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功加载前置mod: {projectDetail.Title} (ID: {dependency.ProjectId})");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取依赖项目详情失败: {ex.Message}");
+                        // 跳过失败的依赖，继续处理其他依赖
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 前置mod加载完成，共成功加载 {DependencyProjects.Count} 个");
+            }
+            finally
+            {
+                IsLoadingDependencies = false;
+            }
+        }
 
         // 安装取消令牌源
         private CancellationTokenSource _installCancellationTokenSource;
@@ -324,18 +403,19 @@ namespace XMCL2025.ViewModels
                                     if (file != null)
                                     {
                                         var modVersionViewModel = new ModVersionViewModel
-                                        {
-                                            VersionNumber = version.VersionNumber,
-                                            ReleaseDate = version.DatePublished,
-                                            Changelog = version.Name,
-                                            DownloadUrl = file.Url.ToString(),
-                                            FileName = file.Filename,
-                                            Loaders = version.Loaders.Select(l => l.Substring(0, 1).ToUpper() + l.Substring(1).ToLower()).ToList(),
-                                            VersionType = version.VersionType,
-                                            GameVersion = gameVersion, // 设置该Mod版本支持的游戏版本
-                                            IconUrl = ModIconUrl // 设置图标URL
-                                        };
-                                        loaderViewModel.ModVersions.Add(modVersionViewModel);
+                                    {
+                                        VersionNumber = version.VersionNumber,
+                                        ReleaseDate = version.DatePublished,
+                                        Changelog = version.Name,
+                                        DownloadUrl = file.Url.ToString(),
+                                        FileName = file.Filename,
+                                        Loaders = version.Loaders.Select(l => l.Substring(0, 1).ToUpper() + l.Substring(1).ToLower()).ToList(),
+                                        VersionType = version.VersionType,
+                                        GameVersion = gameVersion, // 设置该Mod版本支持的游戏版本
+                                        IconUrl = ModIconUrl, // 设置图标URL
+                                        OriginalVersion = version // 保存原始Modrinth版本信息，用于获取依赖项
+                                    };
+                                    loaderViewModel.ModVersions.Add(modVersionViewModel);
                                     }
                                 }
                             
@@ -402,21 +482,51 @@ namespace XMCL2025.ViewModels
         [RelayCommand]
         public async Task OpenDownloadDialog(ModVersionViewModel modVersion)
         {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] OpenDownloadDialog命令被调用，Mod版本: {modVersion?.VersionNumber}");
             SelectedModVersion = modVersion;
             
             // 如果是整合包，直接进入整合包安装流程，跳过普通下载弹窗
             if (ProjectType == "modpack")
             {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 是整合包，进入整合包安装流程");
                 await InstallModpackAsync(modVersion);
             }
             else
             {
+                // 加载依赖详情
+                if (modVersion?.OriginalVersion != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载依赖详情，OriginalVersion: {modVersion.OriginalVersion.VersionNumber}");
+                    await LoadDependencyDetailsAsync(modVersion.OriginalVersion);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 依赖详情加载完成，共加载 {DependencyProjects.Count} 个前置mod");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] modVersion或OriginalVersion为null，跳过依赖加载");
+                }
                 IsDownloadDialogOpen = true;
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载弹窗已打开，依赖项目数量: {DependencyProjects.Count}");
             }
         }
         
         // 保存当前正在下载的Mod版本，用于存档选择后继续下载
         private ModVersionViewModel _currentDownloadingModVersion;
+        
+        // 依赖项目类，用于存储前置Mod的详细信息
+        public class DependencyProject
+        {
+            public string ProjectId { get; set; }
+            public string IconUrl { get; set; }
+            public string Title { get; set; }
+            public string Description { get; set; }
+        }
+        
+        // 依赖相关属性
+        [ObservableProperty]
+        private ObservableCollection<DependencyProject> _dependencyProjects = new();
+        
+        [ObservableProperty]
+        private bool _isLoadingDependencies = false;
         
         // 显示存档选择弹窗
         private async Task ShowSaveSelectionDialog()
@@ -1479,6 +1589,9 @@ namespace XMCL2025.ViewModels
         // 图标URL属性
         [ObservableProperty]
         private string _iconUrl;
+        
+        // Modrinth原始版本信息，用于获取依赖项
+        public ModrinthVersion OriginalVersion { get; set; }
     }
 
     // 加载器视图模型

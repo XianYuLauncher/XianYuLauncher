@@ -533,6 +533,39 @@ public class GalleryImage
 /// <summary>
 /// Modrinth版本信息
 /// </summary>
+/// <summary>
+/// 依赖项信息
+/// </summary>
+public class Dependency
+{
+    /// <summary>
+    /// 版本ID
+    /// </summary>
+    [JsonPropertyName("version_id")]
+    public string VersionId { get; set; }
+    
+    /// <summary>
+    /// 项目ID
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public string ProjectId { get; set; }
+    
+    /// <summary>
+    /// 文件名
+    /// </summary>
+    [JsonPropertyName("file_name")]
+    public string FileName { get; set; }
+    
+    /// <summary>
+    /// 依赖类型
+    /// </summary>
+    [JsonPropertyName("dependency_type")]
+    public string DependencyType { get; set; }
+}
+
+/// <summary>
+/// Modrinth版本信息
+/// </summary>
 public class ModrinthVersion
 {
     /// <summary>
@@ -543,6 +576,7 @@ public class ModrinthVersion
         GameVersions = new List<string>();
         Loaders = new List<string>();
         Files = new List<ModrinthVersionFile>();
+        Dependencies = new List<Dependency>();
     }
 
     /// <summary>
@@ -616,6 +650,12 @@ public class ModrinthVersion
     /// </summary>
     [JsonPropertyName("files")]
     public List<ModrinthVersionFile> Files { get; set; }
+    
+    /// <summary>
+    /// 依赖项列表
+    /// </summary>
+    [JsonPropertyName("dependencies")]
+    public List<Dependency> Dependencies { get; set; }
 }
 
 /// <summary>
