@@ -365,13 +365,27 @@ namespace XMCL2025.Core.Services
                             System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换extension占位符$extension为: {extension}");
                         }
                         
+                        // 处理classifier中的@符号，将其替换为.（特别是处理neoform的mappings@tsrg.lzma情况）
+                        string finalExtension = extension;
+                        string finalClassifier = classifier;
+                        
+                        if (!string.IsNullOrEmpty(classifier) && classifier.Contains('@'))
+                        {
+                            string[] classifierParts = classifier.Split('@');
+                            finalClassifier = classifierParts[0];
+                            finalExtension = classifierParts[1];
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 从classifier中提取extension: {finalExtension}");
+                        }
+                        
                         // 构建文件名
                         string fileName = $"{artifactId}-{version}";
-                        if (!string.IsNullOrEmpty(classifier))
+                        if (!string.IsNullOrEmpty(finalClassifier))
                         {
-                            fileName += $"-{classifier}";
+                            fileName += $"-{finalClassifier}";
                         }
-                        fileName += $".{extension}"; // 使用正确的字符串插值语法
+                        
+                        // 直接拼接扩展名，不要添加额外的.jar后缀
+                        fileName += $".{finalExtension}";
                         
                         // 构建完整路径
                         string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);

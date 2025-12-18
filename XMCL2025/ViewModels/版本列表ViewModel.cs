@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.System;
 using XMCL2025.Core.Contracts.Services;
@@ -219,14 +221,37 @@ public partial class 版本列表ViewModel : ObservableRecipient
                 return;
             }
 
-            // 删除版本文件夹
-            Directory.Delete(version.Path, true);
-            
-            // 从列表中移除
-            Versions.Remove(version);
-            
-            // 更新状态信息
-            StatusMessage = $"已删除版本 {version.Name}";
+            // 创建确认对话框
+            var dialog = new ContentDialog
+            {
+                Title = "确认删除",
+                Content = $"确定要删除版本 {version.Name} 吗？此操作将删除该版本的所有文件，无法恢复。",
+                PrimaryButtonText = "删除",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close
+            };
+
+            // 设置XamlRoot
+            if (App.MainWindow.Content is FrameworkElement rootElement)
+            {
+                dialog.XamlRoot = rootElement.XamlRoot;
+            }
+
+            // 显示对话框
+            var result = await dialog.ShowAsync();
+
+            // 如果用户确认删除
+            if (result == ContentDialogResult.Primary)
+            {
+                // 删除版本文件夹
+                Directory.Delete(version.Path, true);
+                
+                // 从列表中移除
+                Versions.Remove(version);
+                
+                // 更新状态信息
+                StatusMessage = $"已删除版本 {version.Name}";
+            }
         }
         catch (Exception ex)
         {

@@ -164,23 +164,28 @@
                                   Padding="20" 
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                   BorderThickness="1">
-                                <!-- 右键菜单暂时注释掉 -->
-                                <!--<Grid.ContextFlyout>
+                                <!-- 右键菜单 -->
+                                <Grid.ContextFlyout>
                                     <MenuFlyout>
                                         <MenuFlyoutItem 
                                             Text="打开文件夹" 
-                                            Icon="OpenFolder" 
                                             Command="{Binding DataContext.OpenFolderCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}" />
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE838;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem 
                                             Text="删除" 
-                                            Icon="Delete" 
                                             Command="{Binding DataContext.DeleteVersionCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}" 
-                                            Foreground="Red" />
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <SymbolIcon Symbol="Delete" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                     </MenuFlyout>
-                                </Grid.ContextFlyout>-->
+                                </Grid.ContextFlyout>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
