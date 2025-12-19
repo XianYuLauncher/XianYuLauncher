@@ -74,6 +74,17 @@ namespace XMCL2025.Views
                     SaveSelectionDialog.Hide();
                 }
             }
+            else if (e.PropertyName == nameof(ViewModel.IsDownloadProgressDialogOpen))
+            {
+                if (ViewModel.IsDownloadProgressDialogOpen)
+                {
+                    await DownloadProgressDialog.ShowAsync();
+                }
+                else
+                {
+                    DownloadProgressDialog.Hide();
+                }
+            }
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -208,6 +219,12 @@ namespace XMCL2025.Views
         private void ModpackInstallDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             ViewModel.CancelInstallCommand.Execute(null);
+        }
+        
+        // 下载进度弹窗 - 取消按钮点击事件
+        private void DownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.CancelDownloadCommand.Execute(null);
         }
     }
 }
