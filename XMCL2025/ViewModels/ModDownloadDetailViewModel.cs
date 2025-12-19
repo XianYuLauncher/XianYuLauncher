@@ -69,6 +69,12 @@ namespace XMCL2025.ViewModels
         [ObservableProperty]
         private string _downloadStatus = "";
 
+        [ObservableProperty]
+        private string _downloadProgressText = "0.0%";
+
+        [ObservableProperty]
+        private bool _isDownloadProgressDialogOpen = false;
+
         // 整合包安装相关属性
         [ObservableProperty]
         private bool _isInstalling = false;
@@ -242,6 +248,7 @@ namespace XMCL2025.ViewModels
                 IsDownloadDialogOpen = false;
                 IsVersionSelectionDialogOpen = false;
                 IsModpackInstallDialogOpen = false;
+                IsDownloadProgressDialogOpen = false; // 关闭下载进度对话框
                 IsInstalling = false; // 确保安装状态已重置
                 
                 // 等待足够长的时间，确保所有对话框完全关闭
@@ -698,6 +705,9 @@ namespace XMCL2025.ViewModels
         {
             try
             {
+                // 打开下载进度弹窗
+                IsDownloadProgressDialogOpen = true;
+                
                 // 使用HttpClient下载文件
                 using (HttpClient client = new HttpClient())
                 {
@@ -723,11 +733,13 @@ namespace XMCL2025.ViewModels
                                 if (totalBytes > 0)
                                 {
                                     DownloadProgress = (double)totalRead / totalBytes * 100;
-                                    DownloadStatus = $"正在下载... {DownloadProgress:F1}%";
+                                    DownloadProgressText = $"{DownloadProgress:F1}%";
+                                    DownloadStatus = $"正在下载... {DownloadProgressText}";
                                 }
                                 else
                                 {
                                     DownloadProgress = 0;
+                                    DownloadProgressText = "0.0%";
                                     DownloadStatus = $"正在下载... {totalRead / 1024} KB";
                                 }
                             }
@@ -765,31 +777,15 @@ namespace XMCL2025.ViewModels
                 }
                 
                 DownloadStatus = "下载完成！";
-                // 根据项目类型显示不同的文本
-                string projectTypeText;
-                switch (ProjectType)
-                {
-                    case "resourcepack":
-                        projectTypeText = "资源包";
-                        break;
-                    case "shader":
-                        projectTypeText = "光影";
-                        break;
-                    case "modpack":
-                        projectTypeText = "整合包";
-                        break;
-                    case "datapack":
-                        projectTypeText = "数据包";
-                        break;
-                    default:
-                        projectTypeText = "Mod";
-                        break;
-                }
-                await ShowMessageAsync($"{projectTypeText} '{modVersion.FileName}' 下载完成！");
             }
             catch (Exception ex)
             {
                 throw new Exception($"下载文件失败: {ex.Message}");
+            }
+            finally
+            {
+                // 关闭下载进度弹窗
+                IsDownloadProgressDialogOpen = false;
             }
         }
 
