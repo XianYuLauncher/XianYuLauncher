@@ -13,19 +13,20 @@ public class PageService : IPageService
     private readonly Dictionary<string, Type> _pages = new();
 
     public PageService()
-        {
-            Configure<启动ViewModel, 启动Page>();
-            Configure<下载ViewModel, 下载Page>();
-            Configure<ModViewModel, ModPage>();
-            Configure<ModDownloadDetailViewModel, ModDownloadDetailPage>();
-            Configure<SettingsViewModel, SettingsPage>();
-            Configure<ModLoader选择ViewModel, ModLoader选择Page>();
-            Configure<版本列表ViewModel, 版本列表Page>();
-            Configure<版本管理ViewModel, 版本管理Page>();
-            Configure<ResourceDownloadViewModel, ResourceDownloadPage>();
-            Configure<角色ViewModel, 角色Page>();
-            Configure<角色管理ViewModel, 角色管理Page>();
-        }
+            {
+                Configure<启动ViewModel, 启动Page>();
+                Configure<下载ViewModel, 下载Page>();
+                Configure<ModViewModel, ModPage>();
+                Configure<ModDownloadDetailViewModel, ModDownloadDetailPage>();
+                Configure<SettingsViewModel, SettingsPage>();
+                Configure<ModLoader选择ViewModel, ModLoader选择Page>();
+                Configure<版本列表ViewModel, 版本列表Page>();
+                Configure<版本管理ViewModel, 版本管理Page>();
+                Configure<ResourceDownloadViewModel, ResourceDownloadPage>();
+                Configure<角色ViewModel, 角色Page>();
+                Configure<角色管理ViewModel, 角色管理Page>();
+                Configure<错误分析系统ViewModel, 错误分析系统Page>();
+            }
 
     public Type GetPageType(string key)
     {

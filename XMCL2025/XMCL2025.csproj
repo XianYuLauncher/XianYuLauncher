@@ -17,7 +17,7 @@
     <UseWindowsForms>False</UseWindowsForms>
     <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>4112356A8EA11E529A7CC11A1150663CD7560BCD</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>58262E4C49844E18497E86160A141ACAEE51022F</PackageCertificateThumbprint>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
