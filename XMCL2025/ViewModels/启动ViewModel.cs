@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
@@ -32,9 +33,37 @@ public partial class 启动ViewModel : ObservableRecipient
         var dialog = new ContentDialog
         {
             Title = "Java运行时环境未找到",
-            Content = "未找到适用于当前游戏版本的Java运行时环境，请先安装相应版本的Java。\n\n游戏版本需要Java " + GetRequiredJavaVersionText(),
+            Content = "未找到适用于当前游戏版本的Java运行时环境，请先安装相应版本的Java。\n\n游戏版本需要Java " + GetRequiredJavaVersionText() + "\n\n在下载完Java后,将Java.exe文件加入到设置-Java设置中!",
+            PrimaryButtonText = "下载",
             CloseButtonText = "确定",
             XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        // 处理下载按钮点击事件
+        dialog.PrimaryButtonClick += async (sender, args) =>
+        {
+            string javaVersion = GetRequiredJavaVersionText();
+            string downloadUrl = string.Empty;
+            
+            // 根据Java版本选择下载链接
+            if (javaVersion.Contains("8"))
+            {
+                downloadUrl = "https://www.java.com/zh-CN/download/";
+            }
+            else if (javaVersion.Contains("17"))
+            {
+                downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java17";
+            }
+            else if (javaVersion.Contains("21"))
+            {
+                downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java21";
+            }
+            
+            // 启动浏览器打开下载页面
+            if (!string.IsNullOrEmpty(downloadUrl))
+            {
+                await Windows.System.Launcher.LaunchUriAsync(new Uri(downloadUrl));
+            }
         };
         
         await dialog.ShowAsync();

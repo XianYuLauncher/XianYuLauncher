@@ -193,7 +193,7 @@
                         <!-- Mod Info -->
                         <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                             <TextBlock Text="{x:Bind SupportedLoaders, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                            <TextBlock Text="{x:Bind LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock Text="{x:Bind LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                             <TextBlock Text="{x:Bind Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                             <TextBlock Text="{x:Bind Follows, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                         </StackPanel>
