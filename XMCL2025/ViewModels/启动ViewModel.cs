@@ -229,7 +229,7 @@ public partial class 启动ViewModel : ObservableRecipient
                     HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto
                 },
                 PrimaryButtonText = "确定",
-                SecondaryButtonText = "导出日志",
+                SecondaryButtonText = "详细错误日志",
                 XamlRoot = App.MainWindow.Content.XamlRoot
             };
             
@@ -239,10 +239,11 @@ public partial class 启动ViewModel : ObservableRecipient
                 // 确定按钮，关闭弹窗
             };
             
-            dialog.SecondaryButtonClick += async (sender, args) =>
+            dialog.SecondaryButtonClick += (sender, args) =>
             {
-                // 导出日志按钮，触发日志打包功能
-                await ExportCrashLogsAsync(launchCommand, gameOutput, gameError);
+                // 详细错误日志按钮，导航到错误分析系统页面
+                var navigationService = App.GetService<INavigationService>();
+                navigationService.NavigateTo(typeof(错误分析系统ViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
             };
             
             await dialog.ShowAsync();
