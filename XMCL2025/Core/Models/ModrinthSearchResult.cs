@@ -175,10 +175,26 @@ public class ModrinthSearchResult
         public string DateModified { get; set; }
 
         /// <summary>
-        /// 最新版本
+        /// 最新版本ID（用于API调用，不适合直接显示）
         /// </summary>
         [JsonPropertyName("latest_version")]
-        public string LatestVersion { get; set; }
+        public string LatestVersionId { get; set; }
+        
+        /// <summary>
+        /// 最新支持的游戏版本（从versions列表中获取最后一项）
+        /// </summary>
+        public string LatestSupportedVersion
+        {
+            get
+            {
+                if (Versions == null || Versions.Count == 0)
+                {
+                    return string.Empty;
+                }
+                // 返回versions列表中的最后一项作为最新支持的游戏版本
+                return Versions[Versions.Count - 1];
+            }
+        }
 
         /// <summary>
         /// 许可证
@@ -381,6 +397,12 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("id")]
         public string Id { get; set; }
+
+        /// <summary>
+        /// 作者
+        /// </summary>
+        [JsonPropertyName("author")]
+        public string Author { get; set; }
 
         /// <summary>
         /// 团队ID

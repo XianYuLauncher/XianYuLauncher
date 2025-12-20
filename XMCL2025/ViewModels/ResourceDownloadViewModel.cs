@@ -95,6 +95,22 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string _selectedLoader = "all";
+
+    // 类别筛选属性
+    [ObservableProperty]
+    private string _selectedModCategory = "all";
+
+    [ObservableProperty]
+    private string _selectedResourcePackCategory = "all";
+
+    [ObservableProperty]
+    private string _selectedShaderPackCategory = "all";
+
+    [ObservableProperty]
+    private string _selectedDatapackCategory = "all";
+
+    [ObservableProperty]
+    private string _selectedModpackCategory = "all";
     
     [ObservableProperty]
     private string _selectedVersion = string.Empty;
@@ -389,6 +405,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 facets.Add(new List<string> { $"versions:{SelectedVersion}" });
             }
 
+            // 添加类别筛选条件
+            if (SelectedModCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
+            }
+
             // 这里使用Modrinth API搜索mods，只加载第一页
             var result = await _modrinthService.SearchModsAsync(
                 query: SearchQuery,
@@ -443,6 +465,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (!string.IsNullOrEmpty(SelectedVersion))
             {
                 facets.Add(new List<string> { $"versions:{SelectedVersion}" });
+            }
+
+            // 添加类别筛选条件
+            if (SelectedModCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
             }
             
             // 调用Modrinth API加载更多Mod
@@ -514,8 +542,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到Mod下载详情页面
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, mod.ProjectId);
+        // 导航到Mod下载详情页面，传递完整的Mod对象
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, mod);
     }
     
     // 资源包下载命令
@@ -535,6 +563,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (!string.IsNullOrEmpty(SelectedResourcePackVersion))
             {
                 facets.Add(new List<string> { $"versions:{SelectedResourcePackVersion}" });
+            }
+
+            // 添加类别筛选条件
+            if (SelectedResourcePackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedResourcePackCategory}" });
             }
             
             // 调用Modrinth API搜索资源包
@@ -587,6 +621,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 facets.Add(new List<string> { $"versions:{SelectedResourcePackVersion}" });
             }
+
+            // 添加类别筛选条件
+            if (SelectedResourcePackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedResourcePackCategory}" });
+            }
             
             // 调用Modrinth API加载更多资源包
             var result = await _modrinthService.SearchModsAsync(
@@ -632,8 +672,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到资源包下载详情页面
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, resourcePack.ProjectId);
+        // 导航到资源包下载详情页面，传递完整的资源包对象
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, resourcePack);
     }
     
     // 光影下载命令
@@ -653,6 +693,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (!string.IsNullOrEmpty(SelectedShaderPackVersion))
             {
                 facets.Add(new List<string> { $"versions:{SelectedShaderPackVersion}" });
+            }
+
+            // 添加类别筛选条件
+            if (SelectedShaderPackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedShaderPackCategory}" });
             }
             
             // 调用Modrinth API搜索光影
@@ -705,6 +751,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 facets.Add(new List<string> { $"versions:{SelectedShaderPackVersion}" });
             }
+
+            // 添加类别筛选条件
+            if (SelectedShaderPackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedShaderPackCategory}" });
+            }
             
             // 调用Modrinth API加载更多光影
             var result = await _modrinthService.SearchModsAsync(
@@ -750,8 +802,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到光影下载详情页面
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, shaderPack.ProjectId);
+        // 导航到光影下载详情页面，传递完整的光影对象
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, shaderPack);
     }
     
     // 整合包下载命令
@@ -771,6 +823,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (!string.IsNullOrEmpty(SelectedModpackVersion))
             {
                 facets.Add(new List<string> { $"versions:{SelectedModpackVersion}" });
+            }
+
+            // 添加类别筛选条件
+            if (SelectedModpackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedModpackCategory}" });
             }
             
             // 调用Modrinth API搜索整合包，明确指定projectType为modpack
@@ -823,6 +881,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 facets.Add(new List<string> { $"versions:{SelectedModpackVersion}" });
             }
+
+            // 添加类别筛选条件
+            if (SelectedModpackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedModpackCategory}" });
+            }
             
             // 调用Modrinth API加载更多整合包，明确指定projectType为modpack
             var result = await _modrinthService.SearchModsAsync(
@@ -868,8 +932,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到整合包下载详情页面
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, modpack.ProjectId);
+        // 导航到整合包下载详情页面，传递完整的整合包对象
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, modpack);
     }
     
     // 数据包搜索命令
@@ -889,6 +953,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (!string.IsNullOrEmpty(SelectedDatapackVersion))
             {
                 facets.Add(new List<string> { $"versions:{SelectedDatapackVersion}" });
+            }
+
+            // 添加类别筛选条件
+            if (SelectedDatapackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedDatapackCategory}" });
             }
             
             // 调用Modrinth API搜索数据包，明确指定projectType为datapack
@@ -941,6 +1011,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 facets.Add(new List<string> { $"versions:{SelectedDatapackVersion}" });
             }
+
+            // 添加类别筛选条件
+            if (SelectedDatapackCategory != "all")
+            {
+                facets.Add(new List<string> { $"categories:{SelectedDatapackCategory}" });
+            }
             
             // 调用Modrinth API加载更多数据包，明确指定projectType为datapack
             var result = await _modrinthService.SearchModsAsync(
@@ -986,7 +1062,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到数据包下载详情页面
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, datapack.ProjectId);
+        // 导航到数据包下载详情页面，传递完整的数据包对象
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, datapack);
     }
 }

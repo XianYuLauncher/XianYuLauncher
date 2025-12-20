@@ -67,6 +67,9 @@ public class ModrinthService
             url += $"&offset={offset}";
             url += $"&limit={limit}";
 
+            // 输出调试信息，显示完整请求URL
+            System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
+
             // 发送HTTP请求
             HttpResponseMessage response = await _httpClient.GetAsync(url);
             
@@ -114,6 +117,9 @@ public class ModrinthService
                 // 构建请求URL
                 url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}";
 
+                // 输出调试信息，显示完整请求URL
+                System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
+
                 // 发送请求
                 var response = await _httpClient.GetAsync(url);
                 
@@ -160,6 +166,9 @@ public class ModrinthService
             {
                 // 构建请求URL
                 url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}/version";
+
+                // 输出调试信息，显示完整请求URL
+                System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
 
                 // 发送请求
                 var response = await _httpClient.GetAsync(url);

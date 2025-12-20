@@ -233,17 +233,37 @@
                                     SelectionChanged="VersionComboBox_SelectionChanged">
                                 </ComboBox>
 
-                                <!-- Sort By -->
+                                <!-- 类别筛选 -->
                                 <ComboBox
+                                    x:Name="ModCategoryComboBox"
                                     Grid.Row="0"
                                     Grid.Column="3"
-                                    Header="Sort"
-                                    PlaceholderText="Most Popular"
-                                    MinWidth="120">
-                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
-                                    <ComboBoxItem Content="Recently Updated"/>
-                                    <ComboBoxItem Content="Most Downloads"/>
-                                    <ComboBoxItem Content="Name A-Z"/>
+                                    Header="类别"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="120"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
+                                    SelectionChanged="ModCategoryComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="所有类别" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="冒险" Tag="adventure" />
+                                    <ComboBoxItem Content="整活" Tag="cursed" />
+                                    <ComboBoxItem Content="装饰" Tag="decoration" />
+                                    <ComboBoxItem Content="经济" Tag="economy" />
+                                    <ComboBoxItem Content="装备" Tag="equipment" />
+                                    <ComboBoxItem Content="食物" Tag="food" />
+                                    <ComboBoxItem Content="机制" Tag="game-mechanics" />
+                                    <ComboBoxItem Content="前置" Tag="library" />
+                                    <ComboBoxItem Content="魔法" Tag="magic" />
+                                    <ComboBoxItem Content="管理" Tag="management" />
+                                    <ComboBoxItem Content="迷你游戏" Tag="minigame" />
+                                    <ComboBoxItem Content="生物" Tag="mobs" />
+                                    <ComboBoxItem Content="性能" Tag="optimization" />
+                                    <ComboBoxItem Content="社交" Tag="social" />
+                                    <ComboBoxItem Content="存储" Tag="storage" />
+                                    <ComboBoxItem Content="科技" Tag="technology" />
+                                    <ComboBoxItem Content="交通" Tag="transportation" />
+                                    <ComboBoxItem Content="实用" Tag="utility" />
+                                    <ComboBoxItem Content="世界生成" Tag="worldgen" />
                                 </ComboBox>
                             </Grid>
 
@@ -353,7 +373,7 @@
                                                     <!-- Mod Info -->
                                                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                                                         <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                         <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </Grid>
@@ -425,17 +445,24 @@
                                     SelectionChanged="ShaderPackVersionComboBox_SelectionChanged">
                                 </ComboBox>
 
-                                <!-- Sort By -->
+                                <!-- 类别筛选 -->
                                 <ComboBox
+                                    x:Name="ShaderPackCategoryComboBox"
                                     Grid.Row="0"
                                     Grid.Column="2"
-                                    Header="Sort"
-                                    PlaceholderText="Most Popular"
-                                    MinWidth="120">
-                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
-                                    <ComboBoxItem Content="Recently Updated"/>
-                                    <ComboBoxItem Content="Most Downloads"/>
-                                    <ComboBoxItem Content="Name A-Z"/>
+                                    Header="类别"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="120"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedShaderPackCategory, Mode=TwoWay}"
+                                    SelectionChanged="ShaderPackCategoryComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="所有类别" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="卡通" Tag="cartoon" />
+                                    <ComboBoxItem Content="整活" Tag="cursed" />
+                                    <ComboBoxItem Content="奇幻" Tag="fantasy" />
+                                    <ComboBoxItem Content="写实" Tag="realistic" />
+                                    <ComboBoxItem Content="半写实" Tag="semi-realistic" />
+                                    <ComboBoxItem Content="原版风" Tag="vanilla-like" />
                                 </ComboBox>
                             </Grid>
 
@@ -545,7 +572,7 @@
                                                     <!-- 光影信息 -->
                                                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                                                         <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                         <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </Grid>
@@ -617,17 +644,28 @@
                                     SelectionChanged="ResourcePackVersionComboBox_SelectionChanged">
                                 </ComboBox>
 
-                                <!-- Sort By -->
+                                <!-- 类别筛选 -->
                                 <ComboBox
+                                    x:Name="ResourcePackCategoryComboBox"
                                     Grid.Row="0"
                                     Grid.Column="2"
-                                    Header="Sort"
-                                    PlaceholderText="Most Popular"
-                                    MinWidth="120">
-                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
-                                    <ComboBoxItem Content="Recently Updated"/>
-                                    <ComboBoxItem Content="Most Downloads"/>
-                                    <ComboBoxItem Content="Name A-Z"/>
+                                    Header="类别"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="120"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedResourcePackCategory, Mode=TwoWay}"
+                                    SelectionChanged="ResourcePackCategoryComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="所有类别" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="战斗" Tag="combat" />
+                                    <ComboBoxItem Content="整活" Tag="cursed" />
+                                    <ComboBoxItem Content="装饰" Tag="decoration" />
+                                    <ComboBoxItem Content="适配模组" Tag="modded" />
+                                    <ComboBoxItem Content="写实" Tag="realistic" />
+                                    <ComboBoxItem Content="简约" Tag="simplistic" />
+                                    <ComboBoxItem Content="主题化" Tag="themed" />
+                                    <ComboBoxItem Content="微调" Tag="tweaks" />
+                                    <ComboBoxItem Content="实用" Tag="utility" />
+                                    <ComboBoxItem Content="原版风" Tag="vanilla-like" />
                                 </ComboBox>
                             </Grid>
 
@@ -737,7 +775,7 @@
                                                     <!-- 资源包信息 -->
                                                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                                                         <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                         <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </Grid>
@@ -809,17 +847,37 @@
                                     SelectionChanged="DatapackVersionComboBox_SelectionChanged">
                                 </ComboBox>
 
-                                <!-- Sort By -->
+                                <!-- 类别筛选 -->
                                 <ComboBox
+                                    x:Name="DatapackCategoryComboBox"
                                     Grid.Row="0"
                                     Grid.Column="2"
-                                    Header="Sort"
-                                    PlaceholderText="Most Popular"
-                                    MinWidth="120">
-                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
-                                    <ComboBoxItem Content="Recently Updated"/>
-                                    <ComboBoxItem Content="Most Downloads"/>
-                                    <ComboBoxItem Content="Name A-Z"/>
+                                    Header="类别"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="120"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedDatapackCategory, Mode=TwoWay}"
+                                    SelectionChanged="DatapackCategoryComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="所有类别" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="冒险" Tag="adventure" />
+                                    <ComboBoxItem Content="整活" Tag="cursed" />
+                                    <ComboBoxItem Content="装饰" Tag="decoration" />
+                                    <ComboBoxItem Content="经济" Tag="economy" />
+                                    <ComboBoxItem Content="装备" Tag="equipment" />
+                                    <ComboBoxItem Content="食物" Tag="food" />
+                                    <ComboBoxItem Content="游戏机制" Tag="game-mechanics" />
+                                    <ComboBoxItem Content="前置" Tag="library" />
+                                    <ComboBoxItem Content="魔法" Tag="magic" />
+                                    <ComboBoxItem Content="管理" Tag="management" />
+                                    <ComboBoxItem Content="迷你游戏" Tag="minigame" />
+                                    <ComboBoxItem Content="生物" Tag="mobs" />
+                                    <ComboBoxItem Content="性能" Tag="optimization" />
+                                    <ComboBoxItem Content="社交" Tag="social" />
+                                    <ComboBoxItem Content="存储" Tag="storage" />
+                                    <ComboBoxItem Content="科技" Tag="technology" />
+                                    <ComboBoxItem Content="交通" Tag="transportation" />
+                                    <ComboBoxItem Content="实用" Tag="utility" />
+                                    <ComboBoxItem Content="世界生成" Tag="worldgen" />
                                 </ComboBox>
                             </Grid>
 
@@ -929,7 +987,7 @@
                                                     <!-- 数据包信息 -->
                                                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                                                         <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                         <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </Grid>
@@ -1001,17 +1059,28 @@
                                     SelectionChanged="ModpackVersionComboBox_SelectionChanged">
                                 </ComboBox>
 
-                                <!-- Sort By -->
+                                <!-- 类别筛选 -->
                                 <ComboBox
+                                    x:Name="ModpackCategoryComboBox"
                                     Grid.Row="0"
                                     Grid.Column="2"
-                                    Header="Sort"
-                                    PlaceholderText="Most Popular"
-                                    MinWidth="120">
-                                    <ComboBoxItem Content="Most Popular" IsSelected="True"/>
-                                    <ComboBoxItem Content="Recently Updated"/>
-                                    <ComboBoxItem Content="Most Downloads"/>
-                                    <ComboBoxItem Content="Name A-Z"/>
+                                    Header="类别"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="120"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedModpackCategory, Mode=TwoWay}"
+                                    SelectionChanged="ModpackCategoryComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="所有类别" Tag="all" IsSelected="True" />
+                                    <ComboBoxItem Content="冒险" Tag="adventure" />
+                                    <ComboBoxItem Content="硬核" Tag="challenging" />
+                                    <ComboBoxItem Content="战斗" Tag="combat" />
+                                    <ComboBoxItem Content="全能型" Tag="kitchen-sink" />
+                                    <ComboBoxItem Content="轻量" Tag="lightweight" />
+                                    <ComboBoxItem Content="魔法" Tag="magic" />
+                                    <ComboBoxItem Content="联机" Tag="multiplayer" />
+                                    <ComboBoxItem Content="性能" Tag="optimization" />
+                                    <ComboBoxItem Content="任务" Tag="quests" />
+                                    <ComboBoxItem Content="科技" Tag="technology" />
                                 </ComboBox>
                             </Grid>
 
@@ -1121,7 +1190,7 @@
                                                     <!-- 整合包信息 -->
                                                     <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
                                                         <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                         <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </Grid>

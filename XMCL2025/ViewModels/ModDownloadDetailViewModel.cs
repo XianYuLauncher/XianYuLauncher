@@ -308,6 +308,16 @@ namespace XMCL2025.ViewModels
             }
         }
 
+        // 保存从列表页传递过来的Mod信息，用于优先显示作者
+        private ModrinthProject _passedModInfo;
+
+        // 接受ModrinthProject对象的重载
+        public async Task LoadModDetailsAsync(ModrinthProject mod)
+        {
+            _passedModInfo = mod;
+            await LoadModDetailsAsync(mod.ProjectId);
+        }
+
         public async Task LoadModDetailsAsync(string modId)
         {
             ModId = modId;
@@ -328,7 +338,8 @@ namespace XMCL2025.ViewModels
                 ModDownloads = projectDetail.Downloads;
                 ModIconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png";
                 ModLicense = projectDetail.License?.Name ?? "未知许可证";
-                ModAuthor = "团队: " + projectDetail.Team; // 显示团队ID，实际应用中可能需要额外API获取团队名称
+                // 优先使用从列表页传递过来的作者信息，如果没有则使用API返回的
+                ModAuthor = "发布者: " + (_passedModInfo?.Author ?? projectDetail.Author);
                 
                 // 设置项目类型
                 ProjectType = projectDetail.ProjectType;
