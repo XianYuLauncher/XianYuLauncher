@@ -150,7 +150,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        // 只有当资源包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3) // 资源包下载标签页索引
+        {
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -158,7 +162,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        // 只有当资源包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3) // 资源包下载标签页索引
+        {
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -221,7 +229,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void ModSearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Enter)
+        if (e.Key == Windows.System.VirtualKey.Enter && ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -262,17 +270,29 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void ModSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        // 只有当Mod下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        {
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        }
     }
 
     private async void LoaderComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        // 只有当Mod下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        {
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        }
     }
 
     private async void VersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        // 只有当Mod下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        {
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -280,7 +300,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        // 只有当光影下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2) // 光影下载标签页索引
+        {
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -288,7 +312,71 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        // 只有当光影下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2) // 光影下载标签页索引
+        {
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// Mod类别筛选变化事件处理程序
+    /// </summary>
+    private async void ModCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当Mod下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        {
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// 光影类别筛选变化事件处理程序
+    /// </summary>
+    private async void ShaderPackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当光影下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2) // 光影下载标签页索引
+        {
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// 资源包类别筛选变化事件处理程序
+    /// </summary>
+    private async void ResourcePackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当资源包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3) // 资源包下载标签页索引
+        {
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// 数据包类别筛选变化事件处理程序
+    /// </summary>
+    private async void DatapackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当数据包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5) // 数据包下载标签页索引
+        {
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// 整合包类别筛选变化事件处理程序
+    /// </summary>
+    private async void ModpackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当整合包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4) // 整合包下载标签页索引
+        {
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -338,7 +426,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        // 只有当整合包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4) // 整合包下载标签页索引
+        {
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -346,7 +438,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        // 只有当整合包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4) // 整合包下载标签页索引
+        {
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -396,7 +492,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        // 只有当数据包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5) // 数据包下载标签页索引
+        {
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>
@@ -404,7 +504,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        // 只有当数据包下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5) // 数据包下载标签页索引
+        {
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        }
     }
     
     /// <summary>

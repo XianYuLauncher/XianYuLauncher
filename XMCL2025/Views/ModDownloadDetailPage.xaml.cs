@@ -91,8 +91,13 @@ namespace XMCL2025.Views
         {
             base.OnNavigatedTo(e);
 
-            // 接收从搜索页面传递的Mod ID
-            if (e.Parameter is string modId)
+            // 接收从搜索页面传递的完整Mod对象
+            if (e.Parameter is XMCL2025.Core.Models.ModrinthProject mod)
+            {
+                await ViewModel.LoadModDetailsAsync(mod);
+            }
+            // 兼容旧的导航方式（仅传递ID）
+            else if (e.Parameter is string modId)
             {
                 await ViewModel.LoadModDetailsAsync(modId);
             }
