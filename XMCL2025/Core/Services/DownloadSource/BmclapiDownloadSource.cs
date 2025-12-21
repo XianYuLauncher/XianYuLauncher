@@ -40,7 +40,9 @@ public class BmclapiDownloadSource : IDownloadSource
     public string GetResourceUrl(string resourceType, string originalUrl)
     {
         // BMCLAPI支持与官方源相同的路径结构，只需替换域名
-        return ConvertToBmclapiUrl(originalUrl);
+        string convertedUrl = ConvertToBmclapiUrl(originalUrl);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始URL: {originalUrl}, 转换后URL: {convertedUrl}");
+        return convertedUrl;
     }
     
     /// <summary>
@@ -81,7 +83,8 @@ public class BmclapiDownloadSource : IDownloadSource
                 .Replace("https://repo1.maven.org/maven2", "https://bmclapi2.bangbang93.com/maven")
                 .Replace("https://maven.neoforged.net/releases", "https://bmclapi2.bangbang93.com/maven")
                 .Replace("https://maven.neoforged.net", "https://bmclapi2.bangbang93.com/maven")
-                .Replace("https://maven.minecraftforge.net", "https://bmclapi2.bangbang93.com/maven");
+                .Replace("https://maven.minecraftforge.net", "https://bmclapi2.bangbang93.com/maven")
+                .Replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven");
             
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 将原始URL {originalUrl} 转换为BMCLAPI URL {bmclapiUrl}");
             return bmclapiUrl;
@@ -173,7 +176,7 @@ public class BmclapiDownloadSource : IDownloadSource
             .Replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com")
             .Replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com")
             .Replace("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com")
-            .Replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com");
+            .Replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets");
         
         return bmclapiUrl;
     }

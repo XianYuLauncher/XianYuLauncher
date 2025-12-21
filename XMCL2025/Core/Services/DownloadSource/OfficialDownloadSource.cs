@@ -40,6 +40,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetResourceUrl(string resourceType, string originalUrl)
     {
         // 官方源直接使用原始URL
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始URL: {originalUrl}, 转换后URL: {originalUrl}");
         return originalUrl;
     }
     

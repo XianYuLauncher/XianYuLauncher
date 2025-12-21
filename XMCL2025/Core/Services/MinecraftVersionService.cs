@@ -2177,8 +2177,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            // 资源下载基础 URL（官方固定）
-            const string OBJECTS_BASE_DOWNLOAD_URL = "https://resources.download.minecraft.net/";
+            // 获取当前下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            _logger.LogInformation("当前assets下载源: {DownloadSource}", downloadSource.Name);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets下载源: {downloadSource.Name}");
 
             // 1. 目录结构验证和创建
             string assetsDirectory = Path.Combine(minecraftDirectory, "assets");
@@ -2279,8 +2282,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             Directory.CreateDirectory(assetSubDir);
                         }
 
-                        // 下载资源并保存，带进度报告
-                        string downloadUrl = $"{OBJECTS_BASE_DOWNLOAD_URL}{hashPrefix}/{hash}";
+                        // 构建官方资源URL，然后使用当前下载源转换
+                        string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
+                        string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
+                        _logger.LogInformation("正在下载assets对象: {Hash}, 官方URL: {OfficialUrl}, 转换后URL: {DownloadUrl}");
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载assets对象: {hash}, 官方URL: {officialUrl}, 转换后URL: {downloadUrl}");
                         
                         // 使用异步下载方法带进度报告
                         await DownloadFileWithProgress(httpClient, downloadUrl, assetSavePath, assetMeta.Size, assetName, 
@@ -2467,8 +2473,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 {
                     try
                     {
+                        // 获取当前下载源
+                        var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+                        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+                        
+                        // 转换资源索引URL
+                        string convertedAssetIndexUrl = downloadSource.GetResourceUrl("asset_index", assetIndexUrl);
+                        _logger.LogInformation("正在下载assets索引: {AssetIndexId}, 官方URL: {AssetIndexUrl}, 转换后URL: {ConvertedAssetIndexUrl}", assetIndexId, assetIndexUrl, convertedAssetIndexUrl);
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets索引下载源: {downloadSource.Name}, 资源索引ID: {assetIndexId}, 官方URL: {assetIndexUrl}, 转换后URL: {convertedAssetIndexUrl}");
+                        
                         // 下载索引文件
-                        var response = await _httpClient.GetAsync(assetIndexUrl);
+                        var response = await _httpClient.GetAsync(convertedAssetIndexUrl);
                         response.EnsureSuccessStatusCode();
 
                         byte[] contentBytes = await response.Content.ReadAsByteArrayAsync();
