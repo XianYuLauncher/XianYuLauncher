@@ -88,6 +88,8 @@
                                             Margin="0,0,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
+                                
+
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>
@@ -280,7 +282,7 @@
 
                                     <StackPanel Margin="{StaticResource XSmallTopMargin}">
                                         <RadioButton
-                                            Content="官方源"
+                                            Content="尽量使用官方源"
                                             Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
                                             FontSize="15"
@@ -290,7 +292,7 @@
                                             </RadioButton.CommandParameter>
                                         </RadioButton>
                                         <RadioButton
-                                            Content="BMCLAPI"
+                                            Content="尽量使用BMCLAPI"
                                             Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
                                             FontSize="15"
@@ -313,7 +315,7 @@
 
                                     <StackPanel Margin="{StaticResource XSmallTopMargin}">
                                         <RadioButton
-                                            Content="官方源"
+                                            Content="尽量使用官方源"
                                             Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
                                             FontSize="15"
@@ -323,7 +325,7 @@
                                             </RadioButton.CommandParameter>
                                         </RadioButton>
                                         <RadioButton
-                                            Content="BMCLAPI"
+                                            Content="尽量使用BMCLAPI"
                                             Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
                                             FontSize="15"

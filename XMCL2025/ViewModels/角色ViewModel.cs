@@ -167,7 +167,7 @@ namespace XMCL2025.ViewModels
         /// <summary>
         /// 保存角色列表
         /// </summary>
-        private void SaveProfiles()
+        public void SaveProfiles()
         {
             try
             {

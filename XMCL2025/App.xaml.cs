@@ -142,6 +142,8 @@ public partial class App : Application
             services.AddTransient<角色管理Page>();
             services.AddTransient<错误分析系统ViewModel>();
             services.AddTransient<错误分析系统Page>();
+            services.AddTransient<TutorialPageViewModel>();
+            services.AddTransient<TutorialPage>();
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
 
