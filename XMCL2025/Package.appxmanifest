@@ -11,15 +11,15 @@
   IgnorableNamespaces="uap rescap genTemplate">
 
   <Identity
-    Name="58726fe7-0cdb-4b29-9c99-12ff6c802233"
-    Publisher="CN=XianYuLauncher"
+    Name="SpiritStudio.XianYuLauncher"
+    Publisher="CN=477122EB-593B-4C14-AA43-AD408DEE1452"
     Version="1.0.0.0" />
     
-  <mp:PhoneIdentity PhoneProductId="58726fe7-0cdb-4b29-9c99-12ff6c802233" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="8e13cdce-bdb3-430a-a11c-5daea60ef5cd" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
     
   <Properties>
     <DisplayName>XianYu Launcher</DisplayName>
-    <PublisherDisplayName>pc</PublisherDisplayName>
+    <PublisherDisplayName>Spirit Studio</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

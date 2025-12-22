@@ -120,14 +120,14 @@ public partial class App : Application
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<SettingsPage>();
-            services.AddTransient<下载ViewModel>();
-            services.AddTransient<下载Page>();
+            // services.AddTransient<下载ViewModel>();
+            // services.AddTransient<下载Page>();
             services.AddTransient<启动ViewModel>();
             services.AddTransient<启动Page>();
             services.AddTransient<ModLoader选择ViewModel>();
             services.AddTransient<ModLoader选择Page>();
-            services.AddTransient<ModViewModel>();
-            services.AddTransient<ModPage>();
+            // services.AddTransient<ModViewModel>();
+            // services.AddTransient<ModPage>();
             services.AddTransient<ModDownloadDetailViewModel>();
             services.AddTransient<ModDownloadDetailPage>();
             services.AddTransient<版本列表ViewModel>();
