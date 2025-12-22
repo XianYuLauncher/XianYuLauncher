@@ -14,7 +14,7 @@ namespace XMCL2025.Services;
 
 public class LocalSettingsService : ILocalSettingsService
 {
-    private const string _defaultApplicationDataFolder = "XMCL2025/ApplicationData";
+    private const string _defaultApplicationDataFolder = "XianYuLauncher/ApplicationData";
     private const string _defaultLocalSettingsFile = "LocalSettings.json";
 
     private readonly IFileService _fileService;

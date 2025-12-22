@@ -10,7 +10,7 @@ public class FileService : IFileService
 {
     private string? _customMinecraftDataPath;
     private const string MinecraftPathKey = "MinecraftPath";
-    private const string _defaultApplicationDataFolder = "XMCL2025/ApplicationData";
+    private const string _defaultApplicationDataFolder = "XianYuLauncher/ApplicationData";
     private const string _defaultLocalSettingsFile = "LocalSettings.json";
     
     private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

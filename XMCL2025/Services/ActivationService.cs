@@ -81,40 +81,33 @@ public class ActivationService : IActivationService
     }
     
     /// <summary>
-    /// 显示保密协议弹窗
+    /// 显示用户协议弹窗
     /// </summary>
     private async Task ShowPrivacyAgreementAsync()
     {
         try
         {
-            Serilog.Log.Information("开始检查保密协议状态");
+            Serilog.Log.Information("开始检查用户协议状态");
             
             // 获取本地设置服务
             var localSettingsService = App.GetService<ILocalSettingsService>();
-            const string PrivacyAgreementAcceptedKey = "PrivacyAgreementAccepted";
+            const string EulaAcceptedKey = "EulaAccepted";
             
-            // 检查用户是否已经同意保密协议
-            bool hasAccepted = await localSettingsService.ReadSettingAsync<bool>(PrivacyAgreementAcceptedKey);
-            Serilog.Log.Information($"保密协议状态: {hasAccepted}");
-            
-            // 强制显示弹窗，用于测试
-            hasAccepted = false;
-            Serilog.Log.Information($"强制显示弹窗，设置hasAccepted为: {hasAccepted}");
+            // 检查用户是否已经同意用户协议
+            bool hasAccepted = await localSettingsService.ReadSettingAsync<bool>(EulaAcceptedKey);
+            Serilog.Log.Information($"用户协议状态: {hasAccepted}");
             
             if (!hasAccepted)
             {
-                Serilog.Log.Information("准备显示保密协议弹窗");
+                Serilog.Log.Information("准备显示用户协议弹窗");
                 
-                // 构建保密协议内容
-                string agreementContent = "当前启动器为小范围测试，您需签署协议后才可继续使用。\n\n" +
-                    "我确认 XianYu Launcher 为非官方 Minecraft 启动器，与 Mojang、Microsoft及其中中国大陆代理公司无关联，将遵守官方 EULA 及本保密协议。\n" +
-                    "我承诺不泄露测试版本、未公开功能及相关信息，仅用于个人测试及合法使用，不向第三方传播或商业使用。\n" +
-                    "我同意甲方有权根据开发进度终止测试版本使用权限，若违反上述约定，愿意承担相应法律责任及甲方损失。";
+                // 构建用户协议内容
+                string agreementContent = "在正式开始使用XianYu Launcher前,您需阅读并同意相关协议后方可使用。";
 
-                // 创建保密协议弹窗
+                // 创建用户协议弹窗
                 var dialog = new ContentDialog
                 {
-                    Title = "保密协议",
+                    Title = "XianYu Launcher用户协议",
                     Content = new ScrollViewer
                     {
                         Content = new TextBlock
@@ -129,34 +122,55 @@ public class ActivationService : IActivationService
                         HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Disabled
                     },
                     PrimaryButtonText = "同意",
-                    CloseButtonText = "不同意",
+                    SecondaryButtonText = "用户协议",
+                    CloseButtonText = "拒绝",
                     DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary,
                     XamlRoot = App.MainWindow.Content.XamlRoot
                 };
 
+                // 处理导航按钮点击事件
+                dialog.SecondaryButtonClick += async (sender, args) =>
+                {
+                    try
+                    {
+                        // 取消弹窗关闭
+                        args.Cancel = true;
+                        
+                        // 导航到指定链接
+                        var uri = new Uri("https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV");
+                        await Windows.System.Launcher.LaunchUriAsync(uri);
+                        Serilog.Log.Information("用户点击用户协议按钮，已打开用户协议链接");
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Error(ex, "打开用户协议链接失败: {ErrorMessage}", ex.Message);
+                    }
+                };
+
                 // 显示弹窗并处理结果
-                Serilog.Log.Information("开始显示保密协议弹窗");
+                Serilog.Log.Information("开始显示用户协议弹窗");
                 var result = await dialog.ShowAsync();
-                Serilog.Log.Information($"保密协议弹窗结果: {result}");
+                Serilog.Log.Information($"用户协议弹窗结果: {result}");
                 
                 if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
                 {
                     // 用户同意，保存到本地设置
-                    await localSettingsService.SaveSettingAsync(PrivacyAgreementAcceptedKey, true);
-                    Serilog.Log.Information("用户同意保密协议，已保存状态");
+                    await localSettingsService.SaveSettingAsync(EulaAcceptedKey, true);
+                    Serilog.Log.Information("用户同意用户协议，已保存状态");
                 }
-                else
+                else if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.None)
                 {
-                    // 用户不同意，退出应用
-                    Serilog.Log.Information("用户不同意保密协议，退出应用");
+                    // 用户拒绝，退出应用
+                    Serilog.Log.Information("用户拒绝用户协议，退出应用");
                     App.MainWindow.Close();
                 }
+                // 导航按钮点击后，弹窗会自动关闭，不做特殊处理
             }
         }
         catch (Exception ex)
         {
             // 记录错误，但不影响应用启动
-            Serilog.Log.Error(ex, "显示保密协议弹窗失败，详细错误: {ErrorMessage}", ex.Message);
+            Serilog.Log.Error(ex, "显示用户协议弹窗失败，详细错误: {ErrorMessage}", ex.Message);
             Serilog.Log.Error(ex, "异常堆栈: {StackTrace}", ex.StackTrace);
             if (ex.InnerException != null)
             {
