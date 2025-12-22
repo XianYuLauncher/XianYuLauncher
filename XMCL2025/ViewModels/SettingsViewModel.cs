@@ -55,6 +55,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IFileService _fileService;
+    private readonly INavigationService _navigationService;
     private const string JavaPathKey = "JavaPath";
     private const string SelectedJavaVersionKey = "SelectedJavaVersion";
     private const string JavaVersionsKey = "JavaVersions";
@@ -151,7 +152,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否开启版本隔离
     /// </summary>
     [ObservableProperty]
-    private bool _enableVersionIsolation = false;
+    private bool _enableVersionIsolation = true;
 
     [ObservableProperty]
     private ElementTheme _elementTheme;
@@ -223,14 +224,17 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
         _fileService = fileService;
         _materialService = materialService;
+        _navigationService = navigationService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
+        
+
 
         SwitchThemeCommand = new RelayCommand<ElementTheme>(
             async (param) =>
@@ -377,7 +381,9 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadEnableVersionIsolationAsync()
     {
-        EnableVersionIsolation = await _localSettingsService.ReadSettingAsync<bool>(EnableVersionIsolationKey);
+        // 读取版本隔离设置，如果不存在则使用默认值true
+        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
+        EnableVersionIsolation = value ?? true;
     }
     
     /// <summary>
