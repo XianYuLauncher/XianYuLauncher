@@ -7,6 +7,7 @@ using XMCL2025.Contracts.ViewModels;
 using XMCL2025.Core.Services;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Models;
+using XMCL2025.Helpers;
 
 namespace XMCL2025.ViewModels;
 
@@ -705,7 +706,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         try
         {
             // 初始化下载状态
-            DownloadStatus = "准备开始下载...";
+            DownloadStatus = "ModLoaderSelectionPage_PreparingDownloadText".GetLocalized();
             DownloadProgress = 0;
             DownloadProgressText = "0%";
             
@@ -725,17 +726,17 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 // 更新下载状态文本
                 if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected)
                 {
-                    DownloadStatus = $"正在下载原版Minecraft {SelectedMinecraftVersion}...";
+                    DownloadStatus = string.Format("{0} {1}...", "ModLoaderSelectionPage_DownloadingVanillaMinecraftText".GetLocalized(), SelectedMinecraftVersion);
                 }
                 else if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
                 {
                     // 单独选择Optifine的情况
-                    DownloadStatus = $"正在下载 Optifine {SelectedOptifineVersion} 版本...";
+                    DownloadStatus = string.Format("{0} Optifine {1} {2}...", "ModLoaderSelectionPage_DownloadingText".GetLocalized(), SelectedOptifineVersion, "ModLoaderSelectionPage_VersionText".GetLocalized());
                 }
                 else
                 {
                     // 选择了其他ModLoader的情况
-                    DownloadStatus = $"正在下载 {SelectedModLoader} {SelectedModLoaderVersion} 版本...";
+                    DownloadStatus = string.Format("{0} {1} {2} {3}...", "ModLoaderSelectionPage_DownloadingText".GetLocalized(), SelectedModLoader, SelectedModLoaderVersion, "ModLoaderSelectionPage_VersionText".GetLocalized());
                 }
             };
             
@@ -757,7 +758,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 
                 // 传递进度回调函数，确保进度条更新
                 await minecraftVersionService.DownloadVersionAsync(SelectedMinecraftVersion, versionDirectory, progressCallback, VersionName);
-                successMessage = $"原版Minecraft {SelectedMinecraftVersion} 下载完成！版本名称: {VersionName}";
+                successMessage = string.Format("{0} Minecraft {1} {2}！{3}: {4}", "ModLoaderSelectionPage_VanillaText".GetLocalized(), SelectedMinecraftVersion, "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), VersionName);
             }
             else
             {
@@ -783,7 +784,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 // 下载带Mod Loader的版本
                 if (string.IsNullOrEmpty(modLoaderVersionToDownload))
                 {
-                    await ShowMessageAsync("请选择Mod Loader版本");
+                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     IsDownloadDialogOpen = false;
                     return;
                 }
@@ -810,7 +811,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                                 {
                                     DownloadProgress = progress;
                                     DownloadProgressText = $"{progress:F0}%";
-                                    DownloadStatus = progress < 50 ? "正在安装 Optifine..." : "正在安装 Forge...";
+                                    DownloadStatus = progress < 50 ? string.Format("{0} Optifine...", "ModLoaderSelectionPage_InstallingText".GetLocalized()) : string.Format("{0} Forge...", "ModLoaderSelectionPage_InstallingText".GetLocalized());
                                 },
                                 _downloadCts.Token,
                                 VersionName);
@@ -860,7 +861,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                                     double adjustedProgress = 60 + (progress * 0.4);
                                     DownloadProgress = adjustedProgress;
                                     DownloadProgressText = $"{adjustedProgress:F0}%";
-                                    DownloadStatus = $"正在安装 Optifine {optifineInfo.FullVersion.Type}_{optifineInfo.FullVersion.Patch}...";
+                                    DownloadStatus = string.Format("{0} Optifine {1}_{2}...", "ModLoaderSelectionPage_InstallingText".GetLocalized(), optifineInfo.FullVersion.Type, optifineInfo.FullVersion.Patch);
                                 };
                                 
                                 // 使用特殊格式传递Optifine的type和patch值
@@ -883,11 +884,29 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                 // 构建成功消息
                 if (IsOptifineSelected && !string.IsNullOrEmpty(SelectedModLoader))
                 {
-                    successMessage = $"{modLoaderToDownload} {modLoaderVersionToDownload} + Optifine {SelectedOptifineVersion} 版本下载完成！\n\nMinecraft版本: {SelectedMinecraftVersion}\nMod Loader: {modLoaderToDownload} {modLoaderVersionToDownload} + Optifine {SelectedOptifineVersion}\n自定义版本名称: {VersionName}";
+                    successMessage = string.Format("{0} {1} + Optifine {2} {3}！\n\n{4}: {5}\n{6}: {1} + Optifine {2}\n{7}: {8}", 
+                        modLoaderToDownload, 
+                        modLoaderVersionToDownload, 
+                        SelectedOptifineVersion, 
+                        "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), 
+                        "ModLoaderSelectionPage_MinecraftVersionText".GetLocalized(), 
+                        SelectedMinecraftVersion, 
+                        "ModLoaderSelectionPage_ModLoaderText".GetLocalized(), 
+                        "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), 
+                        VersionName);
                 }
                 else
                 {
-                    successMessage = $"{modLoaderToDownload} {modLoaderVersionToDownload} 版本下载完成！\n\nMinecraft版本: {SelectedMinecraftVersion}\nMod Loader: {modLoaderToDownload}\nMod Loader版本: {modLoaderVersionToDownload}\n自定义版本名称: {VersionName}";
+                    successMessage = string.Format("{0} {1} {2}！\n\n{3}: {4}\n{5}: {0}\n{6}: {1}\n{7}: {8}", 
+                        modLoaderToDownload, 
+                        modLoaderVersionToDownload, 
+                        "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), 
+                        "ModLoaderSelectionPage_MinecraftVersionText".GetLocalized(), 
+                        SelectedMinecraftVersion, 
+                        "ModLoaderSelectionPage_ModLoaderText".GetLocalized(), 
+                        "ModLoaderSelectionPage_ModLoaderVersionText".GetLocalized(), 
+                        "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), 
+                        VersionName);
                 }
             }
             
@@ -904,13 +923,13 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         {
             // 下载被取消
             IsDownloadDialogOpen = false;
-            await ShowMessageAsync("下载已取消");
+            await ShowMessageAsync("ModLoaderSelectionPage_DownloadCanceledText".GetLocalized());
         }
         catch (Exception ex)
         {
             // 隐藏下载弹窗
             IsDownloadDialogOpen = false;
-            await ShowMessageAsync($"下载失败: {ex.Message}");
+            await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
         }
         finally
         {
@@ -926,9 +945,9 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
         // 创建并显示消息对话框
         var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
         {
-            Title = "选择结果",
+            Title = "ModLoaderSelectionPage_SelectionResultText".GetLocalized(),
             Content = message,
-            CloseButtonText = "确定",
+            CloseButtonText = "ModLoaderSelectionPage_OKButtonText".GetLocalized(),
             XamlRoot = App.MainWindow.Content.XamlRoot
         };
         

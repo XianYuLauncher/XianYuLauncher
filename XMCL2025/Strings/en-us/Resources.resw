@@ -726,6 +726,57 @@
   <data name="VersionListPage_VersionNumberText.Text" xml:space="preserve">
     <value>Version: </value>
   </data>
+  
+  <!-- ModLoaderSelectionPage Download Dialog Translations -->
+  <data name="ModLoaderSelectionPage_PreparingDownloadText" xml:space="preserve">
+    <value>Preparing to download...</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingVanillaMinecraftText" xml:space="preserve">
+    <value>Downloading Vanilla Minecraft</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingText" xml:space="preserve">
+    <value>Downloading</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VersionText" xml:space="preserve">
+    <value>version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VanillaText" xml:space="preserve">
+    <value>Vanilla</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCompletedText" xml:space="preserve">
+    <value>download completed</value>
+  </data>
+  <data name="ModLoaderSelectionPage_MinecraftVersionText" xml:space="preserve">
+    <value>Minecraft Version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderText" xml:space="preserve">
+    <value>Mod Loader</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderVersionText" xml:space="preserve">
+    <value>Mod Loader Version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CustomVersionNameText" xml:space="preserve">
+    <value>Custom Version Name</value>
+  </data>
+  <data name="ModLoaderSelectionPage_PleaseSelectModLoaderVersionText" xml:space="preserve">
+    <value>Please select a Mod Loader version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_InstallingText" xml:space="preserve">
+    <value>Installing</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCanceledText" xml:space="preserve">
+    <value>Download canceled</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadFailedText" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="ModLoaderSelectionPage_SelectionResultText" xml:space="preserve">
+    <value>Selection Result</value>
+  </data>
+  <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  
   <data name="VersionListPage_InstallDateText.Text" xml:space="preserve">
     <value>Install Date: </value>
   </data>
