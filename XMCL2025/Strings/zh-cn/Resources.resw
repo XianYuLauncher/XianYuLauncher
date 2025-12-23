@@ -67,7 +67,7 @@
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>启动</value>
   </data>
-  <data name="Shell_下载.Content" xml:space="preserve">
+  <data name="Shell_资源下载.Content" xml:space="preserve">
     <value>下载</value>
   </data>
   <data name="Shell_Mod.Content" xml:space="preserve">
@@ -383,6 +383,8 @@
   <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
     <value>启动成功！</value>
   </data>
+  <!-- ModLoader Selection Page Translations -->
+
   <data name="Settings_ThanksToTeam.Text" xml:space="preserve">
     <value>感谢所有参与项目开发的工作室成员</value>
   </data>
@@ -639,6 +641,56 @@
   <data name="ModLoaderSelectionPage_DownloadProgressDialog.CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
+  <!-- ModLoaderSelectionPage Download Dialog Translations -->
+  <data name="ModLoaderSelectionPage_PreparingDownloadText" xml:space="preserve">
+    <value>准备开始下载...</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingVanillaMinecraftText" xml:space="preserve">
+    <value>正在下载原版Minecraft</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingText" xml:space="preserve">
+    <value>正在下载</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VersionText" xml:space="preserve">
+    <value>版本</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VanillaText" xml:space="preserve">
+    <value>原版</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCompletedText" xml:space="preserve">
+    <value>下载完成</value>
+  </data>
+  <data name="ModLoaderSelectionPage_MinecraftVersionText" xml:space="preserve">
+    <value>Minecraft版本</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderText" xml:space="preserve">
+    <value>Mod加载器</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderVersionText" xml:space="preserve">
+    <value>Mod加载器版本</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CustomVersionNameText" xml:space="preserve">
+    <value>自定义版本名称</value>
+  </data>
+  <data name="ModLoaderSelectionPage_PleaseSelectModLoaderVersionText" xml:space="preserve">
+    <value>请选择Mod加载器版本</value>
+  </data>
+  <data name="ModLoaderSelectionPage_InstallingText" xml:space="preserve">
+    <value>正在安装</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCanceledText" xml:space="preserve">
+    <value>下载已取消</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadFailedText" xml:space="preserve">
+    <value>下载失败</value>
+  </data>
+  <data name="ModLoaderSelectionPage_SelectionResultText" xml:space="preserve">
+    <value>选择结果</value>
+  </data>
+  <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
+
   <!-- ModDownloadDetailPage 翻译 -->
   <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
     <value>选择版本</value>

@@ -242,8 +242,6 @@
         <ContentDialog
             x:Uid="ModLoaderSelectionPage_DownloadProgressDialog"
             x:Name="DownloadProgressDialog"
-            Title="版本下载中"
-            CloseButtonText="取消"
             IsPrimaryButtonEnabled="False"
             IsSecondaryButtonEnabled="False"
             DefaultButton="None"
