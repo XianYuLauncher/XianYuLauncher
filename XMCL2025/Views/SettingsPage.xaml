@@ -92,14 +92,7 @@
                                     </StackPanel>
                                 </StackPanel>
                                 
-                                <!-- 新手教程按钮 -->
-                                <StackPanel Margin="0,20,0,0">
-                                    <Button 
-                                        Content="打开新手教程" 
-                                        Command="{x:Bind ViewModel.NavigateToTutorialPageCommand}" 
-                                        Margin="0,0,0,8" 
-                                        Width="200"/>
-                                </StackPanel>
+
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>

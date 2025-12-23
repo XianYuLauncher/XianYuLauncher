@@ -271,13 +271,13 @@
     <value>About this application</value>
   </data>
   <data name="Settings_AboutDescription.Text" xml:space="preserve">
-    <value>TODO: Replace with your app description.</value>
+    <value>TODO:None</value>
   </data>
   <data name="SettingsPage_PrivacyTermsLink.Content" xml:space="preserve">
-    <value>Privacy Statement</value>
+    <value>End User License Agreement (EULA)</value>
   </data>
   <data name="SettingsPage_PrivacyTermsLink.NavigateUri" xml:space="preserve">
-    <value>https://YourPrivacyUrlGoesHere/</value>
+    <value>https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV</value>
   </data>
   <!-- ResourceDownloadPage Translations -->
   <data name="ResourceDownloadPage_PageTitle.Text" xml:space="preserve">

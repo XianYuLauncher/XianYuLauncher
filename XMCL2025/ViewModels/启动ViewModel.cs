@@ -1603,6 +1603,10 @@ public partial class 启动ViewModel : ObservableRecipient
             args.Add($"--userType");
             args.Add(SelectedProfile.IsOffline ? "offline" : "msa");
             
+            // 添加versionType参数，标识启动器类型
+            args.Add($"--versionType");
+            args.Add("XianYuLauncher");
+            
             // 为1.9以下版本添加--userProperties参数
             if (IsVersionBelow1_9(SelectedVersion))
             {
