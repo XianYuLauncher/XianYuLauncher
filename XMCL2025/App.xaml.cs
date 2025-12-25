@@ -151,6 +151,8 @@ public partial class App : Application
             services.AddTransient<TutorialPage>();
             services.AddTransient<联机ViewModel>();
             services.AddTransient<联机Page>();
+            services.AddTransient<联机大厅ViewModel>();
+            services.AddTransient<联机大厅Page>();
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
 

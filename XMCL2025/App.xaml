@@ -20,6 +20,34 @@
             <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:UriToImageSourceConverter x:Key="UriToImageSourceConverter" xmlns:helpers="using:XMCL2025.Helpers" />
+            
+            <!-- 轮询内容模板，用于显示轮询结果 -->
+            <DataTemplate x:Key="PollingContentTemplate">
+                <StackPanel Spacing="16">
+                    <TextBlock 
+                        Text="请启动Minecraft,选择&amp;quot;对局域网开放&amp;quot;，然后运行联机服务即可" 
+                        Style="{ThemeResource BodyTextBlockStyle}" />
+                    <StackPanel Spacing="8">
+                        <TextBlock 
+                            Text="轮询结果:" 
+                            Style="{ThemeResource CaptionTextBlockStyle}" 
+                            FontWeight="SemiBold" />
+                        <Border 
+                            Background="{ThemeResource CardBackgroundFillColorDefault}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                            <TextBlock 
+                                Text="{Binding PollingResult, Mode=OneWay}" 
+                                Style="{ThemeResource BodyTextBlockStyle}" 
+                                TextWrapping="WrapWholeWords" 
+                                FontFamily="Consolas" 
+                                FontSize="12" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
