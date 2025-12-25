@@ -79,6 +79,9 @@
   <data name="Shell_角色.Content" xml:space="preserve">
     <value>Profile</value>
   </data>
+  <data name="Shell_联机.Content" xml:space="preserve">
+    <value>Multiplayer</value>
+  </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>
   </data>
