@@ -1,0 +1,108 @@
+<Page
+    x:Class="XMCL2025.Views.联机Page"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="using:XMCL2025.ViewModels"
+    mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea" Padding="40,60,40,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 页面标题 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock
+                Text="联机"
+                Style="{ThemeResource TitleTextBlockStyle}" />
+            <TextBlock
+                Text="选择你的角色：房主或房客"
+                Style="{ThemeResource BodyTextBlockStyle}" 
+                Margin="0,8,0,0" 
+                Opacity="0.7"/>
+        </StackPanel>
+
+        <!-- 警告InfoBar -->
+        <InfoBar
+            Grid.Row="1"
+            IsOpen="True"
+            IsClosable="True"
+            Margin="0,0,0,30"
+            Title="警告"
+            Message="陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过其官方渠道进行反馈。陶瓦联机基于 P2P 点对点技术实现，联机成功后房间内用户之间将直接建立网络连接，无任何公共中转节点、不通过第三方服务器转发流量，最终联机体验取决于参与联机者的网络环境。您在使用多人联机功能的全过程中，必须严格遵守您所在国家与地区的全部法律法规，不得用于任何违法违规及经营性活动。" >
+        </InfoBar>
+
+        <!-- 卡片区域 -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="48" Margin="0,10,0,0">
+            <!-- 房主卡片 -->
+            <Button
+                Command="{x:Bind ViewModel.HostGameCommand}"
+                Style="{StaticResource TextBlockButtonStyle}"
+                Padding="0">
+                <Grid Width="300" Height="200">
+                    <Border
+                        Background="{ThemeResource CardBackgroundFillColorDefault}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="24">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xe770;" 
+                                FontSize="48" 
+                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
+                            <TextBlock
+                                Text="我想当房主"
+                                Style="{ThemeResource SubtitleTextBlockStyle}" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock
+                                Text="创建一个新的游戏房间，邀请其他玩家加入"
+                                Style="{ThemeResource BodyTextBlockStyle}"
+                                TextWrapping="WrapWholeWords"
+                                TextAlignment="Center"
+                                Opacity="0.7"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Button>
+
+            <!-- 房客卡片 -->
+            <Button
+                Command="{x:Bind ViewModel.JoinGameCommand}"
+                Style="{StaticResource TextBlockButtonStyle}"
+                Padding="0">
+                <Grid Width="300" Height="200">
+                    <Border
+                        Background="{ThemeResource CardBackgroundFillColorDefault}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="24">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                            <FontIcon 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                Glyph="&#xe718;" 
+                                FontSize="48" 
+                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
+                            <TextBlock
+                                Text="我想当房客"
+                                Style="{ThemeResource SubtitleTextBlockStyle}" 
+                                HorizontalAlignment="Center"/>
+                            <TextBlock
+                                Text="加入其他玩家创建的游戏房间"
+                                Style="{ThemeResource BodyTextBlockStyle}"
+                                TextWrapping="WrapWholeWords"
+                                TextAlignment="Center"
+                                Opacity="0.7"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Page>

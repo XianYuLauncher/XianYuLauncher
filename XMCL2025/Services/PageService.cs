@@ -27,6 +27,7 @@ public class PageService : IPageService
                 Configure<角色管理ViewModel, 角色管理Page>();
                 Configure<错误分析系统ViewModel, 错误分析系统Page>();
                 Configure<TutorialPageViewModel, TutorialPage>();
+                Configure<联机ViewModel, 联机Page>();
             }
 
     public Type GetPageType(string key)
