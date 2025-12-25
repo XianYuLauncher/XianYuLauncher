@@ -12,7 +12,7 @@
 
   <Identity
     Name="SpiritStudio.XianYuLauncher"
-    Publisher="CN=477122EB-593B-4C14-AA43-AD408DEE1452"
+    Publisher="CN=XianYuLauncher"
     Version="1.0.0.0" />
     
   <mp:PhoneIdentity PhoneProductId="8e13cdce-bdb3-430a-a11c-5daea60ef5cd" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>

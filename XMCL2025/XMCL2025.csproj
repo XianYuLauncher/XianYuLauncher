@@ -15,8 +15,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <PlatformTarget>x64</PlatformTarget>
     <UseWindowsForms>False</UseWindowsForms>
-    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <!-- 暂时移除证书配置 -->
     <!-- <PackageCertificateThumbprint>58262E4C49844E18497E86160A141ACAEE51022F</PackageCertificateThumbprint> -->
     <!-- <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm> -->
@@ -27,6 +27,7 @@
     <AppInstallerUri>C:\Users\pc\Pictures\debug\</AppInstallerUri>
     <GenerateTemporaryStoreCertificate>False</GenerateTemporaryStoreCertificate>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>
   </PropertyGroup>
 
   <ItemGroup>

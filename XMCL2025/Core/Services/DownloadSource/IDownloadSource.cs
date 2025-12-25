@@ -77,6 +77,21 @@ public interface IDownloadSource
     string GetFabricProfileUrl(string minecraftVersion, string fabricVersion);
     
     /// <summary>
+    /// 获取Quilt版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>Quilt版本列表URL</returns>
+    string GetQuiltVersionsUrl(string minecraftVersion);
+    
+    /// <summary>
+    /// 获取Quilt完整配置URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="quiltVersion">Quilt版本号</param>
+    /// <returns>Quilt完整配置URL</returns>
+    string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion);
+    
+    /// <summary>
     /// 获取依赖库下载URL
     /// </summary>
     /// <param name="libraryName">库名称</param>

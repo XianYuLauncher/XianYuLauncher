@@ -84,7 +84,9 @@ public class BmclapiDownloadSource : IDownloadSource
                 .Replace("https://maven.neoforged.net/releases", "https://bmclapi2.bangbang93.com/maven")
                 .Replace("https://maven.neoforged.net", "https://bmclapi2.bangbang93.com/maven")
                 .Replace("https://maven.minecraftforge.net", "https://bmclapi2.bangbang93.com/maven")
-                .Replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven");
+                .Replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven")
+                .Replace("https://maven.quiltmc.org/repository/release", "https://bmclapi2.bangbang93.com/maven")
+                .Replace("https://maven.fabricmc.net", "https://bmclapi2.bangbang93.com/maven");
             
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 将原始URL {originalUrl} 转换为BMCLAPI URL {bmclapiUrl}");
             return bmclapiUrl;
@@ -232,6 +234,33 @@ public class BmclapiDownloadSource : IDownloadSource
         // BMCLAPI Fabric完整配置URL格式：https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}/{fabricVersion}/profile/json
         string url = $"https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}/{fabricVersion}/profile/json";
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Fabric {fabricVersion} 完整配置URL: {url}");
+        return url;
+    }
+    
+    /// <summary>
+    /// 获取Quilt版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>BMCLAPI Quilt版本列表URL</returns>
+    public string GetQuiltVersionsUrl(string minecraftVersion)
+    {
+        // BMCLAPI Quilt版本列表URL格式：https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}
+        string url = $"https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Quilt版本列表URL: {url}");
+        return url;
+    }
+    
+    /// <summary>
+    /// 获取Quilt完整配置URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="quiltVersion">Quilt版本号</param>
+    /// <returns>BMCLAPI Quilt完整配置URL</returns>
+    public string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion)
+    {
+        // BMCLAPI Quilt完整配置URL格式：https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json
+        string url = $"https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Quilt {quiltVersion} 完整配置URL: {url}");
         return url;
     }
 }

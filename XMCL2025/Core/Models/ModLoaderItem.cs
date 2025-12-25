@@ -176,24 +176,26 @@ public class ModLoaderItem : INotifyPropertyChanged
     /// ModLoader图标URL
     /// </summary>
     public string IconUrl
-    {
-        get
         {
-            switch (_name)
+            get
             {
-                case "Fabric":
-                    return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png";
-                case "Forge":
-                    return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
-                case "NeoForge":
-                    return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
-                case "Optifine":
-                    return "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico";
-                default:
-                    return "";
+                switch (_name)
+                {
+                    case "Fabric":
+                        return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png";
+                    case "Forge":
+                        return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
+                    case "NeoForge":
+                        return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
+                    case "Optifine":
+                        return "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico";
+                    case "Quilt":
+                        return "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png";
+                    default:
+                        return "";
+                }
             }
         }
-    }
 
     /// <summary>
     /// 构造函数

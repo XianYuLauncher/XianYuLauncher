@@ -256,7 +256,7 @@
     <value>Refresh version list</value>
   </data>
   <data name="LaunchPage_PlayerName.Text" xml:space="preserve">
-    <value>Player Name</value>
+    <value>Profile</value>
   </data>
   <data name="LaunchPage_AddProfile.Text" xml:space="preserve">
     <value>Add Profile</value>

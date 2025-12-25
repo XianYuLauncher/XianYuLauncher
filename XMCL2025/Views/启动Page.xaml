@@ -63,7 +63,7 @@
 
             <!-- 角色选择 -->
             <StackPanel Spacing="10">
-                <TextBlock x:Uid="LaunchPage_PlayerName" Text="玩家名" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock x:Uid="LaunchPage_PlayerName" Text="选择角色" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
                 <Button 
                     x:Name="ProfileButton"
                     HorizontalAlignment="Stretch"

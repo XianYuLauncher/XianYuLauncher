@@ -199,4 +199,29 @@ public class OfficialDownloadSource : IDownloadSource
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Fabric {fabricVersion} 完整配置URL: {url}");
         return url;
     }
+    
+    /// <summary>
+    /// 获取Quilt版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>官方Quilt版本列表URL</returns>
+    public string GetQuiltVersionsUrl(string minecraftVersion)
+    {
+        string url = $"https://meta.quiltmc.org/v3/versions/loader/{minecraftVersion}";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Quilt版本列表URL: {url}");
+        return url;
+    }
+    
+    /// <summary>
+    /// 获取Quilt完整配置URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="quiltVersion">Quilt版本号</param>
+    /// <returns>官方Quilt完整配置URL</returns>
+    public string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion)
+    {
+        string url = $"https://meta.quiltmc.org/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json";
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Quilt {quiltVersion} 完整配置URL: {url}");
+        return url;
+    }
 }

@@ -421,7 +421,7 @@
     <value>刷新版本列表</value>
   </data>
   <data name="LaunchPage_PlayerName.Text" xml:space="preserve">
-    <value>玩家名</value>
+    <value>选择角色</value>
   </data>
   <data name="LaunchPage_AddProfile.Text" xml:space="preserve">
     <value>添加角色</value>

@@ -936,7 +936,8 @@ public partial class 启动ViewModel : ObservableRecipient
             string assetsPath = Path.Combine(minecraftPath, "assets");
             
             // 2. 根据版本隔离设置生成游戏目录
-            bool enableVersionIsolation = await _localSettingsService.ReadSettingAsync<bool>(EnableVersionIsolationKey);
+            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
+            bool enableVersionIsolation = versionIsolationValue ?? true; // 如果设置不存在，默认启用版本隔离
             string gameDir = enableVersionIsolation 
                 ? Path.Combine(minecraftPath, "versions", SelectedVersion) 
                 : minecraftPath;

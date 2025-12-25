@@ -15,6 +15,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
 {
     private readonly INavigationService _navigationService;
     private readonly FabricService _fabricService;
+    private readonly QuiltService _quiltService;
     private readonly IFileService _fileService;
     private readonly NeoForgeService _neoForgeService;
     private readonly ForgeService _forgeService;
@@ -94,6 +95,9 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     [ObservableProperty]
     private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
     
+    [ObservableProperty]
+    private Dictionary<string, QuiltLoaderVersion> _quiltVersionMap = new();
+    
     // 自定义版本名称
     [ObservableProperty]
     private string _versionName = "";
@@ -121,6 +125,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     {
         _navigationService = App.GetService<INavigationService>();
         _fabricService = App.GetService<FabricService>();
+        _quiltService = App.GetService<QuiltService>();
         _fileService = App.GetService<IFileService>();
         _neoForgeService = App.GetService<NeoForgeService>();
         _forgeService = App.GetService<ForgeService>();
@@ -462,9 +467,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
                     await LoadNeoForgeVersionsAsync(modLoaderItem, cts.Token);
                     break;
                 case "Quilt":
-                    modLoaderItem.Versions.Add("0.20.0");
-                    modLoaderItem.Versions.Add("0.19.2");
-                    modLoaderItem.Versions.Add("0.19.1");
+                    await LoadQuiltVersionsAsync(modLoaderItem, cts.Token);
                     break;
                 case "Optifine":
                     await LoadOptifineVersionsAsync(modLoaderItem, cts.Token);
@@ -540,6 +543,45 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     /// <summary>
     /// 从NeoForge API获取实际的NeoForge版本列表
     /// </summary>
+    /// <summary>
+    /// 从Quilt API获取实际的Quilt版本列表
+    /// </summary>
+    private async Task LoadQuiltVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
+    {
+        try
+        {
+            List<QuiltLoaderVersion> quiltVersions = await _quiltService.GetQuiltLoaderVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // 将版本添加到对应mod loader的列表中，并保存映射关系
+            foreach (var version in quiltVersions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string displayVersion = version.Loader.Version;
+                modLoaderItem.Versions.Add(displayVersion);
+                QuiltVersionMap[displayVersion] = version;
+            }
+            
+            // 如果有版本，默认选择第一个
+            if (modLoaderItem.Versions.Count > 0)
+            {
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+        }
+        catch (Exception ex)
+        {
+            // 只有当当前选择的ModLoader仍然是Quilt时才显示错误
+            if (SelectedModLoader == "Quilt")
+            {
+                await ShowMessageAsync($"获取Quilt版本列表失败: {ex.Message}");
+            }
+        }
+    }
+    
     private async Task LoadNeoForgeVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
     {
         try

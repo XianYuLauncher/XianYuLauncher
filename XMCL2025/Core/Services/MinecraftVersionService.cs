@@ -721,8 +721,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     await DownloadOptifineVersionAsync(minecraftVersionId, optifineType, optifinePatch, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 case "Quilt":
-                    // Quilt的实现将在后续添加
-                    await ShowNotImplementedMessageAsync(modLoaderType);
+                    await DownloadQuiltVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
                     break;
                 default:
                     throw new NotSupportedException($"不支持的Mod Loader类型: {modLoaderType}");

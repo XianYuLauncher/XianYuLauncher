@@ -101,6 +101,10 @@ public partial class App : Application
             services.AddHttpClient<FabricService>();
             services.AddSingleton<FabricService>();
             
+            // Quilt Service
+            services.AddHttpClient<QuiltService>();
+            services.AddSingleton<QuiltService>();
+            
             // Modrinth Service
             services.AddHttpClient<ModrinthService>();
             
