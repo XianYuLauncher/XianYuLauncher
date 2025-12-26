@@ -244,6 +244,40 @@ public partial class MinecraftVersionService
             progressCallback?.Invoke(90); // 90% - 解压完成
             _logger.LogInformation("Forge Installer解压完成: {ExtractedPath}", extractedPath);
 
+            // 7. 检查version.json是否存在，不存在即进入旧版Forge安装阶段
+            // 此检查应在寻找install_profile.json之前进行，以防安装逻辑混乱
+            _logger.LogInformation("检查version.json是否存在，判断是否进入旧版Forge安装流程");
+            bool isOldForgeVersion = false;
+            string forgeJsonPath = Path.Combine(extractedPath, "version.json");
+            
+            // 检查解压目录根目录是否存在version.json
+            if (!File.Exists(forgeJsonPath))
+            {
+                // 检查子目录中是否存在version.json
+                bool foundInSubDir = false;
+                string[] subDirs = Directory.GetDirectories(extractedPath);
+                foreach (string subDir in subDirs)
+                {
+                    string subDirJsonPath = Path.Combine(subDir, "version.json");
+                    if (File.Exists(subDirJsonPath))
+                    {
+                        foundInSubDir = true;
+                        forgeJsonPath = subDirJsonPath;
+                        break;
+                    }
+                }
+                
+                if (!foundInSubDir)
+                {
+                    // version.json不存在，进入旧版Forge安装流程
+                    _logger.LogInformation("未找到version.json文件，进入旧版Forge安装流程");
+                    System.Diagnostics.Debug.WriteLine("[DEBUG] 进入旧版forge安装流程,尚未实现");
+                    
+                    // 抛出异常，由UI层统一处理，避免与现有弹窗冲突
+                    throw new Exception("旧版Forge安装流程正常制作中...");
+                }
+            }
+            
             // 8. 读取install_profile.json文件
             _logger.LogInformation("读取Forge install_profile.json文件");
             string installProfilePath = Path.Combine(extractedPath, "install_profile.json");
@@ -272,8 +306,6 @@ public partial class MinecraftVersionService
 
             // 9. 提取客户端处理器和依赖库
             _logger.LogInformation("提取Forge客户端处理器和依赖库");
-            JArray processors = installProfile["processors"]?.Value<JArray>() ?? throw new Exception("install_profile.json中未找到processors字段");
-            List<JObject> clientProcessors = new List<JObject>();
             
             // 提取install_profile.json中的依赖库
             List<Library> installProfileLibraries = new List<Library>();
@@ -288,40 +320,6 @@ public partial class MinecraftVersionService
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加install_profile依赖库: {lib.Name}");
                 }
             }
-            
-            // 筛选客户端处理器（支持server字段和sides字段判断，与NeoForge保持一致）
-            foreach (JObject processor in processors)
-            {
-                bool isServerProcessor = false;
-                
-                // 1. 检查server字段
-                if (processor.ContainsKey("server"))
-                {
-                    isServerProcessor = processor["server"]?.Value<bool>() ?? false;
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器server字段值: {isServerProcessor}");
-                }
-                // 2. 检查sides字段
-                else if (processor.ContainsKey("sides"))
-                {
-                    JArray sides = processor["sides"]?.Value<JArray>();
-                    if (sides != null)
-                    {
-                        isServerProcessor = !sides.Any(side => side.ToString() == "client");
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器sides字段: {string.Join(",", sides.Select(s => s.ToString()))}, 是否为服务器处理器: {isServerProcessor}");
-                    }
-                }
-                
-                if (isServerProcessor)
-                {
-                    _logger.LogInformation("跳过服务器处理器");
-                    System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过服务器处理器");
-                    continue;
-                }
-                
-                clientProcessors.Add(processor);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加客户端处理器: {processor}");
-            }
-            _logger.LogInformation("共找到 {ProcessorCount} 个客户端处理器", clientProcessors.Count);
             
             // 10. 下载install_profile.json中的依赖库（与NeoForge流程保持一致）
             if (installProfileLibraries.Count > 0)
@@ -373,49 +371,18 @@ public partial class MinecraftVersionService
             _logger.LogInformation("开始合并Forge版本JSON");
             
             // 从解压目录读取Forge version.json
-            string forgeJsonPath = Path.Combine(extractedPath, "version.json");
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 尝试读取Forge version.json路径: {forgeJsonPath}");
             
             // 详细检查version.json文件
-            if (File.Exists(forgeJsonPath))
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到Forge version.json文件，大小: {new FileInfo(forgeJsonPath).Length}字节");
+            
+            // 读取并显示文件前500字节内容
+            using (var reader = new StreamReader(forgeJsonPath))
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到Forge version.json文件，大小: {new FileInfo(forgeJsonPath).Length}字节");
-                
-                // 读取并显示文件前500字节内容
-                using (var reader = new StreamReader(forgeJsonPath))
-                {
-                    char[] buffer = new char[500];
-                    int read = await reader.ReadAsync(buffer, 0, buffer.Length);
-                    string preview = new string(buffer, 0, read);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge version.json前500字节预览: {preview}");
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到Forge version.json文件，列出解压目录所有文件:");
-                string[] dirFiles = Directory.GetFiles(extractedPath);
-                foreach (string file in dirFiles)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG]   {Path.GetFileName(file)}");
-                }
-                
-                // 检查子目录中是否有version.json
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 检查解压目录子目录中的version.json:");
-                string[] subDirs = Directory.GetDirectories(extractedPath);
-                foreach (string subDir in subDirs)
-                {
-                    string subDirJsonPath = Path.Combine(subDir, "version.json");
-                    if (File.Exists(subDirJsonPath))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   在子目录{Path.GetFileName(subDir)}中找到version.json: {subDirJsonPath}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG]   子目录{Path.GetFileName(subDir)}中未找到version.json");
-                    }
-                }
-                
-                throw new Exception($"version.json文件不存在: {forgeJsonPath}");
+                char[] buffer = new char[500];
+                int read = await reader.ReadAsync(buffer, 0, buffer.Length);
+                string preview = new string(buffer, 0, read);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge version.json前500字节预览: {preview}");
             }
             
             // 解析两个JSON文件
@@ -440,31 +407,78 @@ public partial class MinecraftVersionService
             _logger.LogInformation("Forge版本JSON合并完成: {MergedJsonPath}", mergedJsonPath);
             progressCallback?.Invoke(94); // 94% - JSON合并完成
             
-            // 11. 执行Forge处理器（在JSON合并之后执行）
-            _logger.LogInformation("开始执行Forge客户端处理器");
-            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始执行Forge客户端处理器");
-            int totalProcessors = clientProcessors.Count;
-            int executedProcessors = 0;
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 共找到 {totalProcessors} 个客户端处理器");
-            
-            foreach (JObject processor in clientProcessors)
+            // 12. 执行Forge处理器（在JSON合并之后执行）
+            JArray processors = installProfile["processors"]?.Value<JArray>();
+            if (processors != null && processors.Count > 0)
             {
-                executedProcessors++;
-                double processorProgress = 94 + (executedProcessors * 4.0 / totalProcessors); // 94-98% 用于执行处理器
+                _logger.LogInformation("开始执行Forge客户端处理器");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 开始执行Forge客户端处理器");
+                List<JObject> clientProcessors = new List<JObject>();
                 
-                _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 执行处理器 {executedProcessors}/{totalProcessors}");
+                // 筛选客户端处理器（支持server字段和sides字段判断，与NeoForge保持一致）
+                foreach (JObject processor in processors)
+                {
+                    bool isServerProcessor = false;
+                    
+                    // 1. 检查server字段
+                    if (processor.ContainsKey("server"))
+                    {
+                        isServerProcessor = processor["server"]?.Value<bool>() ?? false;
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器server字段值: {isServerProcessor}");
+                    }
+                    // 2. 检查sides字段
+                    else if (processor.ContainsKey("sides"))
+                    {
+                        JArray sides = processor["sides"]?.Value<JArray>();
+                        if (sides != null)
+                        {
+                            isServerProcessor = !sides.Any(side => side.ToString() == "client");
+                            System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器sides字段: {string.Join(",", sides.Select(s => s.ToString()))}, 是否为服务器处理器: {isServerProcessor}");
+                        }
+                    }
+                    
+                    if (isServerProcessor)
+                    {
+                        _logger.LogInformation("跳过服务器处理器");
+                        System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过服务器处理器");
+                        continue;
+                    }
+                    
+                    clientProcessors.Add(processor);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加客户端处理器: {processor}");
+                }
+                _logger.LogInformation("共找到 {ProcessorCount} 个客户端处理器", clientProcessors.Count);
                 
-                // 调用通用处理器执行方法
-                await ExecuteProcessor(processor, forgeInstallerPath, forgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath, extractedPath, "forge");
+                int totalProcessors = clientProcessors.Count;
+                int executedProcessors = 0;
                 
-                progressCallback?.Invoke(processorProgress);
-                _logger.LogInformation("处理器 {ProcessorIndex}/{TotalProcessors} 执行完成", executedProcessors, totalProcessors);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器 {executedProcessors}/{totalProcessors} 执行完成");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 共找到 {totalProcessors} 个客户端处理器");
+                
+                foreach (JObject processor in clientProcessors)
+                {
+                    executedProcessors++;
+                    double processorProgress = 94 + (executedProcessors * 4.0 / totalProcessors); // 94-98% 用于执行处理器
+                    
+                    _logger.LogInformation("执行处理器 {ProcessorIndex}/{TotalProcessors}", executedProcessors, totalProcessors);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 执行处理器 {executedProcessors}/{totalProcessors}");
+                    
+                    // 调用通用处理器执行方法
+                    await ExecuteProcessor(processor, forgeInstallerPath, forgeVersionDirectory, librariesDirectory, progressCallback, installProfilePath, extractedPath, "forge");
+                    
+                    progressCallback?.Invoke(processorProgress);
+                    _logger.LogInformation("处理器 {ProcessorIndex}/{TotalProcessors} 执行完成", executedProcessors, totalProcessors);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 处理器 {executedProcessors}/{totalProcessors} 执行完成");
+                }
+                
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 所有Forge客户端处理器执行完成");
             }
-            
-            System.Diagnostics.Debug.WriteLine("[DEBUG] 所有Forge客户端处理器执行完成");
+            else
+            {
+                // processors字段不存在或为空，继续执行（确保部分旧版本Forge能正常安装）
+                _logger.LogInformation("install_profile.json中未找到processors字段或processors字段为空，跳过处理器执行，继续安装流程");
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过处理器执行，继续安装流程");
+                progressCallback?.Invoke(98); // 直接跳转到98%进度
+            }
             
             // 12. 清理可能存在的错误命名的JSON文件
             string minecraftVersionJsonPath = Path.Combine(forgeVersionDirectory, $"{minecraftVersionId}.json");

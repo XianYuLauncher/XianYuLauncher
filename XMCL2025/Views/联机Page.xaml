@@ -17,7 +17,7 @@
         <!-- 页面标题 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
             <TextBlock
-                Text="联机"
+                Text="Terracotta 陶瓦联机"
                 Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock
                 Text="选择你的角色：房主或房客"
@@ -55,14 +55,16 @@
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                 Glyph="&#xe770;" 
                                 FontSize="48" 
-                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                             <TextBlock
                                 Text="我想当房主"
                                 Style="{ThemeResource SubtitleTextBlockStyle}" 
+                                Foreground="{ThemeResource TextFillColorPrimary}"
                                 HorizontalAlignment="Center"/>
                             <TextBlock
                                 Text="创建一个新的游戏房间，邀请其他玩家加入"
                                 Style="{ThemeResource BodyTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorPrimary}"
                                 TextWrapping="WrapWholeWords"
                                 TextAlignment="Center"
                                 Opacity="0.7"/>
@@ -88,14 +90,16 @@
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                 Glyph="&#xe718;" 
                                 FontSize="48" 
-                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                             <TextBlock
                                 Text="我想当房客"
                                 Style="{ThemeResource SubtitleTextBlockStyle}" 
+                                Foreground="{ThemeResource TextFillColorPrimary}"
                                 HorizontalAlignment="Center"/>
                             <TextBlock
                                 Text="加入其他玩家创建的游戏房间"
                                 Style="{ThemeResource BodyTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorPrimary}"
                                 TextWrapping="WrapWholeWords"
                                 TextAlignment="Center"
                                 Opacity="0.7"/>

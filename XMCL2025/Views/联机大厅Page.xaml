@@ -46,7 +46,7 @@
                     <!-- 房主名称 -->
                     <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock 
-                            Text="房主"
+                            Text="{x:Bind ViewModel.HostLabel, Mode=OneWay}"
                             Style="{ThemeResource CaptionTextBlockStyle}" 
                             Opacity="0.7" />
                         <TextBlock 
@@ -62,7 +62,7 @@
                     <!-- EasyTier版本 -->
                     <StackPanel Grid.Column="2" Spacing="4">
                         <TextBlock 
-                            Text="EasyTier版本"
+                            Text="{x:Bind ViewModel.EasyTierLabel, Mode=OneWay}"
                             Style="{ThemeResource CaptionTextBlockStyle}" 
                             Opacity="0.7" />
                         <TextBlock 

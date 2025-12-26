@@ -179,6 +179,9 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private string? _javaPath;
     
+    // 保存之前的Minecraft路径，用于回退
+    private string? _previousMinecraftPath;
+    
     [ObservableProperty]
     private string? _minecraftPath;
     
@@ -940,6 +943,33 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value != null)
         {
+            // 检测目录是否包含空格
+            if (value.Contains(' '))
+            {
+                // 弹窗提示目录带空格
+                var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = "警告",
+                    Content = "目录路径包含空格，可能会导致游戏启动失败。建议选择不包含空格的目录。",
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                
+                // 显示弹窗
+                var result = dialog.ShowAsync();
+                
+                // 回退到之前的目录
+                if (_previousMinecraftPath != null)
+                {
+                    MinecraftPath = _previousMinecraftPath;
+                    return;
+                }
+            }
+            
+            // 保存当前路径作为之前的路径，用于下一次回退
+            _previousMinecraftPath = value;
+            
+            // 保存设置并更新文件服务
             _localSettingsService.SaveSettingAsync(MinecraftPathKey, value).ConfigureAwait(false);
             _fileService.SetMinecraftDataPath(value);
         }

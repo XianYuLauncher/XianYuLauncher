@@ -139,9 +139,25 @@ namespace XMCL2025.ViewModels
         {
             if (CurrentPageIndex < 2) // 三个页面，索引0-2
             {
-                // 如果是从第一个页面（Minecraft路径设置）进入第二个页面，创建目录
+                // 如果是从第一个页面（Minecraft路径设置）进入第二个页面，检查目录是否包含空格
                 if (CurrentPageIndex == 0)
                 {
+                    // 检测目录是否包含空格
+                    if (!string.IsNullOrEmpty(MinecraftPath) && MinecraftPath.Contains(' '))
+                    {
+                        // 弹窗提示目录带空格
+                        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                        {
+                            Title = "警告",
+                            Content = "目录路径包含空格，会导致游戏启动失败。请选择不包含空格的目录。",
+                            CloseButtonText = "确定",
+                            XamlRoot = App.MainWindow.Content.XamlRoot
+                        };
+                        
+                        await dialog.ShowAsync();
+                        return; // 阻止继续操作
+                    }
+                    
                     // 创建Minecraft目录
                     if (!string.IsNullOrEmpty(MinecraftPath))
                     {

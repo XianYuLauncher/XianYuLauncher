@@ -1,10 +1,11 @@
 using System;
-using System.IO;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XMCL2025.Contracts.Services;
@@ -365,8 +366,205 @@ public partial class 联机ViewModel : ObservableRecipient, INavigationAware
     }
     
     [RelayCommand]
-    private void JoinGame()
+    private async Task JoinGame()
     {
-        // TODO: 实现当房客的逻辑
+        // 1. 弹出输入房间号的弹窗
+        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+        {
+            Title = "输入房间号",
+            Content = new TextBox 
+            { 
+                PlaceholderText = "输入朋友发给你的房间号",
+                Width = 300,
+                Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0)
+            },
+            PrimaryButtonText = "确认",
+            SecondaryButtonText = "取消",
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        var result = await dialog.ShowAsync();
+        
+        if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary && 
+            dialog.Content is TextBox textBox && 
+            !string.IsNullOrWhiteSpace(textBox.Text))
+        {
+            string roomId = textBox.Text;
+            
+            // 2. 启动客户端进程
+            bool isSuccess = true;
+            string? port = null;
+            
+            try
+            {
+                // 获取当前项目目录
+                string appDirectory = AppContext.BaseDirectory;
+                
+                // 构建联机插件的路径
+                string terracottaPath = Path.Combine(appDirectory, "plugins", "Terracotta", "terracotta-windows-x86_64.exe");
+                
+                // 检查文件是否存在
+                if (File.Exists(terracottaPath))
+                {
+                    // 使用系统临时目录
+                    string tempDir = Path.GetTempPath();
+                    
+                    // 生成时间戳
+                    string timestamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+                    
+                    // 生成文件名，Port使用纯字母
+                    string tempFileName = $"terracotta-{timestamp}-Port.json";
+                    string tempFilePath = Path.Combine(tempDir, tempFileName);
+                    
+                    // 创建空的json文件
+                    File.WriteAllText(tempFilePath, "{}");
+                    
+                    // 保存临时文件路径，用于进程终止后清理
+                    _tempFilePath = tempFilePath;
+                    
+                    // 启动联机服务，添加--hmcl参数
+                    var processStartInfo = new ProcessStartInfo
+                    {
+                        FileName = terracottaPath,
+                        Arguments = $"--hmcl \"{tempFilePath}\"",
+                        UseShellExecute = false,
+                        RedirectStandardInput = true
+                    };
+                    
+                    // 启动进程并保存引用
+                    _terracottaProcess = Process.Start(processStartInfo);
+                    
+                    // 等待短暂时间，让terracotta进程有时间写入端口信息
+                    await Task.Delay(1000);
+                    
+                    // 读取临时文件，获取端口号
+                    if (File.Exists(tempFilePath))
+                    {
+                        string jsonContent = File.ReadAllText(tempFilePath);
+                        // 解析json，获取port字段
+                        using (JsonDocument doc = JsonDocument.Parse(jsonContent))
+                        {
+                            JsonElement root = doc.RootElement;
+                            if (root.TryGetProperty("port", out JsonElement portElement))
+                            {
+                                port = portElement.ToString();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    isSuccess = false;
+                    await ShowErrorDialogAsync("联机服务文件不存在，请检查plugins\\Terracotta目录下是否有terracotta-windows-x86_64.exe文件");
+                }
+            }
+            catch (Exception ex)
+            {
+                isSuccess = false;
+                await ShowErrorDialogAsync($"启动联机服务时发生错误：{ex.Message}");
+            }
+            
+            if (isSuccess && !string.IsNullOrEmpty(port))
+            {
+                // 3. 访问http://localhost:{端口}/state/guesting?room=房间号
+                try
+                {
+                    string guestingUrl = $"http://localhost:{port}/state/guesting?room={roomId}";
+                    HttpResponseMessage response = await _httpClient.GetAsync(guestingUrl);
+                    
+                    if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                    {
+                        // 400表示错误，通知玩家房间不存在
+                        await ShowErrorDialogAsync("房间不存在或已关闭");
+                        // 停止进程
+                        StopTerracottaProcess();
+                        return;
+                    }
+                    
+                    // 4. 轮询访问http://localhost:{端口}/state，直到state为guest-ok
+                    bool isGuestOk = false;
+                    string url = string.Empty;
+                    
+                    for (int i = 0; i < 30; i++) // 最多尝试30次，每次间隔1秒
+                    {
+                        try
+                        {
+                            string stateUrl = $"http://localhost:{port}/state";
+                            HttpResponseMessage stateResponse = await _httpClient.GetAsync(stateUrl);
+                            
+                            if (stateResponse.IsSuccessStatusCode)
+                            {
+                                string content = await stateResponse.Content.ReadAsStringAsync();
+                                
+                                // 解析JSON
+                                using (JsonDocument doc = JsonDocument.Parse(content))
+                                {
+                                    JsonElement root = doc.RootElement;
+                                    if (root.TryGetProperty("state", out JsonElement stateElement) && 
+                                        stateElement.ValueKind == JsonValueKind.String &&
+                                        stateElement.GetString() == "guest-ok")
+                                    {
+                                        // 获取url字段
+                                        if (root.TryGetProperty("url", out JsonElement urlElement) &&
+                                            urlElement.ValueKind == JsonValueKind.String)
+                                        {
+                                            url = urlElement.GetString();
+                                            isGuestOk = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"获取状态失败: {ex.Message}");
+                        }
+                        
+                        // 等待1秒后再次尝试
+                        await Task.Delay(1000);
+                    }
+                    
+                    if (isGuestOk && !string.IsNullOrEmpty(url))
+                    {
+                        // 5. 导航至联机大厅页，传递房间号、端口和房客标识
+                        _navigationService.NavigateTo(typeof(联机大厅ViewModel).FullName, new { 
+                            RoomId = roomId, 
+                            Port = port, 
+                            IsGuest = true, 
+                            Url = url 
+                        });
+                    }
+                    else
+                    {
+                        await ShowErrorDialogAsync("连接房间失败，请稍后重试");
+                        // 停止进程
+                        StopTerracottaProcess();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorDialogAsync($"连接房间时发生错误：{ex.Message}");
+                    // 停止进程
+                    StopTerracottaProcess();
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 显示错误对话框
+    /// </summary>
+    private async Task ShowErrorDialogAsync(string message)
+    {
+        var errorDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+        {
+            Title = "错误",
+            Content = message,
+            CloseButtonText = "确定",
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        await errorDialog.ShowAsync();
     }
 }

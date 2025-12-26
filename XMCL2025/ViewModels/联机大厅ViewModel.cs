@@ -5,9 +5,10 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Timers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Newtonsoft.Json;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Contracts.ViewModels;
@@ -20,7 +21,7 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
     private readonly INavigationService _navigationService;
     
     // 计时器
-    private readonly System.Timers.Timer _timer = new System.Timers.Timer(1000); // 每秒触发一次
+    private readonly DispatcherTimer _timer;
     private TimeSpan _elapsedTime = TimeSpan.Zero;
     
     // 房间信息
@@ -35,6 +36,19 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
     
     [ObservableProperty]
     private string _easyTierVersion = "";
+    
+    [ObservableProperty]
+    private bool _isGuest = false;
+    
+    [ObservableProperty]
+    private string _url = "";
+    
+    // 显示文本
+    [ObservableProperty]
+    private string _hostLabel = "房主";
+    
+    [ObservableProperty]
+    private string _easyTierLabel = "EasyTier版本";
     
     // 端口信息，用于获取meta数据
     private string? _port;
@@ -59,16 +73,30 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
         _fileService = fileService;
         
         // 初始化计时器
-        _timer.Elapsed += OnTimerElapsed;
+        _timer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1) // 每秒触发一次
+        };
+        _timer.Tick += OnTimerTick;
         
         // 加载当前活跃角色名称
         LoadCurrentProfileName();
     }
     
-    private void OnTimerElapsed(object sender, ElapsedEventArgs e)
+    private void OnTimerTick(object sender, object e)
     {
         _elapsedTime += TimeSpan.FromSeconds(1);
-        ElapsedTimeText = _elapsedTime.ToString(@"hh:mm:ss");
+        try
+        {
+            // 使用更安全的格式化方式
+            ElapsedTimeText = $"{_elapsedTime.Hours:D2}:{_elapsedTime.Minutes:D2}:{_elapsedTime.Seconds:D2}";
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"格式化时间失败: {ex.Message}");
+            // 确保ElapsedTimeText有一个默认值，避免UI崩溃
+            ElapsedTimeText = "00:00:00";
+        }
     }
     
     public void OnNavigatedFrom()
@@ -82,12 +110,14 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
         // 启动计时器
         _timer.Start();
         
-        // 如果参数是匿名对象，获取RoomId和Port
+        // 如果参数是匿名对象，获取RoomId、Port、IsGuest和Url
         if (parameter != null)
         {
             var paramType = parameter.GetType();
             var roomIdProp = paramType.GetProperty("RoomId");
             var portProp = paramType.GetProperty("Port");
+            var isGuestProp = paramType.GetProperty("IsGuest");
+            var urlProp = paramType.GetProperty("Url");
             
             if (roomIdProp != null)
             {
@@ -102,6 +132,24 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
                 {
                     await GetMetaDataAsync();
                 }
+            }
+            
+            if (isGuestProp != null)
+            {
+                IsGuest = (bool)(isGuestProp.GetValue(parameter) ?? false);
+                // 根据是否为房客更新显示内容
+                if (IsGuest)
+                {
+                    HostLabel = "房客";
+                    // 保持显示EasyTier版本，不改为URL
+                    EasyTierLabel = "EasyTier版本";
+                }
+            }
+            
+            if (urlProp != null)
+            {
+                Url = urlProp.GetValue(parameter)?.ToString() ?? "";
+                // 房客模式下也获取并显示EasyTier版本，不显示URL
             }
         }
     }
