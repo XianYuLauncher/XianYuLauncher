@@ -3511,12 +3511,18 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             Url = original.Url ?? "",
             InheritsFrom = original.InheritsFrom ?? original.Id ?? "",
             MainClass = neoforge.MainClass ?? "",
-            Arguments = neoforge.Arguments,
+            // 处理旧版Forge的minecraftArguments字段
+            // 只有当Forge提供了有效的Arguments时才使用，否则使用null
+            // 避免出现arguments: null的情况
+            Arguments = neoforge.Arguments != null && (neoforge.Arguments.Game != null || neoforge.Arguments.Jvm != null) ? neoforge.Arguments : null,
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id ?? "",
             Downloads = original.Downloads, // 使用原版下载信息
             Libraries = new List<Library>(original.Libraries ?? new List<Library>()),
-            JavaVersion = neoforge.JavaVersion ?? original.JavaVersion
+            JavaVersion = neoforge.JavaVersion ?? original.JavaVersion,
+            // 合并minecraftArguments字段
+            // 优先级：Forge的minecraftArguments > 原版的minecraftArguments
+            MinecraftArguments = neoforge.MinecraftArguments ?? original.MinecraftArguments
         };
         
         // 追加ModLoader的依赖库（仅使用安装器中version.json内的libraries）
@@ -3531,15 +3537,51 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // install_profile依赖库只在处理器执行阶段使用，不应包含在最终的游戏启动JSON中
         System.Diagnostics.Debug.WriteLine("[DEBUG] 跳过合并install_profile.json中的依赖库，这些库仅用于执行处理器");
         
-        // 为Optifine相关库处理downloads字段
+        // 为所有库处理downloads字段，确保它们有正确的downloads信息
         foreach (var library in merged.Libraries)
         {
-            // 如果是Optifine相关库且downloads为null，添加空的downloads对象
-            if (library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase) && library.Downloads == null)
+            if (library.Downloads == null)
             {
-                // 为Optifine库添加空的downloads对象，确保启动器能将它们包含在类路径中
+                // 为库添加downloads对象
                 library.Downloads = new LibraryDownloads();
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Optifine库添加空downloads对象: {library.Name}");
+                
+                // 解析库名称：groupId:artifactId:version
+                var parts = library.Name.Split(':');
+                if (parts.Length >= 3)
+                {
+                    string groupId = parts[0];
+                    string artifactId = parts[1];
+                    string version = parts[2];
+                    
+                    // 构建默认下载URL
+                    // 对于普通库：使用Minecraft官方库URL
+                    // 对于Forge库：使用Forge Maven URL
+                    string baseUrl = "https://libraries.minecraft.net/";
+                    if (library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        baseUrl = "https://maven.minecraftforge.net/";
+                    }
+                    
+                    // 确保基础URL以/结尾
+                    if (!baseUrl.EndsWith('/'))
+                    {
+                        baseUrl += '/';
+                    }
+                    
+                    // 构建完整的下载URL
+                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
+                    
+                    // 为库添加artifact信息，确保启动器能将它们包含在类路径中
+                    // 使用DownloadFile类型，而不是LibraryArtifact
+                    library.Downloads.Artifact = new DownloadFile
+                    {
+                        Url = downloadUrl,
+                        Sha1 = null, // 旧版库通常没有SHA1信息，由下载时自动计算
+                        Size = 0 // 旧版库通常没有size信息
+                    };
+                    
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库添加downloads对象: {library.Name}, URL: {downloadUrl}");
+                }
             }
         }
         
