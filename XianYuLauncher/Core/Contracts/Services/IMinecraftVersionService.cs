@@ -78,6 +78,8 @@ public class VersionInfo
         public JavaVersion JavaVersion { get; set; }
         [JsonProperty("inheritsFrom")]
         public string InheritsFrom { get; set; }
+        [JsonProperty("minecraftArguments")]
+        public string MinecraftArguments { get; set; }
     }
     
     public class JavaVersion

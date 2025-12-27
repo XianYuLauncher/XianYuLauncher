@@ -20,6 +20,7 @@ using XMCL2025.Core.Services;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Helpers;
 using System.Collections.Specialized;
+using System.Text;
 
 namespace XMCL2025.ViewModels;
 
@@ -467,6 +468,50 @@ public partial class 启动ViewModel : ObservableRecipient
         
         // 检查当前版本是否在需要添加参数的列表中
         return versionsNeedingTweaker.Any(v => versionId.StartsWith(v));
+    }
+    
+    /// <summary>
+    /// 解析命令行参数，考虑引号内的空格情况
+    /// </summary>
+    /// <param name="argsString">命令行参数字符串</param>
+    /// <returns>解析后的参数列表</returns>
+    private List<string> ParseArguments(string argsString)
+    {
+        var args = new List<string>();
+        var currentArg = new StringBuilder();
+        bool inQuotes = false;
+        
+        for (int i = 0; i < argsString.Length; i++)
+        {
+            char c = argsString[i];
+            
+            if (c == '"')
+            {
+                // 切换引号状态
+                inQuotes = !inQuotes;
+            }
+            else if (c == ' ' && !inQuotes)
+            {
+                // 空格分隔符，且不在引号内
+                if (currentArg.Length > 0)
+                {
+                    args.Add(currentArg.ToString());
+                    currentArg.Clear();
+                }
+            }
+            else
+            {
+                currentArg.Append(c);
+            }
+        }
+        
+        // 添加最后一个参数
+        if (currentArg.Length > 0)
+        {
+            args.Add(currentArg.ToString());
+        }
+        
+        return args;
     }
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
@@ -1140,8 +1185,8 @@ public partial class 启动ViewModel : ObservableRecipient
                 int skippedCount = 0;
                 
                 // 判断是否为Fabric相关版本（包括Fabric原生版本和整合包版本）
-                bool isFabricVersion = SelectedVersion.StartsWith("fabric-") || 
-                                      (SelectedVersion.Contains("-fabric") && !SelectedVersion.StartsWith("fabric-") && versionInfo.Libraries != null && 
+                bool isFabricVersion = SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) || 
+                                      (SelectedVersion.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 && !SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) && versionInfo.Libraries != null && 
                                        versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
                 
                 // 如果是Fabric版本，跟踪ASM库的版本
@@ -1254,8 +1299,11 @@ public partial class 启动ViewModel : ObservableRecipient
                         // 常规库，添加到classpath
                         bool isOptifineLibrary = library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase);
                         
-                        // 对于Optifine库，即使没有Artifact也添加到classpath
-                        if (library.Downloads?.Artifact != null || isOptifineLibrary)
+                        // 对于Optifine库、Fabric库或其他没有Artifact的库，即使没有Artifact也添加到classpath
+                        if (library.Downloads?.Artifact != null || isOptifineLibrary || 
+                            library.Name.StartsWith("net.fabricmc:", StringComparison.OrdinalIgnoreCase) ||
+                            library.Name.StartsWith("org.ow2.asm:", StringComparison.OrdinalIgnoreCase) ||
+                            library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
                         {
                             // 检查是否为neoforge-universal.jar，如果是则跳过
                             if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
@@ -1389,9 +1437,10 @@ public partial class 启动ViewModel : ObservableRecipient
             
             // 添加JVM参数
             // 基础JVM参数
-            args.Add("-Dstderr.encoding=UTF-8");
-            args.Add("-Dstdout.encoding=UTF-8");
-            args.Add("-Dfile.encoding=COMPAT");
+            // 注释掉编码相关参数，避免在特定场景下引发游戏崩溃
+            // args.Add("-Dstderr.encoding=UTF-8");
+            // args.Add("-Dstdout.encoding=UTF-8");
+            // args.Add("-Dfile.encoding=COMPAT");
             args.Add("-XX:+UseG1GC");
             args.Add("-XX:-UseAdaptiveSizePolicy");
             args.Add("-XX:-OmitStackTraceInFastThrow");
@@ -1648,8 +1697,76 @@ public partial class 启动ViewModel : ObservableRecipient
                 args.Add("net.minecraft.launchwrapper.AlphaVanillaTweaker");
             }
             
+            // 检查version.json中是否存在minecraftArguments字段（旧版Forge使用）
+            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            {
+                // 使用minecraftArguments构建游戏参数
+                string minecraftArgs = versionInfo.MinecraftArguments;
+                
+                // 替换所有占位符
+                minecraftArgs = minecraftArgs
+                    .Replace("${auth_player_name}", SelectedProfile.Name)
+                    .Replace("${version_name}", SelectedVersion)
+                    .Replace("${game_directory}", gameDir)
+                    .Replace("${assets_root}", assetsPath)
+                    .Replace("${assets_index_name}", versionInfo.AssetIndex?.Id ?? SelectedVersion)
+                    .Replace("${auth_uuid}", SelectedProfile.Id)
+                    .Replace("${auth_access_token}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
+                    .Replace("${user_type}", SelectedProfile.IsOffline ? "offline" : "msa")
+                    .Replace("${version_type}", "XianYuLauncher")
+                    .Replace("${auth_xuid}", "") // Xuid属性不存在，使用默认空值
+                    .Replace("${clientid}", "0"); // ClientId属性不存在，使用默认值0
+                
+                // 解析参数，考虑空格情况
+                var parsedArgs = ParseArguments(minecraftArgs);
+                
+                // 收集已经添加的参数键（如--version、--gameDir等）
+                var addedArgKeys = new HashSet<string>();
+                foreach (var arg in args)
+                {
+                    if (arg.StartsWith("--"))
+                    {
+                        // 提取参数键（--versionType除外）
+                        addedArgKeys.Add(arg);
+                    }
+                }
+                
+                // 添加解析后的参数，跳过已经存在的参数（--versionType除外）
+                for (int i = 0; i < parsedArgs.Count; i++)
+                {
+                    string arg = parsedArgs[i];
+                    
+                    // 检查是否是--versionType参数
+                    if (arg == "--versionType")
+                    {
+                        // 跳过--versionType和它的值，由启动器统一设置
+                        i++; // 跳过值
+                        continue;
+                    }
+                    
+                    // 检查是否是其他已经添加过的参数
+                    if (arg.StartsWith("--") && addedArgKeys.Contains(arg))
+                    {
+                        // 跳过已经添加过的参数和它的值
+                        i++; // 跳过值
+                        continue;
+                    }
+                    
+                    // 添加参数和值
+                    args.Add(arg);
+                    LaunchStatus += $"\n从minecraftArguments添加参数: {arg}";
+                    
+                    // 如果还有下一个参数且不是以--开头，它是当前参数的值
+                    if (i + 1 < parsedArgs.Count && !parsedArgs[i + 1].StartsWith("--"))
+                    {
+                        i++;
+                        args.Add(parsedArgs[i]);
+                        LaunchStatus += $"\n从minecraftArguments添加参数值: {parsedArgs[i]}";
+                    }
+                }
+            }
             // 检查version.json中是否有游戏参数（用于NeoForge等ModLoader）
-            if (versionInfo.Arguments != null && versionInfo.Arguments.Game != null)
+            else if (versionInfo.Arguments != null && versionInfo.Arguments.Game != null)
             {
                 // 添加version.json中的额外游戏参数（特别是NeoForge所需的参数）
                 foreach (var gameArg in versionInfo.Arguments.Game)
