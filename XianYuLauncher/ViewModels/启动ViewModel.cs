@@ -1299,11 +1299,9 @@ public partial class 启动ViewModel : ObservableRecipient
                         // 常规库，添加到classpath
                         bool isOptifineLibrary = library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase);
                         
-                        // 对于Optifine库、Fabric库或其他没有Artifact的库，即使没有Artifact也添加到classpath
-                        if (library.Downloads?.Artifact != null || isOptifineLibrary || 
-                            library.Name.StartsWith("net.fabricmc:", StringComparison.OrdinalIgnoreCase) ||
-                            library.Name.StartsWith("org.ow2.asm:", StringComparison.OrdinalIgnoreCase) ||
-                            library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
+                        // 所有非原生库都添加到classpath，无论是否有Artifact字段
+                        // 兼容其他启动器生成的json格式，确保所有依赖库都能被正确加载
+                        if (true) // 无条件添加所有非原生库
                         {
                             // 检查是否为neoforge-universal.jar，如果是则跳过
                             if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
@@ -1437,10 +1435,49 @@ public partial class 启动ViewModel : ObservableRecipient
             
             // 添加JVM参数
             // 基础JVM参数
-            // 注释掉编码相关参数，避免在特定场景下引发游戏崩溃
-            // args.Add("-Dstderr.encoding=UTF-8");
-            // args.Add("-Dstdout.encoding=UTF-8");
-            // args.Add("-Dfile.encoding=COMPAT");
+            // 根据Java版本动态添加编码参数
+            // 首先获取当前使用的Java版本
+            int currentJavaMajorVersion = 8; // 默认Java 8
+            
+            // 查找当前使用的Java版本信息
+            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始获取当前使用的Java版本信息");
+            var javaVersions = await _localSettingsService.ReadSettingAsync<List<JavaVersionInfo>>(JavaVersionsKey) ?? new List<JavaVersionInfo>();
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已加载Java版本列表，共 {javaVersions.Count} 个版本");
+            
+            // 输出所有Java版本信息
+            foreach (var javaVer in javaVersions)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java版本信息: 路径={javaVer.Path}, 版本={javaVer.Version}, 主版本号={javaVer.MajorVersion}");
+            }
+            
+            var currentJavaVersion = javaVersions.FirstOrDefault(j => j.Path == javaPath);
+            if (currentJavaVersion != null)
+            {
+                currentJavaMajorVersion = currentJavaVersion.MajorVersion;
+                LaunchStatus += $"\n当前使用的Java版本: {currentJavaVersion.Version}, 主版本号: {currentJavaMajorVersion}";
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到当前使用的Java版本: 路径={currentJavaVersion.Path}, 版本={currentJavaVersion.Version}, 主版本号={currentJavaMajorVersion}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到当前使用的Java版本信息，使用默认主版本号: {currentJavaMajorVersion}");
+            }
+            
+            // 根据Java版本添加编码参数
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前Java主版本号: {currentJavaMajorVersion}, 开始添加编码参数");
+            
+            // Java 9及以上版本，添加编码参数
+            if (currentJavaMajorVersion > 8)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，添加编码参数: -Dstderr.encoding=UTF-8");
+                args.Add("-Dstderr.encoding=UTF-8");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，添加编码参数: -Dstdout.encoding=UTF-8");
+                args.Add("-Dstdout.encoding=UTF-8");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，不添加编码参数");
+            }
+            
             args.Add("-XX:+UseG1GC");
             args.Add("-XX:-UseAdaptiveSizePolicy");
             args.Add("-XX:-OmitStackTraceInFastThrow");
