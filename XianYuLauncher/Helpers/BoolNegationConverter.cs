@@ -22,7 +22,7 @@ public class BoolNegationConverter : IValueConverter
             return !boolValue;
         }
         
-        return value;
+        return false;
     }
     
     /// <summary>
@@ -35,6 +35,6 @@ public class BoolNegationConverter : IValueConverter
             return !boolValue;
         }
         
-        return value;
+        return false;
     }
 }

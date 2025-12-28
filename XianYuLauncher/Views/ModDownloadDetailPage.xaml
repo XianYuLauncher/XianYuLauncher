@@ -38,13 +38,13 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
 
         <!-- 布尔值取反转换器 -->
-        <local:BoolNegationConverter x:Key="BooleanNegationConverter" />
+        <helpers:BoolNegationConverter x:Key="BooleanNegationConverter" />
 
         <!-- 布尔值到图标转换器 -->
-        <local:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
+        <helpers:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
 
         <!-- 首字母大写转换器 -->
-        <local:FirstLetterToUpperConverter x:Key="FirstLetterToUpperConverter" />
+        <helpers:FirstLetterToUpperConverter x:Key="FirstLetterToUpperConverter" />
     </Page.Resources>
 
     <Grid>
@@ -351,22 +351,21 @@
                                                             Style="{StaticResource TextBlockButtonStyle}" 
                                                             Margin="12,0,0,0">
                                                         <Button.Content>
-                                                            <StackPanel Orientation="Horizontal" 
-                                                                        Spacing="8" 
-                                                                        VerticalAlignment="Center">
-                                                                <FontIcon Glyph="{x:Bind IsExpanded, Converter={StaticResource BoolToGlyphConverter}, Mode=OneWay}" 
-                                                                          FontSize="16" 
-                                                                          Foreground="{ThemeResource TextFillColorSecondary}" />
-                                                                <TextBlock Text="{x:Bind LoaderName}" 
-                                                                           FontSize="16" 
-                                                                           FontWeight="SemiBold" />
-                                                                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
-                                                                    <Run Text="(" />
-                                                                    <Run Text="{x:Bind ModVersions.Count, Mode=OneWay}" />
-                                                                    <Run Text=")" />
-                                                                </TextBlock>
-                                                            </StackPanel>
-                                                        </Button.Content>
+                                                        <StackPanel Orientation="Horizontal" 
+                                                                    Spacing="8" 
+                                                                    VerticalAlignment="Center">
+                                                                <!-- 占位元素，保持原来的偏右效果 -->
+                                                                <TextBlock Width="1" /> <!-- 与原来FontIcon宽度一致 -->
+                                                            <TextBlock Text="{x:Bind LoaderName}" 
+                                                                       FontSize="16" 
+                                                                       FontWeight="SemiBold" />
+                                                            <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                                                <Run Text="(" />
+                                                                <Run Text="{x:Bind ModVersions.Count, Mode=OneWay}" />
+                                                                <Run Text=")" />
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </Button.Content>
                                                     </Button>
                                                     
                                                     <!-- 加载器下的Mod版本列表 -->

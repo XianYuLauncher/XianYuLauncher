@@ -84,21 +84,48 @@ public partial class 版本列表ViewModel : ObservableRecipient
     private ObservableCollection<ExportDataOption> _exportDataOptions = new();
 
     /// <summary>
-    /// 当前选中的版本
+    /// 选中的版本信息
     /// </summary>
     [ObservableProperty]
     private VersionInfoItem? _selectedVersion;
+    
+    /// <summary>
+    /// 整合包名称
+    /// </summary>
+    [ObservableProperty]
+    private string _modpackName = string.Empty;
+    
+    /// <summary>
+    /// 整合包版本
+    /// </summary>
+    [ObservableProperty]
+    private string _modpackVersion = string.Empty;
+    
+    /// <summary>
+    /// 导出进度
+    /// </summary>
+    [ObservableProperty]
+    private double _exportProgress = 0;
+    
+    /// <summary>
+    /// 导出状态信息
+    /// </summary>
+    [ObservableProperty]
+    private string _exportStatus = string.Empty;
 
     /// <summary>
     /// 导出整合包事件，用于通知页面打开导出整合包弹窗
     /// </summary>
     public event EventHandler<VersionInfoItem>? ExportModpackRequested;
 
-    public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService)
+    private readonly IVersionInfoService _versionInfoService;
+    
+    public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService, IVersionInfoService versionInfoService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _modrinthService = modrinthService;
+        _versionInfoService = versionInfoService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -152,37 +179,76 @@ public partial class 版本列表ViewModel : ObservableRecipient
                     string type = "Release";
                     string versionNumber = versionName;
 
-                    // 尝试从版本名称中提取版本类型
-                    if (versionName.Contains("-snapshot", StringComparison.OrdinalIgnoreCase))
+                    // 使用统一版本信息服务获取准确的版本信息
+                    var versionConfig = _versionInfoService.GetFullVersionInfo(versionName, versionDir);
+                    
+                    // 从版本配置中获取MC版本号
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
                     {
-                        type = "Snapshot";
-                    }
-                    else if (versionName.Contains("-beta", StringComparison.OrdinalIgnoreCase))
-                    {
-                        type = "Beta";
-                    }
-                    else if (versionName.Contains("-alpha", StringComparison.OrdinalIgnoreCase))
-                    {
-                        type = "Alpha";
-                    }
-                    else if (versionName.StartsWith("fabric-"))
-                    {
-                        type = "Fabric";
-                        // 提取实际Minecraft版本号
-                        versionNumber = versionName.Substring("fabric-".Length);
-                        if (versionNumber.Contains("-"))
+                        versionNumber = versionConfig.MinecraftVersion;
+                        
+                        // 从版本配置中获取加载器类型
+                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
                         {
-                            versionNumber = versionNumber.Split('-')[0];
+                            // 将加载器类型首字母大写
+                            type = char.ToUpper(versionConfig.ModLoaderType[0]) + versionConfig.ModLoaderType.Substring(1).ToLower();
                         }
                     }
-                    else if (versionName.StartsWith("forge-"))
+                    // 回退到基于版本名称的提取
+                    else
                     {
-                        type = "Forge";
-                        // 提取实际Minecraft版本号
-                        versionNumber = versionName.Substring("forge-".Length);
-                        if (versionNumber.Contains("-"))
+                        // 尝试从版本名称中提取版本类型
+                        if (versionName.Contains("-snapshot", StringComparison.OrdinalIgnoreCase))
                         {
-                            versionNumber = versionNumber.Split('-')[0];
+                            type = "Snapshot";
+                        }
+                        else if (versionName.Contains("-beta", StringComparison.OrdinalIgnoreCase))
+                        {
+                            type = "Beta";
+                        }
+                        else if (versionName.Contains("-alpha", StringComparison.OrdinalIgnoreCase))
+                        {
+                            type = "Alpha";
+                        }
+                        else if (versionName.StartsWith("fabric-"))
+                        {
+                            type = "Fabric";
+                            // 提取实际Minecraft版本号
+                            versionNumber = versionName.Substring("fabric-".Length);
+                            if (versionNumber.Contains("-"))
+                            {
+                                versionNumber = versionNumber.Split('-')[0];
+                            }
+                        }
+                        else if (versionName.StartsWith("forge-"))
+                        {
+                            type = "Forge";
+                            // 提取实际Minecraft版本号
+                            versionNumber = versionName.Substring("forge-".Length);
+                            if (versionNumber.Contains("-"))
+                            {
+                                versionNumber = versionNumber.Split('-')[0];
+                            }
+                        }
+                        else if (versionName.StartsWith("neoforge-"))
+                        {
+                            type = "NeoForge";
+                            // 提取实际Minecraft版本号
+                            versionNumber = versionName.Substring("neoforge-".Length);
+                            if (versionNumber.Contains("-"))
+                            {
+                                versionNumber = versionNumber.Split('-')[0];
+                            }
+                        }
+                        else if (versionName.StartsWith("quilt-"))
+                        {
+                            type = "Quilt";
+                            // 提取实际Minecraft版本号
+                            versionNumber = versionName.Substring("quilt-".Length);
+                            if (versionNumber.Contains("-"))
+                            {
+                                versionNumber = versionNumber.Split('-')[0];
+                            }
                         }
                     }
 
@@ -492,60 +558,56 @@ public partial class 版本列表ViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 搜索Modrinth获取mod信息
+    /// 搜索Modrinth获取文件信息（支持mod和其他文件）
     /// </summary>
     /// <param name="version">版本信息</param>
     /// <param name="selectedExportOptions">用户选择的导出选项</param>
-    /// <returns>搜索结果字典，key为mod文件名，value为Modrinth项目信息</returns>
-    public async Task<Dictionary<string, Core.Models.ModrinthProject>> SearchModrinthForModsAsync(VersionInfoItem version, List<string> selectedExportOptions)
+    /// <returns>搜索结果字典，key为文件相对路径，value为Modrinth版本信息</returns>
+    public async Task<Dictionary<string, Core.Models.ModrinthVersion>> SearchModrinthForFilesAsync(VersionInfoItem version, List<string> selectedExportOptions)
     {
-        Dictionary<string, Core.Models.ModrinthProject> modResults = new Dictionary<string, Core.Models.ModrinthProject>();
+        Dictionary<string, Core.Models.ModrinthVersion> fileResults = new Dictionary<string, Core.Models.ModrinthVersion>();
         
         if (version == null || string.IsNullOrEmpty(version.Path) || selectedExportOptions == null || selectedExportOptions.Count == 0)
         {
-            return modResults;
+            return fileResults;
         }
         
         try
         {
-            // 提取用户选择的mod文件
-            List<string> selectedModFiles = new List<string>();
+            // 提取用户选择的所有文件
+            List<string> selectedFiles = new List<string>();
             
             foreach (string option in selectedExportOptions)
             {
-                // 只处理mods目录下的文件
-                if (option.StartsWith("mods\\") || option.StartsWith("mods/"))
+                // 只处理文件，不处理目录
+                string fullFilePath = Path.Combine(version.Path, option);
+                if (File.Exists(fullFilePath))
                 {
-                    // 获取文件名
-                    string modFileName = Path.GetFileName(option);
-                    if (!string.IsNullOrEmpty(modFileName))
-                    {
-                        selectedModFiles.Add(modFileName);
-                    }
+                    selectedFiles.Add(option);
                 }
             }
             
-            // 输出选择的mod文件
-            System.Diagnostics.Debug.WriteLine($"共选择了 {selectedModFiles.Count} 个mod文件:");
-            foreach (string modFile in selectedModFiles)
+            // 输出选择的文件
+            System.Diagnostics.Debug.WriteLine($"共选择了 {selectedFiles.Count} 个文件:");
+            foreach (string filePath in selectedFiles)
             {
-                System.Diagnostics.Debug.WriteLine($"- {modFile}");
+                System.Diagnostics.Debug.WriteLine($"- {filePath}");
             }
             
-            // 如果没有选择mod文件，直接返回
-            if (selectedModFiles.Count == 0)
+            // 如果没有选择文件，直接返回
+            if (selectedFiles.Count == 0)
             {
-                return modResults;
+                return fileResults;
             }
             
-            // 计算所有mod文件的SHA1哈希，并建立文件名到哈希的映射
-            Dictionary<string, string> modFileToHashMap = new Dictionary<string, string>();
+            // 计算所有文件的SHA1哈希，并建立文件路径到哈希的映射
+            Dictionary<string, string> filePathToHashMap = new Dictionary<string, string>();
             List<string> allHashes = new List<string>();
             
-            foreach (string modFile in selectedModFiles)
+            foreach (string filePath in selectedFiles)
             {
                 // 获取完整文件路径
-                string fullFilePath = Path.Combine(version.Path, "mods", modFile);
+                string fullFilePath = Path.Combine(version.Path, filePath);
                 
                 if (File.Exists(fullFilePath))
                 {
@@ -553,52 +615,55 @@ public partial class 版本列表ViewModel : ObservableRecipient
                     {
                         // 计算文件SHA1哈希
                         string sha1Hash = await CalculateFileSHA1Async(fullFilePath);
-                        System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, SHA1哈希: {sha1Hash}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, SHA1哈希: {sha1Hash}");
                         
                         // 添加到映射和哈希列表
-                        modFileToHashMap.Add(modFile, sha1Hash);
+                        filePathToHashMap.Add(filePath, sha1Hash);
                         allHashes.Add(sha1Hash);
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"计算Mod文件 {modFile} 哈希时出错: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"计算文件 {filePath} 哈希时出错: {ex.Message}");
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Mod文件不存在: {fullFilePath}");
+                    System.Diagnostics.Debug.WriteLine($"文件不存在: {fullFilePath}");
                 }
             }
             
             // 如果没有成功计算任何哈希，直接返回
             if (allHashes.Count == 0)
             {
-                return modResults;
+                return fileResults;
             }
             
-            // 使用批量API获取所有mod的信息
+            // 使用批量API获取所有文件的信息
             var hashToVersionMap = await _modrinthService.GetVersionFilesByHashesAsync(allHashes);
             
             // 处理批量API返回的结果
-            foreach (var kvp in modFileToHashMap)
+            foreach (var kvp in filePathToHashMap)
             {
-                string modFile = kvp.Key;
+                string filePath = kvp.Key;
                 string sha1Hash = kvp.Value;
                 
                 if (hashToVersionMap.TryGetValue(sha1Hash, out var versionInfo))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, 成功获取Modrinth版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 成功获取Modrinth版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
                     
                     // 如果有文件信息，输出文件URL
                     if (versionInfo.Files != null && versionInfo.Files.Count > 0)
                     {
                         var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                        System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, Modrinth文件URL: {primaryFile.Url}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, Modrinth文件URL: {primaryFile.Url}");
                     }
+                    
+                    // 添加到结果字典
+                    fileResults.Add(filePath, versionInfo);
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, 无法通过哈希 {sha1Hash} 获取Modrinth信息");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 无法通过哈希 {sha1Hash} 获取Modrinth信息");
                 }
             }
         }
@@ -607,7 +672,7 @@ public partial class 版本列表ViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"搜索Modrinth失败: {ex.Message}");
         }
         
-        return modResults;
+        return fileResults;
     }
     
     /// <summary>
@@ -662,6 +727,7 @@ public partial class 版本列表ViewModel : ObservableRecipient
                     "shaderpacks" => "光影",
                     "resourcepacks" => "资源包",
                     "config" => "配置文件",
+                    "saves" => "存档",
                     _ => string.Empty
                 };
             }
@@ -782,7 +848,8 @@ public partial class 版本列表ViewModel : ObservableRecipient
                 "resourcepacks",
                 "mods",
                 "options.txt",
-                "config"
+                "config",
+                "saves"
             };
             
             // 获取版本目录中的所有子目录

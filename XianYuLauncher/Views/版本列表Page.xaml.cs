@@ -1,5 +1,10 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using Windows.Storage;
+using System;
+using System.IO;
+using System.IO.Compression;
 using XMCL2025.Contracts.Services;
 using XMCL2025.ViewModels;
 
@@ -8,6 +13,7 @@ namespace XMCL2025.Views;
 public sealed partial class 版本列表Page : Page
 {
     private readonly INavigationService _navigationService;
+    private bool _isExportCancelled = false;
 
     public 版本列表Page()
     {
@@ -32,6 +38,13 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private async void OnExportModpackRequested(object? sender, 版本列表ViewModel.VersionInfoItem e)
     {
+        if (DataContext is 版本列表ViewModel viewModel)
+        {
+            // 设置整合包名称和版本的默认值
+            viewModel.ModpackName = e.Name; // 默认使用版本名称
+            viewModel.ModpackVersion = "1.0.0"; // 默认版本号
+        }
+        
         // 打开导出整合包弹窗
         await ExportModpackDialog.ShowAsync();
     }
@@ -55,6 +68,9 @@ public sealed partial class 版本列表Page : Page
     {
         if (DataContext is 版本列表ViewModel viewModel)
         {
+            // 重置取消标志
+            _isExportCancelled = false;
+            
             // 获取选择的导出选项
             var selectedOptions = viewModel.GetSelectedExportOptions();
             
@@ -68,13 +84,422 @@ public sealed partial class 版本列表Page : Page
             }
             System.Diagnostics.Debug.WriteLine("====================");
             
-            // 搜索Modrinth获取mod信息
-            if (viewModel.SelectedVersion != null)
+            // 关闭导出弹窗
+            ExportModpackDialog.Hide();
+            
+            // 打开加载弹窗（非阻塞方式）
+            UpdateLoadingDialog("正在获取Modrinth资源...", 0.0);
+            _ = LoadingDialog.ShowAsync();
+            
+            // 在后台线程执行导出逻辑
+            _ = Task.Run(async () =>
             {
-                System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取mod信息...");
-                var modResults = await viewModel.SearchModrinthForModsAsync(viewModel.SelectedVersion, selectedOptions);
-                System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {modResults.Count} 个匹配结果");
+                try
+                {
+                    Dictionary<string, Core.Models.ModrinthVersion> fileResults = new Dictionary<string, Core.Models.ModrinthVersion>();
+                    
+                    // 搜索Modrinth获取文件信息
+                    if (viewModel.SelectedVersion != null && !_isExportCancelled)
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取文件信息...");
+                            UpdateLoadingDialog("正在获取Modrinth资源...", 10.0);
+                        });
+                        
+                        fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, selectedOptions);
+                        
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {fileResults.Count} 个匹配结果");
+                        });
+                    }
+                    
+                    if (_isExportCancelled)
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            System.Diagnostics.Debug.WriteLine("导出已取消");
+                            LoadingDialog.Hide();
+                        });
+                        return;
+                    }
+                    
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        UpdateLoadingDialog("准备保存整合包...", 20.0);
+                    });
+                    
+                    // 打开文件保存对话框需要在UI线程执行
+                    StorageFile file = null;
+                    var filePickerTask = new TaskCompletionSource<StorageFile>();
+                    
+                    DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        try
+                        {
+                            // 打开文件保存对话框
+                            var savePicker = new FileSavePicker();
+                            
+                            // 设置文件选择器的文件类型
+                            savePicker.FileTypeChoices.Add("Modrinth Pack", new List<string> { ".mrpack" });
+                            
+                            // 设置默认文件名
+                            string defaultFileName = string.IsNullOrEmpty(viewModel.ModpackName) ? "Untitled" : viewModel.ModpackName;
+                            savePicker.SuggestedFileName = defaultFileName;
+                            
+                            // 设置默认位置
+                            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                            
+                            // 获取当前窗口的HWND
+                            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+                            
+                            // 显示文件保存对话框
+                            var pickedFile = await savePicker.PickSaveFileAsync();
+                            filePickerTask.SetResult(pickedFile);
+                        }
+                        catch (Exception ex)
+                        {
+                            filePickerTask.SetException(ex);
+                        }
+                    });
+                    
+                    file = await filePickerTask.Task;
+                    
+                    if (file != null && !_isExportCancelled)
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            UpdateLoadingDialog("正在创建整合包...", 30.0);
+                        });
+                        
+                        // 创建临时目录用于构建整合包
+                        string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                        Directory.CreateDirectory(tempDir);
+                        
+                        try
+                        {
+                            // 创建overrides目录
+                            string overridesDir = Path.Combine(tempDir, "overrides");
+                            Directory.CreateDirectory(overridesDir);
+                            
+                            // 使用统一的版本信息服务获取版本配置
+                            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                            string versionPath = viewModel.SelectedVersion?.Path ?? "";
+                            string versionName = viewModel.SelectedVersion?.Name ?? "";
+                            
+                            // 获取完整的版本信息
+                            Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(versionName, versionPath);
+                            
+                            // 提取加载器和Minecraft版本信息
+                            string loaderName = "";
+                            string loaderVersion = "";
+                            string minecraftVersion = versionConfig?.MinecraftVersion ?? "";
+                            
+                            // 根据加载器类型设置正确的加载器名称
+                            if (!string.IsNullOrEmpty(versionConfig?.ModLoaderType))
+                            {
+                                switch (versionConfig.ModLoaderType.ToLowerInvariant())
+                                {
+                                    case "fabric":
+                                        loaderName = "fabric-loader";
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
+                                    case "forge":
+                                        loaderName = "forge";
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
+                                    case "neoforge":
+                                        loaderName = "neoforge";
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
+                                    case "quilt":
+                                        loaderName = "quilt-loader";
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
+                                    default:
+                                        loaderName = versionConfig.ModLoaderType;
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
+                                }
+                            }
+                            
+                            // 构建modrinth.index.json内容
+                            var indexJson = new
+                            {
+                                game = "minecraft",
+                                formatVersion = 1,
+                                versionId = viewModel.ModpackVersion, // 整合包版本
+                                name = viewModel.ModpackName, // 整合包名称
+                                summary = "",
+                                files = new List<object>(),
+                                dependencies = new Dictionary<string, string>
+                                {
+                                    { "minecraft", minecraftVersion ?? viewModel.SelectedVersion?.VersionNumber ?? "" },
+                                    // 添加加载器依赖
+                                    { loaderName, loaderVersion }
+                                }
+                            };
+                            
+                            // 移除无效的加载器依赖（如果加载器名称或版本为空）
+                            if (string.IsNullOrEmpty(loaderName) || string.IsNullOrEmpty(loaderVersion))
+                            {
+                                ((Dictionary<string, string>)indexJson.dependencies).Remove(loaderName);
+                            }
+                            
+                            // 构建files列表
+                            var filesList = (List<object>)indexJson.files;
+                            foreach (var kvp in fileResults)
+                            {
+                                string filePath = kvp.Key;
+                                var modrinthVersion = kvp.Value;
+                                
+                                if (modrinthVersion?.Files != null && modrinthVersion.Files.Count > 0)
+                                {
+                                    var primaryFile = modrinthVersion.Files.FirstOrDefault(f => f.Primary) ?? modrinthVersion.Files[0];
+                                    
+                                    if (primaryFile.Hashes != null && primaryFile.Url != null)
+                                    {
+                                        var fileEntry = new
+                                        {
+                                            path = filePath.Replace('\\', '/'), // 使用正斜杠
+                                            hashes = primaryFile.Hashes,
+                                            downloads = new List<string> { primaryFile.Url.ToString() },
+                                            fileSize = primaryFile.Size
+                                        };
+                                        filesList.Add(fileEntry);
+                                    }
+                                }
+                            }
+                            
+                            // 创建modrinth.index.json文件
+                            string indexJsonPath = Path.Combine(tempDir, "modrinth.index.json");
+                            string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(indexJson, Newtonsoft.Json.Formatting.Indented);
+                            File.WriteAllText(indexJsonPath, jsonContent);
+                            
+                            DispatcherQueue.TryEnqueue(() =>
+                            {
+                                UpdateLoadingDialog("正在处理文件...", 40.0);
+                            });
+                            
+                            // 处理选择的导出选项
+                            HashSet<string> processedDirectories = new HashSet<string>();
+                            
+                            foreach (string option in selectedOptions)
+                            {
+                                if (_isExportCancelled)
+                                {
+                                    break;
+                                }
+                                
+                                string fullPath = Path.Combine(viewModel.SelectedVersion!.Path, option);
+                                
+                                if (Directory.Exists(fullPath))
+                                {
+                                    // 如果是目录，确保在overrides中创建空目录
+                                    string overrideDir = Path.Combine(overridesDir, option);
+                                    Directory.CreateDirectory(overrideDir);
+                                    processedDirectories.Add(option);
+                                }
+                                else if (File.Exists(fullPath))
+                                {
+                                    // 如果是文件，检查是否在Modrinth中找到
+                                    bool isModrinthFile = fileResults.ContainsKey(option);
+                                    
+                                    if (!isModrinthFile)
+                                    {
+                                        // 如果没有在Modrinth中找到，复制到overrides目录
+                                        string destPath = Path.Combine(overridesDir, option);
+                                        string destDir = Path.GetDirectoryName(destPath)!;
+                                        Directory.CreateDirectory(destDir);
+                                        File.Copy(fullPath, destPath, true);
+                                    }
+                                    
+                                    // 确保父目录在overrides中存在
+                                    string parentDir = Path.GetDirectoryName(option)!;
+                                    if (!string.IsNullOrEmpty(parentDir))
+                                    {
+                                        processedDirectories.Add(parentDir);
+                                    }
+                                }
+                            }
+                            
+                            if (_isExportCancelled)
+                            {
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine("导出已取消");
+                                    LoadingDialog.Hide();
+                                });
+                                return;
+                            }
+                            
+                            // 创建所有需要的空目录
+                            foreach (string dir in processedDirectories)
+                            {
+                                if (_isExportCancelled)
+                                {
+                                    break;
+                                }
+                                
+                                string overrideDir = Path.Combine(overridesDir, dir);
+                                Directory.CreateDirectory(overrideDir);
+                            }
+                            
+                            if (_isExportCancelled)
+                            {
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine("导出已取消");
+                                    LoadingDialog.Hide();
+                                });
+                                return;
+                            }
+                            
+                            DispatcherQueue.TryEnqueue(() =>
+                            {
+                                UpdateLoadingDialog("正在压缩整合包...", 70.0);
+                            });
+                            
+                            // 创建zip压缩包，使用FileMode.Create覆盖已存在的文件
+                            using (var fileStream = new FileStream(file.Path, FileMode.Create))
+                            using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
+                            {
+                                if (_isExportCancelled)
+                                {
+                                    DispatcherQueue.TryEnqueue(() =>
+                                    {
+                                        LoadingDialog.Hide();
+                                    });
+                                    return;
+                                }
+                                
+                                // 添加modrinth.index.json文件
+                                archive.CreateEntryFromFile(indexJsonPath, "modrinth.index.json");
+                                
+                                // 添加overrides目录及其内容
+                                AddDirectoryToZip(archive, overridesDir, "overrides");
+                            }
+                            
+                            if (!_isExportCancelled)
+                            {
+                                DispatcherQueue.TryEnqueue(async () =>
+                                {
+                                    UpdateLoadingDialog("导出完成！", 100.0);
+                                    System.Diagnostics.Debug.WriteLine($"整合包导出成功：{file.Path}");
+                                    
+                                    // 延迟关闭加载弹窗，让用户看到完成状态
+                                    await Task.Delay(1000);
+                                    LoadingDialog.Hide();
+                                });
+                            }
+                            else
+                            {
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine("导出已取消");
+                                    // 如果已取消，删除不完整的文件
+                                    if (File.Exists(file.Path))
+                                    {
+                                        File.Delete(file.Path);
+                                    }
+                                    LoadingDialog.Hide();
+                                });
+                            }
+                        }
+                        finally
+                        {
+                            // 清理临时目录
+                            if (Directory.Exists(tempDir))
+                            {
+                                Directory.Delete(tempDir, true);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 用户取消了文件保存对话框
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            LoadingDialog.Hide();
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
+                        UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);
+                        await Task.Delay(2000);
+                        LoadingDialog.Hide();
+                    });
+                }
+            });
+        }
+    }
+    
+    /// <summary>
+    /// 更新加载弹窗的状态和进度
+    /// </summary>
+    private void UpdateLoadingDialog(string status, double progress)
+    {
+        LoadingStatusText.Text = status;
+        LoadingProgressBar.Value = progress;
+        LoadingProgressText.Text = $"{progress:0.0}%";
+    }
+    
+    /// <summary>
+    /// 加载弹窗取消按钮点击事件处理
+    /// </summary>
+    private void LoadingDialog_SecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        // 设置取消标志
+        _isExportCancelled = true;
+        UpdateLoadingDialog("正在取消导出...", 0.0);
+        LoadingProgressRing.IsActive = false;
+    }
+    
+    /// <summary>
+    /// 将目录及其内容添加到zip归档
+    /// </summary>
+    private void AddDirectoryToZip(ZipArchive archive, string sourceDir, string entryName)
+    {
+        // 如果已取消，直接返回
+        if (_isExportCancelled)
+        {
+            return;
+        }
+        
+        // 获取目录中的所有文件
+        string[] files = Directory.GetFiles(sourceDir);
+        
+        foreach (string file in files)
+        {
+            if (_isExportCancelled)
+            {
+                return;
             }
+            
+            string relativePath = Path.GetRelativePath(sourceDir, file);
+            string zipEntryName = Path.Combine(entryName, relativePath);
+            archive.CreateEntryFromFile(file, zipEntryName);
+        }
+        
+        // 获取目录中的所有子目录
+        string[] subDirs = Directory.GetDirectories(sourceDir);
+        
+        foreach (string subDir in subDirs)
+        {
+            if (_isExportCancelled)
+            {
+                return;
+            }
+            
+            string relativePath = Path.GetRelativePath(sourceDir, subDir);
+            string zipEntryName = Path.Combine(entryName, relativePath);
+            AddDirectoryToZip(archive, subDir, zipEntryName);
         }
     }
 

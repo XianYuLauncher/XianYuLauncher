@@ -828,35 +828,22 @@ namespace XMCL2025.ViewModels
                     string loaderType = "Vanilla";
                     string loaderVersion = "";
                     
-                    // 1. 优先从XianYuL.cfg文件获取加载器类型
+                    // 使用统一的版本信息服务获取加载器类型
+                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
-                    string xianYuLConfigPath = Path.Combine(versionDir, "XianYuL.cfg");
-                    bool hasValidConfig = false;
                     
-                    if (File.Exists(xianYuLConfigPath))
+                    // 获取完整的版本配置信息
+                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(installedVersion, versionDir);
+                    
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
                     {
-                        try
-                        {
-                            string configContent = await File.ReadAllTextAsync(xianYuLConfigPath);
-                            dynamic configData = JsonConvert.DeserializeObject(configContent);
-                            if (configData.ModLoaderType != null)
-                            {
-                                string modLoaderTypeFromConfig = configData.ModLoaderType.ToString();
-                                // 首字母大写处理
-                                loaderType = char.ToUpper(modLoaderTypeFromConfig[0]) + modLoaderTypeFromConfig.Substring(1).ToLower();
-                                hasValidConfig = true;
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            // 配置文件读取失败，继续使用旧逻辑
-                        }
+                        // 首字母大写处理
+                        string modLoaderTypeFromConfig = versionConfig.ModLoaderType;
+                        loaderType = char.ToUpper(modLoaderTypeFromConfig[0]) + modLoaderTypeFromConfig.Substring(1).ToLower();
                     }
-                    
-                    // 2. 如果没有有效的XianYuL.cfg或读取失败，使用版本名搜索
-                    if (!hasValidConfig)
+                    else
                     {
-                        // 区分不同的加载器版本
+                        // 回退到基于版本名的判断
                         if (installedVersion.Contains("fabric"))
                         {
                             loaderType = "Fabric";

@@ -11,12 +11,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     private readonly IFileService _fileService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly IVersionInfoService _versionInfoService;
 
     public MinecraftVersionService(
         ILogger<MinecraftVersionService> logger, 
         IFileService fileService,
         ILocalSettingsService localSettingsService,
-        DownloadSourceFactory downloadSourceFactory)
+        DownloadSourceFactory downloadSourceFactory,
+        IVersionInfoService versionInfoService)
     {
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
@@ -24,6 +26,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         _fileService = fileService;
         _localSettingsService = localSettingsService;
         _downloadSourceFactory = downloadSourceFactory;
+        _versionInfoService = versionInfoService;
     }
 
     /// <summary>
@@ -1806,36 +1809,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// </summary>
     private VersionConfig ReadVersionConfig(string versionDirectory)
     {
-        try
-        {
-            string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-            if (System.IO.File.Exists(configPath))
-            {
-                string configContent = System.IO.File.ReadAllText(configPath);
-                var config = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionConfig>(configContent);
-                return config;
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置文件不存在，跳过读取(注:此报错是假的,实际上应该存在,且正常读取): {configPath}");
-            }
-        }
-        catch (IOException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 读取配置文件IO错误: {Path.Combine(versionDirectory, "XianYuL.cfg")}, 错误原因: {ex.Message}");
-            _logger.LogWarning(ex, "读取版本配置文件IO错误");
-        }
-        catch (Newtonsoft.Json.JsonException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析配置文件JSON错误: {Path.Combine(versionDirectory, "XianYuL.cfg")}, 错误原因: {ex.Message}");
-            _logger.LogWarning(ex, "解析版本配置文件JSON错误");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 读取配置文件未知错误: {Path.Combine(versionDirectory, "XianYuL.cfg")}, 错误原因: {ex.Message}");
-            _logger.LogWarning(ex, "读取版本配置文件未知错误");
-        }
-        return null;
+        return _versionInfoService.GetVersionConfigFromDirectory(versionDirectory);
     }
     
     /// <summary>

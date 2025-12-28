@@ -1185,9 +1185,32 @@ public partial class 启动ViewModel : ObservableRecipient
                 int skippedCount = 0;
                 
                 // 判断是否为Fabric相关版本（包括Fabric原生版本和整合包版本）
-                bool isFabricVersion = SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) || 
+                bool isFabricVersion = false;
+                
+                // 1. 优先使用统一版本信息服务判断
+                try
+                {
+                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                    string versionDirectory = Path.Combine(minecraftPath, "versions", SelectedVersion);
+                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion, versionDirectory);
+                    
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
+                    {
+                        isFabricVersion = versionConfig.ModLoaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"使用统一版本信息服务判断Fabric版本失败: {ex.Message}");
+                }
+                
+                // 2. 如果统一服务判断失败，回退到旧的判断逻辑
+                if (!isFabricVersion)
+                {
+                    isFabricVersion = SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) || 
                                       (SelectedVersion.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 && !SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) && versionInfo.Libraries != null && 
                                        versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
+                }
                 
                 // 如果是Fabric版本，跟踪ASM库的版本
                 Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();
