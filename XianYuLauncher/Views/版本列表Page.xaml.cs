@@ -51,7 +51,7 @@ public sealed partial class 版本列表Page : Page
     /// <summary>
     /// 导出整合包弹窗确认按钮点击事件处理
     /// </summary>
-    private void ExportModpackDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private async void ExportModpackDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         if (DataContext is 版本列表ViewModel viewModel)
         {
@@ -67,6 +67,14 @@ public sealed partial class 版本列表Page : Page
                 System.Diagnostics.Debug.WriteLine($"- {option}");
             }
             System.Diagnostics.Debug.WriteLine("====================");
+            
+            // 搜索Modrinth获取mod信息
+            if (viewModel.SelectedVersion != null)
+            {
+                System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取mod信息...");
+                var modResults = await viewModel.SearchModrinthForModsAsync(viewModel.SelectedVersion, selectedOptions);
+                System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {modResults.Count} 个匹配结果");
+            }
         }
     }
 

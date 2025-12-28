@@ -488,7 +488,7 @@ public partial class MinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 保存合并后的JSON到: {mergedJsonPath}");
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后JSON ID: {mergedJson?.Id}");
             
-            await File.WriteAllTextAsync(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
+            await File.WriteAllTextAsync(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后的JSON文件大小: {new FileInfo(mergedJsonPath).Length}字节");
             
             _logger.LogInformation("Forge版本JSON合并完成: {MergedJsonPath}", mergedJsonPath);

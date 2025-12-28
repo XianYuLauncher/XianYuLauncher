@@ -98,7 +98,7 @@ public class LocalSettingsService : ILocalSettingsService
                 if (obj is not T && obj != null)
                 {
                     Console.WriteLine($"  类型不匹配，需要转换: {obj.GetType().Name} -> {typeof(T).Name}");
-                    var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
+                    var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
                     return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
                 }
                 return (T)obj;
