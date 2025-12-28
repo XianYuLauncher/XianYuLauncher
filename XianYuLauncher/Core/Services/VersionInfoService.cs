@@ -211,6 +211,14 @@ namespace XMCL2025.Core.Services
         /// <returns>完整的版本配置信息</returns>
         public VersionConfig GetFullVersionInfo(string versionId, string versionDirectory)
         {
+            // 快速路径：如果已有XianYuL.cfg文件，直接读取
+            string xianYuLConfigPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+            if (File.Exists(xianYuLConfigPath))
+            {
+                return ReadXianYuLConfig(versionDirectory);
+            }
+            
+            // 完整读取逻辑
             System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 开始获取完整版本信息，版本ID: {versionId}");
             
             // 1. 先尝试从配置文件读取
@@ -245,6 +253,18 @@ namespace XMCL2025.Core.Services
             
             System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   最终版本信息: 默认配置 (vanilla)");
             return defaultConfig;
+        }
+        
+        /// <summary>
+        /// 异步获取完整的版本信息，包括从配置文件和版本名提取的信息
+        /// </summary>
+        /// <param name="versionId">版本ID</param>
+        /// <param name="versionDirectory">版本目录路径</param>
+        /// <returns>完整的版本配置信息</returns>
+        public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory)
+        {
+            // 在后台线程执行IO密集型操作，避免阻塞UI线程
+            return await Task.Run(() => GetFullVersionInfo(versionId, versionDirectory));
         }
         
         /// <summary>

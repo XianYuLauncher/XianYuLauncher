@@ -43,6 +43,9 @@
         <!-- 布尔值到图标转换器 -->
         <helpers:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
 
+        <!-- 布尔值到透明度转换器 -->
+        <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+
         <!-- 首字母大写转换器 -->
         <helpers:FirstLetterToUpperConverter x:Key="FirstLetterToUpperConverter" />
     </Page.Resources>
@@ -144,7 +147,7 @@
                             <Grid Padding="8">
                                 <TextBlock
                                     Text="{Binding DisplayName}"
-                                    Opacity="{Binding IsCompatible, Converter={StaticResource BoolToGlyphConverter}, ConverterParameter='1.0,0.5'}" />
+                                    Opacity="{Binding IsCompatible, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

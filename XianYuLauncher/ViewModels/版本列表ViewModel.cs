@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.System;
 using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Services;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Helpers;
 
@@ -168,6 +169,9 @@ public partial class 版本列表ViewModel : ObservableRecipient
 
             Versions.Clear();
 
+            // 并行处理版本信息，提高加载速度
+            var versionItems = new List<VersionInfoItem>();
+            
             foreach (var versionName in installedVersions)
             {
                 var versionDir = Path.Combine(versionsPath, versionName);
@@ -175,27 +179,41 @@ public partial class 版本列表ViewModel : ObservableRecipient
 
                 if (Directory.Exists(versionDir) && File.Exists(versionJsonPath))
                 {
+                    // 获取安装日期（使用文件夹创建日期）
+                    var dirInfo = new DirectoryInfo(versionDir);
+                    var installDate = dirInfo.CreationTime;
+                    
                     // 获取版本类型和版本号
                     string type = "Release";
                     string versionNumber = versionName;
 
-                    // 使用统一版本信息服务获取准确的版本信息
-                    var versionConfig = _versionInfoService.GetFullVersionInfo(versionName, versionDir);
-                    
-                    // 从版本配置中获取MC版本号
-                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+                    // 使用快速路径：如果已有XianYuL.cfg文件，直接读取
+                    string xianYuLConfigPath = Path.Combine(versionDir, "XianYuL.cfg");
+                    if (File.Exists(xianYuLConfigPath))
                     {
-                        versionNumber = versionConfig.MinecraftVersion;
-                        
-                        // 从版本配置中获取加载器类型
-                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
+                        // 直接从XianYuL.cfg文件读取，避免完整的配置读取逻辑
+                        try
                         {
-                            // 将加载器类型首字母大写
-                            type = char.ToUpper(versionConfig.ModLoaderType[0]) + versionConfig.ModLoaderType.Substring(1).ToLower();
+                            string configContent = await File.ReadAllTextAsync(xianYuLConfigPath);
+                            var config = Newtonsoft.Json.JsonConvert.DeserializeObject<Core.Models.VersionConfig>(configContent);
+                            if (config != null && !string.IsNullOrEmpty(config.MinecraftVersion))
+                            {
+                                versionNumber = config.MinecraftVersion;
+                                
+                                if (!string.IsNullOrEmpty(config.ModLoaderType))
+                                {
+                                    type = char.ToUpper(config.ModLoaderType[0]) + config.ModLoaderType.Substring(1).ToLower();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[版本列表ViewModel] 读取XianYuL.cfg失败: {ex.Message}");
+                            // 读取失败，回退到基于版本名称的提取
                         }
                     }
                     // 回退到基于版本名称的提取
-                    else
+                    if (versionNumber == versionName) // 如果没有从配置文件获取到版本号
                     {
                         // 尝试从版本名称中提取版本类型
                         if (versionName.Contains("-snapshot", StringComparison.OrdinalIgnoreCase))
@@ -252,10 +270,6 @@ public partial class 版本列表ViewModel : ObservableRecipient
                         }
                     }
 
-                    // 获取安装日期（使用文件夹创建日期）
-                    var dirInfo = new DirectoryInfo(versionDir);
-                    var installDate = dirInfo.CreationTime;
-
                     // 创建版本信息项
                     var versionItem = new VersionInfoItem
                     {
@@ -266,8 +280,14 @@ public partial class 版本列表ViewModel : ObservableRecipient
                         Path = versionDir
                     };
 
-                    Versions.Add(versionItem);
+                    versionItems.Add(versionItem);
                 }
+            }
+            
+            // 将版本项添加到ObservableCollection
+            foreach (var item in versionItems)
+            {
+                Versions.Add(item);
             }
 
             // 按安装日期降序排序
