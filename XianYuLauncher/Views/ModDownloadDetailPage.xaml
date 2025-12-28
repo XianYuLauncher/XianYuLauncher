@@ -38,7 +38,7 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
 
         <!-- 布尔值取反转换器 -->
-        <local:BooleanNegationConverter x:Key="BooleanNegationConverter" />
+        <local:BoolNegationConverter x:Key="BooleanNegationConverter" />
 
         <!-- 布尔值到图标转换器 -->
         <local:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />

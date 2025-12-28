@@ -163,6 +163,6 @@
             IsOpen="{x:Bind ViewModel.IsLaunchSuccessInfoBarOpen, Mode=TwoWay}"
             Visibility="{x:Bind ViewModel.IsLaunchSuccessInfoBarOpen, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
             Margin="0,20,0,0" />
-        <!-- InfoBar自带关闭按钮，无需额外添加 -->
+        
     </Grid>
 </Page>

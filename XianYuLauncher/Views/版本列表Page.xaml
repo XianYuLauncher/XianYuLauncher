@@ -4,7 +4,105 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:XMCL2025.Helpers"
+    xmlns:vm="using:XMCL2025.ViewModels"
+    xmlns:local="using:XMCL2025.Views"
     mc:Ignorable="d">
+    <Page.Resources>
+        <!-- 简化的CheckBox样式，精确控制点击区域 -->
+        <Style x:Key="CustomCheckboxStyle" TargetType="CheckBox">
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        
+        <!-- 将IsDirectory属性转换为对应的FontIcon Glyph的转换器 -->
+        <helpers:IsDirectoryToGlyphConverter x:Key="IsDirectoryToGlyphConverter" />
+        <!-- 将布尔值转换为对应的展开/折叠图标的转换器 -->
+        <local:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
+        <!-- 布尔值到可见性的转换器 -->
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <!-- 布尔值取反转换器 -->
+        <local:BoolNegationConverter x:Key="BoolNegationConverter" />
+        
+        <!-- 递归资源项模板，支持任意深度 -->
+        <DataTemplate x:Key="ResourceItemTemplate" x:DataType="vm:版本列表ViewModel+ResourceItem">
+            <StackPanel>
+                <!-- 项内容 -->
+                <Grid Width="Auto" Padding="2" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <!-- 展开/折叠按钮 -->
+                    <Button 
+                        Grid.Column="0" 
+                        Content="{Binding IsExpanded, Converter={StaticResource BoolToGlyphConverter}, ConverterParameter='▼,▶'}" 
+                        Width="24" 
+                        Height="24" 
+                        Padding="0" 
+                        Click="ItemExpandButton_Click" 
+                        CommandParameter="{Binding}" 
+                        Visibility="{Binding IsDirectory, Converter={StaticResource BoolToVisibilityConverter}}" 
+                        VerticalContentAlignment="Center" 
+                        HorizontalContentAlignment="Center" 
+                        Margin="0,0,8,0" /> 
+                    <!-- 空白占位符（用于非目录项） -->
+                    <TextBlock 
+                        Grid.Column="0" 
+                        Width="24" 
+                        Visibility="{Binding IsDirectory, Converter={StaticResource BoolNegationConverter}}" 
+                        Margin="0,0,8,0" /> 
+                    <!-- 复选框容器，限制点击区域 -->
+                    <Grid Grid.Column="1" Width="20" Height="20" Background="Transparent" Margin="0,0,8,0">
+                        <!-- 复选框 -->
+                        <CheckBox 
+                            IsChecked="{Binding IsSelected, Mode=TwoWay}" 
+                            Checked="ResourceItem_Checked" 
+                            Unchecked="ResourceItem_Unchecked" 
+                            Width="20" 
+                            Height="20" 
+                            Padding="0" 
+                            Margin="0" 
+                            HorizontalAlignment="Left" 
+                            VerticalAlignment="Center" /> 
+                    </Grid>
+                    <!-- 文件/目录图标 -->
+                    <FontIcon 
+                        Grid.Column="2" 
+                        Glyph="{Binding IsDirectory, Converter={StaticResource IsDirectoryToGlyphConverter}}" 
+                        VerticalAlignment="Center" 
+                        Margin="0,0,8,0" 
+                        FontSize="16" /> 
+                    <!-- 名称 -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" />
+                        <!-- 中文翻译，只在有翻译时显示 -->
+                        <StackPanel Orientation="Horizontal" Margin="4,0,0,0" Visibility="{Binding HasTranslation, Converter={StaticResource BoolToVisibilityConverter}}" VerticalAlignment="Center">
+                            <TextBlock Text="(" FontSize="12" Opacity="0.6" /> 
+                            <TextBlock Text="{Binding DisplayTranslation}" FontSize="12" Opacity="0.6" /> 
+                            <TextBlock Text=")" FontSize="12" Opacity="0.6" /> 
+                        </StackPanel> 
+                    </StackPanel> 
+                </Grid>
+                <!-- 递归子项列表，支持任意深度 -->
+                <ItemsControl 
+                    ItemsSource="{Binding Children}" 
+                    Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}" 
+                    Margin="24,0,0,0">
+                    <!-- 绑定到自身模板，实现真正的递归 -->
+                    <ItemsControl.ItemTemplate>
+                        <StaticResource ResourceKey="ResourceItemTemplate" />
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </Page.Resources>
 
     <Grid x:Name="ContentArea" Padding="40,60,40,20">
         <Grid.RowDefinitions>
@@ -175,6 +273,14 @@
                                                 <FontIcon Glyph="&#xE838;" />
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
+                                        <MenuFlyoutItem 
+                                            x:Uid="VersionListPage_ExportModpackMenuItem"
+                                            Command="{Binding DataContext.ExportModpackCommand, ElementName=VersionsListView}" 
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE72C;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem 
                                             x:Uid="VersionListPage_DeleteMenuItem"
@@ -283,5 +389,94 @@
                     MaxWidth="300"/>
             </StackPanel>
         </Grid>
+
+        <!-- 导出整合包弹窗 -->
+        <ContentDialog
+            x:Name="ExportModpackDialog"
+            x:Uid="VersionListPage_ExportModpackDialog"
+            Title="导出整合包"
+            PrimaryButtonText="确认"
+            CloseButtonText="取消"
+            DefaultButton="Primary"
+            PrimaryButtonClick="ExportModpackDialog_PrimaryButtonClick"
+            CloseButtonClick="ExportModpackDialog_CloseButtonClick"
+            MaxHeight="600">
+            <!-- 使用ScrollViewer包裹内容，禁用水平滚动，启用垂直滚动 -->
+            <ScrollViewer 
+                HorizontalScrollMode="Disabled" 
+                VerticalScrollMode="Auto" 
+                VerticalScrollBarVisibility="Visible">
+                <!-- 使用Grid替代StackPanel，更好地控制布局 -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- 说明文字 -->
+                    <TextBlock 
+                        Grid.Row="0" 
+                        Text="请选择要导出的数据：" 
+                        FontSize="14" 
+                        Margin="0,0,0,12" />
+                    
+                    <!-- 导出选项StackPanel -->
+                    <StackPanel 
+                        Grid.Row="1" 
+                        DataContext="{Binding}">
+                        
+                        <!-- 资源目录列表，只有当ResourceDirectories.Count > 0时显示 -->
+                        <StackPanel x:Name="ResourceDirectoriesStackPanel" Loaded="ResourceDirectoriesStackPanel_Loaded">
+                            <!-- 资源目录总复选框和展开/折叠按钮 -->
+                            <Grid Width="Auto" Margin="0,4,0,2" Padding="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <!-- 展开/折叠按钮 -->
+                                <Button 
+                                    x:Name="ToggleResourceDirectoriesButton" 
+                                    Content="▶" 
+                                    Width="24" 
+                                    Height="24" 
+                                    Padding="0" 
+                                    Click="ToggleResourceDirectoriesButton_Click" 
+                                    VerticalContentAlignment="Center" 
+                                    HorizontalContentAlignment="Center" 
+                                    Margin="0,0,8,0" />
+                                <!-- 资源目录总复选框，带有三级状态 -->
+                                <CheckBox 
+                                    x:Name="ResourceAllCheckBox" 
+                                    Content="版本目录资源" 
+                                    IsThreeState="True" 
+                                    Checked="ResourceAll_Checked" 
+                                    Unchecked="ResourceAll_Unchecked" 
+                                    Indeterminate="ResourceAll_Indeterminate" 
+                                    Grid.Column="1" 
+                                    VerticalContentAlignment="Center" />
+                            </Grid>
+                            
+                            <!-- 资源目录列表，支持递归展开/折叠 -->
+                            <ItemsControl 
+                                x:Name="ResourceDirectoriesTreeView" 
+                                ItemsSource="{Binding ResourceDirectories}" 
+                                Margin="0,0,0,2" 
+                                HorizontalAlignment="Stretch">
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="FrameworkElement">
+                                        <Setter Property="Margin" Value="0,0,0,2" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                                <!-- 使用递归模板资源，支持任意深度 -->
+                                <ItemsControl.ItemTemplate>
+                                    <StaticResource ResourceKey="ResourceItemTemplate" />
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </ContentDialog>
     </Grid>
 </Page>

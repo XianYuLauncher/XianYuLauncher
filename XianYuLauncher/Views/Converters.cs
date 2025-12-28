@@ -6,7 +6,7 @@ using Windows.UI;
 namespace XMCL2025.Views
 {
     // 布尔值取反转换器
-    public class BooleanNegationConverter : IValueConverter
+    public class BoolNegationConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

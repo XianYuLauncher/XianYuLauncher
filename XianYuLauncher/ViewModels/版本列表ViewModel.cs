@@ -51,6 +51,22 @@ public partial class 版本列表ViewModel : ObservableRecipient
         public string Path { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// 导出数据选项模型
+    /// </summary>
+    public class ExportDataOption
+    {
+        /// <summary>
+        /// 选项名称
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 是否选中
+        /// </summary>
+        public bool IsSelected { get; set; } = false;
+    }
+
     [ObservableProperty]
     private ObservableCollection<VersionInfoItem> _versions = new();
 
@@ -60,6 +76,23 @@ public partial class 版本列表ViewModel : ObservableRecipient
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    /// <summary>
+    /// 导出数据选项列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ExportDataOption> _exportDataOptions = new();
+
+    /// <summary>
+    /// 当前选中的版本
+    /// </summary>
+    [ObservableProperty]
+    private VersionInfoItem? _selectedVersion;
+
+    /// <summary>
+    /// 导出整合包事件，用于通知页面打开导出整合包弹窗
+    /// </summary>
+    public event EventHandler<VersionInfoItem>? ExportModpackRequested;
+
     public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService)
     {
         _minecraftVersionService = minecraftVersionService;
@@ -67,6 +100,13 @@ public partial class 版本列表ViewModel : ObservableRecipient
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
+        
+        // 初始化导出数据选项
+        ExportDataOptions = new ObservableCollection<ExportDataOption>
+        {
+            new ExportDataOption { Name = "截图数据" },
+            new ExportDataOption { Name = "投影数据" }
+        };
         
         InitializeAsync().ConfigureAwait(false);
     }
@@ -257,6 +297,360 @@ public partial class 版本列表ViewModel : ObservableRecipient
         catch (Exception ex)
         {
             StatusMessage = $"{"VersionListPage_DeleteFailedText".GetLocalized()}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 导出整合包命令
+    /// </summary>
+    [RelayCommand]
+    private void ExportModpack(VersionInfoItem version)
+    {
+        if (version == null || string.IsNullOrEmpty(version.Path))
+        {
+            StatusMessage = "VersionListPage_InvalidVersionInfoText".GetLocalized();
+            return;
+        }
+
+        // 设置当前选中的版本
+        SelectedVersion = version;
+        
+        // 检测当前版本目录中的所有资源目录
+        DetectResourceDirectories(version);
+        
+        // 触发导出整合包事件，通知页面打开弹窗
+        ExportModpackRequested?.Invoke(this, version);
+        
+        // 设置状态信息
+        StatusMessage = $"{"VersionListPage_PrepareExportText".GetLocalized()} {version.Name}";
+    }
+    
+    /// <summary>
+    /// 获取当前选择的导出选项
+    /// </summary>
+    /// <returns>选择的导出选项列表</returns>
+    public List<string> GetSelectedExportOptions()
+    {
+        var selectedOptions = new List<string>();
+        
+        // 添加选中的截图数据和投影数据
+        if (ExportDataOptions.Count > 0 && ExportDataOptions[0].IsSelected)
+        {
+            selectedOptions.Add("screenshots");
+        }
+        if (ExportDataOptions.Count > 1 && ExportDataOptions[1].IsSelected)
+        {
+            selectedOptions.Add("journeymap");
+        }
+        
+        // 添加选中的资源，递归收集所有选中的文件和目录
+        if (SelectedVersion != null)
+        {
+            string versionRootPath = SelectedVersion.Path;
+            foreach (var item in ResourceDirectories)
+            {
+                CollectSelectedItems(item, selectedOptions, versionRootPath);
+            }
+        }
+        
+        return selectedOptions;
+    }
+    
+    /// <summary>
+    /// 递归收集所有选中的文件和目录
+    /// </summary>
+    /// <param name="item">当前资源项</param>
+    /// <param name="selectedItems">选中的资源列表</param>
+    /// <param name="versionRootPath">版本根目录路径</param>
+    private void CollectSelectedItems(ResourceItem item, List<string> selectedItems, string versionRootPath)
+    {
+        if (item.IsSelected)
+        {
+            // 获取相对路径，相对于版本根目录
+            string relativePath = item.Path.Substring(versionRootPath.Length).TrimStart(Path.DirectorySeparatorChar);
+            
+            selectedItems.Add(relativePath);
+        }
+        
+        // 递归收集子资源
+        foreach (var child in item.Children)
+        {
+            CollectSelectedItems(child, selectedItems, versionRootPath);
+        }
+    }
+    
+    /// <summary>
+    /// 资源包/目录模型
+    /// </summary>
+    public partial class ResourceItem : ObservableObject
+    {
+        /// <summary>
+        /// 资源名称
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// 资源路径
+        /// </summary>
+        public string Path { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// 是否为目录
+        /// </summary>
+        public bool IsDirectory { get; set; } = false;
+        
+        /// <summary>
+        /// 是否展开
+        /// </summary>
+        [ObservableProperty]
+        private bool _isExpanded = false;
+        
+        /// <summary>
+        /// 子资源列表
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<ResourceItem> _children = new();
+        
+        /// <summary>
+        /// 是否包含子资源
+        /// </summary>
+        public bool HasChildren => Children.Count > 0;
+        
+        /// <summary>
+        /// 资源名称的中文翻译
+        /// </summary>
+        public string DisplayTranslation
+        {
+            get
+            {
+                // 根据文件名返回对应的中文翻译
+                return Name.ToLowerInvariant() switch
+                {
+                    "options.txt" => "玩家游戏设置",
+                    "mods" => "模组",
+                    "shaderpacks" => "光影",
+                    "resourcepacks" => "资源包",
+                    "config" => "配置文件",
+                    _ => string.Empty
+                };
+            }
+        }
+        
+        /// <summary>
+        /// 是否有中文翻译
+        /// </summary>
+        public bool HasTranslation => !string.IsNullOrEmpty(DisplayTranslation);
+        
+        private bool _isSelected = false;
+        
+        /// <summary>
+        /// 是否选中
+        /// </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (SetProperty(ref _isSelected, value))
+                {
+                    // 当选中状态变化时，更新所有子项的选中状态
+                    foreach (var child in Children)
+                    {
+                        child.IsSelected = value;
+                    }
+                    
+                    // 触发选中状态变化事件，用于通知父项更新状态
+                    SelectedChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 选中状态变化事件
+        /// </summary>
+        public event EventHandler? SelectedChanged;
+        
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        public ResourceItem()
+        {
+            // 订阅子项集合变化事件
+            Children.CollectionChanged += Children_CollectionChanged;
+        }
+        
+        /// <summary>
+        /// 子项选中状态变化事件处理
+        /// </summary>
+        private void Child_SelectedChanged(object? sender, EventArgs e)
+        {
+            // 当子项选中状态变化时，更新当前项的选中状态
+            if (HasChildren)
+            {
+                int selectedCount = Children.Count(c => c.IsSelected);
+                if (selectedCount == 0)
+                {
+                    IsSelected = false;
+                }
+                else if (selectedCount == Children.Count)
+                {
+                    IsSelected = true;
+                }
+                // 如果是部分选中，不修改IsSelected的值，保持当前状态
+            }
+            
+            // 触发选中状态变化事件，通知父项更新状态
+            SelectedChanged?.Invoke(this, EventArgs.Empty);
+        }
+        
+        /// <summary>
+        /// 子项集合变化事件处理
+        /// </summary>
+        private void Children_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+            {
+                foreach (ResourceItem child in e.NewItems)
+                {
+                    child.SelectedChanged += Child_SelectedChanged;
+                }
+            }
+            
+            if (e.OldItems != null)
+            {
+                foreach (ResourceItem child in e.OldItems)
+                {
+                    child.SelectedChanged -= Child_SelectedChanged;
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 版本目录中的所有资源目录列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ResourceItem> _resourceDirectories = new();
+    
+    /// <summary>
+    /// 检测当前版本目录中的所有资源目录
+    /// </summary>
+    private void DetectResourceDirectories(VersionInfoItem version)
+    {
+        ResourceDirectories.Clear();
+        
+        if (Directory.Exists(version.Path))
+        {
+            // 获取版本名对应的jar和json文件，这些文件需要被排除
+            string versionName = Path.GetFileName(version.Path);
+            
+            // 允许的文件和目录列表（版本根目录仅显示这些）
+            var allowedItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "shaderpacks",
+                "resourcepacks",
+                "mods",
+                "options.txt",
+                "config"
+            };
+            
+            // 获取版本目录中的所有子目录
+            string[] directories = Directory.GetDirectories(version.Path);
+            
+            // 添加允许的目录到列表
+            foreach (string dirPath in directories)
+            {
+                string dirName = Path.GetFileName(dirPath);
+                
+                // 只添加允许的目录
+                if (allowedItems.Contains(dirName))
+                {
+                    // 创建目录项
+                    var dirItem = new ResourceItem
+                    {
+                        Name = dirName,
+                        Path = dirPath,
+                        IsSelected = false,
+                        IsDirectory = true
+                    };
+                    
+                    // 递归检测子目录内容（子目录不受限制）
+                    DetectDirectoryContent(dirItem);
+                    
+                    ResourceDirectories.Add(dirItem);
+                }
+            }
+            
+            // 获取版本目录中的所有文件
+            string[] files = Directory.GetFiles(version.Path);
+            
+            // 添加允许的文件到列表
+            foreach (string filePath in files)
+            {
+                string fileName = Path.GetFileName(filePath);
+                
+                // 只添加允许的文件
+                if (allowedItems.Contains(fileName))
+                {
+                    ResourceDirectories.Add(new ResourceItem
+                    {
+                        Name = fileName,
+                        Path = filePath,
+                        IsSelected = false,
+                        IsDirectory = false
+                    });
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 递归检测目录内容
+    /// </summary>
+    /// <param name="parentItem">父目录项</param>
+    private void DetectDirectoryContent(ResourceItem parentItem)
+    {
+        if (!parentItem.IsDirectory || !Directory.Exists(parentItem.Path))
+            return;
+        
+        // 获取目录中的所有子目录
+        string[] directories = Directory.GetDirectories(parentItem.Path);
+        
+        // 添加每个子目录
+        foreach (string dirPath in directories)
+        {
+            string dirName = Path.GetFileName(dirPath);
+            
+            // 创建子目录项
+            var dirItem = new ResourceItem
+            {
+                Name = dirName,
+                Path = dirPath,
+                IsSelected = false,
+                IsDirectory = true
+            };
+            
+            // 递归检测子目录内容
+            DetectDirectoryContent(dirItem);
+            
+            parentItem.Children.Add(dirItem);
+        }
+        
+        // 获取目录中的所有文件
+        string[] files = Directory.GetFiles(parentItem.Path);
+        
+        // 添加每个文件
+        foreach (string filePath in files)
+        {
+            string fileName = Path.GetFileName(filePath);
+            
+            parentItem.Children.Add(new ResourceItem
+            {
+                Name = fileName,
+                Path = filePath,
+                IsSelected = false,
+                IsDirectory = false
+            });
         }
     }
 }
