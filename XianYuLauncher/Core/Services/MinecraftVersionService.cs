@@ -1003,7 +1003,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             };
 
             // 保存Fabric版本JSON文件
-            string fabricJsonContent = JsonConvert.SerializeObject(fabricVersionJson, Formatting.Indented);
+            string fabricJsonContent = JsonConvert.SerializeObject(fabricVersionJson, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             await File.WriteAllTextAsync(fabricJsonPath, fabricJsonContent);
             progressCallback?.Invoke(70); // 70% 进度用于JSON创建
             _logger.LogInformation("Fabric版本JSON文件已创建: {JsonPath}", fabricJsonPath);
@@ -3093,7 +3093,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后JSON ID: {mergedJson?.Id}");
             
             // 保存合并后的JSON
-            File.WriteAllText(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented));
+            File.WriteAllText(mergedJsonPath, JsonConvert.SerializeObject(mergedJson, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 合并后的JSON文件大小: {new FileInfo(mergedJsonPath).Length}字节");
             
             // 列出最终版本目录中的所有文件
@@ -3512,9 +3512,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             InheritsFrom = original.InheritsFrom ?? original.Id ?? "",
             MainClass = neoforge.MainClass ?? "",
             // 处理旧版Forge的minecraftArguments字段
-            // 只有当Forge提供了有效的Arguments时才使用，否则使用null
-            // 避免出现arguments: null的情况
-            Arguments = neoforge.Arguments != null && (neoforge.Arguments.Game != null || neoforge.Arguments.Jvm != null) ? neoforge.Arguments : null,
+            // 只有当Forge提供了有效的Arguments且没有minecraftArguments时才使用Arguments
+            // 避免同时出现arguments和minecraftArguments字段
+            Arguments = !string.IsNullOrEmpty(neoforge.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments) 
+                ? null 
+                : (neoforge.Arguments != null && (neoforge.Arguments.Game != null || neoforge.Arguments.Jvm != null) ? neoforge.Arguments : null),
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id ?? "",
             Downloads = original.Downloads, // 使用原版下载信息

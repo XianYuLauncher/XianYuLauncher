@@ -19,6 +19,7 @@ public partial class 版本列表ViewModel : ObservableRecipient
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
+    private readonly Core.Services.ModrinthService _modrinthService;
 
     /// <summary>
     /// 版本信息模型
@@ -93,10 +94,11 @@ public partial class 版本列表ViewModel : ObservableRecipient
     /// </summary>
     public event EventHandler<VersionInfoItem>? ExportModpackRequested;
 
-    public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService)
+    public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
+        _modrinthService = modrinthService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -377,6 +379,235 @@ public partial class 版本列表ViewModel : ObservableRecipient
         {
             CollectSelectedItems(child, selectedItems, versionRootPath);
         }
+    }
+    
+    /// <summary>
+    /// 解析mod名称，提取英文部分
+    /// </summary>
+    /// <param name="modName">原始mod名称</param>
+    /// <returns>提取的英文mod名称</returns>
+    private string ParseModName(string modName)
+    {
+        if (string.IsNullOrEmpty(modName))
+        {
+            return string.Empty;
+        }
+        
+        // 移除文件扩展名
+        string fileNameWithoutExt = Path.GetFileNameWithoutExtension(modName);
+        
+        // 忽略[]内的内容
+        int startBracketIndex = fileNameWithoutExt.IndexOf('[');
+        int endBracketIndex = fileNameWithoutExt.IndexOf(']');
+        
+        if (startBracketIndex != -1 && endBracketIndex > startBracketIndex)
+        {
+            // 移除[]内的内容
+            fileNameWithoutExt = fileNameWithoutExt.Remove(startBracketIndex, endBracketIndex - startBracketIndex + 1);
+        }
+        
+        // 移除中文内容
+        string englishName = new string(fileNameWithoutExt.Where(c => c < 128).ToArray());
+        
+        // 移除多余空格和特殊字符
+        englishName = System.Text.RegularExpressions.Regex.Replace(englishName, @"\s+[_-]+\s*", "_").Trim();
+        englishName = System.Text.RegularExpressions.Regex.Replace(englishName, @"[_-]+\s*", "_").Trim();
+        
+        return englishName;
+    }
+    
+    /// <summary>
+    /// 获取mod文件列表
+    /// </summary>
+    /// <param name="modsDirectory">mods目录路径</param>
+    /// <returns>mod文件列表</returns>
+    private List<string> GetModFiles(string modsDirectory)
+    {
+        List<string> modFiles = new List<string>();
+        
+        if (Directory.Exists(modsDirectory))
+        {
+            // 获取所有jar文件
+            string[] jarFiles = Directory.GetFiles(modsDirectory, "*.jar", SearchOption.TopDirectoryOnly);
+            modFiles.AddRange(jarFiles.Select(Path.GetFileName));
+            
+            // 获取所有zip文件
+            string[] zipFiles = Directory.GetFiles(modsDirectory, "*.zip", SearchOption.TopDirectoryOnly);
+            modFiles.AddRange(zipFiles.Select(Path.GetFileName));
+        }
+        
+        return modFiles;
+    }
+    
+    /// <summary>
+    /// 检测mod加载器类型
+    /// </summary>
+    /// <param name="modName">mod名称</param>
+    /// <returns>加载器类型（fabric、forge、neoforge、quilt或空字符串）</returns>
+    private string DetectModLoader(string modName)
+    {
+        if (string.IsNullOrEmpty(modName))
+        {
+            return string.Empty;
+        }
+        
+        string lowerName = modName.ToLowerInvariant();
+        
+        if (lowerName.Contains("fabric"))
+        {
+            return "fabric";
+        }
+        else if (lowerName.Contains("forge"))
+        {
+            return "forge";
+        }
+        else if (lowerName.Contains("neoforge"))
+        {
+            return "neoforge";
+        }
+        else if (lowerName.Contains("quilt"))
+        {
+            return "quilt";
+        }
+
+        return string.Empty;
+    }
+    
+    /// <summary>
+    /// 计算文件的SHA1哈希值
+    /// </summary>
+    /// <param name="filePath">文件路径</param>
+    /// <returns>SHA1哈希值</returns>
+    private async Task<string> CalculateFileSHA1Async(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException("文件不存在", filePath);
+        }
+        
+        using var stream = File.OpenRead(filePath);
+        using var sha1 = System.Security.Cryptography.SHA1.Create();
+        var hashBytes = await sha1.ComputeHashAsync(stream);
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+    }
+    
+    /// <summary>
+    /// 搜索Modrinth获取mod信息
+    /// </summary>
+    /// <param name="version">版本信息</param>
+    /// <param name="selectedExportOptions">用户选择的导出选项</param>
+    /// <returns>搜索结果字典，key为mod文件名，value为Modrinth项目信息</returns>
+    public async Task<Dictionary<string, Core.Models.ModrinthProject>> SearchModrinthForModsAsync(VersionInfoItem version, List<string> selectedExportOptions)
+    {
+        Dictionary<string, Core.Models.ModrinthProject> modResults = new Dictionary<string, Core.Models.ModrinthProject>();
+        
+        if (version == null || string.IsNullOrEmpty(version.Path) || selectedExportOptions == null || selectedExportOptions.Count == 0)
+        {
+            return modResults;
+        }
+        
+        try
+        {
+            // 提取用户选择的mod文件
+            List<string> selectedModFiles = new List<string>();
+            
+            foreach (string option in selectedExportOptions)
+            {
+                // 只处理mods目录下的文件
+                if (option.StartsWith("mods\\") || option.StartsWith("mods/"))
+                {
+                    // 获取文件名
+                    string modFileName = Path.GetFileName(option);
+                    if (!string.IsNullOrEmpty(modFileName))
+                    {
+                        selectedModFiles.Add(modFileName);
+                    }
+                }
+            }
+            
+            // 输出选择的mod文件
+            System.Diagnostics.Debug.WriteLine($"共选择了 {selectedModFiles.Count} 个mod文件:");
+            foreach (string modFile in selectedModFiles)
+            {
+                System.Diagnostics.Debug.WriteLine($"- {modFile}");
+            }
+            
+            // 如果没有选择mod文件，直接返回
+            if (selectedModFiles.Count == 0)
+            {
+                return modResults;
+            }
+            
+            // 计算所有mod文件的SHA1哈希，并建立文件名到哈希的映射
+            Dictionary<string, string> modFileToHashMap = new Dictionary<string, string>();
+            List<string> allHashes = new List<string>();
+            
+            foreach (string modFile in selectedModFiles)
+            {
+                // 获取完整文件路径
+                string fullFilePath = Path.Combine(version.Path, "mods", modFile);
+                
+                if (File.Exists(fullFilePath))
+                {
+                    try
+                    {
+                        // 计算文件SHA1哈希
+                        string sha1Hash = await CalculateFileSHA1Async(fullFilePath);
+                        System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, SHA1哈希: {sha1Hash}");
+                        
+                        // 添加到映射和哈希列表
+                        modFileToHashMap.Add(modFile, sha1Hash);
+                        allHashes.Add(sha1Hash);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"计算Mod文件 {modFile} 哈希时出错: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Mod文件不存在: {fullFilePath}");
+                }
+            }
+            
+            // 如果没有成功计算任何哈希，直接返回
+            if (allHashes.Count == 0)
+            {
+                return modResults;
+            }
+            
+            // 使用批量API获取所有mod的信息
+            var hashToVersionMap = await _modrinthService.GetVersionFilesByHashesAsync(allHashes);
+            
+            // 处理批量API返回的结果
+            foreach (var kvp in modFileToHashMap)
+            {
+                string modFile = kvp.Key;
+                string sha1Hash = kvp.Value;
+                
+                if (hashToVersionMap.TryGetValue(sha1Hash, out var versionInfo))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, 成功获取Modrinth版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
+                    
+                    // 如果有文件信息，输出文件URL
+                    if (versionInfo.Files != null && versionInfo.Files.Count > 0)
+                    {
+                        var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
+                        System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, Modrinth文件URL: {primaryFile.Url}");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Mod文件: {modFile}, 无法通过哈希 {sha1Hash} 获取Modrinth信息");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"搜索Modrinth失败: {ex.Message}");
+        }
+        
+        return modResults;
     }
     
     /// <summary>
