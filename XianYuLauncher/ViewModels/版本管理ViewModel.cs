@@ -569,6 +569,12 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     private double _downloadProgress = 0;
     
     /// <summary>
+    /// 下载进度弹窗标题
+    /// </summary>
+    [ObservableProperty]
+    private string _downloadProgressDialogTitle = "正在更新Mod";
+    
+    /// <summary>
     /// 更新结果
     /// </summary>
     [ObservableProperty]
@@ -1352,6 +1358,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
             {
                 // 设置下载状态
                 IsDownloading = true;
+                DownloadProgressDialogTitle = "正在迁移Mod";
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
                 StatusMessage = "正在准备转移Mod...";
@@ -1744,6 +1751,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                 
                 // 设置下载状态
                 IsDownloading = true;
+                DownloadProgressDialogTitle = "正在更新Mod";
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
                 

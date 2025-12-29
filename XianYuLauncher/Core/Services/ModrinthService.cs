@@ -456,13 +456,15 @@ public class ModrinthService
         /// <param name="currentModVersion">当前Mod的版本信息，用于筛选兼容的依赖版本</param>
         /// <param name="progressCallback">进度回调</param>
         /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="checkProjectId">是否检查项目ID，避免重复下载同一项目的不同版本</param>
         /// <returns>成功处理的依赖数量</returns>
         public async Task<int> ProcessDependenciesAsync(
             List<Dependency> dependencies, 
             string destinationPath, 
             ModrinthVersion? currentModVersion = null,
             Action<string, double>? progressCallback = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            bool checkProjectId = true)
         {
             int processedCount = 0;
             
@@ -490,6 +492,13 @@ public class ModrinthService
             
             // 跟踪已处理的依赖，避免循环依赖
             var processedDependencies = new HashSet<string>();
+            
+            // 获取现有mod的项目ID映射
+            Dictionary<string, string>? existingProjectIds = null;
+            if (checkProjectId)
+            {
+                existingProjectIds = await GetExistingModProjectIdsAsync(destinationPath, cancellationToken);
+            }
             
             for (int i = 0; i < dependencies.Count; i++)
             {
@@ -591,6 +600,17 @@ public class ModrinthService
                         continue;
                     }
                     
+                    // 新增：检查项目ID是否已存在
+                    if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
+                    {
+                        if (existingProjectIds.ContainsKey(depVersionInfo.ProjectId))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  - 跳过：项目 {depVersionInfo.ProjectId} 已存在 ({existingProjectIds[depVersionInfo.ProjectId]})");
+                            processedCount++;
+                            continue;
+                        }
+                    }
+                    
                     // 获取主要文件
                     var primaryFile = depVersionInfo.Files.FirstOrDefault(f => f.Primary) ?? depVersionInfo.Files[0];
                     System.Diagnostics.Debug.WriteLine($"  - 主要文件：{primaryFile.Filename}");
@@ -666,7 +686,8 @@ public class ModrinthService
                                 destinationPath, 
                                 depVersionInfo, // 传递当前依赖的版本信息作为子依赖的参考
                                 progressCallback,
-                                cancellationToken);
+                                cancellationToken,
+                                checkProjectId);
                             System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
                         }
                         
@@ -687,6 +708,61 @@ public class ModrinthService
             
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] 依赖处理完成：共{dependencies.Count}个，成功{processedCount}个");
             return processedCount;
+        }
+        
+        /// <summary>
+        /// 获取现有mod的项目ID映射
+        /// </summary>
+        /// <param name="destinationPath">目标路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>项目ID到文件路径的映射</returns>
+        private async Task<Dictionary<string, string>?> GetExistingModProjectIdsAsync(string destinationPath, CancellationToken cancellationToken = default)
+        {
+            // 计算现有文件的SHA1
+            var existingFiles = Directory.GetFiles(destinationPath, "*.jar", SearchOption.TopDirectoryOnly);
+            var hashes = new List<string>();
+            var hashToFilePath = new Dictionary<string, string>();
+            
+            foreach (var file in existingFiles)
+            {
+                try
+                {
+                    string hash = CalculateSHA1(file);
+                    hashes.Add(hash);
+                    hashToFilePath[hash] = file;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"计算文件哈希失败: {file}, {ex.Message}");
+                }
+            }
+            
+            if (hashes.Count == 0)
+            {
+                return null;
+            }
+            
+            // 批量获取项目ID
+            try
+            {
+                var versionMap = await GetVersionFilesByHashesAsync(hashes, "sha1");
+                var result = new Dictionary<string, string>();
+                
+                foreach (var kvp in versionMap)
+                {
+                    if (!string.IsNullOrEmpty(kvp.Value.ProjectId) && hashToFilePath.TryGetValue(kvp.Key, out string filePath))
+                    {
+                        result[kvp.Value.ProjectId] = filePath;
+                    }
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"批量获取项目ID失败: {ex.Message}");
+                return null;
+            }
         }
         
         /// <summary>

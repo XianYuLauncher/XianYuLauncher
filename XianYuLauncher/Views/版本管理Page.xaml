@@ -1223,7 +1223,7 @@
         <ContentDialog 
             x:Name="DownloadProgressDialog"
             Grid.RowSpan="3"
-            Title="正在更新Mod"
+            Title="{Binding DownloadProgressDialogTitle, Mode=OneWay}"
             PrimaryButtonText=""
             IsPrimaryButtonEnabled="False"
             CloseButtonText=""
