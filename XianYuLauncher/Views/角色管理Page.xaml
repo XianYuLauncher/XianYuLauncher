@@ -38,11 +38,12 @@
                     CornerRadius="24"
                     Background="#E5E7EB"
                     VerticalAlignment="Center">
-                    <FontIcon
-                        FontFamily="{StaticResource SymbolThemeFontFamily}"
-                        Glyph="&#xE77B;"
-                        FontSize="24"
-                        Foreground="#4B5563"
+                    <Image
+                        x:Name="ProfileAvatar"
+                        Width="48"
+                        Height="48"
+                        Source="ms-appx:///Assets/DefaultAvatar.png"
+                        Stretch="Fill"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
                 </Border>
