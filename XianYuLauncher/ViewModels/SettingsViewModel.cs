@@ -227,6 +227,17 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<AcknowledgmentPerson> _acknowledgmentPersons;
+    
+    /// <summary>
+    /// 下载前置Mod设置
+    /// </summary>
+    [ObservableProperty]
+    private bool _downloadDependencies = true;
+    
+    /// <summary>
+    /// 下载前置Mod设置键
+    /// </summary>
+    private const string DownloadDependenciesKey = "DownloadDependencies";
 
     /// <summary>
     /// 添加鸣谢人员命令
@@ -349,6 +360,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadVersionListSourceAsync().ConfigureAwait(false);
         // 加载材质类型设置
         LoadMaterialTypeAsync().ConfigureAwait(false);
+        // 加载下载前置Mod设置
+        LoadDownloadDependenciesAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -381,6 +394,24 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnVersionListSourceChanged(VersionListSourceType value)
     {
         _localSettingsService.SaveSettingAsync(VersionListSourceKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载下载前置Mod设置
+    /// </summary>
+    private async Task LoadDownloadDependenciesAsync()
+    {
+        // 读取下载前置Mod设置，如果不存在则使用默认值true
+        var value = await _localSettingsService.ReadSettingAsync<bool?>(DownloadDependenciesKey);
+        DownloadDependencies = value ?? true;
+    }
+    
+    /// <summary>
+    /// 当下载前置Mod设置变化时保存
+    /// </summary>
+    partial void OnDownloadDependenciesChanged(bool value)
+    {
+        _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
