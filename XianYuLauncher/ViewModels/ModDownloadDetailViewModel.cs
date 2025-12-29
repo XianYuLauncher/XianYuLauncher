@@ -717,6 +717,10 @@ namespace XMCL2025.ViewModels
         {
             try
             {
+                IsDownloadProgressDialogOpen = true; // 在开始处理下载时打开下载弹窗
+                IsDownloading = true;
+                DownloadStatus = "正在准备下载...";
+                
                 if (_currentDownloadingModVersion == null)
                 {
                     throw new Exception("未找到正在下载的Mod版本");
@@ -726,6 +730,7 @@ namespace XMCL2025.ViewModels
                 {
                     IsDownloading = false;
                     DownloadStatus = "下载已取消";
+                    IsDownloadProgressDialogOpen = false;
                     return;
                 }
                 
@@ -1181,85 +1186,116 @@ namespace XMCL2025.ViewModels
 
             IsDownloading = true;
             DownloadStatus = "正在准备下载...";
+            IsDownloadProgressDialogOpen = true; // 在开始处理依赖之前就打开下载弹窗
         
-        try
-        {
-            if (modVersion == null)
+            try
             {
-                throw new Exception("未选择要下载的Mod版本");
-            }
-            
-            // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
-            if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
-            {
-                throw new Exception("未选择要安装的游戏版本");
-            }
-            
-            string savePath;
-            
-            // 如果使用自定义下载路径
-            if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
-            {
-                savePath = Path.Combine(CustomDownloadPath, modVersion.FileName);
-            }
-            else
-            {
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
-                
-                // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
-                string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
-                
-                // 根据项目类型选择文件夹名称
-                string targetFolder;
-                
-                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
-                bool isDatapack = ProjectType == "datapack" || 
-                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
-                
-                if (isDatapack)
+                if (modVersion == null)
                 {
-                    // 保存当前正在下载的Mod版本
-                    _currentDownloadingModVersion = modVersion;
-                    
-                    // 数据包特殊处理：需要选择存档
-                    // 打开存档选择弹窗
-                    await ShowSaveSelectionDialog();
-                    
-                    // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
-                    // 这里直接返回，等待用户选择存档后再继续
-                    return;
+                    throw new Exception("未选择要下载的Mod版本");
+                }
+                
+                // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
+                if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
+                {
+                    throw new Exception("未选择要安装的游戏版本");
+                }
+                
+                string savePath;
+                
+                // 如果使用自定义下载路径
+                if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
+                {
+                    savePath = Path.Combine(CustomDownloadPath, modVersion.FileName);
                 }
                 else
                 {
-                    // 非数据包类型，使用常规逻辑
-                    switch (ProjectType)
+                    // 获取Minecraft数据路径
+                    string minecraftPath = _fileService.GetMinecraftDataPath();
+                    
+                    // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
+                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    
+                    // 根据项目类型选择文件夹名称
+                    string targetFolder;
+                    
+                    // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
+                    bool isDatapack = ProjectType == "datapack" || 
+                                     (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                    
+                    if (isDatapack)
                     {
-                        case "resourcepack":
-                            targetFolder = "resourcepacks";
-                            break;
-                        case "shader":
-                            targetFolder = "shaderpacks";
-                            break;
-                        default:
-                            targetFolder = "mods";
-                            break;
+                        // 保存当前正在下载的Mod版本
+                        _currentDownloadingModVersion = modVersion;
+                        
+                        // 数据包特殊处理：需要选择存档
+                        // 打开存档选择弹窗
+                        await ShowSaveSelectionDialog();
+                        
+                        // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                        // 这里直接返回，等待用户选择存档后再继续
+                        return;
                     }
-                    
-                    // 构建目标文件夹路径
-                    string targetDir = Path.Combine(versionDir, targetFolder);
-                    
-                    // 创建目标文件夹（如果不存在）
-                    _fileService.CreateDirectory(targetDir);
-                    
-                    // 构建完整的文件保存路径
-                    savePath = Path.Combine(targetDir, modVersion.FileName);
+                    else
+                    {
+                        // 非数据包类型，使用常规逻辑
+                        switch (ProjectType)
+                        {
+                            case "resourcepack":
+                                targetFolder = "resourcepacks";
+                                break;
+                            case "shader":
+                                targetFolder = "shaderpacks";
+                                break;
+                            default:
+                                targetFolder = "mods";
+                                break;
+                        }
+                        
+                        // 构建目标文件夹路径
+                        string targetDir = Path.Combine(versionDir, targetFolder);
+                        
+                        // 创建目标文件夹（如果不存在）
+                        _fileService.CreateDirectory(targetDir);
+                        
+                        // 构建完整的文件保存路径
+                        savePath = Path.Combine(targetDir, modVersion.FileName);
+                    }
                 }
+                
+                // 处理Mod依赖（仅当是Mod且不是自定义路径时）
+                if (ProjectType == "mod" && !UseCustomDownloadPath)
+                {
+                    // 如果当前Mod版本有依赖，先下载依赖
+                    if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
+                    {
+                        // 筛选出必填的依赖项
+                        var requiredDependencies = modVersion.OriginalVersion.Dependencies
+                            .Where(d => d.DependencyType == "required")
+                            .ToList();
+                        
+                        if (requiredDependencies.Count > 0)
+                        {
+                            DownloadStatus = "正在下载前置Mod...";
+                            
+                            // 使用ModrinthService处理依赖下载，传递当前Mod的版本信息
+                            await _modrinthService.ProcessDependenciesAsync(
+                                requiredDependencies,
+                                Path.GetDirectoryName(savePath),
+                                modVersion.OriginalVersion, // 传递当前Mod的版本信息用于筛选兼容依赖
+                                (fileName, progress) =>
+                                {
+                                    DownloadStatus = $"正在下载前置Mod: {fileName}";
+                                    DownloadProgress = progress;
+                                    DownloadProgressText = $"{progress:F1}%";
+                                });
+                        }
+                    }
+                }
+                
+                // 执行主Mod下载
+                await PerformDownload(modVersion, savePath);
             }
-            
-            // 执行下载
-            await PerformDownload(modVersion, savePath);
-        }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;

@@ -158,8 +158,13 @@ public class ModrinthService
     /// 获取项目版本列表
     /// </summary>
     /// <param name="projectIdOrSlug">项目ID或Slug</param>
+    /// <param name="loaders">加载器类型筛选</param>
+    /// <param name="gameVersions">游戏版本筛选</param>
     /// <returns>版本列表</returns>
-    public async Task<List<ModrinthVersion>> GetProjectVersionsAsync(string projectIdOrSlug)
+    public async Task<List<ModrinthVersion>> GetProjectVersionsAsync(
+        string projectIdOrSlug,
+        List<string>? loaders = null,
+        List<string>? gameVersions = null)
     {
         string url = string.Empty;
         string responseContent = string.Empty;
@@ -167,6 +172,27 @@ public class ModrinthService
         {
             // 构建请求URL
             url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}/version";
+            
+            // 添加筛选条件
+            var queryParams = new List<string>();
+            
+            if (loaders != null && loaders.Count > 0)
+            {
+                string loadersJson = JsonSerializer.Serialize(loaders);
+                queryParams.Add($"loaders={Uri.EscapeDataString(loadersJson)}");
+            }
+            
+            if (gameVersions != null && gameVersions.Count > 0)
+            {
+                string gameVersionsJson = JsonSerializer.Serialize(gameVersions);
+                queryParams.Add($"game_versions={Uri.EscapeDataString(gameVersionsJson)}");
+            }
+            
+            // 拼接查询参数
+            if (queryParams.Count > 0)
+            {
+                url += $"?{string.Join("&", queryParams)}";
+            }
 
             // 输出调试信息，显示完整请求URL
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
@@ -353,27 +379,49 @@ public class ModrinthService
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"获取Mod版本信息: {versionId}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始获取版本信息: {versionId}");
                 
                 string apiUrl = $"https://api.modrinth.com/v2/version/{Uri.EscapeDataString(versionId)}";
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 请求URL: {apiUrl}");
+                
                 var response = await _httpClient.GetAsync(apiUrl);
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 响应状态: {response.StatusCode}");
                 
                 if (response.IsSuccessStatusCode)
                 {
                     string responseContent = await response.Content.ReadAsStringAsync();
-                    System.Diagnostics.Debug.WriteLine($"版本信息响应: {responseContent}");
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 响应内容长度: {responseContent.Length} 字符");
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 响应内容: {responseContent}");
                     
-                    return System.Text.Json.JsonSerializer.Deserialize<ModrinthVersion>(responseContent);
+                    var versionInfo = System.Text.Json.JsonSerializer.Deserialize<ModrinthVersion>(responseContent);
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 成功解析版本信息: {versionInfo?.VersionNumber}");
+                    return versionInfo;
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"获取版本信息失败: {response.StatusCode}");
+                    string errorContent = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 获取版本信息失败: {response.StatusCode}");
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 错误响应内容: {errorContent}");
                     return null;
                 }
             }
+            catch (HttpRequestException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP请求异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 状态码: {ex.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
+                throw new Exception($"获取版本信息失败: {ex.Message}");
+            }
+            catch (JsonException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON解析异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
+                throw new Exception($"解析版本信息失败: {ex.Message}");
+            }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取版本信息失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 其他异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 throw new Exception($"获取版本信息失败: {ex.Message}");
             }
         }
@@ -383,12 +431,14 @@ public class ModrinthService
         /// </summary>
         /// <param name="dependencies">依赖列表</param>
         /// <param name="destinationPath">保存路径</param>
+        /// <param name="currentModVersion">当前Mod的版本信息，用于筛选兼容的依赖版本</param>
         /// <param name="progressCallback">进度回调</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>成功处理的依赖数量</returns>
         public async Task<int> ProcessDependenciesAsync(
             List<Dependency> dependencies, 
             string destinationPath, 
+            ModrinthVersion? currentModVersion = null,
             Action<string, double>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
@@ -396,74 +446,224 @@ public class ModrinthService
             
             if (dependencies == null || dependencies.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("没有依赖需要处理");
+                System.Diagnostics.Debug.WriteLine("[ModrinthService] 没有依赖需要处理");
                 return processedCount;
             }
             
-            System.Diagnostics.Debug.WriteLine($"开始处理{dependencies.Count}个依赖");
+            // 输出当前Mod版本信息，用于调试
+            if (currentModVersion != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 当前Mod版本信息：");
+                System.Diagnostics.Debug.WriteLine($"  - 版本号: {currentModVersion.VersionNumber}");
+                System.Diagnostics.Debug.WriteLine($"  - 项目ID: {currentModVersion.ProjectId}");
+                System.Diagnostics.Debug.WriteLine($"  - 支持的游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
+                System.Diagnostics.Debug.WriteLine($"  - 支持的加载器: {string.Join(", ", currentModVersion.Loaders)}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 未提供当前Mod版本信息");
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始处理{dependencies.Count}个依赖");
             
             // 跟踪已处理的依赖，避免循环依赖
             var processedDependencies = new HashSet<string>();
             
-            foreach (var dependency in dependencies)
+            for (int i = 0; i < dependencies.Count; i++)
             {
+                var dependency = dependencies[i];
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 正在处理第{i+1}/{dependencies.Count}个依赖：");
+                System.Diagnostics.Debug.WriteLine($"  - DependencyType: {dependency.DependencyType}");
+                System.Diagnostics.Debug.WriteLine($"  - ProjectId: {dependency.ProjectId ?? "null"}");
+                System.Diagnostics.Debug.WriteLine($"  - VersionId: {dependency.VersionId ?? "null"}");
+                
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                if (!string.IsNullOrEmpty(dependency.VersionId) && processedDependencies.Add(dependency.VersionId))
+                // 唯一标识依赖项，用于避免重复处理
+                string dependencyKey = !string.IsNullOrEmpty(dependency.VersionId) ? dependency.VersionId : 
+                                      (!string.IsNullOrEmpty(dependency.ProjectId) ? dependency.ProjectId : "unknown");
+                
+                if (!processedDependencies.Add(dependencyKey))
                 {
-                    // 获取依赖版本信息
-                    var depVersionInfo = await GetVersionByIdAsync(dependency.VersionId);
-                    if (depVersionInfo != null && depVersionInfo.Files != null && depVersionInfo.Files.Count > 0)
+                    System.Diagnostics.Debug.WriteLine($"  - 跳过：依赖{dependencyKey}已处理");
+                    continue;
+                }
+                
+                ModrinthVersion? depVersionInfo = null;
+                
+                try
+                {
+                    if (!string.IsNullOrEmpty(dependency.VersionId))
                     {
-                        // 获取主要文件
-                        var primaryFile = depVersionInfo.Files.FirstOrDefault(f => f.Primary) ?? depVersionInfo.Files[0];
+                        // 情况1：有VersionId，直接获取版本信息
+                        System.Diagnostics.Debug.WriteLine($"  - 正在获取版本信息：{dependency.VersionId}");
+                        depVersionInfo = await GetVersionByIdAsync(dependency.VersionId);
                         
-                        if (primaryFile.Url != null && !string.IsNullOrEmpty(primaryFile.Filename))
+                        if (depVersionInfo == null)
                         {
-                            // 检查是否已存在相同SHA1的Mod
-                            bool alreadyExists = false;
-                            string filePath = Path.Combine(destinationPath, primaryFile.Filename);
+                            System.Diagnostics.Debug.WriteLine($"  - 失败：获取版本信息返回null");
+                            continue;
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"  - 成功获取版本信息：{depVersionInfo.VersionNumber} (ProjectId: {depVersionInfo.ProjectId})");
+                    }
+                    else if (!string.IsNullOrEmpty(dependency.ProjectId))
+                    {
+                        // 情况2：VersionId为空，但有ProjectId，需要获取合适的版本
+                        System.Diagnostics.Debug.WriteLine($"  - VersionId为空，尝试通过ProjectId获取合适版本");
+                        
+                        // 获取项目的兼容版本，直接通过API筛选
+                        System.Diagnostics.Debug.WriteLine($"  - 正在获取项目兼容版本：{dependency.ProjectId}");
+                        
+                        List<ModrinthVersion> compatibleVersions;
+                        
+                        if (currentModVersion != null)
+                        {
+                            // 使用当前Mod的游戏版本和加载器进行API筛选
+                            System.Diagnostics.Debug.WriteLine($"  - 通过API筛选兼容版本");
+                            System.Diagnostics.Debug.WriteLine($"  - 筛选条件：");
+                            System.Diagnostics.Debug.WriteLine($"    - 游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
+                            System.Diagnostics.Debug.WriteLine($"    - 加载器: {string.Join(", ", currentModVersion.Loaders)}");
                             
-                            if (File.Exists(filePath) && primaryFile.Hashes.TryGetValue("sha1", out string expectedSha1))
+                            compatibleVersions = await GetProjectVersionsAsync(
+                                dependency.ProjectId,
+                                currentModVersion.Loaders,
+                                currentModVersion.GameVersions);
+                            
+                            System.Diagnostics.Debug.WriteLine($"  - API返回{compatibleVersions.Count}个兼容版本");
+                        }
+                        else
+                        {
+                            // 没有当前Mod版本信息，获取所有版本
+                            System.Diagnostics.Debug.WriteLine($"  - 没有当前Mod版本信息，获取所有版本");
+                            compatibleVersions = await GetProjectVersionsAsync(dependency.ProjectId);
+                            System.Diagnostics.Debug.WriteLine($"  - 成功获取{compatibleVersions.Count}个版本");
+                        }
+                        
+                        if (compatibleVersions.Count == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  - 跳过：没有兼容版本");
+                            continue;
+                        }
+                        
+                        // 选择最新发布的版本
+                        depVersionInfo = compatibleVersions.OrderByDescending(v => v.DatePublished).First();
+                        System.Diagnostics.Debug.WriteLine($"  - 选择最新版本：{depVersionInfo.VersionNumber} (发布于: {depVersionInfo.DatePublished})");
+                    }
+                    else
+                    {
+                        // 情况3：没有VersionId和ProjectId，无法处理
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：没有VersionId和ProjectId");
+                        continue;
+                    }
+                    
+                    if (depVersionInfo == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：未获取到有效版本信息");
+                        continue;
+                    }
+                    
+                    if (depVersionInfo.Files == null || depVersionInfo.Files.Count == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：版本没有文件");
+                        continue;
+                    }
+                    
+                    // 获取主要文件
+                    var primaryFile = depVersionInfo.Files.FirstOrDefault(f => f.Primary) ?? depVersionInfo.Files[0];
+                    System.Diagnostics.Debug.WriteLine($"  - 主要文件：{primaryFile.Filename}");
+                    
+                    if (primaryFile.Url == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件URL为空");
+                        continue;
+                    }
+                    
+                    if (string.IsNullOrEmpty(primaryFile.Filename))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件名为空");
+                        continue;
+                    }
+                    
+                    // 检查是否已存在相同SHA1的Mod
+                    bool alreadyExists = false;
+                    string filePath = Path.Combine(destinationPath, primaryFile.Filename);
+                    System.Diagnostics.Debug.WriteLine($"  - 目标路径：{filePath}");
+                    
+                    if (File.Exists(filePath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
+                        if (primaryFile.Hashes.TryGetValue("sha1", out string expectedSha1))
+                        {
+                            string existingSha1 = CalculateSHA1(filePath);
+                            alreadyExists = existingSha1.Equals(expectedSha1, StringComparison.OrdinalIgnoreCase);
+                            
+                            if (alreadyExists)
                             {
-                                string existingSha1 = CalculateSHA1(filePath);
-                                alreadyExists = existingSha1.Equals(expectedSha1, StringComparison.OrdinalIgnoreCase);
-                                
-                                if (alreadyExists)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"依赖{primaryFile.Filename}已存在，跳过下载");
-                                    processedCount++;
-                                    continue;
-                                }
-                            }
-                            
-                            // 下载依赖
-                            bool downloadSuccess = await DownloadFileAsync(
-                                primaryFile.Url.AbsoluteUri, 
-                                filePath, 
-                                progressCallback, 
-                                cancellationToken);
-                            
-                            if (downloadSuccess)
-                            {
-                                // 处理依赖的依赖（递归）
-                                if (depVersionInfo.Dependencies != null && depVersionInfo.Dependencies.Count > 0)
-                                {
-                                    await ProcessDependenciesAsync(
-                                        depVersionInfo.Dependencies, 
-                                        destinationPath, 
-                                        progressCallback,
-                                        cancellationToken);
-                                }
-                                
+                                System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1匹配，文件已存在");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
                                 processedCount++;
+                                continue;
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1不匹配");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
                             }
                         }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的SHA1值");
+                        }
                     }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 文件不存在，准备下载");
+                    }
+                    
+                    // 下载依赖
+                    System.Diagnostics.Debug.WriteLine($"  - 开始下载：{primaryFile.Url.AbsoluteUri}");
+                    bool downloadSuccess = await DownloadFileAsync(
+                        primaryFile.Url.AbsoluteUri, 
+                        filePath, 
+                        progressCallback, 
+                        cancellationToken);
+                    
+                    if (downloadSuccess)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 下载成功");
+                        
+                        // 处理依赖的依赖（递归）
+                        if (depVersionInfo.Dependencies != null && depVersionInfo.Dependencies.Count > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  - 开始处理子依赖（{depVersionInfo.Dependencies.Count}个）");
+                            int subDependenciesCount = await ProcessDependenciesAsync(
+                                depVersionInfo.Dependencies, 
+                                destinationPath, 
+                                depVersionInfo, // 传递当前依赖的版本信息作为子依赖的参考
+                                progressCallback,
+                                cancellationToken);
+                            System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
+                        }
+                        
+                        processedCount++;
+                        System.Diagnostics.Debug.WriteLine($"  - 依赖处理完成，累计成功{processedCount}个");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - 下载失败");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - 处理依赖时发生异常：{ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"  - 异常堆栈：{ex.StackTrace}");
                 }
             }
             
-            System.Diagnostics.Debug.WriteLine($"已处理{dependencies.Count}个依赖，成功{processedCount}个");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] 依赖处理完成：共{dependencies.Count}个，成功{processedCount}个");
             return processedCount;
         }
         
@@ -484,44 +684,76 @@ public class ModrinthService
             try
             {
                 string fileName = Path.GetFileName(destinationPath);
-                System.Diagnostics.Debug.WriteLine($"开始下载文件: {downloadUrl} 到 {destinationPath}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始下载文件: {downloadUrl}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 目标路径: {destinationPath}");
                 
                 // 更新当前下载项
                 progressCallback?.Invoke(fileName, 0);
                 
                 // 创建父目录（如果不存在）
-                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? string.Empty);
+                string? parentDir = Path.GetDirectoryName(destinationPath);
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 父目录: {parentDir}");
+                if (!string.IsNullOrEmpty(parentDir))
+                {
+                    Directory.CreateDirectory(parentDir);
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 父目录已确保存在");
+                }
                 
                 // 下载文件
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 发送HTTP请求...");
                 var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP响应状态: {response.StatusCode}");
                 response.EnsureSuccessStatusCode();
                 
                 long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件大小: {totalBytes} 字节");
                 long downloadedBytes = 0;
                 
                 using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                 {
-                    byte[] buffer = new byte[8192];
-                    int bytesRead;
-                    
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 获取响应流成功");
+                    using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 创建文件流成功");
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
                         
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                        downloadedBytes += bytesRead;
-                        
-                        // 计算并报告进度
-                        if (totalBytes > 0)
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                         {
-                            double progress = (double)downloadedBytes / totalBytes * 100;
-                            progressCallback?.Invoke(fileName, Math.Round(progress, 2));
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
+                            await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                            downloadedBytes += bytesRead;
+                            
+                            // 计算并报告进度
+                            if (totalBytes > 0)
+                            {
+                                double progress = (double)downloadedBytes / totalBytes * 100;
+                                progress = Math.Round(progress, 2);
+                                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 下载进度: {downloadedBytes}/{totalBytes} 字节 ({progress}%)");
+                                progressCallback?.Invoke(fileName, progress);
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 下载进度: {downloadedBytes} 字节");
+                            }
                         }
+                        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件写入完成");
                     }
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"文件下载完成: {destinationPath}");
+                // 验证文件大小
+                if (totalBytes > 0)
+                {
+                    long actualFileSize = new FileInfo(destinationPath).Length;
+                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际文件大小: {actualFileSize} 字节");
+                    if (actualFileSize != totalBytes)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 警告: 文件大小不匹配，期望 {totalBytes} 字节，实际 {actualFileSize} 字节");
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件下载完成: {destinationPath}");
                 
                 // 下载完成，报告100%进度
                 progressCallback?.Invoke(fileName, 100);
@@ -530,12 +762,21 @@ public class ModrinthService
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine($"文件下载已取消: {destinationPath}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件下载已取消: {destinationPath}");
+                return false;
+            }
+            catch (HttpRequestException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP请求异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 状态码: {ex.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 return false;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"下载文件失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 下载文件失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常类型: {ex.GetType().FullName}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 return false;
             }
         }

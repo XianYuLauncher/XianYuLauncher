@@ -1709,6 +1709,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                 return await modrinthService.ProcessDependenciesAsync(
                     coreDependencies,
                     modsPath,
+                    null, // 当前Mod版本信息，这里没有则传递null
                     (modName, progress) => {
                         // 更新下载状态
                         CurrentDownloadItem = modName;
