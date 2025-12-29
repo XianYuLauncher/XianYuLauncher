@@ -12,6 +12,8 @@ using Windows.System;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Contracts.ViewModels;
 using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Services;
+using XMCL2025.Core.Models;
 using XMCL2025.ViewModels;
 
 namespace XMCL2025.ViewModels;
@@ -388,6 +390,12 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
+    private readonly ModrinthService _modrinthService;
+    
+    /// <summary>
+    /// 已安装版本列表
+    /// </summary>
+    private List<版本列表ViewModel.VersionInfoItem> _installedVersions = new();
 
     /// <summary>
     /// 当前选中的版本信息
@@ -629,11 +637,12 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     [ObservableProperty]
     private int _windowHeight = 1080;
 
-    public 版本管理ViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService)
+    public 版本管理ViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
+        _modrinthService = modrinthService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1284,6 +1293,13 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
             }
         }
 
+        /// <summary>
+        /// 是否显示转移Mod弹窗
+        /// </summary>
+        [ObservableProperty]
+        private bool _isMoveModsDialogVisible;
+        
+        /// <summary>
         /// 转移选中的Mods到其他版本
         /// </summary>
         [RelayCommand]
@@ -1299,15 +1315,416 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                     return;
                 }
 
-                // 这里需要实现版本选择对话框和Mod转移逻辑
-                // 由于WinUI 3的限制，我们使用简单的方式实现
-                StatusMessage = "转移Mod功能正在开发中...";
+                // 保存选中的Mods，用于后续转移
+                _selectedModsForMove = selectedMods;
+
+                // 加载所有已安装的版本
+                await LoadTargetVersionsAsync();
+                
+                // 显示版本选择对话框
+                IsMoveModsDialogVisible = true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
                 StatusMessage = $"转移Mod失败: {ex.Message}";
             }
+        }
+        
+        /// <summary>
+        /// 保存选中的Mods，用于转移
+        /// </summary>
+        private List<ModInfo> _selectedModsForMove;
+        
+        /// <summary>
+        /// 确认转移Mods到目标版本
+        /// </summary>
+        [RelayCommand]
+        private async Task ConfirmMoveModsAsync()
+        {
+            if (SelectedTargetVersion == null || _selectedModsForMove == null || _selectedModsForMove.Count == 0)
+            {
+                StatusMessage = "请选择要转移的Mod和目标版本";
+                return;
+            }
+            
+            try
+            {
+                // 设置下载状态
+                IsDownloading = true;
+                DownloadProgress = 0;
+                CurrentDownloadItem = string.Empty;
+                StatusMessage = "正在准备转移Mod...";
+                
+                // 记录转移结果
+                var moveResults = new List<MoveModResult>();
+                
+                // 获取源版本和目标版本的信息
+                string sourceVersionPath = GetVersionSpecificPath("mods");
+                string targetVersion = SelectedTargetVersion.VersionName;
+                
+                // 设置目标版本的上下文
+                var originalSelectedVersion = SelectedVersion;
+                
+                // 获取所有已安装版本，用于查找目标版本
+                var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+                SelectedVersion = new 版本列表ViewModel.VersionInfoItem
+                {
+                    Name = targetVersion,
+                    Path = Path.Combine(_fileService.GetMinecraftDataPath(), "versions", targetVersion)
+                };
+                
+                if (SelectedVersion == null || !Directory.Exists(SelectedVersion.Path))
+                {
+                    throw new Exception($"无法找到目标版本: {targetVersion}");
+                }
+                
+                string targetVersionPath = GetVersionSpecificPath("mods");
+                
+                // 获取目标版本的ModLoader和游戏版本
+                string modLoader = "fabric"; // 默认fabric
+                string gameVersion = SelectedVersion?.VersionNumber ?? "1.19.2";
+                
+                // 使用VersionInfoService获取完整的版本配置信息
+                var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                if (versionInfoService != null && SelectedVersion != null)
+                {
+                    string versionDir = Path.Combine(SelectedVersion.Path);
+                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    
+                    if (versionConfig != null)
+                    {
+                        // 获取ModLoader类型
+                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
+                        {
+                            modLoader = versionConfig.ModLoaderType.ToLower();
+                        }
+                        else
+                        {
+                            // 回退到基于版本名的判断
+                            if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "fabric";
+                            }
+                            else if (SelectedVersion.Name.Contains("forge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "forge";
+                            }
+                            else if (SelectedVersion.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "neoforge";
+                            }
+                            else if (SelectedVersion.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "quilt";
+                            }
+                        }
+                        
+                        // 获取游戏版本
+                        if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+                        {
+                            gameVersion = versionConfig.MinecraftVersion;
+                        }
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"转移Mod到目标版本: {targetVersion}");
+                System.Diagnostics.Debug.WriteLine($"目标版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
+                
+                // 遍历每个选中的Mod
+                for (int i = 0; i < _selectedModsForMove.Count; i++)
+                {
+                    var mod = _selectedModsForMove[i];
+                    var result = new MoveModResult
+                    {
+                        ModName = mod.Name,
+                        SourcePath = mod.FilePath,
+                        Status = MoveModStatus.Failed
+                    };
+                    
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
+                        
+                        // 计算Mod的SHA1哈希值
+                        string sha1Hash = CalculateSHA1(mod.FilePath);
+                        
+                        // 获取当前Mod版本的Modrinth信息
+                        ModrinthVersion modrinthVersion = null;
+                        try
+                        {
+                            modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"无法获取Mod信息: {ex.Message}");
+                        }
+                        
+                        if (modrinthVersion != null)
+                        {
+                            // 检查Mod是否兼容目标版本
+                            bool isCompatible = modrinthVersion.GameVersions.Contains(gameVersion) && 
+                                              modrinthVersion.Loaders.Contains(modLoader);
+                            
+                            if (isCompatible)
+                            {
+                                // 直接复制文件到目标版本
+                                string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
+                                
+                                // 确保目标目录存在
+                                Directory.CreateDirectory(targetVersionPath);
+                                
+                                // 复制文件
+                                File.Copy(mod.FilePath, targetFilePath, true);
+                                
+                                // 更新结果
+                                result.Status = MoveModStatus.Success;
+                                result.TargetPath = targetFilePath;
+                                
+                                System.Diagnostics.Debug.WriteLine($"成功转移Mod: {mod.Name} 到 {targetFilePath}");
+                            }
+                            else
+                            {
+                                // 尝试获取兼容目标版本的Mod版本
+                                var compatibleVersions = await _modrinthService.GetProjectVersionsAsync(
+                                    modrinthVersion.ProjectId,
+                                    new List<string> { modLoader },
+                                    new List<string> { gameVersion });
+                                
+                                if (compatibleVersions != null && compatibleVersions.Count > 0)
+                                {
+                                    // 选择最新版本
+                                    var latestCompatibleVersion = compatibleVersions.OrderByDescending(v => v.DatePublished).First();
+                                    
+                                    if (latestCompatibleVersion.Files != null && latestCompatibleVersion.Files.Count > 0)
+                                    {
+                                        var primaryFile = latestCompatibleVersion.Files.FirstOrDefault(f => f.Primary) ?? latestCompatibleVersion.Files[0];
+                                        string downloadUrl = primaryFile.Url.AbsoluteUri;
+                                        string fileName = primaryFile.Filename;
+                                        string tempFilePath = Path.Combine(targetVersionPath, $"{fileName}.tmp");
+                                        string finalFilePath = Path.Combine(targetVersionPath, fileName);
+                                        
+                                        // 下载兼容版本
+                                        CurrentDownloadItem = fileName;
+                                        bool downloadSuccess = await DownloadModAsync(downloadUrl, tempFilePath);
+                                        
+                                        if (downloadSuccess)
+                                        {
+                                            // 处理依赖
+                                            if (latestCompatibleVersion.Dependencies != null && latestCompatibleVersion.Dependencies.Count > 0)
+                                            {
+                                                await ProcessDependenciesAsync(latestCompatibleVersion.Dependencies, targetVersionPath);
+                                            }
+                                            
+                                            // 重命名临时文件
+                                            if (File.Exists(finalFilePath))
+                                            {
+                                                File.Delete(finalFilePath);
+                                            }
+                                            File.Move(tempFilePath, finalFilePath);
+                                            
+                                            // 更新结果
+                                            result.Status = MoveModStatus.Updated;
+                                            result.TargetPath = finalFilePath;
+                                            result.NewVersion = latestCompatibleVersion.VersionNumber;
+                                            
+                                            System.Diagnostics.Debug.WriteLine($"成功更新并转移Mod: {mod.Name} 到 {finalFilePath}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        result.Status = MoveModStatus.Incompatible;
+                                        System.Diagnostics.Debug.WriteLine($"Mod {mod.Name} 没有兼容的目标版本");
+                                    }
+                                }
+                                else
+                                {
+                                    result.Status = MoveModStatus.Incompatible;
+                                    System.Diagnostics.Debug.WriteLine($"Mod {mod.Name} 不兼容目标版本");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 无法获取Modrinth信息，尝试直接复制
+                            string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
+                            File.Copy(mod.FilePath, targetFilePath, true);
+                            result.Status = MoveModStatus.Copied;
+                            result.TargetPath = targetFilePath;
+                            
+                            System.Diagnostics.Debug.WriteLine($"无法获取Mod信息，直接复制Mod: {mod.Name} 到 {targetFilePath}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Status = MoveModStatus.Failed;
+                        result.ErrorMessage = ex.Message;
+                        System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
+                    }
+                    
+                    moveResults.Add(result);
+                    
+                    // 更新进度
+                    DownloadProgress = (i + 1) / (double)_selectedModsForMove.Count * 100;
+                }
+                
+                // 恢复原始选中版本
+                SelectedVersion = originalSelectedVersion;
+                
+                // 显示转移结果
+                MoveResults = moveResults;
+                IsMoveResultDialogVisible = true;
+                
+                // 重新加载当前版本的Mod列表
+                await LoadModsListOnlyAsync();
+                
+                // 异步加载图标，不阻塞UI
+                _ = LoadAllIconsAsync();
+                
+                StatusMessage = $"Mod转移完成，共处理 {moveResults.Count} 个Mod";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
+                StatusMessage = $"转移Mod失败: {ex.Message}";
+            }
+            finally
+            {
+                IsDownloading = false;
+                DownloadProgress = 0;
+                CurrentDownloadItem = string.Empty;
+                IsMoveModsDialogVisible = false;
+            }
+        }
+        
+        /// <summary>
+        /// 转移Mod结果类
+        /// </summary>
+        public enum MoveModStatus
+        {
+            Success,
+            Updated,
+            Copied,
+            Incompatible,
+            Failed
+        }
+        
+        /// <summary>
+        /// 转移Mod结果
+        /// </summary>
+        public partial class MoveModResult : ObservableObject
+        {
+            [ObservableProperty]
+            private string _modName;
+            
+            [ObservableProperty]
+            private string _sourcePath;
+            
+            [ObservableProperty]
+            private string _targetPath;
+            
+            [ObservableProperty]
+            private MoveModStatus _status;
+            
+            [ObservableProperty]
+            private string _newVersion;
+            
+            [ObservableProperty]
+            private string _errorMessage;
+            
+            /// <summary>
+            /// 显示状态文本
+            /// </summary>
+            public string StatusText
+            {
+                get
+                {
+                    switch (Status)
+                    {
+                        case MoveModStatus.Success:
+                            return "成功转移";
+                        case MoveModStatus.Updated:
+                            return "已更新并转移";
+                        case MoveModStatus.Copied:
+                            return "直接复制";
+                        case MoveModStatus.Incompatible:
+                            return "不兼容此版本/加载器,被移除";
+                        case MoveModStatus.Failed:
+                            return "转移失败";
+                        default:
+                            return "未知状态";
+                    }
+                }
+            }
+            
+            /// <summary>
+            /// 是否显示为灰字
+            /// </summary>
+            public bool IsGrayedOut => Status == MoveModStatus.Incompatible || Status == MoveModStatus.Failed;
+        }
+        
+        /// <summary>
+        /// 转移结果列表
+        /// </summary>
+        [ObservableProperty]
+        private List<MoveModResult> _moveResults;
+        
+        /// <summary>
+        /// 是否显示转移结果弹窗
+        /// </summary>
+        [ObservableProperty]
+        private bool _isMoveResultDialogVisible;
+        
+        /// <summary>
+        /// 目标版本列表，用于转移Mod功能
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<TargetVersionInfo> _targetVersions = new();
+        
+        /// <summary>
+        /// 选中的目标版本
+        /// </summary>
+        [ObservableProperty]
+        private TargetVersionInfo _selectedTargetVersion;
+        
+        /// <summary>
+        /// 加载目标版本列表
+        /// </summary>
+        private async Task LoadTargetVersionsAsync()
+        {
+            TargetVersions.Clear();
+            
+            // 获取实际已安装的游戏版本
+            var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+            
+            // 处理每个已安装版本，所有版本都显示为兼容
+            foreach (var installedVersion in installedVersions)
+            {
+                // 创建目标版本信息，所有版本都兼容
+                TargetVersions.Add(new TargetVersionInfo 
+                {
+                    VersionName = installedVersion,
+                    IsCompatible = true
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 目标版本信息类，用于转移Mod功能
+        /// </summary>
+        public partial class TargetVersionInfo : ObservableObject
+        {
+            /// <summary>
+            /// 版本名称
+            /// </summary>
+            [ObservableProperty]
+            private string _versionName;
+            
+            /// <summary>
+            /// 是否兼容
+            /// </summary>
+            [ObservableProperty]
+            private bool _isCompatible;
         }
 
         /// 更新选中的Mods
@@ -1480,7 +1897,14 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                                                 // 处理依赖关系
                                                 if (info.dependencies != null && info.dependencies.Count > 0)
                                                 {
-                                                    await ProcessDependenciesAsync(info.dependencies, modsPath);
+                                                    // 转换依赖类型
+                                                    var coreDependencies = info.dependencies.Select(dep => new Core.Models.Dependency
+                                                    {
+                                                        VersionId = dep.version_id,
+                                                        ProjectId = dep.project_id,
+                                                        FileName = dep.file_name
+                                                    }).ToList();
+                                                    await ProcessDependenciesAsync(coreDependencies, modsPath);
                                                 }
                                                 
                                                 // 删除旧Mod文件
@@ -1491,6 +1915,12 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                                                 }
                                                 
                                                 // 重命名临时文件为最终文件名
+                                                // 先检查目标文件是否已存在，如果存在则删除
+                                                if (File.Exists(finalFilePath))
+                                                {
+                                                    File.Delete(finalFilePath);
+                                                    System.Diagnostics.Debug.WriteLine($"已删除已存在的目标文件: {finalFilePath}");
+                                                }
                                                 File.Move(tempFilePath, finalFilePath);
                                                 System.Diagnostics.Debug.WriteLine($"已更新Mod: {finalFilePath}");
                                                 
@@ -1684,7 +2114,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
         /// <param name="dependencies">依赖列表</param>
         /// <param name="modsPath">Mod保存路径</param>
         /// <returns>成功处理的依赖数量</returns>
-        private async Task<int> ProcessDependenciesAsync(List<ModrinthDependency> dependencies, string modsPath)
+        private async Task<int> ProcessDependenciesAsync(List<Core.Models.Dependency> dependencies, string modsPath)
         {
             if (dependencies == null || dependencies.Count == 0)
             {
@@ -1697,19 +2127,65 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                 // 获取ModrinthService实例
                 var modrinthService = App.GetService<Core.Services.ModrinthService>();
                 
-                // 转换依赖类型
-                var coreDependencies = dependencies.Select(dep => new Core.Models.Dependency
-                {
-                    VersionId = dep.version_id,
-                    ProjectId = dep.project_id,
-                    FileName = dep.file_name
-                }).ToList();
+                // 获取当前版本的ModLoader和游戏版本
+                string modLoader = "fabric"; // 默认fabric
+                string gameVersion = SelectedVersion?.VersionNumber ?? "1.19.2"; // 使用选中版本的VersionNumber
                 
-                // 使用ModrinthService处理依赖
+                // 使用VersionInfoService获取完整的版本配置信息
+                var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                if (versionInfoService != null && SelectedVersion != null)
+                {
+                    string versionDir = Path.Combine(SelectedVersion.Path);
+                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    
+                    if (versionConfig != null)
+                    {
+                        // 获取ModLoader类型
+                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
+                        {
+                            modLoader = versionConfig.ModLoaderType.ToLower();
+                        }
+                        else
+                        {
+                            // 回退到基于版本名的判断
+                            if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "fabric";
+                            }
+                            else if (SelectedVersion.Name.Contains("forge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "forge";
+                            }
+                            else if (SelectedVersion.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "neoforge";
+                            }
+                            else if (SelectedVersion.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "quilt";
+                            }
+                        }
+                        
+                        // 获取游戏版本
+                        if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+                        {
+                            gameVersion = versionConfig.MinecraftVersion;
+                        }
+                    }
+                }
+                
+                // 创建当前Mod版本信息对象，用于筛选兼容的依赖版本
+                var currentModVersion = new Core.Models.ModrinthVersion
+                {
+                    Loaders = new List<string> { modLoader },
+                    GameVersions = new List<string> { gameVersion }
+                };
+                
+                // 直接使用ModrinthService处理依赖，不需要转换类型
                 return await modrinthService.ProcessDependenciesAsync(
-                    coreDependencies,
+                    dependencies,
                     modsPath,
-                    null, // 当前Mod版本信息，这里没有则传递null
+                    currentModVersion, // 传递当前版本信息，用于筛选兼容的依赖版本
                     (modName, progress) => {
                         // 更新下载状态
                         CurrentDownloadItem = modName;

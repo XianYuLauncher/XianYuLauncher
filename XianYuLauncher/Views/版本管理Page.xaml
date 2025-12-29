@@ -31,6 +31,7 @@
         <!-- 转换器引用 -->
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         <helpers:PathToUriConverter x:Key="PathToUriConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
         <helpers:DoubleToPercentageConverter x:Key="DoubleToPercentageConverter" />
@@ -70,6 +71,73 @@
                 <TextBlock x:Uid="VersionManagerPage_DragDropTip" Style="{StaticResource PageTitleStyle}" FontSize="20" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>
+        
+        <!-- 转移Mod到其他版本弹窗 -->
+        <ContentDialog
+            x:Name="MoveModsDialog"
+            x:Uid="VersionManagerPage_MoveModsDialog"
+            Title="选择目标版本"
+            PrimaryButtonText="确认"
+            CloseButtonText="取消"
+            DefaultButton="Primary"
+            PrimaryButtonClick="MoveModsDialog_PrimaryButtonClick"
+            CloseButtonClick="MoveModsDialog_CloseButtonClick">
+            <StackPanel Spacing="12">
+                <TextBlock x:Uid="VersionManagerPage_MoveModsDialog_InstructionText" Text="请选择要转移到的Minecraft版本：" FontSize="14" />
+                <ListView
+                    x:Name="TargetVersionListView"
+                    ItemsSource="{Binding TargetVersions, Mode=OneWay}"
+                    SelectedItem="{Binding SelectedTargetVersion, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    MaxHeight="300">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="8">
+                                <TextBlock
+                                    Text="{Binding VersionName}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+        </ContentDialog>
+        
+        <!-- 转移Mod结果弹窗 -->
+        <ContentDialog
+            x:Name="MoveResultDialog"
+            x:Uid="VersionManagerPage_MoveResultDialog"
+            Title="Mod转移结果"
+            PrimaryButtonText="确定"
+            DefaultButton="Primary"
+            PrimaryButtonClick="MoveResultDialog_PrimaryButtonClick">
+            <StackPanel Spacing="12">
+                <TextBlock x:Uid="VersionManagerPage_MoveResultDialog_InstructionText" Text="以下是Mod转移结果：" FontSize="14" />
+                <ListView
+                    x:Name="MoveResultListView"
+                    ItemsSource="{Binding MoveResults, Mode=OneWay}"
+                    MaxHeight="400">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="{Binding ModName}"
+                                    Opacity="{Binding IsGrayedOut, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding StatusText}"
+                                    Opacity="{Binding IsGrayedOut, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}"
+                                    Style="{ThemeResource CaptionTextBlockStyle}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+        </ContentDialog>
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,32">

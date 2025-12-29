@@ -311,11 +311,14 @@ namespace XMCL2025.ViewModels
 
         // 保存从列表页传递过来的Mod信息，用于优先显示作者
         private ModrinthProject _passedModInfo;
+        // 保存来源类型，用于过滤版本
+        private string _sourceType;
 
-        // 接受ModrinthProject对象的重载
-        public async Task LoadModDetailsAsync(ModrinthProject mod)
+        // 接受ModrinthProject对象和来源类型的重载
+        public async Task LoadModDetailsAsync(ModrinthProject mod, string sourceType)
         {
             _passedModInfo = mod;
+            _sourceType = sourceType;
             await LoadModDetailsAsync(mod.ProjectId);
         }
 
@@ -342,8 +345,19 @@ namespace XMCL2025.ViewModels
                 // 优先使用从列表页传递过来的作者信息，如果没有则使用API返回的
                 ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (_passedModInfo?.Author ?? projectDetail.Author);
                 
-                // 设置项目类型
-                ProjectType = projectDetail.ProjectType;
+                // 设置项目类型，根据来源类型进行覆盖
+                if (_sourceType == "mod")
+                {
+                    ProjectType = "mod";
+                }
+                else if (_sourceType == "datapack")
+                {
+                    ProjectType = "datapack";
+                }
+                else
+                {
+                    ProjectType = projectDetail.ProjectType;
+                }
                 
                 // 更新支持的加载器/标签
                 SupportedLoaders.Clear();
@@ -357,15 +371,43 @@ namespace XMCL2025.ViewModels
                 }
                 
                 // 检查是否为资源包、数据包或光影，显示标签而不是加载器
-                if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader" || 
-                    (projectDetail.Loaders != null && projectDetail.Loaders.Contains("datapack")))
+                // 根据来源类型决定显示内容
+                if (_sourceType == "mod")
                 {
-                    // 如果是数据包，确保ProjectType被正确设置
-                    if (projectDetail.Loaders != null && projectDetail.Loaders.Contains("datapack"))
+                    // 如果来源是mod页，始终显示加载器
+                    // 确保SupportedLoaders包含的是加载器而不是标签
+                    SupportedLoaders.Clear();
+                    if (projectDetail.Loaders != null)
                     {
-                        ProjectType = "datapack";
+                        foreach (var loader in projectDetail.Loaders)
+                        {
+                            // 过滤掉datapack加载器
+                            if (!loader.Equals("datapack", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // 首字母大写处理
+                                SupportedLoaders.Add(loader.Substring(0, 1).ToUpper() + loader.Substring(1).ToLower());
+                            }
+                        }
                     }
+                }
+                else if (_sourceType == "datapack")
+                {
+                    // 如果来源是数据包页，始终显示标签
+                    // 清空加载器列表
+                    SupportedLoaders.Clear();
                     
+                    // 添加标签
+                    if (projectDetail.Categories != null)
+                    {
+                        foreach (var category in projectDetail.Categories)
+                        {
+                            // 首字母大写处理
+                            SupportedLoaders.Add(category.Substring(0, 1).ToUpper() + category.Substring(1).ToLower());
+                        }
+                    }
+                }
+                else if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader")
+                {
                     // 清空加载器列表
                     SupportedLoaders.Clear();
                     
@@ -380,8 +422,21 @@ namespace XMCL2025.ViewModels
                     }
                 }
                 
-                // 首先获取所有版本信息
+                // 首先获取所有版本信息，使用当前Mod的游戏版本和加载器进行筛选
+                // 对于ModDownloadDetailPage，我们需要获取所有兼容版本，所以不传递特定的筛选条件
                 var allVersions = await _modrinthService.GetProjectVersionsAsync(modId);
+                
+                // 根据来源类型过滤版本
+                if (_sourceType == "mod")
+                {
+                    // 如果来源是mod页，过滤掉datapack类型的版本
+                    allVersions = allVersions.Where(v => !v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
+                }
+                else if (_sourceType == "datapack")
+                {
+                    // 如果来源是数据包页，只保留datapack类型的版本
+                    allVersions = allVersions.Where(v => v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
+                }
                 
                 // 预构建加载器名称格式化缓存，避免重复计算
                 var loaderNameCache = new Dictionary<string, string>();
@@ -895,13 +950,40 @@ namespace XMCL2025.ViewModels
                     string loaderType = "Vanilla";
                     string loaderVersion = "";
                     
-                    // 使用统一的版本信息服务获取加载器类型
+                    // 使用统一的版本信息服务获取加载器类型和游戏版本
                     var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
                     
                     // 获取完整的版本配置信息
                     Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(installedVersion, versionDir);
                     
+                    // 1. 优先从配置中获取游戏版本号
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+                    {
+                        gameVersion = versionConfig.MinecraftVersion;
+                    }
+                    else
+                    {
+                        // 2. 回退到从版本名中提取游戏版本号，处理各种格式
+                        string[] versionParts = installedVersion.Split('-');
+                        foreach (var part in versionParts)
+                        {
+                            // 检查是否为有效的游戏版本格式（如1.21, 1.20.6, 1.21.10等）
+                            if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d+\.\d+(\.\d+)?$"))
+                            {
+                                gameVersion = part;
+                                break;
+                            }
+                        }
+                        
+                        // 如果没有提取到有效游戏版本，直接使用版本名
+                        if (string.IsNullOrEmpty(gameVersion))
+                        {
+                            gameVersion = installedVersion;
+                        }
+                    }
+                    
+                    // 3. 解析加载器类型
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
                     {
                         // 首字母大写处理
@@ -923,25 +1005,6 @@ namespace XMCL2025.ViewModels
                         {
                             loaderType = "NeoForge";
                         }
-                    }
-                    
-                    // 3. 解析游戏版本（简化处理，直接提取数字部分）
-                    // 从版本名中提取游戏版本号，处理各种格式
-                    string[] versionParts = installedVersion.Split('-');
-                    foreach (var part in versionParts)
-                    {
-                        // 检查是否为有效的游戏版本格式（如1.21, 1.20.6等）
-                        if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d+\.\d+(\.\d+)?$"))
-                        {
-                            gameVersion = part;
-                            break;
-                        }
-                    }
-                    
-                    // 如果没有提取到有效游戏版本，直接使用版本名
-                    if (string.IsNullOrEmpty(gameVersion))
-                    {
-                        gameVersion = installedVersion;
                     }
                     
                     // 检查版本是否兼容
@@ -1184,10 +1247,6 @@ namespace XMCL2025.ViewModels
                 return;
             }
 
-            IsDownloading = true;
-            DownloadStatus = "正在准备下载...";
-            IsDownloadProgressDialogOpen = true; // 在开始处理依赖之前就打开下载弹窗
-        
             try
             {
                 if (modVersion == null)
@@ -1200,6 +1259,29 @@ namespace XMCL2025.ViewModels
                 {
                     throw new Exception("未选择要安装的游戏版本");
                 }
+                
+                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
+                bool isDatapack = ProjectType == "datapack" || 
+                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                
+                if (isDatapack)
+                {
+                    // 保存当前正在下载的Mod版本
+                    _currentDownloadingModVersion = modVersion;
+                    
+                    // 数据包特殊处理：需要选择存档
+                    // 打开存档选择弹窗
+                    await ShowSaveSelectionDialog();
+                    
+                    // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                    // 这里直接返回，等待用户选择存档后再继续
+                    return;
+                }
+                
+                // 非数据包类型，继续常规下载流程
+                IsDownloading = true;
+                DownloadStatus = "正在准备下载...";
+                IsDownloadProgressDialogOpen = true; // 在开始处理依赖之前就打开下载弹窗
                 
                 string savePath;
                 
@@ -1219,48 +1301,28 @@ namespace XMCL2025.ViewModels
                     // 根据项目类型选择文件夹名称
                     string targetFolder;
                     
-                    // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
-                    bool isDatapack = ProjectType == "datapack" || 
-                                     (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                    // 非数据包类型，使用常规逻辑
+                    switch (ProjectType)
+                    {
+                        case "resourcepack":
+                            targetFolder = "resourcepacks";
+                            break;
+                        case "shader":
+                            targetFolder = "shaderpacks";
+                            break;
+                        default:
+                            targetFolder = "mods";
+                            break;
+                    }
                     
-                    if (isDatapack)
-                    {
-                        // 保存当前正在下载的Mod版本
-                        _currentDownloadingModVersion = modVersion;
-                        
-                        // 数据包特殊处理：需要选择存档
-                        // 打开存档选择弹窗
-                        await ShowSaveSelectionDialog();
-                        
-                        // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
-                        // 这里直接返回，等待用户选择存档后再继续
-                        return;
-                    }
-                    else
-                    {
-                        // 非数据包类型，使用常规逻辑
-                        switch (ProjectType)
-                        {
-                            case "resourcepack":
-                                targetFolder = "resourcepacks";
-                                break;
-                            case "shader":
-                                targetFolder = "shaderpacks";
-                                break;
-                            default:
-                                targetFolder = "mods";
-                                break;
-                        }
-                        
-                        // 构建目标文件夹路径
-                        string targetDir = Path.Combine(versionDir, targetFolder);
-                        
-                        // 创建目标文件夹（如果不存在）
-                        _fileService.CreateDirectory(targetDir);
-                        
-                        // 构建完整的文件保存路径
-                        savePath = Path.Combine(targetDir, modVersion.FileName);
-                    }
+                    // 构建目标文件夹路径
+                    string targetDir = Path.Combine(versionDir, targetFolder);
+                    
+                    // 创建目标文件夹（如果不存在）
+                    _fileService.CreateDirectory(targetDir);
+                    
+                    // 构建完整的文件保存路径
+                    savePath = Path.Combine(targetDir, modVersion.FileName);
                 }
                 
                 // 处理Mod依赖（仅当是Mod且不是自定义路径时）
@@ -1268,7 +1330,7 @@ namespace XMCL2025.ViewModels
                 {
                     // 检查设置中是否开启了下载前置Mod
                     var settingsService = App.GetService<ILocalSettingsService>();
-                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool>("DownloadDependencies");
+                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool?>("DownloadDependencies");
                     // 默认值为true，只有当用户明确设置为false时才为false
                     bool downloadDependencies = downloadDependenciesSetting ?? true;
                     
@@ -1657,7 +1719,7 @@ namespace XMCL2025.ViewModels
         [ObservableProperty]
         private string _originalVersionName;
 
-        public string DisplayName => $"{GameVersion} - {LoaderType} {LoaderVersion}";
+        public string DisplayName => $"{OriginalVersionName}";
     }
 
     // Mod版本视图模型

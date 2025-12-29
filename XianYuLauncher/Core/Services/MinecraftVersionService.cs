@@ -1432,33 +1432,19 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         string artifactId = parts[1];
         string version = parts[2];
         string detectedClassifier = null;
+        string detectedExtension = null;
         
-        // 检查版本号是否包含@符号，可能包含classifier信息
+        // 检查版本号是否包含@符号，可能包含extension信息
         if (version.Contains('@'))
         {
-            // 分割版本号和分类器
+            // 分割版本号和extension
             string[] versionParts = version.Split('@');
             if (versionParts.Length == 2)
             {
                 version = versionParts[0];
-                detectedClassifier = versionParts[1];
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本号中提取分类器: {detectedClassifier}");
+                detectedExtension = versionParts[1];
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本号中提取extension: {detectedExtension}");
             }
-        }
-
-        // 处理分类器中的$extension占位符
-        if (!string.IsNullOrEmpty(detectedClassifier) && detectedClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
-        {
-            // 对于mcp_config，直接清空分类器，后续会添加正确的.zip扩展名
-            if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
-            {
-                detectedClassifier = ""; // 清空分类器，避免添加-zip
-            }
-            else
-            {
-                detectedClassifier = "jar"; // 默认使用jar
-            }
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换分类器中的$extension占位符为: {detectedClassifier}");
         }
 
         // 如果库名称中包含分类器（即有4个或更多部分），则提取分类器
@@ -1494,22 +1480,29 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
         
         // 确定文件扩展名
-        string extension = ".jar";
+        string extension = ".jar"; // 默认扩展名
         bool hasExtension = false;
         
-        // 检查并移除分类器中的"zip"，因为它应该是扩展名而不是分类器
-        if (finalClassifier != null && finalClassifier.Equals("zip", StringComparison.OrdinalIgnoreCase))
+        // 特殊处理neoform文件，确保使用正确的扩展名
+        if (artifactId.Equals("neoform", StringComparison.OrdinalIgnoreCase))
         {
-            finalClassifier = ""; // 移除zip分类器
-            fileName = $"{artifactId}-{version}"; // 重新构建文件名
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 移除zip分类器，重新构建文件名: {fileName}");
+            // 使用从版本号中提取的extension，默认为zip
+            extension = detectedExtension != null ? $".{detectedExtension}" : ".zip";
+            hasExtension = false; // 确保添加扩展名
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 特殊处理neoform文件，使用扩展名: {extension}");
         }
-        
         // 特殊处理mcp_config文件，确保使用正确的zip扩展名
-        if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
+        else if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
         {
             extension = ".zip";
             hasExtension = false; // 确保添加扩展名
+        }
+        // 如果从版本号中提取到了extension，使用它
+        else if (detectedExtension != null)
+        {
+            extension = $".{detectedExtension}";
+            hasExtension = false; // 确保添加扩展名
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用从版本号中提取的extension: {extension}");
         }
         // 检查文件名是否已经包含特定扩展名
         else if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
@@ -1867,16 +1860,19 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("开始检查NeoForge版本依赖: {VersionId}", versionId);
             currentDownloadCallback?.Invoke("正在执行NeoforgeProcessor");
             
-            // 检查minecraft-client-patched JAR是否存在
-            string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
+            // 注释掉检查minecraft-client-patched JAR的逻辑，避免每次启动都执行处理器
+            // 由用户要求添加，解决特定版本下NeoForge每次启动都要patched导致的卡顿问题
+            // string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
+            // 
+            // if (File.Exists(patchedJarPath))
+            // {
+            //     _logger.LogInformation("minecraft-client-patched JAR已存在，跳过NeoForge处理器执行: {PatchedJarPath}", patchedJarPath);
+            //     return;
+            // }
             
-            if (File.Exists(patchedJarPath))
-            {
-                _logger.LogInformation("minecraft-client-patched JAR已存在，跳过NeoForge处理器执行: {PatchedJarPath}", patchedJarPath);
-                return;
-            }
-            
-            _logger.LogInformation("minecraft-client-patched JAR不存在，开始执行NeoForge处理器: {PatchedJarPath}", patchedJarPath);
+            // _logger.LogInformation("minecraft-client-patched JAR不存在，开始执行NeoForge处理器: {PatchedJarPath}", patchedJarPath);
+            _logger.LogInformation("已跳过NeoForge处理器执行检查，直接返回");
+            return;
             
             // 报告NeoForge处理器执行开始，占1%进度
             progressCallback?.Invoke(1);

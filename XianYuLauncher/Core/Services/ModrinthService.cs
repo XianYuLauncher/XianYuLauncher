@@ -242,14 +242,31 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL
-            url = $"https://api.modrinth.com/v2/version_files/{Uri.EscapeDataString(hash)}?algorithm={Uri.EscapeDataString(algorithm)}";
+            // 构建请求URL，使用POST方式获取单个哈希对应的版本信息
+            url = "https://api.modrinth.com/v2/version_files";
 
-            // 输出调试信息，显示完整请求URL
+            // 构建请求体，包含单个哈希
+            var requestBody = new
+            {
+                hashes = new List<string> { hash },
+                algorithm = algorithm
+            };
+
+            // 将请求体转换为JSON字符串
+            string jsonBody = JsonSerializer.Serialize(requestBody);
+
+            // 创建HTTP请求，使用POST方法
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+
+            // 输出调试信息，显示完整请求URL和请求体
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
+            System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
 
             // 发送请求
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.SendAsync(request);
             
             // 获取完整响应内容
             responseContent = await response.Content.ReadAsStringAsync();
@@ -260,17 +277,22 @@ public class ModrinthService
             // 确保响应成功
             response.EnsureSuccessStatusCode();
 
-            // 解析响应
-            var versionInfo = JsonSerializer.Deserialize<ModrinthVersion>(responseContent);
+            // 解析响应，返回哈希值到版本信息的映射
+            var versionMap = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(responseContent);
             
-            // 输出调试信息，显示获取到的文件URL
-            if (versionInfo != null && versionInfo.Files != null && versionInfo.Files.Count > 0)
+            // 如果找到对应的版本信息，则返回，否则返回null
+            if (versionMap != null && versionMap.TryGetValue(hash, out var versionInfo))
             {
-                var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                System.Diagnostics.Debug.WriteLine($"获取到的Mod文件URL: {primaryFile.Url}");
+                // 输出调试信息，显示获取到的文件URL
+                if (versionInfo != null && versionInfo.Files != null && versionInfo.Files.Count > 0)
+                {
+                    var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
+                    System.Diagnostics.Debug.WriteLine($"获取到的Mod文件URL: {primaryFile.Url}");
+                }
+                return versionInfo;
             }
             
-            return versionInfo;
+            return null;
         }
         catch (HttpRequestException ex)
         {

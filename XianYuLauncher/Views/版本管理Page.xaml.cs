@@ -28,28 +28,72 @@ public sealed partial class 版本管理Page : Page
     }
     
     /// <summary>
-    /// 监听ViewModel属性变化，显示或隐藏弹窗
-    /// </summary>
-    private async void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
+        /// 监听ViewModel属性变化，显示或隐藏弹窗
+        /// </summary>
+        private async void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            // 显示下载进度弹窗
-            await DownloadProgressDialog.ShowAsync();
+            try
+            {
+                if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
+                {
+                    // 关闭所有可能打开的弹窗
+                    MoveModsDialog.Hide();
+                    ResultDialog.Hide();
+                    MoveResultDialog.Hide();
+                    
+                    // 等待足够长的时间，确保所有弹窗完全关闭
+                    await Task.Delay(100);
+                    
+                    // 显示下载进度弹窗
+                    await DownloadProgressDialog.ShowAsync();
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsResultDialogVisible) && ViewModel.IsResultDialogVisible)
+                {
+                    // 关闭下载进度弹窗（如果显示）
+                    DownloadProgressDialog.Hide();
+                    
+                    // 等待足够长的时间，确保弹窗完全关闭
+                    await Task.Delay(100);
+                    
+                    // 显示结果弹窗
+                    await ResultDialog.ShowAsync();
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsMoveModsDialogVisible) && ViewModel.IsMoveModsDialogVisible)
+                {
+                    // 关闭所有可能打开的弹窗
+                    DownloadProgressDialog.Hide();
+                    ResultDialog.Hide();
+                    MoveResultDialog.Hide();
+                    
+                    // 等待足够长的时间，确保所有弹窗完全关闭
+                    await Task.Delay(100);
+                    
+                    // 显示转移Mod到其他版本弹窗
+                    await MoveModsDialog.ShowAsync();
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsMoveResultDialogVisible) && ViewModel.IsMoveResultDialogVisible)
+                {
+                    // 关闭下载进度弹窗（如果显示）
+                    DownloadProgressDialog.Hide();
+                    
+                    // 等待足够长的时间，确保弹窗完全关闭
+                    await Task.Delay(100);
+                    
+                    // 显示转移结果弹窗
+                    await MoveResultDialog.ShowAsync();
+                }
+                else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
+                {
+                    // 更新页面标题
+                    UpdatePageTitle();
+                }
+            }
+            catch (Exception ex)
+            {
+                // 处理Dialog显示异常
+                System.Diagnostics.Debug.WriteLine($"显示弹窗失败: {ex.Message}");
+            }
         }
-        else if (e.PropertyName == nameof(ViewModel.IsResultDialogVisible) && ViewModel.IsResultDialogVisible)
-        {
-            // 关闭下载进度弹窗（如果显示）
-            DownloadProgressDialog.Hide();
-            // 显示结果弹窗
-            await ResultDialog.ShowAsync();
-        }
-        else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
-        {
-            // 更新页面标题
-            UpdatePageTitle();
-        }
-    }
     
     /// <summary>
     /// 结果弹窗确定按钮点击事件处理
@@ -59,6 +103,40 @@ public sealed partial class 版本管理Page : Page
         // 关闭结果弹窗
         ViewModel.IsResultDialogVisible = false;
     }
+    
+    /// <summary>
+        /// 转移Mod到其他版本弹窗 - 确认按钮点击事件
+        /// </summary>
+        private async void MoveModsDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            // 关闭当前弹窗
+            sender.Hide();
+            ViewModel.IsMoveModsDialogVisible = false;
+            
+            // 等待足够长的时间，确保弹窗完全关闭
+            await Task.Delay(200);
+            
+            // 调用ViewModel的确认转移命令
+            await ViewModel.ConfirmMoveModsCommand.ExecuteAsync(null);
+        }
+    
+    /// <summary>
+        /// 转移Mod到其他版本弹窗 - 取消按钮点击事件
+        /// </summary>
+        private void MoveModsDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            // 关闭弹窗
+            ViewModel.IsMoveModsDialogVisible = false;
+        }
+        
+        /// <summary>
+        /// 转移Mod结果弹窗 - 确定按钮点击事件
+        /// </summary>
+        private void MoveResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            // 关闭转移结果弹窗
+            ViewModel.IsMoveResultDialogVisible = false;
+        }
     
     /// <summary>
     /// 更新页面标题

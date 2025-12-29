@@ -533,8 +533,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到Mod下载详情页面，传递完整的Mod对象
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, mod);
+        // 导航到Mod下载详情页面，传递完整的Mod对象和来源类型
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(mod, "mod"));
     }
     
     // 资源包下载命令
@@ -1053,7 +1053,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        // 导航到数据包下载详情页面，传递完整的数据包对象
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, datapack);
+        // 导航到数据包下载详情页面，传递完整的数据包对象和来源类型
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(datapack, "datapack"));
     }
 }
