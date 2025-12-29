@@ -1177,19 +1177,7 @@
                     Height="8"
                     CornerRadius="4"/>
                 
-                <!-- 进度百分比 -->
-                <TextBlock 
-                    Text="{Binding DownloadProgress, Mode=OneWay, Converter={StaticResource DoubleToPercentageConverter}}"
-                    FontSize="14" 
-                    Foreground="{ThemeResource TextFillColorSecondary}"
-                    HorizontalAlignment="Center"/>
-                
-                <!-- 状态信息 -->
-                <TextBlock 
-                    Text="{Binding StatusMessage, Mode=OneWay}" 
-                    FontSize="14" 
-                    TextWrapping="WrapWholeWords" 
-                    Foreground="{ThemeResource TextFillColorSecondary}"/>
+
             </StackPanel>
         </ContentDialog>
         

@@ -8,9 +8,13 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using WinRT.Interop;
 using XMCL2025.Contracts.ViewModels;
 using XMCL2025.ViewModels;
+using Microsoft.Graphics.Canvas;
+using System;
+using System.Diagnostics;
 
 namespace XMCL2025.Views
 {
@@ -26,6 +30,9 @@ namespace XMCL2025.Views
         {
             get;
         }
+        
+        private readonly HttpClient _httpClient = new HttpClient();
+        private const string AvatarCacheFolder = "AvatarCache";
 
         /// <summary>
         /// 构造函数
@@ -34,6 +41,21 @@ namespace XMCL2025.Views
         {
             ViewModel = App.GetService<角色管理ViewModel>();
             InitializeComponent();
+            
+            // 订阅CurrentProfile变化事件
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        }
+
+        /// <summary>
+        /// 当ViewModel属性变化时触发
+        /// </summary>
+        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // 当CurrentProfile变化时，重新加载头像
+            if (e.PropertyName == nameof(ViewModel.CurrentProfile))
+            {
+                LoadProfileAvatar();
+            }
         }
 
         /// <summary>
@@ -49,6 +71,9 @@ namespace XMCL2025.Views
             {
                 navigationAware.OnNavigatedTo(e.Parameter);
             }
+            
+            // 加载头像
+            LoadProfileAvatar();
         }
 
         /// <summary>
@@ -63,6 +88,297 @@ namespace XMCL2025.Views
             if (ViewModel is INavigationAware navigationAware)
             {
                 navigationAware.OnNavigatedFrom();
+            }
+            
+            // 取消订阅事件
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
+        
+        /// <summary>
+        /// 加载角色头像
+        /// </summary>
+        private void LoadProfileAvatar()
+        {
+            if (ViewModel.CurrentProfile == null)
+            {
+                Debug.WriteLine("[角色管理Page] CurrentProfile为null，跳过头像加载");
+                return;
+            }
+            
+            Debug.WriteLine($"[角色管理Page] 开始加载角色 {ViewModel.CurrentProfile.Name} 的头像，离线状态: {ViewModel.CurrentProfile.IsOffline}");
+            
+            // 异步加载头像
+            _ = LoadAvatarAsync();
+        }
+        
+        /// <summary>
+        /// 异步加载头像
+        /// </summary>
+        private async Task LoadAvatarAsync()
+        {
+            if (ViewModel.CurrentProfile == null)
+                return;
+            
+            try
+            {
+                // 1. 离线玩家使用Steve头像
+                if (ViewModel.CurrentProfile.IsOffline)
+                {
+                    Debug.WriteLine($"[角色管理Page] 角色 {ViewModel.CurrentProfile.Name} 是离线角色，使用Steve头像");
+                    var steveAvatar = await ProcessSteveAvatarAsync();
+                    if (steveAvatar != null)
+                    {
+                        ProfileAvatar.Source = steveAvatar;
+                    }
+                    else
+                    {
+                        ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                    }
+                }
+                else
+                {
+                    // 2. 正版玩家处理逻辑
+                    Debug.WriteLine($"[角色管理Page] 尝试从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
+                    var cachedAvatar = await LoadAvatarFromCacheAsync(ViewModel.CurrentProfile.Id);
+                    if (cachedAvatar != null)
+                    {
+                        Debug.WriteLine($"[角色管理Page] 成功从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
+                        ProfileAvatar.Source = cachedAvatar;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[角色管理Page] 缓存中不存在角色 {ViewModel.CurrentProfile.Name} 的头像，从网络加载");
+                        var networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile.Id);
+                        if (networkAvatar != null)
+                        {
+                            ProfileAvatar.Source = networkAvatar;
+                        }
+                        else
+                        {
+                            ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 加载角色 {ViewModel.CurrentProfile.Name} 头像失败: {ex.Message}");
+                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+            }
+        }
+        
+        /// <summary>
+        /// 从缓存加载头像
+        /// </summary>
+        private async Task<BitmapImage> LoadAvatarFromCacheAsync(string uuid)
+        {
+            try
+            {
+                var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
+                var avatarFile = await cacheFolder.TryGetItemAsync($"{uuid}.png") as StorageFile;
+                if (avatarFile != null)
+                {
+                    using (var stream = await avatarFile.OpenReadAsync())
+                    {
+                        var bitmap = new BitmapImage();
+                        await bitmap.SetSourceAsync(stream);
+                        return bitmap;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 从缓存加载头像失败: {ex.Message}");
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 从网络加载头像
+        /// </summary>
+        private async Task<BitmapImage> LoadAvatarFromNetworkAsync(string uuid)
+        {
+            try
+            {
+                // 从Mojang API获取皮肤URL
+                var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
+                var response = await _httpClient.GetAsync(mojangUri);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+                
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
+                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                    return null;
+                
+                string texturesBase64 = null;
+                foreach (var property in profileData.properties)
+                {
+                    if (property.name == "textures")
+                    {
+                        texturesBase64 = property.value;
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(texturesBase64))
+                    return null;
+                
+                byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
+                string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
+                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+                
+                string skinUrl = null;
+                if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
+                {
+                    skinUrl = texturesData.textures.SKIN.url;
+                }
+                if (string.IsNullOrEmpty(skinUrl))
+                    return null;
+                
+                // 下载皮肤并裁剪头像
+                return await CropAvatarFromSkinAsync(skinUrl, uuid);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 从网络加载头像失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 从皮肤纹理中裁剪头像区域
+        /// </summary>
+        private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl, string uuid = null)
+        {
+            try
+            {
+                // 创建CanvasDevice
+                var device = CanvasDevice.GetSharedDevice();
+                CanvasBitmap canvasBitmap;
+                
+                // 下载皮肤图片
+                var response = await _httpClient.GetAsync(skinUrl);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+                
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                {
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
+                }
+                
+                // 创建CanvasRenderTarget用于裁剪
+                var renderTarget = new CanvasRenderTarget(
+                    device,
+                    48, // 显示宽度
+                    48, // 显示高度
+                    96 // DPI
+                );
+                
+                // 执行裁剪和放大，使用最近邻插值保持像素锐利
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    ds.DrawImage(
+                        canvasBitmap,
+                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
+                        new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
+                        1.0f, // 不透明度
+                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                    );
+                }
+                
+                // 如果提供了UUID，保存头像到缓存
+                if (!string.IsNullOrEmpty(uuid))
+                {
+                    try
+                    {
+                        var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
+                        var avatarFile = await cacheFolder.CreateFileAsync($"{uuid}.png", CreationCollisionOption.ReplaceExisting);
+                        
+                        using (var fileStream = await avatarFile.OpenAsync(FileAccessMode.ReadWrite))
+                        {
+                            await renderTarget.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[角色管理Page] 保存头像到缓存失败: {ex.Message}");
+                        // 保存缓存失败，不影响主流程
+                    }
+                }
+                
+                // 转换为BitmapImage
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+                    
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(outputStream);
+                    return bitmapImage;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 裁剪头像失败: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 处理史蒂夫头像，使用Win2D确保清晰显示
+        /// </summary>
+        private async Task<BitmapImage> ProcessSteveAvatarAsync()
+        {
+            try
+            {
+                // 创建CanvasDevice
+                var device = CanvasDevice.GetSharedDevice();
+                
+                // 加载史蒂夫头像图片
+                var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
+                var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
+                CanvasBitmap canvasBitmap;
+                
+                using (var stream = await file.OpenReadAsync())
+                {
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
+                }
+                
+                // 创建CanvasRenderTarget用于处理
+                var renderTarget = new CanvasRenderTarget(
+                    device,
+                    48, // 显示宽度
+                    48, // 显示高度
+                    96 // DPI
+                );
+                
+                // 执行处理，使用最近邻插值保持像素锐利
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    ds.DrawImage(
+                        canvasBitmap,
+                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
+                        1.0f, // 不透明度
+                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                    );
+                }
+                
+                // 转换为BitmapImage
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+                    
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(outputStream);
+                    return bitmapImage;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 处理史蒂夫头像失败: {ex.Message}");
+                return null;
             }
         }
 
