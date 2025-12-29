@@ -1266,29 +1266,38 @@ namespace XMCL2025.ViewModels
                 // 处理Mod依赖（仅当是Mod且不是自定义路径时）
                 if (ProjectType == "mod" && !UseCustomDownloadPath)
                 {
-                    // 如果当前Mod版本有依赖，先下载依赖
-                    if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
+                    // 检查设置中是否开启了下载前置Mod
+                    var settingsService = App.GetService<ILocalSettingsService>();
+                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool>("DownloadDependencies");
+                    // 默认值为true，只有当用户明确设置为false时才为false
+                    bool downloadDependencies = downloadDependenciesSetting ?? true;
+                    
+                    if (downloadDependencies)
                     {
-                        // 筛选出必填的依赖项
-                        var requiredDependencies = modVersion.OriginalVersion.Dependencies
-                            .Where(d => d.DependencyType == "required")
-                            .ToList();
-                        
-                        if (requiredDependencies.Count > 0)
+                        // 如果当前Mod版本有依赖，先下载依赖
+                        if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
                         {
-                            DownloadStatus = "正在下载前置Mod...";
+                            // 筛选出必填的依赖项
+                            var requiredDependencies = modVersion.OriginalVersion.Dependencies
+                                .Where(d => d.DependencyType == "required")
+                                .ToList();
                             
-                            // 使用ModrinthService处理依赖下载，传递当前Mod的版本信息
-                            await _modrinthService.ProcessDependenciesAsync(
-                                requiredDependencies,
-                                Path.GetDirectoryName(savePath),
-                                modVersion.OriginalVersion, // 传递当前Mod的版本信息用于筛选兼容依赖
-                                (fileName, progress) =>
-                                {
-                                    DownloadStatus = $"正在下载前置Mod: {fileName}";
-                                    DownloadProgress = progress;
-                                    DownloadProgressText = $"{progress:F1}%";
-                                });
+                            if (requiredDependencies.Count > 0)
+                            {
+                                DownloadStatus = "正在下载前置Mod...";
+                                
+                                // 使用ModrinthService处理依赖下载，传递当前Mod的版本信息
+                                await _modrinthService.ProcessDependenciesAsync(
+                                    requiredDependencies,
+                                    Path.GetDirectoryName(savePath),
+                                    modVersion.OriginalVersion, // 传递当前Mod的版本信息用于筛选兼容依赖
+                                    (fileName, progress) =>
+                                    {
+                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
+                                        DownloadProgress = progress;
+                                        DownloadProgressText = $"{progress:F1}%";
+                                    });
+                            }
                         }
                     }
                 }

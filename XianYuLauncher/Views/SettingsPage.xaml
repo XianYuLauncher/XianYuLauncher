@@ -392,6 +392,27 @@
                                         Margin="{StaticResource XSmallTopMargin}" 
                                         Opacity="0.7"/>
                                 </StackPanel>
+                                
+                                <!-- Mod下载设置 -->
+                                <TextBlock x:Uid="Settings_VersionDownload" Text="Mod下载" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Uid="Settings_DownloadDependencies" Text="下载前置Mod" />
+                                            <TextBlock 
+                                                x:Uid="Settings_DownloadDependenciesDescription"
+                                                Text="下载Mod时自动下载所需的前置Mod，关闭后不会自动下载" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <ToggleSwitch 
+                                            x:Uid="Settings_DownloadDependenciesToggle" 
+                                            IsOn="{x:Bind ViewModel.DownloadDependencies, Mode=TwoWay}" 
+                                            VerticalAlignment="Center" 
+                                            Margin="0,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>
