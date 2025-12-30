@@ -14,11 +14,14 @@ public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
     private bool _isExportCancelled = false;
+    private ModDownloadDetailViewModel _modDownloadViewModel;
+    private bool _isInstallDialogOpen = false; // 用于跟踪安装弹窗状态
 
     public VersionListPage()
     {
         this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
+        _modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
         InitializeComponent();
         
         // 添加ItemClick事件处理
@@ -31,6 +34,9 @@ public sealed partial class VersionListPage : Page
             // 订阅ResourceDirectories集合变化事件
             viewModel.ResourceDirectories.CollectionChanged += ResourceDirectories_CollectionChanged;
         }
+        
+        // 订阅ModDownloadDetailViewModel的属性变化事件
+        _modDownloadViewModel.PropertyChanged += ModDownloadViewModel_PropertyChanged;
     }
     
     /// <summary>
@@ -98,8 +104,52 @@ public sealed partial class VersionListPage : Page
                 {
                     Dictionary<string, Core.Models.ModrinthVersion> fileResults = new Dictionary<string, Core.Models.ModrinthVersion>();
                     
+                    // 检查是否为非联网模式和仅导出服务端模式
+                    bool isOfflineMode = viewModel.IsOfflineMode;
+                    bool isServerOnly = viewModel.IsServerOnly;
+                    
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        System.Diagnostics.Debug.WriteLine($"导出模式: {(isOfflineMode ? "非联网模式" : "联网模式")}{(isServerOnly ? " + 仅导出服务端" : "")}");
+                    });
+                    
+                    // 仅导出服务端模式下，过滤客户端特定的文件和目录
+                    List<string> filteredOptions = new List<string>(selectedOptions);
+                    if (isServerOnly)
+                    {
+                        // 客户端特定的文件和目录列表
+                        var clientOnlyItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            "resourcepacks",
+                            "shaderpacks",
+                            "options.txt",
+                            "screenshots",
+                            "journeymap"
+                        };
+                        
+                        // 过滤客户端特定的文件和目录
+                        filteredOptions = filteredOptions.Where(option =>
+                        {
+                            // 检查是否为客户端特定目录或文件
+                            string itemName = Path.GetFileName(option);
+                            return !clientOnlyItems.Contains(itemName) && !option.StartsWith("screenshots", StringComparison.OrdinalIgnoreCase) && !option.StartsWith("journeymap", StringComparison.OrdinalIgnoreCase);
+                        }).ToList();
+                        
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            System.Diagnostics.Debug.WriteLine($"仅导出服务端模式，过滤前选项数量: {selectedOptions.Count}，过滤后选项数量: {filteredOptions.Count}");
+                            System.Diagnostics.Debug.WriteLine("过滤掉的客户端特定项:");
+                            foreach (string option in selectedOptions.Except(filteredOptions))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"- {option}");
+                            }
+                        });
+                    }
+                    
                     // 搜索Modrinth获取文件信息
-                    if (viewModel.SelectedVersion != null && !_isExportCancelled)
+                    // 当开启导出服务端时，即使是非联网模式也需要进行服务端兼容性检查
+                    bool shouldCheckModrinth = (!isOfflineMode || isServerOnly);
+                    if (shouldCheckModrinth && viewModel.SelectedVersion != null && !_isExportCancelled)
                     {
                         DispatcherQueue.TryEnqueue(() =>
                         {
@@ -107,11 +157,117 @@ public sealed partial class VersionListPage : Page
                             UpdateLoadingDialog("正在获取Modrinth资源...", 10.0);
                         });
                         
-                        fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, selectedOptions);
+                        fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, filteredOptions);
                         
                         DispatcherQueue.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {fileResults.Count} 个匹配结果");
+                        });
+                        
+                        // 仅导出服务端模式下，过滤服务端不支持的文件
+                        if (isServerOnly)
+                        {
+                            // 获取Modrinth服务实例
+                            var modrinthService = App.GetService<Core.Services.ModrinthService>();
+                            var filesToRemove = new List<string>();
+                            var serverUnsupportedFiles = new HashSet<string>(); // 服务端不支持的文件列表
+                            
+                            DispatcherQueue.TryEnqueue(() =>
+                            {
+                                System.Diagnostics.Debug.WriteLine("开始过滤服务端不支持的文件...");
+                                UpdateLoadingDialog("正在过滤服务端不支持的文件...", 30.0);
+                            });
+                            
+                            // 遍历所有匹配结果，检查服务端支持情况
+                            foreach (var kvp in fileResults)
+                            {
+                                if (_isExportCancelled) break;
+                                
+                                string filePath = kvp.Key;
+                                var modrinthVersion = kvp.Value;
+                                
+                                // 检查是否有project_id
+                                if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
+                                {
+                                    try
+                                    {
+                                        // 获取项目详情
+                                        var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
+                                        
+                                        // 检查server_side字段
+                                        if (projectDetail != null)
+                                        {
+                                            string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
+                                            
+                                            DispatcherQueue.TryEnqueue(() =>
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"文件: {filePath}");
+                                                System.Diagnostics.Debug.WriteLine($"  ProjectId: {modrinthVersion.ProjectId}");
+                                                System.Diagnostics.Debug.WriteLine($"  服务端支持: {serverSide}");
+                                            });
+                                            
+                                            // 如果服务端支持为unsupported，则标记为需要移除
+                                            if (serverSide == "unsupported")
+                                            {
+                                                filesToRemove.Add(filePath);
+                                                serverUnsupportedFiles.Add(filePath); // 添加到服务端不支持的文件列表
+                                                DispatcherQueue.TryEnqueue(() =>
+                                                {
+                                                    System.Diagnostics.Debug.WriteLine($"  标记为移除：服务端不支持");
+                                                });
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        DispatcherQueue.TryEnqueue(() =>
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            // 移除服务端不支持的文件
+                            if (filesToRemove.Count > 0)
+                            {
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"移除 {filesToRemove.Count} 个服务端不支持的文件");
+                                    foreach (string filePath in filesToRemove)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"- {filePath}");
+                                    }
+                                });
+                                
+                                foreach (string filePath in filesToRemove)
+                                {
+                                    fileResults.Remove(filePath);
+                                }
+                                
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"过滤后剩余 {fileResults.Count} 个文件");
+                                });
+                            }
+                            
+                            // 仅导出服务端模式下，从过滤选项中移除服务端不支持的文件
+                            filteredOptions = filteredOptions.Where(option => !serverUnsupportedFiles.Contains(option)).ToList();
+                            
+                            DispatcherQueue.TryEnqueue(() =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"过滤后剩余的导出选项数量: {filteredOptions.Count}");
+                            });
+                        }
+                    }
+                    
+                    // 非联网模式且不导出服务端时，直接跳转到准备保存整合包
+                    if (isOfflineMode && !isServerOnly)
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过Modrinth搜索");
+                            UpdateLoadingDialog("准备保存整合包...", 20.0);
                         });
                     }
                     
@@ -248,27 +404,30 @@ public sealed partial class VersionListPage : Page
                                 ((Dictionary<string, string>)indexJson.dependencies).Remove(loaderName);
                             }
                             
-                            // 构建files列表
-                            var filesList = (List<object>)indexJson.files;
-                            foreach (var kvp in fileResults)
+                            // 构建files列表（仅在非联网模式下保持为空）
+                            if (!isOfflineMode)
                             {
-                                string filePath = kvp.Key;
-                                var modrinthVersion = kvp.Value;
-                                
-                                if (modrinthVersion?.Files != null && modrinthVersion.Files.Count > 0)
+                                var filesList = (List<object>)indexJson.files;
+                                foreach (var kvp in fileResults)
                                 {
-                                    var primaryFile = modrinthVersion.Files.FirstOrDefault(f => f.Primary) ?? modrinthVersion.Files[0];
+                                    string filePath = kvp.Key;
+                                    var modrinthVersion = kvp.Value;
                                     
-                                    if (primaryFile.Hashes != null && primaryFile.Url != null)
+                                    if (modrinthVersion?.Files != null && modrinthVersion.Files.Count > 0)
                                     {
-                                        var fileEntry = new
+                                        var primaryFile = modrinthVersion.Files.FirstOrDefault(f => f.Primary) ?? modrinthVersion.Files[0];
+                                        
+                                        if (primaryFile.Hashes != null && primaryFile.Url != null)
                                         {
-                                            path = filePath.Replace('\\', '/'), // 使用正斜杠
-                                            hashes = primaryFile.Hashes,
-                                            downloads = new List<string> { primaryFile.Url.ToString() },
-                                            fileSize = primaryFile.Size
-                                        };
-                                        filesList.Add(fileEntry);
+                                            var fileEntry = new
+                                            {
+                                                path = filePath.Replace('\\', '/'), // 使用正斜杠
+                                                hashes = primaryFile.Hashes,
+                                                downloads = new List<string> { primaryFile.Url.ToString() },
+                                                fileSize = primaryFile.Size
+                                            };
+                                            filesList.Add(fileEntry);
+                                        }
                                     }
                                 }
                             }
@@ -286,7 +445,69 @@ public sealed partial class VersionListPage : Page
                             // 处理选择的导出选项
                             HashSet<string> processedDirectories = new HashSet<string>();
                             
-                            foreach (string option in selectedOptions)
+                            // 在仅导出服务端模式下，我们已经在前面的逻辑中获取了服务端不支持的文件列表
+                            // 遍历fileResults，找出所有被标记为需要移除的文件
+                            var serverUnsupportedFiles = new HashSet<string>();
+                            foreach (var kvp in fileResults)
+                            {
+                                string filePath = kvp.Key;
+                                var modrinthVersion = kvp.Value;
+                                
+                                // 检查是否有project_id
+                                if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
+                                {
+                                    try
+                                    {
+                                        // 获取Modrinth服务实例
+                                        var modrinthService = App.GetService<Core.Services.ModrinthService>();
+                                        var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
+                                        
+                                        // 检查server_side字段
+                                        if (projectDetail != null)
+                                        {
+                                            string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
+                                            
+                                            // 如果服务端支持为unsupported，则添加到不支持列表
+                                            if (serverSide == "unsupported")
+                                            {
+                                                serverUnsupportedFiles.Add(filePath);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        DispatcherQueue.TryEnqueue(() =>
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            // 创建一个包含所有需要导出的文件的列表
+                            var filesToExport = new List<string>();
+                            foreach (string option in filteredOptions)
+                            {
+                                if (_isExportCancelled)
+                                {
+                                    break;
+                                }
+                                
+                                // 检查是否为服务端不支持的文件，如果是则跳过
+                                if (isServerOnly && serverUnsupportedFiles.Contains(option))
+                                {
+                                    DispatcherQueue.TryEnqueue(() =>
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"跳过服务端不支持的文件: {option}");
+                                    });
+                                    continue;
+                                }
+                                
+                                filesToExport.Add(option);
+                            }
+                            
+                            // 现在复制需要导出的文件到overrides目录
+                            foreach (string option in filesToExport)
                             {
                                 if (_isExportCancelled)
                                 {
@@ -304,12 +525,12 @@ public sealed partial class VersionListPage : Page
                                 }
                                 else if (File.Exists(fullPath))
                                 {
-                                    // 如果是文件，检查是否在Modrinth中找到
-                                    bool isModrinthFile = fileResults.ContainsKey(option);
+                                    // 检查是否在Modrinth中找到（仅在非联网模式下跳过）
+                                    bool isModrinthFile = !isOfflineMode && fileResults.ContainsKey(option);
                                     
                                     if (!isModrinthFile)
                                     {
-                                        // 如果没有在Modrinth中找到，复制到overrides目录
+                                        // 如果是非联网模式，或者没有在Modrinth中找到，复制到overrides目录
                                         string destPath = Path.Combine(overridesDir, option);
                                         string destDir = Path.GetDirectoryName(destPath)!;
                                         Directory.CreateDirectory(destDir);
@@ -693,6 +914,85 @@ public sealed partial class VersionListPage : Page
         {
             // 根据资源目录数量设置StackPanel的可见性
             ResourceDirectoriesStackPanel.Visibility = viewModel.ResourceDirectories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+    
+    /// <summary>
+    /// 整合包安装弹窗关闭按钮点击事件处理
+    /// </summary>
+    private void ModpackInstallDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        // 取消安装
+        if (_modDownloadViewModel != null && _modDownloadViewModel.IsInstalling)
+        {
+            // 取消安装操作
+            _modDownloadViewModel.CancelInstallCommand.Execute(null);
+        }
+    }
+    
+    /// <summary>
+    /// ModDownloadDetailViewModel属性变化事件处理
+    /// </summary>
+    private async void ModDownloadViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_modDownloadViewModel == null)
+        {
+            return;
+        }
+        
+        // 处理安装状态变化
+        if (e.PropertyName == nameof(_modDownloadViewModel.IsModpackInstallDialogOpen))
+        {
+            if (_modDownloadViewModel.IsModpackInstallDialogOpen)
+            {
+                // 显示安装弹窗，添加防护措施避免重复调用
+                if (ModpackInstallDialog.XamlRoot != null && !_isInstallDialogOpen)
+                {
+                    try
+                    {
+                        _isInstallDialogOpen = true;
+                        await ModpackInstallDialog.ShowAsync();
+                        _isInstallDialogOpen = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"显示安装弹窗失败: {ex.Message}");
+                        _isInstallDialogOpen = false;
+                    }
+                }
+            }
+            else
+            {
+                // 隐藏安装弹窗
+                try
+                {
+                    if (_isInstallDialogOpen)
+                    {
+                        ModpackInstallDialog.Hide();
+                        _isInstallDialogOpen = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"隐藏安装弹窗失败: {ex.Message}");
+                    _isInstallDialogOpen = false;
+                }
+            }
+        }
+        // 更新安装状态文本
+        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallStatus))
+        {
+            InstallStatusText.Text = _modDownloadViewModel.InstallStatus;
+        }
+        // 更新安装进度条
+        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgress))
+        {
+            InstallProgressBar.Value = _modDownloadViewModel.InstallProgress;
+        }
+        // 更新安装进度文本
+        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgressText))
+        {
+            InstallProgressText.Text = _modDownloadViewModel.InstallProgressText;
         }
     }
     #endregion

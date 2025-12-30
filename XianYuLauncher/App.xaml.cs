@@ -135,7 +135,7 @@ public partial class App : Application
             services.AddTransient<ModLoaderSelectorPage>();
             // services.AddTransient<ModViewModel>();
             // services.AddTransient<ModPage>();
-            services.AddTransient<ModDownloadDetailViewModel>();
+            services.AddSingleton<ModDownloadDetailViewModel>();
             services.AddTransient<ModDownloadDetailPage>();
             services.AddTransient<VersionListViewModel>();
             services.AddTransient<VersionListPage>();
