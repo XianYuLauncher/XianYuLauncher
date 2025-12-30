@@ -1,9 +1,14 @@
+using System;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 using XMCL2025.Activation;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Core.Contracts.Services;
+using XMCL2025.Core.Services;
+using XMCL2025.ViewModels;
 using XMCL2025.Views;
 
 namespace XMCL2025.Services;
@@ -80,7 +85,128 @@ public class ActivationService : IActivationService
         // 显示保密协议弹窗
         await ShowPrivacyAgreementAsync();
         
+        // 检查更新
+        await CheckForUpdatesAsync();
+        
         await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// 检查应用更新
+    /// </summary>
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            Serilog.Log.Information("开始检查应用更新");
+            
+            // 获取更新服务实例
+            var updateService = App.GetService<UpdateService>();
+            
+            // 检查是否有更新
+            var updateInfo = await updateService.CheckForUpdatesAsync();
+            
+            if (updateInfo != null)
+            {
+                Serilog.Log.Information("发现新版本，显示更新弹窗");
+                
+                // 创建更新弹窗ViewModel
+                var logger = App.GetService<ILogger<UpdateDialogViewModel>>();
+                var localUpdateService = App.GetService<UpdateService>();
+                
+                // 直接实例化ViewModel，传入所需参数
+                var updateDialogViewModel = new UpdateDialogViewModel(logger, localUpdateService, updateInfo);
+                
+                // 创建并显示更新弹窗
+                var updateDialog = new ContentDialog
+                {
+                    Title = string.Format("Version {0} 更新", updateInfo.version),
+                    Content = new UpdateDialog(updateDialogViewModel),
+                    PrimaryButtonText = "更新",
+                    CloseButtonText = !updateInfo.important_update ? "取消" : null,
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                
+                // 显示更新弹窗并获取结果
+                var updateResult = await updateDialog.ShowAsync();
+                
+                if (updateResult == ContentDialogResult.Primary)
+                {
+                    Serilog.Log.Information("用户同意更新");
+                    Debug.WriteLine("[DEBUG] 用户同意更新");
+                    
+                    // 创建并显示下载进度弹窗
+                    var downloadDialog = new ContentDialog
+                    {
+                        Title = string.Format("Version {0} 更新", updateInfo.version),
+                        Content = new DownloadProgressDialog(updateDialogViewModel),
+                        IsPrimaryButtonEnabled = false,
+                        CloseButtonText = "取消",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    // 处理取消按钮点击事件
+                    downloadDialog.CloseButtonClick += (sender, args) =>
+                    {
+                        updateDialogViewModel.CancelCommand.Execute(null);
+                    };
+                    
+                    // 订阅CloseDialog事件，用于在ViewModel中关闭对话框
+                    bool dialogResult = false;
+                    updateDialogViewModel.CloseDialog += (sender, result) =>
+                    {
+                        dialogResult = result;
+                        downloadDialog.Hide();
+                    };
+                    
+                    // 开始下载
+                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
+                    
+                    // 显示下载进度弹窗
+                    await downloadDialog.ShowAsync();
+                    
+                    if (dialogResult)
+                    {
+                        Serilog.Log.Information("更新下载完成");
+                        Debug.WriteLine("[DEBUG] 更新下载完成");
+                        // 暂时预留安装逻辑
+                    }
+                    else
+                    {
+                        Serilog.Log.Information("更新下载取消或失败");
+                        Debug.WriteLine("[DEBUG] 更新下载取消或失败");
+                    }
+                }
+                else
+                {
+                    Serilog.Log.Information("用户取消更新");
+                    Debug.WriteLine("[DEBUG] 用户取消更新");
+                }
+            }
+            else
+            {
+                Serilog.Log.Information("当前已是最新版本");
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "检查更新失败: {ErrorMessage}", ex.Message);
+        }
+    }
+    
+    /// <summary>
+    /// 格式化更新日志
+    /// </summary>
+    /// <param name="changelog">更新日志列表</param>
+    /// <returns>格式化后的更新日志文本</returns>
+    private string FormatChangelog(System.Collections.Generic.List<string> changelog)
+    {
+        if (changelog == null || changelog.Count == 0)
+        {
+            return "暂无更新内容";
+        }
+        
+        return string.Join(System.Environment.NewLine + "• ", changelog.Prepend(""));
     }
     
     /// <summary>
