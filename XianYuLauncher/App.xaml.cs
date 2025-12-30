@@ -94,6 +94,7 @@ public partial class App : Application
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>();
             services.AddSingleton<IVersionInfoService, VersionInfoService>();
             services.AddSingleton<MaterialService>();
+            services.AddSingleton<UpdateService>();
             
             // HTTP Client
             services.AddHttpClient();
@@ -156,6 +157,8 @@ public partial class App : Application
             services.AddTransient<MultiplayerLobbyPage>();
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
+            services.AddTransient<UpdateDialogViewModel>();
+            services.AddTransient<UpdateDialog>();
 
             // Configuration
             services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));

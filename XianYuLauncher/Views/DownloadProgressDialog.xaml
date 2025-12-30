@@ -1,0 +1,35 @@
+<UserControl
+    x:Class="XMCL2025.Views.DownloadProgressDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:XMCL2025.Views"
+    xmlns:vm="using:XMCL2025.ViewModels"
+    Width="500"
+    Height="250">
+    
+    <StackPanel Spacing="20" Padding="20" VerticalAlignment="Center">
+        <!-- 标题 -->
+        <TextBlock Text="正在下载更新" FontWeight="Bold" FontSize="18" TextAlignment="Center" />
+        
+        <!-- 下载信息 -->
+        <StackPanel Spacing="12">
+            <!-- 下载进度条 -->
+            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" 
+                         Minimum="0" 
+                         Maximum="100" 
+                         Height="12" 
+                         CornerRadius="6" 
+                         Background="{ThemeResource SystemControlPageBackgroundChromeLowBrush}" 
+                         Foreground="{ThemeResource SystemAccentColor}" />
+            
+            <!-- 下载状态信息 -->
+            <TextBlock Text="{x:Bind ViewModel.DownloadStatusText, Mode=OneWay}" TextAlignment="Center" FontSize="14" />
+            
+            <!-- 速度和剩余时间 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="{x:Bind ViewModel.DownloadSpeedText, Mode=OneWay}" FontSize="12" Foreground="#666666" />
+                <TextBlock Text="{x:Bind ViewModel.EstimatedTimeText, Mode=OneWay}" FontSize="12" Foreground="#666666" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

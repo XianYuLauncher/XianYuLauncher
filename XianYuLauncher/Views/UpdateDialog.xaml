@@ -1,0 +1,46 @@
+<UserControl
+    x:Class="XMCL2025.Views.UpdateDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:XMCL2025.Views"
+    xmlns:vm="using:XMCL2025.ViewModels"
+    Width="500">
+    
+    <StackPanel Spacing="12" Padding="20">
+        <!-- 更新版本信息 -->
+        <TextBlock Text="发现新版本" FontWeight="Bold" FontSize="18" />
+        <TextBlock Text="新版本带来了以下更新：" />
+        
+        <!-- 更新日志 -->
+        <ScrollViewer MaxHeight="200" BorderBrush="Transparent" BorderThickness="0" Padding="0">
+            <TextBlock Text="{x:Bind ViewModel.ChangelogText}" 
+                       TextWrapping="Wrap" 
+                       LineHeight="24" />
+        </ScrollViewer>
+        
+        <!-- 重要更新提示 -->
+        <StackPanel Orientation="Horizontal" Spacing="10" Visibility="{x:Bind ViewModel.UpdateInfo.important_update, Converter={StaticResource BoolToVisibilityConverter}}">
+            <FontIcon Glyph="⚠" Foreground="#FFA500" FontSize="24" />
+            <TextBlock Text="这是一个重要更新，建议立即安装" Foreground="#FFA500" FontWeight="Bold" />
+        </StackPanel>
+        
+        <!-- 下载区域 -->
+        <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
+            <!-- 下载进度条 -->
+            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress}" 
+                         Minimum="0" 
+                         Maximum="100" 
+                         Height="8" 
+                         CornerRadius="4" 
+                         Background="#E0E0E0" 
+                         Foreground="#0078D7" />
+            
+            <!-- 下载状态信息 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="{x:Bind ViewModel.DownloadStatusText}" FontSize="12" />
+                <TextBlock Text="{x:Bind ViewModel.DownloadSpeedText}" FontSize="12" />
+                <TextBlock Text="{x:Bind ViewModel.EstimatedTimeText}" FontSize="12" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</UserControl>
