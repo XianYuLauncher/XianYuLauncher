@@ -29,7 +29,7 @@ public class RoomPlayer
     public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; }
 }
 
-public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAware
+public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
     
@@ -91,7 +91,7 @@ public partial class 联机大厅ViewModel : ObservableRecipient, INavigationAwa
         public bool IsActive { get; set; }
     }
     
-    public 联机大厅ViewModel(INavigationService navigationService, IFileService fileService)
+    public MultiplayerLobbyViewModel(INavigationService navigationService, IFileService fileService)
     {
         _navigationService = navigationService;
         _fileService = fileService;

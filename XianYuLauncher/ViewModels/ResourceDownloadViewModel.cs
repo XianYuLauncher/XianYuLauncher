@@ -359,7 +359,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             IsVersionLoading = true;
             // 导航到版本选择页面
-            _navigationService.NavigateTo(typeof(ModLoader选择ViewModel).FullName!, versionId);
+            _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
         }
         catch (Exception ex)
         {

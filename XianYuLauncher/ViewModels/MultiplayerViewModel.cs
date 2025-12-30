@@ -17,7 +17,7 @@ using Newtonsoft.Json;
 
 namespace XMCL2025.ViewModels;
 
-public partial class 联机ViewModel : ObservableRecipient, INavigationAware
+public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
     
@@ -57,7 +57,7 @@ public partial class 联机ViewModel : ObservableRecipient, INavigationAware
         public bool IsActive { get; set; }
     }
 
-    public 联机ViewModel(INavigationService navigationService, IFileService fileService)
+    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
@@ -315,7 +315,7 @@ public partial class 联机ViewModel : ObservableRecipient, INavigationAware
                                             }
                                             
                                             // 导航到联机大厅页面，传递端口和房间ID信息
-                                            _navigationService.NavigateTo(typeof(联机大厅ViewModel).FullName, new { RoomId = roomId, Port = port });
+                                            _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName, new { RoomId = roomId, Port = port });
                                             
                                             // 退出循环
                                             return;
@@ -582,7 +582,7 @@ public partial class 联机ViewModel : ObservableRecipient, INavigationAware
                     if (isGuestOk && !string.IsNullOrEmpty(url))
                     {
                         // 5. 导航至联机大厅页，传递房间号、端口和房客标识
-                        _navigationService.NavigateTo(typeof(联机大厅ViewModel).FullName, new { 
+                    _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName, new { 
                             RoomId = roomId, 
                             Port = port, 
                             IsGuest = true, 

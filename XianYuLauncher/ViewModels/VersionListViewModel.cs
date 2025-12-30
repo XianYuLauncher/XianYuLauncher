@@ -16,7 +16,7 @@ using XMCL2025.Helpers;
 
 namespace XMCL2025.ViewModels;
 
-public partial class 版本列表ViewModel : ObservableRecipient
+public partial class VersionListViewModel : ObservableRecipient
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
@@ -121,7 +121,7 @@ public partial class 版本列表ViewModel : ObservableRecipient
 
     private readonly IVersionInfoService _versionInfoService;
     
-    public 版本列表ViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService, IVersionInfoService versionInfoService)
+    public VersionListViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService, IVersionInfoService versionInfoService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;

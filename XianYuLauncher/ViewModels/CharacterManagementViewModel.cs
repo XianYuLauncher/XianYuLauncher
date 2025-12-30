@@ -20,7 +20,7 @@ namespace XMCL2025.ViewModels
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class 角色管理ViewModel : ObservableRecipient, INavigationAware
+    public partial class CharacterManagementViewModel : ObservableRecipient, INavigationAware
     {
         private readonly IFileService _fileService;
         private readonly HttpClient _httpClient;
@@ -225,7 +225,7 @@ namespace XMCL2025.ViewModels
         /// 构造函数
         /// </summary>
         /// <param name="fileService">文件服务</param>
-        public 角色管理ViewModel(IFileService fileService)
+        public CharacterManagementViewModel(IFileService fileService)
         {
             _fileService = fileService;
             _httpClient = new HttpClient();

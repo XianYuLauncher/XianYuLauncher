@@ -41,7 +41,7 @@ public class DefaultActivationHandler : ActivationHandler<LaunchActivatedEventAr
             {
                 // 直接导航到正常的启动页面
                 System.Diagnostics.Debug.WriteLine($"[首次启动检查] 非首次启动，导航到启动页面");
-                _navigationService.NavigateTo(typeof(启动ViewModel).FullName!, args.Arguments);
+                _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, args.Arguments);
             }
 
             await Task.CompletedTask;

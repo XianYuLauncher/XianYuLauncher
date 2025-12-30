@@ -24,7 +24,7 @@ using System.Text;
 
 namespace XMCL2025.ViewModels;
 
-public partial class 启动ViewModel : ObservableRecipient
+public partial class LaunchViewModel : ObservableRecipient
 {
     // 分辨率设置字段
     private int _windowWidth = 1920;
@@ -263,7 +263,7 @@ public partial class 启动ViewModel : ObservableRecipient
             {
                 // 详细错误日志按钮，导航到错误分析系统页面
                 var navigationService = App.GetService<INavigationService>();
-                navigationService.NavigateTo(typeof(错误分析系统ViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
+                navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
             };
             
             await dialog.ShowAsync();
@@ -518,7 +518,7 @@ public partial class 启动ViewModel : ObservableRecipient
     private readonly ILocalSettingsService _localSettingsService;
     private readonly MicrosoftAuthService _microsoftAuthService;
     private readonly INavigationService _navigationService;
-    private readonly ILogger<启动ViewModel> _logger;
+    private readonly ILogger<LaunchViewModel> _logger;
     
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
@@ -639,14 +639,14 @@ public partial class 启动ViewModel : ObservableRecipient
     /// </summary>
     public string MicrosoftLoginTest => "微软登录功能已实现，可以通过启动页的测试按钮进行测试";
 
-    public 启动ViewModel()
+    public LaunchViewModel()
     {
         _minecraftVersionService = App.GetService<IMinecraftVersionService>();
         _fileService = App.GetService<IFileService>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
         _microsoftAuthService = App.GetService<MicrosoftAuthService>();
         _navigationService = App.GetService<INavigationService>();
-        _logger = App.GetService<ILogger<启动ViewModel>>();
+        _logger = App.GetService<ILogger<LaunchViewModel>>();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -911,14 +911,14 @@ public partial class 启动ViewModel : ObservableRecipient
                     LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_MicrosoftAccountRenewingText".GetLocalized()}";
                     
                     // 调用令牌刷新方法
-                    var 角色管理ViewModel = App.GetService<角色管理ViewModel>();
+                    var characterManagementViewModel = App.GetService<CharacterManagementViewModel>();
                     // 更新当前角色到角色管理ViewModel
-                    角色管理ViewModel.CurrentProfile = SelectedProfile;
+                    characterManagementViewModel.CurrentProfile = SelectedProfile;
                     // 刷新令牌
-                    await 角色管理ViewModel.ForceRefreshTokenAsync();
+                    await characterManagementViewModel.ForceRefreshTokenAsync();
                     
                     // 刷新成功，更新当前角色信息
-                    SelectedProfile = 角色管理ViewModel.CurrentProfile;
+                    SelectedProfile = characterManagementViewModel.CurrentProfile;
                     
                     // 更新InfoBar消息
                     LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_MicrosoftAccountRenewedText".GetLocalized()}";

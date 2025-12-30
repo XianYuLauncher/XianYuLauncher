@@ -10,13 +10,13 @@ using XMCL2025.Helpers;
 
 namespace XMCL2025.Views;
 
-public sealed partial class 版本管理Page : Page
+public sealed partial class VersionManagementPage : Page
 {
-    public 版本管理ViewModel ViewModel { get; }
+    public VersionManagementViewModel ViewModel { get; }
 
-    public 版本管理Page()
+    public VersionManagementPage()
     {
-        ViewModel = App.GetService<版本管理ViewModel>();
+        ViewModel = App.GetService<VersionManagementViewModel>();
         this.DataContext = ViewModel;
         InitializeComponent();
         

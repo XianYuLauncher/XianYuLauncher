@@ -21,12 +21,12 @@ namespace XMCL2025.Views
     /// <summary>
     /// 角色管理页面
     /// </summary>
-    public sealed partial class 角色管理Page : Page
+    public sealed partial class CharacterManagementPage : Page
     {
         /// <summary>
         /// ViewModel实例
         /// </summary>
-        public 角色管理ViewModel ViewModel
+        public CharacterManagementViewModel ViewModel
         {
             get;
         }
@@ -37,9 +37,9 @@ namespace XMCL2025.Views
         /// <summary>
         /// 构造函数
         /// </summary>
-        public 角色管理Page()
+        public CharacterManagementPage()
         {
-            ViewModel = App.GetService<角色管理ViewModel>();
+            ViewModel = App.GetService<CharacterManagementViewModel>();
             InitializeComponent();
             
             // 订阅CurrentProfile变化事件

@@ -35,7 +35,7 @@ namespace XMCL2025.ViewModels
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class 角色ViewModel : ObservableObject
+    public partial class CharacterViewModel : ObservableObject
     {
         private readonly MicrosoftAuthService _microsoftAuthService;
         private readonly IFileService _fileService;
@@ -108,7 +108,7 @@ namespace XMCL2025.ViewModels
         /// </summary>
         private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
 
-        public 角色ViewModel(MicrosoftAuthService microsoftAuthService, IFileService fileService)
+        public CharacterViewModel(MicrosoftAuthService microsoftAuthService, IFileService fileService)
         {
             _microsoftAuthService = microsoftAuthService;
             _fileService = fileService;

@@ -9,13 +9,13 @@ namespace XMCL2025.Views
     /// <summary>
     /// 错误分析系统页面
     /// </summary>
-    public sealed partial class 错误分析系统Page : Page
+    public sealed partial class ErrorAnalysisPage : Page
     {
-        public 错误分析系统ViewModel ViewModel { get; }
+        public ErrorAnalysisViewModel ViewModel { get; }
 
-        public 错误分析系统Page()
+        public ErrorAnalysisPage()
         {
-            ViewModel = App.GetService<错误分析系统ViewModel>();
+            ViewModel = App.GetService<ErrorAnalysisViewModel>();
             this.InitializeComponent();
         }
 
