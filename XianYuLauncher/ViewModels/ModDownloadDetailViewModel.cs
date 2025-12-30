@@ -1379,7 +1379,7 @@ namespace XMCL2025.ViewModels
         }
 
         // 整合包安装方法
-        private async Task InstallModpackAsync(ModVersionViewModel modVersion)
+        public async Task InstallModpackAsync(ModVersionViewModel modVersion)
         {
             IsInstalling = true;
             IsModpackInstallDialogOpen = true;
@@ -1406,30 +1406,58 @@ namespace XMCL2025.ViewModels
                     string mrpackPath = Path.Combine(tempDir, modVersion.FileName);
                     Directory.CreateDirectory(tempDir);
 
-                    // 下载文件
-                    using (HttpClient client = new HttpClient())
+                    // 检查DownloadUrl是否是本地文件路径
+                    if (modVersion.DownloadUrl.StartsWith("http://") || modVersion.DownloadUrl.StartsWith("https://"))
                     {
-                        using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                        // 远程文件：使用HttpClient下载
+                        using (HttpClient client = new HttpClient())
                         {
-                            response.EnsureSuccessStatusCode();
-                            long totalBytes = response.Content.Headers.ContentLength ?? 0;
-                            long totalRead = 0;
-
-                            using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
-                            using (Stream fileStream = new FileStream(mrpackPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
                             {
-                                byte[] buffer = new byte[8192];
-                                int bytesRead;
+                                response.EnsureSuccessStatusCode();
+                                long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                                long totalRead = 0;
 
-                                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _installCancellationTokenSource.Token)) > 0)
+                                using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
+                                using (Stream fileStream = new FileStream(mrpackPath, FileMode.Create, FileAccess.Write, FileShare.None))
                                 {
-                                    await fileStream.WriteAsync(buffer, 0, bytesRead, _installCancellationTokenSource.Token);
-                                    totalRead += bytesRead;
+                                    byte[] buffer = new byte[8192];
+                                    int bytesRead;
 
-                                    // 更新安装进度（0%-30%用于下载）
-                                    InstallProgress = (double)totalRead / totalBytes * 30;
-                                    InstallProgressText = $"{InstallProgress:F1}%";
+                                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _installCancellationTokenSource.Token)) > 0)
+                                    {
+                                        await fileStream.WriteAsync(buffer, 0, bytesRead, _installCancellationTokenSource.Token);
+                                        totalRead += bytesRead;
+
+                                        // 更新安装进度（0%-30%用于下载）
+                                        InstallProgress = (double)totalRead / totalBytes * 30;
+                                        InstallProgressText = $"{InstallProgress:F1}%";
+                                    }
                                 }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 本地文件：直接复制
+                        InstallStatus = "正在复制本地整合包文件...";
+                        long totalBytes = new FileInfo(modVersion.DownloadUrl).Length;
+                        long totalRead = 0;
+
+                        using (FileStream sourceStream = new FileStream(modVersion.DownloadUrl, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        using (FileStream destStream = new FileStream(mrpackPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            byte[] buffer = new byte[8192];
+                            int bytesRead;
+
+                            while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, _installCancellationTokenSource.Token)) > 0)
+                            {
+                                await destStream.WriteAsync(buffer, 0, bytesRead, _installCancellationTokenSource.Token);
+                                totalRead += bytesRead;
+
+                                // 更新安装进度（0%-30%用于复制）
+                                InstallProgress = (double)totalRead / totalBytes * 30;
+                                InstallProgressText = $"{InstallProgress:F1}%";
                             }
                         }
                     }
@@ -1496,6 +1524,11 @@ namespace XMCL2025.ViewModels
                             modLoader = "neoforge";
                             modLoaderVersion = indexData.dependencies["neoforge"].ToString();
                         }
+                        else if (indexData.dependencies["quilt-loader"] != null)
+                        {
+                            modLoader = "quilt-loader";
+                            modLoaderVersion = indexData.dependencies["quilt-loader"].ToString();
+                        }
                     }
 
                     // 检查Mod Loader兼容性
@@ -1522,6 +1555,11 @@ namespace XMCL2025.ViewModels
                     {
                         modLoaderType = "NeoForge";
                         modLoaderName = "neoforge";
+                    }
+                    else if (modLoader == "quilt-loader")
+                    {
+                        modLoaderType = "Quilt";
+                        modLoaderName = "quilt";
                     }
                     else
                     {

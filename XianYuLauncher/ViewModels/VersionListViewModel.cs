@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.System;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
@@ -101,6 +102,18 @@ public partial class VersionListViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private string _modpackVersion = string.Empty;
+    
+    /// <summary>
+    /// 非联网模式
+    /// </summary>
+    [ObservableProperty]
+    private bool _isOfflineMode = false;
+    
+    /// <summary>
+    /// 仅导出服务端
+    /// </summary>
+    [ObservableProperty]
+    private bool _isServerOnly = false;
     
     /// <summary>
     /// 导出进度
@@ -291,17 +304,64 @@ public partial class VersionListViewModel : ObservableRecipient
             }
 
             // 按安装日期降序排序
-            Versions = new ObservableCollection<VersionInfoItem>(Versions.OrderByDescending(v => v.InstallDate));
+        Versions = new ObservableCollection<VersionInfoItem>(Versions.OrderByDescending(v => v.InstallDate));
 
-            StatusMessage = Versions.Count > 0 ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}" : "VersionListPage_NoVersionsFoundText".GetLocalized();
+        StatusMessage = Versions.Count > 0 ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}" : "VersionListPage_NoVersionsFoundText".GetLocalized();
+    }
+    catch (Exception ex)
+    {
+        StatusMessage = $"{"VersionListPage_LoadFailedText".GetLocalized()}: {ex.Message}";
+    }
+    finally
+    {
+        IsLoading = false;
+    }
+    }
+
+    /// <summary>
+    /// 导入整合包命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportModpackAsync()
+    {
+        try
+        {
+            // 创建文件选择器
+            var filePicker = new FileOpenPicker();
+            filePicker.FileTypeFilter.Add(".mrpack");
+            filePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+
+            // 初始化文件选择器
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
+
+            // 显示文件选择器
+            var file = await filePicker.PickSingleFileAsync();
+            if (file != null)
+            {
+                // 使用ModDownloadDetailViewModel的InstallModpackAsync逻辑
+                var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
+                
+                // 设置整合包名称
+                modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(file.Name);
+                
+                // 创建ModVersionViewModel实例
+                var modVersion = new ModVersionViewModel
+                {
+                    FileName = file.Name,
+                    DownloadUrl = file.Path // 本地文件路径作为DownloadUrl
+                };
+                
+                // 调用安装方法，直接使用现有的安装逻辑和弹窗
+                await modDownloadViewModel.InstallModpackAsync(modVersion);
+                
+                // 刷新版本列表，显示新安装的版本
+                await LoadVersionsAsync();
+            }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{"VersionListPage_LoadFailedText".GetLocalized()}: {ex.Message}";
-        }
-        finally
-        {
-            IsLoading = false;
+            StatusMessage = $"导入整合包失败: {ex.Message}";
         }
     }
 
