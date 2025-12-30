@@ -1,5 +1,5 @@
 <Page
-    x:Class="XMCL2025.Views.错误分析系统Page"
+    x:Class="XMCL2025.Views.ErrorAnalysisPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:XMCL2025.Views"

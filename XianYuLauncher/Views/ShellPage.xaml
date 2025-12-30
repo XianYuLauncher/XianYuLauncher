@@ -43,7 +43,7 @@
                 TODO: Update item icons by updating FontIcon.Glyph properties.
                 https://docs.microsoft.com/windows/apps/design/style/segoe-fluent-icons-font#icon-list
                 -->
-                <NavigationViewItem x:Uid="Shell_启动" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.启动ViewModel">
+                <NavigationViewItem x:Uid="Shell_启动" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.LaunchViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe768;"/>
                     </NavigationViewItem.Icon>
@@ -53,17 +53,17 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_版本列表" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.版本列表ViewModel">
+                <NavigationViewItem x:Uid="Shell_版本列表" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.VersionListViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe838;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_角色" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.角色ViewModel">
+                <NavigationViewItem x:Uid="Shell_角色" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.CharacterViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe77b;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_联机" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.联机ViewModel">
+                <NavigationViewItem x:Uid="Shell_联机" helpers:NavigationHelper.NavigateTo="XMCL2025.ViewModels.MultiplayerViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe770;"/>
                     </NavigationViewItem.Icon>

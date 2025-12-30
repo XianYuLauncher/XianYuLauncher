@@ -155,8 +155,8 @@ namespace XMCL2025.Views
             try
             {
                 // 获取当前选中的角色
-                var 角色ViewModel = App.GetService<角色ViewModel>();
-                var selectedProfile = 角色ViewModel.ActiveProfile;
+                var characterViewModel = App.GetService<CharacterViewModel>();
+                var selectedProfile = characterViewModel.ActiveProfile;
                 
                 if (selectedProfile == null || selectedProfile.IsOffline)
                 {

@@ -4,13 +4,13 @@ using System.ComponentModel;
 
 namespace XMCL2025.Views;
 
-public sealed partial class ModLoader选择Page : Page
+public sealed partial class ModLoaderSelectorPage : Page
 {
-    public ModLoader选择ViewModel ViewModel { get; }
+    public ModLoaderSelectorViewModel ViewModel { get; }
 
-    public ModLoader选择Page()
+    public ModLoaderSelectorPage()
     {
-        ViewModel = App.GetService<ModLoader选择ViewModel>();
+        ViewModel = App.GetService<ModLoaderSelectorViewModel>();
         InitializeComponent();
         
         // 监听ViewModel的IsDownloadDialogOpen属性变化

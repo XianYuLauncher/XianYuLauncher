@@ -1,5 +1,5 @@
 <Page
-    x:Class="XMCL2025.Views.版本列表Page"
+    x:Class="XMCL2025.Views.VersionListPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -29,7 +29,7 @@
         <local:BoolNegationConverter x:Key="BoolNegationConverter" />
         
         <!-- 递归资源项模板，支持任意深度 -->
-        <DataTemplate x:Key="ResourceItemTemplate" x:DataType="vm:版本列表ViewModel+ResourceItem">
+        <DataTemplate x:Key="ResourceItemTemplate" x:DataType="vm:VersionListViewModel+ResourceItem">
             <StackPanel>
                 <!-- 项内容 -->
                 <Grid Width="Auto" Padding="2" HorizontalAlignment="Left">

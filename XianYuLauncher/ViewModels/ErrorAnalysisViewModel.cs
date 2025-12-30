@@ -12,7 +12,7 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace XMCL2025.ViewModels
 {
-    public partial class 错误分析系统ViewModel : ObservableObject
+    public partial class ErrorAnalysisViewModel : ObservableObject
     {
         [ObservableProperty]
         private string _fullLog = string.Empty;

@@ -385,7 +385,7 @@ public class VersionSettings
     public int WindowHeight { get; set; } = 1080;
 }
 
-public partial class 版本管理ViewModel : ObservableRecipient, INavigationAware
+public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware
 {
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;
@@ -395,13 +395,13 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     /// <summary>
     /// 已安装版本列表
     /// </summary>
-    private List<版本列表ViewModel.VersionInfoItem> _installedVersions = new();
+    private List<VersionListViewModel.VersionInfoItem> _installedVersions = new();
 
     /// <summary>
     /// 当前选中的版本信息
     /// </summary>
     [ObservableProperty]
-    private 版本列表ViewModel.VersionInfoItem? _selectedVersion;
+    private VersionListViewModel.VersionInfoItem? _selectedVersion;
 
     /// <summary>
     /// 当前版本的Minecraft文件夹路径
@@ -643,7 +643,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     [ObservableProperty]
     private int _windowHeight = 1080;
 
-    public 版本管理ViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService)
+    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -746,7 +746,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
     /// <param name="parameter">导航参数</param>
     public void OnNavigatedTo(object parameter)
     {
-        if (parameter is 版本列表ViewModel.VersionInfoItem version)
+        if (parameter is VersionListViewModel.VersionInfoItem version)
         {
             SelectedVersion = version;
             MinecraftPath = _fileService.GetMinecraftDataPath();
@@ -1375,7 +1375,7 @@ public partial class 版本管理ViewModel : ObservableRecipient, INavigationAwa
                 
                 // 获取所有已安装版本，用于查找目标版本
                 var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
-                SelectedVersion = new 版本列表ViewModel.VersionInfoItem
+                SelectedVersion = new VersionListViewModel.VersionInfoItem
                 {
                     Name = targetVersion,
                     Path = Path.Combine(_fileService.GetMinecraftDataPath(), "versions", targetVersion)

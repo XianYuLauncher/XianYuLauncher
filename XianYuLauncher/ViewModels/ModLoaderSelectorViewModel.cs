@@ -11,7 +11,7 @@ using XMCL2025.Helpers;
 
 namespace XMCL2025.ViewModels;
 
-public partial class ModLoader选择ViewModel : ObservableRecipient, INavigationAware
+public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
     private readonly FabricService _fabricService;
@@ -121,7 +121,7 @@ public partial class ModLoader选择ViewModel : ObservableRecipient, INavigation
     // 用于管理下载任务的CancellationTokenSource
     private CancellationTokenSource? _downloadCts;
 
-    public ModLoader选择ViewModel()
+    public ModLoaderSelectorViewModel()
     {
         _navigationService = App.GetService<INavigationService>();
         _fabricService = App.GetService<FabricService>();

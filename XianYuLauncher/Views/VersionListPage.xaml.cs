@@ -10,14 +10,14 @@ using XMCL2025.ViewModels;
 
 namespace XMCL2025.Views;
 
-public sealed partial class 版本列表Page : Page
+public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
     private bool _isExportCancelled = false;
 
-    public 版本列表Page()
+    public VersionListPage()
     {
-        this.DataContext = App.GetService<版本列表ViewModel>();
+        this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
         InitializeComponent();
         
@@ -25,7 +25,7 @@ public sealed partial class 版本列表Page : Page
         VersionsListView.ItemClick += VersionsListView_ItemClick;
         
         // 订阅导出整合包事件
-        if (this.DataContext is 版本列表ViewModel viewModel)
+        if (this.DataContext is VersionListViewModel viewModel)
         {
             viewModel.ExportModpackRequested += OnExportModpackRequested;
             // 订阅ResourceDirectories集合变化事件
@@ -36,9 +36,9 @@ public sealed partial class 版本列表Page : Page
     /// <summary>
     /// 处理导出整合包请求事件，打开导出整合包弹窗
     /// </summary>
-    private async void OnExportModpackRequested(object? sender, 版本列表ViewModel.VersionInfoItem e)
+    private async void OnExportModpackRequested(object? sender, VersionListViewModel.VersionInfoItem e)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 设置整合包名称和版本的默认值
             viewModel.ModpackName = e.Name; // 默认使用版本名称
@@ -54,10 +54,10 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void VersionsListView_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is 版本列表ViewModel.VersionInfoItem version)
+        if (e.ClickedItem is VersionListViewModel.VersionInfoItem version)
         {
             // 导航至版本管理页面，传递选中的版本信息
-            _navigationService.NavigateTo(typeof(版本管理ViewModel).FullName!, version);
+            _navigationService.NavigateTo(typeof(VersionManagementViewModel).FullName!, version);
         }
     }
 
@@ -66,7 +66,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private async void ExportModpackDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 重置取消标志
             _isExportCancelled = false;
@@ -517,7 +517,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void ResourceAll_Checked(object sender, RoutedEventArgs e)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 全选所有资源目录
             foreach (var dir in viewModel.ResourceDirectories)
@@ -532,7 +532,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void ResourceAll_Unchecked(object sender, RoutedEventArgs e)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 取消选择所有资源目录
             foreach (var dir in viewModel.ResourceDirectories)
@@ -571,7 +571,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void ItemExpandButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.CommandParameter is 版本列表ViewModel.ResourceItem item)
+        if (sender is Button button && button.CommandParameter is VersionListViewModel.ResourceItem item)
         {
             // 切换项的展开状态
             item.IsExpanded = !item.IsExpanded;
@@ -583,7 +583,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void UpdateResourceAllState()
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 查找资源目录总复选框
             CheckBox allCheckBox = null;
@@ -672,7 +672,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void ResourceDirectoriesStackPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 根据资源目录数量设置StackPanel的可见性
             ResourceDirectoriesStackPanel.Visibility = viewModel.ResourceDirectories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -689,7 +689,7 @@ public sealed partial class 版本列表Page : Page
     /// </summary>
     private void ResourceDirectories_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (DataContext is 版本列表ViewModel viewModel)
+        if (DataContext is VersionListViewModel viewModel)
         {
             // 根据资源目录数量设置StackPanel的可见性
             ResourceDirectoriesStackPanel.Visibility = viewModel.ResourceDirectories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;

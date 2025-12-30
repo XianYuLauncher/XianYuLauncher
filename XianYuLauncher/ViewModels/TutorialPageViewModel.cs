@@ -217,13 +217,13 @@ namespace XMCL2025.ViewModels
             }
             
             // 添加账户到角色列表
-            var 角色ViewModel = App.GetService<角色ViewModel>();
+            var characterViewModel = App.GetService<CharacterViewModel>();
             
             if (IsMicrosoftLogin && _pendingMicrosoftProfile != null)
             {
                 // 添加微软账户
-                角色ViewModel.Profiles.Add(_pendingMicrosoftProfile);
-                角色ViewModel.ActiveProfile = _pendingMicrosoftProfile;
+                characterViewModel.Profiles.Add(_pendingMicrosoftProfile);
+                characterViewModel.ActiveProfile = _pendingMicrosoftProfile;
                 System.Diagnostics.Debug.WriteLine($"[角色保存] 添加微软账户: {_pendingMicrosoftProfile.Name}");
             }
             else if (IsOfflineLogin && !string.IsNullOrEmpty(OfflineProfileName))
@@ -249,21 +249,21 @@ namespace XMCL2025.ViewModels
                     Roles = new string[] { "offline" },
                     IsOffline = true
                 };
-                角色ViewModel.Profiles.Add(offlineProfile);
-                角色ViewModel.ActiveProfile = offlineProfile;
+                characterViewModel.Profiles.Add(offlineProfile);
+                characterViewModel.ActiveProfile = offlineProfile;
                 System.Diagnostics.Debug.WriteLine($"[角色保存] 添加离线账户: {OfflineProfileName}");
             }
             
             // 保存角色列表
-            System.Diagnostics.Debug.WriteLine($"[角色保存] 开始保存角色列表，当前角色数量: {角色ViewModel.Profiles.Count}");
-            角色ViewModel.SaveProfiles();
+            System.Diagnostics.Debug.WriteLine($"[角色保存] 开始保存角色列表，当前角色数量: {characterViewModel.Profiles.Count}");
+            characterViewModel.SaveProfiles();
             System.Diagnostics.Debug.WriteLine($"[角色保存] 角色列表保存完成");
             
             // 标记教程已完成
             System.Diagnostics.Debug.WriteLine($"[首次启动检查] 教程完成，保存TutorialCompleted=true");
             await _localSettingsService.SaveSettingAsync("TutorialCompleted", true);
             // 导航到启动页面
-            _navigationService.NavigateTo(typeof(启动ViewModel).FullName!);
+            _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
         }
         
         /// <summary>

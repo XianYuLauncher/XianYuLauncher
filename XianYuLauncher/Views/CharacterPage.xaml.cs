@@ -7,9 +7,9 @@ namespace XMCL2025.Views
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class 角色Page : Page
+    public sealed partial class CharacterPage : Page
     {
-        public 角色ViewModel ViewModel
+        public CharacterViewModel ViewModel
         {
             get;
         }
@@ -19,9 +19,9 @@ namespace XMCL2025.Views
         private const string AvatarCacheFolder = "AvatarCache";
         private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
 
-        public 角色Page()
+        public CharacterPage()
         {
-            ViewModel = App.GetService<角色ViewModel>();
+            ViewModel = App.GetService<CharacterViewModel>();
             _navigationService = App.GetService<INavigationService>();
             InitializeComponent();
             
@@ -904,7 +904,7 @@ namespace XMCL2025.Views
             if (sender is Border border && border.Tag is MinecraftProfile profile)
             {
                 // 导航到角色管理页面
-                _navigationService.NavigateTo(typeof(角色管理ViewModel).FullName!, profile);
+                _navigationService.NavigateTo(typeof(CharacterManagementViewModel).FullName!, profile);
             }
         }
 

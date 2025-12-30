@@ -10,13 +10,13 @@ using XMCL2025.ViewModels;
 
 namespace XMCL2025.Views;
 
-public sealed partial class 联机大厅Page : Page
+public sealed partial class MultiplayerLobbyPage : Page
 {
-    public 联机大厅ViewModel ViewModel { get; }
+    public MultiplayerLobbyViewModel ViewModel { get; }
 
-    public 联机大厅Page()
+    public MultiplayerLobbyPage()
     {
-        ViewModel = App.GetService<联机大厅ViewModel>();
+        ViewModel = App.GetService<MultiplayerLobbyViewModel>();
         this.InitializeComponent();
     }
 

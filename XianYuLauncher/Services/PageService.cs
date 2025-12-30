@@ -14,21 +14,21 @@ public class PageService : IPageService
 
     public PageService()
                 {
-                    Configure<启动ViewModel, 启动Page>();
+                    Configure<LaunchViewModel, LaunchPage>();
                     // Configure<下载ViewModel, 下载Page>();
                     // Configure<ModViewModel, ModPage>();
                     Configure<ModDownloadDetailViewModel, ModDownloadDetailPage>();
                     Configure<SettingsViewModel, SettingsPage>();
-                    Configure<ModLoader选择ViewModel, ModLoader选择Page>();
-                    Configure<版本列表ViewModel, 版本列表Page>();
-                    Configure<版本管理ViewModel, 版本管理Page>();
+                    Configure<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();
+                    Configure<VersionListViewModel, VersionListPage>();
+                    Configure<VersionManagementViewModel, VersionManagementPage>();
                     Configure<ResourceDownloadViewModel, ResourceDownloadPage>();
-                    Configure<角色ViewModel, 角色Page>();
-                    Configure<角色管理ViewModel, 角色管理Page>();
-                    Configure<错误分析系统ViewModel, 错误分析系统Page>();
+                    Configure<CharacterViewModel, CharacterPage>();
+                    Configure<CharacterManagementViewModel, CharacterManagementPage>();
+                    Configure<ErrorAnalysisViewModel, ErrorAnalysisPage>();
                     Configure<TutorialPageViewModel, TutorialPage>();
-                    Configure<联机ViewModel, 联机Page>();
-                    Configure<联机大厅ViewModel, 联机大厅Page>();
+                    Configure<MultiplayerViewModel, MultiplayerPage>();
+                    Configure<MultiplayerLobbyViewModel, MultiplayerLobbyPage>();
                 }
 
     public Type GetPageType(string key)

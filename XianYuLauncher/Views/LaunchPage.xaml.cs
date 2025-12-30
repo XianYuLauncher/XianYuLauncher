@@ -17,9 +17,9 @@ using XMCL2025.Helpers;
 
 namespace XMCL2025.Views;
 
-public sealed partial class 启动Page : Page
+public sealed partial class LaunchPage : Page
 {
-    public 启动ViewModel ViewModel
+    public LaunchViewModel ViewModel
     {
         get;
     }
@@ -29,9 +29,9 @@ public sealed partial class 启动Page : Page
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
     private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
-    public 启动Page()
+    public LaunchPage()
     {
-        ViewModel = App.GetService<启动ViewModel>();
+        ViewModel = App.GetService<LaunchViewModel>();
         _navigationService = App.GetService<INavigationService>();
         InitializeComponent();
         
@@ -146,7 +146,7 @@ public sealed partial class 启动Page : Page
     private void AddProfileMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到角色页面
-        _navigationService.NavigateTo(typeof(角色ViewModel).FullName);
+        _navigationService.NavigateTo(typeof(CharacterViewModel).FullName);
     }
 
     /// <summary>
