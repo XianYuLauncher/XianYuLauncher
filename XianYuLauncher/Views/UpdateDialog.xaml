@@ -19,10 +19,12 @@
         </ScrollViewer>
         
         <!-- 重要更新提示 -->
-        <StackPanel Orientation="Horizontal" Spacing="10" Visibility="{x:Bind ViewModel.UpdateInfo.important_update, Converter={StaticResource BoolToVisibilityConverter}}">
-            <FontIcon Glyph="⚠" Foreground="#FFA500" FontSize="24" />
-            <TextBlock Text="这是一个重要更新，建议立即安装" Foreground="#FFA500" FontWeight="Bold" />
-        </StackPanel>
+        <InfoBar Severity="Warning" 
+                 Title="重要更新" 
+                 Message="这是一个重要更新，建议立即安装" 
+                 IsOpen="{x:Bind ViewModel.UpdateInfo.important_update, Mode=OneWay}" 
+                 IsClosable="False" 
+                 HorizontalAlignment="Stretch" />
         
         <!-- 下载区域 -->
         <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
