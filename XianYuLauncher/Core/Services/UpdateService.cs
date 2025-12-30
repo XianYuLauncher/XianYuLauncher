@@ -363,12 +363,12 @@ public class UpdateService
             if (string.IsNullOrEmpty(certificateFilePath))
             {
                 _logger.LogWarning("在解压目录中未找到证书文件 (*.cer): {ExtractDirectory}", extractDirectory);
-                Debug.WriteLine($"[DEBUG] 在解压目录中未找到证书文件 (*.cer): {ExtractDirectory}");
+                Debug.WriteLine($"[DEBUG] 在解压目录中未找到证书文件 (*.cer): {extractDirectory}");
             }
             else
             {
                 _logger.LogInformation("找到证书文件: {CertificateFilePath}", certificateFilePath);
-                Debug.WriteLine($"[DEBUG] 找到证书文件: {CertificateFilePath}");
+                Debug.WriteLine($"[DEBUG] 找到证书文件: {certificateFilePath}");
             }
             
             // 查找MSIX文件 (*.msix)
@@ -376,13 +376,13 @@ public class UpdateService
             if (string.IsNullOrEmpty(msixFilePath))
             {
                 _logger.LogError("在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}", extractDirectory);
-                Debug.WriteLine($"[DEBUG] 在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}");
+                Debug.WriteLine($"[DEBUG] 在解压目录中未找到MSIX文件 (*.msix): {extractDirectory}");
                 throw new Exception("在解压目录中未找到MSIX文件 (*.msix)");
             }
             else
             {
                 _logger.LogInformation("找到MSIX文件: {MsixFilePath}", msixFilePath);
-                Debug.WriteLine($"[DEBUG] 找到MSIX文件: {MsixFilePath}");
+                Debug.WriteLine($"[DEBUG] 找到MSIX文件: {msixFilePath}");
             }
             
             return (extractDirectory, certificateFilePath, msixFilePath);
@@ -390,7 +390,7 @@ public class UpdateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "解压更新包失败: {ZipFilePath}", zipFilePath);
-            Debug.WriteLine($"[DEBUG] 解压更新包失败: {ZipFilePath}, 错误: {ex.Message}");
+            Debug.WriteLine($"[DEBUG] 解压更新包失败: {zipFilePath}, 错误: {ex.Message}");
             
             // 清理临时目录
             if (Directory.Exists(extractDirectory))
@@ -451,7 +451,7 @@ public class UpdateService
         }
         
         _logger.LogInformation("检查证书是否已安装: {CertificateFilePath}", certificateFilePath);
-        Debug.WriteLine($"[DEBUG] 检查证书是否已安装: {CertificateFilePath}");
+        Debug.WriteLine($"[DEBUG] 检查证书是否已安装: {certificateFilePath}");
         
         try
         {
@@ -521,51 +521,60 @@ public class UpdateService
     /// <summary>
     /// 安装MSIX包
     /// </summary>
+    /// <param name="extractDirectory">解压目录路径</param>
     /// <param name="msixFilePath">MSIX包文件路径</param>
     /// <returns>安装是否成功</returns>
-    public async Task<bool> InstallMsixPackageAsync(string msixFilePath)
+    public async Task<bool> InstallMsixPackageAsync(string extractDirectory, string msixFilePath)
     {
-        _logger.LogInformation("开始安装MSIX包: {MsixFilePath}", msixFilePath);
-        Debug.WriteLine($"[DEBUG] 开始安装MSIX包: {msixFilePath}");
+        _logger.LogInformation("开始安装MSIX包，解压目录: {ExtractDirectory}, MSIX路径: {MsixFilePath}", extractDirectory, msixFilePath);
+        Debug.WriteLine($"[DEBUG] 开始安装MSIX包，解压目录: {extractDirectory}, MSIX路径: {msixFilePath}");
         
         try
         {
-            // 使用PowerShell命令安装MSIX包（模拟Add-AppDevPackage.ps1的核心功能）
-            // 注意：在实际生产环境中，应使用Windows.Management.Deployment.PackageManager API
-            string powerShellCommand = $"Add-AppxPackage -Path '{msixFilePath}' -ForceApplicationShutdown";
-            _logger.LogInformation("执行PowerShell命令: {PowerShellCommand}", powerShellCommand);
-            Debug.WriteLine($"[DEBUG] 执行PowerShell命令: {powerShellCommand}");
+            // 在解压目录中查找Install.ps1文件
+            string installScriptPath = FindFileByPattern(extractDirectory, "Install.ps1");
+            if (string.IsNullOrEmpty(installScriptPath))
+            {
+                _logger.LogError("在解压目录中未找到Install.ps1文件: {ExtractDirectory}", extractDirectory);
+                Debug.WriteLine($"[DEBUG] 在解压目录中未找到Install.ps1文件: {extractDirectory}");
+                return false;
+            }
             
+            _logger.LogInformation("找到Install.ps1文件: {InstallScriptPath}", installScriptPath);
+            Debug.WriteLine($"[DEBUG] 找到Install.ps1文件: {installScriptPath}");
+            
+            // 直接运行Install.ps1文件
             using (var process = new Process())
             {
                 process.StartInfo = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{powerShellCommand}\"",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{installScriptPath}\"",
                     UseShellExecute = true,
                     Verb = "runas", // 以管理员身份运行
+                    WorkingDirectory = extractDirectory, // 设置工作目录为解压目录
                     CreateNoWindow = false,
                     RedirectStandardOutput = false,
                     RedirectStandardError = false
                 };
                 
-                _logger.LogInformation("启动PowerShell进程安装MSIX包");
-                Debug.WriteLine("[DEBUG] 启动PowerShell进程安装MSIX包");
+                _logger.LogInformation("启动PowerShell进程运行Install.ps1脚本");
+                Debug.WriteLine("[DEBUG] 启动PowerShell进程运行Install.ps1脚本");
                 
                 process.Start();
                 await process.WaitForExitAsync();
                 
                 bool isSuccess = process.ExitCode == 0;
-                _logger.LogInformation("MSIX包安装完成，退出代码: {ExitCode}, 成功: {IsSuccess}", process.ExitCode, isSuccess);
-                Debug.WriteLine($"[DEBUG] MSIX包安装完成，退出代码: {process.ExitCode}, 成功: {isSuccess}");
+                _logger.LogInformation("Install.ps1脚本执行完成，退出代码: {ExitCode}, 成功: {IsSuccess}", process.ExitCode, isSuccess);
+                Debug.WriteLine($"[DEBUG] Install.ps1脚本执行完成，退出代码: {process.ExitCode}, 成功: {isSuccess}");
                 
                 return isSuccess;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "安装MSIX包失败: {MsixFilePath}", msixFilePath);
-            Debug.WriteLine($"[DEBUG] 安装MSIX包失败: {msixFilePath}, 错误: {ex.Message}");
+            _logger.LogError(ex, "运行Install.ps1脚本失败: {ExtractDirectory}", extractDirectory);
+            Debug.WriteLine($"[DEBUG] 运行Install.ps1脚本失败: {extractDirectory}, 错误: {ex.Message}");
             return false;
         }
     }
