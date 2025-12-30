@@ -156,17 +156,44 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                         {
                             _logger.LogInformation("证书未安装，打开证书属性页");
                             Debug.WriteLine("[DEBUG] 证书未安装，打开证书属性页");
-                            DownloadStatusText = "正在打开证书属性页...";
                             
                             // 打开证书属性页
                             _updateService.OpenCertificateProperties(extractResult.CertificateFilePath);
                             
-                            // 显示证书安装提示（这里可以根据需要创建自定义弹窗）
-                            _logger.LogInformation("请右键证书->安装->本地计算机->受信任的根证书颁发者");
-                            Debug.WriteLine("[DEBUG] 请右键证书->安装->本地计算机->受信任的根证书颁发者");
+                            // 显示证书安装提示
+                            DownloadStatusText = "请安装证书后继续: 右键证书->安装->本地计算机->受信任的根证书颁发机构";
                             
-                            // 等待用户安装证书（这里可以根据需要添加等待逻辑）
-                            await Task.Delay(2000);
+                            _logger.LogInformation("请右键证书->安装->本地计算机->受信任的根证书颁发机构");
+                            Debug.WriteLine("[DEBUG] 请右键证书->安装->本地计算机->受信任的根证书颁发机构");
+                            
+                            // 轮询检查证书是否已安装，每5秒检查一次，最多等待999秒
+                            int waitSeconds = 0;
+                            int maxWaitSeconds = 999;
+                            
+                            while (!_updateService.IsCertificateInstalled(extractResult.CertificateFilePath) && waitSeconds < maxWaitSeconds)
+                            {
+                                _logger.LogInformation("等待用户安装证书，已等待 {WaitSeconds} 秒", waitSeconds);
+                                Debug.WriteLine($"[DEBUG] 等待用户安装证书，已等待 {waitSeconds} 秒");
+                                
+                                // 等待5秒后再次检查
+                                await Task.Delay(5000);
+                                waitSeconds += 5;
+                            }
+                            
+                            // 检查是否超时
+                            if (waitSeconds >= maxWaitSeconds)
+                            {
+                                _logger.LogWarning("证书安装超时");
+                                Debug.WriteLine("[DEBUG] 证书安装超时");
+                                DownloadStatusText = "证书安装超时，请手动安装证书后重试";
+                                IsDownloading = false;
+                                return;
+                            }
+                            
+                            // 证书安装成功
+                            _logger.LogInformation("证书安装成功");
+                            Debug.WriteLine("[DEBUG] 证书安装成功");
+                            DownloadStatusText = "证书安装成功，准备安装MSIX包...";
                         }
                     }
                     
@@ -175,7 +202,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     Debug.WriteLine($"[DEBUG] 开始安装MSIX包: {extractResult.MsixFilePath}");
                     DownloadStatusText = "正在安装MSIX包...";
                     
-                    bool installSuccess = await _updateService.InstallMsixPackageAsync(extractResult.MsixFilePath);
+                    bool installSuccess = await _updateService.InstallMsixPackageAsync(extractResult.ExtractDirectory, extractResult.MsixFilePath);
                     if (installSuccess)
                     {
                         _logger.LogInformation("MSIX包安装成功");
@@ -195,7 +222,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     {
                         _logger.LogError("MSIX包安装失败");
                         Debug.WriteLine("[DEBUG] MSIX包安装失败");
-                        DownloadStatusText = "安装失败，请重试";
+                        DownloadStatusText = "安装失败，请尝试手动下载安装包";
                         IsDownloading = false;
                         
                         // 清理临时文件
