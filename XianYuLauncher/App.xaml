@@ -15,6 +15,7 @@
             <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:BoolToTextConverter x:Key="BoolToTextConverter" xmlns:helpers="using:XMCL2025.Helpers" />
+            <helpers:ProfileTypeConverter x:Key="ProfileTypeConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:DateTimeConverter x:Key="DateTimeConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
             <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XMCL2025.Helpers" />

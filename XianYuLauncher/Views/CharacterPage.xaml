@@ -143,6 +143,16 @@
                                                     <SymbolIcon Symbol="Contact" />
                                                 </MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
+                                            <MenuFlyoutItem 
+                                                x:Uid="ProfilePage_ExternalLoginMenuItem"
+                                                x:Name="ExternalLoginMenuItem"
+                                                Text="外置登录" 
+                                                Click="ExternalLoginMenuItem_Click"
+                                                Tag="external">
+                                                <MenuFlyoutItem.Icon>
+                                                    <SymbolIcon Symbol="World" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </Button.Flyout>
                                 </Button>
@@ -226,7 +236,7 @@
                                                             Opacity="0.6" />
                                                         <TextBlock 
                                                             x:Uid="ProfilePage_ProfileTypeValue" 
-                                                            Text="{x:Bind IsOffline, Mode=OneWay, Converter={StaticResource BoolToTextConverter}, ConverterParameter='ProfilePage_OfflineProfileText,ProfilePage_MicrosoftProfileText'}" 
+                                                            Text="{x:Bind Mode=OneWay, Converter={StaticResource ProfileTypeConverter}}" 
                                                             FontSize="14" 
                                                             Opacity="0.6" 
                                                             FontWeight="SemiBold" />

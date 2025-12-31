@@ -793,21 +793,21 @@ public partial class VersionListViewModel : ObservableRecipient
         public bool HasChildren => Children.Count > 0;
         
         /// <summary>
-        /// 资源名称的中文翻译
+        /// 资源名称的本地化翻译
         /// </summary>
         public string DisplayTranslation
         {
             get
             {
-                // 根据文件名返回对应的中文翻译
+                // 根据文件名返回对应的本地化翻译
                 return Name.ToLowerInvariant() switch
                 {
-                    "options.txt" => "玩家游戏设置",
-                    "mods" => "模组",
-                    "shaderpacks" => "光影",
-                    "resourcepacks" => "资源包",
-                    "config" => "配置文件",
-                    "saves" => "存档",
+                    "options.txt" => "VersionListPage_ResourceItem_OptionsText".GetLocalized(),
+                    "mods" => "VersionListPage_ResourceItem_Mods".GetLocalized(),
+                    "shaderpacks" => "VersionListPage_ResourceItem_Shaderpacks".GetLocalized(),
+                    "resourcepacks" => "VersionListPage_ResourceItem_Resourcepacks".GetLocalized(),
+                    "config" => "VersionListPage_ResourceItem_Config".GetLocalized(),
+                    "saves" => "VersionListPage_ResourceItem_Saves".GetLocalized(),
                     _ => string.Empty
                 };
             }

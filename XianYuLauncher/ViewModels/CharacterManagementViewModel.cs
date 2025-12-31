@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -332,8 +333,20 @@ namespace XMCL2025.ViewModels
         /// </summary>
         public async Task ForceRefreshTokenAsync()
         {
-            if (CurrentProfile != null && !string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
+            if (CurrentProfile == null)
             {
+                throw new Exception("当前没有选中角色，无法刷新");
+            }
+            
+            // 根据角色类型执行不同的刷新逻辑
+            if (CurrentProfile.TokenType == "external")
+            {
+                // 外置登录账户刷新
+                await RefreshExternalLoginTokenAsync();
+            }
+            else if (!string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
+            {
+                // 微软账户刷新
                 // 不管是否过期，直接刷新令牌
                 var authService = App.GetService<MicrosoftAuthService>();
                 var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile.RefreshToken);
@@ -359,6 +372,114 @@ namespace XMCL2025.ViewModels
             else
             {
                 throw new Exception("当前角色没有刷新令牌，无法刷新");
+            }
+        }
+        
+        /// <summary>
+        /// 刷新外置登录账户的令牌
+        /// </summary>
+        private async Task RefreshExternalLoginTokenAsync()
+        {
+            if (CurrentProfile == null || string.IsNullOrEmpty(CurrentProfile.AuthServer) || string.IsNullOrEmpty(CurrentProfile.AccessToken))
+            {
+                throw new Exception("外置登录账户信息不完整，无法刷新");
+            }
+            
+            try
+            {
+                // 确保AuthServer以/结尾
+                string authServer = CurrentProfile.AuthServer;
+                if (!authServer.EndsWith("/"))
+                {
+                    authServer += "/";
+                }
+                
+                // 1. 首先验证令牌是否有效
+                bool isValid = await ValidateExternalTokenAsync(authServer, CurrentProfile.AccessToken);
+                
+                if (!isValid)
+                {
+                    // 2. 令牌无效，调用刷新接口
+                    var httpClient = new HttpClient();
+                    
+                    // 构建刷新请求，使用现有的clientToken或生成新的
+                    var refreshRequest = new
+                    {
+                        accessToken = CurrentProfile.AccessToken,
+                        clientToken = string.IsNullOrEmpty(CurrentProfile.ClientToken) ? Guid.NewGuid().ToString() : CurrentProfile.ClientToken,
+                        requestUser = false
+                    };
+                    
+                    // 发送刷新请求
+                    var refreshContent = new StringContent(
+                        Newtonsoft.Json.JsonConvert.SerializeObject(refreshRequest),
+                        Encoding.UTF8,
+                        "application/json");
+                    
+                    string refreshUrl = $"{authServer}authserver/refresh";
+                    var refreshResponse = await httpClient.PostAsync(refreshUrl, refreshContent);
+                    
+                    if (refreshResponse.IsSuccessStatusCode)
+                    {
+                        // 解析刷新响应
+                        var refreshResponseJson = await refreshResponse.Content.ReadAsStringAsync();
+                        dynamic refreshData = Newtonsoft.Json.JsonConvert.DeserializeObject(refreshResponseJson);
+                        
+                        // 更新当前角色的令牌信息
+                        CurrentProfile.AccessToken = refreshData.accessToken;
+                        CurrentProfile.ClientToken = refreshData.clientToken; // 保存刷新返回的clientToken
+                        CurrentProfile.ExpiresIn = int.MaxValue; // 外置登录令牌通常长期有效
+                        CurrentProfile.IssueInstant = DateTime.Now;
+                        CurrentProfile.NotAfter = DateTime.MaxValue;
+                        
+                        // 保存修改
+                        SaveProfiles();
+                    }
+                    else
+                    {
+                        // 刷新失败，抛出异常
+                        throw new Exception($"外置登录令牌刷新失败，状态码: {refreshResponse.StatusCode}");
+                    }
+                }
+                // 令牌有效，无需刷新
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"外置登录令牌刷新失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 验证外置登录令牌是否有效
+        /// </summary>
+        private async Task<bool> ValidateExternalTokenAsync(string authServer, string accessToken)
+        {
+            try
+            {
+                var httpClient = new HttpClient();
+                
+                // 构建验证请求，包含clientToken以提高安全性
+                var validateRequest = new
+                {
+                    accessToken = accessToken,
+                    clientToken = CurrentProfile.ClientToken
+                };
+                
+                var validateContent = new StringContent(
+                    Newtonsoft.Json.JsonConvert.SerializeObject(validateRequest),
+                    Encoding.UTF8,
+                    "application/json");
+                
+                string validateUrl = $"{authServer}authserver/validate";
+                var validateResponse = await httpClient.PostAsync(validateUrl, validateContent);
+                
+                // Yggdrasil API规定，验证成功返回204 No Content
+                return validateResponse.StatusCode == System.Net.HttpStatusCode.NoContent;
+            }
+            catch (Exception)
+            {
+                // 验证失败，返回false
+                return false;
             }
         }
 

@@ -773,6 +773,12 @@
   <data name="VersionListPage_DeleteMenuItem.Text" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="VersionListPage_ExportModpackMenuItem.Text" xml:space="preserve">
+    <value>Export Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog.Title" xml:space="preserve">
+    <value>Export Modpack</value>
+  </data>
   <data name="VersionListPage_VersionNumberLabel.Text" xml:space="preserve">
     <value>Version: </value>
   </data>
@@ -896,6 +902,144 @@
   
   <data name="VersionListPage_InstallDateText.Text" xml:space="preserve">
     <value>Install Date: </value>
+  </data>
+  <data name="VersionListPage_ImportModpackButton.Content" xml:space="preserve">
+    <value>Import Modpack</value>
+  </data>
+  <data name="VersionListPage_ModpackInstallDialog.Title" xml:space="preserve">
+    <value>Installing Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_InstructionText.Text" xml:space="preserve">
+    <value>Please select the data to export:</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ResourceAllCheckBox.Content" xml:space="preserve">
+    <value>Version Directory Resources</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackNameLabel.Text" xml:space="preserve">
+    <value>Modpack Name</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Enter modpack name</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackVersionLabel.Text" xml:space="preserve">
+    <value>Modpack Version</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackVersionTextBox.PlaceholderText" xml:space="preserve">
+    <value>Enter modpack version</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_OfflineModeCheckBox.Content" xml:space="preserve">
+    <value>Offline Mode</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ServerOnlyCheckBox.Content" xml:space="preserve">
+    <value>Export Server Modpack</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog.Title" xml:space="preserve">
+    <value>Exporting Modpack</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_SecondaryButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_StatusText.Text" xml:space="preserve">
+    <value>Getting Modrinth resources...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_ProgressText.Text" xml:space="preserve">
+    <value>0.0%</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_OptionsText" xml:space="preserve">
+    <value>Player Settings</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Mods" xml:space="preserve">
+    <value>Mods</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Shaderpacks" xml:space="preserve">
+    <value>Shaders</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Resourcepacks" xml:space="preserve">
+    <value>Resource Packs</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Config" xml:space="preserve">
+    <value>Config</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Saves" xml:space="preserve">
+    <value>Saves</value>
+  </data>
+  <data name="VersionManagerPage_UpdateModsMenuItem.Text" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsMenuItem.Text" xml:space="preserve">
+    <value>Move to Other Version</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.Title" xml:space="preserve">
+    <value>Select Target Version</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_InstructionText.Text" xml:space="preserve">
+    <value>Please select the Minecraft version to move to:</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.Title" xml:space="preserve">
+    <value>Mod Transfer Results</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
+    <value>Mod transfer results:</value>
+  </data>
+  <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
+    <value>Select All</value>
+  </data>
+  <data name="VersionManagerPage_UnselectAllText" xml:space="preserve">
+    <value>Unselect All</value>
+  </data>
+  <data name="VersionManagerPage_UpdatingModsText" xml:space="preserve">
+    <value>Updating Mods</value>
+  </data>
+  <data name="VersionManagerPage_MigratingModsText" xml:space="preserve">
+    <value>Migrating Mods</value>
+  </data>
+  <data name="VersionManagerPage_PreparingModTransferText" xml:space="preserve">
+    <value>Preparing to transfer Mods...</value>
+  </data>
+  <data name="VersionManagerPage_UpdatedAndMovedText" xml:space="preserve">
+    <value>Updated and Moved</value>
+  </data>
+  <data name="VersionManagerPage_VersionsUpdatedText" xml:space="preserve">
+    <value> versions updated</value>
+  </data>
+  <data name="VersionManagerPage_VersionsUpToDateText" xml:space="preserve">
+    <value> versions up to date</value>
+  </data>
+  <data name="VersionManagerPage_ModMovedSuccessText" xml:space="preserve">
+    <value>Moved Successfully</value>
+  </data>
+  <data name="VersionManagerPage_ModCopiedText" xml:space="preserve">
+    <value>Copied Directly</value>
+  </data>
+  <data name="VersionManagerPage_ModIncompatibleText" xml:space="preserve">
+    <value>Incompatible with this version/loader, removed</value>
+  </data>
+  <data name="VersionManagerPage_ModMoveFailedText" xml:space="preserve">
+    <value>Move Failed</value>
+  </data>
+  <data name="VersionManagerPage_UnknownStatusText" xml:space="preserve">
+    <value>Unknown Status</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog.Title" xml:space="preserve">
+    <value>Update Completed</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
   </data>
   <!-- VersionManagerPage Localization -->
   <data name="VersionManagerPage_DragDropTip.Text" xml:space="preserve">
@@ -1090,6 +1234,36 @@
   </data>
   <data name="ProfilePage_MicrosoftLoginMenuItem.Text" xml:space="preserve">
     <value>Microsoft Login</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginMenuItem.Text" xml:space="preserve">
+    <value>External Login</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_Title" xml:space="preserve">
+    <value>External Login</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_AuthServerLabel" xml:space="preserve">
+    <value>Auth Server</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_UsernameLabel" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
+    <value>Select Profile</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
+    <value>Please select the profile to add:</value>
+  </data>
+  <data name="ProfilePage_ProfileType_External" xml:space="preserve">
+    <value>External Login</value>
   </data>
   <data name="ProfilePage_UuidLabel.Text" xml:space="preserve">
     <value>UUID: </value>

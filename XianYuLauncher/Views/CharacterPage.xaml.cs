@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XMCL2025.Contracts.Services; using XMCL2025.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.IO; using System.Net.Http; using System.Threading.Tasks; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XMCL2025.Contracts.Services; using XMCL2025.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XMCL2025.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -31,8 +31,16 @@ namespace XMCL2025.Views
                 ShowOfflineLoginDialog();
             };
             
-            // 订阅角色列表变化事件
+            // 订阅角色列表变化事件（整个集合替换）
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            
+            // 订阅角色列表内容变化事件（添加、删除等）
+            ViewModel.Profiles.CollectionChanged += Profiles_CollectionChanged;
+            
+            // 添加拖拽事件监听
+            this.AllowDrop = true;
+            this.Drop += CharacterPage_Drop;
+            this.DragOver += CharacterPage_DragOver;
             
             // 预加载处理过的史蒂夫头像
             _ = PreloadProcessedSteveAvatarAsync();
@@ -43,10 +51,43 @@ namespace XMCL2025.Views
         /// </summary>
         private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            // 当角色列表变化时，重新加载所有头像
+            // 当角色列表替换时，重新加载所有头像
             if (e.PropertyName == nameof(ViewModel.Profiles))
             {
-                Debug.WriteLine($"[角色Page] 角色列表变化，当前角色数量: {ViewModel.Profiles.Count}");
+                Debug.WriteLine($"[角色Page] 角色列表替换，当前角色数量: {ViewModel.Profiles.Count}");
+                // 延迟执行，确保列表已更新
+                _ = Task.Delay(100).ContinueWith(_ =>
+                {
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        LoadAllAvatars();
+                    });
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 当角色列表内容变化时触发（添加、删除等）
+        /// </summary>
+        private void Profiles_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            // 当添加新角色时，重新加载所有头像
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
+            {
+                Debug.WriteLine($"[角色Page] 角色列表添加了新角色，当前角色数量: {ViewModel.Profiles.Count}");
+                // 延迟执行，确保列表已更新
+                _ = Task.Delay(100).ContinueWith(_ =>
+                {
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        LoadAllAvatars();
+                    });
+                });
+            }
+            // 当删除角色时，也重新加载所有头像，确保UI一致性
+            else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
+            {
+                Debug.WriteLine($"[角色Page] 角色列表删除了角色，当前角色数量: {ViewModel.Profiles.Count}");
                 // 延迟执行，确保列表已更新
                 _ = Task.Delay(100).ContinueWith(_ =>
                 {
@@ -88,6 +129,7 @@ namespace XMCL2025.Views
             base.OnNavigatingFrom(e);
             // 页面导航离开时的清理逻辑
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.Profiles.CollectionChanged -= Profiles_CollectionChanged;
         }
         
         /// <summary>
@@ -122,7 +164,7 @@ namespace XMCL2025.Views
                 return;
             }
             
-            Debug.WriteLine($"[角色Page] 开始加载角色 {profile.Name} (索引: {profileIndex}) 的头像，离线状态: {profile.IsOffline}");
+            Debug.WriteLine($"[角色Page] 开始加载角色 {profile.Name} (索引: {profileIndex}) 的头像，离线状态: {profile.IsOffline}, TokenType: {profile.TokenType}");
             
             // 1. 离线玩家使用Steve头像
             if (profile.IsOffline)
@@ -144,9 +186,11 @@ namespace XMCL2025.Views
                 return;
             }
             
-            // 2. 正版玩家处理逻辑
+            // 2. 正版玩家（包括微软登录和外置登录）处理逻辑
             try
             {
+                Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是在线角色，TokenType: {profile.TokenType}");
+                
                 // 2.1 尝试从缓存加载头像
                 Debug.WriteLine($"[角色Page] 尝试从缓存加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
                 var cachedAvatar = await LoadAvatarFromCache(profile.Id);
@@ -169,6 +213,7 @@ namespace XMCL2025.Views
             catch (Exception ex)
             {
                 Debug.WriteLine($"[角色Page] 加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
                 // 加载失败，使用默认头像
                 UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
                 // 后台尝试刷新
@@ -211,13 +256,17 @@ namespace XMCL2025.Views
         {
             try
             {
+                Debug.WriteLine($"[角色Page] 开始从网络加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                
                 // 显示处理过的史蒂夫头像作为加载状态
                 if (_processedSteveAvatar != null)
                 {
+                    Debug.WriteLine($"[角色Page] 使用预加载的处理过的史蒂夫头像作为加载状态");
                     UpdateAvatarInList(profile, _processedSteveAvatar, profileIndex);
                 }
                 else
                 {
+                    Debug.WriteLine($"[角色Page] 预加载的处理过的史蒂夫头像不存在，临时生成");
                     // 预加载未完成，临时使用处理过的史蒂夫头像
                     var tempProcessedSteve = await ProcessSteveAvatarAsync();
                     if (tempProcessedSteve != null)
@@ -225,29 +274,55 @@ namespace XMCL2025.Views
                         UpdateAvatarInList(profile, tempProcessedSteve, profileIndex);
                         // 更新预加载的头像
                         _processedSteveAvatar = tempProcessedSteve;
+                        Debug.WriteLine($"[角色Page] 临时生成的处理过的史蒂夫头像成功，更新预加载缓存");
                     }
                     else
                     {
                         // 处理失败，使用原始史蒂夫头像
+                        Debug.WriteLine($"[角色Page] 临时生成处理过的史蒂夫头像失败，使用原始史蒂夫头像");
                         UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png")), profileIndex);
                     }
                 }
                 
-                // 从Mojang API获取头像
-                var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                var bitmap = await GetAvatarFromMojangApiAsync(mojangUri, profile.Id);
+                Uri sessionServerUri;
+                if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
+                {
+                    // 外置登录角色，使用用户提供的认证服务器
+                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是外置登录角色，使用认证服务器: {profile.AuthServer}");
+                    string authServer = profile.AuthServer;
+                    // 确保认证服务器URL以/结尾
+                    if (!authServer.EndsWith("/"))
+                    {
+                        authServer += "/";
+                    }
+                    // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
+                    sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
+                    Debug.WriteLine($"[角色Page] 构建的外置登录会话服务器URL: {sessionServerUri}");
+                }
+                else
+                {
+                    // 微软登录角色，使用Mojang API
+                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是微软登录角色，使用Mojang API");
+                    sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
+                    Debug.WriteLine($"[角色Page] Mojang API请求URL: {sessionServerUri}");
+                }
+                
+                var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
                 if (bitmap != null)
                 {
+                    Debug.WriteLine($"[角色Page] 成功获取角色 {profile.Name} 的头像，更新UI");
                     UpdateAvatarInList(profile, bitmap, profileIndex);
                 }
                 else
                 {
+                    Debug.WriteLine($"[角色Page] 获取角色 {profile.Name} 的头像失败，使用默认头像");
                     UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[角色Page] 从网络加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
                 UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
             }
         }
@@ -261,9 +336,30 @@ namespace XMCL2025.Views
         {
             try
             {
-                // 从Mojang API获取最新头像
-                var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                var bitmap = await GetAvatarFromMojangApiAsync(mojangUri, profile.Id);
+                Uri sessionServerUri;
+                if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
+                {
+                    // 外置登录角色，使用用户提供的认证服务器
+                    Debug.WriteLine($"[角色Page] 后台刷新外置登录角色 {profile.Name} 的头像，使用认证服务器: {profile.AuthServer}");
+                    string authServer = profile.AuthServer;
+                    // 确保认证服务器URL以/结尾
+                    if (!authServer.EndsWith("/"))
+                    {
+                        authServer += "/";
+                    }
+                    // 构建会话服务器URL
+                    sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
+                    Debug.WriteLine($"[角色Page] 后台刷新构建的外置登录会话服务器URL: {sessionServerUri}");
+                }
+                else
+                {
+                    // 微软登录角色，使用Mojang API
+                    Debug.WriteLine($"[角色Page] 后台刷新微软登录角色 {profile.Name} 的头像，使用Mojang API");
+                    sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
+                    Debug.WriteLine($"[角色Page] 后台刷新Mojang API请求URL: {sessionServerUri}");
+                }
+                
+                var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
                 if (bitmap != null)
                 {
                     // 刷新成功，更新UI
@@ -287,16 +383,27 @@ namespace XMCL2025.Views
         {
             try
             {
+                Debug.WriteLine($"[角色Page] 开始从Mojang API获取头像，URL: {mojangUri}");
+                Debug.WriteLine($"[角色Page] UUID: {uuid}");
+                
                 // 1. 请求Mojang API获取profile信息
                 var response = await _httpClient.GetAsync(mojangUri);
+                Debug.WriteLine($"[角色Page] API响应状态码: {response.StatusCode}");
                 if (!response.IsSuccessStatusCode)
-                    return null;
+                {
+                    Debug.WriteLine($"[角色Page] API请求失败，状态码: {response.StatusCode}，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
                 
                 // 2. 解析JSON响应
                 var jsonResponse = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[角色Page] API响应内容: {jsonResponse}");
                 dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
                 if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
-                    return null;
+                {
+                    Debug.WriteLine($"[角色Page] API响应中没有properties数据，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
                 
                 // 3. 提取base64编码的textures数据
                 string texturesBase64 = null;
@@ -305,15 +412,20 @@ namespace XMCL2025.Views
                     if (property.name == "textures")
                     {
                         texturesBase64 = property.value;
+                        Debug.WriteLine($"[角色Page] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
                         break;
                     }
                 }
                 if (string.IsNullOrEmpty(texturesBase64))
-                    return null;
+                {
+                    Debug.WriteLine($"[角色Page] 未找到textures属性，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
                 
                 // 4. 解码base64数据
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
+                Debug.WriteLine($"[角色Page] 解码后的textures JSON: {texturesJson}");
                 dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
                 
                 // 5. 提取皮肤URL
@@ -321,23 +433,64 @@ namespace XMCL2025.Views
                 if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
                 {
                     skinUrl = texturesData.textures.SKIN.url;
+                    Debug.WriteLine($"[角色Page] 提取到皮肤URL: {skinUrl}");
                 }
                 if (string.IsNullOrEmpty(skinUrl))
-                    return null;
+                {
+                    Debug.WriteLine($"[角色Page] 未找到皮肤URL，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
                 
                 // 6. 下载皮肤纹理
+                Debug.WriteLine($"[角色Page] 开始下载皮肤纹理，URL: {skinUrl}");
                 var skinResponse = await _httpClient.GetAsync(skinUrl);
+                Debug.WriteLine($"[角色Page] 皮肤下载响应状态码: {skinResponse.StatusCode}");
                 if (!skinResponse.IsSuccessStatusCode)
-                    return null;
+                {
+                    Debug.WriteLine($"[角色Page] 皮肤下载失败，状态码: {skinResponse.StatusCode}，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
                 
                 // 7. 使用Win2D裁剪头像区域
                 var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl, uuid);
+                if (avatarBitmap == null)
+                {
+                    Debug.WriteLine($"[角色Page] 裁剪头像失败，使用默认史蒂夫图标");
+                    return await GetDefaultSteveAvatarAsync();
+                }
+                Debug.WriteLine($"[角色Page] 成功生成头像BitmapImage");
                 return avatarBitmap;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // 显示错误信息
-                return null;
+                Debug.WriteLine($"[角色Page] 从Mojang API获取头像异常: {ex.Message}");
+                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
+                return await GetDefaultSteveAvatarAsync();
+            }
+        }
+
+        /// <summary>
+        /// 获取默认史蒂夫头像
+        /// </summary>
+        private async Task<BitmapImage> GetDefaultSteveAvatarAsync()
+        {
+            try
+            {
+                Debug.WriteLine($"[角色Page] 使用默认史蒂夫图标");
+                // 使用处理过的Steve头像
+                var steveAvatar = _processedSteveAvatar ?? await ProcessSteveAvatarAsync();
+                if (steveAvatar != null)
+                {
+                    return steveAvatar;
+                }
+                // 如果处理过的Steve头像也获取失败，使用原始史蒂夫头像
+                return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 获取默认史蒂夫头像异常: {ex.Message}");
+                // 最终回退到默认头像
+                return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
             }
         }
         
@@ -927,6 +1080,671 @@ namespace XMCL2025.Views
         }
 
         /// <summary>
+        /// 外置登录菜单项点击事件
+        /// </summary>
+        private void ExternalLoginMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // 显示外置登录对话框
+            ShowExternalLoginDialog();
+        }
+
+        /// <summary>
+        /// 解析和处理API地址，包括自动补全HTTPS协议和处理API地址指示（ALI）
+        /// </summary>
+        private async Task<string> ResolveApiUrlAsync(string inputUrl)
+        {
+            try
+            {
+                // 1. 如果URL缺少协议，则补全为HTTPS
+                string resolvedUrl = inputUrl.Trim();
+                if (!resolvedUrl.StartsWith("http://") && !resolvedUrl.StartsWith("https://"))
+                {
+                    resolvedUrl = $"https://{resolvedUrl}";
+                    Debug.WriteLine($"[角色Page] 自动补全HTTPS协议: {inputUrl} -> {resolvedUrl}");
+                }
+                
+                // 2. 发送GET请求，跟随重定向
+                // 配置HttpClientHandler，禁用自动重定向
+                var handler = new HttpClientHandler {
+                    AllowAutoRedirect = false
+                };
+                var httpClient = new HttpClient(handler);
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+                
+                HttpResponseMessage response = await httpClient.GetAsync(resolvedUrl);
+                
+                // 3. 处理重定向
+                while (response.StatusCode == System.Net.HttpStatusCode.Redirect || 
+                       response.StatusCode == System.Net.HttpStatusCode.MovedPermanently || 
+                       response.StatusCode == System.Net.HttpStatusCode.Found ||
+                       response.StatusCode == System.Net.HttpStatusCode.SeeOther)
+                {
+                    string redirectUrl = response.Headers.Location?.ToString();
+                    if (string.IsNullOrEmpty(redirectUrl)) break;
+                    
+                    // 处理相对重定向URL
+                    if (!redirectUrl.StartsWith("http://") && !redirectUrl.StartsWith("https://"))
+                    {
+                        var baseUri = new Uri(resolvedUrl);
+                        redirectUrl = new Uri(baseUri, redirectUrl).ToString();
+                    }
+                    
+                    resolvedUrl = redirectUrl;
+                    Debug.WriteLine($"[角色Page] 处理重定向: {resolvedUrl}");
+                    
+                    // 发送新的请求
+                    response = await httpClient.GetAsync(resolvedUrl);
+                }
+                
+                // 4. 检查ALI头
+                if (response.Headers.TryGetValues("X-Authlib-Injector-API-Location", out var aliValues))
+                {
+                    string aliUrl = aliValues.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(aliUrl))
+                    {
+                        // 处理相对URL
+                        if (!aliUrl.StartsWith("http://") && !aliUrl.StartsWith("https://"))
+                        {
+                            var baseUri = new Uri(resolvedUrl);
+                            aliUrl = new Uri(baseUri, aliUrl).ToString();
+                        }
+                        
+                        // 如果ALI指向不同的URL，则使用ALIURL
+                        if (aliUrl != resolvedUrl)
+                        {
+                            Debug.WriteLine($"[角色Page] 处理ALI头: {aliUrl}");
+                            resolvedUrl = aliUrl;
+                        }
+                    }
+                }
+                
+                // 5. 确保URL以/结尾
+                if (!resolvedUrl.EndsWith("/"))
+                {
+                    resolvedUrl += "/";
+                }
+                
+                return resolvedUrl;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 解析API地址失败: {ex.Message}");
+                
+                // 如果解析失败，返回原始URL（已补全HTTPS）
+                if (!inputUrl.StartsWith("http://") && !inputUrl.StartsWith("https://"))
+                {
+                    string fallbackUrl = $"https://{inputUrl.Trim()}";
+                    if (!fallbackUrl.EndsWith("/"))
+                    {
+                        fallbackUrl += "/";
+                    }
+                    return fallbackUrl;
+                }
+                
+                string originalUrl = inputUrl.Trim();
+                if (!originalUrl.EndsWith("/"))
+                {
+                    originalUrl += "/";
+                }
+                return originalUrl;
+            }
+        }
+        
+        /// <summary>
+        /// 获取Yggdrasil服务器元数据
+        /// </summary>
+        private async Task<YggdrasilMetadata> GetYggdrasilMetadataAsync(string authServerUrl)
+        {
+            try
+            {
+                // 解析和处理API地址
+                string resolvedUrl = await ResolveApiUrlAsync(authServerUrl);
+                
+                // 构建元数据请求URL
+                var metadataUri = new Uri(resolvedUrl);
+                var httpClient = new HttpClient();
+                
+                // 设置请求头，接受JSON格式
+                httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                
+                // 发送GET请求
+                var response = await httpClient.GetAsync(metadataUri);
+                if (response.IsSuccessStatusCode)
+                {
+                    // 解析响应内容
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    return Newtonsoft.Json.JsonConvert.DeserializeObject<YggdrasilMetadata>(jsonResponse);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 获取服务器元数据失败: {ex.Message}");
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Yggdrasil服务器元数据类
+        /// </summary>
+        private class YggdrasilMetadata
+        {
+            public Meta meta { get; set; }
+            public string serverName { get; set; }
+            
+            public class Meta
+            {
+                public string serverName { get; set; }
+                [Newtonsoft.Json.JsonProperty(PropertyName = "feature.no_email_login")]
+                public bool feature_no_email_login { get; set; }
+            }
+        }
+        
+        /// <summary>
+        /// 显示外置登录对话框
+        /// </summary>
+        public async void ShowExternalLoginDialog()
+        {
+            // 创建一个简单的StackPanel作为对话框内容
+            var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
+
+            // 添加认证服务器标签和输入框
+            var authServerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var authServerLabel = new TextBlock
+            {
+                Text = "ProfilePage_ExternalLoginDialog_AuthServerLabel".GetLocalized(),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var authServerTextBox = new TextBox
+            {
+                PlaceholderText = "https://example.com/api/yggdrasil/",
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            authServerStack.Children.Add(authServerLabel);
+            authServerStack.Children.Add(authServerTextBox);
+            stackPanel.Children.Add(authServerStack);
+
+            // 添加用户名/账户标签和输入框
+            var usernameStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var usernameLabel = new TextBlock
+            {
+                Text = "邮箱", // 默认显示邮箱
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var usernameTextBox = new TextBox
+            {
+                PlaceholderText = "输入邮箱",
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            usernameStack.Children.Add(usernameLabel);
+            usernameStack.Children.Add(usernameTextBox);
+            stackPanel.Children.Add(usernameStack);
+
+            // 添加密码标签和输入框
+            var passwordStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var passwordLabel = new TextBlock
+            {
+                Text = "ProfilePage_ExternalLoginDialog_PasswordLabel".GetLocalized(),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var passwordBox = new PasswordBox
+            {
+                PlaceholderText = "输入密码",
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            passwordStack.Children.Add(passwordLabel);
+            passwordStack.Children.Add(passwordBox);
+            stackPanel.Children.Add(passwordStack);
+            
+            // 为认证服务器输入框添加TextChanged事件，检测服务器支持的登录方式
+            bool isCheckingMetadata = false;
+            authServerTextBox.TextChanged += async (sender, e) =>
+            {
+                if (isCheckingMetadata) return;
+                
+                string authServer = authServerTextBox.Text.Trim();
+                if (string.IsNullOrWhiteSpace(authServer)) return;
+                
+                try
+                {
+                    // 仅当输入的是有效的URL格式时才检测
+                    if (Uri.TryCreate(authServer, UriKind.Absolute, out _) || authServer.Contains("."))
+                    {
+                        isCheckingMetadata = true;
+                        
+                        // 获取服务器元数据
+                        var metadata = await GetYggdrasilMetadataAsync(authServer);
+                        if (metadata != null && metadata.meta != null)
+                        {
+                            // 根据服务器支持的登录方式调整标签
+                            if (metadata.meta.feature_no_email_login)
+                            {
+                                // 支持非邮箱登录，显示"账户"
+                                usernameLabel.Text = "账户";
+                                usernameTextBox.PlaceholderText = "输入邮箱/用户名";
+                            }
+                            else
+                            {
+                                // 仅支持邮箱登录，显示"邮箱"
+                                usernameLabel.Text = "邮箱";
+                                usernameTextBox.PlaceholderText = "输入邮箱";
+                            }
+                        }
+                        else
+                        {
+                            // 无法获取元数据，默认显示"用户名"
+                            usernameLabel.Text = "ProfilePage_ExternalLoginDialog_UsernameLabel".GetLocalized();
+                            usernameTextBox.PlaceholderText = "输入用户名";
+                        }
+                    }
+                }
+                finally
+                {
+                    isCheckingMetadata = false;
+                }
+            };
+
+            // 创建ContentDialog
+            var dialog = new ContentDialog
+            {
+                Title = "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
+                Content = stackPanel,
+                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            // 显示对话框并获取结果
+            var result = await dialog.ShowAsync();
+
+            // 根据结果执行操作
+            if (result == ContentDialogResult.Primary)
+            {
+                // 使用用户输入的信息进行外置登录
+                string authServer = authServerTextBox.Text.Trim();
+                string username = usernameTextBox.Text.Trim();
+                string password = passwordBox.Password;
+
+                if (!string.IsNullOrWhiteSpace(authServer) && !string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+                {
+                    // 执行外置登录
+                    await PerformExternalLoginAsync(authServer, username, password);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 执行外置登录
+        /// </summary>
+        private async Task PerformExternalLoginAsync(string authServer, string username, string password)
+        {
+            try
+            {
+                Debug.WriteLine($"[角色Page] 开始执行外置登录，认证服务器: {authServer}, 用户名: {username}");
+                
+                // 设置登录状态
+                ViewModel.IsLoggingIn = true;
+                ViewModel.LoginStatus = "正在登录...";
+
+                // 1. 解析和处理API地址
+                string resolvedAuthServer = await ResolveApiUrlAsync(authServer);
+                Debug.WriteLine($"[角色Page] 解析后的认证服务器地址: {resolvedAuthServer}");
+                
+                // 2. 发送POST请求到认证服务器获取令牌和用户列表
+                var authResponse = await AuthenticateWithYggdrasilAsync(resolvedAuthServer, username, password);
+                if (authResponse == null)
+                {
+                    Debug.WriteLine("[角色Page] 外置登录失败: 认证响应为空");
+                    await ShowLoginErrorDialogAsync("外置登录失败: 认证服务器响应异常");
+                    return;
+                }
+
+                // 2. 解析可用角色
+                var availableProfiles = new List<ExternalProfile>();
+                foreach (var profile in authResponse.availableProfiles)
+                {
+                    availableProfiles.Add(new ExternalProfile
+                    {
+                        Id = profile.id.ToString(),
+                        Name = profile.name.ToString(),
+                        AuthServer = authServer,
+                        AccessToken = authResponse.accessToken.ToString(),
+                        ClientToken = authResponse.clientToken.ToString()
+                    });
+                }
+
+                if (availableProfiles.Count == 0)
+                {
+                    Debug.WriteLine("[角色Page] 外置登录失败: 没有可用角色");
+                    await ShowLoginErrorDialogAsync("外置登录失败: 没有可用角色");
+                    return;
+                }
+
+                // 3. 如果只有一个角色，直接添加
+                if (availableProfiles.Count == 1)
+                {
+                    await AddExternalProfileAsync(availableProfiles[0]);
+                    return;
+                }
+
+                // 4. 多个角色，显示选择对话框
+                await ShowProfileSelectionDialogAsync(availableProfiles);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 外置登录异常: {ex.Message}");
+                await ShowLoginErrorDialogAsync($"外置登录异常: {ex.Message}");
+            }
+            finally
+            {
+                // 重置登录状态
+                ViewModel.IsLoggingIn = false;
+                ViewModel.LoginStatus = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 外置角色信息类
+        /// </summary>
+        private class ExternalProfile
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string AuthServer { get; set; }
+            public string AccessToken { get; set; }
+            public string ClientToken { get; set; }
+            public BitmapImage Avatar { get; set; }
+        }
+
+        /// <summary>
+        /// 发送Yggdrasil认证请求
+        /// </summary>
+        private async Task<dynamic> AuthenticateWithYggdrasilAsync(string authServer, string username, string password)
+        {
+            try
+            {
+                // 确保认证服务器URL以/结尾
+                if (!authServer.EndsWith("/"))
+                {
+                    authServer += "/";
+                }
+
+                // 构建认证URL
+                string authUrl = $"{authServer}authserver/authenticate";
+                Debug.WriteLine($"[角色Page] 发送认证请求到: {authUrl}");
+
+                // 构建请求体
+                var requestBody = new
+                {
+                    username = username,
+                    password = password,
+                    clientToken = Guid.NewGuid().ToString(),
+                    requestUser = false,
+                    agent = new
+                    {
+                        name = "Minecraft",
+                        version = 1
+                    }
+                };
+
+                // 发送POST请求
+                var httpClient = new HttpClient();
+                var jsonContent = new StringContent(
+                    Newtonsoft.Json.JsonConvert.SerializeObject(requestBody),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+
+                var response = await httpClient.PostAsync(authUrl, jsonContent);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[角色Page] 认证请求失败，状态码: {response.StatusCode}");
+                    return null;
+                }
+
+                // 解析响应
+                string responseJson = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[角色Page] 认证响应: {responseJson}");
+                return Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] Yggdrasil认证异常: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 显示角色选择对话框
+        /// </summary>
+        private async Task ShowProfileSelectionDialogAsync(List<ExternalProfile> profiles)
+        {
+            Debug.WriteLine($"[角色Page] 显示角色选择对话框，角色数量: {profiles.Count}");
+
+            // 预加载所有角色的头像
+            foreach (var profile in profiles)
+            {
+                profile.Avatar = await LoadExternalProfileAvatarAsync(profile);
+            }
+
+            // 创建对话框内容
+            var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
+
+            // 添加提示文本
+            var instructionText = new TextBlock
+            {
+                Text = "ProfilePage_ExternalLoginDialog_SelectProfileInstruction".GetLocalized(),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            };
+            stackPanel.Children.Add(instructionText);
+
+            // 创建ListView用于显示角色列表
+            var profileListView = new ListView
+            {
+                MaxHeight = 300,
+                SelectionMode = ListViewSelectionMode.Single
+            };
+
+            // 为每个角色创建ListViewItem
+            foreach (var profile in profiles)
+            {
+                var listViewItem = new ListViewItem();
+                
+                // 创建item内容
+                var itemStackPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Padding = new Thickness(8) };
+                
+                // 头像Border
+                var avatarBorder = new Border
+                {
+                    Width = 48,
+                    Height = 48,
+                    CornerRadius = new CornerRadius(24),
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                
+                // 头像Image
+                var avatarImage = new Image
+                {
+                    Width = 48,
+                    Height = 48,
+                    Stretch = Stretch.Fill,
+                    Source = profile.Avatar
+                };
+                avatarBorder.Child = avatarImage;
+                itemStackPanel.Children.Add(avatarBorder);
+                
+                // 文本StackPanel
+                var textStackPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                
+                // 名称TextBlock
+                var nameTextBlock = new TextBlock
+                {
+                    FontSize = 16,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Text = profile.Name
+                };
+                textStackPanel.Children.Add(nameTextBlock);
+                
+                // UUID TextBlock
+                var uuidTextBlock = new TextBlock
+                {
+                    FontSize = 12,
+                    Opacity = 0.6,
+                    Text = profile.Id
+                };
+                textStackPanel.Children.Add(uuidTextBlock);
+                
+                itemStackPanel.Children.Add(textStackPanel);
+                
+                listViewItem.Content = itemStackPanel;
+                listViewItem.Tag = profile;
+                profileListView.Items.Add(listViewItem);
+            }
+
+            stackPanel.Children.Add(profileListView);
+
+            // 创建对话框
+            var dialog = new ContentDialog
+            {
+                Title = "ProfilePage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
+                Content = stackPanel,
+                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            // 显示对话框并获取结果
+            var result = await dialog.ShowAsync();
+
+            // 根据结果执行操作
+            if (result == ContentDialogResult.Primary && profileListView.SelectedItem is ListViewItem selectedItem && selectedItem.Tag is ExternalProfile selectedProfile)
+            {
+                // 添加选中的角色
+                await AddExternalProfileAsync(selectedProfile);
+            }
+        }
+
+        /// <summary>
+        /// 加载外置角色头像
+        /// </summary>
+        private async Task<BitmapImage> LoadExternalProfileAvatarAsync(ExternalProfile profile)
+        {
+            try
+            {
+                Debug.WriteLine($"[角色Page] 加载外置角色头像，角色ID: {profile.Id}，认证服务器: {profile.AuthServer}");
+                
+                // 外置登录角色，使用用户提供的认证服务器
+                string authServer = profile.AuthServer;
+                // 确保认证服务器URL以/结尾
+                if (!authServer.EndsWith("/"))
+                {
+                    authServer += "/";
+                }
+                // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
+                var sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
+                Debug.WriteLine($"[角色Page] 构建的外置登录会话服务器URL: {sessionServerUri}");
+                
+                return await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 加载外置角色头像异常: {ex.Message}");
+                // 返回默认头像
+                return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+            }
+        }
+
+        /// <summary>
+        /// 添加外置角色到角色列表
+        /// </summary>
+        private async Task AddExternalProfileAsync(ExternalProfile externalProfile)
+        {
+            try
+            {
+                Debug.WriteLine($"[角色Page] 添加外置角色，名称: {externalProfile.Name}, ID: {externalProfile.Id}");
+                
+                // 解析和处理API地址，确保保存的是完整的API地址
+                string resolvedAuthServer = await ResolveApiUrlAsync(externalProfile.AuthServer);
+                Debug.WriteLine($"[角色Page] 保存的认证服务器地址: {resolvedAuthServer}");
+                
+                // 创建外置角色
+                var externalMinecraftProfile = new ViewModels.MinecraftProfile
+                {
+                    Id = externalProfile.Id,
+                    Name = externalProfile.Name,
+                    AccessToken = externalProfile.AccessToken,
+                    ClientToken = externalProfile.ClientToken,
+                    TokenType = "external",
+                    ExpiresIn = int.MaxValue, // 外置登录令牌通常长期有效
+                    IssueInstant = DateTime.Now,
+                    NotAfter = DateTime.MaxValue,
+                    Roles = new string[] { "external" },
+                    IsOffline = false, // 外置登录不是离线登录
+                    AuthServer = resolvedAuthServer // 保存解析后的认证服务器地址
+                };
+
+                // 添加到角色列表
+                ViewModel.Profiles.Add(externalMinecraftProfile);
+                ViewModel.ActiveProfile = externalMinecraftProfile;
+                ViewModel.SaveProfiles();
+
+                // 重置登录状态
+                ViewModel.IsLoggingIn = false;
+                ViewModel.LoginStatus = "登录成功";
+                
+                Debug.WriteLine($"[角色Page] 成功添加外置角色: {externalProfile.Name}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 添加外置角色异常: {ex.Message}");
+                await ShowLoginErrorDialogAsync($"添加角色失败: {ex.Message}");
+            }
+            finally
+            {
+                // 重置登录状态
+                ViewModel.IsLoggingIn = false;
+                ViewModel.LoginStatus = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 显示登录错误对话框
+        /// </summary>
+        private async Task ShowLoginErrorDialogAsync(string errorMessage)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "登录失败",
+                Content = errorMessage,
+                CloseButtonText = "确定",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+
+            // 重置登录状态
+            ViewModel.IsLoggingIn = false;
+            ViewModel.LoginStatus = string.Empty;
+        }
+
+        /// <summary>
         /// 显示离线登录对话框
         /// </summary>
         public async void ShowOfflineLoginDialog()
@@ -975,5 +1793,216 @@ namespace XMCL2025.Views
                 ViewModel.ConfirmOfflineLoginCommand.Execute(null);
             }
         }
+        
+        #region 拖拽功能实现
+        
+        /// <summary>
+        /// 拖拽进入页面时的处理
+        /// </summary>
+        private void CharacterPage_DragOver(object sender, DragEventArgs e)
+        {
+            // 允许复制操作
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            // 显示复制光标
+            e.DragUIOverride.Caption = "添加验证服务器";
+            e.DragUIOverride.IsCaptionVisible = true;
+            e.DragUIOverride.IsContentVisible = true;
+            e.DragUIOverride.IsGlyphVisible = true;
+        }
+        
+        /// <summary>
+        /// 拖拽释放时的处理
+        /// </summary>
+        private async void CharacterPage_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                // 检查是否包含文本数据
+                if (e.DataView.Contains(StandardDataFormats.Text))
+                {
+                    string draggedText = await e.DataView.GetTextAsync();
+                    Debug.WriteLine($"[角色Page] 接收到拖拽文本: {draggedText}");
+                    
+                    // 解析拖拽的URI格式：authlib-injector:yggdrasil-server:{API地址}
+                    if (draggedText.StartsWith("authlib-injector:yggdrasil-server:"))
+                    {
+                        // 提取API地址
+                        string encodedApiUrl = draggedText.Substring("authlib-injector:yggdrasil-server:".Length);
+                        string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
+                        Debug.WriteLine($"[角色Page] 解析出API地址: {apiUrl}");
+                        
+                        // 显示确认对话框
+                        var dialog = new ContentDialog
+                        {
+                            Title = "添加验证服务器",
+                            Content = $"是否要添加以下验证服务器？\n{apiUrl}",
+                            PrimaryButtonText = "确定",
+                            SecondaryButtonText = "取消",
+                            DefaultButton = ContentDialogButton.Primary,
+                            XamlRoot = this.Content.XamlRoot
+                        };
+                        
+                        var result = await dialog.ShowAsync();
+                        if (result == ContentDialogResult.Primary)
+                        {
+                            // 调用外置登录对话框，并预填充认证服务器地址
+                            ShowExternalLoginDialogWithPreFilledServer(apiUrl);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 处理拖拽时发生异常: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 显示预填充认证服务器地址的外置登录对话框
+        /// </summary>
+        private async void ShowExternalLoginDialogWithPreFilledServer(string authServerUrl)
+        {
+            // 创建一个简单的StackPanel作为对话框内容
+            var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
+
+            // 添加认证服务器标签和输入框
+            var authServerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var authServerLabel = new TextBlock
+            {
+                Text = "ProfilePage_ExternalLoginDialog_AuthServerLabel".GetLocalized(),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var authServerTextBox = new TextBox
+            {
+                Text = authServerUrl, // 预填充认证服务器地址
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            authServerStack.Children.Add(authServerLabel);
+            authServerStack.Children.Add(authServerTextBox);
+            stackPanel.Children.Add(authServerStack);
+
+            // 添加用户名/账户标签和输入框
+            var usernameStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var usernameLabel = new TextBlock
+            {
+                Text = "邮箱", // 默认显示邮箱
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var usernameTextBox = new TextBox
+            {
+                PlaceholderText = "输入邮箱",
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            usernameStack.Children.Add(usernameLabel);
+            usernameStack.Children.Add(usernameTextBox);
+            stackPanel.Children.Add(usernameStack);
+
+            // 添加密码标签和输入框
+            var passwordStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var passwordLabel = new TextBlock
+            {
+                Text = "ProfilePage_ExternalLoginDialog_PasswordLabel".GetLocalized(),
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Width = 80,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var passwordBox = new PasswordBox
+            {
+                PlaceholderText = "输入密码",
+                Width = 300,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            passwordStack.Children.Add(passwordLabel);
+            passwordStack.Children.Add(passwordBox);
+            stackPanel.Children.Add(passwordStack);
+            
+            // 为认证服务器输入框添加TextChanged事件，检测服务器支持的登录方式
+            bool isCheckingMetadata = false;
+            authServerTextBox.TextChanged += async (sender, e) =>
+            {
+                if (isCheckingMetadata) return;
+                
+                string authServer = authServerTextBox.Text.Trim();
+                if (string.IsNullOrWhiteSpace(authServer)) return;
+                
+                try
+                {
+                    // 仅当输入的是有效的URL格式时才检测
+                    if (Uri.TryCreate(authServer, UriKind.Absolute, out _) || authServer.Contains("."))
+                    {
+                        isCheckingMetadata = true;
+                        
+                        // 获取服务器元数据
+                        var metadata = await GetYggdrasilMetadataAsync(authServer);
+                        if (metadata != null && metadata.meta != null)
+                        {
+                            // 根据服务器支持的登录方式调整标签
+                            if (metadata.meta.feature_no_email_login)
+                            {
+                                // 支持非邮箱登录，显示"账户"
+                                usernameLabel.Text = "账户";
+                                usernameTextBox.PlaceholderText = "输入账户";
+                            }
+                            else
+                            {
+                                // 仅支持邮箱登录，显示"邮箱"
+                                usernameLabel.Text = "邮箱";
+                                usernameTextBox.PlaceholderText = "输入邮箱";
+                            }
+                        }
+                        else
+                        {
+                            // 无法获取元数据，默认显示"邮箱"
+                            usernameLabel.Text = "邮箱";
+                            usernameTextBox.PlaceholderText = "输入邮箱";
+                        }
+                    }
+                }
+                finally
+                {
+                    isCheckingMetadata = false;
+                }
+            };
+
+            // 创建ContentDialog
+            var dialog = new ContentDialog
+            {
+                Title = "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
+                Content = stackPanel,
+                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            // 显示对话框并获取结果
+            var result = await dialog.ShowAsync();
+
+            // 根据结果执行操作
+            if (result == ContentDialogResult.Primary)
+            {
+                // 使用用户输入的信息进行外置登录
+                string authServer = authServerTextBox.Text.Trim();
+                string username = usernameTextBox.Text.Trim();
+                string password = passwordBox.Password;
+
+                if (!string.IsNullOrWhiteSpace(authServer) && !string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+                {
+                    // 执行外置登录
+                    await PerformExternalLoginAsync(authServer, username, password);
+                }
+            }
+        }
+        
+        #endregion
     }
 }

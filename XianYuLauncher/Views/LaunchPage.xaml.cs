@@ -237,9 +237,26 @@ public sealed partial class LaunchPage : Page
                 }
             }
             
-            // 从Mojang API获取头像
-            var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
-            var bitmap = await GetAvatarFromMojangApiAsync(mojangUri);
+            Uri sessionServerUri;
+            if (ViewModel.SelectedProfile.TokenType == "external" && !string.IsNullOrEmpty(ViewModel.SelectedProfile.AuthServer))
+            {
+                // 外置登录角色，使用用户提供的认证服务器
+                string authServer = ViewModel.SelectedProfile.AuthServer;
+                // 确保认证服务器URL以/结尾
+                if (!authServer.EndsWith("/"))
+                {
+                    authServer += "/";
+                }
+                // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
+                sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+            }
+            else
+            {
+                // 微软登录角色，使用Mojang API
+                sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+            }
+            
+            var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri);
             if (bitmap != null)
             {
                 ProfileAvatar.Source = bitmap;
@@ -263,9 +280,26 @@ public sealed partial class LaunchPage : Page
     {
         try
         {
-            // 从Mojang API获取最新头像
-            var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
-            var bitmap = await GetAvatarFromMojangApiAsync(mojangUri);
+            Uri sessionServerUri;
+            if (ViewModel.SelectedProfile.TokenType == "external" && !string.IsNullOrEmpty(ViewModel.SelectedProfile.AuthServer))
+            {
+                // 外置登录角色，使用用户提供的认证服务器
+                string authServer = ViewModel.SelectedProfile.AuthServer;
+                // 确保认证服务器URL以/结尾
+                if (!authServer.EndsWith("/"))
+                {
+                    authServer += "/";
+                }
+                // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
+                sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+            }
+            else
+            {
+                // 微软登录角色，使用Mojang API
+                sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+            }
+            
+            var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri);
             if (bitmap != null)
             {
                 // 刷新成功，更新UI
@@ -320,7 +354,8 @@ public sealed partial class LaunchPage : Page
             var response = await _httpClient.GetAsync(mojangUri);
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Mojang API请求失败，状态码: {response.StatusCode}");
+                // API请求失败，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
             }
 
             // 2. 解析JSON响应
@@ -328,7 +363,8 @@ public sealed partial class LaunchPage : Page
             dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
             if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
             {
-                throw new Exception("Mojang API返回数据格式错误");
+                // API返回空数据，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
             }
 
             // 3. 提取base64编码的textures数据
@@ -344,7 +380,8 @@ public sealed partial class LaunchPage : Page
 
             if (string.IsNullOrEmpty(texturesBase64))
             {
-                throw new Exception("未找到textures属性");
+                // 未找到textures属性，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
             }
 
             // 4. 解码base64数据
@@ -361,35 +398,34 @@ public sealed partial class LaunchPage : Page
 
             if (string.IsNullOrEmpty(skinUrl))
             {
-                throw new Exception("未找到皮肤URL");
+                // 未找到皮肤URL，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
             }
 
             // 6. 下载皮肤纹理
             var skinResponse = await _httpClient.GetAsync(skinUrl);
             if (!skinResponse.IsSuccessStatusCode)
             {
-                throw new Exception($"下载皮肤失败，状态码: {skinResponse.StatusCode}");
+                // 下载皮肤失败，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
             }
 
             // 7. 使用Win2D裁剪头像区域
             // 提取UUID从mojangUri
             string uuid = Path.GetFileName(mojangUri.ToString());
             var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl, uuid);
+            if (avatarBitmap == null)
+            {
+                // 裁剪失败，使用默认史蒂夫头像
+                return await ProcessSteveAvatarAsync();
+            }
             return avatarBitmap;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // 显示错误信息
-            var errorDialog = new ContentDialog
-            {
-                Title = "获取头像失败",
-                Content = $"从Mojang API获取头像失败: {ex.Message}",
-                PrimaryButtonText = "确定",
-                XamlRoot = this.Content.XamlRoot
-            };
-            await errorDialog.ShowAsync();
+            // 任何异常都返回默认史蒂夫头像
+            return await ProcessSteveAvatarAsync();
         }
-        return null;
     }
 
     /// <summary>

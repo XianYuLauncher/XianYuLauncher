@@ -1070,6 +1070,144 @@
   <data name="VersionListPage_InstallDateText.Text" xml:space="preserve">
     <value>安装日期: </value>
   </data>
+  <data name="VersionListPage_ImportModpackButton.Content" xml:space="preserve">
+    <value>导入整合包</value>
+  </data>
+  <data name="VersionListPage_ModpackInstallDialog.Title" xml:space="preserve">
+    <value>整合包安装中</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog.CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_InstructionText.Text" xml:space="preserve">
+    <value>请选择要导出的数据：</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ResourceAllCheckBox.Content" xml:space="preserve">
+    <value>版本目录资源</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackNameLabel.Text" xml:space="preserve">
+    <value>整合包名称</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>请输入整合包名称</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackVersionLabel.Text" xml:space="preserve">
+    <value>整合包版本</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ModpackVersionTextBox.PlaceholderText" xml:space="preserve">
+    <value>请输入整合包版本</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_OfflineModeCheckBox.Content" xml:space="preserve">
+    <value>非联网模式</value>
+  </data>
+  <data name="VersionListPage_ExportModpackDialog_ServerOnlyCheckBox.Content" xml:space="preserve">
+    <value>导出服务端整合包</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog.Title" xml:space="preserve">
+    <value>正在导出整合包</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_SecondaryButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_StatusText.Text" xml:space="preserve">
+    <value>正在获取Modrinth资源...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_ProgressText.Text" xml:space="preserve">
+    <value>0.0%</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_OptionsText" xml:space="preserve">
+    <value>玩家游戏设置</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Mods" xml:space="preserve">
+    <value>模组</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Shaderpacks" xml:space="preserve">
+    <value>光影</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Resourcepacks" xml:space="preserve">
+    <value>资源包</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Config" xml:space="preserve">
+    <value>配置文件</value>
+  </data>
+  <data name="VersionListPage_ResourceItem_Saves" xml:space="preserve">
+    <value>存档</value>
+  </data>
+  <data name="VersionManagerPage_UpdateModsMenuItem.Text" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsMenuItem.Text" xml:space="preserve">
+    <value>转移至其它版本</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.Title" xml:space="preserve">
+    <value>选择目标版本</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_InstructionText.Text" xml:space="preserve">
+    <value>请选择要转移到的Minecraft版本：</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.Title" xml:space="preserve">
+    <value>Mod转移结果</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
+    <value>以下是Mod转移结果：</value>
+  </data>
+  <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="VersionManagerPage_UnselectAllText" xml:space="preserve">
+    <value>取消全选</value>
+  </data>
+  <data name="VersionManagerPage_UpdatingModsText" xml:space="preserve">
+    <value>正在更新Mod</value>
+  </data>
+  <data name="VersionManagerPage_MigratingModsText" xml:space="preserve">
+    <value>正在迁移Mod</value>
+  </data>
+  <data name="VersionManagerPage_PreparingModTransferText" xml:space="preserve">
+    <value>正在准备转移Mod...</value>
+  </data>
+  <data name="VersionManagerPage_UpdatedAndMovedText" xml:space="preserve">
+    <value>已更新并转移</value>
+  </data>
+  <data name="VersionManagerPage_VersionsUpdatedText" xml:space="preserve">
+    <value>个版本已更新</value>
+  </data>
+  <data name="VersionManagerPage_VersionsUpToDateText" xml:space="preserve">
+    <value>个版本已为最新版</value>
+  </data>
+  <data name="VersionManagerPage_ModMovedSuccessText" xml:space="preserve">
+    <value>成功转移</value>
+  </data>
+  <data name="VersionManagerPage_ModCopiedText" xml:space="preserve">
+    <value>直接复制</value>
+  </data>
+  <data name="VersionManagerPage_ModIncompatibleText" xml:space="preserve">
+    <value>不兼容此版本/加载器,被移除</value>
+  </data>
+  <data name="VersionManagerPage_ModMoveFailedText" xml:space="preserve">
+    <value>转移失败</value>
+  </data>
+  <data name="VersionManagerPage_UnknownStatusText" xml:space="preserve">
+    <value>未知状态</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog.Title" xml:space="preserve">
+    <value>更新完成</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
   <!-- VersionManagerPage 本地化 -->
   <data name="VersionManagerPage_DragDropTip.Text" xml:space="preserve">
     <value>释放以添加文件</value>
@@ -1280,6 +1418,36 @@
   </data>
   <data name="ProfilePage_MicrosoftLoginMenuItem.Text" xml:space="preserve">
     <value>微软登录</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginMenuItem.Text" xml:space="preserve">
+    <value>外置登录</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_Title" xml:space="preserve">
+    <value>外置登录</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_AuthServerLabel" xml:space="preserve">
+    <value>认证服务器</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_UsernameLabel" xml:space="preserve">
+    <value>用户名</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_CancelButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
+    <value>选择角色</value>
+  </data>
+  <data name="ProfilePage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
+    <value>请选择要添加的角色：</value>
+  </data>
+  <data name="ProfilePage_ProfileType_External" xml:space="preserve">
+    <value>外置登录</value>
   </data>
   <data name="ProfilePage_UuidLabel.Text" xml:space="preserve">
     <value>UUID: </value>

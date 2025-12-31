@@ -76,7 +76,6 @@
         <ContentDialog
             x:Name="MoveModsDialog"
             x:Uid="VersionManagerPage_MoveModsDialog"
-            Title="选择目标版本"
             PrimaryButtonText="确认"
             CloseButtonText="取消"
             DefaultButton="Primary"
@@ -106,7 +105,6 @@
         <ContentDialog
             x:Name="MoveResultDialog"
             x:Uid="VersionManagerPage_MoveResultDialog"
-            Title="Mod转移结果"
             PrimaryButtonText="确定"
             DefaultButton="Primary"
             PrimaryButtonClick="MoveResultDialog_PrimaryButtonClick">
@@ -420,12 +418,12 @@
                                                             <SymbolIcon Symbol="AllApps" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
-                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.UpdateModsCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.UpdateModsCommand, ElementName=ModListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
-                                                    <MenuFlyoutItem Text="转移至其它版本" Command="{Binding DataContext.MoveModsToOtherVersionCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.MoveModsToOtherVersionCommand, ElementName=ModListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -648,8 +646,8 @@
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="2"
-                                                Content="删除" 
+                                                Grid.Column="2" 
+                                                x:Uid="VersionManagerPage_DeleteButton"
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteShaderCommand, ElementName=ShaderListView}" 
                                                 CommandParameter="{Binding}" 
@@ -1253,6 +1251,7 @@
         <ContentDialog 
             x:Name="ResultDialog"
             Grid.RowSpan="3"
+            x:Uid="VersionManagerPage_UpdateResultDialog"
             Title="更新完成"
             PrimaryButtonText="确定"
             IsPrimaryButtonEnabled="True"

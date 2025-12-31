@@ -23,6 +23,7 @@ namespace XMCL2025.ViewModels
         public string Name { get; set; }
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }
+        public string ClientToken { get; set; }
         public string TokenType { get; set; }
         public int ExpiresIn { get; set; }
         public DateTime IssueInstant { get; set; }
@@ -30,6 +31,7 @@ namespace XMCL2025.ViewModels
         public string[] Roles { get; set; }
         public bool IsOffline { get; set; }
         public bool IsActive { get; set; }
+        public string AuthServer { get; set; }
     }
 
     /// <summary>

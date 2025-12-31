@@ -14,6 +14,7 @@ using XMCL2025.Contracts.ViewModels;
 using XMCL2025.Core.Contracts.Services;
 using XMCL2025.Core.Services;
 using XMCL2025.Core.Models;
+using XMCL2025.Helpers;
 using XMCL2025.ViewModels;
 
 namespace XMCL2025.ViewModels;
@@ -435,7 +436,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 全选菜单显示文本
         /// </summary>
-        public string SelectAllMenuItemText => IsSelectAll ? "取消全选" : "全选";
+        public string SelectAllMenuItemText => IsSelectAll ? "VersionManagerPage_UnselectAllText".GetLocalized() : "VersionManagerPage_SelectAllText".GetLocalized();
 
     /// <summary>
     /// 光影列表
@@ -572,7 +573,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 下载进度弹窗标题
     /// </summary>
     [ObservableProperty]
-    private string _downloadProgressDialogTitle = "正在更新Mod";
+    private string _downloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
     
     /// <summary>
     /// 更新结果
@@ -1358,10 +1359,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 // 设置下载状态
                 IsDownloading = true;
-                DownloadProgressDialogTitle = "正在迁移Mod";
+                DownloadProgressDialogTitle = "VersionManagerPage_MigratingModsText".GetLocalized();
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
-                StatusMessage = "正在准备转移Mod...";
+                StatusMessage = "VersionManagerPage_PreparingModTransferText".GetLocalized();
                 
                 // 记录转移结果
                 var moveResults = new List<MoveModResult>();
@@ -1649,17 +1650,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     switch (Status)
                     {
                         case MoveModStatus.Success:
-                            return "成功转移";
+                            return "VersionManagerPage_ModMovedSuccessText".GetLocalized();
                         case MoveModStatus.Updated:
-                            return "已更新并转移";
+                            return "VersionManagerPage_UpdatedAndMovedText".GetLocalized();
                         case MoveModStatus.Copied:
-                            return "直接复制";
+                            return "VersionManagerPage_ModCopiedText".GetLocalized();
                         case MoveModStatus.Incompatible:
-                            return "不兼容此版本/加载器,被移除";
+                            return "VersionManagerPage_ModIncompatibleText".GetLocalized();
                         case MoveModStatus.Failed:
-                            return "转移失败";
+                            return "VersionManagerPage_ModMoveFailedText".GetLocalized();
                         default:
-                            return "未知状态";
+                            return "VersionManagerPage_UnknownStatusText".GetLocalized();
                     }
                 }
             }
@@ -1751,7 +1752,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 // 设置下载状态
                 IsDownloading = true;
-                DownloadProgressDialogTitle = "正在更新Mod";
+                DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
                 
@@ -1946,10 +1947,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             _ = LoadAllIconsAsync();
                             
                             // 显示结果
-                            StatusMessage = $"{updatedCount}个版本已更新，{upToDateCount}个版本已为最新版";
+                            StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
                             
                             // 保存结果到属性，用于结果弹窗
-                            UpdateResults = $"{updatedCount}个版本已更新，{upToDateCount}个版本已为最新版";
+                            UpdateResults = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
                             
                             // 显示结果弹窗
                             IsResultDialogVisible = true;

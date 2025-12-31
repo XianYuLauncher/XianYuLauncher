@@ -54,10 +54,10 @@ namespace XMCL2025.Helpers
         /// 生成和Minecraft官方完全一致的离线UUID字符串
         /// </summary>
         /// <param name="username">玩家用户名</param>
-        /// <returns>符合官方标准的离线UUID字符串</returns>
+        /// <returns>符合官方标准的离线UUID字符串（不带连字符）</returns>
         public static string GenerateMinecraftOfflineUUIDString(string username)
         {
-            return GenerateMinecraftOfflineUUID(username).ToString();
+            return GenerateMinecraftOfflineUUID(username).ToString("N");
         }
     }
 }

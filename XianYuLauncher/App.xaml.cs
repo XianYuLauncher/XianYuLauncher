@@ -123,6 +123,10 @@ public partial class App : Application
             
             // Optifine Service
             services.AddSingleton<OptifineService>();
+            
+            // AuthlibInjector Service
+            services.AddHttpClient<AuthlibInjectorService>();
+            services.AddSingleton<AuthlibInjectorService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();

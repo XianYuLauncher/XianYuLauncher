@@ -519,6 +519,7 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly MicrosoftAuthService _microsoftAuthService;
     private readonly INavigationService _navigationService;
     private readonly ILogger<LaunchViewModel> _logger;
+    private readonly AuthlibInjectorService _authlibInjectorService;
     
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
@@ -647,6 +648,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _microsoftAuthService = App.GetService<MicrosoftAuthService>();
         _navigationService = App.GetService<INavigationService>();
         _logger = App.GetService<ILogger<LaunchViewModel>>();
+        _authlibInjectorService = App.GetService<AuthlibInjectorService>();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -906,9 +908,22 @@ public partial class LaunchViewModel : ObservableRecipient
                 // 如果剩余有效期小于1小时，刷新令牌
                 if (timeUntilExpiry < TimeSpan.FromHours(1))
                 {
+                    // 根据角色类型显示不同的续签消息
+                    string renewingText, renewedText;
+                    if (SelectedProfile.TokenType == "external")
+                    {
+                        renewingText = "正在进行外置登录续签";
+                        renewedText = "外置登录续签成功";
+                    }
+                    else
+                    {
+                        renewingText = "LaunchPage_MicrosoftAccountRenewingText".GetLocalized();
+                        renewedText = "LaunchPage_MicrosoftAccountRenewedText".GetLocalized();
+                    }
+                    
                     // 显示InfoBar消息
                     IsLaunchSuccessInfoBarOpen = true;
-                    LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_MicrosoftAccountRenewingText".GetLocalized()}";
+                    LaunchSuccessMessage = $"{SelectedVersion} {renewingText}";
                     
                     // 调用令牌刷新方法
                     var characterManagementViewModel = App.GetService<CharacterManagementViewModel>();
@@ -921,7 +936,7 @@ public partial class LaunchViewModel : ObservableRecipient
                     SelectedProfile = characterManagementViewModel.CurrentProfile;
                     
                     // 更新InfoBar消息
-                    LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_MicrosoftAccountRenewedText".GetLocalized()}";
+                    LaunchSuccessMessage = $"{SelectedVersion} {renewedText}";
                 }
             }
             catch (HttpRequestException ex)
@@ -1702,6 +1717,20 @@ public partial class LaunchViewModel : ObservableRecipient
                 args.Add("-Dminecraft.launcher.version=1.0");
             }
             
+            // 检查是否为外置登录角色
+            bool isExternalLogin = SelectedProfile != null && !string.IsNullOrEmpty(SelectedProfile.AuthServer) && SelectedProfile.TokenType == "external";
+            if (isExternalLogin)
+            {
+                Debug.WriteLine("[LaunchViewModel] 检测到外置登录角色，开始添加authlib-injector相关参数");
+                
+                // 添加authlib-injector相关的JVM参数
+                var externalJvmArgs = await _authlibInjectorService.GetJvmArgumentsAsync(SelectedProfile.AuthServer);
+                args.InsertRange(0, externalJvmArgs); // 插入到JVM参数列表开头
+            }
+            
+            // 确定userType，提升作用域以便后续使用
+            string userType = isExternalLogin ? "mojang" : (SelectedProfile.IsOffline ? "offline" : "msa");
+            
             // 添加主类
             args.Add(versionInfo.MainClass);
             
@@ -1735,9 +1764,9 @@ public partial class LaunchViewModel : ObservableRecipient
             args.Add($"--accessToken");
             args.Add(string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken);
             
-            // 添加userType参数，离线玩家使用"offline"，微软登录使用"msa"
+            // 添加userType参数，离线玩家使用"offline"，微软登录使用"msa"，外置登录使用"mojang"
             args.Add($"--userType");
-            args.Add(SelectedProfile.IsOffline ? "offline" : "msa");
+            args.Add(userType);
             
             // 添加versionType参数，标识启动器类型
             args.Add($"--versionType");
@@ -1772,7 +1801,9 @@ public partial class LaunchViewModel : ObservableRecipient
                     .Replace("${assets_index_name}", versionInfo.AssetIndex?.Id ?? SelectedVersion)
                     .Replace("${auth_uuid}", SelectedProfile.Id)
                     .Replace("${auth_access_token}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
-                    .Replace("${user_type}", SelectedProfile.IsOffline ? "offline" : "msa")
+                    .Replace("${auth_session}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
+                    .Replace("${user_type}", userType)
+                    .Replace("${user_properties}", "{}")
                     .Replace("${version_type}", "XianYuLauncher")
                     .Replace("${auth_xuid}", "") // Xuid属性不存在，使用默认空值
                     .Replace("${clientid}", "0"); // ClientId属性不存在，使用默认值0
