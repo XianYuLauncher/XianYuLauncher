@@ -1,40 +1,46 @@
+using System;
+using System.Globalization;
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
-
-/// <summary>
-/// 将布尔值取反的转换器
-/// </summary>
-public class BoolNegationConverter : IValueConverter
+namespace XMCL2025.Helpers
 {
     /// <summary>
-    /// 转换方法
+    /// 布尔值取反转换器
     /// </summary>
-    /// <param name="value">布尔值</param>
-    /// <param name="targetType">目标类型</param>
-    /// <param name="parameter">参数</param>
-    /// <param name="language">语言</param>
-    /// <returns>取反后的布尔值</returns>
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public class BoolNegationConverter : IValueConverter
     {
-        if (value is bool boolValue)
+        /// <summary>
+        /// 将布尔值转换为相反的值
+        /// </summary>
+        /// <param name="value">要转换的布尔值</param>
+        /// <param name="targetType">目标类型</param>
+        /// <param name="parameter">转换参数</param>
+        /// <param name="language">语言信息</param>
+        /// <returns>转换后的布尔值</returns>
+        public object Convert(object value, Type targetType, object parameter, string language)
         {
-            return !boolValue;
+            if (value is bool boolValue)
+            {
+                return !boolValue;
+            }
+            return value;
         }
-        
-        return false;
-    }
-    
-    /// <summary>
-    /// 反向转换方法
-    /// </summary>
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
-    {
-        if (value is bool boolValue)
+
+        /// <summary>
+        /// 将布尔值转换回原始值
+        /// </summary>
+        /// <param name="value">要转换的布尔值</param>
+        /// <param name="targetType">目标类型</param>
+        /// <param name="parameter">转换参数</param>
+        /// <param name="language">语言信息</param>
+        /// <returns>转换后的布尔值</returns>
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
-            return !boolValue;
+            if (value is bool boolValue)
+            {
+                return !boolValue;
+            }
+            return value;
         }
-        
-        return false;
     }
 }

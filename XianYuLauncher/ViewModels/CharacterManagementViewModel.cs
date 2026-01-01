@@ -192,6 +192,12 @@ namespace XMCL2025.ViewModels
         private ImageSource? _currentSkinTexture;
         
         /// <summary>
+        /// 当前披风纹理
+        /// </summary>
+        [ObservableProperty]
+        private ImageSource? _currentCapeTexture;
+        
+        /// <summary>
         /// 是否启用披风选择
         /// </summary>
         public bool IsCapeSelectionEnabled => !CurrentProfile.IsOffline;
@@ -643,140 +649,325 @@ namespace XMCL2025.ViewModels
             {
                 try
                 {
-                    // 检查并刷新令牌
-                    if (CurrentProfile != null)
+                    // 根据不同的TokenType处理不同的登录方式
+                    if (CurrentProfile.TokenType == "external")
                     {
-                        // 这里需要调用令牌刷新方法，但是角色管理ViewModel没有直接访问角色ViewModel的权限
-                        // 所以我们需要实现一个类似的令牌刷新逻辑
-                        // 注意：这里应该调用角色ViewModel的AutoRefreshTokenAsync方法，
-                        // 但由于架构限制，我们暂时直接实现令牌刷新检查
-                        
-                        // 计算Minecraft访问令牌的过期时间
-                    // 正确方式：令牌颁发时间 + expires_in秒
-                    DateTime minecraftTokenIssueTime = CurrentProfile.IssueInstant;
-                    DateTime minecraftTokenExpiryTime = minecraftTokenIssueTime.AddSeconds(CurrentProfile.ExpiresIn);
-                    
-                    // 检查令牌是否即将过期（30分钟内）
-                    var timeUntilExpiry = minecraftTokenExpiryTime - DateTime.UtcNow;
-                    if (timeUntilExpiry.TotalMinutes <= 30 && !string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
+                        // 外部登录账号：使用Yggdrasil API获取纹理
+                        await LoadExternalLoginTexturesAsync();
+                    }
+                    else
                     {
-                        // 令牌即将过期，需要刷新
-                        var authService = App.GetService<MicrosoftAuthService>();
-                        var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile.RefreshToken);
-                        if (refreshResult.Success)
+                        // 微软账号：使用Mojang API获取纹理
+                        // 检查并刷新令牌
+                        if (CurrentProfile != null)
                         {
-                            // 更新当前角色的令牌信息
-                            CurrentProfile.AccessToken = refreshResult.AccessToken;
-                            CurrentProfile.RefreshToken = refreshResult.RefreshToken;
-                            CurrentProfile.TokenType = refreshResult.TokenType;
-                            CurrentProfile.ExpiresIn = refreshResult.ExpiresIn;
-                            CurrentProfile.IssueInstant = DateTime.Parse(refreshResult.IssueInstant);
-                            CurrentProfile.NotAfter = DateTime.Parse(refreshResult.NotAfter);
+                            // 计算Minecraft访问令牌的过期时间
+                            DateTime minecraftTokenIssueTime = CurrentProfile.IssueInstant;
+                            DateTime minecraftTokenExpiryTime = minecraftTokenIssueTime.AddSeconds(CurrentProfile.ExpiresIn);
                             
-                            // 保存修改
-                            SaveProfiles();
-                        }
-                    }
-                    }
-                    
-                    // 准备API请求
-                    var apiUrl = "https://api.minecraftservices.com/minecraft/profile";
-                    var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
-                    
-                    // 添加Authorization请求头
-                    if (!string.IsNullOrWhiteSpace(CurrentProfile.AccessToken))
-                    {
-                        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentProfile.AccessToken);
-                    }
-                    
-                    // 发送请求
-                    var response = await _httpClient.SendAsync(request);
-                    
-                    // 读取响应内容
-                    var content = await response.Content.ReadAsStringAsync();
-                    
-                    // 检查响应状态
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var profile = JsonSerializer.Deserialize<ProfileResponse>(content);
-                        
-                        if (profile != null)
-                        {
-                            // 处理皮肤信息
-                            if (profile.Skins != null && profile.Skins.Count > 0)
+                            // 检查令牌是否即将过期（30分钟内）
+                            var timeUntilExpiry = minecraftTokenExpiryTime - DateTime.UtcNow;
+                            if (timeUntilExpiry.TotalMinutes <= 30 && !string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
                             {
-                                // 获取当前活跃的皮肤
-                                CurrentSkin = profile.Skins.Find(s => s.State == "ACTIVE") ?? profile.Skins.FirstOrDefault();
-                                
-                                // 如果有皮肤，设置皮肤纹理
-                                if (CurrentSkin != null)
+                                // 令牌即将过期，需要刷新
+                                var authService = App.GetService<MicrosoftAuthService>();
+                                var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile.RefreshToken);
+                                if (refreshResult.Success)
                                 {
-                                    try
-                                    {
-                                        // 使用WIN2D处理皮肤纹理，确保清晰显示
-                                        CurrentSkinTexture = await ProcessSkinTextureAsync(CurrentSkin.Url);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        CurrentSkinTexture = null;
-                                    }
+                                    // 更新当前角色的令牌信息
+                                    CurrentProfile.AccessToken = refreshResult.AccessToken;
+                                    CurrentProfile.RefreshToken = refreshResult.RefreshToken;
+                                    CurrentProfile.TokenType = refreshResult.TokenType;
+                                    CurrentProfile.ExpiresIn = refreshResult.ExpiresIn;
+                                    CurrentProfile.IssueInstant = DateTime.Parse(refreshResult.IssueInstant);
+                                    CurrentProfile.NotAfter = DateTime.Parse(refreshResult.NotAfter);
+                                    
+                                    // 保存修改
+                                    SaveProfiles();
                                 }
                             }
+                        }
+                        
+                        // 准备API请求
+                        var apiUrl = "https://api.minecraftservices.com/minecraft/profile";
+                        var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+                        
+                        // 添加Authorization请求头
+                        if (!string.IsNullOrWhiteSpace(CurrentProfile.AccessToken))
+                        {
+                            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentProfile.AccessToken);
+                        }
+                        
+                        // 发送请求
+                        var response = await _httpClient.SendAsync(request);
+                        
+                        // 读取响应内容
+                        var content = await response.Content.ReadAsStringAsync();
+                        
+                        // 检查响应状态
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var profile = JsonSerializer.Deserialize<ProfileResponse>(content);
                             
-                            // 处理披风信息
-                            if (profile.Capes != null && profile.Capes.Count > 0)
+                            if (profile != null)
                             {
-                                // 创建新的披风列表
-                                var newCapeList = new List<CapeInfo>();
-                                
-                                // 处理每个披风，生成图标
-                                foreach (var cape in profile.Capes)
+                                // 处理皮肤信息
+                                if (profile.Skins != null && profile.Skins.Count > 0)
                                 {
-                                    // 处理披风图标
-                                    cape.Icon = await ProcessCapeIconAsync(cape.Url);
-                                    newCapeList.Add(cape);
+                                    // 获取当前活跃的皮肤
+                                    CurrentSkin = profile.Skins.Find(s => s.State == "ACTIVE") ?? profile.Skins.FirstOrDefault();
+                                    
+                                    // 如果有皮肤，设置皮肤纹理
+                                    if (CurrentSkin != null)
+                                    {
+                                        try
+                                        {
+                                            // 使用WIN2D处理皮肤纹理，确保清晰显示
+                                            CurrentSkinTexture = await ProcessSkinTextureAsync(CurrentSkin.Url);
+                                        }
+                                        catch (Exception)
+                                        {
+                                            CurrentSkinTexture = null;
+                                        }
+                                    }
                                 }
                                 
-                                CapeList = newCapeList;
-                                
-                                // 选择当前使用的披风，如果没有活跃披风则选择第一个
-                                SelectedCape = CapeList.Find(c => c.State == "ACTIVE") ?? CapeList.FirstOrDefault();
+                                // 处理披风信息
+                                if (profile.Capes != null && profile.Capes.Count > 0)
+                                {
+                                    // 创建新的披风列表
+                                    var newCapeList = new List<CapeInfo>();
+                                    
+                                    // 处理每个披风，生成图标
+                                    foreach (var cape in profile.Capes)
+                                    {
+                                        // 处理披风图标
+                                        cape.Icon = await ProcessCapeIconAsync(cape.Url);
+                                        newCapeList.Add(cape);
+                                    }
+                                    
+                                    CapeList = newCapeList;
+                                    
+                                    // 选择当前使用的披风，如果没有活跃披风则选择第一个
+                                    SelectedCape = CapeList.Find(c => c.State == "ACTIVE") ?? CapeList.FirstOrDefault();
+                                }
+                                else
+                                {
+                                    CapeList = new List<CapeInfo>();
+                                    SelectedCape = null;
+                                }
                             }
                             else
                             {
                                 CapeList = new List<CapeInfo>();
                                 SelectedCape = null;
+                                CurrentSkin = null;
+                                CurrentSkinTexture = null;
                             }
                         }
                         else
                         {
+                            // 处理失败响应
                             CapeList = new List<CapeInfo>();
                             SelectedCape = null;
                             CurrentSkin = null;
                             CurrentSkinTexture = null;
                         }
                     }
-                    else
-                    {
-                        // 处理失败响应
-                        CapeList = new List<CapeInfo>();
-                        SelectedCape = null;
-                        CurrentSkin = null;
-                        CurrentSkinTexture = null;
-                    }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     CapeList = new List<CapeInfo>();
                     SelectedCape = null;
                     CurrentSkin = null;
                     CurrentSkinTexture = null;
+                    CurrentCapeTexture = null;
                 }
             }
             else
             {
                 CapeList = new List<CapeInfo>();
                 SelectedCape = null;
+            }
+        }
+        
+        /// <summary>
+        /// 加载外部登录账号的皮肤和披风纹理
+        /// </summary>
+        private async Task LoadExternalLoginTexturesAsync()
+        {
+            try
+            {
+                // 1. 构建profile.properties URL
+                // 通常格式：https://authserver.example.com/sessionserver/session/minecraft/profile/{uuid}
+                string authServer = CurrentProfile.AuthServer;
+                string uuid = CurrentProfile.Id;
+                
+                // 确保authServer以/结尾，否则添加/
+                string baseUrl = authServer.TrimEnd('/') + "/";
+                
+                // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
+                string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
+
+                // 2. 发送请求获取profile.properties
+                var httpClient = new HttpClient();
+                var response = await httpClient.GetAsync(sessionUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+
+                // 3. 解析响应
+                var responseJson = await response.Content.ReadAsStringAsync();
+                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+
+                // 4. 检查properties
+                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                {
+                    return;
+                }
+
+                // 5. 查找textures属性
+                string texturesBase64 = null;
+                foreach (var property in profileData.properties)
+                {
+                    if (property.name == "textures")
+                    {
+                        texturesBase64 = property.value;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(texturesBase64))
+                {
+                    return;
+                }
+
+                // 6. 解码textures
+                byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
+                string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
+                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+
+                // 7. 提取皮肤和披风URL
+                string skinUrl = string.Empty;
+                string capeUrl = string.Empty;
+
+                if (texturesData != null && texturesData.textures != null)
+                {
+                    // 处理皮肤纹理
+                    if (texturesData.textures.SKIN != null)
+                    {
+                        skinUrl = texturesData.textures.SKIN.url;
+                        if (!string.IsNullOrEmpty(skinUrl))
+                        {
+                            try
+                            {
+                                // 使用WIN2D处理皮肤纹理，确保清晰显示
+                                CurrentSkinTexture = await ProcessSkinTextureAsync(skinUrl);
+                                
+                                // 创建临时SkinInfo对象，用于保存皮肤信息
+                                CurrentSkin = new SkinInfo
+                                {
+                                    Id = "external-skin",
+                                    State = "ACTIVE",
+                                    Url = skinUrl,
+                                    Variant = texturesData.textures.SKIN.metadata?.model?.ToString() == "slim" ? "slim" : "classic"
+                                };
+                            }
+                            catch (Exception)
+                            {
+                                CurrentSkinTexture = null;
+                                CurrentSkin = null;
+                            }
+                        }
+                    }
+                    
+                    // 处理披风纹理
+                    if (texturesData.textures.CAPE != null)
+                    {
+                        capeUrl = texturesData.textures.CAPE.url;
+                        if (!string.IsNullOrEmpty(capeUrl))
+                        {
+                            try
+                            {
+                                // 使用WIN2D处理披风纹理，确保清晰显示
+                                CurrentCapeTexture = await ProcessCapeTextureAsync(capeUrl);
+                            }
+                            catch (Exception)
+                            {
+                                CurrentCapeTexture = null;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 处理异常
+            }
+        }
+        
+        /// <summary>
+        /// 处理披风纹理，确保清晰显示
+        /// </summary>
+        /// <param name="capeUrl">披风纹理URL</param>
+        /// <returns>处理后的披风纹理</returns>
+        private async Task<Microsoft.UI.Xaml.Media.ImageSource> ProcessCapeTextureAsync(string capeUrl)
+        {
+            try
+            {
+                // 创建CanvasDevice
+                var device = CanvasDevice.GetSharedDevice();
+                CanvasBitmap canvasBitmap;
+
+                // 下载披风纹理
+                var httpClient = new HttpClient();
+                var response = await httpClient.GetAsync(capeUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                {
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
+                }
+
+                // 创建CanvasRenderTarget用于处理，使用固定大小确保清晰显示
+                var renderTarget = new CanvasRenderTarget(
+                    device,
+                    128, // 显示宽度
+                    128, // 显示高度
+                    96  // DPI
+                );
+
+                // 使用最近邻插值绘制，保持像素锐利
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    // 绘制整个披风纹理，使用最近邻插值确保像素清晰
+                    ds.DrawImage(
+                        canvasBitmap,
+                        new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定128x128显示）
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height),  // 源位置和大小
+                        1.0f, // 不透明度
+                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                    );
+                }
+
+                // 转换为BitmapImage
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+
+                    var bitmapImage = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
+                    await bitmapImage.SetSourceAsync(outputStream);
+                    return bitmapImage;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
         

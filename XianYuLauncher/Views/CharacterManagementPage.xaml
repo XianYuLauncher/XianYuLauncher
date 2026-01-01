@@ -1,13 +1,17 @@
 <Page
-    x:Class="XMCL2025.Views.CharacterManagementPage"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:viewModels="using:XMCL2025.ViewModels"
-    xmlns:helpers="using:XMCL2025.Helpers"
-    xmlns:local="using:XMCL2025.ViewModels"
-    mc:Ignorable="d">
+        x:Class="XMCL2025.Views.CharacterManagementPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="using:XMCL2025.ViewModels"
+        xmlns:helpers="using:XMCL2025.Helpers"
+        xmlns:local="using:XMCL2025.ViewModels"
+        mc:Ignorable="d">
+        <Page.Resources>
+            <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
+            <helpers:StringEqualsConverter x:Key="StringEqualsConverter" />
+        </Page.Resources>
 
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -260,60 +264,116 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 设置披风功能卡片 -->
-                <Border
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="20">
-                    <StackPanel Spacing="16">
-                        <TextBlock
-                            x:Uid="ProfileManagementPage_SetCapeTitle"
-                            Text="设置披风"
-                            Style="{StaticResource TitleTextBlockStyle}"
-                            FontSize="18"
-                            FontWeight="SemiBold" />
-                        
-                        <StackPanel Spacing="12">
+                <!-- 披风功能卡片容器 - 包含两个不同类型的披风卡片 -->
+                <StackPanel>
+                    <!-- 设置披风功能卡片 - 仅微软账号可见 -->
+                    <Border
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Visibility="{x:Bind ViewModel.CurrentProfile.TokenType, Mode=OneWay, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Bearer}">
+                        <StackPanel Spacing="16">
                             <TextBlock
-                                x:Uid="ProfileManagementPage_CapeSelectionNote"
-                                Text="选择当前账号的披风"
-                                Style="{StaticResource BodyTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondary}" />
+                                x:Uid="ProfileManagementPage_SetCapeTitle"
+                                Text="设置披风"
+                                Style="{StaticResource TitleTextBlockStyle}"
+                                FontSize="18"
+                                FontWeight="SemiBold" />
                             
-                            <ComboBox
-                                x:Uid="ProfileManagementPage_CapeComboBox"
-                                x:Name="CapeComboBox"
-                                ItemsSource="{x:Bind ViewModel.CapeList, Mode=OneWay}"
-                                SelectedItem="{x:Bind ViewModel.SelectedCape, Mode=TwoWay}"
-                                IsEnabled="{x:Bind ViewModel.IsCapeSelectionEnabled, Mode=OneWay}"
-                                PlaceholderText="选择披风">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <!-- 披风图标 -->
-                                            <Image
-                                                Source="{Binding Icon}"
-                                                Width="10"
-                                                Height="16"
-                                                Stretch="Uniform"
-                                                VerticalAlignment="Center"/>
-                                            <!-- 披风名称 -->
-                                            <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            
-                            <Button
-                                x:Uid="ProfileManagementPage_ApplyCapeButton"
-                                Content="应用所选披风"
-                                Command="{x:Bind ViewModel.SetCapeCommand}"
-                                IsEnabled="{x:Bind ViewModel.IsCapeApplyEnabled, Mode=OneWay}" />
+                            <StackPanel Spacing="12">
+                                <TextBlock
+                                    x:Uid="ProfileManagementPage_CapeSelectionNote"
+                                    Text="选择当前账号的披风"
+                                    Style="{StaticResource BodyTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondary}" />
+                                
+                                <ComboBox
+                                    x:Uid="ProfileManagementPage_CapeComboBox"
+                                    x:Name="CapeComboBox"
+                                    ItemsSource="{x:Bind ViewModel.CapeList, Mode=OneWay}"
+                                    SelectedItem="{x:Bind ViewModel.SelectedCape, Mode=TwoWay}"
+                                    IsEnabled="{x:Bind ViewModel.IsCapeSelectionEnabled, Mode=OneWay}"
+                                    PlaceholderText="选择披风">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <!-- 披风图标 -->
+                                                <Image
+                                                    Source="{Binding Icon}"
+                                                    Width="10"
+                                                    Height="16"
+                                                    Stretch="Uniform"
+                                                    VerticalAlignment="Center"/>
+                                                <!-- 披风名称 -->
+                                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                
+                                <Button
+                                    x:Uid="ProfileManagementPage_ApplyCapeButton"
+                                    Content="应用所选披风"
+                                    Command="{x:Bind ViewModel.SetCapeCommand}"
+                                    IsEnabled="{x:Bind ViewModel.IsCapeApplyEnabled, Mode=OneWay}" />
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
+                    </Border>
+
+                    <!-- 设置披风功能卡片 - 仅外置登录账号可见 -->
+                    <Border
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Visibility="{x:Bind ViewModel.CurrentProfile.TokenType, Mode=OneWay, Converter={StaticResource StringEqualsConverter}, ConverterParameter=external}">
+                        <StackPanel Spacing="16">
+                            <TextBlock
+                                x:Uid="ProfileManagementPage_SetCapeTitle"
+                                Text="设置披风"
+                                Style="{StaticResource TitleTextBlockStyle}"
+                                FontSize="18"
+                                FontWeight="SemiBold" />
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- 左侧：披风上传区域，保持居左 -->
+                                <StackPanel Grid.Column="0" Spacing="12">
+                                    <TextBlock
+                                        x:Uid="ProfileManagementPage_CapeUploadNote"
+                                        Text="上传或选择新披风"
+                                        Style="{StaticResource BodyTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondary}" />
+                                    
+                                    <Button
+                                        x:Uid="ProfileManagementPage_BrowseCapeButton"
+                                        Content="浏览披风文件"
+                                        Click="BrowseCapeFileButton_Click"
+                                        IsEnabled="False" />
+                                </StackPanel>
+                                
+                                <!-- 右侧：披风预览区域，在按钮文字右边一点 -->
+                                <Image
+                                    x:Name="CapeTextureImage"
+                                    Grid.Column="1"
+                                    Source="{x:Bind ViewModel.CurrentCapeTexture, Mode=OneWay}"
+                                    Width="128"
+                                    Height="128"
+                                    Stretch="Uniform"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top" 
+                                    PointerPressed="CapeTextureImage_PointerPressed" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
         

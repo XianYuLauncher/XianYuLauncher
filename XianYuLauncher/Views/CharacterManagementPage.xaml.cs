@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Navigation;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
@@ -841,7 +842,7 @@ namespace XMCL2025.Views
         private async void SaveSkinTextureButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             // 检查是否有皮肤纹理可以保存
-            if (ViewModel.CurrentSkinTexture == null || ViewModel.CurrentSkin == null)
+            if (ViewModel.CurrentSkinTexture == null)
             {
                 await ShowMessageAsync("保存失败", "没有可保存的皮肤纹理");
                 return;
@@ -853,7 +854,12 @@ namespace XMCL2025.Views
                 var savePicker = new Windows.Storage.Pickers.FileSavePicker();
                 savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
                 savePicker.FileTypeChoices.Add("PNG图片", new List<string>() { ".png" });
-                savePicker.SuggestedFileName = $"skin_{ViewModel.CurrentSkin.Id}";
+                
+                // 使用当前时间作为默认文件名，避免依赖CurrentSkin
+                string suggestedFileName = ViewModel.CurrentSkin != null 
+                    ? $"skin_{ViewModel.CurrentSkin.Id}" 
+                    : $"skin_{DateTime.Now:yyyyMMddHHmmss}";
+                savePicker.SuggestedFileName = suggestedFileName;
 
                 // 初始化文件选择器
                 var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
@@ -929,9 +935,20 @@ namespace XMCL2025.Views
         /// <param name="e">路由事件参数</param>
         private async void BrowseSkinFileButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            Debug.WriteLine($"[CharacterManagementPage] 皮肤上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
+            
             if (ViewModel.CurrentProfile.IsOffline)
             {
                 await ShowMessageAsync("操作失败", "离线模式不支持上传皮肤");
+                Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传皮肤");
+                return;
+            }
+            
+            // 禁用外置登录的上传功能
+            if (ViewModel.CurrentProfile.TokenType == "external")
+            {
+                await ShowMessageAsync("操作失败", "外置登录暂不支持上传皮肤");
+                Debug.WriteLine($"[CharacterManagementPage] 外置登录，拒绝上传皮肤");
                 return;
             }
 
@@ -951,12 +968,19 @@ namespace XMCL2025.Views
                 var file = await picker.PickSingleFileAsync();
                 if (file == null)
                 {
+                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了皮肤文件选择");
                     return;
                 }
+                
+                // 获取文件大小
+                var basicProperties = await file.GetBasicPropertiesAsync();
+                ulong fileSize = basicProperties.Size;
+                Debug.WriteLine($"[CharacterManagementPage] 用户选择了皮肤文件: {file.Name}, 大小: {fileSize} 字节");
 
                 // 2. 验证文件是否符合要求（PNG格式、64x64尺寸）
                 if (!await ValidateSkinFileAsync(file))
                 {
+                    Debug.WriteLine($"[CharacterManagementPage] 皮肤文件验证失败");
                     return;
                 }
 
@@ -981,23 +1005,126 @@ namespace XMCL2025.Views
 
                 if (model == null)
                 {
+                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了皮肤模型选择");
                     return;
                 }
+                
+                Debug.WriteLine($"[CharacterManagementPage] 用户选择了皮肤模型: {(string.IsNullOrEmpty(model) ? "Steve" : "Alex")}");
 
-                // 4. 上传皮肤
-                await ViewModel.UploadSkinAsync(file, model);
+                // 4. 根据账户类型选择不同的上传逻辑
+                if (ViewModel.CurrentProfile.TokenType == "external")
+                {
+                    // 外置登录账号上传逻辑
+                    Debug.WriteLine($"[CharacterManagementPage] 开始上传皮肤到外置登录服务器");
+                    await UploadExternalSkinAsync(file, model);
+                }
+                else
+                {
+                    // 微软账号上传逻辑
+                    Debug.WriteLine($"[CharacterManagementPage] 开始上传皮肤到微软服务器");
+                    await ViewModel.UploadSkinAsync(file, model);
+                }
+
                 await ShowMessageAsync("上传成功", "皮肤已成功上传");
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传成功");
 
                 // 5. 刷新皮肤信息
+                Debug.WriteLine($"[CharacterManagementPage] 开始刷新皮肤和披风信息");
                 await ViewModel.LoadCapesAsync();
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤和披风信息刷新完成");
             }
             catch (HttpRequestException ex)
             {
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传API请求失败: {ex.Message}");
                 await ShowMessageAsync("上传失败", $"API请求失败: {ex.Message}");
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传失败: {ex.Message}");
                 await ShowMessageAsync("上传失败", $"上传皮肤时发生错误: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 上传皮肤到外置登录服务器
+        /// </summary>
+        /// <param name="file">皮肤文件</param>
+        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        private async Task UploadExternalSkinAsync(Windows.Storage.StorageFile file, string model)
+        {
+            // 1. 准备API请求 - 使用PUT方法
+            string authServer = ViewModel.CurrentProfile.AuthServer;
+            string baseUrl = authServer.TrimEnd('/') + "/";
+            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
+            string apiUrl = $"{baseUrl}api/user/profile/{uuid}/skin";
+            var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
+            
+            Debug.WriteLine($"[CharacterManagementPage] 构建皮肤上传请求: URL={apiUrl}, Method=PUT");
+            
+            // 2. 添加Authorization头
+            if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    ViewModel.CurrentProfile.AccessToken);
+                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头: Bearer {ViewModel.CurrentProfile.AccessToken.Substring(0, Math.Min(10, ViewModel.CurrentProfile.AccessToken.Length))}...");
+            }
+            else
+            {
+                Debug.WriteLine($"[CharacterManagementPage] 未添加Authorization头: AccessToken为空");
+            }
+            
+            // 3. 准备multipart/form-data请求体
+            var formContent = new MultipartFormDataContent();
+            
+            // 4. 添加model参数（仅用于皮肤）
+            // model: 空字符串为Steve模型，"slim"为Alex模型
+            formContent.Add(
+                new StringContent(model),
+                "model");
+            Debug.WriteLine($"[CharacterManagementPage] 添加请求参数: model={model}");
+            
+            // 5. 获取文件大小
+            var basicProperties = await file.GetBasicPropertiesAsync();
+            ulong fileSize = basicProperties.Size;
+            
+            // 6. 添加file参数
+            using (var fileStream = await file.OpenStreamForReadAsync())
+            {
+                var fileContent = new StreamContent(fileStream);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+                formContent.Add(
+                    fileContent,
+                    "file",
+                    file.Name);
+                
+                Debug.WriteLine($"[CharacterManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
+                
+                request.Content = formContent;
+                
+                // 6. 发送请求
+                var httpClient = new HttpClient();
+                Debug.WriteLine($"[CharacterManagementPage] 开始发送皮肤上传请求");
+                var response = await httpClient.SendAsync(request);
+                
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求响应状态: {response.StatusCode}");
+                
+                // 7. 检查响应状态
+                if (!response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求失败，响应内容: {responseContent}");
+                    throw new HttpRequestException(
+                        $"Response status code does not indicate success: {response.StatusCode}. " +
+                        $"URL: {apiUrl}, " +
+                        $"Method: PUT, " +
+                        $"Model: {model}, " +
+                        $"Response: {responseContent}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求成功");
+                }
             }
         }
 
@@ -1038,6 +1165,211 @@ namespace XMCL2025.Views
             }
         }
 
+        /// <summary>
+        /// 验证披风文件是否符合要求（PNG格式）
+        /// </summary>
+        /// <param name="file">要验证的文件</param>
+        /// <returns>是否符合要求</returns>
+        private async Task<bool> ValidateCapeFileAsync(StorageFile file)
+        {
+            try
+            {
+                // 1. 检查文件扩展名是否为PNG
+                if (file.FileType != ".png")
+                {
+                    await ShowMessageAsync("验证失败", "披风文件必须是PNG格式");
+                    return false;
+                }
 
+                // 2. 使用Win2D加载图片，验证是否有效PNG
+                var device = Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice();
+                using (var stream = await file.OpenReadAsync())
+                {
+                    await Microsoft.Graphics.Canvas.CanvasBitmap.LoadAsync(device, stream);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageAsync("验证失败", $"无法验证披风文件: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// “浏览披风文件”按钮点击事件
+        /// </summary>
+        /// <param name="sender">触发事件的控件</param>
+        /// <param name="e">路由事件参数</param>
+        private async void BrowseCapeFileButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            Debug.WriteLine($"[CharacterManagementPage] 披风上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
+            
+            if (ViewModel.CurrentProfile.IsOffline)
+            {
+                await ShowMessageAsync("操作失败", "离线模式不支持上传披风");
+                Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传披风");
+                return;
+            }
+            
+            // 禁用外置登录的上传功能
+            if (ViewModel.CurrentProfile.TokenType == "external")
+            {
+                await ShowMessageAsync("操作失败", "外置登录暂不支持上传披风");
+                Debug.WriteLine($"[CharacterManagementPage] 外置登录，拒绝上传披风");
+                return;
+            }
+
+            try
+            {
+                // 1. 打开文件选择器，让用户选择披风文件
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+                picker.FileTypeFilter.Add(".png");
+                picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.Thumbnail;
+
+                // 初始化文件选择器
+                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+
+                // 显示文件选择器
+                var file = await picker.PickSingleFileAsync();
+                if (file == null)
+                {
+                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了披风文件选择");
+                    return;
+                }
+                
+                // 获取文件大小
+                var basicProperties = await file.GetBasicPropertiesAsync();
+                ulong fileSize = basicProperties.Size;
+                Debug.WriteLine($"[CharacterManagementPage] 用户选择了披风文件: {file.Name}, 大小: {fileSize} 字节");
+
+                // 2. 验证文件是否符合要求（PNG格式）
+                if (!await ValidateCapeFileAsync(file))
+                {
+                    Debug.WriteLine($"[CharacterManagementPage] 披风文件验证失败");
+                    return;
+                }
+
+                // 3. 根据账户类型选择不同的上传逻辑
+                if (ViewModel.CurrentProfile.TokenType == "external")
+                {
+                    // 外置登录账号上传逻辑
+                    Debug.WriteLine($"[CharacterManagementPage] 开始上传披风到外置登录服务器");
+                    await UploadExternalCapeAsync(file);
+                }
+                else
+                {
+                    // 微软账号不支持直接上传披风，显示提示
+                    Debug.WriteLine($"[CharacterManagementPage] 微软账号不支持直接上传披风");
+                    await ShowMessageAsync("上传提示", "微软账号不支持直接上传披风");
+                    return;
+                }
+
+                await ShowMessageAsync("上传成功", "披风已成功上传");
+                Debug.WriteLine($"[CharacterManagementPage] 披风上传成功");
+
+                // 4. 刷新皮肤和披风信息
+                Debug.WriteLine($"[CharacterManagementPage] 开始刷新皮肤和披风信息");
+                await ViewModel.LoadCapesAsync();
+                Debug.WriteLine($"[CharacterManagementPage] 皮肤和披风信息刷新完成");
+            }
+            catch (HttpRequestException ex)
+            {
+                Debug.WriteLine($"[CharacterManagementPage] 披风上传API请求失败: {ex.Message}");
+                await ShowMessageAsync("上传失败", $"API请求失败: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CharacterManagementPage] 披风上传失败: {ex.Message}");
+                await ShowMessageAsync("上传失败", $"上传披风时发生错误: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 上传披风到外置登录服务器
+        /// </summary>
+        /// <param name="file">披风文件</param>
+        private async Task UploadExternalCapeAsync(Windows.Storage.StorageFile file)
+        {
+            // 1. 准备API请求 - 使用PUT方法
+            string authServer = ViewModel.CurrentProfile.AuthServer;
+            string baseUrl = authServer.TrimEnd('/') + "/";
+            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
+            string apiUrl = $"{baseUrl}api/user/profile/{uuid}/cape";
+            var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
+            
+            Debug.WriteLine($"[CharacterManagementPage] 构建披风上传请求: URL={apiUrl}, Method=PUT");
+            
+            // 2. 添加Authorization头
+            if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue(
+                    "Bearer",
+                    ViewModel.CurrentProfile.AccessToken);
+                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头: Bearer {ViewModel.CurrentProfile.AccessToken.Substring(0, Math.Min(10, ViewModel.CurrentProfile.AccessToken.Length))}...");
+            }
+            else
+            {
+                Debug.WriteLine($"[CharacterManagementPage] 未添加Authorization头: AccessToken为空");
+            }
+            
+            // 3. 准备multipart/form-data请求体
+            var formContent = new MultipartFormDataContent();
+            
+            // 4. 获取文件大小
+            var basicProperties = await file.GetBasicPropertiesAsync();
+            ulong fileSize = basicProperties.Size;
+            
+            // 5. 添加file参数（披风不需要model参数）
+            using (var fileStream = await file.OpenStreamForReadAsync())
+            {
+                var fileContent = new StreamContent(fileStream);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+                formContent.Add(
+                    fileContent,
+                    "file",
+                    file.Name);
+                
+                Debug.WriteLine($"[CharacterManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
+                
+                request.Content = formContent;
+                
+                // 5. 发送请求
+                var httpClient = new HttpClient();
+                Debug.WriteLine($"[CharacterManagementPage] 开始发送披风上传请求");
+                var response = await httpClient.SendAsync(request);
+                
+                Debug.WriteLine($"[CharacterManagementPage] 披风上传请求响应状态: {response.StatusCode}");
+                
+                // 6. 检查响应状态
+                if (!response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    Debug.WriteLine($"[CharacterManagementPage] 披风上传请求失败，响应内容: {responseContent}");
+                    throw new HttpRequestException(
+                        $"Response status code does not indicate success: {response.StatusCode}. " +
+                        $"URL: {apiUrl}, " +
+                        $"Method: PUT, " +
+                        $"Response: {responseContent}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[CharacterManagementPage] 披风上传请求成功");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 点击披风纹理图片时，显示TeachingTip
+        /// </summary>
+        /// <param name="sender">触发事件的控件</param>
+        /// <param name="e">指针事件参数</param>
+        private void CapeTextureImage_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            // 这里可以添加披风信息显示逻辑，暂时不实现
+        }
     }
 }
