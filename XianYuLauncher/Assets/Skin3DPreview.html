@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft皮肤 3D预览 - XianYuLauncher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #skinContainer {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background-color: #f3f4f6;
+        }
+        
+        /* 加载提示 */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        #loading.hidden {
+            display: none;
+        }
+        
+        /* Canvas样式，确保全屏显示 */
+        #skinCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #F3F4F6;
+        }
+    </style>
+    
+    <!-- 使用本地库文件 -->
+    <script src="Libs/skinview3d.bundle.js"></script>
+</head>
+<body>
+    <!-- 3D 预览容器 -->
+    <div id="skinContainer">
+        <!-- 加载提示 -->
+        <div id="loading">
+            <h3>加载中...</h3>
+            <p>正在初始化 3D 皮肤预览</p>
+        </div>
+        <!-- Canvas元素 -->
+        <canvas id="skinCanvas"></canvas>
+    </div>
+    
+    <script>
+        // 全局变量
+        let skinViewer;
+        
+        // 初始化皮肤查看器
+        function initSkinViewer() {
+            try {
+                const canvas = document.getElementById('skinCanvas');
+                const container = document.getElementById('skinContainer');
+                
+                // 设置Canvas尺寸为容器大小
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                // 创建皮肤查看器
+                skinViewer = new skinview3d.SkinViewer({
+                    canvas: canvas,
+                    width: canvas.width,
+                    height: canvas.height,
+                    skin: ""
+                });
+                
+                // 设置默认视角，增加z值使模型看起来更小
+                skinViewer.camera.position.z = 50;
+                
+                // 启用自动旋转
+                skinViewer.autoRotate = true;
+                
+                // 设置动画
+                skinViewer.animation = new skinview3d.WalkingAnimation();
+                
+                // 隐藏加载提示
+                document.getElementById('loading').classList.add('hidden');
+                
+                console.log('SkinViewer 初始化完成');
+            } catch (error) {
+                console.error('初始化 SkinViewer 失败:', error);
+                document.getElementById('loading').innerHTML = '<h3>初始化失败</h3><p>' + error.message + '</p>';
+            }
+        }
+        
+        // 暴露给 C# 调用的函数
+        window.setSkinTexture = function(skinUrl, capeUrl) {
+            console.log('setSkinTexture called with skinUrl:', skinUrl, 'capeUrl:', capeUrl);
+            
+            try {
+                // 如果皮肤查看器尚未初始化，先初始化
+                if (!skinViewer) {
+                    initSkinViewer();
+                }
+                
+                if (skinViewer) {
+                    // 加载皮肤
+                    if (skinUrl) {
+                        skinViewer.loadSkin(skinUrl);
+                    }
+                    
+                    // 加载披风
+                    if (capeUrl) {
+                        skinViewer.loadCape(capeUrl);
+                    } else {
+                        skinViewer.loadCape(null);
+                    }
+                }
+            } catch (error) {
+                console.error('更新皮肤失败:', error);
+            }
+        };
+        
+        // 窗口大小调整
+        window.addEventListener('resize', function() {
+            if (skinViewer) {
+                const canvas = document.getElementById('skinCanvas');
+                const container = document.getElementById('skinContainer');
+                
+                // 更新Canvas尺寸
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                // 更新SkinViewer尺寸
+                skinViewer.width = canvas.width;
+                skinViewer.height = canvas.height;
+            }
+        });
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            initSkinViewer();
+        });
+    </script>
+</body>
+</html>
