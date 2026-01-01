@@ -5,7 +5,9 @@ using Microsoft.UI.Xaml.Navigation;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
@@ -15,6 +17,7 @@ using XMCL2025.ViewModels;
 using Microsoft.Graphics.Canvas;
 using System;
 using System.Diagnostics;
+using Microsoft.Web.WebView2.Core;
 
 namespace XMCL2025.Views
 {
@@ -44,6 +47,10 @@ namespace XMCL2025.Views
             
             // 订阅CurrentProfile变化事件
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            // 订阅CurrentSkin变化事件
+            ViewModel.PropertyChanged += ViewModel_CurrentSkinChanged;
+            // 添加页面加载完成事件
+            this.Loaded += CharacterManagementPage_Loaded;
         }
 
         /// <summary>
@@ -77,6 +84,438 @@ namespace XMCL2025.Views
         }
 
         /// <summary>
+        /// 页面加载完成事件
+        /// </summary>
+        private async void CharacterManagementPage_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            await InitializeWebView2Async();
+            // WebView2初始化完成后，手动调用一次UpdateSkinInWebViewAsync，确保皮肤能够正确显示
+            await UpdateSkinInWebViewAsync();
+        }
+
+        /// <summary>
+        /// 初始化WebView2
+        /// </summary>
+        private async Task InitializeWebView2Async()
+        {
+            try
+            {
+                Debug.WriteLine($"[角色管理Page] 开始初始化WebView2");
+                
+                // 确保CoreWebView2初始化
+                await Skin3DPreviewWebView.EnsureCoreWebView2Async();
+                
+                Debug.WriteLine($"[角色管理Page] CoreWebView2初始化完成");
+                
+                // 禁用开发者工具，防止按下F12打开开发者模式
+                if (Skin3DPreviewWebView.CoreWebView2 != null)
+                {
+                    Skin3DPreviewWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                    Debug.WriteLine($"[角色管理Page] 已禁用WebView2开发者工具");
+                }
+                
+                // 将HTML文件复制到应用数据目录，然后从那里加载
+                string htmlPath = await CopyHtmlToAppDataAsync();
+                
+                if (!string.IsNullOrWhiteSpace(htmlPath))
+                {
+                    // 从应用数据目录加载HTML文件
+                    Skin3DPreviewWebView.Source = new Uri(htmlPath);
+                    Debug.WriteLine($"[角色管理Page] 已设置WebView2 Source为: {htmlPath}");
+                    
+                    // 初始化完成后，延迟加载当前皮肤，确保WebView2已完全加载
+                    await Task.Delay(1000);
+                    await UpdateSkinInWebViewAsync();
+                }
+                else
+                {
+                    Debug.WriteLine($"[角色管理Page] 无法获取HTML文件路径");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 初始化WebView2失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 将HTML文件和相关资源复制到应用数据目录
+        /// </summary>
+        /// <returns>复制后的HTML文件路径</returns>
+        private async Task<string> CopyHtmlToAppDataAsync()
+        {
+            try
+            {
+                // 获取应用数据目录
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string appFolderPath = Path.Combine(appDataPath, "XianYuLauncher");
+                string htmlFolderPath = Path.Combine(appFolderPath, "Assets");
+                string libsFolderPath = Path.Combine(htmlFolderPath, "Libs");
+                
+                // 确保目录存在
+                Directory.CreateDirectory(htmlFolderPath);
+                Directory.CreateDirectory(libsFolderPath);
+                
+                // 复制HTML文件
+                string destHtmlPath = Path.Combine(htmlFolderPath, "Skin3DPreview.html");
+                string sourceHtmlPath = Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "Skin3DPreview.html");
+                File.Copy(sourceHtmlPath, destHtmlPath, true);
+                Debug.WriteLine($"[角色管理Page] 已将HTML文件复制到应用数据目录");
+                
+                // 复制skinview3d.bundle.js文件
+                string destLibPath = Path.Combine(libsFolderPath, "skinview3d.bundle.js");
+                string sourceLibPath = Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "Libs", "skinview3d.bundle.js");
+                File.Copy(sourceLibPath, destLibPath, true);
+                Debug.WriteLine($"[角色管理Page] 已将skinview3d.bundle.js文件复制到应用数据目录");
+                
+                // 返回file://协议的URL
+                return new Uri(destHtmlPath).AbsoluteUri;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 复制文件失败: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 当CurrentSkin变化时触发
+        /// </summary>
+        private void ViewModel_CurrentSkinChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // 当CurrentSkin、SelectedCape或CurrentProfile变化时，更新WebView中的皮肤
+            if (e.PropertyName == nameof(ViewModel.CurrentSkin) || 
+                e.PropertyName == nameof(ViewModel.SelectedCape) ||
+                e.PropertyName == nameof(ViewModel.CurrentProfile))
+            {
+                _ = UpdateSkinInWebViewAsync();
+            }
+        }
+
+        /// <summary>
+        /// 更新WebView中的皮肤
+        /// </summary>
+        private async Task UpdateSkinInWebViewAsync()
+        {
+            if (Skin3DPreviewWebView.CoreWebView2 == null)
+            {
+                // WebView2尚未初始化完成，等待初始化
+                await InitializeWebView2Async();
+                if (Skin3DPreviewWebView.CoreWebView2 == null)
+                {
+                    Debug.WriteLine($"[角色管理Page] WebView2未初始化，无法更新皮肤");
+                    return;
+                }
+            }
+
+            try
+            {
+                string skinUrl = string.Empty;
+                string capeUrl = string.Empty;
+
+                // 根据角色类型获取皮肤和披风URL
+                if (ViewModel.CurrentProfile != null)
+                {
+                    if (ViewModel.CurrentProfile.IsOffline)
+                    {
+                        // 离线角色：使用本地Steve默认皮肤
+                        Debug.WriteLine($"[角色管理Page] 当前是离线角色，使用本地Steve默认皮肤");
+                        // 使用本地资源文件作为默认皮肤
+                        string defaultSkinPath = "ms-appx:///Assets/Icons/Textures/steve.png";
+                        // 从本地资源加载并转换为base64
+                        skinUrl = await LoadLocalImageAsBase64Async(defaultSkinPath);
+                        capeUrl = string.Empty;
+                        Debug.WriteLine($"[角色管理Page] 已加载默认Steve皮肤: {skinUrl}");
+                    }
+                    else
+                    {
+                        if (ViewModel.CurrentProfile.TokenType == "external")
+                        {
+                            // 外置登录角色：从profile.properties中获取皮肤和披风，需要解决CORS问题
+                            Debug.WriteLine($"[角色管理Page] 当前是外置登录角色，尝试获取皮肤和披风");
+                            var textures = await GetExternalLoginTexturesAsync();
+                            string originalSkinUrl = textures.Item1;
+                            string originalCapeUrl = textures.Item2;
+                            Debug.WriteLine($"[角色管理Page] 已获取外置登录皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
+                            
+                            // 解决CORS问题：使用HttpClient下载图片并转换为base64
+                            if (!string.IsNullOrEmpty(originalSkinUrl))
+                            {
+                                Debug.WriteLine($"[角色管理Page] 尝试下载皮肤图片: {originalSkinUrl}");
+                                skinUrl = await DownloadImageAsBase64Async(originalSkinUrl);
+                                Debug.WriteLine($"[角色管理Page] 皮肤图片已转换为base64，长度: {skinUrl.Length}");
+                            }
+
+                            if (!string.IsNullOrEmpty(originalCapeUrl))
+                            {
+                                Debug.WriteLine($"[角色管理Page] 尝试下载披风图片: {originalCapeUrl}");
+                                capeUrl = await DownloadImageAsBase64Async(originalCapeUrl);
+                                Debug.WriteLine($"[角色管理Page] 披风图片已转换为base64，长度: {capeUrl.Length}");
+                            }
+                        }
+                        else
+                        {
+                            // 微软账户：从ViewModel获取皮肤和披风，直接使用URL，无需base64转换
+                            Debug.WriteLine($"[角色管理Page] 当前是微软账户，直接使用皮肤和披风URL");
+                            skinUrl = CleanUrl(ViewModel.CurrentSkin?.Url);
+                            capeUrl = CleanUrl(ViewModel.SelectedCape?.Url);
+                            Debug.WriteLine($"[角色管理Page] 已获取微软账户皮肤: {skinUrl}, 披风: {capeUrl}");
+                        }
+                    }
+                }
+
+                // 调用JavaScript方法更新皮肤和披风，使用JSON.stringify确保URL格式正确
+                await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setSkinTexture({JsonSerializer.Serialize(skinUrl)}, {JsonSerializer.Serialize(capeUrl)});");
+                Debug.WriteLine($"[角色管理Page] 已更新WebView2皮肤: {skinUrl}, 披风: {capeUrl}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 更新WebView2皮肤失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 下载图片并转换为base64编码
+        /// </summary>
+        /// <param name="imageUrl">图片URL</param>
+        /// <returns>base64编码的图片数据</returns>
+        private async Task<string> DownloadImageAsBase64Async(string imageUrl)
+        {
+            try
+            {
+                using (var httpClient = new HttpClient())
+                {
+                    // 下载图片
+                    var response = await httpClient.GetAsync(imageUrl);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Debug.WriteLine($"[角色管理Page] 下载图片失败，状态码: {response.StatusCode}, URL: {imageUrl}");
+                        return string.Empty;
+                    }
+
+                    // 读取图片数据
+                    var imageBytes = await response.Content.ReadAsByteArrayAsync();
+                    Debug.WriteLine($"[角色管理Page] 图片下载成功，大小: {imageBytes.Length}字节");
+
+                    // 转换为base64编码
+                    var base64String = Convert.ToBase64String(imageBytes);
+                    Debug.WriteLine($"[角色管理Page] 图片转换为base64成功");
+
+                    // 返回完整的base64图片URL
+                    return $"data:image/png;base64,{base64String}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 下载并转换图片失败: {ex.Message}, URL: {imageUrl}");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 从本地资源加载图片并转换为base64编码
+        /// </summary>
+        /// <param name="localUri">本地资源URI，格式：ms-appx:///Assets/...</param>
+        /// <returns>base64编码的图片数据</returns>
+        private async Task<string> LoadLocalImageAsBase64Async(string localUri)
+        {
+            try
+            {
+                Debug.WriteLine($"[角色管理Page] 尝试加载本地图片: {localUri}");
+                
+                // 获取本地资源文件
+                var file = await Windows.Storage.StorageFile.GetFileFromApplicationUriAsync(new Uri(localUri));
+                
+                // 读取文件内容
+                using (var stream = await file.OpenReadAsync())
+                {
+                    // 将IRandomAccessStream转换为byte数组
+                    var buffer = new Windows.Storage.Streams.Buffer((uint)stream.Size);
+                    await stream.ReadAsync(buffer, (uint)stream.Size, Windows.Storage.Streams.InputStreamOptions.None);
+                    
+                    // 获取byte数组
+                    var dataReader = Windows.Storage.Streams.DataReader.FromBuffer(buffer);
+                    var imageBytes = new byte[buffer.Length];
+                    dataReader.ReadBytes(imageBytes);
+                    
+                    Debug.WriteLine($"[角色管理Page] 本地图片加载成功，大小: {imageBytes.Length}字节");
+                    
+                    // 转换为base64编码
+                    var base64String = Convert.ToBase64String(imageBytes);
+                    Debug.WriteLine($"[角色管理Page] 本地图片转换为base64成功");
+                    
+                    // 返回完整的base64图片URL
+                    return $"data:image/png;base64,{base64String}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 加载本地图片失败: {ex.Message}, URI: {localUri}");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 从外置登录的profile.properties中获取皮肤和披风URL
+        /// </summary>
+        /// <returns>皮肤URL和披风URL的元组</returns>
+        private async Task<(string skinUrl, string capeUrl)> GetExternalLoginTexturesAsync()
+        {
+            try
+            {
+                // 1. 构建profile.properties URL
+                // 通常格式：https://authserver.example.com/session/minecraft/profile/{uuid}
+                string authServer = ViewModel.CurrentProfile.AuthServer;
+                string uuid = ViewModel.CurrentProfile.Id;
+                
+                // 添加debug输出，显示基础URL
+                Debug.WriteLine($"[角色管理Page] 外置登录基础URL: {authServer}");
+                
+                // 确保authServer以/结尾，否则添加/
+                string baseUrl = authServer.TrimEnd('/') + "/";
+                
+                // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
+                string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
+                
+                // 添加debug输出，显示完整的请求URL
+                Debug.WriteLine($"[角色管理Page] 构建的session URL: {sessionUrl}");
+
+                // 2. 发送请求获取profile.properties
+                var httpClient = new HttpClient();
+                Debug.WriteLine($"[角色管理Page] 正在发送请求到: {sessionUrl}");
+                var response = await httpClient.GetAsync(sessionUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[角色管理Page] 获取外置登录profile.properties失败，状态码: {response.StatusCode}, URL: {sessionUrl}");
+                    return (string.Empty, string.Empty);
+                }
+
+                // 3. 解析响应
+                var responseJson = await response.Content.ReadAsStringAsync();
+                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+
+                // 4. 检查properties
+                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                {
+                    Debug.WriteLine($"[角色管理Page] profile.properties为空");
+                    return (string.Empty, string.Empty);
+                }
+
+                // 5. 查找textures属性
+                string texturesBase64 = null;
+                foreach (var property in profileData.properties)
+                {
+                    if (property.name == "textures")
+                    {
+                        texturesBase64 = property.value;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(texturesBase64))
+                {
+                    Debug.WriteLine($"[角色管理Page] 未找到textures属性");
+                    return (string.Empty, string.Empty);
+                }
+
+                // 6. 解码textures
+                byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
+                string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
+                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+
+                // 7. 提取皮肤和披风URL
+                string skinUrl = string.Empty;
+                string capeUrl = string.Empty;
+
+                if (texturesData != null && texturesData.textures != null)
+                {
+                    if (texturesData.textures.SKIN != null)
+                    {
+                        skinUrl = texturesData.textures.SKIN.url;
+                    }
+                    if (texturesData.textures.CAPE != null)
+                    {
+                        capeUrl = texturesData.textures.CAPE.url;
+                    }
+                }
+
+                return (skinUrl, capeUrl);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 解析外置登录皮肤失败: {ex.Message}");
+                return (string.Empty, string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 清理URL，移除可能的格式问题
+        /// </summary>
+        /// <param name="url">原始URL</param>
+        /// <returns>清理后的URL</returns>
+        private string CleanUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return string.Empty;
+            }
+
+            // 移除可能存在的反引号、逗号、空格和换行符
+            string cleanedUrl = url;
+            
+            // 移除所有反引号
+            cleanedUrl = cleanedUrl.Replace("`", string.Empty);
+            
+            // 移除所有逗号
+            cleanedUrl = cleanedUrl.Replace(",", string.Empty);
+            
+            // 移除首尾空格和换行符
+            cleanedUrl = cleanedUrl.Trim(' ', '\t', '\r', '\n');
+            
+            Debug.WriteLine($"[角色管理Page] URL清理前: {url}, 清理后: {cleanedUrl}");
+            
+            return cleanedUrl;
+        }
+
+        /// <summary>
+        /// WebView2导航开始事件
+        /// </summary>
+        private void Skin3DPreviewWebView_NavigationStarting(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+        {
+            Debug.WriteLine($"[角色管理Page] 导航开始: {e.Uri}");
+        }
+
+        /// <summary>
+        /// WebView2导航完成事件
+        /// </summary>
+        private void Skin3DPreviewWebView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        {
+            // 使用WebView2.Source获取当前URI
+            string currentUri = Skin3DPreviewWebView.Source?.ToString() ?? "未知URI";
+            
+            if (e.IsSuccess)
+            {
+                Debug.WriteLine($"[角色管理Page] 导航完成: {currentUri}");
+                
+                // 导航完成后检查CoreWebView2是否可用
+                if (Skin3DPreviewWebView.CoreWebView2 != null)
+                {
+                    Debug.WriteLine($"[角色管理Page] CoreWebView2可用");
+                    
+
+                }
+                else
+                {
+                    Debug.WriteLine($"[角色管理Page] CoreWebView2不可用");
+                }
+            }
+            else
+            {
+                Debug.WriteLine($"[角色管理Page] 导航失败: {currentUri}, 错误代码: {e.WebErrorStatus}");
+            }
+        }
+
+        /// <summary>
         /// 离开页面时调用
         /// </summary>
         /// <param name="e">导航取消事件参数</param>
@@ -92,6 +531,8 @@ namespace XMCL2025.Views
             
             // 取消订阅事件
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
+            this.Loaded -= CharacterManagementPage_Loaded;
         }
         
         /// <summary>

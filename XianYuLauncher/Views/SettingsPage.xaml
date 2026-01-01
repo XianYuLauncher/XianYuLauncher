@@ -498,6 +498,119 @@
                                     Margin="0,40,0,20" 
                                     Opacity="0.7" 
                                     TextWrapping="WrapWholeWords"/>
+
+                                <!-- 开源软件许可说明 -->
+                                <Expander x:Uid="Settings_OpenSourceTitle" Header="开源软件许可说明" Margin="0,0,0,20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                    <Expander.Content>
+                                        <StackPanel>
+                                            <!-- 开源软件列表 -->
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/bs-community/skinview3d">
+                                                        <Run Text="skinview3d" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) 2014-2018 Kent Rasmussen; Copyright (c) 2017-2022 Haowei Wen, Sean Boult and contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://www.newtonsoft.com/json">
+                                                        <Run Text="Newtonsoft.Json" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) 2007 James Newton-King" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
+                                                        <Run Text="CommunityToolkit.Mvvm" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/dotnet/runtime">
+                                                        <Run Text="Microsoft.Extensions.Hosting" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/dotnet/runtime">
+                                                        <Run Text="Microsoft.Extensions.Http" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/microsoft/Win2D">
+                                                        <Run Text="Microsoft.Graphics.Win2D" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/microsoft/windowsappsdk">
+                                                        <Run Text="Microsoft.WindowsAppSDK" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/microsoft/XamlBehaviors">
+                                                        <Run Text="Microsoft.Xaml.Behaviors.WinUI.Managed" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/serilog/serilog">
+                                                        <Run Text="Serilog" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) Serilog Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：Apache License 2.0" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/dotMorten/WinUIEx">
+                                                        <Run Text="WinUIEx" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) Morten Nielsen" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <!-- 许可证说明 -->
+                                            <Border Background="#F3F4F6" Padding="12" CornerRadius="8">
+                                                <TextBlock Text="本项目使用的所有开源软件均遵循其各自的许可证要求，详细许可证信息可通过项目地址查看。" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Expander.Content>
+                                </Expander>
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>
