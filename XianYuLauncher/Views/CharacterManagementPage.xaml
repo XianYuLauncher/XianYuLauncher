@@ -73,6 +73,64 @@
             VerticalScrollBarVisibility="Auto"
             HorizontalScrollBarVisibility="Disabled">
             <StackPanel Spacing="20">
+                <!-- 皮肤3D预览卡片 -->
+                <Border
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock
+                                x:Uid="ProfileManagementPage_Skin3DPreviewTitle"
+                                Text="皮肤3D预览"
+                                Style="{StaticResource TitleTextBlockStyle}"
+                                FontSize="18"
+                                FontWeight="SemiBold" />
+                            <TextBlock
+                                x:Uid="ProfileManagementPage_Skin3DPreviewNote"
+                                Text="3D皮肤模型预览，支持旋转和缩放"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondary}" />
+                        </StackPanel>
+                        
+                        <!-- 3D预览预留区域 -->
+                        <Border
+                            x:Name="Skin3DPreviewContainer"
+                            Background="#F3F4F6"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Height="350"
+                            Width="Auto"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch">
+                            <StackPanel
+                                Orientation="Vertical"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="12">
+                                <SymbolIcon
+                                    Symbol="Rotate"
+                                    Width="64"
+                                    Height="64"
+                                    Foreground="{ThemeResource TextFillColorSecondary}" />
+                                <TextBlock
+                                    Text="3D皮肤预览区域"
+                                    Style="{StaticResource BodyTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondary}"
+                                    HorizontalAlignment="Center" />
+                                <TextBlock
+                                    Text="将在这里显示3D皮肤模型"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiary}"
+                                    HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                
                 <!-- 改名功能卡片 -->
                 <Border
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
