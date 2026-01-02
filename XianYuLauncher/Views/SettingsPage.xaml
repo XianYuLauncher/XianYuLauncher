@@ -506,6 +506,28 @@
                                             <!-- 开源软件列表 -->
                                             <StackPanel Margin="0,0,0,16">
                                                 <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/yushijinhun/authlib-injector">
+                                                        <Run Text="authlib-injector" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) yushijinhun" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：GNU Affero General Public License v3.0 or later" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                                <TextBlock Text="特例说明：已遵循AGPL例外条款" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/burningtnt/Terracotta">
+                                                        <Run Text="Terracotta | 陶瓦联机" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) burningtnt" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：GNU Affero General Public License v3.0 or later" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                                <TextBlock Text="特例说明：已遵循AGPL例外条款" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
                                                     <Hyperlink NavigateUri="https://github.com/bs-community/skinview3d">
                                                         <Run Text="skinview3d" />
                                                     </Hyperlink>

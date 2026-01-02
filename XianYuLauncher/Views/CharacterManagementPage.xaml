@@ -101,7 +101,7 @@
                         
                         <!-- 3D预览区域 -->
                         <Border
-                            Background="#F3F4F6"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
                             CornerRadius="8"
@@ -114,7 +114,6 @@
                                 Source="ms-appx:///Assets/Skin3DPreview.html"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
-                                DefaultBackgroundColor="#F3F4F6"
                                 NavigationStarting="Skin3DPreviewWebView_NavigationStarting"
                                 NavigationCompleted="Skin3DPreviewWebView_NavigationCompleted" />
                         </Border>
