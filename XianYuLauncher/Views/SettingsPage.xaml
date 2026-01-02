@@ -605,7 +605,7 @@
                                             </StackPanel>
 
                                             <!-- 许可证说明 -->
-                                            <Border Background="#F3F4F6" Padding="12" CornerRadius="8">
+                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="12" CornerRadius="8">
                                                 <TextBlock Text="本项目使用的所有开源软件均遵循其各自的许可证要求，详细许可证信息可通过项目地址查看。" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords" />
                                             </Border>
                                         </StackPanel>
