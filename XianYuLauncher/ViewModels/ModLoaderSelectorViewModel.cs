@@ -489,7 +489,17 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            await ShowMessageAsync($"加载{modLoaderItem.Name}版本失败: {ex.Message}");
+            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
+            if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                // 输出debug信息
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 加载{modLoaderItem.Name}版本失败 (404): {ex.Message}");
+            }
+            else
+            {
+                // 其他错误，显示弹窗
+                await ShowMessageAsync($"加载{modLoaderItem.Name}版本失败: {ex.Message}");
+            }
         }
         finally
         {
@@ -532,10 +542,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 只有当当前选择的ModLoader仍然是Fabric时才显示错误
+            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
             if (SelectedModLoader == "Fabric")
             {
-                await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
+                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 输出debug信息
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Fabric版本列表失败 (404): {ex.Message}");
+                }
+                else
+                {
+                    // 其他错误，显示弹窗
+                    await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
+                }
             }
         }
     }
@@ -574,10 +593,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 只有当当前选择的ModLoader仍然是Quilt时才显示错误
+            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
             if (SelectedModLoader == "Quilt")
             {
-                await ShowMessageAsync($"获取Quilt版本列表失败: {ex.Message}");
+                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 输出debug信息
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Quilt版本列表失败 (404): {ex.Message}");
+                }
+                else
+                {
+                    // 其他错误，显示弹窗
+                    await ShowMessageAsync($"获取Quilt版本列表失败: {ex.Message}");
+                }
             }
         }
     }
@@ -612,10 +640,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 只有当当前选择的ModLoader仍然是NeoForge时才显示错误
+            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
             if (SelectedModLoader == "NeoForge")
             {
-                await ShowMessageAsync($"获取NeoForge版本列表失败: {ex.Message}");
+                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 输出debug信息
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取NeoForge版本列表失败 (404): {ex.Message}");
+                }
+                else
+                {
+                    // 其他错误，显示弹窗
+                    await ShowMessageAsync($"获取NeoForge版本列表失败: {ex.Message}");
+                }
             }
         }
     }
@@ -653,10 +690,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 只有当当前选择的ModLoader仍然是Forge时才显示错误
+            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
             if (SelectedModLoader == "Forge")
             {
-                await ShowMessageAsync($"获取Forge版本列表失败: {ex.Message}");
+                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 输出debug信息
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Forge版本列表失败 (404): {ex.Message}");
+                }
+                else
+                {
+                    // 其他错误，显示弹窗
+                    await ShowMessageAsync($"获取Forge版本列表失败: {ex.Message}");
+                }
             }
         }
     }
