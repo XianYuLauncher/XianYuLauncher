@@ -31,13 +31,13 @@ public sealed partial class SettingsPage : Page
             {
                 // 获取临时目录路径
                 string tempDir = Path.GetTempPath();
-                string tempLogPath = Path.Combine(tempDir, $"XMCL2025-DebugLogs-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+                string tempLogPath = Path.Combine(tempDir, $"XianYuLauncher-DebugLogs-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
                 
                 // 创建临时日志文件
                 using (StreamWriter writer = new StreamWriter(tempLogPath))
                 {
                     // 写入基本信息
-                    writer.WriteLine("=== XMCL2025 Debug Logs ===");
+                    writer.WriteLine("=== XianYuLauncher Debug Logs ===");
                     writer.WriteLine($"导出时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                     writer.WriteLine($"应用版本: {ViewModel.VersionDescription}");
                     writer.WriteLine($"应用目录: {AppContext.BaseDirectory}");
