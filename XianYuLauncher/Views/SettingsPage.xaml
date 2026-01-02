@@ -200,6 +200,30 @@
                                         Margin="0,4,0,0" 
                                         Opacity="0.7"/>
                                 </StackPanel>
+                                
+                                <!-- 字体设置 -->
+                                <TextBlock x:Uid="Settings_FontFamily" Text="字体" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
+                                        <ComboBox
+                                            ItemsSource="{x:Bind ViewModel.FontFamilies, Mode=OneWay}"
+                                            SelectedItem="{x:Bind ViewModel.SelectedFontFamily, Mode=TwoWay}"
+                                            Width="300"
+                                            FontSize="15">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" FontFamily="{Binding}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <TextBlock 
+                                        x:Uid="Settings_FontFamilyDescription"
+                                        Text="选择应用字体，更改后立即生效" 
+                                        Style="{ThemeResource CaptionTextBlockStyle}" 
+                                        Margin="0,4,0,0" 
+                                        Opacity="0.7"/>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>

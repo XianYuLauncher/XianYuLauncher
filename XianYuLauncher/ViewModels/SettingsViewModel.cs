@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 using Windows.ApplicationModel;
 using Microsoft.Win32;
@@ -142,6 +143,73 @@ public partial class SettingsViewModel : ObservableRecipient
     public ICommand SwitchMaterialTypeCommand
     {
         get;
+    }
+    
+    /// <summary>
+    /// 字体设置键
+    /// </summary>
+    private const string FontFamilyKey = "FontFamily";
+    
+    /// <summary>
+    /// 字体列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _fontFamilies = new ObservableCollection<string>();
+    
+    /// <summary>
+    /// 当前选中的字体
+    /// </summary>
+    [ObservableProperty]
+    private string _selectedFontFamily = "默认";    
+    
+    /// <summary>
+    /// 加载字体设置
+    /// </summary>
+    private async Task LoadFontFamilyAsync()
+    {
+        // 先初始化字体列表
+        LoadFontFamilies();
+        
+        // 再加载已保存的字体设置
+        var fontFamily = await _localSettingsService.ReadSettingAsync<string>(FontFamilyKey);
+        SelectedFontFamily = fontFamily ?? "默认";
+    }
+    
+    /// <summary>
+    /// 初始化字体列表
+    /// </summary>
+    private void LoadFontFamilies()
+    {
+        // 添加默认选项
+        FontFamilies.Clear();
+        FontFamilies.Add("默认");
+        
+        // 获取系统已安装的字体
+        var installedFonts = new System.Collections.Generic.List<string>();
+        
+        try
+        {
+            using (var fontCollection = new System.Drawing.Text.InstalledFontCollection())
+            {
+                foreach (var fontFamily in fontCollection.Families)
+                {
+                    installedFonts.Add(fontFamily.Name);
+                }
+            }
+            
+            // 按字母顺序排序
+            installedFonts.Sort();
+            
+            // 添加到列表
+            foreach (var fontFamily in installedFonts)
+            {
+                FontFamilies.Add(fontFamily);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载系统字体失败: {ex.Message}");
+        }
     }
     
     private readonly MaterialService _materialService;
@@ -362,6 +430,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadMaterialTypeAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
+        // 加载字体设置
+        LoadFontFamilyAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -455,6 +525,161 @@ public partial class SettingsViewModel : ObservableRecipient
         catch (Exception ex)
         {
             Console.WriteLine($"切换窗口材质失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 当选中字体变化时保存并应用字体
+    /// </summary>
+    partial void OnSelectedFontFamilyChanged(string value)
+    {
+        try
+        {
+            // 保存字体设置
+            _localSettingsService.SaveSettingAsync(FontFamilyKey, value).ConfigureAwait(false);
+            
+            // 应用字体到应用程序
+            ApplyFontToApplication(value);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"应用字体失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 应用字体到整个应用程序
+    /// </summary>
+    private void ApplyFontToApplication(string fontFamilyName)
+    {
+        try
+        {
+            // 通过修改应用资源来设置全局字体
+            if (fontFamilyName != null && fontFamilyName != "默认")
+            {
+                // 创建FontFamily对象
+                var fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
+                
+                // 设置所有可能的全局FontFamily资源
+                App.Current.Resources["ContentControlThemeFontFamily"] = fontFamily;
+                App.Current.Resources["ControlContentThemeFontFamily"] = fontFamily;
+                App.Current.Resources["TextControlThemeFontFamily"] = fontFamily;
+                App.Current.Resources["BodyFontFamily"] = fontFamily;
+                App.Current.Resources["CaptionFontFamily"] = fontFamily;
+                App.Current.Resources["TitleFontFamily"] = fontFamily;
+                App.Current.Resources["SubtitleFontFamily"] = fontFamily;
+                App.Current.Resources["HeaderFontFamily"] = fontFamily;
+                App.Current.Resources["SubheaderFontFamily"] = fontFamily;
+                App.Current.Resources["TitleLargeFontFamily"] = fontFamily;
+                App.Current.Resources["TitleMediumFontFamily"] = fontFamily;
+                App.Current.Resources["TitleSmallFontFamily"] = fontFamily;
+                App.Current.Resources["BodyLargeFontFamily"] = fontFamily;
+                App.Current.Resources["BodyMediumFontFamily"] = fontFamily;
+                App.Current.Resources["BodySmallFontFamily"] = fontFamily;
+                App.Current.Resources["CaptionLargeFontFamily"] = fontFamily;
+                App.Current.Resources["CaptionSmallFontFamily"] = fontFamily;
+                App.Current.Resources["HeaderLargeFontFamily"] = fontFamily;
+                App.Current.Resources["HeaderMediumFontFamily"] = fontFamily;
+                App.Current.Resources["HeaderSmallFontFamily"] = fontFamily;
+                App.Current.Resources["SubheaderLargeFontFamily"] = fontFamily;
+                App.Current.Resources["SubheaderMediumFontFamily"] = fontFamily;
+                App.Current.Resources["SubheaderSmallFontFamily"] = fontFamily;
+                App.Current.Resources["SubtitleLargeFontFamily"] = fontFamily;
+                App.Current.Resources["SubtitleMediumFontFamily"] = fontFamily;
+                App.Current.Resources["SubtitleSmallFontFamily"] = fontFamily;
+            }
+            else
+            {
+                // 恢复默认字体，移除自定义资源
+                App.Current.Resources.Remove("ContentControlThemeFontFamily");
+                App.Current.Resources.Remove("ControlContentThemeFontFamily");
+                App.Current.Resources.Remove("TextControlThemeFontFamily");
+                App.Current.Resources.Remove("BodyFontFamily");
+                App.Current.Resources.Remove("CaptionFontFamily");
+                App.Current.Resources.Remove("TitleFontFamily");
+                App.Current.Resources.Remove("SubtitleFontFamily");
+                App.Current.Resources.Remove("HeaderFontFamily");
+                App.Current.Resources.Remove("SubheaderFontFamily");
+                App.Current.Resources.Remove("TitleLargeFontFamily");
+                App.Current.Resources.Remove("TitleMediumFontFamily");
+                App.Current.Resources.Remove("TitleSmallFontFamily");
+                App.Current.Resources.Remove("BodyLargeFontFamily");
+                App.Current.Resources.Remove("BodyMediumFontFamily");
+                App.Current.Resources.Remove("BodySmallFontFamily");
+                App.Current.Resources.Remove("CaptionLargeFontFamily");
+                App.Current.Resources.Remove("CaptionSmallFontFamily");
+                App.Current.Resources.Remove("HeaderLargeFontFamily");
+                App.Current.Resources.Remove("HeaderMediumFontFamily");
+                App.Current.Resources.Remove("HeaderSmallFontFamily");
+                App.Current.Resources.Remove("SubheaderLargeFontFamily");
+                App.Current.Resources.Remove("SubheaderMediumFontFamily");
+                App.Current.Resources.Remove("SubheaderSmallFontFamily");
+                App.Current.Resources.Remove("SubtitleLargeFontFamily");
+                App.Current.Resources.Remove("SubtitleMediumFontFamily");
+                App.Current.Resources.Remove("SubtitleSmallFontFamily");
+            }
+            
+            // 设置主窗口内容的字体
+            if (App.MainWindow != null && App.MainWindow.Content is Microsoft.UI.Xaml.Controls.Control rootControl)
+            {
+                // 创建FontFamily对象或使用null（默认字体）
+                Microsoft.UI.Xaml.Media.FontFamily fontFamily = null;
+                if (fontFamilyName != null && fontFamilyName != "默认")
+                {
+                    fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
+                }
+                
+                rootControl.FontFamily = fontFamily;
+                
+                // 更新TextBlock相关样式
+                if (fontFamily != null)
+                {
+                    // 更新CaptionTextBlockStyle（用于灰色小字）
+                    var captionStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
+                    captionStyle.BasedOn = App.Current.Resources["CaptionTextBlockStyle"] as Microsoft.UI.Xaml.Style;
+                    captionStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
+                    App.Current.Resources["CaptionTextBlockStyle"] = captionStyle;
+                    
+                    // 更新BodyTextBlockStyle
+                    var bodyStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
+                    bodyStyle.BasedOn = App.Current.Resources["BodyTextBlockStyle"] as Microsoft.UI.Xaml.Style;
+                    bodyStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
+                    App.Current.Resources["BodyTextBlockStyle"] = bodyStyle;
+                    
+                    // 更新PageTitleStyle（用于Shell标题）
+                    var titleStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
+                    titleStyle.BasedOn = App.Current.Resources["PageTitleStyle"] as Microsoft.UI.Xaml.Style;
+                    titleStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
+                    App.Current.Resources["PageTitleStyle"] = titleStyle;
+                }
+                
+                // 遍历视觉树，强制所有子控件应用字体
+                ApplyFontToVisualTree(rootControl, fontFamily);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"应用全局字体失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 遍历视觉树，将字体应用到所有控件
+    /// </summary>
+    private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily fontFamily)
+    {
+        // 应用到当前元素（如果是Control类型）
+        if (root is Microsoft.UI.Xaml.Controls.Control control)
+        {
+            control.FontFamily = fontFamily;
+        }
+        
+        // 递归应用到所有子元素
+        int childrenCount = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < childrenCount; i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            ApplyFontToVisualTree(child, fontFamily);
         }
     }
     
