@@ -79,7 +79,7 @@ public sealed partial class SettingsPage : Page
                     // 写入文件系统信息
                     writer.WriteLine("=== 文件系统信息 ===");
                     string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    string appFolder = Path.Combine(appDataPath, "XMCL2025");
+                    string appFolder = Path.Combine(appDataPath, "XianYuLauncher");
                     writer.WriteLine($"应用数据目录: {appFolder}");
                     writer.WriteLine($"目录存在: {Directory.Exists(appFolder)}");
                     
