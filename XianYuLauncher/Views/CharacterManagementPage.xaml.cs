@@ -489,7 +489,7 @@ namespace XMCL2025.Views
         /// <summary>
         /// WebView2导航完成事件
         /// </summary>
-        private void Skin3DPreviewWebView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        private async void Skin3DPreviewWebView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
         {
             // 使用WebView2.Source获取当前URI
             string currentUri = Skin3DPreviewWebView.Source?.ToString() ?? "未知URI";
@@ -503,7 +503,11 @@ namespace XMCL2025.Views
                 {
                     Debug.WriteLine($"[角色管理Page] CoreWebView2可用");
                     
-
+                    // 获取当前主题并传递给WebView2
+                    var currentTheme = this.ActualTheme;
+                    string theme = currentTheme.ToString().ToLower();
+                    await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setTheme('{theme}');");
+                    Debug.WriteLine($"[角色管理Page] 已设置WebView2主题: {theme}");
                 }
                 else
                 {
