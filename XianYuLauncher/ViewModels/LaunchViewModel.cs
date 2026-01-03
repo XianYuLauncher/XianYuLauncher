@@ -179,6 +179,17 @@ public partial class LaunchViewModel : ObservableRecipient
                 {
                     _gameOutput.Add(line);
                     Console.WriteLine($"[Minecraft Output]: {line}");
+                    
+                    // 实时更新到ErrorAnalysisViewModel
+                    try
+                    {
+                        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                        errorAnalysisViewModel.AddGameOutputLog(line);
+                    }
+                    catch (Exception)
+                    {
+                        // 如果ErrorAnalysisViewModel不可用（比如未导航到该页面），忽略错误
+                    }
                 }
             }
             
@@ -190,6 +201,17 @@ public partial class LaunchViewModel : ObservableRecipient
                 {
                     _gameError.Add(line);
                     Console.WriteLine($"[Minecraft Error]: {line}");
+                    
+                    // 实时更新到ErrorAnalysisViewModel
+                    try
+                    {
+                        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                        errorAnalysisViewModel.AddGameErrorLog(line);
+                    }
+                    catch (Exception)
+                    {
+                        // 如果ErrorAnalysisViewModel不可用，忽略错误
+                    }
                 }
             }
         }
@@ -1950,7 +1972,33 @@ public partial class LaunchViewModel : ObservableRecipient
                 // 设置EnableRaisingEvents为true
                 gameProcess.EnableRaisingEvents = true;
                 
-                // 异步读取输出（可选，用于实时捕获游戏输出）
+                // 检查是否启用了实时日志
+                // 直接从本地存储读取，确保获取最新值
+                bool isRealTimeLogsEnabled = false;
+                try
+                {
+                    var localSettingsService = App.GetService<ILocalSettingsService>();
+                    isRealTimeLogsEnabled = await localSettingsService.ReadSettingAsync<bool?>("EnableRealTimeLogs") ?? false;
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 直接从本地存储读取实时日志设置，值为: {isRealTimeLogsEnabled}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 读取本地存储失败: {ex.Message}");
+                    // 读取失败时，使用SettingsViewModel的值作为备选
+                    var settingsViewModel = App.GetService<SettingsViewModel>();
+                    isRealTimeLogsEnabled = settingsViewModel.EnableRealTimeLogs;
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 使用SettingsViewModel的实时日志设置，值为: {isRealTimeLogsEnabled}");
+                }
+                
+                if (isRealTimeLogsEnabled)
+                {
+                    // 导航到实时日志页面
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 实时日志选项已开启，准备导航到ErrorAnalysisPage");
+                    _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 导航到ErrorAnalysisPage成功");
+                }
+                
+                // 异步读取输出（用于实时捕获游戏输出）
                 _ = Task.Run(() => ReadProcessOutputAsync(gameProcess));
                 
                 // 启动异步监控进程退出
