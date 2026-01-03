@@ -757,7 +757,63 @@
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>Added Profiles</value>
   </data>
-  <!-- VersionListPage Localization -->
+  <!-- SettingsPage 新增本地化 -->
+  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
+    <value>Launch Game Real-time Log</value>
+  </data>
+  <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
+    <value>When enabled, the real-time log page will automatically open after the game starts successfully</value>
+  </data>
+  <data name="Settings_FontFamily.Text" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
+    <value>Select application font, changes take effect immediately</value>
+  </data>
+  <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
+    <value>Open Source Software License Information</value>
+  </data>
+  <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
+    <value>List of open source software used in this project:</value>
+  </data>
+  <!-- ErrorAnalysisPage 本地化 -->
+  <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
+    <value>Real-time Game Log</value>
+  </data>
+  <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
+    <value>Export Logs</value>
+  </data>
+  <data name="ErrorAnalysis_CopyLogButton.Content" xml:space="preserve">
+    <value>Copy Logs</value>
+  </data>
+  <data name="ErrorAnalysis_ClearLogButton.Content" xml:space="preserve">
+    <value>Clear Logs</value>
+  </data>
+  <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
+    <value>Real-time Log Details</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
+    <value>AI Error Analysis</value>
+  </data>
+  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+    <value>No analysis content because Minecraft hasn't crashed yet...</value>
+  </data>
+  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
+    <value>AI is analyzing the crash reason...</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
+    <value>AI analysis completed.</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+    <value>AI analysis canceled.</value>
+  </data>
+  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
+    <value>AI analysis request failed: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+    <value>AI analysis failed: {0}</value>
+  </data>
+  <!-- VersionListPage 本地化 -->
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>Version List</value>
   </data>

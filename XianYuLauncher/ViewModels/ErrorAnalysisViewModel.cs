@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,17 +13,67 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
+using XianYuLauncher.Contracts.Services;
 
 namespace XianYuLauncher.ViewModels
 {
     public partial class ErrorAnalysisViewModel : ObservableObject
     {
+        private readonly ILanguageSelectorService _languageSelectorService;
+        private readonly ResourceManager _resourceManager;
+        private ResourceContext _resourceContext;
+
         [ObservableProperty]
         private string _fullLog = string.Empty;
 
         [ObservableProperty]
         private string _crashReason = string.Empty;
         
+        // 构造函数
+        public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService)
+        {
+            _languageSelectorService = languageSelectorService;
+            _resourceManager = new ResourceManager();
+            _resourceContext = _resourceManager.CreateResourceContext();
+        }
+
+        /// <summary>
+        /// 获取本地化字符串
+        /// </summary>
+        /// <param name="resourceKey">资源键</param>
+        /// <returns>本地化后的字符串</returns>
+        private string GetLocalizedString(string resourceKey)
+        {
+            try
+            {
+                // 根据当前语言返回相应的本地化文本
+                var isChinese = _languageSelectorService.Language == "zh-CN";
+                
+                switch (resourceKey)
+                {
+                    case "ErrorAnalysis_NoErrorInfo.Text":
+                        return isChinese ? "没有分析内容,因为Minecraft还没崩溃..." : "No analysis content because Minecraft hasn't crashed yet...";
+                    case "ErrorAnalysis_Analyzing.Text":
+                        return isChinese ? "AI正在分析崩溃原因..." : "AI is analyzing the crash reason...";
+                    case "ErrorAnalysis_AnalysisComplete.Text":
+                        return isChinese ? "AI分析完成。" : "AI analysis completed.";
+                    case "ErrorAnalysis_AnalysisCanceled.Text":
+                        return isChinese ? "AI分析已取消。" : "AI analysis canceled.";
+                    case "ErrorAnalysis_RequestFailed.Text":
+                        return isChinese ? "AI分析请求失败: {0}" : "AI analysis request failed: {0}";
+                    case "ErrorAnalysis_AnalysisFailed.Text":
+                        return isChinese ? "AI分析失败: {0}" : "AI analysis failed: {0}";
+                    default:
+                        return resourceKey;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取本地化资源失败: {ex.Message}");
+                return resourceKey; // 发生异常时，返回资源键作为默认值
+            }
+        }
+
         // AI分析相关属性
         private string _aiAnalysisResult = string.Empty;
         public string AiAnalysisResult
@@ -173,7 +224,7 @@ namespace XianYuLauncher.ViewModels
         IsAiAnalysisAvailable = false;
         
         // 设置默认文字
-        AiAnalysisResult = "没有分析内容,因为Minecraft还没崩溃...";
+        AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
         
         _launchCommand = launchCommand;
         _gameOutput = new List<string>(gameOutput);
@@ -229,7 +280,7 @@ namespace XianYuLauncher.ViewModels
             
             // 重置AI分析结果和状态
             IsAiAnalyzing = true;
-            AiAnalysisResult = "AI正在分析崩溃原因...\n\n";
+            AiAnalysisResult = GetLocalizedString("ErrorAnalysis_Analyzing.Text") + "\n\n";
             
             // 创建取消令牌
             _aiAnalysisCts = new System.Threading.CancellationTokenSource();
@@ -245,13 +296,17 @@ namespace XianYuLauncher.ViewModels
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", OpenAI_ApiKey);
             System.Diagnostics.Debug.WriteLine("AI分析: HTTP客户端配置完成");
             
-            // 构建请求体
+            // 获取用户偏好语言
+            var userLanguage = _languageSelectorService.Language;
+            var languageName = userLanguage == "zh-CN" ? "简体中文" : "English";
+            
+            // 构建请求体，添加语言适配
             var requestBody = new
             {
                 model = OpenAI_Model,
                 messages = new[]
                 {
-                    new { role = "system", content = "你是一个Minecraft崩溃分析专家，隶属于XianYuLauncher中的错误分析助手，擅长分析游戏崩溃日志并提供解决方案。请分析以下崩溃日志，提供详细的崩溃原因和修复建议。注:仅分析与崩溃直接相关的内容，不相关的警告信息无需分析。记得口语化，避免使用专业术语。" },
+                    new { role = "system", content = $"你是一个Minecraft崩溃分析专家，隶属于XianYuLauncher中的错误分析助手，擅长分析游戏崩溃日志并提供解决方案。请分析以下崩溃日志，提供详细的崩溃原因和修复建议。注:仅分析与崩溃直接相关的内容，不相关的警告信息无需分析。记得口语化，避免使用专业术语。用户的偏好语言为{languageName}，请使用此语言进行对话。" },
                     new { role = "user", content = logSummary }
                 },
                 stream = true, // 启用流式输出
@@ -338,7 +393,7 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("===============================================");
             
             // 分析完成
-            AiAnalysisResult += "\n\nAI分析完成。";
+            AiAnalysisResult += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisComplete.Text")}";
         }
         catch (OperationCanceledException)
         {
@@ -346,14 +401,14 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("===============================================");
             
             // 用户取消了分析
-            AiAnalysisResult += "\n\nAI分析已取消。";
+            AiAnalysisResult += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
         }
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Debug.WriteLine("AI分析: 请求失败: " + ex.Message);
             System.Diagnostics.Debug.WriteLine("===============================================");
             
-            AiAnalysisResult += $"\n\nAI分析请求失败: {ex.Message}";
+            AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
         }
         catch (Exception ex)
         {
@@ -362,7 +417,7 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("堆栈跟踪: " + ex.StackTrace);
             System.Diagnostics.Debug.WriteLine("===============================================");
             
-            AiAnalysisResult += $"\n\nAI分析失败: {ex.Message}";
+            AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message)}";
         }
         finally
         {
@@ -804,7 +859,7 @@ namespace XianYuLauncher.ViewModels
         {
             FullLog = string.Empty;
             // 同时重置AI分析结果为默认文字
-            AiAnalysisResult = "没有分析内容,因为Minecraft还没崩溃...";
+            AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
             IsAiAnalysisAvailable = false;
         }
     }

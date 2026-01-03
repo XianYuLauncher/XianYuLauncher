@@ -1157,11 +1157,67 @@
   <data name="VersionManagerPage_MoveResultDialog.Title" xml:space="preserve">
     <value>Mod转移结果</value>
   </data>
-  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
     <value>确定</value>
   </data>
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>以下是Mod转移结果：</value>
+  </data>
+  <!-- SettingsPage 新增本地化 -->
+  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
+    <value>启动游戏实时日志</value>
+  </data>
+  <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
+    <value>开启后，启动游戏成功后会自动打开实时日志页面</value>
+  </data>
+  <data name="Settings_FontFamily.Text" xml:space="preserve">
+    <value>字体</value>
+  </data>
+  <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
+    <value>选择应用字体，更改后立即生效</value>
+  </data>
+  <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
+    <value>开源软件许可说明</value>
+  </data>
+  <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
+    <value>本项目使用的开源软件列表：</value>
+  </data>
+  <!-- ErrorAnalysisPage 本地化 -->
+  <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
+    <value>实时游戏日志</value>
+  </data>
+  <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
+    <value>导出日志</value>
+  </data>
+  <data name="ErrorAnalysis_CopyLogButton.Content" xml:space="preserve">
+    <value>复制日志</value>
+  </data>
+  <data name="ErrorAnalysis_ClearLogButton.Content" xml:space="preserve">
+    <value>清空日志</value>
+  </data>
+  <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
+    <value>实时日志详情</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
+    <value>AI错误分析</value>
+  </data>
+  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+    <value>没有分析内容,因为Minecraft还没崩溃...</value>
+  </data>
+  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
+    <value>AI正在分析崩溃原因...</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
+    <value>AI分析完成。</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+    <value>AI分析已取消。</value>
+  </data>
+  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
+    <value>AI分析请求失败: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+    <value>AI分析失败: {0}</value>
   </data>
   <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
     <value>全选</value>
