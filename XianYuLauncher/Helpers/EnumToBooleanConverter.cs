@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class EnumToBooleanConverter : IValueConverter
 {

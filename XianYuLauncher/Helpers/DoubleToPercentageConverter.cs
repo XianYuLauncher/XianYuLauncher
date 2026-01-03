@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 /// <summary>
 /// 将Double值转换为百分比字符串的转换器

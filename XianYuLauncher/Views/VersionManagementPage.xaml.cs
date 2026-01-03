@@ -5,10 +5,10 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
-using XMCL2025.ViewModels;
-using XMCL2025.Helpers;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class VersionManagementPage : Page
 {

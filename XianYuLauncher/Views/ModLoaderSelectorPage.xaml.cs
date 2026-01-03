@@ -1,8 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 using System.ComponentModel;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class ModLoaderSelectorPage : Page
 {
@@ -49,7 +49,7 @@ public sealed partial class ModLoaderSelectorPage : Page
     /// </summary>
     private async void ModLoaderItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Border border && border.DataContext is XMCL2025.Core.Models.ModLoaderItem modLoaderItem)
+        if (sender is Microsoft.UI.Xaml.Controls.Border border && border.DataContext is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
         {
             await ViewModel.SelectModLoaderCommand.ExecuteAsync(modLoaderItem);
         }
@@ -60,7 +60,7 @@ public sealed partial class ModLoaderSelectorPage : Page
     /// </summary>
     private void CancelModLoader_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Button button && button.Tag is XMCL2025.Core.Models.ModLoaderItem modLoaderItem)
+        if (sender is Microsoft.UI.Xaml.Controls.Button button && button.Tag is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
         {
             // 直接调用ViewModel的ClearSelectionCommand
             ViewModel.ClearSelectionCommand.Execute(modLoaderItem);
@@ -76,7 +76,7 @@ public sealed partial class ModLoaderSelectorPage : Page
         {
             // 获取ListView
             var listView = FindParent<Microsoft.UI.Xaml.Controls.ListView>(textBlock);
-            if (listView != null && listView.Tag is XMCL2025.Core.Models.ModLoaderItem modLoaderItem)
+            if (listView != null && listView.Tag is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
             {
                 // 获取版本名称
                 if (textBlock.Tag is string versionName)

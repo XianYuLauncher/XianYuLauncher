@@ -1,4 +1,4 @@
-﻿namespace XMCL2025.Activation;
+namespace XianYuLauncher.Activation;
 
 public interface IActivationHandler
 {

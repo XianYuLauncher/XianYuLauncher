@@ -4,14 +4,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-using XMCL2025.Activation;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.ViewModels;
-using XMCL2025.Views;
+using XianYuLauncher.Activation;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class ActivationService : IActivationService
 {

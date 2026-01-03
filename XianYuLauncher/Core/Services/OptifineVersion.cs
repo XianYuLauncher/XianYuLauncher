@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Optifine版本模型，用于解析BMCLAPI返回的Optifine版本数据

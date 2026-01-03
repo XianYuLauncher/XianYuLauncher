@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace XMCL2025.Core.Models;
+namespace XianYuLauncher.Core.Models;
 
 /// <summary>
 /// 将字符串转换为Uri的JSON转换器

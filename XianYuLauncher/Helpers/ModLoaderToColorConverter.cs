@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class ModLoaderToColorConverter : IValueConverter
 {

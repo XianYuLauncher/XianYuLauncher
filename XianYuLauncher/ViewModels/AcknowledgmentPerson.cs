@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 /// <summary>
 /// 鸣谢人员数据模型

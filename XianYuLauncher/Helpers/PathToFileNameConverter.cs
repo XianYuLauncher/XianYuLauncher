@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Data;
 using System.IO;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class PathToFileNameConverter : IValueConverter
 {

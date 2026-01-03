@@ -14,15 +14,15 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.System;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Helpers;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 /// <summary>
     /// Mod信息类
@@ -2406,7 +2406,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToModPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为1（Mod下载标签页）
-        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 1;
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 1;
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
@@ -2419,7 +2419,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToShaderPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为2（光影下载标签页）
-        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 2;
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 2;
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
@@ -2432,7 +2432,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToResourcePackPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页）
-        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
@@ -2445,7 +2445,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToDataPackPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页，数据包和资源包共用一个页面）
-        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
@@ -2458,7 +2458,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToMapPage()
     {
         // 地图下载页面尚未实现，暂时导航到资源下载页面
-        XMCL2025.Views.ResourceDownloadPage.TargetTabIndex = 0;
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 0;
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);

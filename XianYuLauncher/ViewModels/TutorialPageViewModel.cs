@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels
+namespace XianYuLauncher.ViewModels
 {
     public partial class TutorialPageViewModel : ObservableObject
     {
@@ -239,7 +239,7 @@ namespace XMCL2025.ViewModels
                 // 添加离线账户
                 var offlineProfile = new MinecraftProfile
                 {
-                    Id = XMCL2025.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineProfileName),
+                    Id = XianYuLauncher.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineProfileName),
                     Name = OfflineProfileName,
                     AccessToken = Guid.NewGuid().ToString(),
                     TokenType = "offline",

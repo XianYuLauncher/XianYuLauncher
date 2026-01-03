@@ -1,12 +1,12 @@
 <Page
-    x:Class="XMCL2025.Views.ResourceDownloadPage"
+    x:Class="XianYuLauncher.Views.ResourceDownloadPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:helpers="using:XMCL2025.Helpers"
-    xmlns:viewModels="using:XMCL2025.ViewModels"
-    xmlns:models="using:XMCL2025.Core.Models"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:models="using:XianYuLauncher.Core.Models"
     mc:Ignorable="d">
 
     <Grid x:Name="ContentArea" Padding="20">

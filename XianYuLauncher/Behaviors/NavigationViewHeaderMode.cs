@@ -1,4 +1,4 @@
-﻿namespace XMCL2025.Behaviors;
+namespace XianYuLauncher.Behaviors;
 
 public enum NavigationViewHeaderMode
 {

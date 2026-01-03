@@ -4,11 +4,11 @@ using System.Xml.Linq;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Contracts.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// BMCLAPI NeoForge版本列表项
@@ -49,7 +49,7 @@ public class NeoForgeService
         try
         {
             // 获取当前版本列表源设置（枚举类型）
-            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
+            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<XianYuLauncher.ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
             var versionListSource = versionListSourceEnum.ToString();
             
             // 根据设置获取对应的下载源

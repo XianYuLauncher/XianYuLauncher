@@ -1,12 +1,12 @@
 <Page
-        x:Class="XMCL2025.Views.CharacterManagementPage"
+        x:Class="XianYuLauncher.Views.CharacterManagementPage"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewModels="using:XMCL2025.ViewModels"
-        xmlns:helpers="using:XMCL2025.Helpers"
-        xmlns:local="using:XMCL2025.ViewModels"
+        xmlns:viewModels="using:XianYuLauncher.ViewModels"
+        xmlns:helpers="using:XianYuLauncher.Helpers"
+        xmlns:local="using:XianYuLauncher.ViewModels"
         mc:Ignorable="d">
         <Page.Resources>
             <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />

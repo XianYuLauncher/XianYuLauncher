@@ -13,7 +13,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace XMCL2025.ViewModels
+namespace XianYuLauncher.ViewModels
 {
     public partial class ErrorAnalysisViewModel : ObservableObject
     {

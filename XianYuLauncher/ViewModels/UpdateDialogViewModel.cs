@@ -7,11 +7,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading; using System.Threading.Tasks;
 using System.IO;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using System.Diagnostics;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 /// <summary>
 /// 更新弹窗的ViewModel

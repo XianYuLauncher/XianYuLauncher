@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace XMCL2025.Core.Contracts.Services;
+namespace XianYuLauncher.Core.Contracts.Services;
 
 public interface IFileService
 {

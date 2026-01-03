@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 /// <summary>
 /// 将字符串的首字母转换为大写的转换器

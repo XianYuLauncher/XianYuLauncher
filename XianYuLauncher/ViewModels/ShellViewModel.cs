@@ -2,10 +2,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 using Microsoft.UI.Xaml.Navigation;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Views;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Views;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 public partial class ShellViewModel : ObservableRecipient
 {

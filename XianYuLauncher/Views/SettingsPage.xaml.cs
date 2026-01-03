@@ -2,9 +2,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System.IO;
 
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 // TODO: Set the URL for your privacy policy by updating SettingsPage_PrivacyTermsLink.NavigateUri in Resources.resw.
 public sealed partial class SettingsPage : Page

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace XMCL2025.Core.Models;
+namespace XianYuLauncher.Core.Models;
 
 /// <summary>
 /// Fabric加载器版本信息

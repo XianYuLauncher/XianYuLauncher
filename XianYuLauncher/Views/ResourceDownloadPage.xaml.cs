@@ -1,6 +1,6 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XMCL2025.Contracts.ViewModels;using XMCL2025.ViewModels;using XMCL2025.Core.Contracts.Services;using XMCL2025.Core.Models;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {

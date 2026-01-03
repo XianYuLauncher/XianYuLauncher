@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Minecraft版本服务 - 下载核心功能部分

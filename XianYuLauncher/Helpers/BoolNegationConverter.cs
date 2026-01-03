@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 布尔值取反转换器

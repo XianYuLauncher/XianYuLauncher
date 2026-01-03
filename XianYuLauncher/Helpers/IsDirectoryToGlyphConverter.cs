@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 /// <summary>
 /// 将IsDirectory属性转换为对应的FontIcon Glyph

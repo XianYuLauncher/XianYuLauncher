@@ -11,13 +11,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels
+namespace XianYuLauncher.ViewModels
 {
     public partial class ModDownloadDetailViewModel : ObservableObject
     {
@@ -1642,7 +1642,7 @@ namespace XMCL2025.ViewModels
                                         using (HttpClient client = new HttpClient())
                                         {
                                             // 设置User-Agent
-                                            client.DefaultRequestHeaders.UserAgent.ParseAdd("XMCL2025/1.0");
+                                            client.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.0");
                                             
                                             // 设置超时
                                             client.Timeout = TimeSpan.FromMinutes(5);

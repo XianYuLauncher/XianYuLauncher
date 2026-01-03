@@ -15,14 +15,14 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.System;
 using Microsoft.UI.Xaml.Media;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
 using System.Collections.Specialized;
 using System.Text;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 public partial class LaunchViewModel : ObservableRecipient
 {

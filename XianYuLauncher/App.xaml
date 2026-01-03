@@ -1,5 +1,5 @@
 <Application
-    x:Class="XMCL2025.App"
+    x:Class="XianYuLauncher.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
@@ -10,17 +10,17 @@
                 <ResourceDictionary Source="/Styles/Thickness.xaml" />
                 <ResourceDictionary Source="/Styles/TextBlock.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:BoolNegationConverter x:Key="BoolNegationConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:BoolToTextConverter x:Key="BoolToTextConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:ProfileTypeConverter x:Key="ProfileTypeConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:DateTimeConverter x:Key="DateTimeConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter" xmlns:helpers="using:XMCL2025.Helpers" />
-            <helpers:UriToImageSourceConverter x:Key="UriToImageSourceConverter" xmlns:helpers="using:XMCL2025.Helpers" />
+            <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:BoolNegationConverter x:Key="BoolNegationConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:BoolToTextConverter x:Key="BoolToTextConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:ProfileTypeConverter x:Key="ProfileTypeConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:DateTimeConverter x:Key="DateTimeConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:UriToImageSourceConverter x:Key="UriToImageSourceConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             
             <!-- 轮询内容模板，用于显示轮询结果 -->
             <DataTemplate x:Key="PollingContentTemplate">

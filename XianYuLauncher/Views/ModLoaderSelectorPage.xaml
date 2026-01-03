@@ -1,13 +1,13 @@
 <Page
-    x:Class="XMCL2025.Views.ModLoaderSelectorPage"
+    x:Class="XianYuLauncher.Views.ModLoaderSelectorPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:viewModels="using:XMCL2025.ViewModels"
-    xmlns:helpers="using:XMCL2025.Helpers"
-    xmlns:core="using:XMCL2025.Core.Models"
-    xmlns:services="using:XMCL2025.Core.Services"
+    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:core="using:XianYuLauncher.Core.Models"
+    xmlns:services="using:XianYuLauncher.Core.Services"
     mc:Ignorable="d"
     HorizontalAlignment="Stretch">
 

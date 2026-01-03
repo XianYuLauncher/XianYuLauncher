@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace XMCL2025.Core.Contracts.Services;
+namespace XianYuLauncher.Core.Contracts.Services;
 
 public interface IMinecraftVersionService
 {

@@ -1,6 +1,6 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 
-namespace XMCL2025.Contracts.Services;
+namespace XianYuLauncher.Contracts.Services;
 
 public interface IThemeSelectorService
 {

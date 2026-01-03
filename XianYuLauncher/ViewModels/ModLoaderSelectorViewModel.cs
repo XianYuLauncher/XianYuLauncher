@@ -2,14 +2,14 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Core.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {

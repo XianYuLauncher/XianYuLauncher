@@ -1,6 +1,6 @@
 using System;
 
-namespace XMCL2025.Core.Models;
+namespace XianYuLauncher.Core.Models;
 
 /// <summary>
 /// 下载状态枚举

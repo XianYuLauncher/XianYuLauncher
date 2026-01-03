@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 /// <summary>
 /// 字符串转布尔值转换器，用于比较字符串值与参数是否相等

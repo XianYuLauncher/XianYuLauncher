@@ -1,12 +1,12 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 using Microsoft.UI.Xaml.Controls;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Helpers;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class NavigationViewService : INavigationViewService
 {

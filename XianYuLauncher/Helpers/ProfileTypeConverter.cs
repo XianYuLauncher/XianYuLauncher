@@ -1,8 +1,8 @@
 using Microsoft.UI.Xaml.Data;
 using System;
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 角色类型转换器

@@ -1,6 +1,6 @@
 using Microsoft.Windows.ApplicationModel.Resources;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public static class ResourceExtensions
 {

@@ -1,4 +1,4 @@
-﻿namespace XMCL2025.Contracts.ViewModels;
+namespace XianYuLauncher.Contracts.ViewModels;
 
 public interface INavigationAware
 {

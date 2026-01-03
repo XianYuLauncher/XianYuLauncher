@@ -1,11 +1,11 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Xaml.Interactivity;
 
-using XMCL2025.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
 
-namespace XMCL2025.Behaviors;
+namespace XianYuLauncher.Behaviors;
 
 public class NavigationViewHeaderBehavior : Behavior<NavigationView>
 {

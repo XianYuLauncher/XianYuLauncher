@@ -11,12 +11,12 @@ using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Graphics.Canvas;
 using Windows.Storage.Streams;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
 
-namespace XMCL2025.ViewModels
+namespace XianYuLauncher.ViewModels
 {
     /// <summary>
     /// 角色管理页面的ViewModel

@@ -4,13 +4,13 @@ using Newtonsoft.Json;
 using Windows.ApplicationModel;
 using Windows.Storage;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
-using XMCL2025.Helpers;
-using XMCL2025.Models;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class LocalSettingsService : ILocalSettingsService
 {
@@ -84,7 +84,7 @@ public class LocalSettingsService : ILocalSettingsService
                             Console.WriteLine($"  - {item.GetType().Name}: {item}");
                         }
                     }
-                    else if (obj is List<XMCL2025.ViewModels.JavaVersionInfo> typedList)
+                    else if (obj is List<XianYuLauncher.ViewModels.JavaVersionInfo> typedList)
                     {
                         Console.WriteLine($"  类型化List元素数量: {typedList.Count}");
                         foreach (var item in typedList)
@@ -129,7 +129,7 @@ public class LocalSettingsService : ILocalSettingsService
                     Console.WriteLine($"  - {item.GetType().Name}: {item}");
                 }
             }
-            else if (key == "JavaVersions" && value is List<XMCL2025.ViewModels.JavaVersionInfo> typedList)
+            else if (key == "JavaVersions" && value is List<XianYuLauncher.ViewModels.JavaVersionInfo> typedList)
             {
                 Console.WriteLine($"保存Java版本列表，数量: {typedList.Count}");
                 foreach (var item in typedList)

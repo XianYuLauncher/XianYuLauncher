@@ -1,4 +1,4 @@
-namespace XMCL2025.Contracts.Services;
+namespace XianYuLauncher.Contracts.Services;
 
 public interface IPageService
 {

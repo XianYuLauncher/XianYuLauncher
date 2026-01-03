@@ -2,7 +2,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 布尔值到字体粗细转换器

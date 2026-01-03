@@ -7,15 +7,15 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Streams;
-using XMCL2025.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
-using XMCL2025.ViewModels;
-using XMCL2025.Helpers;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class LaunchPage : Page
 {
