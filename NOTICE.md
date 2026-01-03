@@ -64,6 +64,11 @@
 - **许可证**：MIT License
 - **项目地址**：https://github.com/dotMorten/WinUIEx
 
+## CommunityToolkit.WinUI.UI.Controls
+- **版权声明**：Copyright (c) .NET Foundation and Contributors
+- **许可证**：MIT License
+- **项目地址**：https://aka.ms/CommunityToolkit
+
 ## 许可证详情
 
 ### MIT License
