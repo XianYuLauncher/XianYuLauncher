@@ -17,9 +17,6 @@
     <UseWindowsForms>False</UseWindowsForms>
     <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-    <!-- 暂时移除证书配置 -->
-    <!-- <PackageCertificateThumbprint>58262E4C49844E18497E86160A141ACAEE51022F</PackageCertificateThumbprint> -->
-    <!-- <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm> -->
     <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
@@ -29,6 +26,7 @@
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>
 	<!-- <WindowsPackageType>None</WindowsPackageType> -->
+  <!-- 别想了兄弟,Unpackaged什么都得改 -->
   </PropertyGroup>
 
   <ItemGroup>
