@@ -13,14 +13,14 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.ViewModels;
 using Microsoft.Graphics.Canvas;
 using System;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 
-namespace XMCL2025.Views
+namespace XianYuLauncher.Views
 {
     /// <summary>
     /// 角色管理页面

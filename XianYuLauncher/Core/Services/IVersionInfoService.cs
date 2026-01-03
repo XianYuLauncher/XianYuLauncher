@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
-using XMCL2025.Core.Models;
+using XianYuLauncher.Core.Models;
 
-namespace XMCL2025.Core.Services
+namespace XianYuLauncher.Core.Services
 {
     /// <summary>
     /// 版本信息服务接口，提供统一的版本信息获取方法

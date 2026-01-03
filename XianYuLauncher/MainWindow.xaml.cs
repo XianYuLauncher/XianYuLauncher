@@ -1,9 +1,9 @@
 using Windows.UI.ViewManagement;
 
-using XMCL2025.Core.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025;
+namespace XianYuLauncher;
 
 public sealed partial class MainWindow : WindowEx
 {
@@ -54,7 +54,7 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            var localSettingsService = App.GetService<XMCL2025.Contracts.Services.ILocalSettingsService>();
+            var localSettingsService = App.GetService<XianYuLauncher.Contracts.Services.ILocalSettingsService>();
             const string FontFamilyKey = "FontFamily";
             
             // 加载保存的字体设置

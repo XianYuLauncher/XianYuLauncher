@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using XMCL2025.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
 
-namespace XMCL2025.Core.Services
+namespace XianYuLauncher.Core.Services
 {
     /// <summary>
     /// 材质类型枚举

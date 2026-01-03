@@ -1,6 +1,6 @@
 using System;
 
-namespace XMCL2025.Core.Models
+namespace XianYuLauncher.Core.Models
 {
     /// <summary>
     /// 版本配置文件模型，存储版本的ModLoader信息

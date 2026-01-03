@@ -9,13 +9,13 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware
 {

@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml;
 using System;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 反转布尔值到可见性转换器

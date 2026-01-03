@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 将Uri转换为ImageSource的转换器

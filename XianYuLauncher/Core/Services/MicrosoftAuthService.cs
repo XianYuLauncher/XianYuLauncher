@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// 微软登录服务，处理微软账号登录Minecraft的完整流程
@@ -22,7 +22,7 @@ public class MicrosoftAuthService
     public MicrosoftAuthService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
     
     #region 数据模型
@@ -495,7 +495,7 @@ public class MicrosoftAuthService
             
             // 将详细错误信息保存到临时文件
             string errorDetails = ex.ToString();
-            string tempFilePath = Path.Combine(Path.GetTempPath(), $"XMCL2025_MicrosoftLogin_Error_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"XianYuLauncher_MicrosoftLogin_Error_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
             
             try
             {

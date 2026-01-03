@@ -1,6 +1,6 @@
-using System;using System.IO;using System.Text.RegularExpressions;using Microsoft.Extensions.Logging;using Newtonsoft.Json;using XMCL2025.Core.Models;
+using System;using System.IO;using System.Text.RegularExpressions;using Microsoft.Extensions.Logging;using Newtonsoft.Json;using XianYuLauncher.Core.Models;
 
-namespace XMCL2025.Core.Services
+namespace XianYuLauncher.Core.Services
 {
     /// <summary>
     /// 版本信息服务实现，提供统一的版本信息获取方法

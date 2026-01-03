@@ -1,8 +1,8 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XMCL2025.Contracts.Services; using XMCL2025.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XMCL2025.Helpers;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
-namespace XMCL2025.Views
+namespace XianYuLauncher.Views
 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.

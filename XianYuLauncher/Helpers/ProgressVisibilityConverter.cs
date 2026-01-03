@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class ProgressVisibilityConverter : IValueConverter
 {

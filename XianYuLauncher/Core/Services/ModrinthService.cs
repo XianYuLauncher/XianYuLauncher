@@ -7,9 +7,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using XMCL2025.Core.Models;
+using XianYuLauncher.Core.Models;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Modrinth服务类，用于调用Modrinth API
@@ -22,7 +22,7 @@ public class ModrinthService
     {
         _httpClient = httpClient;
         // 设置默认请求头
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
 
     /// <summary>

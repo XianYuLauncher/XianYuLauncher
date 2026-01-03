@@ -1,9 +1,9 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class ThemeSelectorService : IThemeSelectorService
 {

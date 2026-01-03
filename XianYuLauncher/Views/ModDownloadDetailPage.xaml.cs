@@ -5,12 +5,12 @@ using System.IO;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace XMCL2025.Views
+namespace XianYuLauncher.Views
 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
@@ -92,12 +92,12 @@ namespace XMCL2025.Views
             base.OnNavigatedTo(e);
 
             // 接收从搜索页面传递的完整Mod对象和来源类型
-            if (e.Parameter is Tuple<XMCL2025.Core.Models.ModrinthProject, string> tuple)
+            if (e.Parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)
             {
                 await ViewModel.LoadModDetailsAsync(tuple.Item1, tuple.Item2);
             }
             // 兼容旧的导航方式（仅传递Mod对象）
-            else if (e.Parameter is XMCL2025.Core.Models.ModrinthProject mod)
+            else if (e.Parameter is XianYuLauncher.Core.Models.ModrinthProject mod)
             {
                 await ViewModel.LoadModDetailsAsync(mod, null);
             }
@@ -120,7 +120,7 @@ namespace XMCL2025.Views
         private void GameVersionButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             // 切换游戏版本的展开状态
-            if (sender is Button button && button.Tag is XMCL2025.ViewModels.GameVersionViewModel viewModel)
+            if (sender is Button button && button.Tag is XianYuLauncher.ViewModels.GameVersionViewModel viewModel)
             {
                 viewModel.IsExpanded = !viewModel.IsExpanded;
             }

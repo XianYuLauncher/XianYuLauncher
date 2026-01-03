@@ -1,10 +1,10 @@
 using Microsoft.UI.Xaml;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Activation;
+namespace XianYuLauncher.Activation;
 
 public class DefaultActivationHandler : ActivationHandler<LaunchActivatedEventArgs>
 {

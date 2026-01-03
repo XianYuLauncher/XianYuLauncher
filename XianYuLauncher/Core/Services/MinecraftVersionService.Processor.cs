@@ -8,13 +8,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.ViewModels;
-using XMCL2025.Core.Models;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Core.Models;
 
-namespace XMCL2025.Core.Services
+namespace XianYuLauncher.Core.Services
 {
     public partial class MinecraftVersionService
     {

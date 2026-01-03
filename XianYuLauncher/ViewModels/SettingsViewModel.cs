@@ -13,12 +13,12 @@ using Microsoft.Win32;
 using System.IO;
 using System.Collections.ObjectModel;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 /// <summary>
 /// Java版本信息类
@@ -131,12 +131,12 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 材质类型
     /// </summary>
     [ObservableProperty]
-    private XMCL2025.Core.Services.MaterialType _materialType = XMCL2025.Core.Services.MaterialType.Mica;
+    private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
     
     /// <summary>
     /// 材质类型列表，用于ComboBox数据源
     /// </summary>
-    public List<XMCL2025.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XMCL2025.Core.Services.MaterialType>().ToList();
+    public List<XianYuLauncher.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XianYuLauncher.Core.Services.MaterialType>().ToList();
     
     /// <summary>
     /// 材质类型选择命令
@@ -532,7 +532,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// <summary>
     /// 当材质类型变化时保存并切换窗口材质
     /// </summary>
-    partial void OnMaterialTypeChanged(XMCL2025.Core.Services.MaterialType value)
+    partial void OnMaterialTypeChanged(XianYuLauncher.Core.Services.MaterialType value)
     {
         try
         {

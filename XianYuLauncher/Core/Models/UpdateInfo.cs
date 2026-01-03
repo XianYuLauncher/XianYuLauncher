@@ -1,6 +1,6 @@
 using System; using System.Collections.Generic;
 
-namespace XMCL2025.Core.Models;
+namespace XianYuLauncher.Core.Models;
 
 /// <summary>
 /// 表示单个下载镜像

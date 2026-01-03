@@ -15,12 +15,12 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json;
 using Windows.Storage;
 using Windows.Storage.Streams;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 // 玩家信息类，用于显示玩家列表
 public class RoomPlayer

@@ -1,4 +1,4 @@
-namespace XMCL2025.Core.Services.DownloadSource;
+namespace XianYuLauncher.Core.Services.DownloadSource;
 
 /// <summary>
 /// 官方下载源实现

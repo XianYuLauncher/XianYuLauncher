@@ -4,11 +4,11 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Contracts.ViewModels;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 // For more information on navigation between pages see
 // https://github.com/microsoft/TemplateStudio/blob/main/docs/WinUI/navigation.md

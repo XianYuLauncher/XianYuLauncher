@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Data;
 using Symbol = Microsoft.UI.Xaml.Controls.Symbol;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class ModLoaderToSymbolConverter : IValueConverter
 {

@@ -1,12 +1,12 @@
 <Page
-    x:Class="XMCL2025.Views.VersionListPage"
+    x:Class="XianYuLauncher.Views.VersionListPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:helpers="using:XMCL2025.Helpers"
-    xmlns:vm="using:XMCL2025.ViewModels"
-    xmlns:local="using:XMCL2025.Views"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:vm="using:XianYuLauncher.ViewModels"
+    xmlns:local="using:XianYuLauncher.Views"
     mc:Ignorable="d">
     <Page.Resources>
         <!-- 简化的CheckBox样式，精确控制点击区域 -->

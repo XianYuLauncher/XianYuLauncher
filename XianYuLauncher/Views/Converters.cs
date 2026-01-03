@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Media;
 using System;
 using Windows.UI;
 
-namespace XMCL2025.Views
+namespace XianYuLauncher.Views
 {
     // 布尔值取反转换器
     public class BoolNegationConverter : IValueConverter

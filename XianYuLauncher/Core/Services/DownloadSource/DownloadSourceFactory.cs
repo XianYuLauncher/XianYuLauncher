@@ -1,4 +1,4 @@
-namespace XMCL2025.Core.Services.DownloadSource;
+namespace XianYuLauncher.Core.Services.DownloadSource;
 
 /// <summary>
 /// 下载源工厂，用于创建和管理不同类型的下载源

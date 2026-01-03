@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 离线玩家UUID生成助手

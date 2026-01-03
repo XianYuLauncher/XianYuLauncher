@@ -7,18 +7,18 @@ using Serilog.Settings.Configuration;
 using System;
 using System.IO;
 
-using XMCL2025.Activation;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.Helpers;
-using XMCL2025.Models;
-using XMCL2025.Services;
-using XMCL2025.ViewModels;
-using XMCL2025.Views;
+using XianYuLauncher.Activation;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
+using XianYuLauncher.Services;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XMCL2025;
+namespace XianYuLauncher;
 
 // To learn more about WinUI 3, see https://docs.microsoft.com/windows/apps/winui/winui3/.
 public partial class App : Application

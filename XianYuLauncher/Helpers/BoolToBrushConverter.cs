@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using System;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 布尔值到画刷转换器

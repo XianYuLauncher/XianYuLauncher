@@ -1,10 +1,10 @@
 using System.IO;
 using Windows.Storage;
-using XMCL2025.Core.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using Newtonsoft.Json;
-using XMCL2025.Helpers;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 public class FileService : IFileService
 {
@@ -84,7 +84,7 @@ public class FileService : IFileService
             // 对于所有部署类型，都从本地应用数据文件夹加载设置
             // 这样可以确保在开发环境和生产环境中都能正确加载设置
             string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string settingsPath = Path.Combine(localAppDataPath, "XMCL2025", "ApplicationData", "LocalSettings.json");
+            string settingsPath = Path.Combine(localAppDataPath, "XianYuLauncher", "ApplicationData", "LocalSettings.json");
             if (File.Exists(settingsPath))
             {
                 var json = File.ReadAllText(settingsPath);
@@ -115,7 +115,7 @@ public class FileService : IFileService
             // 对于所有部署类型，都保存到本地应用数据文件夹
             // 这样可以确保在开发环境和生产环境中都能正确保存设置
             string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string settingsFolder = Path.Combine(localAppDataPath, "XMCL2025", "ApplicationData");
+            string settingsFolder = Path.Combine(localAppDataPath, "XianYuLauncher", "ApplicationData");
             string settingsPath = Path.Combine(settingsFolder, "LocalSettings.json");
             
             Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();

@@ -1,8 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
 using System;
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class DownloadProgressDialog : UserControl
 {

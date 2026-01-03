@@ -1,4 +1,4 @@
-namespace XMCL2025.Core.Services.DownloadSource;
+namespace XianYuLauncher.Core.Services.DownloadSource;
 
 /// <summary>
 /// 下载源接口，定义资源获取的标准方法

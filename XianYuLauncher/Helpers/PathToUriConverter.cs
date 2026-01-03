@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace XMCL2025.Helpers
+namespace XianYuLauncher.Helpers
 {
     /// <summary>
     /// 将本地文件路径转换为Uri格式，用于Image控件的Source属性

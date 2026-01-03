@@ -1,11 +1,11 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.Contracts.Services;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Quilt服务类，用于获取Quilt版本列表
@@ -33,7 +33,7 @@ public class QuiltService
         try
         {
             // 获取当前版本列表源设置（枚举类型）
-            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
+            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<XianYuLauncher.ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
             var versionListSource = versionListSourceEnum.ToString();
             
             // 根据设置获取对应的下载源

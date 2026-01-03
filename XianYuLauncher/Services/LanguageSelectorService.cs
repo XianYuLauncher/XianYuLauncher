@@ -2,10 +2,10 @@ using System.Globalization;
 using Microsoft.Windows.ApplicationModel.Resources;
 using Windows.Globalization;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class LanguageSelectorService : ILanguageSelectorService
 {

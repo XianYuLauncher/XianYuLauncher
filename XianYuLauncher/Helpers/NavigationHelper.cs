@@ -1,7 +1,7 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 // Helper class to set the navigation target for a NavigationViewItem.
 //

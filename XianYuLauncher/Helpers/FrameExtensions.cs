@@ -1,6 +1,6 @@
-﻿using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public static class FrameExtensions
 {

@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Optifine服务类，用于获取指定Minecraft版本的Optifine加载器版本列表
@@ -19,7 +19,7 @@ public class OptifineService
     public OptifineService(IHttpClientFactory httpClientFactory)
     {
         _httpClient = httpClientFactory.CreateClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
     
     /// <summary>

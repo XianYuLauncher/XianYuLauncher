@@ -8,11 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels
+namespace XianYuLauncher.ViewModels
 {
     /// <summary>
     /// 角色信息类
@@ -253,7 +253,7 @@ namespace XMCL2025.ViewModels
                 // 创建离线角色
                 var offlineProfile = new MinecraftProfile
                 {
-                    Id = XMCL2025.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineUsername),
+                    Id = XianYuLauncher.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineUsername),
                     Name = OfflineUsername,
                     AccessToken = Guid.NewGuid().ToString(),
                     TokenType = "offline",

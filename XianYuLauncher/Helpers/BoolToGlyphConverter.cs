@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 /// <summary>
 /// 将布尔值转换为对应的展开/折叠图标

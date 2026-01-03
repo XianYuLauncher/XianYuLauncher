@@ -2,11 +2,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 using Microsoft.UI.Xaml.Controls;
 
-using XMCL2025.Contracts.Services;
-using XMCL2025.ViewModels;
-using XMCL2025.Views;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XMCL2025.Services;
+namespace XianYuLauncher.Services;
 
 public class PageService : IPageService
 {

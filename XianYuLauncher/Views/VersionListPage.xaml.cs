@@ -5,10 +5,10 @@ using Windows.Storage;
 using System;
 using System.IO;
 using System.IO.Compression;
-using XMCL2025.Contracts.Services;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Views;
+namespace XianYuLauncher.Views;
 
 public sealed partial class VersionListPage : Page
 {

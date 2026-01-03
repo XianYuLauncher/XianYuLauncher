@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Windows.UI.Xaml;
 
-namespace XMCL2025.Helpers;
+namespace XianYuLauncher.Helpers;
 
 public class StringNullOrEmptyToBoolConverter : IValueConverter
 {

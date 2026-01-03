@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Models;
-using XMCL2025.Core.Services.DownloadSource;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// Minecraft版本服务 - Forge相关功能部分
@@ -56,7 +56,7 @@ public partial class MinecraftVersionService
             progressCallback?.Invoke(5); // 5% - 版本目录创建完成
             
             // 立即生成版本配置文件，确保处理器执行前能获取正确的版本信息
-            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            var versionConfig = new XianYuLauncher.Core.Models.VersionConfig
             {
                 ModLoaderType = "forge",
                 ModLoaderVersion = forgeVersion,

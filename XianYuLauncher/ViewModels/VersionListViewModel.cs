@@ -10,12 +10,12 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
-using XMCL2025.Core.Contracts.Services;
-using XMCL2025.Core.Services;
-using XMCL2025.Contracts.Services;
-using XMCL2025.Helpers;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
 
-namespace XMCL2025.ViewModels;
+namespace XianYuLauncher.ViewModels;
 
 public partial class VersionListViewModel : ObservableRecipient
 {

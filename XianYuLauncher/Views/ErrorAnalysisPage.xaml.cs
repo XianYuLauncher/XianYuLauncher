@@ -2,9 +2,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
-using XMCL2025.ViewModels;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Views
+namespace XianYuLauncher.Views
 {
     /// <summary>
     /// 错误分析系统页面

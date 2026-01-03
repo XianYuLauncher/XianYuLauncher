@@ -1,8 +1,8 @@
 using System; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Security.Cryptography; using System.Diagnostics;
-using XMCL2025.Contracts.Services;
-using XMCL2025.ViewModels;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.ViewModels;
 
-namespace XMCL2025.Core.Services
+namespace XianYuLauncher.Core.Services
 {
     public class AuthlibInjectorService
     {

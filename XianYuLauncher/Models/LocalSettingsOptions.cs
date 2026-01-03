@@ -1,4 +1,4 @@
-﻿namespace XMCL2025.Models;
+namespace XianYuLauncher.Models;
 
 public class LocalSettingsOptions
 {

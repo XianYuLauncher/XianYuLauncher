@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using XMCL2025.Core.Services;
+using XianYuLauncher.Core.Services;
 
-namespace XMCL2025.Core.Models;
+namespace XianYuLauncher.Core.Models;
 
 /// <summary>
 /// 用于保存Optifine版本信息，包括版本名和兼容的Forge版本

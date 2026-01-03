@@ -1,6 +1,6 @@
-using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XMCL2025.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XMCL2025.Core.Models; using System.Linq; using System.Text.RegularExpressions; using XMCL2025.Core.Services.DownloadSource; using XMCL2025.ViewModels; using XMCL2025.Contracts.Services;
+using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XianYuLauncher.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XianYuLauncher.Core.Models; using System.Linq; using System.Text.RegularExpressions; using XianYuLauncher.Core.Services.DownloadSource; using XianYuLauncher.ViewModels; using XianYuLauncher.Contracts.Services;
 
-namespace XMCL2025.Core.Services;
+namespace XianYuLauncher.Core.Services;
 
 
 
@@ -21,7 +21,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         IVersionInfoService versionInfoService)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XMCL2025/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
         _logger = logger;
         _fileService = fileService;
         _localSettingsService = localSettingsService;
@@ -854,7 +854,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             Directory.CreateDirectory(fabricVersionDirectory);
             
             // 立即生成版本配置文件，确保处理器执行前能获取正确的版本信息
-            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            var versionConfig = new XianYuLauncher.Core.Models.VersionConfig
             {
                 ModLoaderType = "fabric",
                 ModLoaderVersion = fabricVersion, // 完整Fabric版本号
@@ -1882,7 +1882,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             Directory.CreateDirectory(cacheDirectory);
             
             // 获取当前下载源设置
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<XMCL2025.ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<XianYuLauncher.ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
             var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
             
             // 根据下载源获取NeoForge安装包URL
@@ -2701,7 +2701,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("已创建NeoForge版本目录: {NeoforgeVersionDirectory}", neoforgeVersionDirectory);
             
             // 立即生成版本配置文件，确保处理器执行前能获取正确的版本信息
-            var versionConfig = new XMCL2025.Core.Models.VersionConfig
+            var versionConfig = new XianYuLauncher.Core.Models.VersionConfig
             {
                 ModLoaderType = "neoforge",
                 ModLoaderVersion = neoforgeVersion, // 完整版本号，如21.11.0-beta
