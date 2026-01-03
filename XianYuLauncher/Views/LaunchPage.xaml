@@ -153,7 +153,7 @@
                 
 
         </StackPanel>
-        <!-- 启动成功提示（位于底部，直接作为Grid的子元素） -->
+        <!-- 启动成功提示 -->
         <InfoBar 
             x:Name="LaunchSuccessInfoBar"
             Grid.Row="2"
