@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/XMCL2025.csproj",
+                "${workspaceFolder}/XianYuLauncher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/XMCL2025.csproj",
+                "${workspaceFolder}/XianYuLauncher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/XMCL2025.csproj"
+                "${workspaceFolder}/XianYuLauncher.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

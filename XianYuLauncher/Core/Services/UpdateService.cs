@@ -344,7 +344,7 @@ public class UpdateService
         Debug.WriteLine($"[DEBUG] 开始解压更新包: {zipFilePath}");
         
         // 创建临时解压目录
-        string extractDirectory = Path.Combine(Path.GetTempPath(), $"XMCLUpdate_{Guid.NewGuid()}");
+        string extractDirectory = Path.Combine(Path.GetTempPath(), $"XianYuUpdate_{Guid.NewGuid()}");
         _logger.LogInformation("创建临时解压目录: {ExtractDirectory}", extractDirectory);
         Debug.WriteLine($"[DEBUG] 创建临时解压目录: {extractDirectory}");
         

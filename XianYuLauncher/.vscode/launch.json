@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // 如果已更改目标框架，请确保更新程序路径。
-            "program": "${workspaceFolder}/bin/Debug/net7.0-windows10.0.19041.0/XMCL2025.dll",
+            "program": "${workspaceFolder}/bin/Debug/net10.0-windows10.0.19041.0/XianYuLauncher.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             // 有关“控制台”字段的详细信息，请参阅 https://aka.ms/VSCode-CS-LaunchJson-Console
