@@ -601,6 +601,16 @@
 
                                             <StackPanel Margin="0,0,0,16">
                                                 <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
+                                                        <Run Text="CommunityToolkit.WinUI.UI.Controls" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
                                                     <Hyperlink NavigateUri="https://github.com/dotnet/runtime">
                                                         <Run Text="Microsoft.Extensions.Hosting" />
                                                     </Hyperlink>
