@@ -76,19 +76,18 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            // 创建FontFamily对象或使用null（默认字体）
-            Microsoft.UI.Xaml.Media.FontFamily fontFamily = null;
-            if (!string.IsNullOrEmpty(fontFamilyName) && fontFamilyName != "默认")
-            {
-                fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
-            }
-            
-            // 设置所有可能的全局FontFamily资源
-            SetFontFamilyResource(fontFamily);
-            
-            // 设置主窗口内容的字体
+            // 只在Content加载完成后应用字体，避免干扰XAML解析器
+            // 这样可以确保XAML解析错误能正常报告，而不会被字体修改掩盖
             if (Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
+                // 创建FontFamily对象或使用null（默认字体）
+                Microsoft.UI.Xaml.Media.FontFamily fontFamily = null;
+                if (!string.IsNullOrEmpty(fontFamilyName) && fontFamilyName != "默认")
+                {
+                    fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
+                }
+                
+                // 设置主窗口内容的字体
                 rootControl.FontFamily = fontFamily;
                 
                 // 遍历视觉树，强制所有子控件应用字体

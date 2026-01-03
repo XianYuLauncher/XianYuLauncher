@@ -49,6 +49,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.1" />
     <PackageReference Include="WinUIEx" Version="2.9.0" />
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
   </ItemGroup>
 
   <ItemGroup>
