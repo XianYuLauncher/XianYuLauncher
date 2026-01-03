@@ -92,6 +92,25 @@
                                     </StackPanel>
                                 </StackPanel>
                                 
+                                <!-- 实时日志设置 -->
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Uid="Settings_RealTimeLogs" Text="启动游戏实时日志" />
+                                            <TextBlock 
+                                                x:Uid="Settings_RealTimeLogsDescription"
+                                                Text="开启后，启动游戏成功后会自动打开实时日志页面" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <ToggleSwitch 
+                                            IsOn="{x:Bind ViewModel.EnableRealTimeLogs, Mode=TwoWay}" 
+                                            VerticalAlignment="Center" 
+                                            Margin="0,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                
 
                             </StackPanel>
                         </ScrollViewer>

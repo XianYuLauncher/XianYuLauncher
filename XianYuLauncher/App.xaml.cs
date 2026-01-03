@@ -151,7 +151,7 @@ public partial class App : Application
             services.AddTransient<CharacterPage>();
             services.AddTransient<CharacterManagementViewModel>();
             services.AddTransient<CharacterManagementPage>();
-            services.AddTransient<ErrorAnalysisViewModel>();
+            services.AddSingleton<ErrorAnalysisViewModel>();
             services.AddTransient<ErrorAnalysisPage>();
             services.AddTransient<TutorialPageViewModel>();
             services.AddTransient<TutorialPage>();
