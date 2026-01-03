@@ -18,12 +18,12 @@
         <!-- 顶部导航栏 -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Background="{ThemeResource NavigationViewExpandedPaneBackground}" Padding="16" Spacing="8" VerticalAlignment="Stretch">
             <Button Content="&lt; 返回" Click="BackButton_Click" Style="{StaticResource TextBlockButtonStyle}" VerticalAlignment="Center" />
-            <TextBlock Text="错误分析系统" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0" />
+            <TextBlock Text="实时游戏日志" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0" />
         </StackPanel>
         
         <!-- 功能按钮区 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,10,16,10" Spacing="8" VerticalAlignment="Center">
-            <Button Content="导出错误日志" Command="{x:Bind ViewModel.ExportErrorLogsCommand}" Width="120" Height="36" />
+            <Button Content="导出日志" Command="{x:Bind ViewModel.ExportErrorLogsCommand}" Width="120" Height="36" />
             <Button Content="复制日志" Command="{x:Bind ViewModel.CopyLogsCommand}" Width="120" Height="36" />
             <Button Content="清空日志" Command="{x:Bind ViewModel.ClearLogsCommand}" Width="120" Height="36" />
         </StackPanel>
@@ -32,28 +32,20 @@
         <Grid Grid.Row="2" Margin="16,0,16,16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             
-            <TextBlock Text="错误日志详情" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock Text="实时日志详情" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
             
-            <TextBlock Grid.Row="1" 
-                       FontSize="14" 
-                       Foreground="{ThemeResource TextFillColorPrimary}" 
-                       Margin="0,0,0,8">
-                <Run Text="崩溃原因: "/>
-                <Run Text="{x:Bind ViewModel.CrashReason, Mode=OneWay}" FontWeight="SemiBold" />
-            </TextBlock>
-            
-            <ScrollViewer Grid.Row="2" 
+            <ScrollViewer Grid.Row="1" 
                            VerticalScrollBarVisibility="Auto" 
                            HorizontalScrollBarVisibility="Auto" 
                            Background="{ThemeResource TextControlBackground}" 
                            BorderBrush="{ThemeResource TextControlBorderBrush}" 
                            BorderThickness="1" 
                            CornerRadius="4" 
-                           Padding="8">
+                           Padding="8" 
+                           x:Name="LogScrollViewer">
                 <TextBox Text="{x:Bind ViewModel.FullLog, Mode=OneWay}" 
                          FontFamily="Consolas" 
                          FontSize="12" 
@@ -62,7 +54,9 @@
                          IsReadOnly="True" 
                          Background="Transparent" 
                          BorderBrush="Transparent" 
-                         BorderThickness="0" />
+                         BorderThickness="0" 
+                         TextChanged="LogTextBox_TextChanged" 
+                         x:Name="LogTextBox" />
             </ScrollViewer>
         </Grid>
     </Grid>

@@ -2,12 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.System;
 using XMCL2025.Contracts.Services;
 using XMCL2025.Contracts.ViewModels;
@@ -142,55 +147,73 @@ public partial class ShaderInfo : ObservableObject
 }
 
 /// <summary>
-/// 资源包信息类
-/// </summary>
-public partial class ResourcePackInfo : ObservableObject
-{
-    /// <summary>
-    /// 资源包文件名
+    /// 资源包信息类
     /// </summary>
-    public string FileName { get; set; }
-    
-    /// <summary>
-    /// 资源包显示名称
-    /// </summary>
-    public string Name { get; set; }
-    
-    /// <summary>
-    /// 资源包文件完整路径
-    /// </summary>
-    public string FilePath { get; set; }
-    
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    public bool IsEnabled { get; private set; }
-    
-    /// <summary>
-    /// 资源包图标路径
-    /// </summary>
-    [ObservableProperty]
-    private string _icon;
-    
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="filePath">文件路径</param>
-    public ResourcePackInfo(string filePath)
+    public partial class ResourcePackInfo : ObservableObject
     {
-        // 确保文件路径是完整的，没有被截断
-        FilePath = filePath;
-        FileName = Path.GetFileName(filePath);
-        IsEnabled = !FileName.EndsWith(".disabled");
+        /// <summary>
+        /// 资源包文件名
+        /// </summary>
+        public string FileName { get; set; }
         
-        // 提取显示名称（去掉.disabled后缀）
-        string displayName = FileName;
-        if (displayName.EndsWith(".disabled"))
+        /// <summary>
+        /// 资源包显示名称
+        /// </summary>
+        public string Name { get; set; }
+        
+        /// <summary>
+        /// 资源包文件完整路径
+        /// </summary>
+        public string FilePath { get; set; }
+        
+        /// <summary>
+        /// 是否启用
+        /// </summary>
+        public bool IsEnabled { get; private set; }
+        
+        /// <summary>
+        /// 资源包图标路径
+        /// </summary>
+        [ObservableProperty]
+        private string _icon;
+        
+        /// <summary>
+        /// 资源包预览图1
+        /// </summary>
+        [ObservableProperty]
+        private Microsoft.UI.Xaml.Media.ImageSource _previewImage1;
+        
+        /// <summary>
+        /// 资源包预览图2
+        /// </summary>
+        [ObservableProperty]
+        private Microsoft.UI.Xaml.Media.ImageSource _previewImage2;
+        
+        /// <summary>
+        /// 资源包预览图3
+        /// </summary>
+        [ObservableProperty]
+        private Microsoft.UI.Xaml.Media.ImageSource _previewImage3;
+        
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="filePath">文件路径</param>
+        public ResourcePackInfo(string filePath)
         {
-            displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            // 确保文件路径是完整的，没有被截断
+            FilePath = filePath;
+            FileName = Path.GetFileName(filePath);
+            IsEnabled = !FileName.EndsWith(".disabled");
+            
+            // 提取显示名称（去掉.disabled后缀）
+            string displayName = FileName;
+            if (displayName.EndsWith(".disabled"))
+            {
+                displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            }
+            Name = displayName;
         }
-        Name = displayName;
-    }
 }
 
 
@@ -986,13 +1009,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     shaderIconTasks.Add(LoadResourceIconAsync(icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", isModrinthSupported));
                 }
                 
-                // 异步加载所有资源包的图标（启用Modrinth支持）
+                // 异步加载所有资源包的图标和预览图（启用Modrinth支持）
                 var resourcePackIconTasks = new List<Task>();
                 foreach (var resourcePackInfo in ResourcePacks)
                 {
                     // 只对zip文件启用Modrinth支持，文件夹类型不支持
                     bool isModrinthSupported = resourcePackInfo.FilePath.EndsWith(".zip");
                     resourcePackIconTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", isModrinthSupported));
+                    // 加载资源包预览图
+                    resourcePackIconTasks.Add(LoadResourcePackPreviewAsync(resourcePackInfo));
                 }
                 
                 // 异步加载所有地图的图标
@@ -2619,20 +2644,210 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             await LoadResourcePacksListOnlyAsync();
             
-            // 异步加载所有资源包的图标，不阻塞UI
-            var iconTasks = new List<Task>();
+            // 异步加载所有资源包的图标和预览图，不阻塞UI
+            var loadTasks = new List<Task>();
             foreach (var resourcePackInfo in ResourcePacks)
             {
-                iconTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack"));
+                // 加载资源包图标
+                loadTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack"));
+                // 加载资源包预览图
+                loadTasks.Add(LoadResourcePackPreviewAsync(resourcePackInfo));
             }
             
-            // 并行执行图标加载任务
-            await Task.WhenAll(iconTasks);
+            // 并行执行加载任务
+            await Task.WhenAll(loadTasks);
         }
-
-    /// <summary>
-    /// 打开资源包文件夹命令
-    /// </summary>
+        
+        /// <summary>
+        /// 加载资源包预览图
+        /// </summary>
+        /// <param name="resourcePack">资源包信息</param>
+        private async Task LoadResourcePackPreviewAsync(ResourcePackInfo resourcePack)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"开始加载资源包预览图: {resourcePack.Name}");
+                System.Diagnostics.Debug.WriteLine($"资源包路径: {resourcePack.FilePath}");
+                
+                // 检查文件是否为zip文件
+                if (!resourcePack.FilePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && 
+                    !resourcePack.FilePath.EndsWith(".mcpack", StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Diagnostics.Debug.WriteLine($"跳过非zip资源包: {resourcePack.Name}");
+                    return;
+                }
+                
+                // 定义要尝试的方块文件名列表
+                var blockFiles = new List<string>
+                {
+                    "grass_block_side.png",
+                    "stone.png",
+                    "dirt.png",
+                    "cobblestone.png",
+                    "oak_log.png",
+                    "diamond_ore.png",
+                    "diamond_block.png",
+                    "deepslate_emerald_ore.png",
+                    "iron_ore.png",
+                    "gold_ore.png",
+                    "furnace_front.png",
+                    "crafting_table_top.png"
+                };
+                
+                // 随机打乱文件顺序
+                var random = new Random();
+                var shuffledBlockFiles = blockFiles.OrderBy(x => random.Next()).ToList();
+                
+                // 检查文件是否存在
+                if (!File.Exists(resourcePack.FilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"资源包文件不存在: {resourcePack.FilePath}");
+                    return;
+                }
+                
+                // 使用System.IO.Compression.ZipFile打开zip文件
+                using (var zipArchive = ZipFile.OpenRead(resourcePack.FilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"成功打开zip文件: {resourcePack.FilePath}");
+                    
+                    // 为三个预览图分别加载不同的方块图片
+                    var previewImages = new List<ImageSource>();
+                    var usedFileNames = new HashSet<string>();
+                    
+                    // 尝试为每个预览图获取一个唯一的方块图片
+                    for (int i = 0; i < 3; i++)
+                    {
+                        ImageSource image = null;
+                        
+                        // 遍历打乱后的文件列表，跳过已使用的文件
+                        foreach (var blockFile in shuffledBlockFiles)
+                        {
+                            if (usedFileNames.Contains(blockFile))
+                                continue;
+                            
+                            // 构建完整的预览图路径
+                            string previewImagePath = $"assets/minecraft/textures/block/{blockFile}";
+                            System.Diagnostics.Debug.WriteLine($"尝试提取预览图路径: {previewImagePath}");
+                            
+                            // 查找预览图文件
+                            var previewEntry = zipArchive.GetEntry(previewImagePath);
+                            if (previewEntry != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"找到预览图文件: {previewImagePath}");
+                                System.Diagnostics.Debug.WriteLine($"预览图大小: {previewEntry.Length} 字节");
+                                
+                                // 提取文件内容到内存流
+                                using (var entryStream = previewEntry.Open())
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"开始处理预览图: {blockFile}");
+                                    // 使用Win2D处理图片
+                                    image = await ProcessResourcePackPreviewImageAsync(entryStream);
+                                    usedFileNames.Add(blockFile);
+                                    System.Diagnostics.Debug.WriteLine($"成功处理预览图: {blockFile}");
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"预览图文件不存在: {previewImagePath}");
+                            }
+                        }
+                        
+                        previewImages.Add(image);
+                    }
+                    
+                    // 设置预览图
+                    if (previewImages.Count > 0) resourcePack.PreviewImage1 = previewImages[0];
+                    if (previewImages.Count > 1) resourcePack.PreviewImage2 = previewImages[1];
+                    if (previewImages.Count > 2) resourcePack.PreviewImage3 = previewImages[2];
+                    
+                    System.Diagnostics.Debug.WriteLine($"成功设置资源包预览图: {resourcePack.Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载资源包预览图失败 {resourcePack.Name}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"异常详情: {ex.StackTrace}");
+            }
+        }
+        
+        /// <summary>
+        /// 使用Win2D处理资源包预览图，应用邻近插值使像素清晰
+        /// </summary>
+        /// <param name="imageStream">图片流</param>
+        /// <returns>处理后的图片</returns>
+        private async Task<Microsoft.UI.Xaml.Media.ImageSource> ProcessResourcePackPreviewImageAsync(Stream imageStream)
+        {
+            System.Diagnostics.Debug.WriteLine("开始处理资源包预览图");
+            
+            // 先将流内容复制到MemoryStream中，因为ZipArchive返回的流不支持查找操作
+            using (var memoryStream = new MemoryStream())
+            {
+                await imageStream.CopyToAsync(memoryStream);
+                memoryStream.Seek(0, SeekOrigin.Begin); // 重置流位置
+                
+                using (var randomAccessStream = memoryStream.AsRandomAccessStream())
+                {
+                    // 创建CanvasDevice
+                    var device = CanvasDevice.GetSharedDevice();
+                    System.Diagnostics.Debug.WriteLine("成功创建CanvasDevice");
+                    
+                    try
+                    {
+                        // 加载原始图片
+                        var canvasBitmap = await CanvasBitmap.LoadAsync(device, randomAccessStream);
+                        System.Diagnostics.Debug.WriteLine($"成功加载原始图片，尺寸: {canvasBitmap.SizeInPixels.Width}x{canvasBitmap.SizeInPixels.Height}");
+                        
+                        // 创建CanvasRenderTarget用于处理
+                        var renderTarget = new CanvasRenderTarget(
+                            device,
+                            20, // 目标宽度
+                            20, // 目标高度
+                            96 // DPI
+                        );
+                        System.Diagnostics.Debug.WriteLine("成功创建CanvasRenderTarget");
+                        
+                        // 使用CanvasDrawingSession绘制图片
+                        using (var ds = renderTarget.CreateDrawingSession())
+                        {
+                            // 使用最近邻插值绘制图片，保持像素锐利
+                            ds.DrawImage(
+                                canvasBitmap,
+                                new Windows.Foundation.Rect(0, 0, 20, 20),
+                                new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height),
+                                1.0f,
+                                CanvasImageInterpolation.NearestNeighbor
+                            );
+                            System.Diagnostics.Debug.WriteLine("成功使用最近邻插值绘制图片");
+                        }
+                        
+                        // 将处理后的图片保存到内存流
+                        using (var outputStream = new InMemoryRandomAccessStream())
+                        {
+                            await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                            System.Diagnostics.Debug.WriteLine("成功将处理后的图片保存到内存流");
+                            
+                            // 创建BitmapImage并设置源
+                            var bitmapImage = new BitmapImage();
+                            await bitmapImage.SetSourceAsync(outputStream);
+                            System.Diagnostics.Debug.WriteLine("成功创建BitmapImage并设置源");
+                            
+                            return bitmapImage;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"处理资源包预览图失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"异常详情: {ex.StackTrace}");
+                        throw;
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 打开资源包文件夹命令
+        /// </summary>
     [RelayCommand]
     private async Task OpenResourcePackFolderAsync()
     {

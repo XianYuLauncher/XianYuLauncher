@@ -62,6 +62,7 @@ public partial class SettingsViewModel : ObservableRecipient
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
         private const string EnableVersionIsolationKey = "EnableVersionIsolation";
+        private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
         private const string JavaSelectionModeKey = "JavaSelectionMode";
         private const string LanguageKey = "Language";
     private const string MinecraftPathKey = "MinecraftPath";
@@ -306,6 +307,17 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 下载前置Mod设置键
     /// </summary>
     private const string DownloadDependenciesKey = "DownloadDependencies";
+    
+    /// <summary>
+    /// 实时日志设置
+    /// </summary>
+    [ObservableProperty]
+    private bool _enableRealTimeLogs = false;
+    
+    /// <summary>
+    /// 实时日志设置键
+    /// </summary>
+    // 已经在上方定义：private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
 
     /// <summary>
     /// 添加鸣谢人员命令
@@ -430,6 +442,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadMaterialTypeAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
+        // 加载实时日志设置
+        LoadEnableRealTimeLogsAsync().ConfigureAwait(false);
         // 加载字体设置
         LoadFontFamilyAsync().ConfigureAwait(false);
     }
@@ -482,6 +496,26 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnDownloadDependenciesChanged(bool value)
     {
         _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载实时日志设置
+    /// </summary>
+    private async Task LoadEnableRealTimeLogsAsync()
+    {
+        // 读取实时日志设置，如果不存在则使用默认值false
+        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableRealTimeLogsKey);
+        EnableRealTimeLogs = value ?? false;
+        System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 加载实时日志设置，值为: {EnableRealTimeLogs}");
+    }
+    
+    /// <summary>
+    /// 当实时日志设置变化时保存
+    /// </summary>
+    partial void OnEnableRealTimeLogsChanged(bool value)
+    {
+        System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 保存实时日志设置，值为: {value}");
+        _localSettingsService.SaveSettingAsync(EnableRealTimeLogsKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
