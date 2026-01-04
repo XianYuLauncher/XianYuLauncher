@@ -118,6 +118,27 @@ public class UpdateService
     }
     
     /// <summary>
+    /// 获取当前系统架构
+    /// </summary>
+    /// <returns>当前架构，如x64、arm64等</returns>
+    private string GetCurrentArchitecture()
+    {
+        switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
+        {
+            case System.Runtime.InteropServices.Architecture.X86:
+                return "x86";
+            case System.Runtime.InteropServices.Architecture.X64:
+                return "x64";
+            case System.Runtime.InteropServices.Architecture.Arm64:
+                return "arm64";
+            case System.Runtime.InteropServices.Architecture.Arm:
+                return "arm";
+            default:
+                return Environment.Is64BitProcess ? "x64" : "x86";
+        }
+    }
+    
+    /// <summary>
     /// 下载更新包
     /// </summary>
     /// <param name="updateInfo">更新信息</param>
@@ -130,16 +151,37 @@ public class UpdateService
         _logger.LogInformation("开始下载更新包，版本: {Version}", updateInfo.version);
         Debug.WriteLine($"[DEBUG] 开始下载更新包，版本: {updateInfo.version}");
         
+        // 获取当前架构
+        string currentArchitecture = GetCurrentArchitecture();
+        _logger.LogInformation("当前系统架构: {CurrentArchitecture}", currentArchitecture);
+        Debug.WriteLine($"[DEBUG] 当前系统架构: {currentArchitecture}");
+        
         // 遍历所有下载镜像，直到成功下载
         foreach (var mirror in updateInfo.download_mirrors)
         {
             try
             {
-                _logger.LogInformation("尝试从镜像下载: {MirrorName}, URL: {Url}", mirror.name, mirror.url);
-                Debug.WriteLine($"[DEBUG] 尝试从镜像下载: {mirror.name}, URL: {mirror.url}");
+                // 选择合适的下载URL
+                string downloadUrl = mirror.url; // 默认使用旧版本URL（兼容旧版客户端）
+                
+                // 如果有arch_urls字段，根据当前架构选择URL
+                if (mirror.arch_urls != null && mirror.arch_urls.TryGetValue(currentArchitecture, out string archUrl))
+                {
+                    downloadUrl = archUrl;
+                    _logger.LogInformation("使用架构特定URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 使用架构特定URL: {downloadUrl} (架构: {currentArchitecture})");
+                }
+                else if (mirror.arch_urls != null)
+                {
+                    _logger.LogWarning("未找到当前架构的特定URL，使用默认URL: {Url} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 未找到当前架构的特定URL，使用默认URL: {downloadUrl} (架构: {currentArchitecture})");
+                }
+                
+                _logger.LogInformation("尝试从镜像下载: {MirrorName}, URL: {Url}", mirror.name, downloadUrl);
+                Debug.WriteLine($"[DEBUG] 尝试从镜像下载: {mirror.name}, URL: {downloadUrl}");
                 
                 // 下载文件
-                bool success = await DownloadFileAsync(mirror.url, downloadPath, progressCallback, cancellationToken);
+                bool success = await DownloadFileAsync(downloadUrl, downloadPath, progressCallback, cancellationToken);
                 
                 if (success)
                 {

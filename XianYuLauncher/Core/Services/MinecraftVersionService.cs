@@ -1125,7 +1125,26 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             // 检查当前操作系统
             string currentOs = "windows";
-            string currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+            // 正确检测当前架构（包括ARM64）
+            string currentArch;
+            switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
+            {
+                case System.Runtime.InteropServices.Architecture.X86:
+                    currentArch = "x86";
+                    break;
+                case System.Runtime.InteropServices.Architecture.X64:
+                    currentArch = "x64";
+                    break;
+                case System.Runtime.InteropServices.Architecture.Arm64:
+                    currentArch = "arm64";
+                    break;
+                case System.Runtime.InteropServices.Architecture.Arm:
+                    currentArch = "arm";
+                    break;
+                default:
+                    currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+                    break;
+            }
 
             // 检查是否允许下载此库
             if (!IsLibraryAllowed(library, currentOs, currentArch))
@@ -1278,7 +1297,26 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 // 当前操作系统名称和架构
                 // 使用Environment.Is64BitProcess检测当前进程的位数，而不仅仅是操作系统
                 string currentOs = "windows";
-                string currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+                // 正确检测当前架构（包括ARM64）
+                string currentArch;
+                switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
+                {
+                    case System.Runtime.InteropServices.Architecture.X86:
+                        currentArch = "x86";
+                        break;
+                    case System.Runtime.InteropServices.Architecture.X64:
+                        currentArch = "x64";
+                        break;
+                    case System.Runtime.InteropServices.Architecture.Arm64:
+                        currentArch = "arm64";
+                        break;
+                    case System.Runtime.InteropServices.Architecture.Arm:
+                        currentArch = "arm";
+                        break;
+                    default:
+                        currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+                        break;
+                }
                 
                 // 计算需要下载的库文件总数和已存在的库文件数
                 int totalFilesToCheck = 0;
@@ -1391,7 +1429,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 获取当前操作系统对应的原生库分类器
     /// </summary>
-    private string GetNativeClassifier(LibraryNative natives, string currentOs, string architecture = "x64")
+    private string GetNativeClassifier(LibraryNative natives, string currentOs, string architecture)
     {
         string classifier = null;
         switch (currentOs)
@@ -1407,7 +1445,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 break;
         }
 
-        // 替换占位符，如 ${arch} -> x64
+        // 替换占位符，如 ${arch} -> arm64
         if (!string.IsNullOrEmpty(classifier))
         {
             classifier = classifier.Replace("${arch}", architecture);
@@ -1666,7 +1704,26 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 当前操作系统名称和架构
             // 使用Environment.Is64BitProcess检测当前进程的位数，而不仅仅是操作系统
             string currentOs = "windows";
-            string currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+            // 正确检测当前架构（包括ARM64）
+            string currentArch;
+            switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
+            {
+                case System.Runtime.InteropServices.Architecture.X86:
+                    currentArch = "x86";
+                    break;
+                case System.Runtime.InteropServices.Architecture.X64:
+                    currentArch = "x64";
+                    break;
+                case System.Runtime.InteropServices.Architecture.Arm64:
+                    currentArch = "arm64";
+                    break;
+                case System.Runtime.InteropServices.Architecture.Arm:
+                    currentArch = "arm";
+                    break;
+                default:
+                    currentArch = Environment.Is64BitProcess ? "x64" : "x86";
+                    break;
+            }
             
             // 记录找到的原生库数量
             int extractedCount = 0;
@@ -1690,15 +1747,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         // 检查分类器是否与当前架构匹配
                         // 例如：natives-windows-x64 应该只在x64架构上使用
                         bool archMatches = true;
+                        // 检查架构前缀，确保只匹配当前架构的原生库
                         if (classifier.Contains("-x64") && currentArch != "x64")
                         {
                             archMatches = false;
                         }
-                        if (classifier.Contains("-x86") && currentArch != "x86")
+                        else if (classifier.Contains("-x86") && currentArch != "x86")
                         {
                             archMatches = false;
                         }
-                        if (classifier.Contains("-arm64") && currentArch != "arm64")
+                        else if (classifier.Contains("-arm64") && currentArch != "arm64")
+                        {
+                            archMatches = false;
+                        }
+                        else if (classifier.Contains("-arm") && currentArch != "arm")
                         {
                             archMatches = false;
                         }

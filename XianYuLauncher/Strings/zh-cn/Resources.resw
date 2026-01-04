@@ -1207,6 +1207,13 @@
   <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
     <value>AI正在分析崩溃原因...</value>
   </data>
+  <!-- 联机页面陶瓦下载弹窗文本 -->
+  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+    <value>正在下载陶瓦插件</value>
+  </data>
+  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+    <value>正在下载并安装Terracotta插件，请稍候...</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
     <value>AI分析完成。</value>
   </data>

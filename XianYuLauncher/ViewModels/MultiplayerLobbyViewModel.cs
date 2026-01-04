@@ -403,11 +403,42 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     /// <summary>
     /// 停止terracotta进程
     /// </summary>
-    private void StopTerracottaProcess()
+    private async void StopTerracottaProcess()
     {
         try
         {
-            // 通过进程名查找并终止所有terracotta进程
+            // 尝试使用terracotta官方HTTP接口优雅关闭进程
+            if (!string.IsNullOrEmpty(_port))
+            {
+                try
+                {
+                    // 首先尝试使用peaceful=true优雅退出
+                    string panicUrl = $"http://localhost:{_port}/panic?peaceful=true";
+                    HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
+                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    
+                    // 等待短暂时间，让进程有时间优雅退出
+                    await Task.Delay(2000);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口时发生错误：{ex.Message}");
+                    // 可以尝试使用peaceful=false强制退出
+                    try
+                    {
+                        string panicUrl = $"http://localhost:{_port}/panic?peaceful=false";
+                        HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
+                        System.Diagnostics.Debug.WriteLine($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        await Task.Delay(2000);
+                    }
+                    catch (Exception ex2)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                    }
+                }
+            }
+            
+            // 检查是否还有剩余的terracotta进程，如果有则使用传统方式终止
             Process[] terracottaProcesses = Process.GetProcessesByName("terracotta-windows-x86_64");
             foreach (Process process in terracottaProcesses)
             {

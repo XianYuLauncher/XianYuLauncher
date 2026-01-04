@@ -1187,6 +1187,14 @@
   <data name="VersionManagerPage_NavigateToShaderPageButton.Content" xml:space="preserve">
     <value>Go to Shaders Page</value>
   </data>
+  <!-- Multiplayer Page Terracotta Download Dialog -->
+  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+    <value>Downloading Terracotta Plugin</value>
+  </data>
+  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+    <value>Downloading and installing Terracotta plugin, please wait...</value>
+  </data>
+  
   <!-- Resource Pack Management -->
   <data name="VersionManagerPage_NoResourcePacksTitle.Text" xml:space="preserve">
     <value>No resource packs for current version</value>

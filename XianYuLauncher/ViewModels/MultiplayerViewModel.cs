@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 
@@ -20,6 +21,7 @@ namespace XianYuLauncher.ViewModels;
 public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
+    private readonly TerracottaService _terracottaService;
     
     // 保存启动的terracotta进程引用
     private Process? _terracottaProcess;
@@ -32,6 +34,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     
     // CancellationTokenSource用于控制轮询的取消
     private CancellationTokenSource? _pollingCts;
+    // 用于JoinGame方法的CancellationTokenSource
+    private CancellationTokenSource? _joinGameCts;
+    
+    // 保存陶瓦联机进程的端口号，用于发送HTTP请求
+    private string? _terracottaPort;
     
     // 保存弹窗引用，用于在检测到房间时关闭
     private Microsoft.UI.Xaml.Controls.ContentDialog? _statusDialog;
@@ -57,10 +64,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         public bool IsActive { get; set; }
     }
 
-    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService)
+    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, ILocalSettingsService localSettingsService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
+        _terracottaService = new TerracottaService(localSettingsService);
     }
     
     /// <summary>
@@ -110,18 +118,50 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         bool isSuccess = true;
         string errorMessage = string.Empty;
         string? port = null;
-
-        // 先启动联机服务
+        string? terracottaPath = null;
+        
+        // 创建进度弹窗
+        var progressDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+        {
+            Title = "联机Page_DownloadingTerracottaTitle".GetLocalized(),
+            Content = new StackPanel
+            {
+                Children =
+                {
+                    new TextBlock { Text = "联机Page_DownloadingTerracottaMessage".GetLocalized(), Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 20) },
+                    new ProgressBar { Width = 300, IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Name = "DownloadProgressBar" }
+                }
+            },
+            IsPrimaryButtonEnabled = false,
+            IsSecondaryButtonEnabled = false,
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        // 显示进度弹窗
+        var dialogTask = progressDialog.ShowAsync();
+        
         try
         {
-            // 获取当前项目目录
-            string appDirectory = AppContext.BaseDirectory;
+            // 使用TerracottaService确保陶瓦插件已下载并安装，传入进度回调
+            double currentProgress = 0;
+            terracottaPath = await _terracottaService.EnsureTerracottaAsync(progress =>
+            {
+                currentProgress = progress;
+                // 更新进度条
+                if (progressDialog.Content is StackPanel stackPanel)
+                {
+                    if (stackPanel.FindName("DownloadProgressBar") is ProgressBar progressBar)
+                    {
+                        progressBar.Value = progress;
+                    }
+                }
+            });
             
-            // 构建联机插件的路径
-            string terracottaPath = Path.Combine(appDirectory, "plugins", "Terracotta", "terracotta-windows-x86_64.exe");
+            // 关闭进度弹窗
+            progressDialog.Hide();
             
-            // 检查文件是否存在
-            if (File.Exists(terracottaPath))
+            // 检查陶瓦插件是否成功获取
+            if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
             {
                 // 使用系统临时目录
                 string tempDir = Path.GetTempPath();
@@ -165,6 +205,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         if (root.TryGetProperty("port", out JsonElement portElement))
                         {
                             port = portElement.ToString();
+                            _terracottaPort = port; // 保存端口号
                         }
                     }
                 }
@@ -172,13 +213,15 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             else
             {
                 isSuccess = false;
-                errorMessage = "联机服务文件不存在，请检查plugins\\Terracotta目录下是否有terracotta-windows-x86_64.exe文件";
+                errorMessage = "联机服务文件不存在或无法下载，请检查网络连接后重试";
             }
         }
         catch (Exception ex)
         {
             isSuccess = false;
             errorMessage = $"启动联机服务时发生错误：{ex.Message}";
+            // 关闭进度弹窗
+            progressDialog.Hide();
         }
 
         // 根据启动结果显示不同的弹窗
@@ -227,7 +270,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             // 显示错误信息
             var errorDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
             {
-                Title = "Common_ErrorTitle.Text".GetLocalized(),
+                Title = "Common_ErrorTitle".GetLocalized(),
                 Content = errorMessage,
                 CloseButtonText = "Common_OKButton".GetLocalized(),
                 XamlRoot = App.MainWindow.Content.XamlRoot
@@ -348,6 +391,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 await Task.Delay(1000, cancellationToken);
             }
         }
+        catch (TaskCanceledException)
+        {
+            // 轮询被取消，忽略
+        }
         catch (OperationCanceledException)
         {
             // 轮询被取消，忽略
@@ -370,14 +417,53 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     /// <summary>
     /// 停止terracotta进程
     /// </summary>
-    private void StopTerracottaProcess()
+    private async void StopTerracottaProcess()
     {
         try
         {
             // 首先停止轮询
             StopPolling();
             
-            // 首先尝试通过保存的进程引用终止
+            // 取消JoinGame方法中的异步操作
+            if (_joinGameCts != null)
+            {
+                _joinGameCts.Cancel();
+                _joinGameCts.Dispose();
+                _joinGameCts = null;
+            }
+            
+            // 尝试使用terracotta官方HTTP接口优雅关闭进程
+            if (!string.IsNullOrEmpty(_terracottaPort))
+            {
+                try
+                {
+                    // 首先尝试使用peaceful=true优雅退出
+                    string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=true";
+                    HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
+                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    
+                    // 等待短暂时间，让进程有时间优雅退出
+                    await Task.Delay(2000);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口时发生错误：{ex.Message}");
+                    // 可以尝试使用peaceful=false强制退出
+                    try
+                    {
+                        string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=false";
+                        HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
+                        System.Diagnostics.Debug.WriteLine($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        await Task.Delay(2000);
+                    }
+                    catch (Exception ex2)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                    }
+                }
+            }
+            
+            // 验证进程是否已退出，如果没有则使用传统方式终止
             if (_terracottaProcess != null && !_terracottaProcess.HasExited)
             {
                 _terracottaProcess.Kill();
@@ -386,7 +472,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 _terracottaProcess = null;
             }
             
-            // 如果直接引用终止失败，通过进程名查找并终止所有terracotta进程
+            // 检查是否还有剩余的terracotta进程，如果有则终止
             Process[] terracottaProcesses = Process.GetProcessesByName("terracotta-windows-x86_64");
             foreach (Process process in terracottaProcesses)
             {
@@ -408,6 +494,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 File.Delete(_tempFilePath);
                 _tempFilePath = null;
             }
+            
+            // 清理端口号
+            _terracottaPort = null;
         }
         catch (Exception ex)
         {
@@ -445,17 +534,50 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             // 2. 启动客户端进程
             bool isSuccess = true;
             string? port = null;
+            string? terracottaPath = null;
+            
+            // 创建进度弹窗
+            var progressDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+            {
+                Title = "联机Page_DownloadingTerracottaTitle".GetLocalized(),
+                Content = new StackPanel
+                {
+                    Children =
+                    {
+                        new TextBlock { Text = "联机Page_DownloadingTerracottaMessage".GetLocalized(), Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 20) },
+                        new ProgressBar { Width = 300, IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Name = "DownloadProgressBar" }
+                    }
+                },
+                IsPrimaryButtonEnabled = false,
+                IsSecondaryButtonEnabled = false,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            
+            // 显示进度弹窗
+            var dialogTask = progressDialog.ShowAsync();
             
             try
             {
-                // 获取当前项目目录
-                string appDirectory = AppContext.BaseDirectory;
+                // 使用TerracottaService确保陶瓦插件已下载并安装，传入进度回调
+                double currentProgress = 0;
+                terracottaPath = await _terracottaService.EnsureTerracottaAsync(progress =>
+                {
+                    currentProgress = progress;
+                    // 更新进度条
+                    if (progressDialog.Content is StackPanel stackPanel)
+                    {
+                        if (stackPanel.FindName("DownloadProgressBar") is ProgressBar progressBar)
+                        {
+                            progressBar.Value = progress;
+                        }
+                    }
+                });
                 
-                // 构建联机插件的路径
-                string terracottaPath = Path.Combine(appDirectory, "plugins", "Terracotta", "terracotta-windows-x86_64.exe");
+                // 关闭进度弹窗
+                progressDialog.Hide();
                 
-                // 检查文件是否存在
-                if (File.Exists(terracottaPath))
+                // 检查陶瓦插件是否成功获取
+                if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
                 {
                     // 使用系统临时目录
                     string tempDir = Path.GetTempPath();
@@ -477,7 +599,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     var processStartInfo = new ProcessStartInfo
                     {
                         FileName = terracottaPath,
-                        Arguments = $"--hmcl \"{tempFilePath}\"",
+                        Arguments = $"--hmcl \"{tempFilePath}\" --client --id \"{roomId}\"",
                         UseShellExecute = false,
                         RedirectStandardInput = true
                     };
@@ -497,22 +619,25 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         {
                             JsonElement root = doc.RootElement;
                             if (root.TryGetProperty("port", out JsonElement portElement))
-                            {
-                                port = portElement.ToString();
-                            }
+                        {
+                            port = portElement.ToString();
+                            _terracottaPort = port; // 保存端口号
+                        }
                         }
                     }
                 }
                 else
                 {
                     isSuccess = false;
-                    await ShowErrorDialogAsync("联机Page_TerracottaNotFoundError".GetLocalized());
+                    await ShowErrorDialogAsync("联机服务文件不存在或无法下载，请检查网络连接后重试");
                 }
             }
             catch (Exception ex)
             {
                 isSuccess = false;
                 await ShowErrorDialogAsync($"启动联机服务时发生错误：{ex.Message}");
+                // 关闭进度弹窗
+                progressDialog.Hide();
             }
             
             if (isSuccess && !string.IsNullOrEmpty(port))
@@ -520,11 +645,15 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 3. 访问http://localhost:{端口}/state/guesting?room=房间号&player=角色名
                 try
                 {
+                    // 初始化JoinGame的CancellationTokenSource
+                    _joinGameCts = new CancellationTokenSource();
+                    CancellationToken cancellationToken = _joinGameCts.Token;
+                    
                     // 获取当前启动器内选择的角色名
                     string playerName = GetCurrentProfileName();
                     // 构建包含玩家名的URL
                     string guestingUrl = $"http://localhost:{port}/state/guesting?room={roomId}&player={Uri.EscapeDataString(playerName)}";
-                    HttpResponseMessage response = await _httpClient.GetAsync(guestingUrl);
+                    HttpResponseMessage response = await _httpClient.GetAsync(guestingUrl, cancellationToken);
                     
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                     {
@@ -539,16 +668,16 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     bool isGuestOk = false;
                     string url = string.Empty;
                     
-                    for (int i = 0; i < 30; i++) // 最多尝试30次，每次间隔1秒
+                    for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试30次，每次间隔1秒
                     {
                         try
                         {
                             string stateUrl = $"http://localhost:{port}/state";
-                            HttpResponseMessage stateResponse = await _httpClient.GetAsync(stateUrl);
+                            HttpResponseMessage stateResponse = await _httpClient.GetAsync(stateUrl, cancellationToken);
                             
                             if (stateResponse.IsSuccessStatusCode)
                             {
-                                string content = await stateResponse.Content.ReadAsStringAsync();
+                                string content = await stateResponse.Content.ReadAsStringAsync(cancellationToken);
                                 
                                 // 解析JSON
                                 using (JsonDocument doc = JsonDocument.Parse(content))
@@ -570,16 +699,21 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                 }
                             }
                         }
+                        catch (TaskCanceledException)
+                        {
+                            // 任务被取消，退出循环
+                            break;
+                        }
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"获取状态失败: {ex.Message}");
                         }
                         
-                        // 等待1秒后再次尝试
-                        await Task.Delay(1000);
+                        // 等待1秒后再次尝试，支持取消
+                        await Task.Delay(1000, cancellationToken);
                     }
                     
-                    if (isGuestOk && !string.IsNullOrEmpty(url))
+                    if (isSuccess && !string.IsNullOrEmpty(url))
                     {
                         // 5. 导航至联机大厅页，传递房间号、端口和房客标识
                     _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName, new { 
@@ -589,18 +723,32 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                             Url = url 
                         });
                     }
-                    else
+                    else if (!cancellationToken.IsCancellationRequested)
                     {
                         await ShowErrorDialogAsync("联机Page_JoinFailedError".GetLocalized());
                         // 停止进程
                         StopTerracottaProcess();
                     }
                 }
+                catch (TaskCanceledException)
+                {
+                    // 任务被取消，不显示错误
+                    StopTerracottaProcess();
+                }
                 catch (Exception ex)
                 {
                     await ShowErrorDialogAsync($"连接房间时发生错误：{ex.Message}");
                     // 停止进程
                     StopTerracottaProcess();
+                }
+                finally
+                {
+                    // 清理CancellationTokenSource
+                    if (_joinGameCts != null)
+                    {
+                        _joinGameCts.Dispose();
+                        _joinGameCts = null;
+                    }
                 }
             }
         }
@@ -613,7 +761,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     {
         var errorDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
         {
-            Title = "Common_ErrorTitle.Text".GetLocalized(),
+            Title = "Common_ErrorTitle".GetLocalized(),
             Content = message,
             CloseButtonText = "Common_OKButton".GetLocalized(),
             XamlRoot = App.MainWindow.Content.XamlRoot
