@@ -256,11 +256,26 @@ namespace XianYuLauncher.Views
                         }
                         else
                         {
-                            // 微软账户：从ViewModel获取皮肤和披风，直接使用URL，无需base64转换
-                            Debug.WriteLine($"[角色管理Page] 当前是微软账户，直接使用皮肤和披风URL");
-                            skinUrl = CleanUrl(ViewModel.CurrentSkin?.Url);
-                            capeUrl = CleanUrl(ViewModel.SelectedCape?.Url);
-                            Debug.WriteLine($"[角色管理Page] 已获取微软账户皮肤: {skinUrl}, 披风: {capeUrl}");
+                            // 微软账户：从ViewModel获取皮肤和披风URL，下载并转换为base64以解决CORS问题
+                            Debug.WriteLine($"[角色管理Page] 当前是微软账户，获取皮肤和披风URL");
+                            string originalSkinUrl = CleanUrl(ViewModel.CurrentSkin?.Url);
+                            string originalCapeUrl = CleanUrl(ViewModel.SelectedCape?.Url);
+                            Debug.WriteLine($"[角色管理Page] 已获取微软账户皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
+                            
+                            // 解决CORS问题：使用HttpClient下载图片并转换为base64
+                            if (!string.IsNullOrEmpty(originalSkinUrl))
+                            {
+                                Debug.WriteLine($"[角色管理Page] 尝试下载皮肤图片: {originalSkinUrl}");
+                                skinUrl = await DownloadImageAsBase64Async(originalSkinUrl);
+                                Debug.WriteLine($"[角色管理Page] 皮肤图片已转换为base64，长度: {skinUrl.Length}");
+                            }
+
+                            if (!string.IsNullOrEmpty(originalCapeUrl))
+                            {
+                                Debug.WriteLine($"[角色管理Page] 尝试下载披风图片: {originalCapeUrl}");
+                                capeUrl = await DownloadImageAsBase64Async(originalCapeUrl);
+                                Debug.WriteLine($"[角色管理Page] 披风图片已转换为base64，长度: {capeUrl.Length}");
+                            }
                         }
                     }
                 }
