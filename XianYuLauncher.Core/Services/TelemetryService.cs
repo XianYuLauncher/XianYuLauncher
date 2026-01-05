@@ -18,8 +18,28 @@ public class TelemetryService
     // 统计服务端点
     private const string TelemetryEndpoint = "***REMOVED***";
     
+    // API Key（Base64 编码混淆，不是加密）
+    // 使用方法：将你的 API Key 进行 Base64 编码后填入下方
+    // 在线工具：https://www.base64encode.org/
+    private const string EncodedApiKey = "***REMOVED***"; // 替换为你的 Base64 编码后的 API Key
+    
     // 是否启用遥测（可以通过配置控制）
     private bool _isEnabled = true;
+    
+    /// <summary>
+    /// 解码 API Key
+    /// </summary>
+    private static string GetApiKey()
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(EncodedApiKey));
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
 
     public TelemetryService(HttpClient httpClient, ILogger<TelemetryService> logger)
     {
@@ -28,6 +48,13 @@ public class TelemetryService
         
         // 设置超时，避免阻塞启动
         _httpClient.Timeout = TimeSpan.FromSeconds(5);
+        
+        // 添加 API Key 请求头（解码后）
+        var apiKey = GetApiKey();
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
     }
 
     /// <summary>
