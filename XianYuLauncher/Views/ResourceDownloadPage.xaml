@@ -30,7 +30,10 @@
                 VerticalAlignment="Stretch" 
                 Height="Auto" 
                 SelectedIndex="0"
-                SelectionChanged="ResourceTabView_SelectionChanged">
+                SelectionChanged="ResourceTabView_SelectionChanged"
+                IsAddTabButtonVisible="False"
+                CanDragTabs="False"
+                CanReorderTabs="False">
                 <TabView.Resources>
                     <Style TargetType="TabViewItem">
                         <Setter Property="IsClosable" Value="False" />

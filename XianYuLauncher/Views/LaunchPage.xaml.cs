@@ -127,6 +127,66 @@ public sealed partial class LaunchPage : Page
     }
 
     /// <summary>
+    /// 当版本菜单打开时动态生成版本列表
+    /// </summary>
+    private void VersionMenuFlyout_Opening(object sender, object e)
+    {
+        // 清空现有菜单项（保留最后的分隔线和添加版本选项，共2个固定项）
+        while (VersionMenuFlyout.Items.Count > 2)
+        {
+            VersionMenuFlyout.Items.RemoveAt(0);
+        }
+
+        // 添加版本列表
+        if (ViewModel.InstalledVersions.Count > 0)
+        {
+            var versionSubItem = new MenuFlyoutSubItem();
+            versionSubItem.Text = "LaunchPage_InstalledVersionsText".GetLocalized();
+            
+            foreach (var version in ViewModel.InstalledVersions)
+            {
+                var menuItem = new MenuFlyoutItem
+                {
+                    Text = version,
+                    Tag = version
+                };
+                
+                // 如果是当前选中的版本，添加勾选标记
+                if (version == ViewModel.SelectedVersion)
+                {
+                    menuItem.Icon = new SymbolIcon(Symbol.Accept);
+                }
+                
+                menuItem.Click += VersionMenuItem_Click;
+                versionSubItem.Items.Add(menuItem);
+            }
+            
+            VersionMenuFlyout.Items.Insert(0, versionSubItem);
+        }
+    }
+
+    /// <summary>
+    /// 版本菜单项点击事件
+    /// </summary>
+    private void VersionMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string version)
+        {
+            // 切换版本
+            ViewModel.SelectedVersion = version;
+        }
+    }
+
+    /// <summary>
+    /// 添加版本菜单项点击事件
+    /// </summary>
+    private void AddVersionMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        // 导航到资源下载页面
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName);
+    }
+
+    /// <summary>
     /// 角色菜单项点击事件
     /// </summary>
     private void ProfileMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

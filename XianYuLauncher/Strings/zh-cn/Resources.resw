@@ -432,6 +432,15 @@
   <data name="LaunchPage_SelectVersionPlaceholder.PlaceholderText" xml:space="preserve">
     <value>请选择已安装的版本</value>
   </data>
+  <data name="LaunchPage_InstalledVersionsText" xml:space="preserve">
+    <value>已添加版本</value>
+  </data>
+  <data name="LaunchPage_AddVersion.Text" xml:space="preserve">
+    <value>添加版本</value>
+  </data>
+  <data name="LaunchPage_RefreshVersions.Text" xml:space="preserve">
+    <value>刷新版本列表</value>
+  </data>
   <data name="LaunchPage_RefreshVersionsTooltip.ToolTipService.ToolTip" xml:space="preserve">
     <value>刷新版本列表</value>
   </data>

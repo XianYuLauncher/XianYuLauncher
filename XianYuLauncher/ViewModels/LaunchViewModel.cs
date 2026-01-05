@@ -592,6 +592,13 @@ public partial class LaunchViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedVersion = "";
 
+    /// <summary>
+    /// 版本选择按钮显示文本
+    /// </summary>
+    public string SelectedVersionDisplay => string.IsNullOrEmpty(SelectedVersion) 
+        ? "LaunchPage_SelectVersionPlaceholder".GetLocalized() 
+        : SelectedVersion;
+
     [ObservableProperty]
     private bool _isOfflineMode = true;
 
@@ -861,6 +868,8 @@ public partial class LaunchViewModel : ObservableRecipient
         // 保存选中的版本到本地设置
         _localSettingsService.SaveSettingAsync(SelectedVersionKey, value).ConfigureAwait(false);
         ShowMinecraftPathInfo();
+        // 通知UI更新版本显示文本
+        OnPropertyChanged(nameof(SelectedVersionDisplay));
     }
 
     /// <summary>

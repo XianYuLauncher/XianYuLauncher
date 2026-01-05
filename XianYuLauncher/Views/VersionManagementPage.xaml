@@ -187,7 +187,10 @@
             Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
             Background="Transparent"
             BorderThickness="0"
-            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+            IsAddTabButtonVisible="False"
+            CanDragTabs="False"
+            CanReorderTabs="False">
             <TabView.Resources>
                 <Style TargetType="TabViewItem">
                     <Setter Property="IsClosable" Value="False" />
