@@ -19,9 +19,7 @@ public class TelemetryService
     private const string TelemetryEndpoint = "***REMOVED***";
     
     // API Key（Base64 编码混淆，不是加密）
-    // 使用方法：将你的 API Key 进行 Base64 编码后填入下方
-    // 在线工具：https://www.base64encode.org/
-    private const string EncodedApiKey = "***REMOVED***"; // 替换为你的 Base64 编码后的 API Key
+    private const string EncodedApiKey = "***REMOVED***"; 
     
     // 是否启用遥测（可以通过配置控制）
     private bool _isEnabled = true;
@@ -47,7 +45,7 @@ public class TelemetryService
         _logger = logger;
         
         // 设置超时，避免阻塞启动
-        _httpClient.Timeout = TimeSpan.FromSeconds(5);
+        _httpClient.Timeout = TimeSpan.FromSeconds(10);
         
         // 添加 API Key 请求头（解码后）
         var apiKey = GetApiKey();
@@ -64,11 +62,14 @@ public class TelemetryService
     {
         if (!_isEnabled)
         {
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 遥测已禁用，跳过发送");
             return;
         }
 
         try
         {
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 开始准备遥测数据...");
+            
             // 只发送一个空的 ping 请求，不包含任何用户信息
             var telemetryData = new
             {
@@ -78,32 +79,58 @@ public class TelemetryService
 
             var json = JsonSerializer.Serialize(telemetryData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            System.Diagnostics.Debug.WriteLine($"[Telemetry] 准备发送到: {TelemetryEndpoint}");
+            System.Diagnostics.Debug.WriteLine($"[Telemetry] 数据内容: {json}");
 
             // 异步发送，不等待结果
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    System.Diagnostics.Debug.WriteLine("[Telemetry] 正在发送 HTTP 请求...");
                     var response = await _httpClient.PostAsync(TelemetryEndpoint, content);
+                    
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 收到响应，状态码: {response.StatusCode}");
+                    
                     if (response.IsSuccessStatusCode)
                     {
                         _logger.LogInformation("遥测数据发送成功");
+                        System.Diagnostics.Debug.WriteLine("[Telemetry] ✓ 遥测数据发送成功");
                     }
                     else
                     {
+                        var responseBody = await response.Content.ReadAsStringAsync();
                         _logger.LogWarning($"遥测数据发送失败: {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine($"[Telemetry] ✗ 发送失败: {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine($"[Telemetry] 响应内容: {responseBody}");
                     }
+                }
+                catch (TaskCanceledException ex)
+                {
+                    _logger.LogWarning($"遥测数据发送超时: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] ✗ 请求超时（5秒）: {ex.Message}");
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogWarning($"遥测数据发送网络错误: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] ✗ 网络错误: {ex.Message}");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning($"遥测数据发送异常: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] ✗ 未知异常: {ex.GetType().Name} - {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 堆栈跟踪: {ex.StackTrace}");
                 }
             });
+            
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 遥测任务已启动（后台执行）");
         }
         catch (Exception ex)
         {
             // 遥测失败不应影响应用启动
             _logger.LogWarning($"准备遥测数据失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Telemetry] ✗ 准备数据失败: {ex.GetType().Name} - {ex.Message}");
         }
     }
 
