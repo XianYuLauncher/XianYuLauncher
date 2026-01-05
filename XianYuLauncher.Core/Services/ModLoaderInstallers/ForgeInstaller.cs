@@ -344,16 +344,38 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
         foreach (var library in libraries)
         {
-            if (library.Downloads?.Artifact == null) continue;
+            if (string.IsNullOrEmpty(library.Name)) continue;
             
             var libraryPath = LibraryManager.GetLibraryPath(library.Name, librariesDirectory);
             if (File.Exists(libraryPath)) continue;
 
+            string? downloadUrl = null;
+            string? sha1 = null;
+
+            // 优先使用 Downloads.Artifact
+            if (library.Downloads?.Artifact != null && !string.IsNullOrEmpty(library.Downloads.Artifact.Url))
+            {
+                downloadUrl = library.Downloads.Artifact.Url;
+                sha1 = library.Downloads.Artifact.Sha1;
+            }
+            // 其次使用 library.Url 构建下载地址（旧版 Forge 格式）
+            else if (!string.IsNullOrEmpty(library.Url))
+            {
+                downloadUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
+            }
+            // 最后使用默认 Maven 仓库
+            else
+            {
+                downloadUrl = BuildLibraryDownloadUrl(library.Name, "https://libraries.minecraft.net/");
+            }
+
+            if (string.IsNullOrEmpty(downloadUrl)) continue;
+
             downloadTasks.Add(new DownloadTask
             {
-                Url = library.Downloads.Artifact.Url ?? string.Empty,
+                Url = downloadUrl,
                 TargetPath = libraryPath,
-                ExpectedSha1 = library.Downloads.Artifact.Sha1,
+                ExpectedSha1 = sha1,
                 Description = $"库文件: {library.Name}"
             });
         }
@@ -365,6 +387,26 @@ public class ForgeInstaller : ModLoaderInstallerBase
         }
 
         await DownloadManager.DownloadFilesAsync(downloadTasks, 4, progressCallback, cancellationToken);
+    }
+
+    /// <summary>
+    /// 根据库名和基础URL构建下载地址
+    /// </summary>
+    private string? BuildLibraryDownloadUrl(string libraryName, string baseUrl)
+    {
+        var parts = libraryName.Split(':');
+        if (parts.Length < 3) return null;
+
+        var groupId = parts[0];
+        var artifactId = parts[1];
+        var version = parts[2];
+        var classifier = parts.Length > 3 ? parts[3] : null;
+
+        var fileName = string.IsNullOrEmpty(classifier)
+            ? $"{artifactId}-{version}.jar"
+            : $"{artifactId}-{version}-{classifier}.jar";
+
+        return $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
     }
 
     private async Task<VersionInfo> ProcessOldForgeAsync(
@@ -447,13 +489,33 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? forge, List<Library> additionalLibraries)
     {
+        // 确保输入参数不为null
+        if (original == null)
+        {
+            throw new ArgumentNullException(nameof(original));
+        }
+
+        // 构建合并后的JSON - 完全合并原版和Forge的所有字段
         var merged = new VersionInfo
         {
             Id = forge?.Id ?? original.Id,
-            Type = original.Type,
+            Type = forge?.Type ?? original.Type,
+            Time = forge?.Time ?? original.Time,
+            ReleaseTime = forge?.ReleaseTime ?? original.ReleaseTime,
+            Url = original.Url,
             MainClass = forge?.MainClass ?? original.MainClass,
-            InheritsFrom = original.Id,
-            Arguments = forge?.Arguments ?? original.Arguments,
+            // 关键字段：从原版复制资源索引信息
+            AssetIndex = original.AssetIndex,
+            Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
+            // 关键字段：从原版复制下载信息
+            Downloads = original.Downloads,
+            // 关键字段：Java版本信息
+            JavaVersion = forge?.JavaVersion ?? original.JavaVersion,
+            // 处理参数字段
+            // 只有当Forge提供了有效的Arguments且没有minecraftArguments时才使用Arguments
+            Arguments = !string.IsNullOrEmpty(forge?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
+                ? null
+                : (forge?.Arguments != null && (forge.Arguments.Game != null || forge.Arguments.Jvm != null) ? forge.Arguments : original.Arguments),
             MinecraftArguments = forge?.MinecraftArguments ?? original.MinecraftArguments,
             Libraries = new List<Library>()
         };
@@ -468,10 +530,44 @@ public class ForgeInstaller : ModLoaderInstallerBase
         if (forge?.Libraries != null)
         {
             merged.Libraries.AddRange(forge.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge.Libraries.Count);
         }
 
-        // 添加install_profile中的库
-        merged.Libraries.AddRange(additionalLibraries);
+        // 为所有库处理downloads字段，确保它们有正确的downloads信息
+        foreach (var library in merged.Libraries)
+        {
+            if (library.Downloads == null)
+            {
+                library.Downloads = new LibraryDownloads();
+                
+                var parts = library.Name?.Split(':');
+                if (parts != null && parts.Length >= 3)
+                {
+                    string groupId = parts[0];
+                    string artifactId = parts[1];
+                    string version = parts[2];
+                    
+                    string baseUrl = "https://libraries.minecraft.net/";
+                    if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        baseUrl = "https://maven.minecraftforge.net/";
+                    }
+                    
+                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
+                    
+                    library.Downloads.Artifact = new DownloadFile
+                    {
+                        Url = downloadUrl,
+                        Sha1 = null,
+                        Size = 0
+                    };
+                }
+            }
+        }
+
+        // 去重依赖库
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
     }

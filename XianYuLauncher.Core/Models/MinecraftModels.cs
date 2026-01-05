@@ -147,6 +147,9 @@ public class Library
     [JsonProperty("downloads")]
     public LibraryDownloads? Downloads { get; set; }
     
+    [JsonProperty("url")]
+    public string? Url { get; set; }
+    
     [JsonProperty("rules")]
     public LibraryRules[]? Rules { get; set; }
     

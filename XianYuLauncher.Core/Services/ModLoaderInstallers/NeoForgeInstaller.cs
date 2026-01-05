@@ -352,28 +352,88 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
     {
+        // 确保输入参数不为null
+        if (original == null)
+        {
+            throw new ArgumentNullException(nameof(original));
+        }
+
+        // 构建合并后的JSON - 完全合并原版和NeoForge的所有字段
         var merged = new VersionInfo
         {
             Id = neoforge?.Id ?? original.Id,
-            Type = original.Type,
+            Type = neoforge?.Type ?? original.Type,
+            Time = neoforge?.Time ?? original.Time,
+            ReleaseTime = neoforge?.ReleaseTime ?? original.ReleaseTime,
+            Url = original.Url,
             MainClass = neoforge?.MainClass ?? original.MainClass,
-            InheritsFrom = original.Id,
-            Arguments = neoforge?.Arguments ?? original.Arguments,
+            // 关键字段：从原版复制资源索引信息
+            AssetIndex = original.AssetIndex,
+            Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
+            // 关键字段：从原版复制下载信息
+            Downloads = original.Downloads,
+            // 关键字段：Java版本信息
+            JavaVersion = neoforge?.JavaVersion ?? original.JavaVersion,
+            // 处理参数字段
+            Arguments = !string.IsNullOrEmpty(neoforge?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
+                ? null
+                : (neoforge?.Arguments != null && (neoforge.Arguments.Game != null || neoforge.Arguments.Jvm != null) ? neoforge.Arguments : original.Arguments),
             MinecraftArguments = neoforge?.MinecraftArguments ?? original.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
+        // 添加原版库
         if (original.Libraries != null)
         {
             merged.Libraries.AddRange(original.Libraries);
         }
 
+        // 添加NeoForge库
         if (neoforge?.Libraries != null)
         {
             merged.Libraries.AddRange(neoforge.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge.Libraries.Count);
         }
 
-        merged.Libraries.AddRange(additionalLibraries);
+        // 为所有库处理downloads字段，确保它们有正确的downloads信息
+        foreach (var library in merged.Libraries)
+        {
+            if (library.Downloads == null)
+            {
+                library.Downloads = new LibraryDownloads();
+                
+                var parts = library.Name?.Split(':');
+                if (parts != null && parts.Length >= 3)
+                {
+                    string groupId = parts[0];
+                    string artifactId = parts[1];
+                    string version = parts[2];
+                    
+                    string baseUrl = "https://libraries.minecraft.net/";
+                    if (library.Name?.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        baseUrl = "https://maven.neoforged.net/releases/";
+                    }
+                    else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        baseUrl = "https://maven.minecraftforge.net/";
+                    }
+                    
+                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
+                    
+                    library.Downloads.Artifact = new DownloadFile
+                    {
+                        Url = downloadUrl,
+                        Sha1 = null,
+                        Size = 0
+                    };
+                }
+            }
+        }
+
+        // 去重依赖库
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
     }

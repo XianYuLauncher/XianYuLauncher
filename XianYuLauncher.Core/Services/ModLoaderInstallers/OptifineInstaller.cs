@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
@@ -50,6 +50,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
         string? cacheDirectory = null;
         string? optifineJarPath = null;
+        string? tempMinecraftDirectory = null;
 
         try
         {
@@ -73,24 +74,22 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(10);
 
-            // 4. 下载原版Minecraft JAR
+            // 4. 下载原版Minecraft JAR到版本目录
             Logger.LogInformation("下载Minecraft JAR");
-            var originalJarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
             await DownloadMinecraftJarAsync(
                 versionDirectory,
                 versionId,
                 originalVersionInfo,
-                p => ReportProgress(progressCallback, p, 10, 40),
+                p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(40);
+            progressCallback?.Invoke(35);
 
-            // 5. 下载Optifine JAR（需要用户提供或从BMCLAPI获取）
-            Logger.LogInformation("准备Optifine JAR");
+            // 5. 下载Optifine JAR到缓存目录
+            Logger.LogInformation("下载Optifine JAR");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "optifine");
             Directory.CreateDirectory(cacheDirectory);
             
-            // Optifine下载URL（使用BMCLAPI）
             optifineJarPath = Path.Combine(cacheDirectory, $"OptiFine_{minecraftVersionId}_{modLoaderVersion}.jar");
             var optifineUrl = GetOptifineDownloadUrl(minecraftVersionId, modLoaderVersion);
             
@@ -98,7 +97,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 optifineUrl,
                 optifineJarPath,
                 null,
-                p => ReportProgress(progressCallback, p, 40, 60),
+                p => ReportProgress(progressCallback, p, 35, 50),
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -112,31 +111,112 @@ public class OptifineInstaller : ModLoaderInstallerBase
                     downloadResult.Exception);
             }
 
+            progressCallback?.Invoke(50);
+
+            // 6. 创建临时目录结构用于Optifine安装器
+            Logger.LogInformation("创建临时目录结构");
+            var tempDirectoryParent = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "optifine_install");
+            tempMinecraftDirectory = Path.Combine(tempDirectoryParent, ".minecraft");
+            var tempVersionsDirectory = Path.Combine(tempMinecraftDirectory, "versions");
+            var tempLibrariesDirectory = Path.Combine(tempMinecraftDirectory, "libraries");
+            
+            // 清理并创建目录
+            if (Directory.Exists(tempMinecraftDirectory))
+            {
+                Directory.Delete(tempMinecraftDirectory, true);
+            }
+            Directory.CreateDirectory(tempVersionsDirectory);
+            Directory.CreateDirectory(tempLibrariesDirectory);
+            
+            // 复制launcher_profiles.json（Optifine安装器需要）
+            var launcherProfilesPath = Path.Combine(minecraftDirectory, "launcher_profiles.json");
+            var tempLauncherProfilesPath = Path.Combine(tempMinecraftDirectory, "launcher_profiles.json");
+            if (File.Exists(launcherProfilesPath))
+            {
+                File.Copy(launcherProfilesPath, tempLauncherProfilesPath, true);
+            }
+            else
+            {
+                // 创建一个空的launcher_profiles.json
+                await File.WriteAllTextAsync(tempLauncherProfilesPath, "{\"profiles\":{}}", cancellationToken);
+            }
+            
+            // 复制原版版本文件到临时目录（使用原版版本号作为目录名）
+            var tempOriginalVersionDirectory = Path.Combine(tempVersionsDirectory, minecraftVersionId);
+            Directory.CreateDirectory(tempOriginalVersionDirectory);
+            
+            // 复制JAR文件
+            var sourceJarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
+            var tempJarPath = Path.Combine(tempOriginalVersionDirectory, $"{minecraftVersionId}.jar");
+            File.Copy(sourceJarPath, tempJarPath, true);
+            
+            // 保存原版JSON到临时目录
+            var tempJsonPath = Path.Combine(tempOriginalVersionDirectory, $"{minecraftVersionId}.json");
+            var originalJsonContent = JsonConvert.SerializeObject(originalVersionInfo, Formatting.Indented);
+            await File.WriteAllTextAsync(tempJsonPath, originalJsonContent, cancellationToken);
+
             progressCallback?.Invoke(60);
 
-            // 6. 将Optifine复制到libraries目录
-            Logger.LogInformation("安装Optifine库文件");
-            var optifineLibraryPath = GetOptifineLibraryPath(minecraftVersionId, modLoaderVersion, librariesDirectory);
-            var optifineLibraryDir = Path.GetDirectoryName(optifineLibraryPath);
-            if (!string.IsNullOrEmpty(optifineLibraryDir))
+            // 7. 执行Optifine安装器
+            Logger.LogInformation("执行Optifine安装器");
+            await ExecuteOptifineInstallerAsync(
+                optifineJarPath,
+                tempDirectoryParent,
+                tempMinecraftDirectory,
+                cancellationToken);
+
+            progressCallback?.Invoke(80);
+
+            // 8. 复制安装后的文件回正式目录
+            Logger.LogInformation("复制安装后的文件");
+            
+            // 8.1 复制libraries
+            var installedOptifineLibDir = Path.Combine(tempLibrariesDirectory, "optifine");
+            if (Directory.Exists(installedOptifineLibDir))
             {
-                Directory.CreateDirectory(optifineLibraryDir);
+                var destOptifineLibDir = Path.Combine(librariesDirectory, "optifine");
+                CopyDirectory(installedOptifineLibDir, destOptifineLibDir);
+                Logger.LogInformation("已复制Optifine库文件");
             }
-            File.Copy(optifineJarPath, optifineLibraryPath, overwrite: true);
-
-            progressCallback?.Invoke(70);
-
-            // 7. 修补Minecraft JAR（将Optifine内容合并到JAR中）
-            Logger.LogInformation("修补Minecraft JAR");
-            await PatchMinecraftJarAsync(originalJarPath, optifineJarPath, cancellationToken);
 
             progressCallback?.Invoke(85);
 
-            // 8. 生成版本JSON
-            Logger.LogInformation("生成Optifine版本JSON");
-            var optifineVersionInfo = CreateOptifineVersionInfo(
-                versionId, minecraftVersionId, modLoaderVersion, originalVersionInfo);
-            await SaveVersionJsonAsync(versionDirectory, versionId, optifineVersionInfo);
+            // 8.2 查找并处理安装后的版本文件
+            // Optifine安装器使用标准格式创建版本目录
+            var standardOptifineVersionId = $"{minecraftVersionId}-OptiFine_{modLoaderVersion.Replace("_", "_")}";
+            var installedVersionDir = Path.Combine(tempVersionsDirectory, standardOptifineVersionId);
+            
+            if (Directory.Exists(installedVersionDir))
+            {
+                // 复制JAR文件
+                var installedJarPath = Path.Combine(installedVersionDir, $"{standardOptifineVersionId}.jar");
+                var destJarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
+                if (File.Exists(installedJarPath))
+                {
+                    File.Copy(installedJarPath, destJarPath, true);
+                    Logger.LogInformation("已复制Optifine JAR文件");
+                }
+                
+                // 读取并合并JSON
+                var installedJsonPath = Path.Combine(installedVersionDir, $"{standardOptifineVersionId}.json");
+                if (File.Exists(installedJsonPath))
+                {
+                    var installedJsonContent = await File.ReadAllTextAsync(installedJsonPath, cancellationToken);
+                    var installedVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(installedJsonContent);
+                    
+                    // 合并版本信息
+                    var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, installedVersionInfo, versionId);
+                    await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
+                    Logger.LogInformation("已合并并保存版本JSON");
+                }
+            }
+            else
+            {
+                Logger.LogWarning("未找到Optifine安装后的版本目录: {Dir}", installedVersionDir);
+                // 回退：使用简单合并
+                var simpleVersionInfo = CreateSimpleOptifineVersionInfo(versionId, minecraftVersionId, modLoaderVersion, originalVersionInfo);
+                await SaveVersionJsonAsync(versionDirectory, versionId, simpleVersionInfo);
+            }
 
             progressCallback?.Invoke(100);
 
@@ -158,6 +238,11 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 minecraftVersionId,
                 innerException: ex);
         }
+        finally
+        {
+            // 清理临时目录
+            CleanupTempFiles(tempMinecraftDirectory);
+        }
     }
 
     /// <inheritdoc/>
@@ -167,7 +252,6 @@ public class OptifineInstaller : ModLoaderInstallerBase
     {
         try
         {
-            // 使用BMCLAPI获取Optifine版本列表
             var url = $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}";
             var response = await _httpClient.GetStringAsync(url, cancellationToken);
             var versions = JsonConvert.DeserializeObject<List<OptifineVersionInfo>>(response);
@@ -187,73 +271,211 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
     private string GetOptifineDownloadUrl(string minecraftVersionId, string optifineVersion)
     {
-        // 使用BMCLAPI下载Optifine
-        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineVersion.Replace("_", "/")}";
-    }
-
-    private string GetOptifineLibraryPath(string minecraftVersionId, string optifineVersion, string librariesDirectory)
-    {
-        return Path.Combine(
-            librariesDirectory,
-            "optifine",
-            "OptiFine",
-            $"{minecraftVersionId}_{optifineVersion}",
-            $"OptiFine-{minecraftVersionId}_{optifineVersion}.jar");
-    }
-
-    private async Task PatchMinecraftJarAsync(string minecraftJarPath, string optifineJarPath, CancellationToken cancellationToken)
-    {
-        // 创建临时目录用于合并
-        var tempDir = Path.Combine(Path.GetTempPath(), $"optifine_patch_{Guid.NewGuid()}");
-        Directory.CreateDirectory(tempDir);
-
-        try
+        // optifineVersion 格式为 "HD_U_J7_pre10"，需要拆分为 type 和 patch
+        // 下载URL格式: /optifine/{mcVersion}/{type}/{patch}
+        var lastUnderscoreIndex = optifineVersion.LastIndexOf('_');
+        if (lastUnderscoreIndex > 0)
         {
-            // 解压原版JAR
-            await Task.Run(() => ZipFile.ExtractToDirectory(minecraftJarPath, tempDir, overwriteFiles: true), cancellationToken);
+            var type = optifineVersion.Substring(0, lastUnderscoreIndex);
+            var patch = optifineVersion.Substring(lastUnderscoreIndex + 1);
+            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{type}/{patch}";
+        }
+        
+        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineVersion}";
+    }
 
-            // 解压Optifine JAR并覆盖
-            using (var optifineArchive = ZipFile.OpenRead(optifineJarPath))
+    private async Task ExecuteOptifineInstallerAsync(
+        string optifineJarPath,
+        string workingDirectory,
+        string tempMinecraftDirectory,
+        CancellationToken cancellationToken)
+    {
+        // 查找Java
+        var javaPath = FindJavaPath();
+        
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = javaPath,
+            Arguments = $"-Duser.home=\"{workingDirectory}\" -cp \"{optifineJarPath}\" optifine.Installer",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = workingDirectory
+        };
+        
+        // 设置环境变量
+        processStartInfo.Environment["APPDATA"] = workingDirectory;
+        
+        var outputBuilder = new StringBuilder();
+        var errorBuilder = new StringBuilder();
+        
+        using var process = new Process();
+        process.StartInfo = processStartInfo;
+        
+        process.OutputDataReceived += (sender, e) =>
+        {
+            if (!string.IsNullOrEmpty(e.Data))
             {
-                foreach (var entry in optifineArchive.Entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
-                    // 跳过META-INF目录
-                    if (entry.FullName.StartsWith("META-INF/", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    
-                    if (string.IsNullOrEmpty(entry.Name)) continue;
+                outputBuilder.AppendLine(e.Data);
+                Logger.LogDebug("Optifine安装输出: {Output}", e.Data);
+            }
+        };
+        
+        process.ErrorDataReceived += (sender, e) =>
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                errorBuilder.AppendLine(e.Data);
+                Logger.LogWarning("Optifine安装错误: {Error}", e.Data);
+            }
+        };
+        
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        
+        await process.WaitForExitAsync(cancellationToken);
+        
+        if (process.ExitCode != 0)
+        {
+            var error = errorBuilder.ToString();
+            throw new ModLoaderInstallException(
+                $"Optifine安装器执行失败，退出代码: {process.ExitCode}\n错误: {error}",
+                ModLoaderType, "", "", "执行安装器");
+        }
+        
+        Logger.LogInformation("Optifine安装器执行成功");
+    }
 
-                    var destinationPath = Path.Combine(tempDir, entry.FullName);
-                    var destinationDir = Path.GetDirectoryName(destinationPath);
-                    if (!string.IsNullOrEmpty(destinationDir))
-                    {
-                        Directory.CreateDirectory(destinationDir);
-                    }
-                    entry.ExtractToFile(destinationPath, overwrite: true);
+    private string FindJavaPath()
+    {
+        // 尝试从JAVA_HOME获取
+        var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+        if (!string.IsNullOrEmpty(javaHome))
+        {
+            var javaExe = Path.Combine(javaHome, "bin", "java.exe");
+            if (File.Exists(javaExe))
+            {
+                return javaExe;
+            }
+        }
+        
+        // 使用系统默认java
+        return "java";
+    }
+
+    private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? optifine, string versionId)
+    {
+        // 参数合并逻辑：
+        // 如果Optifine或原版使用minecraftArguments（旧版格式），则使用minecraftArguments
+        // 否则合并arguments
+        Arguments? mergedArguments = null;
+        string? mergedMinecraftArguments = null;
+
+        if (!string.IsNullOrEmpty(optifine?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments))
+        {
+            // 使用旧版格式
+            mergedMinecraftArguments = optifine?.MinecraftArguments ?? original.MinecraftArguments;
+            mergedArguments = null;
+        }
+        else
+        {
+            // 合并arguments
+            mergedArguments = MergeArguments(original.Arguments, optifine?.Arguments);
+        }
+
+        var merged = new VersionInfo
+        {
+            Id = versionId,
+            Type = original.Type,
+            Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            ReleaseTime = original.ReleaseTime,
+            Url = original.Url,
+            MainClass = optifine?.MainClass ?? original.MainClass,
+            // 关键字段：从原版复制
+            AssetIndex = original.AssetIndex,
+            Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
+            Downloads = original.Downloads,
+            JavaVersion = original.JavaVersion,
+            // 参数处理
+            Arguments = mergedArguments,
+            MinecraftArguments = mergedMinecraftArguments,
+            Libraries = new List<Library>()
+        };
+
+        // 添加原版库
+        if (original.Libraries != null)
+        {
+            merged.Libraries.AddRange(original.Libraries);
+        }
+
+        // 添加Optifine库
+        if (optifine?.Libraries != null)
+        {
+            merged.Libraries.AddRange(optifine.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine.Libraries.Count);
+        }
+
+        // 去重
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
+
+        return merged;
+    }
+
+    /// <summary>
+    /// 合并Arguments对象
+    /// </summary>
+    private Arguments? MergeArguments(Arguments? original, Arguments? modLoader)
+    {
+        if (original == null && modLoader == null)
+            return null;
+        
+        if (original == null)
+            return modLoader;
+        
+        if (modLoader == null)
+            return original;
+
+        var merged = new Arguments
+        {
+            Game = MergeArgumentList(original.Game, modLoader.Game),
+            Jvm = MergeArgumentList(original.Jvm, modLoader.Jvm)
+        };
+
+        return merged;
+    }
+
+    /// <summary>
+    /// 合并参数列表
+    /// </summary>
+    private List<object>? MergeArgumentList(List<object>? original, List<object>? modLoader)
+    {
+        if (original == null && modLoader == null)
+            return null;
+        
+        var merged = new List<object>();
+        
+        if (original != null)
+            merged.AddRange(original);
+        
+        if (modLoader != null)
+        {
+            foreach (var arg in modLoader)
+            {
+                // 避免重复添加相同的参数
+                if (!merged.Contains(arg))
+                {
+                    merged.Add(arg);
                 }
             }
+        }
 
-            // 删除原JAR并重新打包
-            File.Delete(minecraftJarPath);
-            await Task.Run(() => ZipFile.CreateFromDirectory(tempDir, minecraftJarPath), cancellationToken);
-        }
-        finally
-        {
-            // 清理临时目录
-            try
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    Directory.Delete(tempDir, true);
-                }
-            }
-            catch { /* 忽略清理错误 */ }
-        }
+        return merged.Count > 0 ? merged : null;
     }
 
-    private object CreateOptifineVersionInfo(
+    private VersionInfo CreateSimpleOptifineVersionInfo(
         string versionId,
         string minecraftVersionId,
         string optifineVersion,
@@ -261,22 +483,66 @@ public class OptifineInstaller : ModLoaderInstallerBase
     {
         var optifineLibraryName = $"optifine:OptiFine:{minecraftVersionId}_{optifineVersion}";
 
-        return new
+        var merged = new VersionInfo
         {
-            id = versionId,
-            inheritsFrom = minecraftVersionId,
-            type = "release",
-            mainClass = "net.minecraft.client.main.Main",
-            libraries = new[]
-            {
-                new
-                {
-                    name = optifineLibraryName
-                }
-            },
-            releaseTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            Id = versionId,
+            Type = originalVersionInfo.Type,
+            Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            ReleaseTime = originalVersionInfo.ReleaseTime,
+            Url = originalVersionInfo.Url,
+            MainClass = "net.minecraft.client.main.Main",
+            AssetIndex = originalVersionInfo.AssetIndex,
+            Assets = originalVersionInfo.Assets ?? originalVersionInfo.AssetIndex?.Id ?? originalVersionInfo.Id,
+            Downloads = originalVersionInfo.Downloads,
+            JavaVersion = originalVersionInfo.JavaVersion,
+            Arguments = originalVersionInfo.Arguments,
+            MinecraftArguments = originalVersionInfo.MinecraftArguments,
+            Libraries = new List<Library>()
         };
+
+        if (originalVersionInfo.Libraries != null)
+        {
+            merged.Libraries.AddRange(originalVersionInfo.Libraries);
+        }
+
+        merged.Libraries.Add(new Library
+        {
+            Name = optifineLibraryName
+        });
+
+        return merged;
+    }
+
+    private void CopyDirectory(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = Path.Combine(destDir, Path.GetFileName(file));
+            File.Copy(file, destFile, true);
+        }
+        
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var destSubDir = Path.Combine(destDir, Path.GetFileName(dir));
+            CopyDirectory(dir, destSubDir);
+        }
+    }
+
+    private void CleanupTempFiles(string? tempDirectory)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(tempDirectory) && Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "清理临时文件失败");
+        }
     }
 
     #endregion
