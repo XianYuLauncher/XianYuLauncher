@@ -1832,11 +1832,19 @@ namespace XianYuLauncher.ViewModels
 
         [ObservableProperty]
         private bool _isExpanded = false;
+        
+        /// <summary>
+        /// 获取该游戏版本下所有加载器的 Mod 版本总数
+        /// </summary>
+        public int TotalModVersionsCount => Loaders?.Sum(loader => loader.ModVersions?.Count ?? 0) ?? 0;
 
         public GameVersionViewModel(string gameVersion)
         {
             GameVersion = gameVersion;
             Loaders = new ObservableCollection<LoaderViewModel>();
+            
+            // 监听 Loaders 集合变化，更新总数
+            Loaders.CollectionChanged += (s, e) => OnPropertyChanged(nameof(TotalModVersionsCount));
         }
     }
 }

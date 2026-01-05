@@ -31,6 +31,9 @@
             <!-- TabView控件 -->
             <TabView 
                 x:Name="SettingsTabView" 
+                IsAddTabButtonVisible="False"
+                CanDragTabs="False"
+                CanReorderTabs="False"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 Height="Auto" 
