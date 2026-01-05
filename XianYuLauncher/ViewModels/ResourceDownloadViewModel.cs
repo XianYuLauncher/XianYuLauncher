@@ -1,5 +1,9 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -233,16 +237,30 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
+    // 版本列表缓存相关
+    private const string VersionCacheFileName = "version_cache.json";
+    private const string VersionCacheTimeKey = "VersionListCacheTime";
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
+    private readonly ILocalSettingsService _localSettingsService;
+    private readonly IFileService _fileService;
+    private readonly ModrinthCacheService _modrinthCacheService;
+
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
         INavigationService navigationService,
         ModrinthService modrinthService,
-        FabricService fabricService)
+        FabricService fabricService,
+        ILocalSettingsService localSettingsService,
+        IFileService fileService,
+        ModrinthCacheService modrinthCacheService)
     {
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
         _modrinthService = modrinthService;
         _fabricService = fabricService;
+        _localSettingsService = localSettingsService;
+        _fileService = fileService;
+        _modrinthCacheService = modrinthCacheService;
         
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
@@ -271,41 +289,162 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private async Task RefreshVersionsAsync()
     {
         IsRefreshing = true;
-        await LoadVersionsAsync();
+        System.Diagnostics.Debug.WriteLine("[版本缓存] 用户手动刷新，强制重新加载版本列表");
+        await LoadVersionsAsync(forceRefresh: true);
         IsRefreshing = false;
     }
     
-    private async Task LoadVersionsAsync()
+    private async Task LoadVersionsAsync(bool forceRefresh = false)
     {
         IsVersionLoading = true;
         try
         {
+            List<Core.Contracts.Services.VersionEntry> versionList = null;
+            
+            // 检查缓存
+            if (!forceRefresh)
+            {
+                var cachedTime = await _localSettingsService.ReadSettingAsync<DateTime?>(VersionCacheTimeKey);
+                if (cachedTime.HasValue)
+                {
+                    var timeSinceCache = DateTime.Now - cachedTime.Value;
+                    var remainingTime = CacheExpiration - timeSinceCache;
+                    
+                    if (timeSinceCache < CacheExpiration)
+                    {
+                        // 缓存未过期，尝试加载缓存
+                        System.Diagnostics.Debug.WriteLine($"[版本缓存] 缓存未过期，剩余 {remainingTime.TotalHours:F1} 小时刷新");
+                        
+                        // 从文件读取缓存
+                        var cacheFilePath = System.IO.Path.Combine(_fileService.GetMinecraftDataPath(), VersionCacheFileName);
+                        if (System.IO.File.Exists(cacheFilePath))
+                        {
+                            try
+                            {
+                                var json = await System.IO.File.ReadAllTextAsync(cacheFilePath);
+                                var cachedData = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CachedVersionEntry>>(json);
+                                
+                                if (cachedData != null && cachedData.Count > 0)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[版本缓存] 成功加载缓存，共 {cachedData.Count} 个版本");
+                                    
+                                    // 转换缓存数据为 VersionEntry
+                                    versionList = cachedData.Select(c => new Core.Contracts.Services.VersionEntry
+                                    {
+                                        Id = c.Id,
+                                        Type = c.Type,
+                                        Url = c.Url,
+                                        Time = c.Time,
+                                        ReleaseTime = c.ReleaseTime
+                                    }).ToList();
+                                    
+                                    // 更新UI
+                                    await UpdateVersionsUI(versionList);
+                                    return;
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存数据为空，重新加载");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[版本缓存] 读取缓存文件失败: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存文件不存在，重新加载");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[版本缓存] 当前已超过24小时（已过 {timeSinceCache.TotalHours:F1} 小时），刷新");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[版本缓存] 首次加载，无缓存数据");
+                }
+            }
+            
+            // 从网络加载
+            System.Diagnostics.Debug.WriteLine("[版本缓存] 从网络加载版本列表...");
             var manifest = await _minecraftVersionService.GetVersionManifestAsync();
-            var versionList = manifest.Versions.ToList(); // 加载所有版本
+            versionList = manifest.Versions.ToList();
+            System.Diagnostics.Debug.WriteLine($"[版本缓存] 成功加载 {versionList.Count} 个版本");
             
-            // 更新最新版本信息（使用延迟更新，减少UI刷新）
-            LatestReleaseVersion = versionList.FirstOrDefault(v => v.Type == "release")?.Id ?? string.Empty;
-            LatestSnapshotVersion = versionList.FirstOrDefault(v => v.Type == "snapshot")?.Id ?? string.Empty;
+            // 保存到缓存文件
+            try
+            {
+                var cacheData = versionList.Select(v => new CachedVersionEntry
+                {
+                    Id = v.Id,
+                    Type = v.Type,
+                    Url = v.Url,
+                    Time = v.Time,
+                    ReleaseTime = v.ReleaseTime
+                }).ToList();
+                
+                var cacheFilePath = System.IO.Path.Combine(_fileService.GetMinecraftDataPath(), VersionCacheFileName);
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(cacheData, Newtonsoft.Json.Formatting.None);
+                await System.IO.File.WriteAllTextAsync(cacheFilePath, json);
+                
+                // 保存缓存时间到 LocalSettings（时间戳很小，不会超限）
+                await _localSettingsService.SaveSettingAsync(VersionCacheTimeKey, DateTime.Now);
+                System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存已更新，下次刷新时间: " + DateTime.Now.Add(CacheExpiration).ToString("yyyy-MM-dd HH:mm:ss"));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[版本缓存] 保存缓存失败: {ex.Message}");
+                // 保存失败不影响主流程，继续更新UI
+            }
             
-            // 1. 使用临时列表存储所有版本，然后一次性替换Versions集合
-            // 这是性能优化的关键：减少UI更新次数
-            var tempVersions = new ObservableCollection<Core.Contracts.Services.VersionEntry>(versionList);
-            Versions = tempVersions;
-            
-            // 2. 一次性更新过滤后的版本列表
-            UpdateFilteredVersions();
-            
-            // 3. 同时更新可用版本列表，避免重复请求
-            await UpdateAvailableVersionsFromManifest(versionList);
+            // 更新UI
+            await UpdateVersionsUI(versionList);
         }
         catch (Exception ex)
         {
-            // 处理异常
+            System.Diagnostics.Debug.WriteLine($"[版本缓存] 加载失败: {ex.Message}");
+            ErrorMessage = $"加载版本列表失败: {ex.Message}";
         }
         finally
         {
             IsVersionLoading = false;
         }
+    }
+    
+    /// <summary>
+    /// 更新版本列表UI
+    /// </summary>
+    private async Task UpdateVersionsUI(List<Core.Contracts.Services.VersionEntry> versionList)
+    {
+        // 更新最新版本信息（使用延迟更新，减少UI刷新）
+        LatestReleaseVersion = versionList.FirstOrDefault(v => v.Type == "release")?.Id ?? string.Empty;
+        LatestSnapshotVersion = versionList.FirstOrDefault(v => v.Type == "snapshot")?.Id ?? string.Empty;
+        
+        // 1. 使用临时列表存储所有版本，然后一次性替换Versions集合
+        // 这是性能优化的关键：减少UI更新次数
+        var tempVersions = new ObservableCollection<Core.Contracts.Services.VersionEntry>(versionList);
+        Versions = tempVersions;
+        
+        // 2. 一次性更新过滤后的版本列表
+        UpdateFilteredVersions();
+        
+        // 3. 同时更新可用版本列表，避免重复请求
+        await UpdateAvailableVersionsFromManifest(versionList);
+    }
+    
+    /// <summary>
+    /// 缓存版本条目（用于序列化）
+    /// </summary>
+    public class CachedVersionEntry
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public string Time { get; set; } = string.Empty;
+        public string ReleaseTime { get; set; } = string.Empty;
     }
     
     /// <summary>
@@ -381,6 +520,24 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 尝试从缓存加载
+            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory);
+            
+            if (cachedData != null)
+            {
+                // 使用缓存数据
+                Mods.Clear();
+                foreach (var item in cachedData.Items)
+                {
+                    Mods.Add(item);
+                }
+                ModOffset = cachedData.Items.Count;
+                ModHasMoreResults = ModOffset < cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[Mod缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
+                return;
+            }
+            
             // 构建facets参数
             var facets = new List<List<string>>();
             
@@ -420,6 +577,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             ModOffset = result.Hits.Count;
             // 使用total_hits更准确地判断是否还有更多结果
             ModHasMoreResults = ModOffset < result.TotalHits;
+            
+            // 保存到缓存
+            await _modrinthCacheService.SaveSearchResultAsync(
+                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -483,6 +645,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             
             // 使用total_hits更准确地判断是否还有更多结果
             ModHasMoreResults = ModOffset < result.TotalHits;
+            
+            // 追加到缓存
+            await _modrinthCacheService.AppendToSearchResultAsync(
+                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -547,6 +714,23 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 尝试从缓存加载
+            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
+            
+            if (cachedData != null)
+            {
+                ResourcePacks.Clear();
+                foreach (var item in cachedData.Items)
+                {
+                    ResourcePacks.Add(item);
+                }
+                ResourcePackOffset = cachedData.Items.Count;
+                ResourcePackHasMoreResults = ResourcePackOffset < cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[资源包缓存] 从缓存加载 {cachedData.Items.Count} 个资源包");
+                return;
+            }
+            
             // 构建facets参数
             var facets = new List<List<string>>();
             
@@ -579,8 +763,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 ResourcePacks.Add(hit);
             }
             ResourcePackOffset = result.Hits.Count;
-            // 使用total_hits更准确地判断是否还有更多结果
             ResourcePackHasMoreResults = ResourcePackOffset < result.TotalHits;
+            
+            // 保存到缓存
+            await _modrinthCacheService.SaveSearchResultAsync(
+                "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -636,9 +824,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             
             ResourcePackOffset += result.Hits.Count;
-            
-            // 使用total_hits更准确地判断是否还有更多结果
             ResourcePackHasMoreResults = ResourcePackOffset < result.TotalHits;
+            
+            // 追加到缓存
+            await _modrinthCacheService.AppendToSearchResultAsync(
+                "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -677,6 +868,23 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 尝试从缓存加载
+            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory);
+            
+            if (cachedData != null)
+            {
+                ShaderPacks.Clear();
+                foreach (var item in cachedData.Items)
+                {
+                    ShaderPacks.Add(item);
+                }
+                ShaderPackOffset = cachedData.Items.Count;
+                ShaderPackHasMoreResults = ShaderPackOffset < cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[光影缓存] 从缓存加载 {cachedData.Items.Count} 个光影");
+                return;
+            }
+            
             // 构建facets参数
             var facets = new List<List<string>>();
             
@@ -709,8 +917,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 ShaderPacks.Add(hit);
             }
             ShaderPackOffset = result.Hits.Count;
-            // 使用total_hits更准确地判断是否还有更多结果
             ShaderPackHasMoreResults = ShaderPackOffset < result.TotalHits;
+            
+            // 保存到缓存
+            await _modrinthCacheService.SaveSearchResultAsync(
+                "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -766,9 +978,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             
             ShaderPackOffset += result.Hits.Count;
-            
-            // 使用total_hits更准确地判断是否还有更多结果
             ShaderPackHasMoreResults = ShaderPackOffset < result.TotalHits;
+            
+            // 追加到缓存
+            await _modrinthCacheService.AppendToSearchResultAsync(
+                "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -807,6 +1022,23 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 尝试从缓存加载
+            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory);
+            
+            if (cachedData != null)
+            {
+                Modpacks.Clear();
+                foreach (var item in cachedData.Items)
+                {
+                    Modpacks.Add(item);
+                }
+                ModpackOffset = cachedData.Items.Count;
+                ModpackHasMoreResults = ModpackOffset < cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[整合包缓存] 从缓存加载 {cachedData.Items.Count} 个整合包");
+                return;
+            }
+            
             // 构建facets参数
             var facets = new List<List<string>>();
             
@@ -839,8 +1071,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 Modpacks.Add(hit);
             }
             ModpackOffset = result.Hits.Count;
-            // 使用total_hits更准确地判断是否还有更多结果
             ModpackHasMoreResults = ModpackOffset < result.TotalHits;
+            
+            // 保存到缓存
+            await _modrinthCacheService.SaveSearchResultAsync(
+                "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -896,9 +1132,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             
             ModpackOffset += result.Hits.Count;
-            
-            // 使用total_hits更准确地判断是否还有更多结果
             ModpackHasMoreResults = ModpackOffset < result.TotalHits;
+            
+            // 追加到缓存
+            await _modrinthCacheService.AppendToSearchResultAsync(
+                "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -937,6 +1176,23 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 尝试从缓存加载
+            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory);
+            
+            if (cachedData != null)
+            {
+                Datapacks.Clear();
+                foreach (var item in cachedData.Items)
+                {
+                    Datapacks.Add(item);
+                }
+                DatapackOffset = cachedData.Items.Count;
+                DatapackHasMoreResults = DatapackOffset < cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[数据包缓存] 从缓存加载 {cachedData.Items.Count} 个数据包");
+                return;
+            }
+            
             // 构建facets参数
             var facets = new List<List<string>>();
             
@@ -969,8 +1225,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 Datapacks.Add(hit);
             }
             DatapackOffset = result.Hits.Count;
-            // 使用total_hits更准确地判断是否还有更多结果
             DatapackHasMoreResults = DatapackOffset < result.TotalHits;
+            
+            // 保存到缓存
+            await _modrinthCacheService.SaveSearchResultAsync(
+                "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {
@@ -1026,9 +1286,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             
             DatapackOffset += result.Hits.Count;
-            
-            // 使用total_hits更准确地判断是否还有更多结果
             DatapackHasMoreResults = DatapackOffset < result.TotalHits;
+            
+            // 追加到缓存
+            await _modrinthCacheService.AppendToSearchResultAsync(
+                "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                result.Hits, result.TotalHits);
         }
         catch (Exception ex)
         {

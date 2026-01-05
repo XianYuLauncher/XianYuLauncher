@@ -129,6 +129,9 @@ public partial class App : Application
             // Modrinth Service
             services.AddHttpClient<ModrinthService>();
             
+            // Modrinth Cache Service
+            services.AddSingleton<ModrinthCacheService>();
+            
             // Microsoft Auth Service
             services.AddHttpClient<MicrosoftAuthService>();
             
