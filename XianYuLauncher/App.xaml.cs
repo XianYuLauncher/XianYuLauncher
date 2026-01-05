@@ -114,6 +114,10 @@ public partial class App : Application
             // HTTP Client
             services.AddHttpClient();
             
+            // Telemetry Service
+            services.AddHttpClient<TelemetryService>();
+            services.AddSingleton<TelemetryService>();
+            
             // Fabric Service
             services.AddHttpClient<FabricService>();
             services.AddSingleton<FabricService>();
@@ -198,6 +202,21 @@ public partial class App : Application
     {
         base.OnLaunched(args);
         Log.Information("应用程序启动");
+        
+        // 发送启动统计（异步，不阻塞启动）
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var telemetryService = App.GetService<TelemetryService>();
+                await telemetryService.SendLaunchEventAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"发送遥测数据失败: {ex.Message}");
+            }
+        });
+        
         await App.GetService<IActivationService>().ActivateAsync(args);
     }
 }
