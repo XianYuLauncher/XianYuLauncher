@@ -119,7 +119,19 @@
     <value>Window Material</value>
   </data>
   <data name="Settings_WindowMaterialDescription.Text" xml:space="preserve">
-    <value>Select window material. Different materials have different visual effects and performance characteristics.</value>
+    <value>Select window material. Mica effects and custom background cannot be used simultaneously.</value>
+  </data>
+  <data name="MaterialType_Mica" xml:space="preserve">
+    <value>Mica</value>
+  </data>
+  <data name="MaterialType_MicaAlt" xml:space="preserve">
+    <value>Mica Alt</value>
+  </data>
+  <data name="MaterialType_Acrylic" xml:space="preserve">
+    <value>Acrylic</value>
+  </data>
+  <data name="MaterialType_CustomBackground" xml:space="preserve">
+    <value>Custom Background</value>
   </data>
   <data name="Settings_Language.Text" xml:space="preserve">
     <value>Language</value>

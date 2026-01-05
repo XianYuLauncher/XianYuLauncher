@@ -2,10 +2,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 using Windows.System;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
@@ -18,6 +20,8 @@ public sealed partial class ShellPage : Page
     {
         get;
     }
+    
+    private readonly MaterialService _materialService;
 
     public ShellPage(ShellViewModel viewModel)
     {
@@ -34,6 +38,81 @@ public sealed partial class ShellPage : Page
         App.MainWindow.SetTitleBar(AppTitleBar);
         App.MainWindow.Activated += MainWindow_Activated;
         AppTitleBarText.Text = "XianYu Launcher";
+        
+        // 订阅背景变更事件
+        _materialService = App.GetService<MaterialService>();
+        _materialService.BackgroundChanged += OnBackgroundChanged;
+        
+        // 初始化时加载背景设置
+        LoadBackgroundAsync();
+    }
+    
+    /// <summary>
+    /// 异步加载背景设置
+    /// </summary>
+    private async void LoadBackgroundAsync()
+    {
+        try
+        {
+            var materialType = await _materialService.LoadMaterialTypeAsync();
+            if (materialType == MaterialType.CustomBackground)
+            {
+                var backgroundPath = await _materialService.LoadBackgroundImagePathAsync();
+                ApplyBackground(materialType, backgroundPath);
+            }
+            else
+            {
+                ApplyBackground(materialType, null);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载背景设置失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 背景变更事件处理
+    /// </summary>
+    private void OnBackgroundChanged(object? sender, BackgroundChangedEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ApplyBackground(e.MaterialType, e.BackgroundImagePath);
+        });
+    }
+    
+    /// <summary>
+    /// 应用背景设置
+    /// </summary>
+    private void ApplyBackground(MaterialType materialType, string? backgroundPath)
+    {
+        if (materialType == MaterialType.CustomBackground && !string.IsNullOrEmpty(backgroundPath))
+        {
+            try
+            {
+                // 显示背景图片
+                var bitmap = new BitmapImage(new Uri(backgroundPath));
+                BackgroundImage.Source = bitmap;
+                BackgroundImage.Visibility = Visibility.Visible;
+                
+                // 设置 NavigationView 背景为半透明
+                NavigationViewControl.Background = new SolidColorBrush(
+                    Microsoft.UI.Colors.Transparent);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载背景图片失败: {ex.Message}");
+                BackgroundImage.Visibility = Visibility.Collapsed;
+            }
+        }
+        else
+        {
+            // 隐藏背景图片，恢复默认
+            BackgroundImage.Visibility = Visibility.Collapsed;
+            BackgroundImage.Source = null;
+            NavigationViewControl.Background = null;
+        }
     }
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
