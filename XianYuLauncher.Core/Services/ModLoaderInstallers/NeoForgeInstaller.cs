@@ -21,6 +21,7 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 public class NeoForgeInstaller : ModLoaderInstallerBase
 {
     private readonly HttpClient _httpClient;
+    private readonly IProcessorExecutor _processorExecutor;
     
     /// <summary>
     /// NeoForge Maven仓库URL
@@ -34,9 +35,11 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
+        IProcessorExecutor processorExecutor,
         ILogger<NeoForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
+        _processorExecutor = processorExecutor;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
@@ -169,7 +172,34 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(90);
 
-            // 10. 合并版本JSON并保存
+            // 10. 执行处理器
+            var processors = installProfile["processors"] as JArray;
+            if (processors != null && processors.Count > 0)
+            {
+                Logger.LogInformation("开始执行NeoForge处理器");
+                var versionConfig = new VersionConfig
+                {
+                    ModLoaderType = "neoforge",
+                    ModLoaderVersion = modLoaderVersion,
+                    MinecraftVersion = minecraftVersionId
+                };
+
+                await _processorExecutor.ExecuteProcessorsAsync(
+                    processors,
+                    neoforgeInstallerPath,
+                    versionDirectory,
+                    librariesDirectory,
+                    installProfilePath,
+                    extractedPath,
+                    "neoforge",
+                    versionConfig,
+                    p => ReportProgress(progressCallback, p, 90, 98),
+                    cancellationToken);
+            }
+
+            progressCallback?.Invoke(98);
+
+            // 11. 合并版本JSON并保存
             var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, neoforgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             

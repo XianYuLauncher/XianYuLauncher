@@ -16,6 +16,7 @@ public class NeoForgeInstallerTests : IDisposable
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILibraryManager> _mockLibraryManager;
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
+    private readonly Mock<IProcessorExecutor> _mockProcessorExecutor;
     private readonly Mock<ILogger<NeoForgeInstaller>> _mockLogger;
     private readonly NeoForgeInstaller _neoForgeInstaller;
     private readonly string _testDirectory;
@@ -25,12 +26,14 @@ public class NeoForgeInstallerTests : IDisposable
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLibraryManager = new Mock<ILibraryManager>();
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
+        _mockProcessorExecutor = new Mock<IProcessorExecutor>();
         _mockLogger = new Mock<ILogger<NeoForgeInstaller>>();
         
         _neoForgeInstaller = new NeoForgeInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
+            _mockProcessorExecutor.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"NeoForgeInstallerTests_{Guid.NewGuid()}");

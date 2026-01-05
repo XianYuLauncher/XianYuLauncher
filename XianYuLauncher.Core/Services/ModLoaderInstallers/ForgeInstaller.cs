@@ -21,6 +21,7 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 public class ForgeInstaller : ModLoaderInstallerBase
 {
     private readonly HttpClient _httpClient;
+    private readonly IProcessorExecutor _processorExecutor;
     
     /// <summary>
     /// Forge Maven仓库URL
@@ -34,9 +35,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
+        IProcessorExecutor processorExecutor,
         ILogger<ForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
+        _processorExecutor = processorExecutor;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
@@ -170,7 +173,34 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(90);
 
-            // 10. 合并版本JSON并保存
+            // 11. 执行处理器（仅新版Forge需要）
+            var processors = installProfile["processors"] as JArray;
+            if (forgeVersionType == ForgeVersionType.New && processors != null && processors.Count > 0)
+            {
+                Logger.LogInformation("开始执行Forge处理器");
+                var versionConfig = new VersionConfig
+                {
+                    ModLoaderType = "forge",
+                    ModLoaderVersion = modLoaderVersion,
+                    MinecraftVersion = minecraftVersionId
+                };
+
+                await _processorExecutor.ExecuteProcessorsAsync(
+                    processors,
+                    forgeInstallerPath,
+                    versionDirectory,
+                    librariesDirectory,
+                    installProfilePath,
+                    extractedPath,
+                    "forge",
+                    versionConfig,
+                    p => ReportProgress(progressCallback, p, 90, 98),
+                    cancellationToken);
+            }
+
+            progressCallback?.Invoke(98);
+
+            // 12. 合并版本JSON并保存
             var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, forgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             

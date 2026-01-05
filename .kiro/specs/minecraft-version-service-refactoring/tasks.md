@@ -259,7 +259,7 @@
   - 测试错误处理
   - _Requirements: 9.2, 9.3_
 
-- [ ] 6.12 更新 MinecraftVersionService 使用新的安装器
+- [x] 6.12 更新 MinecraftVersionService 使用新的安装器
   - 在构造函数中注入所有 IModLoaderInstaller 实现
   - 使用策略模式选择合适的安装器
   - 保持公共 API 不变

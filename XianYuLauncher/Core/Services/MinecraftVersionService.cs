@@ -21,6 +21,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     private readonly ILibraryManager _libraryManager;
     private readonly IAssetManager _assetManager;
     private readonly IVersionInfoManager _versionInfoManager;
+    private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
 
     public MinecraftVersionService(
         ILogger<MinecraftVersionService> logger, 
@@ -31,7 +32,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IAssetManager assetManager,
-        IVersionInfoManager versionInfoManager)
+        IVersionInfoManager versionInfoManager,
+        IModLoaderInstallerFactory modLoaderInstallerFactory)
     {
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
@@ -44,6 +46,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         _libraryManager = libraryManager;
         _assetManager = assetManager;
         _versionInfoManager = versionInfoManager;
+        _modLoaderInstallerFactory = modLoaderInstallerFactory;
     }
 
     /// <summary>
@@ -717,34 +720,34 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             double progress = 0;
             progressCallback?.Invoke(progress);
 
-            // 根据Mod Loader类型执行不同的下载逻辑
-            switch (modLoaderType)
+            // 尝试使用新的安装器
+            try
             {
-                case "Fabric":
-                    await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
-                    break;
-                case "NeoForge":
-                    await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
-                    break;
-                case "Forge":
-                    await DownloadForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
-                    break;
-                case "Optifine":
-                    // 解析Optifine版本为type和patch，使用特殊格式"type:patch"
-                    string[] optifineParts = modLoaderVersion.Split(':', 2);
-                    if (optifineParts.Length != 2)
-                    {
-                        throw new Exception($"无效的Optifine版本格式: {modLoaderVersion}，格式应为type:patch");
-                    }
-                    string optifineType = optifineParts[0];
-                    string optifinePatch = optifineParts[1];
-                    await DownloadOptifineVersionAsync(minecraftVersionId, optifineType, optifinePatch, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
-                    break;
-                case "Quilt":
-                    await DownloadQuiltVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
-                    break;
-                default:
-                    throw new NotSupportedException($"不支持的Mod Loader类型: {modLoaderType}");
+                var installer = _modLoaderInstallerFactory.GetInstaller(modLoaderType);
+                
+                // 处理 Optifine 特殊格式
+                string actualModLoaderVersion = modLoaderVersion;
+                if (modLoaderType.Equals("Optifine", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Optifine 版本格式为 "type:patch"，需要转换
+                    actualModLoaderVersion = modLoaderVersion.Replace(":", "_");
+                }
+                
+                await installer.InstallAsync(
+                    minecraftVersionId,
+                    actualModLoaderVersion,
+                    minecraftDirectory,
+                    progressCallback,
+                    cancellationToken,
+                    customVersionName);
+                
+                _logger.LogInformation("使用新安装器完成 {ModLoaderType} 安装", modLoaderType);
+            }
+            catch (NotSupportedException)
+            {
+                // 新安装器不支持此类型，回退到旧逻辑
+                _logger.LogInformation("新安装器不支持 {ModLoaderType}，使用旧逻辑", modLoaderType);
+                await DownloadModLoaderVersionLegacyAsync(minecraftVersionId, modLoaderType, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
             }
 
             progress = 100;
@@ -779,6 +782,42 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 
                 throw new Exception(detailedMessage, ex);
             }
+        }
+    }
+
+    /// <summary>
+    /// 下载Mod Loader版本（旧逻辑，用于回退）
+    /// </summary>
+    private async Task DownloadModLoaderVersionLegacyAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken, string customVersionName)
+    {
+        // 根据Mod Loader类型执行不同的下载逻辑
+        switch (modLoaderType)
+        {
+            case "Fabric":
+                await DownloadFabricVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                break;
+            case "NeoForge":
+                await DownloadNeoForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                break;
+            case "Forge":
+                await DownloadForgeVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                break;
+            case "Optifine":
+                // 解析Optifine版本为type和patch，使用特殊格式"type:patch"
+                string[] optifineParts = modLoaderVersion.Split(':', 2);
+                if (optifineParts.Length != 2)
+                {
+                    throw new Exception($"无效的Optifine版本格式: {modLoaderVersion}，格式应为type:patch");
+                }
+                string optifineType = optifineParts[0];
+                string optifinePatch = optifineParts[1];
+                await DownloadOptifineVersionAsync(minecraftVersionId, optifineType, optifinePatch, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                break;
+            case "Quilt":
+                await DownloadQuiltVersionAsync(minecraftVersionId, modLoaderVersion, versionsDirectory, librariesDirectory, progressCallback, cancellationToken, customVersionName);
+                break;
+            default:
+                throw new NotSupportedException($"不支持的Mod Loader类型: {modLoaderType}");
         }
     }
 
