@@ -267,6 +267,15 @@
   <data name="LaunchPage_SelectVersionPlaceholder.PlaceholderText" xml:space="preserve">
     <value>Please select an installed version</value>
   </data>
+  <data name="LaunchPage_InstalledVersionsText" xml:space="preserve">
+    <value>Installed Versions</value>
+  </data>
+  <data name="LaunchPage_AddVersion.Text" xml:space="preserve">
+    <value>Add Version</value>
+  </data>
+  <data name="LaunchPage_RefreshVersions.Text" xml:space="preserve">
+    <value>Refresh Version List</value>
+  </data>
   <data name="LaunchPage_RefreshVersionsTooltip.ToolTipService.ToolTip" xml:space="preserve">
     <value>Refresh version list</value>
   </data>

@@ -34,16 +34,32 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ComboBox 
-                        x:Name="VersionComboBox"
-                        ItemsSource="{x:Bind ViewModel.InstalledVersions, Mode=OneWay}"
-                        SelectedItem="{x:Bind ViewModel.SelectedVersion, Mode=TwoWay}"
-                        x:Uid="LaunchPage_SelectVersionPlaceholder"
-                        PlaceholderText="请选择已安装的版本"
+                    <Button 
+                        x:Name="VersionButton"
                         HorizontalAlignment="Stretch"
                         Height="40"
                         Padding="12,0,12,0"
-                        FontSize="14" />
+                        FontSize="14">
+                        <TextBlock 
+                            Text="{x:Bind ViewModel.SelectedVersionDisplay, Mode=OneWay}"
+                            VerticalAlignment="Center"
+                            FontSize="14" />
+                        <Button.Flyout>
+                            <MenuFlyout x:Name="VersionMenuFlyout" Opening="VersionMenuFlyout_Opening">
+                                <!-- 版本列表将在代码中动态生成 -->
+                                <!-- 添加版本选项 -->
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem 
+                                    x:Uid="LaunchPage_AddVersion"
+                                    Text="添加版本"
+                                    Click="AddVersionMenuItem_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <SymbolIcon Symbol="Add" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                     <Button 
                         Grid.Column="1"
                         Margin="12,0,0,0"
