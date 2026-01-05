@@ -593,6 +593,36 @@ public partial class LaunchViewModel : ObservableRecipient
     private string _selectedVersion = "";
 
     /// <summary>
+    /// 页面标题，显示当前选中的版本或默认文本
+    /// </summary>
+    public string PageTitle => string.IsNullOrEmpty(SelectedVersion) 
+        ? "Minecraft" 
+        : SelectedVersion;
+
+    /// <summary>
+    /// 页面标题字体大小，根据文本长度自适应
+    /// </summary>
+    public double PageTitleFontSize
+    {
+        get
+        {
+            var title = PageTitle;
+            if (string.IsNullOrEmpty(title))
+                return 48;
+            
+            // 根据文本长度调整字体大小
+            if (title.Length <= 10)
+                return 48; // 短文本，使用大字体
+            else if (title.Length <= 20)
+                return 40; // 中等长度
+            else if (title.Length <= 30)
+                return 32; // 较长文本
+            else
+                return 28; // 很长的文本
+        }
+    }
+
+    /// <summary>
     /// 版本选择按钮显示文本
     /// </summary>
     public string SelectedVersionDisplay => string.IsNullOrEmpty(SelectedVersion) 
@@ -868,8 +898,10 @@ public partial class LaunchViewModel : ObservableRecipient
         // 保存选中的版本到本地设置
         _localSettingsService.SaveSettingAsync(SelectedVersionKey, value).ConfigureAwait(false);
         ShowMinecraftPathInfo();
-        // 通知UI更新版本显示文本
+        // 通知UI更新版本显示文本、页面标题和字体大小
         OnPropertyChanged(nameof(SelectedVersionDisplay));
+        OnPropertyChanged(nameof(PageTitle));
+        OnPropertyChanged(nameof(PageTitleFontSize));
     }
 
     /// <summary>

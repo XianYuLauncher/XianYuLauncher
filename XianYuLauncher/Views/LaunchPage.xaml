@@ -20,8 +20,11 @@
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,40">
-            <TextBlock Text="XianYu Launcher" Style="{StaticResource TitleTextBlockStyle}" FontSize="48" FontWeight="Bold" />
-            <TextBlock x:Uid="LaunchPage_Subtitle" Text="Minecraft 启动器" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,4,0,0" Opacity="0.8" />
+            <TextBlock Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" 
+                       FontSize="{x:Bind ViewModel.PageTitleFontSize, Mode=OneWay}"
+                       Style="{StaticResource TitleTextBlockStyle}" 
+                       FontWeight="Bold" />
+            <TextBlock Text="XianYu Launcher" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,4,0,0" Opacity="0.8" />
         </StackPanel>
 
         <!-- 主要内容区域 -->
