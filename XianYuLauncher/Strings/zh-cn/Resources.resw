@@ -1617,4 +1617,29 @@
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>微软账户</value>
   </data>
+  <!-- 缓存管理本地化 -->
+  <data name="Settings_CacheManagement.Text" xml:space="preserve">
+    <value>缓存管理</value>
+  </data>
+  <data name="Settings_TotalCacheSize.Text" xml:space="preserve">
+    <value>总缓存大小</value>
+  </data>
+  <data name="Settings_SearchCacheSize.Text" xml:space="preserve">
+    <value>搜索结果缓存</value>
+  </data>
+  <data name="Settings_ImageCacheSize.Text" xml:space="preserve">
+    <value>图片缓存</value>
+  </data>
+  <data name="Settings_VersionCacheSize.Text" xml:space="preserve">
+    <value>版本列表缓存</value>
+  </data>
+  <data name="Settings_ClearAllCache.Content" xml:space="preserve">
+    <value>清理所有缓存</value>
+  </data>
+  <data name="Settings_ClearImageCache.Content" xml:space="preserve">
+    <value>清理图片缓存</value>
+  </data>
+  <data name="Settings_CacheDescription.Text" xml:space="preserve">
+    <value>缓存用于加速资源列表加载，清理后下次访问时会重新下载</value>
+  </data>
 </root>

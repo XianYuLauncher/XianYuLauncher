@@ -17,6 +17,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Services;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -332,6 +333,20 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 实时日志设置键
     /// </summary>
     // 已经在上方定义：private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
+    
+    private readonly ModrinthCacheService _modrinthCacheService;
+    
+    /// <summary>
+    /// 缓存大小信息
+    /// </summary>
+    [ObservableProperty]
+    private CacheSizeInfo _cacheSizeInfo = new();
+    
+    /// <summary>
+    /// 是否正在清理缓存
+    /// </summary>
+    [ObservableProperty]
+    private bool _isClearingCache = false;
 
     /// <summary>
     /// 添加鸣谢人员命令
@@ -348,7 +363,7 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService, ModrinthCacheService modrinthCacheService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -356,6 +371,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _materialService = materialService;
         _navigationService = navigationService;
         _languageSelectorService = languageSelectorService;
+        _modrinthCacheService = modrinthCacheService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -462,6 +478,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadEnableRealTimeLogsAsync().ConfigureAwait(false);
         // 加载字体设置
         LoadFontFamilyAsync().ConfigureAwait(false);
+        // 加载缓存大小信息
+        RefreshCacheSizeInfo();
     }
     
     /// <summary>
@@ -512,6 +530,91 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnDownloadDependenciesChanged(bool value)
     {
         _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 刷新缓存大小信息
+    /// </summary>
+    public void RefreshCacheSizeInfo()
+    {
+        try
+        {
+            CacheSizeInfo = _modrinthCacheService.GetCacheSizeInfo();
+            System.Diagnostics.Debug.WriteLine($"[设置页] 缓存大小已刷新: {CacheSizeInfo.TotalSizeFormatted}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[设置页] 刷新缓存大小失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 清理所有缓存命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ClearAllCacheAsync()
+    {
+        IsClearingCache = true;
+        try
+        {
+            await _modrinthCacheService.ClearAllCacheAsync();
+            RefreshCacheSizeInfo();
+            System.Diagnostics.Debug.WriteLine("[设置页] 所有缓存已清理");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[设置页] 清理缓存失败: {ex.Message}");
+        }
+        finally
+        {
+            IsClearingCache = false;
+        }
+    }
+    
+    /// <summary>
+    /// 清理图片缓存命令
+    /// </summary>
+    [RelayCommand]
+    private void ClearImageCache()
+    {
+        IsClearingCache = true;
+        try
+        {
+            _modrinthCacheService.ClearImageCache();
+            RefreshCacheSizeInfo();
+            System.Diagnostics.Debug.WriteLine("[设置页] 图片缓存已清理");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[设置页] 清理图片缓存失败: {ex.Message}");
+        }
+        finally
+        {
+            IsClearingCache = false;
+        }
+    }
+    
+    /// <summary>
+    /// 清理搜索缓存命令
+    /// </summary>
+    [RelayCommand]
+    private void ClearSearchCache()
+    {
+        IsClearingCache = true;
+        try
+        {
+            _modrinthCacheService.ClearSearchCache();
+            RefreshCacheSizeInfo();
+            System.Diagnostics.Debug.WriteLine("[设置页] 搜索缓存已清理");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[设置页] 清理搜索缓存失败: {ex.Message}");
+        }
+        finally
+        {
+            IsClearingCache = false;
+        }
     }
     
     /// <summary>

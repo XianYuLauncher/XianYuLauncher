@@ -353,6 +353,153 @@ public class ModrinthCacheService
             System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 清理图片缓存失败: {ex.Message}");
         }
     }
+    
+    /// <summary>
+    /// 获取缓存大小信息
+    /// </summary>
+    public CacheSizeInfo GetCacheSizeInfo()
+    {
+        var info = new CacheSizeInfo();
+        
+        try
+        {
+            var cacheRoot = GetCacheRootPath();
+            
+            // 计算搜索结果缓存大小
+            foreach (var file in Directory.GetFiles(cacheRoot, "*.json"))
+            {
+                var fileInfo = new FileInfo(file);
+                info.SearchCacheSize += fileInfo.Length;
+                info.SearchCacheCount++;
+            }
+            
+            // 计算图片缓存大小
+            var imageCachePath = Path.Combine(cacheRoot, ImageCacheFolder);
+            if (Directory.Exists(imageCachePath))
+            {
+                foreach (var file in Directory.GetFiles(imageCachePath))
+                {
+                    var fileInfo = new FileInfo(file);
+                    info.ImageCacheSize += fileInfo.Length;
+                    info.ImageCacheCount++;
+                }
+            }
+            
+            // 计算版本列表缓存大小
+            var versionCachePath = Path.Combine(_fileService.GetMinecraftDataPath(), "version_cache.json");
+            if (File.Exists(versionCachePath))
+            {
+                var fileInfo = new FileInfo(versionCachePath);
+                info.VersionCacheSize = fileInfo.Length;
+            }
+            
+            info.TotalSize = info.SearchCacheSize + info.ImageCacheSize + info.VersionCacheSize;
+            
+            System.Diagnostics.Debug.WriteLine($"[缓存统计] 搜索缓存: {FormatSize(info.SearchCacheSize)} ({info.SearchCacheCount}个文件), 图片缓存: {FormatSize(info.ImageCacheSize)} ({info.ImageCacheCount}个文件), 版本缓存: {FormatSize(info.VersionCacheSize)}, 总计: {FormatSize(info.TotalSize)}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[缓存统计] 获取缓存大小失败: {ex.Message}");
+        }
+        
+        return info;
+    }
+    
+    /// <summary>
+    /// 清理所有 Modrinth 缓存
+    /// </summary>
+    public async Task ClearAllCacheAsync()
+    {
+        try
+        {
+            var cacheRoot = GetCacheRootPath();
+            
+            // 删除搜索结果缓存
+            foreach (var file in Directory.GetFiles(cacheRoot, "*.json"))
+            {
+                File.Delete(file);
+            }
+            
+            // 删除图片缓存
+            var imageCachePath = Path.Combine(cacheRoot, ImageCacheFolder);
+            if (Directory.Exists(imageCachePath))
+            {
+                Directory.Delete(imageCachePath, true);
+            }
+            
+            // 删除版本列表缓存
+            var versionCachePath = Path.Combine(_fileService.GetMinecraftDataPath(), "version_cache.json");
+            if (File.Exists(versionCachePath))
+            {
+                File.Delete(versionCachePath);
+            }
+            
+            System.Diagnostics.Debug.WriteLine("[缓存清理] 所有缓存已清理");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[缓存清理] 清理缓存失败: {ex.Message}");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// 仅清理图片缓存
+    /// </summary>
+    public void ClearImageCache()
+    {
+        try
+        {
+            var imageCachePath = Path.Combine(GetCacheRootPath(), ImageCacheFolder);
+            if (Directory.Exists(imageCachePath))
+            {
+                Directory.Delete(imageCachePath, true);
+                System.Diagnostics.Debug.WriteLine("[缓存清理] 图片缓存已清理");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[缓存清理] 清理图片缓存失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 仅清理搜索结果缓存
+    /// </summary>
+    public void ClearSearchCache()
+    {
+        try
+        {
+            var cacheRoot = GetCacheRootPath();
+            foreach (var file in Directory.GetFiles(cacheRoot, "*.json"))
+            {
+                File.Delete(file);
+            }
+            System.Diagnostics.Debug.WriteLine("[缓存清理] 搜索结果缓存已清理");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[缓存清理] 清理搜索缓存失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 格式化文件大小
+    /// </summary>
+    public static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
 }
 
 /// <summary>
@@ -368,4 +515,22 @@ public class ModrinthCacheData
     public string Category { get; set; }
     public int TotalHits { get; set; }
     public List<ModrinthProject> Items { get; set; } = new();
+}
+
+/// <summary>
+/// 缓存大小信息
+/// </summary>
+public class CacheSizeInfo
+{
+    public long SearchCacheSize { get; set; }
+    public int SearchCacheCount { get; set; }
+    public long ImageCacheSize { get; set; }
+    public int ImageCacheCount { get; set; }
+    public long VersionCacheSize { get; set; }
+    public long TotalSize { get; set; }
+    
+    public string TotalSizeFormatted => ModrinthCacheService.FormatSize(TotalSize);
+    public string SearchCacheSizeFormatted => ModrinthCacheService.FormatSize(SearchCacheSize);
+    public string ImageCacheSizeFormatted => ModrinthCacheService.FormatSize(ImageCacheSize);
+    public string VersionCacheSizeFormatted => ModrinthCacheService.FormatSize(VersionCacheSize);
 }

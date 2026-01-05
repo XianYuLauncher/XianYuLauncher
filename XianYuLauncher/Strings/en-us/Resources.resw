@@ -1612,4 +1612,29 @@
   <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
     <value>Started successfully!</value>
   </data>
+  <!-- Cache Management Localization -->
+  <data name="Settings_CacheManagement.Text" xml:space="preserve">
+    <value>Cache Management</value>
+  </data>
+  <data name="Settings_TotalCacheSize.Text" xml:space="preserve">
+    <value>Total Cache Size</value>
+  </data>
+  <data name="Settings_SearchCacheSize.Text" xml:space="preserve">
+    <value>Search Results Cache</value>
+  </data>
+  <data name="Settings_ImageCacheSize.Text" xml:space="preserve">
+    <value>Image Cache</value>
+  </data>
+  <data name="Settings_VersionCacheSize.Text" xml:space="preserve">
+    <value>Version List Cache</value>
+  </data>
+  <data name="Settings_ClearAllCache.Content" xml:space="preserve">
+    <value>Clear All Cache</value>
+  </data>
+  <data name="Settings_ClearImageCache.Content" xml:space="preserve">
+    <value>Clear Image Cache</value>
+  </data>
+  <data name="Settings_CacheDescription.Text" xml:space="preserve">
+    <value>Cache is used to speed up resource list loading. After clearing, it will be re-downloaded on next access</value>
+  </data>
 </root>
