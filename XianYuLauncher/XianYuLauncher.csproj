@@ -25,8 +25,8 @@
     <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>
-	<!-- <WindowsPackageType>None</WindowsPackageType> -->
-  <!-- 别想了兄弟,Unpackaged什么都得改 -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+	<WindowsPackageType>None</WindowsPackageType>
   </PropertyGroup>
 
   <ItemGroup>
