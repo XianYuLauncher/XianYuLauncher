@@ -147,6 +147,17 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 背景图片路径
+    /// </summary>
+    [ObservableProperty]
+    private string _backgroundImagePath = string.Empty;
+    
+    /// <summary>
+    /// 是否使用自定义背景
+    /// </summary>
+    public bool IsCustomBackground => MaterialType == XianYuLauncher.Core.Services.MaterialType.CustomBackground;
+    
+    /// <summary>
     /// 字体设置键
     /// </summary>
     private const string FontFamilyKey = "FontFamily";
@@ -217,6 +228,9 @@ public partial class SettingsViewModel : ObservableRecipient
     
     // 标志位：是否是初始化加载材质设置
     private bool _isInitializingMaterial = true;
+    
+    // 标志位：是否是初始化加载背景图片路径
+    private bool _isInitializingBackgroundPath = true;
     
     /// <summary>
     /// 当前应用语言
@@ -440,6 +454,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadVersionListSourceAsync().ConfigureAwait(false);
         // 加载材质类型设置
         LoadMaterialTypeAsync().ConfigureAwait(false);
+        // 加载背景图片路径
+        LoadBackgroundImagePathAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
         // 加载实时日志设置
@@ -530,6 +546,15 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 加载背景图片路径
+    /// </summary>
+    private async Task LoadBackgroundImagePathAsync()
+    {
+        var path = await _materialService.LoadBackgroundImagePathAsync();
+        BackgroundImagePath = path ?? string.Empty;
+    }
+    
+    /// <summary>
     /// 当材质类型变化时保存并切换窗口材质
     /// </summary>
     partial void OnMaterialTypeChanged(XianYuLauncher.Core.Services.MaterialType value)
@@ -538,6 +563,9 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             // 保存设置（异步调用，不等待完成，避免阻塞UI）
             _materialService.SaveMaterialTypeAsync(value).ConfigureAwait(false);
+            
+            // 通知 IsCustomBackground 属性变化
+            OnPropertyChanged(nameof(IsCustomBackground));
             
             // 只有当不是初始化加载材质时，才应用材质到主窗口
             // 避免设置页打开时窗口闪烁
@@ -548,6 +576,16 @@ public partial class SettingsViewModel : ObservableRecipient
                 if (window != null)
                 {
                     _materialService.ApplyMaterialToWindow(window, value);
+                    
+                    // 触发背景变更事件
+                    if (value == XianYuLauncher.Core.Services.MaterialType.CustomBackground)
+                    {
+                        _materialService.OnBackgroundChanged(value, BackgroundImagePath);
+                    }
+                    else
+                    {
+                        _materialService.OnBackgroundChanged(value, null);
+                    }
                 }
             }
             else
@@ -560,6 +598,80 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             Console.WriteLine($"切换窗口材质失败: {ex.Message}");
         }
+    }
+    
+    /// <summary>
+    /// 当背景图片路径变化时保存并应用
+    /// </summary>
+    partial void OnBackgroundImagePathChanged(string value)
+    {
+        try
+        {
+            // 保存背景图片路径
+            _materialService.SaveBackgroundImagePathAsync(value).ConfigureAwait(false);
+            
+            // 只有当不是初始化加载时，才触发背景变更事件
+            // 避免设置页打开时闪烁
+            if (!_isInitializingBackgroundPath)
+            {
+                // 如果当前是自定义背景模式，触发背景变更事件
+                if (MaterialType == XianYuLauncher.Core.Services.MaterialType.CustomBackground)
+                {
+                    _materialService.OnBackgroundChanged(MaterialType, value);
+                }
+            }
+            else
+            {
+                // 初始化完成，重置标志位
+                _isInitializingBackgroundPath = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"保存背景图片路径失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 浏览背景图片命令
+    /// </summary>
+    [RelayCommand]
+    private async Task BrowseBackgroundImageAsync()
+    {
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".gif");
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            
+            // 获取当前窗口句柄
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                BackgroundImagePath = file.Path;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"选择背景图片失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 清除背景图片命令
+    /// </summary>
+    [RelayCommand]
+    private void ClearBackgroundImage()
+    {
+        BackgroundImagePath = string.Empty;
     }
     
     /// <summary>

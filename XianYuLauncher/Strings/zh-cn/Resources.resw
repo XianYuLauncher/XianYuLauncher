@@ -116,7 +116,19 @@
     <value>窗口材质</value>
   </data>
   <data name="Settings_WindowMaterialDescription.Text" xml:space="preserve">
-    <value>选择窗口材质，不同材质在视觉效果和性能上有所差异</value>
+    <value>选择窗口材质，云母效果与自定义背景不可同时使用</value>
+  </data>
+  <data name="MaterialType_Mica" xml:space="preserve">
+    <value>云母</value>
+  </data>
+  <data name="MaterialType_MicaAlt" xml:space="preserve">
+    <value>云母 Alt</value>
+  </data>
+  <data name="MaterialType_Acrylic" xml:space="preserve">
+    <value>亚克力</value>
+  </data>
+  <data name="MaterialType_CustomBackground" xml:space="preserve">
+    <value>自定义背景</value>
   </data>
   <data name="Settings_Language.Text" xml:space="preserve">
     <value>语言</value>

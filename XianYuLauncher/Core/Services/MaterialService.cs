@@ -25,7 +25,20 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// Acrylic材质
         /// </summary>
-        Acrylic
+        Acrylic,
+        /// <summary>
+        /// 自定义背景图片
+        /// </summary>
+        CustomBackground
+    }
+    
+    /// <summary>
+    /// 背景设置变更事件参数
+    /// </summary>
+    public class BackgroundChangedEventArgs : EventArgs
+    {
+        public MaterialType MaterialType { get; set; }
+        public string? BackgroundImagePath { get; set; }
     }
 
     /// <summary>
@@ -35,6 +48,12 @@ namespace XianYuLauncher.Core.Services
     {
         private readonly ILocalSettingsService _localSettingsService;
         private const string MaterialTypeKey = "MaterialType";
+        private const string BackgroundImagePathKey = "BackgroundImagePath";
+        
+        /// <summary>
+        /// 背景设置变更事件
+        /// </summary>
+        public event EventHandler<BackgroundChangedEventArgs>? BackgroundChanged;
 
         public MaterialService(ILocalSettingsService localSettingsService)
         {
@@ -57,6 +76,24 @@ namespace XianYuLauncher.Core.Services
         public async Task SaveMaterialTypeAsync(MaterialType materialType)
         {
             await _localSettingsService.SaveSettingAsync(MaterialTypeKey, materialType);
+        }
+        
+        /// <summary>
+        /// 加载背景图片路径
+        /// </summary>
+        /// <returns>背景图片路径</returns>
+        public async Task<string?> LoadBackgroundImagePathAsync()
+        {
+            return await _localSettingsService.ReadSettingAsync<string>(BackgroundImagePathKey);
+        }
+        
+        /// <summary>
+        /// 保存背景图片路径
+        /// </summary>
+        /// <param name="path">背景图片路径</param>
+        public async Task SaveBackgroundImagePathAsync(string? path)
+        {
+            await _localSettingsService.SaveSettingAsync(BackgroundImagePathKey, path ?? string.Empty);
         }
 
         /// <summary>
@@ -90,6 +127,10 @@ namespace XianYuLauncher.Core.Services
                         // 设置Acrylic材质
                         window.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
                         break;
+                    case MaterialType.CustomBackground:
+                        // 自定义背景时，移除系统材质，使用纯色背景
+                        window.SystemBackdrop = null;
+                        break;
                 }
             }
             catch (Exception ex)
@@ -106,6 +147,29 @@ namespace XianYuLauncher.Core.Services
         {
             var materialType = await LoadMaterialTypeAsync();
             ApplyMaterialToWindow(window, materialType);
+            
+            // 如果是自定义背景，触发事件通知 ShellPage 加载背景图片
+            if (materialType == MaterialType.CustomBackground)
+            {
+                var backgroundPath = await LoadBackgroundImagePathAsync();
+                OnBackgroundChanged(materialType, backgroundPath);
+            }
+            else
+            {
+                OnBackgroundChanged(materialType, null);
+            }
+        }
+        
+        /// <summary>
+        /// 触发背景变更事件
+        /// </summary>
+        public void OnBackgroundChanged(MaterialType materialType, string? backgroundPath)
+        {
+            BackgroundChanged?.Invoke(this, new BackgroundChangedEventArgs
+            {
+                MaterialType = materialType,
+                BackgroundImagePath = backgroundPath
+            });
         }
     }
 }

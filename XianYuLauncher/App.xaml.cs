@@ -63,8 +63,23 @@ public partial class App : Application
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
+        // 获取用户可写的日志目录
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "XianYuLauncher",
+            "logs");
+        
+        // 确保日志目录存在
+        Directory.CreateDirectory(logDirectory);
+        
+        var logFilePath = Path.Combine(logDirectory, "log-.txt");
+
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
+            .WriteTo.File(
+                logFilePath,
+                rollingInterval: Serilog.RollingInterval.Day,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         Host = Microsoft.Extensions.Hosting.Host.

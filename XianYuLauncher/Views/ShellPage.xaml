@@ -10,6 +10,11 @@
     Loaded="OnLoaded">
 
     <Grid>
+        <!-- 自定义背景图片层 -->
+        <Image x:Name="BackgroundImage"
+               Stretch="UniformToFill"
+               Visibility="Collapsed"
+               Canvas.ZIndex="-1" />
         <Grid x:Name="AppTitleBar"
               Canvas.ZIndex="1"
               Height="{Binding ElementName=NavigationViewControl, Path=CompactPaneLength}"

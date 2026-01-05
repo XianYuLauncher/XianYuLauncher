@@ -11,6 +11,8 @@
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
         <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -176,13 +178,36 @@
                                             Width="300">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding}" />
+                                                    <TextBlock Text="{Binding Converter={StaticResource MaterialTypeToLocalizedStringConverter}}" />
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
                                         <TextBlock 
                                             x:Uid="Settings_WindowMaterialDescription"
-                                            Text="选择窗口材质，不同材质在视觉效果和性能上有所差异" 
+                                            Text="选择窗口材质，云母效果与自定义背景不可同时使用" 
+                                            Style="{ThemeResource CaptionTextBlockStyle}" 
+                                            Margin="0,4,0,0" 
+                                            Opacity="0.7"/>
+                                    </StackPanel>
+                                    
+                                    <!-- 自定义背景图片设置 -->
+                                    <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="背景图片" Margin="0,0,0,8" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBox 
+                                                Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" 
+                                                PlaceholderText="请选择背景图片" 
+                                                Width="300"
+                                                IsReadOnly="True" />
+                                            <Button 
+                                                Content="浏览..." 
+                                                Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
+                                            <Button 
+                                                Content="清除" 
+                                                Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
+                                        </StackPanel>
+                                        <TextBlock 
+                                            Text="支持 JPG、PNG、BMP、GIF 格式的图片" 
                                             Style="{ThemeResource CaptionTextBlockStyle}" 
                                             Margin="0,4,0,0" 
                                             Opacity="0.7"/>
