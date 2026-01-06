@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -1030,5 +1031,343 @@ public partial class VersionListViewModel : ObservableRecipient
                 IsDirectory = false
             });
         }
+    }
+    
+    /// <summary>
+    /// 生成启动脚本命令
+    /// </summary>
+    [RelayCommand]
+    private async Task GenerateLaunchScriptAsync(VersionInfoItem version)
+    {
+        if (version == null || string.IsNullOrEmpty(version.Path))
+        {
+            StatusMessage = "VersionListPage_InvalidVersionInfoText".GetLocalized();
+            return;
+        }
+        
+        try
+        {
+            StatusMessage = $"正在生成 {version.Name} 的启动参数...";
+            
+            // 生成启动命令
+            string launchCommand = await GenerateLaunchCommandAsync(version.Name);
+            
+            if (string.IsNullOrEmpty(launchCommand))
+            {
+                StatusMessage = "生成启动参数失败，请确保版本文件完整";
+                return;
+            }
+            
+            // 创建文件保存对话框
+            var savePicker = new FileSavePicker();
+            savePicker.SuggestedStartLocation = PickerLocationId.Desktop;
+            savePicker.FileTypeChoices.Add("批处理文件", new List<string>() { ".bat" });
+            savePicker.SuggestedFileName = $"启动_{version.Name}";
+            
+            // 初始化文件选择器
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+            
+            // 显示保存对话框
+            var file = await savePicker.PickSaveFileAsync();
+            if (file != null)
+            {
+                // 写入启动命令到文件
+                await FileIO.WriteTextAsync(file, launchCommand);
+                StatusMessage = $"启动参数已保存到: {file.Path}";
+            }
+            else
+            {
+                StatusMessage = "已取消保存";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"生成启动参数失败: {ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 生成启动命令
+    /// </summary>
+    private async Task<string> GenerateLaunchCommandAsync(string versionName)
+    {
+        try
+        {
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            var versionsDir = Path.Combine(minecraftPath, "versions");
+            var versionDir = Path.Combine(versionsDir, versionName);
+            var jarPath = Path.Combine(versionDir, $"{versionName}.jar");
+            var jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+            var librariesPath = Path.Combine(minecraftPath, "libraries");
+            var assetsPath = Path.Combine(minecraftPath, "assets");
+            
+            // 检查必要文件
+            if (!File.Exists(jarPath) || !File.Exists(jsonPath))
+            {
+                return null;
+            }
+            
+            // 读取版本信息
+            string versionJson = await File.ReadAllTextAsync(jsonPath);
+            var versionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<XianYuLauncher.Core.Models.VersionInfo>(versionJson);
+            
+            if (versionInfo == null || string.IsNullOrEmpty(versionInfo.MainClass))
+            {
+                return null;
+            }
+            
+            // 读取版本配置
+            string settingsFilePath = Path.Combine(versionDir, "XianYuL.cfg");
+            bool enableVersionIsolation = true;
+            string gameDir = enableVersionIsolation ? versionDir : minecraftPath;
+            
+            // 构建 Classpath
+            var classpathEntries = new HashSet<string>();
+            classpathEntries.Add(jarPath);
+            
+            if (versionInfo.Libraries != null)
+            {
+                foreach (var library in versionInfo.Libraries)
+                {
+                    // 检查规则
+                    bool isAllowed = true;
+                    if (library.Rules != null)
+                    {
+                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
+                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
+                        {
+                            isAllowed = false;
+                        }
+                    }
+                    
+                    if (!isAllowed) continue;
+                    
+                    // 跳过原生库
+                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
+                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
+                    if (isNativeLibrary) continue;
+                    
+                    // 获取库路径
+                    string libPath = GetLibraryFilePath(library.Name, librariesPath);
+                    if (File.Exists(libPath))
+                    {
+                        classpathEntries.Add(libPath);
+                    }
+                }
+            }
+            
+            string classpath = string.Join(";", classpathEntries);
+            
+            // 构建启动参数
+            var args = new List<string>();
+            
+            // JVM 参数
+            args.Add("-XX:+UseG1GC");
+            args.Add("-XX:-UseAdaptiveSizePolicy");
+            args.Add("-XX:-OmitStackTraceInFastThrow");
+            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
+            args.Add("-Dlog4j2.formatMsgNoLookups=true");
+            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
+            
+            // 处理 JVM 参数
+            bool hasClasspath = false;
+            if (versionInfo.Arguments?.Jvm != null)
+            {
+                foreach (var jvmArg in versionInfo.Arguments.Jvm)
+                {
+                    if (jvmArg is string argStr)
+                    {
+                        string processedArg = argStr
+                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{versionName}-natives"))
+                            .Replace("${launcher_name}", "XianYuLauncher")
+                            .Replace("${launcher_version}", "1.0")
+                            .Replace("${classpath}", classpath)
+                            .Replace("${classpath_separator}", ";")
+                            .Replace("${version_name}", versionName)
+                            .Replace("${library_directory}", librariesPath);
+                        
+                        args.Add(processedArg);
+                        
+                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
+                        {
+                            hasClasspath = true;
+                        }
+                    }
+                }
+            }
+            
+            // 确保添加 classpath
+            if (!hasClasspath)
+            {
+                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{versionName}-natives")}");
+                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
+                args.Add("-Dminecraft.launcher.version=1.0");
+                args.Add($"-cp \"{classpath}\"");
+            }
+            
+            // 主类
+            args.Add(versionInfo.MainClass);
+            
+            // 游戏参数 - 使用占位符
+            args.Add("--version");
+            args.Add(versionName);
+            args.Add("--gameDir");
+            args.Add(gameDir);
+            args.Add("--assetsDir");
+            args.Add(assetsPath);
+            
+            string assetIndex = versionInfo.AssetIndex?.Id ?? versionName;
+            args.Add("--assetIndex");
+            args.Add(assetIndex);
+            
+            // 用户参数 - 使用占位符
+            args.Add("--username");
+            args.Add("%USERNAME%");
+            args.Add("--uuid");
+            args.Add("%UUID%");
+            args.Add("--accessToken");
+            args.Add("%ACCESS_TOKEN%");
+            args.Add("--userType");
+            args.Add("msa");
+            args.Add("--versionType");
+            args.Add("XianYuLauncher");
+            
+            // 处理 minecraftArguments（旧版格式）
+            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            {
+                string minecraftArgs = versionInfo.MinecraftArguments
+                    .Replace("${auth_player_name}", "%USERNAME%")
+                    .Replace("${version_name}", versionName)
+                    .Replace("${game_directory}", gameDir)
+                    .Replace("${assets_root}", assetsPath)
+                    .Replace("${assets_index_name}", assetIndex)
+                    .Replace("${auth_uuid}", "%UUID%")
+                    .Replace("${auth_access_token}", "%ACCESS_TOKEN%")
+                    .Replace("${auth_session}", "%ACCESS_TOKEN%")
+                    .Replace("${user_type}", "msa")
+                    .Replace("${user_properties}", "{}")
+                    .Replace("${version_type}", "XianYuLauncher");
+                
+                // 解析并添加额外参数（如 --tweakClass）
+                var extraArgs = minecraftArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < extraArgs.Length; i++)
+                {
+                    var arg = extraArgs[i];
+                    // 跳过已添加的基本参数
+                    if (arg == "--version" || arg == "--gameDir" || arg == "--assetsDir" || 
+                        arg == "--assetIndex" || arg == "--username" || arg == "--uuid" || 
+                        arg == "--accessToken" || arg == "--userType" || arg == "--versionType")
+                    {
+                        i++; // 跳过参数值
+                        continue;
+                    }
+                    args.Add(arg);
+                }
+            }
+            // 处理 Arguments.Game（新版格式）
+            else if (versionInfo.Arguments?.Game != null)
+            {
+                foreach (var gameArg in versionInfo.Arguments.Game)
+                {
+                    if (gameArg is string argStr)
+                    {
+                        // 跳过已添加的基本参数
+                        if (argStr.StartsWith("--version") || argStr.StartsWith("--gameDir") || 
+                            argStr.StartsWith("--assetsDir") || argStr.StartsWith("--assetIndex") ||
+                            argStr.StartsWith("--username") || argStr.StartsWith("--uuid") ||
+                            argStr.StartsWith("--accessToken") || argStr.StartsWith("--userType") ||
+                            argStr.StartsWith("--versionType"))
+                        {
+                            continue;
+                        }
+                        
+                        string processedArg = argStr
+                            .Replace("${auth_player_name}", "%USERNAME%")
+                            .Replace("${version_name}", versionName)
+                            .Replace("${game_directory}", gameDir)
+                            .Replace("${assets_root}", assetsPath)
+                            .Replace("${assets_index_name}", assetIndex)
+                            .Replace("${auth_uuid}", "%UUID%")
+                            .Replace("${auth_access_token}", "%ACCESS_TOKEN%")
+                            .Replace("${auth_xuid}", "")
+                            .Replace("${clientid}", "0")
+                            .Replace("${version_type}", "XianYuLauncher");
+                        
+                        args.Add(processedArg);
+                    }
+                }
+            }
+            
+            // 分辨率参数
+            args.Add("--width");
+            args.Add("1920");
+            args.Add("--height");
+            args.Add("1080");
+            
+            // 构建完整命令
+            string processedArgs = string.Join(" ", args.Select(a => 
+                (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
+            
+            // 生成 bat 文件内容
+            var batContent = new System.Text.StringBuilder();
+            batContent.AppendLine("@echo off");
+            batContent.AppendLine("chcp 65001 > nul");
+            batContent.AppendLine();
+            batContent.AppendLine("REM ========================================");
+            batContent.AppendLine($"REM Minecraft {versionName} 启动脚本");
+            batContent.AppendLine($"REM 由 XianYuLauncher 生成于 {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            batContent.AppendLine("REM ========================================");
+            batContent.AppendLine();
+            batContent.AppendLine("REM 请修改以下变量为你的实际值：");
+            batContent.AppendLine("set JAVA_PATH=java");
+            batContent.AppendLine("set USERNAME=Player");
+            batContent.AppendLine("set UUID=00000000-0000-0000-0000-000000000000");
+            batContent.AppendLine("set ACCESS_TOKEN=0");
+            batContent.AppendLine();
+            batContent.AppendLine("REM 启动游戏");
+            batContent.AppendLine($"\"%JAVA_PATH%\" {processedArgs}");
+            batContent.AppendLine();
+            batContent.AppendLine("pause");
+            
+            return batContent.ToString();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"生成启动命令失败: {ex.Message}");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 获取库文件路径
+    /// </summary>
+    private string GetLibraryFilePath(string libraryName, string librariesPath)
+    {
+        // 解析库名称: group:artifact:version[:classifier][@extension]
+        string extension = "jar";
+        string name = libraryName;
+        
+        // 处理扩展名
+        if (name.Contains("@"))
+        {
+            var parts = name.Split('@');
+            name = parts[0];
+            extension = parts[1];
+        }
+        
+        var nameParts = name.Split(':');
+        if (nameParts.Length < 3) return string.Empty;
+        
+        string group = nameParts[0].Replace('.', Path.DirectorySeparatorChar);
+        string artifact = nameParts[1];
+        string version = nameParts[2];
+        string classifier = nameParts.Length > 3 ? nameParts[3] : null;
+        
+        string fileName = classifier != null 
+            ? $"{artifact}-{version}-{classifier}.{extension}"
+            : $"{artifact}-{version}.{extension}";
+        
+        return Path.Combine(librariesPath, group, artifact, version, fileName);
     }
 }
