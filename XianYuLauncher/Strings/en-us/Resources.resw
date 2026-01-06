@@ -214,6 +214,21 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>Selecting a version list source can affect the speed and stability of game version list retrieval</value>
   </data>
+  <data name="Settings_VersionDownload.Text" xml:space="preserve">
+    <value>Download Settings</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Text" xml:space="preserve">
+    <value>Download Dependencies</value>
+  </data>
+  <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
+    <value>Automatically download required dependency mods when downloading mods. Disable to skip automatic downloads</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
+    <value>Download Threads</value>
+  </data>
+  <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
+    <value>Number of concurrent threads for downloading resources. Higher values increase speed but may use more system resources</value>
+  </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>About</value>
   </data>

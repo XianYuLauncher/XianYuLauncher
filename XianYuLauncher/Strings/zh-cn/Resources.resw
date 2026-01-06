@@ -211,6 +211,21 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>选择版本列表源可以影响游戏版本列表的获取速度和稳定性</value>
   </data>
+  <data name="Settings_VersionDownload.Text" xml:space="preserve">
+    <value>下载设置</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Text" xml:space="preserve">
+    <value>下载前置Mod</value>
+  </data>
+  <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
+    <value>下载Mod时自动下载所需的前置Mod，关闭后不会自动下载</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
+    <value>下载线程数</value>
+  </data>
+  <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
+    <value>同时下载资源文件的线程数量，数值越大下载越快，但可能占用更多系统资源</value>
+  </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>关于</value>
   </data>
