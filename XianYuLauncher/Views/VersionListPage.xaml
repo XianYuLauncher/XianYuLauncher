@@ -302,6 +302,15 @@
                                                 <FontIcon Glyph="&#xE756;" />
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
+                                        <MenuFlyoutItem 
+                                            x:Uid="VersionListPage_CompleteVersionMenuItem"
+                                            Text="版本补全"
+                                            Command="{Binding DataContext.CompleteVersionCommand, ElementName=VersionsListView}" 
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE896;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem 
                                             x:Uid="VersionListPage_DeleteMenuItem"
@@ -604,6 +613,33 @@
                 
                 <!-- 进度百分比文本 -->
                 <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="0%" x:Name="InstallProgressText" HorizontalTextAlignment="Center" />
+            </StackPanel>
+        </ContentDialog>
+        
+        <!-- 版本补全弹窗 -->
+        <ContentDialog
+            x:Name="CompleteVersionDialog"
+            x:Uid="VersionListPage_CompleteVersionDialog"
+            Title="版本补全"
+            CloseButtonText="关闭"
+            IsPrimaryButtonEnabled="False"
+            IsSecondaryButtonEnabled="False"
+            DefaultButton="None">
+            <StackPanel Spacing="16" Width="400">
+                <!-- 版本名称 -->
+                <TextBlock x:Name="CompleteVersionNameText" FontSize="16" FontWeight="SemiBold" Text="" />
+                
+                <!-- 当前阶段 -->
+                <TextBlock x:Name="CompleteVersionStageText" FontSize="14" Text="正在检查依赖..." TextWrapping="WrapWholeWords" />
+                
+                <!-- 当前下载文件 -->
+                <TextBlock x:Name="CompleteVersionCurrentFileText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                
+                <!-- 进度条 -->
+                <ProgressBar x:Name="CompleteVersionProgressBar" Value="0" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
+                
+                <!-- 进度百分比文本 -->
+                <TextBlock x:Name="CompleteVersionProgressText" FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="0%" HorizontalTextAlignment="Center" />
             </StackPanel>
         </ContentDialog>
     </Grid>

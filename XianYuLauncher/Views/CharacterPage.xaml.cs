@@ -1064,8 +1064,24 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 离线登录菜单项点击事件
         /// </summary>
-        private void OfflineLoginMenuItem_Click(object sender, RoutedEventArgs e)
+        private async void OfflineLoginMenuItem_Click(object sender, RoutedEventArgs e)
         {
+            // 检查是否为中国大陆地区
+            if (!IsChinaMainland())
+            {
+                // 非中国大陆地区，不允许离线登录
+                var dialog = new ContentDialog
+                {
+                    Title = "地区限制",
+                    Content = "当前地区无法使用离线登录，请使用微软账户登录。",
+                    CloseButtonText = "确定",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+                return;
+            }
+            
             // 直接调用显示对话框的方法
             ShowOfflineLoginDialog();
         }
@@ -1082,10 +1098,55 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 外置登录菜单项点击事件
         /// </summary>
-        private void ExternalLoginMenuItem_Click(object sender, RoutedEventArgs e)
+        private async void ExternalLoginMenuItem_Click(object sender, RoutedEventArgs e)
         {
+            // 检查是否为中国大陆地区
+            if (!IsChinaMainland())
+            {
+                // 非中国大陆地区，不允许外置登录
+                var dialog = new ContentDialog
+                {
+                    Title = "地区限制",
+                    Content = "当前地区无法使用外置登录，请使用微软账户登录。",
+                    CloseButtonText = "确定",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+                return;
+            }
+            
             // 显示外置登录对话框
             ShowExternalLoginDialog();
+        }
+        
+        /// <summary>
+        /// 检测当前地区是否为中国大陆
+        /// </summary>
+        /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+        private bool IsChinaMainland()
+        {
+            try
+            {
+                // 获取当前CultureInfo
+                var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
+                
+                // 使用RegionInfo检测地区
+                var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
+                bool isCN = regionInfo.TwoLetterISORegionName == "CN";
+                
+                Debug.WriteLine($"[地区检测-CharacterPage] 当前CultureInfo: {currentCulture.Name}");
+                Debug.WriteLine($"[地区检测-CharacterPage] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
+                Debug.WriteLine($"[地区检测-CharacterPage] 是否为中国大陆: {isCN}");
+                
+                return isCN;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[地区检测-CharacterPage] 检测失败，异常: {ex.Message}");
+                // 如果检测失败，默认不允许外置登录
+                return false;
+            }
         }
 
         /// <summary>

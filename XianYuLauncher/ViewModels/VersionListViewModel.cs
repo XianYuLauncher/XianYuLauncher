@@ -1091,6 +1091,67 @@ public partial class VersionListViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 检测当前地区是否为中国大陆
+    /// </summary>
+    /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+    private bool IsChinaMainland()
+    {
+        try
+        {
+            // 获取当前CultureInfo
+            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
+            var currentUICulture = System.Globalization.CultureInfo.CurrentUICulture;
+            
+            // 使用RegionInfo检测地区
+            var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
+            bool isCN = regionInfo.TwoLetterISORegionName == "CN";
+            
+            // 添加Debug输出，显示详细信息
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 当前CultureInfo: {currentCulture.Name} ({currentCulture.DisplayName})");
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 当前RegionInfo: {regionInfo.Name} ({regionInfo.DisplayName})");
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 是否为中国大陆: {isCN}");
+            
+            return isCN;
+        }
+        catch (Exception ex)
+        {
+            // 添加Debug输出，显示异常信息
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 检测失败，异常: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 默认不允许导出");
+            // 如果检测失败，默认不允许导出
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 获取当前活跃角色
+    /// </summary>
+    /// <returns>当前活跃角色，如果没有则返回null</returns>
+    private MinecraftProfile? GetActiveProfile()
+    {
+        try
+        {
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+            if (File.Exists(profilesFilePath))
+            {
+                string json = File.ReadAllText(profilesFilePath);
+                var profilesList = Newtonsoft.Json.JsonConvert.DeserializeObject<List<MinecraftProfile>>(json);
+                if (profilesList != null && profilesList.Count > 0)
+                {
+                    // 返回活跃角色或第一个角色
+                    return profilesList.FirstOrDefault(p => p.IsActive) ?? profilesList.First();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionList] 获取活跃角色失败: {ex.Message}");
+        }
+        return null;
+    }
+    
+    /// <summary>
     /// 生成启动脚本命令
     /// </summary>
     [RelayCommand]
@@ -1100,6 +1161,38 @@ public partial class VersionListViewModel : ObservableRecipient
         {
             StatusMessage = "VersionListPage_InvalidVersionInfoText".GetLocalized();
             return;
+        }
+        
+        // 检查地区限制：非中国大陆地区只允许微软登录用户导出
+        if (!IsChinaMainland())
+        {
+            var activeProfile = GetActiveProfile();
+            // 检查是否为微软登录（非离线且非外置登录）
+            bool isMicrosoftLogin = activeProfile != null && 
+                                    !activeProfile.IsOffline && 
+                                    activeProfile.TokenType != "external";
+            
+            if (!isMicrosoftLogin)
+            {
+                // 显示地区限制弹窗
+                var dialog = new ContentDialog
+                {
+                    Title = "地区限制",
+                    Content = "当前地区仅允许微软账户登录用户导出启动参数。\n请先使用微软账户登录后再尝试导出。",
+                    CloseButtonText = "确定",
+                    DefaultButton = ContentDialogButton.Close
+                };
+                
+                // 设置XamlRoot
+                if (App.MainWindow.Content is FrameworkElement rootElement)
+                {
+                    dialog.XamlRoot = rootElement.XamlRoot;
+                }
+                
+                await dialog.ShowAsync();
+                StatusMessage = "导出已取消：地区限制";
+                return;
+            }
         }
         
         try
@@ -1145,226 +1238,110 @@ public partial class VersionListViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 版本补全请求事件
+    /// </summary>
+    public event EventHandler<VersionInfoItem>? CompleteVersionRequested;
+    
+    /// <summary>
+    /// 版本补全进度更新事件
+    /// </summary>
+    public event EventHandler<(double Progress, string Stage, string CurrentFile)>? CompleteVersionProgressUpdated;
+    
+    /// <summary>
+    /// 版本补全完成事件
+    /// </summary>
+    public event EventHandler<(bool Success, string Message)>? CompleteVersionCompleted;
+    
+    /// <summary>
+    /// 版本补全命令
+    /// </summary>
+    [RelayCommand]
+    private async Task CompleteVersionAsync(VersionInfoItem version)
+    {
+        if (version == null || string.IsNullOrEmpty(version.Name))
+        {
+            StatusMessage = "VersionListPage_InvalidVersionInfoText".GetLocalized();
+            return;
+        }
+        
+        // 触发事件打开弹窗
+        CompleteVersionRequested?.Invoke(this, version);
+        
+        try
+        {
+            StatusMessage = $"正在补全 {version.Name} 的依赖文件...";
+            
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            string currentStage = "正在检查依赖...";
+            
+            // 调用版本补全方法
+            await _minecraftVersionService.EnsureVersionDependenciesAsync(
+                version.Name, 
+                minecraftPath, 
+                progress =>
+                {
+                    // 根据进度判断当前阶段
+                    if (progress < 5)
+                        currentStage = "正在处理 ModLoader...";
+                    else if (progress < 45)
+                        currentStage = "正在下载依赖库...";
+                    else if (progress < 50)
+                        currentStage = "正在解压原生库...";
+                    else if (progress < 55)
+                        currentStage = "正在处理资源索引...";
+                    else
+                        currentStage = "正在下载资源文件...";
+                    
+                    // 更新状态栏
+                    StatusMessage = $"正在补全 {version.Name}: {progress:F1}%";
+                    
+                    // 触发进度更新事件
+                    CompleteVersionProgressUpdated?.Invoke(this, (progress, currentStage, ""));
+                },
+                currentFile =>
+                {
+                    // 触发进度更新事件（带当前文件）
+                    CompleteVersionProgressUpdated?.Invoke(this, (-1, currentStage, currentFile));
+                });
+            
+            StatusMessage = $"{version.Name} 版本补全完成！";
+            CompleteVersionCompleted?.Invoke(this, (true, $"{version.Name} 版本补全完成！"));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"版本补全失败: {ex.Message}";
+            CompleteVersionCompleted?.Invoke(this, (false, $"版本补全失败: {ex.Message}"));
+            System.Diagnostics.Debug.WriteLine($"[版本补全] 错误: {ex}");
+        }
+    }
+    
+    /// <summary>
     /// 生成启动命令
     /// </summary>
     private async Task<string> GenerateLaunchCommandAsync(string versionName)
     {
         try
         {
-            var minecraftPath = _fileService.GetMinecraftDataPath();
-            var versionsDir = Path.Combine(minecraftPath, "versions");
-            var versionDir = Path.Combine(versionsDir, versionName);
-            var jarPath = Path.Combine(versionDir, $"{versionName}.jar");
-            var jsonPath = Path.Combine(versionDir, $"{versionName}.json");
-            var librariesPath = Path.Combine(minecraftPath, "libraries");
-            var assetsPath = Path.Combine(minecraftPath, "assets");
-            
-            // 检查必要文件
-            if (!File.Exists(jarPath) || !File.Exists(jsonPath))
+            // 获取当前活跃角色
+            var activeProfile = GetActiveProfile();
+            if (activeProfile == null)
             {
                 return null;
             }
             
-            // 读取版本信息
-            string versionJson = await File.ReadAllTextAsync(jsonPath);
-            var versionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<XianYuLauncher.Core.Models.VersionInfo>(versionJson);
+            // 调用 LaunchViewModel 的方法生成启动命令（复用现有的启动逻辑，包括 ASM 去重等）
+            var launchViewModel = App.GetService<LaunchViewModel>();
+            var result = await launchViewModel.GenerateLaunchCommandStringAsync(versionName, activeProfile);
             
-            if (versionInfo == null || string.IsNullOrEmpty(versionInfo.MainClass))
+            if (result == null)
             {
                 return null;
             }
             
-            // 读取版本配置
-            string settingsFilePath = Path.Combine(versionDir, "XianYuL.cfg");
-            bool enableVersionIsolation = true;
-            string gameDir = enableVersionIsolation ? versionDir : minecraftPath;
+            var (javaPath, arguments, versionDir) = result.Value;
             
-            // 构建 Classpath
-            var classpathEntries = new HashSet<string>();
-            classpathEntries.Add(jarPath);
-            
-            if (versionInfo.Libraries != null)
-            {
-                foreach (var library in versionInfo.Libraries)
-                {
-                    // 检查规则
-                    bool isAllowed = true;
-                    if (library.Rules != null)
-                    {
-                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
-                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
-                        {
-                            isAllowed = false;
-                        }
-                    }
-                    
-                    if (!isAllowed) continue;
-                    
-                    // 跳过原生库
-                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
-                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
-                    if (isNativeLibrary) continue;
-                    
-                    // 获取库路径
-                    string libPath = GetLibraryFilePath(library.Name, librariesPath);
-                    if (File.Exists(libPath))
-                    {
-                        classpathEntries.Add(libPath);
-                    }
-                }
-            }
-            
-            string classpath = string.Join(";", classpathEntries);
-            
-            // 构建启动参数
-            var args = new List<string>();
-            
-            // JVM 参数
-            args.Add("-XX:+UseG1GC");
-            args.Add("-XX:-UseAdaptiveSizePolicy");
-            args.Add("-XX:-OmitStackTraceInFastThrow");
-            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
-            args.Add("-Dlog4j2.formatMsgNoLookups=true");
-            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
-            
-            // 处理 JVM 参数
-            bool hasClasspath = false;
-            if (versionInfo.Arguments?.Jvm != null)
-            {
-                foreach (var jvmArg in versionInfo.Arguments.Jvm)
-                {
-                    if (jvmArg is string argStr)
-                    {
-                        string processedArg = argStr
-                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{versionName}-natives"))
-                            .Replace("${launcher_name}", "XianYuLauncher")
-                            .Replace("${launcher_version}", "1.0")
-                            .Replace("${classpath}", classpath)
-                            .Replace("${classpath_separator}", ";")
-                            .Replace("${version_name}", versionName)
-                            .Replace("${library_directory}", librariesPath);
-                        
-                        args.Add(processedArg);
-                        
-                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
-                        {
-                            hasClasspath = true;
-                        }
-                    }
-                }
-            }
-            
-            // 确保添加 classpath
-            if (!hasClasspath)
-            {
-                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{versionName}-natives")}");
-                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
-                args.Add("-Dminecraft.launcher.version=1.0");
-                args.Add($"-cp \"{classpath}\"");
-            }
-            
-            // 主类
-            args.Add(versionInfo.MainClass);
-            
-            // 游戏参数 - 使用占位符
-            args.Add("--version");
-            args.Add(versionName);
-            args.Add("--gameDir");
-            args.Add(gameDir);
-            args.Add("--assetsDir");
-            args.Add(assetsPath);
-            
-            string assetIndex = versionInfo.AssetIndex?.Id ?? versionName;
-            args.Add("--assetIndex");
-            args.Add(assetIndex);
-            
-            // 用户参数 - 使用占位符
-            args.Add("--username");
-            args.Add("%USERNAME%");
-            args.Add("--uuid");
-            args.Add("%UUID%");
-            args.Add("--accessToken");
-            args.Add("%ACCESS_TOKEN%");
-            args.Add("--userType");
-            args.Add("msa");
-            args.Add("--versionType");
-            args.Add("XianYuLauncher");
-            
-            // 处理 minecraftArguments（旧版格式）
-            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
-            {
-                string minecraftArgs = versionInfo.MinecraftArguments
-                    .Replace("${auth_player_name}", "%USERNAME%")
-                    .Replace("${version_name}", versionName)
-                    .Replace("${game_directory}", gameDir)
-                    .Replace("${assets_root}", assetsPath)
-                    .Replace("${assets_index_name}", assetIndex)
-                    .Replace("${auth_uuid}", "%UUID%")
-                    .Replace("${auth_access_token}", "%ACCESS_TOKEN%")
-                    .Replace("${auth_session}", "%ACCESS_TOKEN%")
-                    .Replace("${user_type}", "msa")
-                    .Replace("${user_properties}", "{}")
-                    .Replace("${version_type}", "XianYuLauncher");
-                
-                // 解析并添加额外参数（如 --tweakClass）
-                var extraArgs = minecraftArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 0; i < extraArgs.Length; i++)
-                {
-                    var arg = extraArgs[i];
-                    // 跳过已添加的基本参数
-                    if (arg == "--version" || arg == "--gameDir" || arg == "--assetsDir" || 
-                        arg == "--assetIndex" || arg == "--username" || arg == "--uuid" || 
-                        arg == "--accessToken" || arg == "--userType" || arg == "--versionType")
-                    {
-                        i++; // 跳过参数值
-                        continue;
-                    }
-                    args.Add(arg);
-                }
-            }
-            // 处理 Arguments.Game（新版格式）
-            else if (versionInfo.Arguments?.Game != null)
-            {
-                foreach (var gameArg in versionInfo.Arguments.Game)
-                {
-                    if (gameArg is string argStr)
-                    {
-                        // 跳过已添加的基本参数
-                        if (argStr.StartsWith("--version") || argStr.StartsWith("--gameDir") || 
-                            argStr.StartsWith("--assetsDir") || argStr.StartsWith("--assetIndex") ||
-                            argStr.StartsWith("--username") || argStr.StartsWith("--uuid") ||
-                            argStr.StartsWith("--accessToken") || argStr.StartsWith("--userType") ||
-                            argStr.StartsWith("--versionType"))
-                        {
-                            continue;
-                        }
-                        
-                        string processedArg = argStr
-                            .Replace("${auth_player_name}", "%USERNAME%")
-                            .Replace("${version_name}", versionName)
-                            .Replace("${game_directory}", gameDir)
-                            .Replace("${assets_root}", assetsPath)
-                            .Replace("${assets_index_name}", assetIndex)
-                            .Replace("${auth_uuid}", "%UUID%")
-                            .Replace("${auth_access_token}", "%ACCESS_TOKEN%")
-                            .Replace("${auth_xuid}", "")
-                            .Replace("${clientid}", "0")
-                            .Replace("${version_type}", "XianYuLauncher");
-                        
-                        args.Add(processedArg);
-                    }
-                }
-            }
-            
-            // 分辨率参数
-            args.Add("--width");
-            args.Add("1920");
-            args.Add("--height");
-            args.Add("1080");
-            
-            // 构建完整命令
-            string processedArgs = string.Join(" ", args.Select(a => 
-                (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
+            // 确定 userType
+            string userType = activeProfile.IsOffline ? "offline" : (activeProfile.TokenType == "external" ? "mojang" : "msa");
             
             // 生成 bat 文件内容
             var batContent = new System.Text.StringBuilder();
@@ -1374,16 +1351,13 @@ public partial class VersionListViewModel : ObservableRecipient
             batContent.AppendLine("REM ========================================");
             batContent.AppendLine($"REM Minecraft {versionName} 启动脚本");
             batContent.AppendLine($"REM 由 XianYuLauncher 生成于 {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            batContent.AppendLine($"REM 当前角色: {activeProfile.Name} ({userType})");
             batContent.AppendLine("REM ========================================");
             batContent.AppendLine();
-            batContent.AppendLine("REM 请修改以下变量为你的实际值：");
-            batContent.AppendLine("set JAVA_PATH=java");
-            batContent.AppendLine("set USERNAME=Player");
-            batContent.AppendLine("set UUID=00000000-0000-0000-0000-000000000000");
-            batContent.AppendLine("set ACCESS_TOKEN=0");
+            batContent.AppendLine($"cd /d \"{versionDir}\"");
             batContent.AppendLine();
             batContent.AppendLine("REM 启动游戏");
-            batContent.AppendLine($"\"%JAVA_PATH%\" {processedArgs}");
+            batContent.AppendLine($"\"{javaPath}\" {arguments}");
             batContent.AppendLine();
             batContent.AppendLine("pause");
             
@@ -1394,37 +1368,5 @@ public partial class VersionListViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"生成启动命令失败: {ex.Message}");
             return null;
         }
-    }
-    
-    /// <summary>
-    /// 获取库文件路径
-    /// </summary>
-    private string GetLibraryFilePath(string libraryName, string librariesPath)
-    {
-        // 解析库名称: group:artifact:version[:classifier][@extension]
-        string extension = "jar";
-        string name = libraryName;
-        
-        // 处理扩展名
-        if (name.Contains("@"))
-        {
-            var parts = name.Split('@');
-            name = parts[0];
-            extension = parts[1];
-        }
-        
-        var nameParts = name.Split(':');
-        if (nameParts.Length < 3) return string.Empty;
-        
-        string group = nameParts[0].Replace('.', Path.DirectorySeparatorChar);
-        string artifact = nameParts[1];
-        string version = nameParts[2];
-        string classifier = nameParts.Length > 3 ? nameParts[3] : null;
-        
-        string fileName = classifier != null 
-            ? $"{artifact}-{version}-{classifier}.{extension}"
-            : $"{artifact}-{version}.{extension}";
-        
-        return Path.Combine(librariesPath, group, artifact, version, fileName);
     }
 }
