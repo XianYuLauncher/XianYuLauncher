@@ -210,6 +210,39 @@ public sealed partial class LaunchPage : Page
     }
 
     /// <summary>
+    /// 查看更多新闻点击事件
+    /// </summary>
+    private void ViewMoreNews_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        // 导航到新闻列表页面
+        _navigationService.NavigateTo(typeof(NewsListViewModel).FullName);
+    }
+
+    /// <summary>
+    /// 最新新闻点击事件
+    /// </summary>
+    private void LatestNews_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        ViewModel.OpenLatestNewsCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// 启动器更新日志点击事件
+    /// </summary>
+    private async void LauncherChangelog_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        await Windows.System.Launcher.LaunchUriAsync(new Uri("https://github.com/XianYuLauncher/XianYuLauncher/releases"));
+    }
+
+    /// <summary>
+    /// 推荐 Mod 点击事件
+    /// </summary>
+    private void RecommendedMod_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        ViewModel.OpenRecommendedModCommand.Execute(null);
+    }
+
+    /// <summary>
     /// 加载角色头像
     /// </summary>
     private async void LoadAvatar()

@@ -29,6 +29,8 @@ public class PageService : IPageService
                     Configure<TutorialPageViewModel, TutorialPage>();
                     Configure<MultiplayerViewModel, MultiplayerPage>();
                     Configure<MultiplayerLobbyViewModel, MultiplayerLobbyPage>();
+                    Configure<NewsListViewModel, NewsListPage>();
+                    Configure<NewsDetailViewModel, NewsDetailPage>();
                 }
 
     public Type GetPageType(string key)
