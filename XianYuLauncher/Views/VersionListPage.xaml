@@ -293,6 +293,15 @@
                                                 <FontIcon Glyph="&#xE72C;" />
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
+                                        <MenuFlyoutItem 
+                                            x:Uid="VersionListPage_GenerateLaunchScriptMenuItem"
+                                            Text="生成启动参数"
+                                            Command="{Binding DataContext.GenerateLaunchScriptCommand, ElementName=VersionsListView}" 
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE756;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem 
                                             x:Uid="VersionListPage_DeleteMenuItem"

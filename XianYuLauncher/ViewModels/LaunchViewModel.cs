@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -27,6 +28,15 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class LaunchViewModel : ObservableRecipient
 {
+    // Win32 API 用于隐藏控制台窗口
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
+    
+    private const int SW_HIDE = 0;
+    
     // 分辨率设置字段
     private int _windowWidth = 1920;
     private int _windowHeight = 1080;
@@ -172,49 +182,77 @@ public partial class LaunchViewModel : ObservableRecipient
     {
         try
         {
-            // 实时读取标准输出
-            while (!process.StandardOutput.EndOfStream)
+            // 并行读取标准输出和标准错误，避免死锁
+            var outputTask = Task.Run(async () =>
             {
-                string line = await process.StandardOutput.ReadLineAsync();
-                if (!string.IsNullOrEmpty(line))
+                try
                 {
-                    _gameOutput.Add(line);
-                    Console.WriteLine($"[Minecraft Output]: {line}");
-                    
-                    // 实时更新到ErrorAnalysisViewModel
-                    try
+                    while (!process.StandardOutput.EndOfStream)
                     {
-                        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                        errorAnalysisViewModel.AddGameOutputLog(line);
-                    }
-                    catch (Exception)
-                    {
-                        // 如果ErrorAnalysisViewModel不可用（比如未导航到该页面），忽略错误
+                        string line = await process.StandardOutput.ReadLineAsync();
+                        if (!string.IsNullOrEmpty(line))
+                        {
+                            lock (_gameOutput)
+                            {
+                                _gameOutput.Add(line);
+                            }
+                            Console.WriteLine($"[Minecraft Output]: {line}");
+                            
+                            // 实时更新到ErrorAnalysisViewModel
+                            try
+                            {
+                                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                                errorAnalysisViewModel.AddGameOutputLog(line);
+                            }
+                            catch (Exception)
+                            {
+                                // 如果ErrorAnalysisViewModel不可用（比如未导航到该页面），忽略错误
+                            }
+                        }
                     }
                 }
-            }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"读取标准输出时出错：{ex.Message}");
+                }
+            });
             
-            // 实时读取标准错误
-            while (!process.StandardError.EndOfStream)
+            var errorTask = Task.Run(async () =>
             {
-                string line = await process.StandardError.ReadLineAsync();
-                if (!string.IsNullOrEmpty(line))
+                try
                 {
-                    _gameError.Add(line);
-                    Console.WriteLine($"[Minecraft Error]: {line}");
-                    
-                    // 实时更新到ErrorAnalysisViewModel
-                    try
+                    while (!process.StandardError.EndOfStream)
                     {
-                        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                        errorAnalysisViewModel.AddGameErrorLog(line);
-                    }
-                    catch (Exception)
-                    {
-                        // 如果ErrorAnalysisViewModel不可用，忽略错误
+                        string line = await process.StandardError.ReadLineAsync();
+                        if (!string.IsNullOrEmpty(line))
+                        {
+                            lock (_gameError)
+                            {
+                                _gameError.Add(line);
+                            }
+                            Console.WriteLine($"[Minecraft Error]: {line}");
+                            
+                            // 实时更新到ErrorAnalysisViewModel
+                            try
+                            {
+                                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                                errorAnalysisViewModel.AddGameErrorLog(line);
+                            }
+                            catch (Exception)
+                            {
+                                // 如果ErrorAnalysisViewModel不可用，忽略错误
+                            }
+                        }
                     }
                 }
-            }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"读取标准错误时出错：{ex.Message}");
+                }
+            });
+            
+            // 等待两个任务都完成
+            await Task.WhenAll(outputTask, errorTask);
         }
         catch (Exception ex)
         {
@@ -1985,13 +2023,24 @@ public partial class LaunchViewModel : ObservableRecipient
             _gameError.Clear();
             
             // 直接执行Java命令，不生成bat文件
+            // 尝试使用 javaw.exe 代替 java.exe，javaw 不会创建控制台窗口
+            string javaExecutable = javaPath;
+            if (javaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                string javawPath = javaPath.Substring(0, javaPath.Length - 8) + "javaw.exe";
+                if (File.Exists(javawPath))
+                {
+                    javaExecutable = javawPath;
+                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 使用 javaw.exe 代替 java.exe: {javawPath}");
+                }
+            }
+            
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
-                FileName = javaPath,
+                FileName = javaExecutable,
                 Arguments = processedArgs, // 使用已经处理过的带引号的参数列表
                 UseShellExecute = false, // 设置为false以便捕获输出
-                CreateNoWindow = true, // 隐藏命令行窗口
-                WindowStyle = ProcessWindowStyle.Hidden, // 设置窗口样式为隐藏
+                CreateNoWindow = false, // 不隐藏控制台窗口，让Java自己创建窗口
                 WorkingDirectory = versionDir, // 设置工作目录为当前版本目录，解决mod启动崩溃问题
                 RedirectStandardError = true, // 重定向标准错误以便后续分析
                 RedirectStandardOutput = true, // 重定向标准输出以便后续分析
@@ -2005,6 +2054,7 @@ public partial class LaunchViewModel : ObservableRecipient
             try
             {
                 gameProcess.Start();
+                
                 LaunchStatus = "LaunchPage_GameCommandExecutedText".GetLocalized();
                 
                 // 显示启动成功InfoBar
@@ -2034,8 +2084,13 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 if (isRealTimeLogsEnabled)
                 {
-                    // 导航到实时日志页面
+                    // 导航到实时日志页面，并传递启动命令
                     System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 实时日志选项已开启，准备导航到ErrorAnalysisPage");
+                    
+                    // 先获取 ErrorAnalysisViewModel 并设置启动命令
+                    var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                    errorAnalysisViewModel.SetLaunchCommand(_launchCommand);
+                    
                     _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
                     System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 导航到ErrorAnalysisPage成功");
                 }

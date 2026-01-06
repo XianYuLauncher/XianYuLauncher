@@ -531,6 +531,36 @@ namespace XianYuLauncher.ViewModels
     }
     
     /// <summary>
+    /// 设置启动命令（用于实时日志模式）
+    /// </summary>
+    /// <param name="launchCommand">启动命令</param>
+    public void SetLaunchCommand(string launchCommand)
+    {
+        _launchCommand = launchCommand;
+        System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置启动命令，长度: {launchCommand?.Length ?? 0}");
+    }
+    
+    /// <summary>
+    /// 仅清空日志数据，保留启动命令（用于实时日志模式）
+    /// </summary>
+    public void ClearLogsOnly()
+    {
+        System.Diagnostics.Debug.WriteLine("ErrorAnalysisViewModel: 仅清空日志数据，保留启动命令");
+        
+        // 重置AI分析结果
+        IsAiAnalyzing = false;
+        IsAiAnalysisAvailable = false;
+        AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
+        
+        // 清空日志但保留启动命令
+        _gameOutput = new List<string>();
+        _gameError = new List<string>();
+        
+        // 生成完整日志
+        GenerateFullLog();
+    }
+    
+    /// <summary>
     /// 实时添加游戏输出日志
     /// </summary>
     /// <param name="logLine">日志行</param>

@@ -67,9 +67,10 @@ namespace XianYuLauncher.Views
             }
             else
             {
-                // 没有导航参数时，重置日志和AI分析结果
+                // 没有导航参数时，只重置日志数据，不清空启动命令
                 // 这是为了处理"启动游戏实时日志"功能自动导航到页面的情况
-                ViewModel.SetLogData(string.Empty, new List<string>(), new List<string>());
+                // 启动命令已经通过 SetLaunchCommand 方法设置
+                ViewModel.ClearLogsOnly();
             }
         }
 
