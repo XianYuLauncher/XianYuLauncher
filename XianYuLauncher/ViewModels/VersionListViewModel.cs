@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -330,6 +331,7 @@ public partial class VersionListViewModel : ObservableRecipient
             // 创建文件选择器
             var filePicker = new FileOpenPicker();
             filePicker.FileTypeFilter.Add(".mrpack");
+            filePicker.FileTypeFilter.Add(".zip");
             filePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
 
             // 初始化文件选择器
@@ -340,17 +342,36 @@ public partial class VersionListViewModel : ObservableRecipient
             var file = await filePicker.PickSingleFileAsync();
             if (file != null)
             {
+                string modpackFilePath = file.Path;
+                string modpackFileName = file.Name;
+
+                // 如果是 .zip 文件,需要提取其中的 .mrpack 文件
+                if (file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    var extractedMrpack = await ExtractMrpackFromZipAsync(file.Path);
+                    if (extractedMrpack.HasValue)
+                    {
+                        modpackFilePath = extractedMrpack.Value.FilePath;
+                        modpackFileName = extractedMrpack.Value.FileName;
+                    }
+                    else
+                    {
+                        StatusMessage = "ZIP 文件中未找到 .mrpack 文件";
+                        return;
+                    }
+                }
+
                 // 使用ModDownloadDetailViewModel的InstallModpackAsync逻辑
                 var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
                 
                 // 设置整合包名称
-                modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(file.Name);
+                modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
                 
                 // 创建ModVersionViewModel实例
                 var modVersion = new ModVersionViewModel
                 {
-                    FileName = file.Name,
-                    DownloadUrl = file.Path // 本地文件路径作为DownloadUrl
+                    FileName = modpackFileName,
+                    DownloadUrl = modpackFilePath // 本地文件路径作为DownloadUrl
                 };
                 
                 // 调用安装方法，直接使用现有的安装逻辑和弹窗
@@ -363,6 +384,42 @@ public partial class VersionListViewModel : ObservableRecipient
         catch (Exception ex)
         {
             StatusMessage = $"导入整合包失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 从 ZIP 文件中提取 .mrpack 文件
+    /// </summary>
+    private async Task<(string FilePath, string FileName)?> ExtractMrpackFromZipAsync(string zipFilePath)
+    {
+        try
+        {
+            using (var archive = System.IO.Compression.ZipFile.OpenRead(zipFilePath))
+            {
+                // 查找 .mrpack 文件
+                var mrpackEntry = archive.Entries.FirstOrDefault(e => 
+                    e.Name.EndsWith(".mrpack", StringComparison.OrdinalIgnoreCase));
+
+                if (mrpackEntry != null)
+                {
+                    // 创建临时目录
+                    string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(tempDir);
+
+                    // 提取 .mrpack 文件到临时目录
+                    string extractedPath = Path.Combine(tempDir, mrpackEntry.Name);
+                    mrpackEntry.ExtractToFile(extractedPath, overwrite: true);
+
+                    return (extractedPath, mrpackEntry.Name);
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"提取 .mrpack 文件失败: {ex.Message}";
+            return null;
         }
     }
 
