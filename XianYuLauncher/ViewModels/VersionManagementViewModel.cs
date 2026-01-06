@@ -1140,7 +1140,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 调用Modrinth API的POST /version_files端点
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
                     
                     string versionFilesUrl = "https://api.modrinth.com/v2/version_files";
                     var content = new System.Net.Http.StringContent(
@@ -1856,7 +1856,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 调用Modrinth API
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
                     
                     string apiUrl = "https://api.modrinth.com/v2/version_files/update";
                     var content = new System.Net.Http.StringContent(
@@ -2116,7 +2116,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
                     
                     string apiUrl = $"https://api.modrinth.com/v2/version/{versionId}";
                     var response = await httpClient.GetAsync(apiUrl);

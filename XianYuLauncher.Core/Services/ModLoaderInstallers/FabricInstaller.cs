@@ -37,7 +37,7 @@ public class FabricInstaller : ModLoaderInstallerBase
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
     }
 
     /// <inheritdoc/>

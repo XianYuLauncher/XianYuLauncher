@@ -195,10 +195,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock 
+                                x:Uid="LaunchPage_NewsAndAnnouncements"
                                 Text="新闻与公告"
                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
                             <HyperlinkButton 
                                 Grid.Column="1"
+                                x:Uid="LaunchPage_ViewMore"
                                 Content="查看更多"
                                 Padding="0"
                                 FontSize="12"
@@ -243,6 +245,7 @@
                                     Margin="0,0,10,0" />
                                 <TextBlock 
                                     Grid.Column="1"
+                                    x:Uid="LaunchPage_LauncherChangelog"
                                     Text="XianYu Launcher 更新日志"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     TextTrimming="CharacterEllipsis" />
@@ -265,7 +268,7 @@
                                     Grid.Column="1"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     TextTrimming="CharacterEllipsis">
-                                    <Run Text="Mod推荐：" />
+                                    <Run x:Uid="LaunchPage_ModRecommendation" Text="Mod推荐：" />
                                     <Run Text="{x:Bind ViewModel.RecommendedModTitle, Mode=OneWay}" />
                                 </TextBlock>
                             </Grid>

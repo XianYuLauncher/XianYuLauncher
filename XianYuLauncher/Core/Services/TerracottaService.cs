@@ -15,7 +15,7 @@ namespace XianYuLauncher.Core.Services
         {
             _localSettingsService = localSettingsService;
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.2.5");
             
             // 获取应用缓存目录
             _cacheDirectory = Path.Combine(ApplicationData.Current.LocalFolder.Path, "terracotta");

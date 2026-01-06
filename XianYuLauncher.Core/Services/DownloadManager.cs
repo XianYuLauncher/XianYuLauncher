@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -38,7 +39,6 @@ public class DownloadManager : IDownloadManager
     public DownloadManager(ILogger<DownloadManager> logger)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
         _httpClient.Timeout = TimeSpan.FromMinutes(30); // 30分钟超时，适合大文件下载
         _logger = logger;
     }
@@ -115,7 +115,16 @@ public class DownloadManager : IDownloadManager
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
-                return await _httpClient.GetByteArrayAsync(url, cancellationToken);
+                // 创建请求消息，为BMCLAPI请求添加User-Agent
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (IsBmclapiUrl(url))
+                {
+                    request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                }
+
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsByteArrayAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -151,7 +160,16 @@ public class DownloadManager : IDownloadManager
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
-                return await _httpClient.GetStringAsync(url, cancellationToken);
+                // 创建请求消息，为BMCLAPI请求添加User-Agent
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (IsBmclapiUrl(url))
+                {
+                    request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                }
+
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -231,6 +249,14 @@ public class DownloadManager : IDownloadManager
     }
 
     /// <summary>
+    /// 检查URL是否为BMCLAPI下载源
+    /// </summary>
+    private static bool IsBmclapiUrl(string url)
+    {
+        return url.Contains("bmclapi2.bangbang93.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// 内部下载文件实现
     /// </summary>
     private async Task DownloadFileInternalAsync(
@@ -254,7 +280,14 @@ public class DownloadManager : IDownloadManager
 
         try
         {
-            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            // 创建请求消息，为BMCLAPI请求添加User-Agent
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (IsBmclapiUrl(url))
+            {
+                request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            }
+
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;

@@ -1,6 +1,7 @@
 using System; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Security.Cryptography; using System.Diagnostics;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services
 {
@@ -49,7 +50,7 @@ namespace XianYuLauncher.Core.Services
                 Debug.WriteLine($"[AuthlibInjectorService] 使用API URL: {apiUrl}");
                 
                 // 3. 获取最新版本信息
-                var latestInfo = await GetLatestAuthlibInjectorInfo(apiUrl);
+                var latestInfo = await GetLatestAuthlibInjectorInfo(apiUrl, downloadSource == "BMCLAPI");
                 if (latestInfo == null)
                 {
                     Debug.WriteLine("[AuthlibInjectorService] 获取最新版本信息失败，尝试使用本地缓存");
@@ -74,7 +75,7 @@ namespace XianYuLauncher.Core.Services
                 if (!File.Exists(localJarPath) || cache?.build_number != latestInfo.build_number)
                 {
                     Debug.WriteLine("[AuthlibInjectorService] 需要下载最新版本");
-                    await DownloadAuthlibInjectorAsync(latestInfo.download_url, localJarPath);
+                    await DownloadAuthlibInjectorAsync(latestInfo.download_url, localJarPath, downloadSource == "BMCLAPI");
                     
                     // 验证SHA256（如果可用）
                     if (!string.IsNullOrEmpty(latestInfo.checksums?.sha256))
@@ -137,13 +138,22 @@ namespace XianYuLauncher.Core.Services
         /// 获取最新的authlib-injector版本信息
         /// </summary>
         /// <param name="apiUrl">API地址</param>
+        /// <param name="isBmclapi">是否为BMCLAPI下载源</param>
         /// <returns>版本信息</returns>
-        private async Task<AuthlibInjectorLatestInfo> GetLatestAuthlibInjectorInfo(string apiUrl)
+        private async Task<AuthlibInjectorLatestInfo> GetLatestAuthlibInjectorInfo(string apiUrl, bool isBmclapi)
         {
             try
             {
                 Debug.WriteLine($"[AuthlibInjectorService] 发送请求获取最新版本信息: {apiUrl}");
-                var response = await _httpClient.GetAsync(apiUrl);
+                
+                // 创建请求消息，为BMCLAPI请求添加User-Agent
+                using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+                if (isBmclapi)
+                {
+                    request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                }
+                
+                var response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
                 
                 var content = await response.Content.ReadAsStringAsync();
@@ -163,11 +173,19 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         /// <param name="downloadUrl">下载地址</param>
         /// <param name="localPath">本地保存路径</param>
-        private async Task DownloadAuthlibInjectorAsync(string downloadUrl, string localPath)
+        /// <param name="isBmclapi">是否为BMCLAPI下载源</param>
+        private async Task DownloadAuthlibInjectorAsync(string downloadUrl, string localPath, bool isBmclapi)
         {
             Debug.WriteLine($"[AuthlibInjectorService] 开始下载authlib-injector: {downloadUrl} -> {localPath}");
             
-            var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            // 创建请求消息，为BMCLAPI请求添加User-Agent
+            using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+            if (isBmclapi)
+            {
+                request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            }
+            
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
             
             using (var stream = await response.Content.ReadAsStreamAsync())

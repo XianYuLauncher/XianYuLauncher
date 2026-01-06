@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -19,7 +20,6 @@ public class OptifineService
     public OptifineService(IHttpClientFactory httpClientFactory)
     {
         _httpClient = httpClientFactory.CreateClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
     
     /// <summary>
@@ -37,8 +37,12 @@ public class OptifineService
             // 添加Debug输出，显示请求URL
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Optifine版本列表，请求URL: {url}");
             
+            // 创建请求消息并添加BMCLAPI User-Agent
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            
             // 发送HTTP请求
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
             
             // 确保响应成功
             response.EnsureSuccessStatusCode();

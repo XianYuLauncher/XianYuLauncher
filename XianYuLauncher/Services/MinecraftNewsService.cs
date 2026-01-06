@@ -25,7 +25,7 @@ public class MinecraftNewsService
     {
         _fileService = fileService;
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
     }
     

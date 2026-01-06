@@ -1171,6 +1171,7 @@ namespace XianYuLauncher.Views
                 };
                 var httpClient = new HttpClient(handler);
                 httpClient.Timeout = TimeSpan.FromSeconds(10);
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
                 
                 HttpResponseMessage response = await httpClient.GetAsync(resolvedUrl);
                 
@@ -1264,6 +1265,9 @@ namespace XianYuLauncher.Views
                 // 构建元数据请求URL
                 var metadataUri = new Uri(resolvedUrl);
                 var httpClient = new HttpClient();
+                
+                // 设置User-Agent
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
                 
                 // 设置请求头，接受JSON格式
                 httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
@@ -1562,6 +1566,7 @@ namespace XianYuLauncher.Views
 
                 // 发送POST请求
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
                 var jsonContent = new StringContent(
                     Newtonsoft.Json.JsonConvert.SerializeObject(requestBody),
                     System.Text.Encoding.UTF8,

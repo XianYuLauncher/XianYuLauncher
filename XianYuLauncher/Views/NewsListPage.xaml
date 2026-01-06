@@ -35,10 +35,12 @@
             
             <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                 <TextBlock 
+                    x:Uid="NewsListPage_Title"
                     Text="新闻与公告" 
                     Style="{StaticResource TitleTextBlockStyle}" 
                     FontWeight="SemiBold" />
                 <TextBlock 
+                    x:Uid="NewsListPage_Subtitle"
                     Text="Minecraft Java 版更新动态" 
                     Style="{StaticResource CaptionTextBlockStyle}" 
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -47,6 +49,7 @@
             <Button 
                 Grid.Column="2"
                 x:Name="RefreshButton"
+                x:Uid="NewsListPage_RefreshButton"
                 Click="RefreshButton_Click"
                 Style="{StaticResource SubtleButtonStyle}"
                 Padding="8"
@@ -62,9 +65,9 @@
                 x:Name="FilterComboBox"
                 SelectionChanged="FilterComboBox_SelectionChanged"
                 Width="120">
-                <ComboBoxItem Content="全部" IsSelected="True" />
-                <ComboBoxItem Content="正式版" />
-                <ComboBoxItem Content="快照" />
+                <ComboBoxItem x:Uid="NewsListPage_FilterAll" Content="全部" Tag="All" IsSelected="True" />
+                <ComboBoxItem x:Uid="NewsListPage_FilterRelease" Content="正式版" Tag="Release" />
+                <ComboBoxItem x:Uid="NewsListPage_FilterSnapshot" Content="快照" Tag="Snapshot" />
             </ComboBox>
         </StackPanel>
 
@@ -76,7 +79,7 @@
             VerticalAlignment="Center"
             Visibility="Visible">
             <ProgressRing IsActive="True" Width="32" Height="32" />
-            <TextBlock Text="加载中..." Margin="0,12,0,0" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <TextBlock x:Uid="NewsListPage_Loading" Text="加载中..." Margin="0,12,0,0" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </StackPanel>
 
         <!-- 错误信息 -->

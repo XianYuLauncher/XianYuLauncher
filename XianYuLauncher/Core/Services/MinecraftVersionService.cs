@@ -36,7 +36,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         IModLoaderInstallerFactory modLoaderInstallerFactory)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
         _logger = logger;
         _fileService = fileService;
         _localSettingsService = localSettingsService;

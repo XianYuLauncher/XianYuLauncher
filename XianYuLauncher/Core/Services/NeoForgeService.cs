@@ -7,6 +7,7 @@ using System.Text.Json;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -61,8 +62,15 @@ public class NeoForgeService
             // 添加Debug输出，显示当前下载源和请求URL
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载NeoForge版本列表，下载源: {downloadSource.Name}，请求URL: {url}");
             
+            // 创建请求消息，为BMCLAPI请求添加User-Agent
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (downloadSource.Name == "BMCLAPI")
+            {
+                request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            }
+            
             // 发送HTTP请求
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
             
             // 确保响应成功
             response.EnsureSuccessStatusCode();

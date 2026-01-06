@@ -1642,4 +1642,72 @@
   <data name="Settings_CacheDescription.Text" xml:space="preserve">
     <value>缓存用于加速资源列表加载，清理后下次访问时会重新下载</value>
   </data>
+  <!-- VersionListPage 右键菜单本地化 -->
+  <data name="VersionListPage_GenerateLaunchScriptMenuItem.Text" xml:space="preserve">
+    <value>生成启动参数</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionMenuItem.Text" xml:space="preserve">
+    <value>版本补全</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionDialog.Title" xml:space="preserve">
+    <value>版本补全</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionDialog.CloseButtonText" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <!-- LaunchPage 新闻与公告本地化 -->
+  <data name="LaunchPage_NewsAndAnnouncements.Text" xml:space="preserve">
+    <value>新闻与公告</value>
+  </data>
+  <data name="LaunchPage_ViewMore.Content" xml:space="preserve">
+    <value>查看更多</value>
+  </data>
+  <data name="LaunchPage_LauncherChangelog.Text" xml:space="preserve">
+    <value>XianYu Launcher 更新日志</value>
+  </data>
+  <data name="LaunchPage_ModRecommendation.Text" xml:space="preserve">
+    <value>Mod推荐：</value>
+  </data>
+  <!-- NewsListPage 本地化 -->
+  <data name="NewsListPage_Title.Text" xml:space="preserve">
+    <value>新闻与公告</value>
+  </data>
+  <data name="NewsListPage_Subtitle.Text" xml:space="preserve">
+    <value>Minecraft Java 版更新动态</value>
+  </data>
+  <data name="NewsListPage_RefreshButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="NewsListPage_FilterAll.Content" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="NewsListPage_FilterRelease.Content" xml:space="preserve">
+    <value>正式版</value>
+  </data>
+  <data name="NewsListPage_FilterSnapshot.Content" xml:space="preserve">
+    <value>快照</value>
+  </data>
+  <data name="NewsListPage_Loading.Text" xml:space="preserve">
+    <value>加载中...</value>
+  </data>
+  <!-- NewsDetailPage 本地化 -->
+  <data name="NewsDetailPage_Title.Text" xml:space="preserve">
+    <value>新闻详情</value>
+  </data>
+  <data name="NewsDetailPage_UpdateContent.Text" xml:space="preserve">
+    <value>更新内容</value>
+  </data>
+  <data name="NewsDetailPage_Loading.Text" xml:space="preserve">
+    <value>加载详细内容...</value>
+  </data>
+  <data name="NewsDetailPage_FullChangelogHint.Text" xml:space="preserve">
+    <value>完整更新日志请访问 Minecraft 官网</value>
+  </data>
+  <!-- 新闻类型本地化 -->
+  <data name="NewsType_Release" xml:space="preserve">
+    <value>正式版</value>
+  </data>
+  <data name="NewsType_Snapshot" xml:space="preserve">
+    <value>快照</value>
+  </data>
 </root>

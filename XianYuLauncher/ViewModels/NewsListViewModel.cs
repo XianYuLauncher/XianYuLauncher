@@ -26,9 +26,7 @@ public partial class NewsListViewModel : ObservableRecipient
     private string _errorMessage = string.Empty;
 
     [ObservableProperty]
-    private string _selectedFilter = "全部";
-
-    public string[] FilterOptions { get; } = new[] { "全部", "正式版", "快照" };
+    private string _selectedFilter = "All";
 
     public NewsListViewModel()
     {
@@ -51,10 +49,11 @@ public partial class NewsListViewModel : ObservableRecipient
             if (newsData?.Entries != null)
             {
                 // 先筛选，再按日期降序排序（最新的在前）
+                // 使用英文标识符进行筛选，避免本地化问题
                 var filteredEntries = newsData.Entries
-                    .Where(entry => SelectedFilter == "全部" ||
-                                   (SelectedFilter == "正式版" && entry.Type == "release") ||
-                                   (SelectedFilter == "快照" && entry.Type == "snapshot"))
+                    .Where(entry => SelectedFilter == "All" ||
+                                   (SelectedFilter == "Release" && entry.Type == "release") ||
+                                   (SelectedFilter == "Snapshot" && entry.Type == "snapshot"))
                     .OrderByDescending(entry => entry.Date);
                 
                 foreach (var entry in filteredEntries)

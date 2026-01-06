@@ -76,7 +76,8 @@ public sealed partial class NewsListPage : Page
     {
         if (FilterComboBox.SelectedItem is ComboBoxItem item)
         {
-            ViewModel.SelectedFilter = item.Content?.ToString() ?? "全部";
+            // 使用 Tag 而不是 Content，避免本地化问题
+            ViewModel.SelectedFilter = item.Tag?.ToString() ?? "All";
         }
     }
 

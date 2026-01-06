@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
+using Windows.ApplicationModel.Resources;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Services;
 
@@ -13,6 +14,7 @@ public partial class NewsDetailViewModel : ObservableRecipient
 {
     private readonly INavigationService _navigationService;
     private readonly HttpClient _httpClient;
+    private readonly ResourceLoader _resourceLoader;
 
     [ObservableProperty]
     private MinecraftNewsEntry? _newsEntry;
@@ -48,7 +50,8 @@ public partial class NewsDetailViewModel : ObservableRecipient
     {
         _navigationService = App.GetService<INavigationService>();
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _resourceLoader = ResourceLoader.GetForViewIndependentUse();
     }
 
     public void Initialize(MinecraftNewsEntry entry)
@@ -57,8 +60,17 @@ public partial class NewsDetailViewModel : ObservableRecipient
         Title = entry.Title;
         Version = entry.Version;
         Type = entry.Type;
-        TypeDisplay = entry.Type == "release" ? "正式版" : entry.Type == "snapshot" ? "快照" : entry.Type;
-        Date = entry.Date.ToString("yyyy年MM月dd日");
+        
+        // 使用本地化资源获取类型显示文本
+        TypeDisplay = entry.Type switch
+        {
+            "release" => _resourceLoader.GetString("NewsType_Release"),
+            "snapshot" => _resourceLoader.GetString("NewsType_Snapshot"),
+            _ => entry.Type
+        };
+        
+        // 使用系统区域设置格式化日期
+        Date = entry.Date.ToLocalTime().ToString("d");
         ShortText = entry.ShortText;
         
         if (entry.Image != null && !string.IsNullOrEmpty(entry.Image.Url))

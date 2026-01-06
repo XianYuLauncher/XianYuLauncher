@@ -22,7 +22,7 @@ public class ModrinthService
     {
         _httpClient = httpClient;
         // 设置默认请求头
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 using System;
+using Windows.ApplicationModel.Resources;
 
 namespace XianYuLauncher.Helpers;
 
@@ -12,21 +13,8 @@ public class DateTimeToStringConverter : IValueConverter
     {
         if (value is DateTime dateTime)
         {
-            var now = DateTime.Now;
-            var diff = now - dateTime;
-
-            if (diff.TotalMinutes < 1)
-                return "刚刚";
-            if (diff.TotalHours < 1)
-                return $"{(int)diff.TotalMinutes}分钟前";
-            if (diff.TotalDays < 1)
-                return $"{(int)diff.TotalHours}小时前";
-            if (diff.TotalDays < 7)
-                return $"{(int)diff.TotalDays}天前";
-            if (dateTime.Year == now.Year)
-                return dateTime.ToString("MM月dd日");
-            
-            return dateTime.ToString("yyyy年MM月dd日");
+            // 使用系统当前区域设置格式化日期
+            return dateTime.ToLocalTime().ToString("d"); // 短日期格式，根据系统区域设置自动调整
         }
         return string.Empty;
     }

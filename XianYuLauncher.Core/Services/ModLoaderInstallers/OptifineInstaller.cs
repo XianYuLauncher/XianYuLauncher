@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -33,7 +34,6 @@ public class OptifineInstaller : ModLoaderInstallerBase
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
 
     /// <inheritdoc/>
@@ -253,8 +253,16 @@ public class OptifineInstaller : ModLoaderInstallerBase
         try
         {
             var url = $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}";
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
-            var versions = JsonConvert.DeserializeObject<List<OptifineVersionInfo>>(response);
+            
+            // 创建请求消息并添加BMCLAPI User-Agent
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var versions = JsonConvert.DeserializeObject<List<OptifineVersionInfo>>(responseContent);
 
             return versions?.Select(v => $"{v.Type}_{v.Patch}")
                 .Where(v => !string.IsNullOrEmpty(v))

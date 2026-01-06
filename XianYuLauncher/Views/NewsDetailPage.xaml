@@ -32,6 +32,7 @@
             
             <TextBlock 
                 Grid.Column="1"
+                x:Uid="NewsDetailPage_Title"
                 Text="新闻详情" 
                 Style="{StaticResource TitleTextBlockStyle}" 
                 FontWeight="SemiBold"
@@ -105,7 +106,7 @@
                     Spacing="8"
                     Visibility="Collapsed">
                     <ProgressRing IsActive="True" Width="16" Height="16" />
-                    <TextBlock Text="加载详细内容..." Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Uid="NewsDetailPage_Loading" Text="加载详细内容..." Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
                 <!-- 详细内容 -->
@@ -119,6 +120,7 @@
                     Visibility="Collapsed">
                     <StackPanel Spacing="12">
                         <TextBlock 
+                            x:Uid="NewsDetailPage_UpdateContent"
                             Text="更新内容"
                             Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <TextBlock 
@@ -131,6 +133,7 @@
 
                 <!-- 提示 -->
                 <TextBlock 
+                    x:Uid="NewsDetailPage_FullChangelogHint"
                     Text="完整更新日志请访问 Minecraft 官网"
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
