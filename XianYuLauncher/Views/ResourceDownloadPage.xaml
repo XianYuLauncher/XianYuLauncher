@@ -90,6 +90,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
                                 <TextBox 
@@ -101,8 +102,24 @@
                                     KeyDown="VersionSearchBox_KeyDown" 
                                     HorizontalAlignment="Stretch" />
 
-                                <Button 
+                                <!-- 版本类型筛选 -->
+                                <ComboBox
                                     Grid.Column="1"
+                                    x:Name="VersionTypeComboBox"
+                                    x:Uid="ResourceDownloadPage_VersionTypeComboBox"
+                                    Margin="10,0,0,0"
+                                    MinWidth="80"
+                                    PlaceholderText="筛选"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedVersionType, Mode=TwoWay}">
+                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllVersionTypes" Content="全部" Tag="all" />
+                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ReleaseVersionType" Content="正式版" Tag="release" IsSelected="True" />
+                                    <ComboBoxItem x:Uid="ResourceDownloadPage_SnapshotVersionType" Content="快照版" Tag="snapshot" />
+                                    <ComboBoxItem x:Uid="ResourceDownloadPage_OldVersionType" Content="旧版" Tag="old" />
+                                </ComboBox>
+
+                                <Button 
+                                    Grid.Column="2"
                                     Margin="10,0,0,0"
                                     Command="{Binding RefreshVersionsCommand}">
                                     <Grid>
