@@ -485,6 +485,31 @@
                                     </StackPanel>
                                 </StackPanel>
                                 
+                                <!-- 下载线程数设置 -->
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Uid="Settings_DownloadThreadCount" Text="下载线程数" />
+                                            <TextBlock 
+                                                x:Uid="Settings_DownloadThreadCountDescription"
+                                                Text="同时下载资源文件的线程数量，数值越大下载越快，但可能占用更多系统资源" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <NumberBox 
+                                            x:Uid="Settings_DownloadThreadCountInput"
+                                            Value="{x:Bind ViewModel.DownloadThreadCount, Mode=TwoWay}"
+                                            Minimum="1"
+                                            Maximum="128"
+                                            SpinButtonPlacementMode="Compact"
+                                            SmallChange="1"
+                                            LargeChange="8"
+                                            Width="120"
+                                            VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+                                
                                 <!-- 缓存管理 -->
                                 <TextBlock x:Uid="Settings_CacheManagement" Text="缓存管理" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">

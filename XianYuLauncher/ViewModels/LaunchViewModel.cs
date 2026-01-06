@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -140,8 +141,8 @@ public partial class LaunchViewModel : ObservableRecipient
             
             // 移除自动保存启动命令到文件的操作
             
-            // 检查是否异常退出
-            if (exitCode != 0)
+            // 检查是否异常退出（排除用户主动终止的情况）
+            if (exitCode != 0 && !_isUserTerminated)
             {
                 // 异常退出，显示错误分析弹窗
                 Console.WriteLine($"游戏异常退出，退出代码: {exitCode}");
@@ -157,6 +158,14 @@ public partial class LaunchViewModel : ObservableRecipient
                     await ShowErrorAnalysisDialog(exitCode, currentLaunchCommand, currentOutput, currentError);
                 });
             }
+            else if (_isUserTerminated)
+            {
+                // 用户主动终止，不显示崩溃弹窗
+                Console.WriteLine("游戏被用户主动终止");
+            }
+            
+            // 重置用户终止标志
+            _isUserTerminated = false;
             
             // 清空日志，准备下一次启动
             _gameOutput.Clear();
@@ -714,6 +723,26 @@ public partial class LaunchViewModel : ObservableRecipient
     private bool _isLaunchSuccessInfoBarOpen = false;
     
     /// <summary>
+    /// 当前游戏进程
+    /// </summary>
+    private Process? _currentGameProcess = null;
+    
+    /// <summary>
+    /// 下载取消令牌源
+    /// </summary>
+    private CancellationTokenSource? _downloadCancellationTokenSource = null;
+    
+    /// <summary>
+    /// 是否正在下载/准备中
+    /// </summary>
+    private bool _isPreparingGame = false;
+    
+    /// <summary>
+    /// 是否是用户主动终止进程
+    /// </summary>
+    private bool _isUserTerminated = false;
+    
+    /// <summary>
     /// 当前版本路径，用于彩蛋显示
     /// </summary>
     public string CurrentVersionPath
@@ -942,6 +971,45 @@ public partial class LaunchViewModel : ObservableRecipient
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
     }
+    
+    /// <summary>
+    /// 当 InfoBar 关闭时的处理
+    /// </summary>
+    partial void OnIsLaunchSuccessInfoBarOpenChanged(bool value)
+    {
+        // 当 InfoBar 被关闭时
+        if (!value)
+        {
+            // 如果正在准备/下载中，取消下载
+            if (_isPreparingGame && _downloadCancellationTokenSource != null)
+            {
+                _downloadCancellationTokenSource.Cancel();
+                _isPreparingGame = false;
+                LaunchStatus = "已取消下载";
+                System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 用户取消了下载");
+            }
+            // 如果游戏进程正在运行，终止进程
+            else if (_currentGameProcess != null && !_currentGameProcess.HasExited)
+            {
+                try
+                {
+                    // 标记为用户主动终止
+                    _isUserTerminated = true;
+                    _currentGameProcess.Kill(entireProcessTree: true);
+                    LaunchStatus = "游戏进程已终止";
+                    System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 用户终止了游戏进程");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 终止进程失败: {ex.Message}");
+                }
+                finally
+                {
+                    _currentGameProcess = null;
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// 检测当前地区是否为中国大陆
@@ -1071,6 +1139,32 @@ public partial class LaunchViewModel : ObservableRecipient
             {
                 Title = "地区限制",
                 Content = "当前地区无法使用离线登录，请添加微软账户登录。",
+                PrimaryButtonText = "前往",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+
+            // 处理前往按钮点击事件
+            dialog.PrimaryButtonClick += (sender, args) =>
+            {
+                // 跳转到角色页面
+                _navigationService.NavigateTo("角色");
+            };
+
+            // 显示弹窗
+            await dialog.ShowAsync();
+            return;
+        }
+        
+        // 检查是否为外置登录角色且非中国大陆地区
+        if (SelectedProfile != null && SelectedProfile.TokenType == "external" && !IsChinaMainland())
+        {
+            // 显示地区限制弹窗
+            var dialog = new ContentDialog
+            {
+                Title = "地区限制",
+                Content = "当前地区无法使用外置登录，请添加微软账户登录。",
                 PrimaryButtonText = "前往",
                 CloseButtonText = "取消",
                 DefaultButton = ContentDialogButton.Close,
@@ -1232,6 +1326,10 @@ public partial class LaunchViewModel : ObservableRecipient
             CurrentDownloadItem = "LaunchPage_PreparingGameFilesText".GetLocalized();
             LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_PreparingGameFilesText".GetLocalized()}";
             
+            // 标记正在准备游戏
+            _isPreparingGame = true;
+            _downloadCancellationTokenSource = new CancellationTokenSource();
+            
             // 这里会等待版本补全完成后才继续执行
             try
             {
@@ -1258,6 +1356,12 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 await _minecraftVersionService.EnsureVersionDependenciesAsync(SelectedVersion, minecraftPath, progress =>
                 {
+                    // 检查是否已取消
+                    if (_downloadCancellationTokenSource?.IsCancellationRequested == true)
+                    {
+                        throw new OperationCanceledException("用户取消了下载");
+                    }
+                    
                     DownloadProgress = progress;
                     LaunchStatus = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
                     
@@ -1265,6 +1369,12 @@ public partial class LaunchViewModel : ObservableRecipient
                     CurrentDownloadItem = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
                     LaunchSuccessMessage = string.Format("{0} {1:F0}%", $"{SelectedVersion} {"LaunchPage_PreparingGameFilesProgressText".GetLocalized()}", progress);
                 }, currentDownloadCallback);
+            }
+            catch (OperationCanceledException)
+            {
+                LaunchStatus = "已取消下载";
+                _isPreparingGame = false;
+                return;
             }
             catch (Exception ex)
             {
@@ -1278,7 +1388,13 @@ public partial class LaunchViewModel : ObservableRecipient
                     Console.WriteLine($"内部错误堆栈: {ex.InnerException.StackTrace}");
                     LaunchStatus += $"\n{"LaunchPage_InnerErrorText".GetLocalized()}: {ex.InnerException.Message}";
                 }
+                _isPreparingGame = false;
                 return;
+            }
+            finally
+            {
+                _downloadCancellationTokenSource?.Dispose();
+                _downloadCancellationTokenSource = null;
             }
             
             if (string.IsNullOrEmpty(versionInfo.MainClass))
@@ -2055,6 +2171,10 @@ public partial class LaunchViewModel : ObservableRecipient
             {
                 gameProcess.Start();
                 
+                // 保存进程引用，用于后续终止
+                _currentGameProcess = gameProcess;
+                _isPreparingGame = false;
+                
                 LaunchStatus = "LaunchPage_GameCommandExecutedText".GetLocalized();
                 
                 // 显示启动成功InfoBar
@@ -2677,4 +2797,369 @@ public partial class LaunchViewModel : ObservableRecipient
     }
 
 
+    /// <summary>
+    /// 生成启动命令字符串（供导出使用）
+    /// </summary>
+    /// <param name="versionName">版本名称</param>
+    /// <param name="profile">角色信息</param>
+    /// <returns>包含 Java 路径、参数和版本目录的元组，如果失败返回 null</returns>
+    public async Task<(string JavaPath, string Arguments, string VersionDir)?> GenerateLaunchCommandStringAsync(string versionName, MinecraftProfile profile)
+    {
+        if (string.IsNullOrEmpty(versionName) || profile == null)
+        {
+            return null;
+        }
+        
+        try
+        {
+            // 1. 获取游戏目录路径
+            string minecraftPath = _fileService.GetMinecraftDataPath();
+            string versionsDir = Path.Combine(minecraftPath, "versions");
+            string versionDir = Path.Combine(versionsDir, versionName);
+            string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
+            string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+            string librariesPath = Path.Combine(minecraftPath, "libraries");
+            string assetsPath = Path.Combine(minecraftPath, "assets");
+            
+            // 2. 检查必要文件
+            if (!File.Exists(jarPath) || !File.Exists(jsonPath))
+            {
+                return null;
+            }
+            
+            // 3. 读取版本信息
+            string versionJsonContent = await File.ReadAllTextAsync(jsonPath);
+            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent);
+            
+            if (versionInfo == null || string.IsNullOrEmpty(versionInfo.MainClass))
+            {
+                return null;
+            }
+            
+            // 4. 根据版本隔离设置生成游戏目录
+            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
+            bool enableVersionIsolation = versionIsolationValue ?? true;
+            string gameDir = enableVersionIsolation ? versionDir : minecraftPath;
+            
+            // 5. 获取 Java 路径
+            int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
+            
+            // 检查版本特定的 Java 路径
+            bool useGlobalJavaSetting = true;
+            string versionJavaPath = string.Empty;
+            string settingsFilePath = Path.Combine(versionDir, "XianYuL.cfg");
+            
+            if (File.Exists(settingsFilePath))
+            {
+                try
+                {
+                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
+                    dynamic settings = JsonConvert.DeserializeObject(settingsJson);
+                    
+                    bool? useGlobalSetting = null;
+                    string configJavaPath = null;
+                    
+                    try { useGlobalSetting = settings.UseGlobalJavaSetting; } catch { }
+                    if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useglobaljavasetting; } catch { }
+                    
+                    try { configJavaPath = settings.JavaPath; } catch { }
+                    if (configJavaPath == null) try { configJavaPath = settings.javaPath; } catch { }
+                    if (configJavaPath == null) try { configJavaPath = settings.javapath; } catch { }
+                    
+                    useGlobalJavaSetting = useGlobalSetting ?? true;
+                    versionJavaPath = configJavaPath ?? string.Empty;
+                }
+                catch { }
+            }
+            
+            string javaPath;
+            if (!useGlobalJavaSetting && !string.IsNullOrEmpty(versionJavaPath) && File.Exists(versionJavaPath))
+            {
+                javaPath = versionJavaPath;
+            }
+            else
+            {
+                javaPath = await GetJavaPathAsync(requiredJavaVersion);
+            }
+            
+            if (string.IsNullOrEmpty(javaPath))
+            {
+                return null;
+            }
+            
+            // 6. 构建 Classpath（复用现有逻辑）
+            HashSet<string> classpathEntries = new HashSet<string>();
+            classpathEntries.Add(jarPath);
+            
+            if (versionInfo.Libraries != null)
+            {
+                // 判断是否为 Fabric 相关版本
+                bool isFabricVersion = false;
+                try
+                {
+                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(versionName, versionDir);
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
+                    {
+                        isFabricVersion = versionConfig.ModLoaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+                catch { }
+                
+                if (!isFabricVersion)
+                {
+                    isFabricVersion = versionName.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) ||
+                                      (versionName.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                                       versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
+                }
+                
+                // ASM 库版本跟踪（用于 Fabric 去重）
+                Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();
+                
+                if (isFabricVersion)
+                {
+                    foreach (var library in versionInfo.Libraries)
+                    {
+                        if (library.Name.StartsWith("org.ow2.asm:asm:"))
+                        {
+                            string[] parts = library.Name.Split(':');
+                            if (parts.Length >= 3)
+                            {
+                                asmLibraryVersions[library.Name] = parts[2];
+                            }
+                        }
+                    }
+                }
+                
+                // 找出最新的 ASM 版本
+                string latestAsmVersion = "0.0";
+                foreach (var kvp in asmLibraryVersions)
+                {
+                    if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
+                    {
+                        latestAsmVersion = kvp.Value;
+                    }
+                }
+                
+                // 添加库到 classpath
+                foreach (var library in versionInfo.Libraries)
+                {
+                    // 检查规则
+                    bool isAllowed = true;
+                    if (library.Rules != null)
+                    {
+                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
+                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
+                        {
+                            isAllowed = false;
+                        }
+                    }
+                    
+                    if (!isAllowed) continue;
+                    
+                    // 跳过旧版 ASM 库（Fabric 版本）
+                    if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
+                    {
+                        string[] parts = library.Name.Split(':');
+                        if (parts.Length >= 3 && parts[2] != latestAsmVersion)
+                        {
+                            continue;
+                        }
+                    }
+                    
+                    // 跳过原生库
+                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
+                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
+                    if (isNativeLibrary) continue;
+                    
+                    // 跳过 neoforge-universal 和 installertools
+                    if (library.Name.Contains("neoforge-universal", StringComparison.OrdinalIgnoreCase) ||
+                        library.Name.Contains("installertools", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    
+                    // 获取库路径
+                    string libPath = GetLibraryPath(library.Name, librariesPath);
+                    if (File.Exists(libPath))
+                    {
+                        classpathEntries.Add(libPath);
+                    }
+                }
+            }
+            
+            string classpath = string.Join(";", classpathEntries);
+            
+            // 7. 构建启动参数
+            var args = new List<string>();
+            
+            // JVM 参数
+            args.Add("-XX:+UseG1GC");
+            args.Add("-XX:-UseAdaptiveSizePolicy");
+            args.Add("-XX:-OmitStackTraceInFastThrow");
+            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
+            args.Add("-Dlog4j2.formatMsgNoLookups=true");
+            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
+            
+            // 处理 JVM 参数
+            bool hasClasspath = false;
+            if (versionInfo.Arguments?.Jvm != null)
+            {
+                foreach (var jvmArg in versionInfo.Arguments.Jvm)
+                {
+                    if (jvmArg is string argStr)
+                    {
+                        string processedArg = argStr
+                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{versionName}-natives"))
+                            .Replace("${launcher_name}", "XianYuLauncher")
+                            .Replace("${launcher_version}", "1.0")
+                            .Replace("${classpath}", classpath)
+                            .Replace("${classpath_separator}", ";")
+                            .Replace("${version_name}", versionName)
+                            .Replace("${library_directory}", librariesPath);
+                        
+                        args.Add(processedArg);
+                        
+                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
+                        {
+                            hasClasspath = true;
+                        }
+                    }
+                }
+            }
+            
+            // 确保添加 classpath
+            if (!hasClasspath)
+            {
+                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{versionName}-natives")}");
+                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
+                args.Add("-Dminecraft.launcher.version=1.0");
+                args.Add($"-cp");
+                args.Add(classpath);
+            }
+            
+            // 主类
+            args.Add(versionInfo.MainClass);
+            
+            // 确定 userType
+            string userType = profile.IsOffline ? "offline" : (profile.TokenType == "external" ? "mojang" : "msa");
+            
+            // 游戏参数
+            string assetIndex = versionInfo.AssetIndex?.Id ?? versionName;
+            
+            // 处理 minecraftArguments（旧版格式）
+            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            {
+                string minecraftArgs = versionInfo.MinecraftArguments
+                    .Replace("${auth_player_name}", profile.Name)
+                    .Replace("${version_name}", versionName)
+                    .Replace("${game_directory}", gameDir)
+                    .Replace("${assets_root}", assetsPath)
+                    .Replace("${assets_index_name}", assetIndex)
+                    .Replace("${auth_uuid}", profile.Id)
+                    .Replace("${auth_access_token}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
+                    .Replace("${auth_session}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
+                    .Replace("${user_type}", userType)
+                    .Replace("${user_properties}", "{}")
+                    .Replace("${version_type}", versionInfo.Type ?? "release");
+                
+                var extraArgs = minecraftArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                args.AddRange(extraArgs);
+            }
+            // 处理 Arguments.Game（新版格式）
+            else if (versionInfo.Arguments?.Game != null)
+            {
+                foreach (var gameArg in versionInfo.Arguments.Game)
+                {
+                    if (gameArg is string argStr)
+                    {
+                        string processedArg = argStr
+                            .Replace("${auth_player_name}", profile.Name)
+                            .Replace("${version_name}", versionName)
+                            .Replace("${game_directory}", gameDir)
+                            .Replace("${assets_root}", assetsPath)
+                            .Replace("${assets_index_name}", assetIndex)
+                            .Replace("${auth_uuid}", profile.Id)
+                            .Replace("${auth_access_token}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
+                            .Replace("${auth_xuid}", "")
+                            .Replace("${clientid}", "0")
+                            .Replace("${version_type}", versionInfo.Type ?? "release");
+                        
+                        args.Add(processedArg);
+                    }
+                }
+            }
+            else
+            {
+                // 默认游戏参数
+                args.Add("--username");
+                args.Add(profile.Name);
+                args.Add("--version");
+                args.Add(versionName);
+                args.Add("--gameDir");
+                args.Add(gameDir);
+                args.Add("--assetsDir");
+                args.Add(assetsPath);
+                args.Add("--assetIndex");
+                args.Add(assetIndex);
+                args.Add("--uuid");
+                args.Add(profile.Id);
+                args.Add("--accessToken");
+                args.Add(string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken);
+                args.Add("--userType");
+                args.Add(userType);
+                args.Add("--versionType");
+                args.Add("XianYuLauncher");
+            }
+            
+            // 添加分辨率参数
+            args.Add("--width");
+            args.Add("1920");
+            args.Add("--height");
+            args.Add("1080");
+            
+            // 构建参数字符串
+            string processedArgs = string.Join(" ", args.Select(a =>
+                (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
+            
+            return (javaPath, processedArgs, versionDir);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"生成启动命令失败: {ex.Message}");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 获取库文件路径（供导出使用）
+    /// </summary>
+    private string GetLibraryPath(string libraryName, string librariesPath)
+    {
+        // 解析库名称: group:artifact:version[:classifier][@extension]
+        string extension = "jar";
+        string name = libraryName;
+        
+        // 处理扩展名
+        if (name.Contains("@"))
+        {
+            var parts = name.Split('@');
+            name = parts[0];
+            extension = parts[1];
+        }
+        
+        var nameParts = name.Split(':');
+        if (nameParts.Length < 3) return string.Empty;
+        
+        string group = nameParts[0].Replace('.', Path.DirectorySeparatorChar);
+        string artifact = nameParts[1];
+        string version = nameParts[2];
+        string classifier = nameParts.Length > 3 ? nameParts[3] : null;
+        
+        string fileName = classifier != null
+            ? $"{artifact}-{version}-{classifier}.{extension}"
+            : $"{artifact}-{version}.{extension}";
+        
+        return Path.Combine(librariesPath, group, artifact, version, fileName);
+    }
 }

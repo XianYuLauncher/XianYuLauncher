@@ -1763,6 +1763,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("当前assets下载源: {DownloadSource}", downloadSource.Name);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets下载源: {downloadSource.Name}");
 
+            // 获取用户设置的下载线程数
+            var downloadThreadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount");
+            int maxConcurrency = downloadThreadCount ?? 32; // 默认32线程
+            if (maxConcurrency < 1) maxConcurrency = 1;
+            if (maxConcurrency > 128) maxConcurrency = 128;
+            _logger.LogInformation("下载线程数: {ThreadCount}", maxConcurrency);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载线程数: {maxConcurrency}");
+
             // 1. 目录结构验证和创建
             string assetsDirectory = Path.Combine(minecraftDirectory, "assets");
             string indexesDirectory = Path.Combine(assetsDirectory, "indexes");
@@ -1789,154 +1797,144 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             AssetIndexJson indexData = JsonConvert.DeserializeObject<AssetIndexJson>(indexJsonContent)
                 ?? throw new Exception("Failed to parse asset index file");
 
-            // 4. 单线程下载资源对象（避免多线程导致的问题）
-            int totalCount = indexData.Objects.Count;
-            int completedCount = 0;
-            // 记录上一次报告的进度，避免过于频繁的更新
-            double lastReportedProgress = -1.0;
-
-            // 将资源列表转换为数组，便于处理
-            var assetItems = indexData.Objects.ToArray();
-            totalCount = assetItems.Length;
-
-            // 报告初始进度0%
-            if (progressCallback != null)
+            // 4. 收集需要下载的资源
+            var assetsToDownload = new List<(string Name, AssetItemMeta Meta)>();
+            foreach (var (assetName, assetMeta) in indexData.Objects)
             {
-                progressCallback(0);
+                if (string.IsNullOrEmpty(assetMeta.Hash) || IsAssetObjectExists(assetMeta.Hash, objectsDirectory))
+                {
+                    continue; // 跳过空哈希或已存在的资源
+                }
+                assetsToDownload.Add((assetName, assetMeta));
             }
 
-            // 创建HttpClient实例
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromMinutes(5);
-
-            // 内部方法：更新进度
-            void UpdateProgress()
+            int totalCount = assetsToDownload.Count;
+            if (totalCount == 0)
             {
-                completedCount++;
-                // 计算当前进度
-                double currentProgress = totalCount > 0 ? (double)completedCount / totalCount * 100 : 100;
-                
-                // 只有当进度变化超过0.1%时才报告，避免过于频繁的UI更新
-                if (Math.Abs(currentProgress - lastReportedProgress) >= 0.1)
+                _logger.LogInformation("所有资源文件已存在，无需下载");
+                progressCallback?.Invoke(100);
+                return;
+            }
+
+            _logger.LogInformation("需要下载 {Count} 个资源文件", totalCount);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 需要下载 {totalCount} 个资源文件");
+
+            // 5. 多线程并发下载
+            int completedCount = 0;
+            double lastReportedProgress = -1.0;
+            var lockObj = new object();
+            var failedAssets = new List<string>();            // 报告初始进度0%
+            progressCallback?.Invoke(0);
+
+            using var semaphore = new SemaphoreSlim(maxConcurrency);
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(60); // 总超时 60 秒
+
+            var downloadTasks = assetsToDownload.Select(async asset =>
+            {
+                await semaphore.WaitAsync();
+                try
                 {
-                    // 报告整体进度百分比
+                    var (assetName, assetMeta) = asset;
+                    string hash = assetMeta.Hash;
+                    string hashPrefix = hash.Substring(0, 2);
+                    string assetSubDir = Path.Combine(objectsDirectory, hashPrefix);
+                    string assetSavePath = Path.Combine(assetSubDir, hash);
+
+                    // 再次检查是否已存在（可能被其他线程下载了）
+                    if (File.Exists(assetSavePath) && new FileInfo(assetSavePath).Length == assetMeta.Size)
+                    {
+                        lock (lockObj)
+                        {
+                            completedCount++;
+                            UpdateProgressIfNeeded();
+                        }
+                        return;
+                    }
+
+                    // 创建子目录
+                    Directory.CreateDirectory(assetSubDir);
+
+                    // 构建下载URL
+                    string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
+                    string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
+
+                    // 报告当前下载的文件
+                    currentDownloadCallback?.Invoke(hash);
+
+                    // 带重试的下载
+                    int retryCount = 0;
+                    const int maxRetries = 3;
+                    bool downloadSuccess = false;
+
+                    while (retryCount < maxRetries && !downloadSuccess)
+                    {
+                        try
+                        {
+                            await DownloadAssetFileAsync(httpClient, downloadUrl, assetSavePath);
+
+                            // 校验资源大小
+                            var fileInfo = new FileInfo(assetSavePath);
+                            if (fileInfo.Length != assetMeta.Size)
+                            {
+                                File.Delete(assetSavePath);
+                                throw new Exception($"资源大小不匹配: {hash}, 预期: {assetMeta.Size}, 实际: {fileInfo.Length}");
+                            }
+
+                            downloadSuccess = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            retryCount++;
+                            if (retryCount < maxRetries)
+                            {
+                                await Task.Delay(TimeSpan.FromSeconds(retryCount));
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG] 资源下载失败 (已重试 {maxRetries} 次): {hash}, 错误: {ex.Message}");
+                                lock (lockObj)
+                                {
+                                    failedAssets.Add(hash);
+                                }
+                            }
+                        }
+                    }
+
+                    lock (lockObj)
+                    {
+                        completedCount++;
+                        UpdateProgressIfNeeded();
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            void UpdateProgressIfNeeded()
+            {
+                double currentProgress = totalCount > 0 ? (double)completedCount / totalCount * 100 : 100;
+                if (Math.Abs(currentProgress - lastReportedProgress) >= 0.5) // 每0.5%更新一次
+                {
                     progressCallback?.Invoke(currentProgress);
                     lastReportedProgress = currentProgress;
                 }
             }
 
-            // 逐个处理资源项，单线程执行
-            foreach (var assetItem in assetItems)
-            {
-                int retryCount = 0;
-                const int maxRetries = 3;
-                bool downloadSuccess = false;
-                string lastErrorMessage = string.Empty;
-                
-                while (retryCount < maxRetries && !downloadSuccess)
-                {
-                    try
-                    {
-                        var (assetName, assetMeta) = assetItem;
-                        
-                        // 跳过空哈希或已存在的资源
-                        if (string.IsNullOrEmpty(assetMeta.Hash) || IsAssetObjectExists(assetMeta.Hash, objectsDirectory))
-                        {
-                            downloadSuccess = true;
-                            UpdateProgress();
-                            break;
-                        }
-
-                        // 构建资源下载地址和保存路径
-                        string hash = assetMeta.Hash;
-                        string hashPrefix = hash.Substring(0, 2); // 哈希前2位（如 "a7"）
-                        string assetSubDir = Path.Combine(objectsDirectory, hashPrefix); // 资源子目录（如 objects/a7）
-                        string assetSavePath = Path.Combine(assetSubDir, hash); // 资源保存路径（如 objects/a7/完整哈希）
-                        
-                        // 报告当前下载的文件名（哈希值）
-                        currentDownloadCallback?.Invoke(hash);
-
-                        // 创建子目录
-                        if (!Directory.Exists(assetSubDir))
-                        {
-                            Directory.CreateDirectory(assetSubDir);
-                        }
-
-                        // 构建官方资源URL，然后使用当前下载源转换
-                        string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
-                        string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
-                        _logger.LogInformation("正在下载assets对象: {Hash}, 官方URL: {OfficialUrl}, 转换后URL: {DownloadUrl}");
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载assets对象: {hash}, 官方URL: {officialUrl}, 转换后URL: {downloadUrl}");
-                        
-                        // 使用异步下载方法带进度报告
-                        await DownloadFileWithProgress(httpClient, downloadUrl, assetSavePath, assetMeta.Size, assetName, 
-                            (currentBytes, totalBytes) => 
-                            {
-                                // 计算当前文件进度
-                                double fileProgress = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
-                                // 计算整体进度（基于已完成的文件数 + 当前文件的部分进度）
-                                double currentOverallProgress = totalCount > 0 ? 
-                                    ((double)completedCount + (fileProgress / 100)) / totalCount * 100 : 100;
-                                  
-                                // 只有当进度变化超过0.1%时才报告，避免过于频繁的UI更新
-                                if (Math.Abs(currentOverallProgress - lastReportedProgress) >= 0.1)
-                                {
-                                    // 报告整体进度百分比
-                                    progressCallback?.Invoke(currentOverallProgress);
-                                    lastReportedProgress = currentOverallProgress;
-                                }
-                            });
-
-                        // 校验资源大小
-                        if (new FileInfo(assetSavePath).Length != assetMeta.Size)
-                        {
-                            File.Delete(assetSavePath);
-                            throw new Exception($"资源大小不匹配: {hash}, 预期: {assetMeta.Size} 字节, 实际: {new FileInfo(assetSavePath).Length} 字节");
-                        }
-
-                        downloadSuccess = true;
-                        UpdateProgress();
-                    }
-                    catch (Exception ex)
-                    {
-                        retryCount++;
-                        lastErrorMessage = ex.Message;
-                        
-                        // 记录失败日志，不中断整体下载
-                        Console.WriteLine($"下载资源失败 (重试 {retryCount}/{maxRetries}): {assetItem.Key}");
-                        Console.WriteLine($"错误信息: {ex.Message}");
-                        if (ex.InnerException != null)
-                        {
-                            Console.WriteLine($"内部错误: {ex.InnerException.Message}");
-                            Console.WriteLine($"内部错误堆栈: {ex.InnerException.StackTrace}");
-                        }
-                        Console.WriteLine($"错误堆栈: {ex.StackTrace}");
-                        
-                        // 如果不是最后一次重试，等待一段时间后再试
-                        if (retryCount < maxRetries)
-                        {
-                            Console.WriteLine($"等待 {retryCount * 2} 秒后重试...");
-                            await Task.Delay(TimeSpan.FromSeconds(retryCount * 2));
-                        }
-                    }
-                }
-                
-                if (!downloadSuccess)
-                {
-                    UpdateProgress();
-                    Console.WriteLine($"资源下载最终失败 (已重试 {maxRetries} 次): {assetItem.Key}");
-                    Console.WriteLine($"最后一次错误: {lastErrorMessage}");
-                }
-            }
+            await Task.WhenAll(downloadTasks);
 
             // 确保最终报告100%进度
-            if (progressCallback != null)
-            {
-                progressCallback(100);
-            }
+            progressCallback?.Invoke(100);
 
             // 记录完成状态
-            Console.WriteLine($"Asset objects download completed: {completedCount}/{totalCount} processed");
+            if (failedAssets.Count > 0)
+            {
+                _logger.LogWarning("部分资源下载失败: {FailedCount}/{TotalCount}", failedAssets.Count, totalCount);
+            }
+            _logger.LogInformation("Asset objects download completed: {CompletedCount}/{TotalCount}", completedCount, totalCount);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Asset objects download completed: {completedCount}/{totalCount}, 失败: {failedAssets.Count}");
         }
         catch (Exception ex)
         {
@@ -1949,6 +1947,22 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             throw;
         }
+    }
+
+    /// <summary>
+    /// 异步下载单个资源文件（简化版，带超时控制）
+    /// </summary>
+    private async Task DownloadAssetFileAsync(HttpClient httpClient, string url, string savePath)
+    {
+        // 单个文件下载超时 30 秒
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        
+        using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+        using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, FileOptions.Asynchronous);
+        await stream.CopyToAsync(fileStream, cts.Token);
     }
     
     /// <summary>

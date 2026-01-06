@@ -16,6 +16,7 @@ public sealed partial class VersionListPage : Page
     private bool _isExportCancelled = false;
     private ModDownloadDetailViewModel _modDownloadViewModel;
     private bool _isInstallDialogOpen = false; // 用于跟踪安装弹窗状态
+    private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
 
     public VersionListPage()
     {
@@ -33,10 +34,88 @@ public sealed partial class VersionListPage : Page
             viewModel.ExportModpackRequested += OnExportModpackRequested;
             // 订阅ResourceDirectories集合变化事件
             viewModel.ResourceDirectories.CollectionChanged += ResourceDirectories_CollectionChanged;
+            // 订阅版本补全事件
+            viewModel.CompleteVersionRequested += OnCompleteVersionRequested;
+            viewModel.CompleteVersionProgressUpdated += OnCompleteVersionProgressUpdated;
+            viewModel.CompleteVersionCompleted += OnCompleteVersionCompleted;
         }
         
         // 订阅ModDownloadDetailViewModel的属性变化事件
         _modDownloadViewModel.PropertyChanged += ModDownloadViewModel_PropertyChanged;
+    }
+    
+    /// <summary>
+    /// 处理版本补全请求事件，打开版本补全弹窗
+    /// </summary>
+    private async void OnCompleteVersionRequested(object? sender, VersionListViewModel.VersionInfoItem e)
+    {
+        _isCompleteVersionDialogOpen = true;
+        
+        // 初始化弹窗内容
+        CompleteVersionNameText.Text = e.Name;
+        CompleteVersionStageText.Text = "正在检查依赖...";
+        CompleteVersionCurrentFileText.Text = "";
+        CompleteVersionProgressBar.Value = 0;
+        CompleteVersionProgressText.Text = "0%";
+        
+        // 设置弹窗的 XamlRoot
+        CompleteVersionDialog.XamlRoot = this.XamlRoot;
+        
+        // 显示弹窗（非阻塞）
+        _ = CompleteVersionDialog.ShowAsync();
+    }
+    
+    /// <summary>
+    /// 处理版本补全进度更新事件
+    /// </summary>
+    private void OnCompleteVersionProgressUpdated(object? sender, (double Progress, string Stage, string CurrentFile) e)
+    {
+        if (!_isCompleteVersionDialogOpen) return;
+        
+        // 在 UI 线程更新
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (e.Progress >= 0)
+            {
+                CompleteVersionProgressBar.Value = e.Progress;
+                CompleteVersionProgressText.Text = $"{e.Progress:F1}%";
+            }
+            
+            if (!string.IsNullOrEmpty(e.Stage))
+            {
+                CompleteVersionStageText.Text = e.Stage;
+            }
+            
+            if (!string.IsNullOrEmpty(e.CurrentFile))
+            {
+                // 只显示文件名的前 8 位（hash）
+                string displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
+                CompleteVersionCurrentFileText.Text = $"当前: {displayFile}";
+            }
+        });
+    }
+    
+    /// <summary>
+    /// 处理版本补全完成事件
+    /// </summary>
+    private void OnCompleteVersionCompleted(object? sender, (bool Success, string Message) e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (e.Success)
+            {
+                CompleteVersionStageText.Text = "补全完成！";
+                CompleteVersionProgressBar.Value = 100;
+                CompleteVersionProgressText.Text = "100%";
+                CompleteVersionCurrentFileText.Text = "";
+            }
+            else
+            {
+                CompleteVersionStageText.Text = e.Message;
+            }
+            
+            _isCompleteVersionDialogOpen = false;
+        });
     }
     
     /// <summary>

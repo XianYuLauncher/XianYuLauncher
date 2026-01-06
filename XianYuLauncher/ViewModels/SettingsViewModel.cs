@@ -324,6 +324,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string DownloadDependenciesKey = "DownloadDependencies";
     
     /// <summary>
+    /// 下载线程数设置
+    /// </summary>
+    [ObservableProperty]
+    private int _downloadThreadCount = 32;
+    
+    /// <summary>
+    /// 下载线程数设置键
+    /// </summary>
+    private const string DownloadThreadCountKey = "DownloadThreadCount";
+    
+    /// <summary>
     /// 实时日志设置
     /// </summary>
     [ObservableProperty]
@@ -474,6 +485,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadBackgroundImagePathAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
+        // 加载下载线程数设置
+        LoadDownloadThreadCountAsync().ConfigureAwait(false);
         // 加载实时日志设置
         LoadEnableRealTimeLogsAsync().ConfigureAwait(false);
         // 加载字体设置
@@ -530,6 +543,27 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnDownloadDependenciesChanged(bool value)
     {
         _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载下载线程数设置
+    /// </summary>
+    private async Task LoadDownloadThreadCountAsync()
+    {
+        // 读取下载线程数设置，如果不存在则使用默认值32
+        var value = await _localSettingsService.ReadSettingAsync<int?>(DownloadThreadCountKey);
+        DownloadThreadCount = value ?? 32;
+    }
+    
+    /// <summary>
+    /// 当下载线程数设置变化时保存
+    /// </summary>
+    partial void OnDownloadThreadCountChanged(int value)
+    {
+        // 限制范围在 1-128 之间
+        if (value < 1) value = 1;
+        if (value > 128) value = 128;
+        _localSettingsService.SaveSettingAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
