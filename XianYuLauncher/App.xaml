@@ -21,6 +21,9 @@
             <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:UriToImageSourceConverter x:Key="UriToImageSourceConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:BoolToVisibilityInverseConverter x:Key="BoolToVisibilityInverseConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:DateTimeToStringConverter x:Key="DateTimeToStringConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             
             <!-- 轮询内容模板，用于显示轮询结果 -->
             <DataTemplate x:Key="PollingContentTemplate">

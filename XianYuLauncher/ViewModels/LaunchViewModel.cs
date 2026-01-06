@@ -22,6 +22,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Services;
 using System.Collections.Specialized;
 using System.Text;
 
@@ -723,6 +724,38 @@ public partial class LaunchViewModel : ObservableRecipient
     private bool _isLaunchSuccessInfoBarOpen = false;
     
     /// <summary>
+    /// Minecraft 最新新闻标题
+    /// </summary>
+    [ObservableProperty]
+    private string _latestMinecraftNews = "加载中...";
+    
+    /// <summary>
+    /// 最新新闻的完整数据（用于点击跳转）
+    /// </summary>
+    private MinecraftNewsEntry? _latestNewsEntry;
+    
+    /// <summary>
+    /// 推荐 Mod 的完整数据（用于点击跳转）
+    /// </summary>
+    private ModrinthRandomProject? _recommendedMod;
+    
+    /// <summary>
+    /// 推荐 Mod 标题
+    /// </summary>
+    [ObservableProperty]
+    private string _recommendedModTitle = "加载中...";
+    
+    /// <summary>
+    /// 新闻服务
+    /// </summary>
+    private MinecraftNewsService? _newsService;
+    
+    /// <summary>
+    /// Modrinth 推荐服务
+    /// </summary>
+    private ModrinthRecommendationService? _recommendationService;
+    
+    /// <summary>
     /// 当前游戏进程
     /// </summary>
     private Process? _currentGameProcess = null;
@@ -796,6 +829,87 @@ public partial class LaunchViewModel : ObservableRecipient
         await LoadInstalledVersionsAsync();
         LoadProfiles();
         ShowMinecraftPathInfo();
+        await LoadLatestNewsAsync();
+        await LoadRecommendedModAsync();
+    }
+    
+    /// <summary>
+    /// 加载最新 Minecraft 新闻
+    /// </summary>
+    private async Task LoadLatestNewsAsync()
+    {
+        try
+        {
+            _newsService ??= new MinecraftNewsService(_fileService);
+            var newsData = await _newsService.GetLatestNewsAsync();
+            
+            if (newsData?.Entries != null && newsData.Entries.Count > 0)
+            {
+                _latestNewsEntry = newsData.Entries[0];
+                LatestMinecraftNews = _latestNewsEntry.Title;
+            }
+            else
+            {
+                LatestMinecraftNews = "暂无新闻";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[新闻加载] 失败: {ex.Message}");
+            LatestMinecraftNews = "加载失败";
+        }
+    }
+    
+    /// <summary>
+    /// 打开最新新闻详情
+    /// </summary>
+    [RelayCommand]
+    private void OpenLatestNews()
+    {
+        if (_latestNewsEntry != null)
+        {
+            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, _latestNewsEntry);
+        }
+    }
+    
+    /// <summary>
+    /// 加载推荐 Mod
+    /// </summary>
+    private async Task LoadRecommendedModAsync()
+    {
+        try
+        {
+            _recommendationService ??= new ModrinthRecommendationService(_fileService);
+            var project = await _recommendationService.GetRandomProjectAsync();
+            
+            if (project != null)
+            {
+                _recommendedMod = project;
+                RecommendedModTitle = project.Title;
+            }
+            else
+            {
+                RecommendedModTitle = "暂无推荐";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Mod推荐加载] 失败: {ex.Message}");
+            RecommendedModTitle = "加载失败";
+        }
+    }
+    
+    /// <summary>
+    /// 打开推荐 Mod 详情
+    /// </summary>
+    [RelayCommand]
+    private void OpenRecommendedMod()
+    {
+        if (_recommendedMod != null)
+        {
+            // 导航到 ModDownloadDetailPage，传递项目 ID
+            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, _recommendedMod.Id);
+        }
     }
 
     /// <summary>
