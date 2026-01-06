@@ -25,6 +25,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     // 版本下载相关属性和命令
     [ObservableProperty]
     private string _searchText = string.Empty;
+    
+    [ObservableProperty]
+    private string _selectedVersionType = "release";
+    
+    private const string VersionTypeFilterKey = "VersionTypeFilter";
 
     [ObservableProperty]
     private ObservableCollection<Core.Models.VersionEntry> _versions = new();
@@ -50,24 +55,41 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         UpdateFilteredVersions();
     }
     
+    // 监听SelectedVersionType变化，更新过滤结果
+    partial void OnSelectedVersionTypeChanged(string value)
+    {
+        UpdateFilteredVersions();
+        // 保存用户选择
+        _ = _localSettingsService.SaveSettingAsync(VersionTypeFilterKey, value);
+    }
+    
     /// <summary>
     /// 更新过滤后的版本列表
     /// </summary>
     public void UpdateFilteredVersions()
     {
         // 1. 使用临时列表存储过滤结果
-        List<Core.Models.VersionEntry> tempList;
+        List<Core.Models.VersionEntry> tempList = Versions.ToList();
         
+        // 2. 按类型筛选
+        if (SelectedVersionType != "all")
+        {
+            tempList = SelectedVersionType switch
+            {
+                "release" => tempList.Where(v => v.Type == "release").ToList(),
+                "snapshot" => tempList.Where(v => v.Type == "snapshot").ToList(),
+                "old" => tempList.Where(v => v.Type == "old_beta" || v.Type == "old_alpha").ToList(),
+                _ => tempList
+            };
+        }
+        
+        // 3. 按搜索文本筛选
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
-            tempList = Versions.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-        else
-        {
-            tempList = Versions.ToList();
+            tempList = tempList.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase)).ToList();
         }
         
-        // 2. 使用一次性替换集合的方式更新FilteredVersions，这是性能优化的关键
+        // 4. 使用一次性替换集合的方式更新FilteredVersions，这是性能优化的关键
         // 直接替换集合可以避免Clear()和多次Add()操作导致的频繁UI更新
         FilteredVersions = new ObservableCollection<Core.Models.VersionEntry>(tempList);
     }
@@ -262,8 +284,30 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _fileService = fileService;
         _modrinthCacheService = modrinthCacheService;
         
+        // 加载保存的版本类型筛选
+        LoadVersionTypeFilter();
+        
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
+    }
+    
+    /// <summary>
+    /// 加载保存的版本类型筛选
+    /// </summary>
+    private async void LoadVersionTypeFilter()
+    {
+        try
+        {
+            var savedFilter = await _localSettingsService.ReadSettingAsync<string>(VersionTypeFilterKey);
+            if (!string.IsNullOrEmpty(savedFilter))
+            {
+                SelectedVersionType = savedFilter;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载版本类型筛选失败: {ex.Message}");
+        }
     }
     
     /// <summary>

@@ -1010,12 +1010,43 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             Console.WriteLine("刷新Java版本列表...");
-            // 清空当前列表
-            JavaVersions.Clear();
-            Console.WriteLine("Java版本列表已清空");
+            
+            // 保存当前列表（包含用户手动添加的）
+            var existingVersions = JavaVersions.ToList();
+            Console.WriteLine($"当前列表中有 {existingVersions.Count} 个Java版本");
+            
+            // 创建临时列表用于扫描系统Java
+            var tempList = JavaVersions;
+            JavaVersions = new ObservableCollection<JavaVersionInfo>();
             
             // 扫描系统中的Java版本
             await ScanSystemJavaVersionsAsync();
+            
+            var scannedVersions = JavaVersions.ToList();
+            Console.WriteLine($"系统扫描到 {scannedVersions.Count} 个Java版本");
+            
+            // 恢复原列表
+            JavaVersions = tempList;
+            JavaVersions.Clear();
+            
+            // 智能合并：先添加扫描到的系统Java
+            foreach (var scanned in scannedVersions)
+            {
+                JavaVersions.Add(scanned);
+            }
+            
+            // 再添加用户手动添加的Java（路径不重复的）
+            foreach (var existing in existingVersions)
+            {
+                // 检查路径是否已存在于扫描结果中
+                if (!scannedVersions.Any(s => string.Equals(s.Path, existing.Path, StringComparison.OrdinalIgnoreCase)))
+                {
+                    JavaVersions.Add(existing);
+                    Console.WriteLine($"保留用户手动添加的Java: {existing.Path}");
+                }
+            }
+            
+            Console.WriteLine($"合并后列表中有 {JavaVersions.Count} 个Java版本");
             
             // 保存更新后的列表
             await SaveJavaVersionsAsync();
@@ -1027,6 +1058,29 @@ public partial class SettingsViewModel : ObservableRecipient
         finally
         {
             IsLoadingJavaVersions = false;
+        }
+    }
+    
+    /// <summary>
+    /// 清除所有Java版本
+    /// </summary>
+    [RelayCommand]
+    private async Task ClearJavaVersionsAsync()
+    {
+        try
+        {
+            Console.WriteLine("清除所有Java版本...");
+            JavaVersions.Clear();
+            SelectedJavaVersion = null;
+            
+            // 保存空列表
+            await SaveJavaVersionsAsync();
+            
+            Console.WriteLine("Java版本列表已清空");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"清除Java版本列表失败: {ex.Message}");
         }
     }
     

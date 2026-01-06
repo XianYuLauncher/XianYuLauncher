@@ -463,6 +463,21 @@
   <data name="ResourceDownloadPage_VersionSearchBox.PlaceholderText" xml:space="preserve">
     <value>Search versions...</value>
   </data>
+  <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="ResourceDownloadPage_AllVersionTypes.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="ResourceDownloadPage_ReleaseVersionType.Content" xml:space="preserve">
+    <value>Release</value>
+  </data>
+  <data name="ResourceDownloadPage_SnapshotVersionType.Content" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="ResourceDownloadPage_OldVersionType.Content" xml:space="preserve">
+    <value>Old Versions</value>
+  </data>
   <data name="ResourceDownloadPage_LoaderComboBox.Header" xml:space="preserve">
     <value>Loader</value>
   </data>

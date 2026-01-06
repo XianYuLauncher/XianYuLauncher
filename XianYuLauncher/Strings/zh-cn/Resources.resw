@@ -628,6 +628,21 @@
   <data name="ResourceDownloadPage_VersionSearchBox.PlaceholderText" xml:space="preserve">
     <value>搜索版本...</value>
   </data>
+  <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
+    <value>筛选</value>
+  </data>
+  <data name="ResourceDownloadPage_AllVersionTypes.Content" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="ResourceDownloadPage_ReleaseVersionType.Content" xml:space="preserve">
+    <value>正式版</value>
+  </data>
+  <data name="ResourceDownloadPage_SnapshotVersionType.Content" xml:space="preserve">
+    <value>快照版</value>
+  </data>
+  <data name="ResourceDownloadPage_OldVersionType.Content" xml:space="preserve">
+    <value>旧版</value>
+  </data>
   <data name="ResourceDownloadPage_LoaderComboBox.Header" xml:space="preserve">
     <value>加载器</value>
   </data>
