@@ -554,7 +554,49 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadDownloadSourceAsync()
     {
-        DownloadSource = await _localSettingsService.ReadSettingAsync<DownloadSourceType>(DownloadSourceKey);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] === 开始加载下载源设置 ===");
+        
+        // 检查是否有保存的设置
+        var savedValue = await _localSettingsService.ReadSettingAsync<string>(DownloadSourceKey);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 读取到的保存值: '{savedValue ?? "null"}'");
+        
+        if (string.IsNullOrEmpty(savedValue))
+        {
+            // 首次启动，根据地区设置默认值
+            var defaultSource = GetDefaultDownloadSourceByRegion();
+            DownloadSource = defaultSource;
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源首次初始化，地区检测默认值: {defaultSource}");
+        }
+        else
+        {
+            // 已有保存的设置，使用保存的值
+            if (Enum.TryParse<DownloadSourceType>(savedValue, out var source))
+            {
+                DownloadSource = source;
+            }
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源加载已保存设置: {DownloadSource}");
+        }
+    }
+    
+    /// <summary>
+    /// 根据地区获取默认下载源
+    /// </summary>
+    private DownloadSourceType GetDefaultDownloadSourceByRegion()
+    {
+        var region = System.Globalization.RegionInfo.CurrentRegion;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 地区检测 - Region: {region.Name}, Culture: {culture.Name}");
+        
+        // 中国大陆用户默认使用BMCLAPI
+        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，默认使用BMCLAPI");
+            return DownloadSourceType.BMCLAPI;
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，默认使用官方源");
+        return DownloadSourceType.Official;
     }
     
     /// <summary>
@@ -562,7 +604,9 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnDownloadSourceChanged(DownloadSourceType value)
     {
-        _localSettingsService.SaveSettingAsync(DownloadSourceKey, value).ConfigureAwait(false);
+        // 保存为字符串，方便后续判断是否有保存过
+        _localSettingsService.SaveSettingAsync(DownloadSourceKey, value.ToString()).ConfigureAwait(false);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源已保存: {value}");
     }
     
     /// <summary>
@@ -570,9 +614,52 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadModrinthDownloadSourceAsync()
     {
-        ModrinthDownloadSource = await _localSettingsService.ReadSettingAsync<ModrinthDownloadSourceType>(ModrinthDownloadSourceKey);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] === 开始加载Modrinth下载源设置 ===");
+        
+        // 检查是否有保存的设置
+        var savedValue = await _localSettingsService.ReadSettingAsync<string>(ModrinthDownloadSourceKey);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 读取到的保存值: '{savedValue ?? "null"}'");
+        
+        if (string.IsNullOrEmpty(savedValue))
+        {
+            // 首次启动，根据地区设置默认值
+            var defaultSource = GetDefaultModrinthDownloadSourceByRegion();
+            ModrinthDownloadSource = defaultSource;
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源首次初始化，地区检测默认值: {defaultSource}");
+        }
+        else
+        {
+            // 已有保存的设置，使用保存的值
+            if (Enum.TryParse<ModrinthDownloadSourceType>(savedValue, out var source))
+            {
+                ModrinthDownloadSource = source;
+            }
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源加载已保存设置: {ModrinthDownloadSource}");
+        }
+        
         // 同步到下载源工厂
         UpdateModrinthDownloadSourceFactory(ModrinthDownloadSource);
+    }
+    
+    /// <summary>
+    /// 根据地区获取默认Modrinth下载源
+    /// </summary>
+    private ModrinthDownloadSourceType GetDefaultModrinthDownloadSourceByRegion()
+    {
+        var region = System.Globalization.RegionInfo.CurrentRegion;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth地区检测 - Region: {region.Name}, Culture: {culture.Name}");
+        
+        // 中国大陆用户默认使用MCIM镜像
+        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，Modrinth默认使用MCIM镜像");
+            return ModrinthDownloadSourceType.MCIM;
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，Modrinth默认使用官方源");
+        return ModrinthDownloadSourceType.Official;
     }
     
     /// <summary>
@@ -580,7 +667,9 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnModrinthDownloadSourceChanged(ModrinthDownloadSourceType value)
     {
-        _localSettingsService.SaveSettingAsync(ModrinthDownloadSourceKey, value).ConfigureAwait(false);
+        // 保存为字符串，方便后续判断是否有保存过
+        _localSettingsService.SaveSettingAsync(ModrinthDownloadSourceKey, value.ToString()).ConfigureAwait(false);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源已保存: {value}");
         // 同步到下载源工厂
         UpdateModrinthDownloadSourceFactory(value);
     }
