@@ -206,11 +206,6 @@ namespace XianYuLauncher.ViewModels
         private const int MaxLogLines = 10000; // 最大日志行数限制，避免内存占用过大
         private const int LogTrimAmount = 2000; // 超过限制时，每次删除的行数
         
-        // OpenAI API 配置参数（需要用户填写）
-        private const string OpenAI_ApiKey = "***REMOVED***"; // 替换为你的OpenAI API密钥
-        private const string OpenAI_Model = "Qwen/Qwen3-14B"; // 使用的模型
-        private const string OpenAI_BaseUrl = "https://api.siliconflow.cn/v1/chat/completions"; // API基础URL
-        
         // 用于存储当前AI分析的取消令牌
         private System.Threading.CancellationTokenSource _aiAnalysisCts = null;
 
@@ -292,9 +287,24 @@ namespace XianYuLauncher.ViewModels
             // 创建HTTP客户端
             using var client = new HttpClient();
             
+            // 从配置读取AI设置
+            var aiConfig = XianYuLauncher.Core.Services.SecretsService.Config.AiAnalysis;
+            var apiKey = aiConfig.ApiKey;
+            var model = aiConfig.Model;
+            var baseUrl = aiConfig.BaseUrl;
+            
+            // 检查API Key是否配置
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                System.Diagnostics.Debug.WriteLine("[AI分析] 错误: API Key未配置");
+                AiAnalysisResult = "AI分析功能未配置，请在 secrets.json 中配置 AiAnalysis.ApiKey";
+                IsAiAnalyzing = false;
+                return;
+            }
+            
             // 设置请求头
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", OpenAI_ApiKey);
-            System.Diagnostics.Debug.WriteLine("AI分析: HTTP客户端配置完成");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            System.Diagnostics.Debug.WriteLine("[AI分析] HTTP客户端配置完成");
             
             // 获取用户偏好语言
             var userLanguage = _languageSelectorService.Language;
@@ -303,7 +313,7 @@ namespace XianYuLauncher.ViewModels
             // 构建请求体，添加语言适配
             var requestBody = new
             {
-                model = OpenAI_Model,
+                model = model,
                 messages = new[]
                 {
                     new { role = "system", content = $"你是一个Minecraft崩溃分析专家，隶属于XianYuLauncher中的错误分析助手，擅长分析游戏崩溃日志并提供解决方案。请分析以下崩溃日志，提供详细的崩溃原因和修复建议。注:仅分析与崩溃直接相关的内容，不相关的警告信息无需分析。记得口语化，避免使用专业术语。用户的偏好语言为{languageName}，请使用此语言进行对话。" },
@@ -313,17 +323,16 @@ namespace XianYuLauncher.ViewModels
                 temperature = 0.7,
                 max_tokens = 1000
             };
-            System.Diagnostics.Debug.WriteLine($"AI分析: 使用模型: {OpenAI_Model}");
+            System.Diagnostics.Debug.WriteLine($"[AI分析] 使用模型: {model}");
             
             // 发送请求
-            var request = new HttpRequestMessage(HttpMethod.Post, OpenAI_BaseUrl)
+            var request = new HttpRequestMessage(HttpMethod.Post, baseUrl)
             {
                 Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
             };
             
-            System.Diagnostics.Debug.WriteLine($"AI分析: 发送请求到: {OpenAI_BaseUrl}");
-            System.Diagnostics.Debug.WriteLine($"AI分析: 请求体: {JsonSerializer.Serialize(requestBody)}");
-            System.Diagnostics.Debug.WriteLine("AI分析: 正在等待API响应...");
+            System.Diagnostics.Debug.WriteLine($"[AI分析] 发送请求到: {baseUrl}");
+            System.Diagnostics.Debug.WriteLine("[AI分析] 正在等待API响应...");
             
             // 设置请求超时
             client.Timeout = TimeSpan.FromSeconds(30);
