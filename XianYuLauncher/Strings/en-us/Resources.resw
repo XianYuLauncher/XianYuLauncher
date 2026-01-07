@@ -270,6 +270,18 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>Selecting a version list source can affect the speed and stability of game version list retrieval</value>
   </data>
+  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
+    <value>Modrinth Download Source</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
+    <value>Official</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM Mirror</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
+    <value>Select download source for Modrinth resources (Mods, Resource Packs, etc.). MCIM mirror can speed up downloads in China</value>
+  </data>
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>Download Settings</value>
   </data>

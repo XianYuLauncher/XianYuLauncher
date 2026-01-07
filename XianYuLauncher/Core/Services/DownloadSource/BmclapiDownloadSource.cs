@@ -11,6 +11,11 @@ public class BmclapiDownloadSource : IDownloadSource
     public string Name => "BMCLAPI";
     
     /// <summary>
+    /// 下载源标识键
+    /// </summary>
+    public string Key => "bmclapi";
+    
+    /// <summary>
     /// 获取Minecraft版本清单URL
     /// </summary>
     /// <returns>BMCLAPI版本清单URL</returns>
@@ -18,6 +23,40 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         return "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json";
     }
+    
+    #region Modrinth API
+    
+    /// <summary>
+    /// 获取Modrinth API基础URL（BMCLAPI暂不支持Modrinth镜像，使用官方源）
+    /// </summary>
+    public string GetModrinthApiBaseUrl() => "https://api.modrinth.com";
+    
+    /// <summary>
+    /// 获取Modrinth CDN基础URL（BMCLAPI暂不支持Modrinth镜像，使用官方源）
+    /// </summary>
+    public string GetModrinthCdnBaseUrl() => "https://cdn.modrinth.com";
+    
+    /// <summary>
+    /// 转换Modrinth API URL（BMCLAPI暂不支持，不转换）
+    /// </summary>
+    public string TransformModrinthApiUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 转换Modrinth CDN URL（BMCLAPI暂不支持，不转换）
+    /// </summary>
+    public string TransformModrinthCdnUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 获取Modrinth请求的User-Agent（BMCLAPI不支持Modrinth镜像，不需要特殊UA）
+    /// </summary>
+    public string? GetModrinthUserAgent() => null;
+    
+    /// <summary>
+    /// 是否需要为Modrinth请求设置特殊User-Agent（BMCLAPI不需要）
+    /// </summary>
+    public bool RequiresModrinthUserAgent => false;
+    
+    #endregion
     
     /// <summary>
     /// 获取指定版本的详细信息URL

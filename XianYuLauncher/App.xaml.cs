@@ -143,6 +143,13 @@ public partial class App : Application
             
             // Modrinth Service
             services.AddHttpClient<ModrinthService>();
+            services.AddSingleton<ModrinthService>(sp => 
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(ModrinthService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                return new ModrinthService(httpClient, downloadSourceFactory);
+            });
             
             // Modrinth Cache Service
             services.AddSingleton<ModrinthCacheService>();

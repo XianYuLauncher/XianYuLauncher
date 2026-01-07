@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Services;
 
@@ -16,17 +18,55 @@ public class ModrinthRecommendationService
 {
     private readonly IFileService _fileService;
     private readonly HttpClient _httpClient;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     
-    private const string ApiUrl = "https://api.modrinth.com/v2/projects_random?count=1";
+    private const string OfficialApiUrl = "https://api.modrinth.com/v2/projects_random?count=1";
     private const string CacheFileName = "modrinth_recommendation_cache.json";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(1);
     
-    public ModrinthRecommendationService(IFileService fileService)
+    public ModrinthRecommendationService(IFileService fileService, DownloadSourceFactory downloadSourceFactory = null)
     {
         _fileService = fileService;
+        _downloadSourceFactory = downloadSourceFactory ?? new DownloadSourceFactory();
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        // 不在构造函数中设置固定UA，而是在请求时动态设置
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
+    }
+    
+    /// <summary>
+    /// 获取转换后的 API URL
+    /// </summary>
+    private string GetApiUrl()
+    {
+        var source = _downloadSourceFactory.GetModrinthSource();
+        return source.TransformModrinthApiUrl(OfficialApiUrl);
+    }
+    
+    /// <summary>
+    /// 获取当前下载源对应的User-Agent
+    /// </summary>
+    private string GetUserAgent()
+    {
+        var source = _downloadSourceFactory.GetModrinthSource();
+        if (source.RequiresModrinthUserAgent)
+        {
+            var ua = source.GetModrinthUserAgent();
+            if (!string.IsNullOrEmpty(ua))
+            {
+                return ua;
+            }
+        }
+        return VersionHelper.GetBmclapiUserAgent();
+    }
+    
+    /// <summary>
+    /// 创建带有正确User-Agent的HttpRequestMessage
+    /// </summary>
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add("User-Agent", GetUserAgent());
+        return request;
     }
     
     /// <summary>
@@ -74,8 +114,15 @@ public class ModrinthRecommendationService
         // 从 API 获取
         try
         {
-            System.Diagnostics.Debug.WriteLine("[Modrinth推荐] 正在从 API 获取...");
-            var response = await _httpClient.GetStringAsync(ApiUrl);
+            var apiUrl = GetApiUrl();
+            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 正在从 API 获取: {apiUrl}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] User-Agent: {GetUserAgent()}");
+            
+            // 使用CreateRequest确保正确的User-Agent
+            using var request = CreateRequest(HttpMethod.Get, apiUrl);
+            var httpResponse = await _httpClient.SendAsync(request);
+            httpResponse.EnsureSuccessStatusCode();
+            var response = await httpResponse.Content.ReadAsStringAsync();
             var projects = JsonConvert.DeserializeObject<List<ModrinthRandomProject>>(response);
             
             if (projects != null && projects.Count > 0)

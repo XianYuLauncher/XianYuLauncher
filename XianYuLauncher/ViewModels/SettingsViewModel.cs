@@ -69,6 +69,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string MinecraftPathKey = "MinecraftPath";
     private const string DownloadSourceKey = "DownloadSource";
     private const string VersionListSourceKey = "VersionListSource";
+    private const string ModrinthDownloadSourceKey = "ModrinthDownloadSource";
     
     /// <summary>
     /// 下载源枚举
@@ -86,15 +87,44 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// Modrinth下载源枚举
+    /// </summary>
+    public enum ModrinthDownloadSourceType
+    {
+        /// <summary>
+        /// 官方源
+        /// </summary>
+        Official,
+        /// <summary>
+        /// MCIM镜像源
+        /// </summary>
+        MCIM
+    }
+    
+    /// <summary>
     /// 下载源
     /// </summary>
     [ObservableProperty]
     private DownloadSourceType _downloadSource = DownloadSourceType.Official;
     
     /// <summary>
+    /// Modrinth下载源
+    /// </summary>
+    [ObservableProperty]
+    private ModrinthDownloadSourceType _modrinthDownloadSource = ModrinthDownloadSourceType.Official;
+    
+    /// <summary>
     /// 下载源选择命令
     /// </summary>
     public ICommand SwitchDownloadSourceCommand
+    {
+        get;
+    }
+    
+    /// <summary>
+    /// Modrinth下载源选择命令
+    /// </summary>
+    public ICommand SwitchModrinthDownloadSourceCommand
     {
         get;
     }
@@ -428,6 +458,15 @@ public partial class SettingsViewModel : ObservableRecipient
                 }
             });
         
+        SwitchModrinthDownloadSourceCommand = new RelayCommand<string>(
+            (param) =>
+            {
+                if (Enum.TryParse<ModrinthDownloadSourceType>(param, out var source) && ModrinthDownloadSource != source)
+                {
+                    ModrinthDownloadSource = source;
+                }
+            });
+        
         SwitchVersionListSourceCommand = new RelayCommand<string>(
             (param) =>
             {
@@ -488,6 +527,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadMinecraftPathAsync().ConfigureAwait(false);
         // 加载下载源设置
         LoadDownloadSourceAsync().ConfigureAwait(false);
+        // 加载Modrinth下载源设置
+        LoadModrinthDownloadSourceAsync().ConfigureAwait(false);
         // 加载版本列表源设置
         LoadVersionListSourceAsync().ConfigureAwait(false);
         // 加载材质类型设置
@@ -522,6 +563,44 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnDownloadSourceChanged(DownloadSourceType value)
     {
         _localSettingsService.SaveSettingAsync(DownloadSourceKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载Modrinth下载源设置
+    /// </summary>
+    private async Task LoadModrinthDownloadSourceAsync()
+    {
+        ModrinthDownloadSource = await _localSettingsService.ReadSettingAsync<ModrinthDownloadSourceType>(ModrinthDownloadSourceKey);
+        // 同步到下载源工厂
+        UpdateModrinthDownloadSourceFactory(ModrinthDownloadSource);
+    }
+    
+    /// <summary>
+    /// 当Modrinth下载源变化时保存
+    /// </summary>
+    partial void OnModrinthDownloadSourceChanged(ModrinthDownloadSourceType value)
+    {
+        _localSettingsService.SaveSettingAsync(ModrinthDownloadSourceKey, value).ConfigureAwait(false);
+        // 同步到下载源工厂
+        UpdateModrinthDownloadSourceFactory(value);
+    }
+    
+    /// <summary>
+    /// 更新下载源工厂中的Modrinth下载源设置
+    /// </summary>
+    private void UpdateModrinthDownloadSourceFactory(ModrinthDownloadSourceType sourceType)
+    {
+        var factory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
+        if (factory != null)
+        {
+            string sourceKey = sourceType switch
+            {
+                ModrinthDownloadSourceType.MCIM => "mcim",
+                _ => "official"
+            };
+            factory.SetModrinthSource(sourceKey);
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源已更新为: {sourceKey}");
+        }
     }
     
     /// <summary>

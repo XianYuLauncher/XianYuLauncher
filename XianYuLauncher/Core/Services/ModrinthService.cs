@@ -7,7 +7,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -17,13 +19,95 @@ namespace XianYuLauncher.Core.Services;
 public class ModrinthService
 {
     private readonly HttpClient _httpClient;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+    
+    /// <summary>
+    /// Modrinth官方API基础URL
+    /// </summary>
+    private const string OfficialApiBaseUrl = "https://api.modrinth.com";
+    
+    /// <summary>
+    /// Modrinth官方CDN基础URL
+    /// </summary>
+    private const string OfficialCdnBaseUrl = "https://cdn.modrinth.com";
+    
+    /// <summary>
+    /// 默认User-Agent（用于官方Modrinth API）
+    /// </summary>
+    private const string DefaultUserAgent = "XianYuLauncher";
 
-    public ModrinthService(HttpClient httpClient)
+    public ModrinthService(HttpClient httpClient, DownloadSourceFactory downloadSourceFactory = null)
     {
         _httpClient = httpClient;
-        // 设置默认请求头
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _downloadSourceFactory = downloadSourceFactory ?? new DownloadSourceFactory();
+        // 不在构造函数中设置默认UA，而是在每次请求时动态设置
     }
+    
+    /// <summary>
+    /// 获取当前Modrinth下载源
+    /// </summary>
+    private IDownloadSource GetModrinthSource() => _downloadSourceFactory.GetModrinthSource();
+    
+    /// <summary>
+    /// 获取当前下载源对应的User-Agent
+    /// </summary>
+    private string GetUserAgent()
+    {
+        var source = GetModrinthSource();
+        if (source.RequiresModrinthUserAgent)
+        {
+            var ua = source.GetModrinthUserAgent();
+            if (!string.IsNullOrEmpty(ua))
+            {
+                return ua;
+            }
+        }
+        // 默认使用带版本号的UA
+        return VersionHelper.GetBmclapiUserAgent();
+    }
+    
+    /// <summary>
+    /// 创建带有正确User-Agent的HttpRequestMessage
+    /// </summary>
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add("User-Agent", GetUserAgent());
+        return request;
+    }
+    
+    /// <summary>
+    /// 转换Modrinth API URL到当前下载源
+    /// </summary>
+    private string TransformApiUrl(string originalUrl)
+    {
+        var source = GetModrinthSource();
+        var transformedUrl = source.TransformModrinthApiUrl(originalUrl);
+        if (transformedUrl != originalUrl)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] API URL转换: {originalUrl} -> {transformedUrl}");
+        }
+        return transformedUrl;
+    }
+    
+    /// <summary>
+    /// 转换Modrinth CDN URL到当前下载源
+    /// </summary>
+    private string TransformCdnUrl(string originalUrl)
+    {
+        var source = GetModrinthSource();
+        var transformedUrl = source.TransformModrinthCdnUrl(originalUrl);
+        if (transformedUrl != originalUrl)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] CDN URL转换: {originalUrl} -> {transformedUrl}");
+        }
+        return transformedUrl;
+    }
+    
+    /// <summary>
+    /// 获取Modrinth API基础URL
+    /// </summary>
+    private string GetApiBaseUrl() => GetModrinthSource().GetModrinthApiBaseUrl();
 
     /// <summary>
     /// 搜索Mod或资源包
@@ -60,19 +144,24 @@ public class ModrinthService
             // 将facets转换为JSON字符串
             string facetsJson = JsonSerializer.Serialize(allFacets);
             
-            // 构建API URL
-            url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}";
+            // 构建API URL（使用官方URL，然后转换）
+            url = $"{OfficialApiBaseUrl}/v2/search?query={Uri.EscapeDataString(query)}";
             url += $"&facets={Uri.EscapeDataString(facetsJson)}";
             
             url += $"&index={Uri.EscapeDataString(index)}";
             url += $"&offset={offset}";
             url += $"&limit={limit}";
+            
+            // 转换为当前下载源URL
+            url = TransformApiUrl(url);
 
             // 输出调试信息，显示完整请求URL
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
+            System.Diagnostics.Debug.WriteLine($"Modrinth API User-Agent: {GetUserAgent()}");
 
-            // 发送HTTP请求
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
+            // 发送HTTP请求（使用CreateRequest确保正确的User-Agent）
+            using var request = CreateRequest(HttpMethod.Get, url);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
             
             // 获取响应内容
             string json = await response.Content.ReadAsStringAsync();
@@ -115,14 +204,18 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL
-            url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}";
+            // 构建请求URL（使用官方URL，然后转换）
+            url = $"{OfficialApiBaseUrl}/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}";
+            
+            // 转换为当前下载源URL
+            url = TransformApiUrl(url);
 
             // 输出调试信息，显示完整请求URL
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
 
-            // 发送请求
-            var response = await _httpClient.GetAsync(url);
+            // 发送请求（使用CreateRequest确保正确的User-Agent）
+            using var request = CreateRequest(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
             
             // 获取完整响应内容
             responseContent = await response.Content.ReadAsStringAsync();
@@ -170,8 +263,8 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL
-            url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}/version";
+            // 构建请求URL（使用官方URL，然后转换）
+            url = $"{OfficialApiBaseUrl}/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}/version";
             
             // 添加筛选条件
             var queryParams = new List<string>();
@@ -193,12 +286,16 @@ public class ModrinthService
             {
                 url += $"?{string.Join("&", queryParams)}";
             }
+            
+            // 转换为当前下载源URL
+            url = TransformApiUrl(url);
 
             // 输出调试信息，显示完整请求URL
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
 
-            // 发送请求
-            var response = await _httpClient.GetAsync(url);
+            // 发送请求（使用CreateRequest确保正确的User-Agent）
+            using var request = CreateRequest(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
             
             // 获取完整响应内容
             responseContent = await response.Content.ReadAsStringAsync();
@@ -242,8 +339,9 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL，使用POST方式获取单个哈希对应的版本信息
-            url = "https://api.modrinth.com/v2/version_files";
+            // 构建请求URL，使用POST方式获取单个哈希对应的版本信息（使用官方URL，然后转换）
+            url = $"{OfficialApiBaseUrl}/v2/version_files";
+            url = TransformApiUrl(url);
 
             // 构建请求体，包含单个哈希
             var requestBody = new
@@ -255,15 +353,14 @@ public class ModrinthService
             // 将请求体转换为JSON字符串
             string jsonBody = JsonSerializer.Serialize(requestBody);
 
-            // 创建HTTP请求，使用POST方法
-            var request = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
-            };
+            // 创建HTTP请求，使用POST方法（使用CreateRequest确保正确的User-Agent）
+            var request = CreateRequest(HttpMethod.Post, url);
+            request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
             // 输出调试信息，显示完整请求URL和请求体
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
+            System.Diagnostics.Debug.WriteLine($"Modrinth API User-Agent: {GetUserAgent()}");
 
             // 发送请求
             var response = await _httpClient.SendAsync(request);
@@ -330,8 +427,9 @@ public class ModrinthService
             string responseContent = string.Empty;
             try
             {
-                // 构建请求URL
-                url = "https://api.modrinth.com/v2/version_files";
+                // 构建请求URL（使用官方URL，然后转换）
+                url = $"{OfficialApiBaseUrl}/v2/version_files";
+                url = TransformApiUrl(url);
 
                 // 构建请求体
                 var requestBody = new
@@ -343,15 +441,14 @@ public class ModrinthService
                 // 将请求体转换为JSON字符串
                 string jsonBody = JsonSerializer.Serialize(requestBody);
 
-                // 创建HTTP请求
-                var request = new HttpRequestMessage(HttpMethod.Post, url)
-                {
-                    Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
-                };
+                // 创建HTTP请求（使用CreateRequest确保正确的User-Agent）
+                var request = CreateRequest(HttpMethod.Post, url);
+                request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
                 // 输出调试信息，显示完整请求URL和请求体
                 System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
                 System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
+                System.Diagnostics.Debug.WriteLine($"Modrinth API User-Agent: {GetUserAgent()}");
 
                 // 发送请求
                 var response = await _httpClient.SendAsync(request);
@@ -403,10 +500,15 @@ public class ModrinthService
             {
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始获取版本信息: {versionId}");
                 
-                string apiUrl = $"https://api.modrinth.com/v2/version/{Uri.EscapeDataString(versionId)}";
+                // 构建请求URL（使用官方URL，然后转换）
+                string apiUrl = $"{OfficialApiBaseUrl}/v2/version/{Uri.EscapeDataString(versionId)}";
+                apiUrl = TransformApiUrl(apiUrl);
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 请求URL: {apiUrl}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] User-Agent: {GetUserAgent()}");
                 
-                var response = await _httpClient.GetAsync(apiUrl);
+                // 发送请求（使用CreateRequest确保正确的User-Agent）
+                using var request = CreateRequest(HttpMethod.Get, apiUrl);
+                var response = await _httpClient.SendAsync(request);
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 响应状态: {response.StatusCode}");
                 
                 if (response.IsSuccessStatusCode)
@@ -665,10 +767,12 @@ public class ModrinthService
                         System.Diagnostics.Debug.WriteLine($"  - 文件不存在，准备下载");
                     }
                     
-                    // 下载依赖
-                    System.Diagnostics.Debug.WriteLine($"  - 开始下载：{primaryFile.Url.AbsoluteUri}");
+                    // 下载依赖（转换CDN URL）
+                    string downloadUrl = primaryFile.Url.AbsoluteUri;
+                    downloadUrl = TransformCdnUrl(downloadUrl);
+                    System.Diagnostics.Debug.WriteLine($"  - 开始下载：{downloadUrl}");
                     bool downloadSuccess = await DownloadFileAsync(
-                        primaryFile.Url.AbsoluteUri, 
+                        downloadUrl, 
                         filePath, 
                         progressCallback, 
                         cancellationToken);
@@ -797,9 +901,11 @@ public class ModrinthService
                     System.Diagnostics.Debug.WriteLine($"[ModrinthService] 父目录已确保存在");
                 }
                 
-                // 下载文件
+                // 下载文件（使用CreateRequest确保正确的User-Agent）
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 发送HTTP请求...");
-                var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] User-Agent: {GetUserAgent()}");
+                using var request = CreateRequest(HttpMethod.Get, downloadUrl);
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP响应状态: {response.StatusCode}");
                 response.EnsureSuccessStatusCode();
                 

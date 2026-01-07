@@ -211,6 +211,18 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>选择版本列表源可以影响游戏版本列表的获取速度和稳定性</value>
   </data>
+  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
+    <value>Modrinth下载源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
+    <value>官方源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM镜像源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
+    <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
+  </data>
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>下载设置</value>
   </data>

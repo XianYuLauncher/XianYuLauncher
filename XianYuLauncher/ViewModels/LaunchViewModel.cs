@@ -756,6 +756,11 @@ public partial class LaunchViewModel : ObservableRecipient
     private ModrinthRecommendationService? _recommendationService;
     
     /// <summary>
+    /// 下载源工厂
+    /// </summary>
+    private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
+    
+    /// <summary>
     /// 当前游戏进程
     /// </summary>
     private Process? _currentGameProcess = null;
@@ -809,6 +814,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _navigationService = App.GetService<INavigationService>();
         _logger = App.GetService<ILogger<LaunchViewModel>>();
         _authlibInjectorService = App.GetService<AuthlibInjectorService>();
+        _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -879,7 +885,7 @@ public partial class LaunchViewModel : ObservableRecipient
     {
         try
         {
-            _recommendationService ??= new ModrinthRecommendationService(_fileService);
+            _recommendationService ??= new ModrinthRecommendationService(_fileService, _downloadSourceFactory);
             var project = await _recommendationService.GetRandomProjectAsync();
             
             if (project != null)

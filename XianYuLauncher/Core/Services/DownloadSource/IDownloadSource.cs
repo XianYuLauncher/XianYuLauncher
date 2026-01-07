@@ -11,10 +11,57 @@ public interface IDownloadSource
     string Name { get; }
     
     /// <summary>
+    /// 下载源标识键
+    /// </summary>
+    string Key { get; }
+    
+    /// <summary>
     /// 获取Minecraft版本清单URL
     /// </summary>
     /// <returns>版本清单URL</returns>
     string GetVersionManifestUrl();
+    
+    #region Modrinth API
+    
+    /// <summary>
+    /// 获取Modrinth API基础URL
+    /// </summary>
+    /// <returns>Modrinth API基础URL</returns>
+    string GetModrinthApiBaseUrl();
+    
+    /// <summary>
+    /// 获取Modrinth CDN基础URL
+    /// </summary>
+    /// <returns>Modrinth CDN基础URL</returns>
+    string GetModrinthCdnBaseUrl();
+    
+    /// <summary>
+    /// 转换Modrinth API URL
+    /// </summary>
+    /// <param name="originalUrl">原始Modrinth API URL</param>
+    /// <returns>转换后的URL</returns>
+    string TransformModrinthApiUrl(string originalUrl);
+    
+    /// <summary>
+    /// 转换Modrinth CDN URL（文件下载）
+    /// </summary>
+    /// <param name="originalUrl">原始Modrinth CDN URL</param>
+    /// <returns>转换后的URL</returns>
+    string TransformModrinthCdnUrl(string originalUrl);
+    
+    /// <summary>
+    /// 获取Modrinth请求的User-Agent
+    /// 符合中国MC启动器社区规范
+    /// </summary>
+    /// <returns>User-Agent字符串，如果不需要特殊UA则返回null</returns>
+    string? GetModrinthUserAgent();
+    
+    /// <summary>
+    /// 是否需要为Modrinth请求设置特殊User-Agent
+    /// </summary>
+    bool RequiresModrinthUserAgent { get; }
+    
+    #endregion
     
     /// <summary>
     /// 获取指定版本的详细信息URL

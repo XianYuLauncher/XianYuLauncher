@@ -415,6 +415,40 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
     private readonly ModrinthService _modrinthService;
+    private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
+    
+    /// <summary>
+    /// 转换 Modrinth API URL 到当前下载源
+    /// </summary>
+    private string TransformModrinthApiUrl(string originalUrl)
+    {
+        return _downloadSourceFactory?.GetModrinthSource()?.TransformModrinthApiUrl(originalUrl) ?? originalUrl;
+    }
+    
+    /// <summary>
+    /// 获取当前下载源对应的User-Agent
+    /// </summary>
+    private string GetModrinthUserAgent()
+    {
+        var source = _downloadSourceFactory?.GetModrinthSource();
+        if (source != null && source.RequiresModrinthUserAgent)
+        {
+            var ua = source.GetModrinthUserAgent();
+            if (!string.IsNullOrEmpty(ua))
+            {
+                return ua;
+            }
+        }
+        return XianYuLauncher.Core.Helpers.VersionHelper.GetBmclapiUserAgent();
+    }
+    
+    /// <summary>
+    /// 转换 Modrinth CDN URL 到当前下载源
+    /// </summary>
+    private string TransformModrinthCdnUrl(string originalUrl)
+    {
+        return _downloadSourceFactory?.GetModrinthSource()?.TransformModrinthCdnUrl(originalUrl) ?? originalUrl;
+    }
     
     /// <summary>
     /// 已安装版本列表
@@ -667,12 +701,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private int _windowHeight = 720;
 
-    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService)
+    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService, XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
         _modrinthService = modrinthService;
+        _downloadSourceFactory = downloadSourceFactory;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1140,9 +1175,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 调用Modrinth API的POST /version_files端点
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
                     
-                    string versionFilesUrl = "https://api.modrinth.com/v2/version_files";
+                    string versionFilesUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files");
                     var content = new System.Net.Http.StringContent(
                         System.Text.Json.JsonSerializer.Serialize(requestBody),
                         System.Text.Encoding.UTF8,
@@ -1169,7 +1204,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             System.Diagnostics.Debug.WriteLine($"获取到project_id: {projectId}");
                             
                             // 调用Modrinth API的GET /project/{id}端点
-                            string projectUrl = $"https://api.modrinth.com/v2/project/{projectId}";
+                            string projectUrl = TransformModrinthApiUrl($"https://api.modrinth.com/v2/project/{projectId}");
                             System.Diagnostics.Debug.WriteLine($"调用Modrinth API获取项目信息: {projectUrl}");
                             var projectResponse = await httpClient.GetAsync(projectUrl);
                             
@@ -1856,9 +1891,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 调用Modrinth API
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
                     
-                    string apiUrl = "https://api.modrinth.com/v2/version_files/update";
+                    string apiUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files/update");
                     var content = new System.Net.Http.StringContent(
                         System.Text.Json.JsonSerializer.Serialize(requestBody),
                         System.Text.Encoding.UTF8,
@@ -2116,9 +2151,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
                     
-                    string apiUrl = $"https://api.modrinth.com/v2/version/{versionId}";
+                    string apiUrl = TransformModrinthApiUrl($"https://api.modrinth.com/v2/version/{versionId}");
                     var response = await httpClient.GetAsync(apiUrl);
                     
                     if (response.IsSuccessStatusCode)
