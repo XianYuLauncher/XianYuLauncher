@@ -1770,4 +1770,22 @@
   <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
     <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
   </data>
+  <data name="Settings_UpdateSettings.Text" xml:space="preserve">
+    <value>更新设置</value>
+  </data>
+  <data name="Settings_AutoUpdateCheck.Text" xml:space="preserve">
+    <value>自动检查更新</value>
+  </data>
+  <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
+    <value>每次启动弹窗</value>
+  </data>
+  <data name="Settings_AutoUpdateCheck_ImportantOnly.Content" xml:space="preserve">
+    <value>除重要更新外均不弹窗</value>
+  </data>
+  <data name="Settings_AutoUpdateCheckDescription.Text" xml:space="preserve">
+    <value>选择自动检查更新的方式</value>
+  </data>
+  <data name="Settings_CheckForUpdates.Content" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
 </root>

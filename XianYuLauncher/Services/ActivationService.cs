@@ -98,7 +98,18 @@ public class ActivationService : IActivationService
     {
         try
         {
-            Serilog.Log.Information("开始检查应用更新");
+            // 获取自动检查更新设置
+            var localSettingsService = App.GetService<ILocalSettingsService>();
+            var autoUpdateCheckModeStr = await localSettingsService.ReadSettingAsync<string>("AutoUpdateCheckMode");
+            var autoUpdateCheckMode = SettingsViewModel.AutoUpdateCheckModeType.Always; // 默认每次启动检查
+            
+            if (!string.IsNullOrEmpty(autoUpdateCheckModeStr) && 
+                Enum.TryParse<SettingsViewModel.AutoUpdateCheckModeType>(autoUpdateCheckModeStr, out var mode))
+            {
+                autoUpdateCheckMode = mode;
+            }
+            
+            Serilog.Log.Information("自动检查更新模式: {Mode}", autoUpdateCheckMode);
             
             // 获取更新服务实例
             var updateService = App.GetService<UpdateService>();
@@ -108,6 +119,16 @@ public class ActivationService : IActivationService
             
             if (updateInfo != null)
             {
+                // 根据设置决定是否显示更新弹窗
+                bool shouldShowUpdate = autoUpdateCheckMode == SettingsViewModel.AutoUpdateCheckModeType.Always || 
+                                        updateInfo.important_update;
+                
+                if (!shouldShowUpdate)
+                {
+                    Serilog.Log.Information("发现新版本 {Version}，但设置为仅重要更新时提示，跳过", updateInfo.version);
+                    return;
+                }
+                
                 Serilog.Log.Information("发现新版本，显示更新弹窗");
                 
                 // 创建更新弹窗ViewModel

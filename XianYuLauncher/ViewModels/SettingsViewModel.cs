@@ -16,8 +16,10 @@ using System.Collections.ObjectModel;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
+using XianYuLauncher.Views;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -399,6 +401,38 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private bool _isClearingCache = false;
+    
+    /// <summary>
+    /// 自动检查更新模式枚举
+    /// </summary>
+    public enum AutoUpdateCheckModeType
+    {
+        /// <summary>
+        /// 每次启动检查
+        /// </summary>
+        Always,
+        /// <summary>
+        /// 除重要更新外均不检查
+        /// </summary>
+        ImportantOnly
+    }
+    
+    /// <summary>
+    /// 自动检查更新模式设置键
+    /// </summary>
+    private const string AutoUpdateCheckModeKey = "AutoUpdateCheckMode";
+    
+    /// <summary>
+    /// 自动检查更新模式
+    /// </summary>
+    [ObservableProperty]
+    private AutoUpdateCheckModeType _autoUpdateCheckMode = AutoUpdateCheckModeType.Always;
+    
+    /// <summary>
+    /// 是否正在检查更新
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCheckingForUpdates = false;
 
     /// <summary>
     /// 添加鸣谢人员命令
@@ -547,6 +581,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadFontFamilyAsync().ConfigureAwait(false);
         // 加载缓存大小信息
         RefreshCacheSizeInfo();
+        // 加载自动检查更新设置
+        LoadAutoUpdateCheckModeAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1986,5 +2022,139 @@ public partial class SettingsViewModel : ObservableRecipient
         }
 
         return $"XianYu Launcher - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+    }
+    
+    /// <summary>
+    /// 加载自动检查更新设置
+    /// </summary>
+    private async Task LoadAutoUpdateCheckModeAsync()
+    {
+        var savedValue = await _localSettingsService.ReadSettingAsync<string>(AutoUpdateCheckModeKey);
+        if (!string.IsNullOrEmpty(savedValue) && Enum.TryParse<AutoUpdateCheckModeType>(savedValue, out var mode))
+        {
+            AutoUpdateCheckMode = mode;
+        }
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 自动检查更新模式: {AutoUpdateCheckMode}");
+    }
+    
+    /// <summary>
+    /// 当自动检查更新模式变化时保存
+    /// </summary>
+    partial void OnAutoUpdateCheckModeChanged(AutoUpdateCheckModeType value)
+    {
+        _localSettingsService.SaveSettingAsync(AutoUpdateCheckModeKey, value.ToString()).ConfigureAwait(false);
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 自动检查更新模式已保存: {value}");
+    }
+    
+    /// <summary>
+    /// 切换自动检查更新模式命令
+    /// </summary>
+    public ICommand SwitchAutoUpdateCheckModeCommand => new RelayCommand<string>(
+        (param) =>
+        {
+            if (Enum.TryParse<AutoUpdateCheckModeType>(param, out var mode) && AutoUpdateCheckMode != mode)
+            {
+                AutoUpdateCheckMode = mode;
+            }
+        });
+    
+    /// <summary>
+    /// 检查更新命令
+    /// </summary>
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        if (IsCheckingForUpdates) return;
+        
+        IsCheckingForUpdates = true;
+        System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 开始手动检查更新");
+        
+        try
+        {
+            var updateService = App.GetService<UpdateService>();
+            var updateInfo = await updateService.CheckForUpdatesAsync();
+            
+            if (updateInfo != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现新版本: {updateInfo.version}");
+                
+                // 创建更新弹窗ViewModel
+                var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
+                var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
+                
+                // 创建并显示更新弹窗
+                var updateDialog = new ContentDialog
+                {
+                    Title = string.Format("Version {0} 更新", updateInfo.version),
+                    Content = new Views.UpdateDialog(updateDialogViewModel),
+                    PrimaryButtonText = "更新",
+                    CloseButtonText = !updateInfo.important_update ? "取消" : null,
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                
+                var updateResult = await updateDialog.ShowAsync();
+                
+                if (updateResult == ContentDialogResult.Primary)
+                {
+                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意更新");
+                    
+                    // 创建并显示下载进度弹窗
+                    var downloadDialog = new ContentDialog
+                    {
+                        Title = string.Format("Version {0} 更新", updateInfo.version),
+                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
+                        IsPrimaryButtonEnabled = false,
+                        CloseButtonText = "取消",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    downloadDialog.CloseButtonClick += (sender, args) =>
+                    {
+                        updateDialogViewModel.CancelCommand.Execute(null);
+                    };
+                    
+                    bool dialogResult = false;
+                    updateDialogViewModel.CloseDialog += (sender, result) =>
+                    {
+                        dialogResult = result;
+                        downloadDialog.Hide();
+                    };
+                    
+                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
+                    await downloadDialog.ShowAsync();
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 当前已是最新版本");
+                
+                // 显示已是最新版本的提示
+                var dialog = new ContentDialog
+                {
+                    Title = "检查更新",
+                    Content = "当前已是最新版本！",
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查更新失败: {ex.Message}");
+            
+            var dialog = new ContentDialog
+            {
+                Title = "检查更新失败",
+                Content = $"无法检查更新：{ex.Message}",
+                CloseButtonText = "确定",
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
     }
 }

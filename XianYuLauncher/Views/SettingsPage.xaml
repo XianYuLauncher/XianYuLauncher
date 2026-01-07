@@ -13,6 +13,7 @@
         <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
+        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -734,18 +735,54 @@
                                         Style="{ThemeResource BodyTextBlockStyle}" />
                                     <HyperlinkButton x:Uid="SettingsPage_PrivacyTermsLink" Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
                                 </StackPanel>
-
-                                <!-- 免责声明 -->
-                                <TextBlock 
-                                    x:Uid="Settings_Disclaimer"
-                                    Text="XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。" 
-                                    Style="{ThemeResource CaptionTextBlockStyle}" 
-                                    Margin="0,40,0,20" 
-                                    Opacity="0.7" 
-                                    TextWrapping="WrapWholeWords"/>
+                                
+                                <!-- 更新设置 -->
+                                <TextBlock x:Uid="Settings_UpdateSettings" Text="更新设置" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <!-- 自动检查更新选项 -->
+                                    <TextBlock x:Uid="Settings_AutoUpdateCheck" Text="自动检查更新" Margin="0,0,0,8" />
+                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
+                                        <RadioButton
+                                            x:Uid="Settings_AutoUpdateCheck_Always"
+                                            Content="每次启动弹窗"
+                                            Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}"
+                                            CommandParameter="Always"
+                                            IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Always, Mode=OneWay}"
+                                            FontSize="15"
+                                            GroupName="AutoUpdateCheckMode" />
+                                        <RadioButton
+                                            x:Uid="Settings_AutoUpdateCheck_ImportantOnly"
+                                            Content="除重要更新外均不弹窗"
+                                            Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}"
+                                            CommandParameter="ImportantOnly"
+                                            IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ImportantOnly, Mode=OneWay}"
+                                            FontSize="15"
+                                            GroupName="AutoUpdateCheckMode" />
+                                    </StackPanel>
+                                    <TextBlock 
+                                        x:Uid="Settings_AutoUpdateCheckDescription"
+                                        Text="选择自动检查更新的方式" 
+                                        Style="{ThemeResource CaptionTextBlockStyle}" 
+                                        Margin="0,4,0,0" 
+                                        Opacity="0.7"/>
+                                    
+                                    <!-- 检查更新按钮 -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0" Spacing="12">
+                                        <Button 
+                                            x:Uid="Settings_CheckForUpdates"
+                                            Content="检查更新"
+                                            Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                            IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                        <ProgressRing 
+                                            IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" 
+                                            Width="20" 
+                                            Height="20" 
+                                            VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
 
                                 <!-- 开源软件许可说明 -->
-                                <Expander x:Uid="Settings_OpenSourceTitle" Header="开源软件许可说明" Margin="0,0,0,20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                <Expander x:Uid="Settings_OpenSourceTitle" Header="开源软件许可说明" Margin="0,20,0,20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                     <Expander.Content>
                                         <StackPanel>
                                             <!-- 开源软件列表 -->
@@ -888,6 +925,15 @@
                                         </StackPanel>
                                     </Expander.Content>
                                 </Expander>
+                                
+                                <!-- 免责声明 -->
+                                <TextBlock 
+                                    x:Uid="Settings_Disclaimer"
+                                    Text="XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。" 
+                                    Style="{ThemeResource CaptionTextBlockStyle}" 
+                                    Margin="0,0,0,20" 
+                                    Opacity="0.7" 
+                                    TextWrapping="WrapWholeWords"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabViewItem>
