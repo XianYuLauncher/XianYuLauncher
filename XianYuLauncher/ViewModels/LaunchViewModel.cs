@@ -40,8 +40,8 @@ public partial class LaunchViewModel : ObservableRecipient
     private const int SW_HIDE = 0;
     
     // 分辨率设置字段
-    private int _windowWidth = 1920;
-    private int _windowHeight = 1080;
+    private int _windowWidth = 1280;
+    private int _windowHeight = 720;
     private async Task ShowJavaNotFoundMessageAsync()
     {
         // 创建并显示消息对话框
@@ -1324,6 +1324,22 @@ public partial class LaunchViewModel : ObservableRecipient
                 Directory.CreateDirectory(gameDir);
             }
 
+            // 4. 检查并创建 options.txt（设置默认语言为简体中文）
+            string optionsPath = Path.Combine(gameDir, "options.txt");
+            if (!File.Exists(optionsPath))
+            {
+                try
+                {
+                    await File.WriteAllTextAsync(optionsPath, "lang:zh_cn\n");
+                    LaunchStatus += $"\n已创建默认游戏设置文件: {optionsPath}";
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"创建 options.txt 失败: {ex.Message}");
+                    // 不阻止启动，只是记录错误
+                }
+            }
+
             // 2. 检查必要文件是否存在
             if (!Directory.Exists(gameDir))
             {
@@ -1902,8 +1918,8 @@ public partial class LaunchViewModel : ObservableRecipient
                         bool finalAutoMemoryAllocation = autoMemoryAllocation ?? true;
                         double finalInitialHeapMemory = initialHeapMemory ?? 6.0;
                         double finalMaximumHeapMemory = maximumHeapMemory ?? 12.0;
-                        int finalWindowWidth = windowWidth ?? 1920;
-                        int finalWindowHeight = windowHeight ?? 1080;
+                        int finalWindowWidth = windowWidth ?? 1280;
+                        int finalWindowHeight = windowHeight ?? 720;
                         
                         if (finalAutoMemoryAllocation)
                         {
@@ -2955,6 +2971,25 @@ public partial class LaunchViewModel : ObservableRecipient
             bool enableVersionIsolation = versionIsolationValue ?? true;
             string gameDir = enableVersionIsolation ? versionDir : minecraftPath;
             
+            // 4.1 检查并创建 options.txt（设置默认语言为简体中文）
+            string optionsPath = Path.Combine(gameDir, "options.txt");
+            if (!File.Exists(optionsPath))
+            {
+                try
+                {
+                    // 确保目录存在
+                    if (!Directory.Exists(gameDir))
+                    {
+                        Directory.CreateDirectory(gameDir);
+                    }
+                    await File.WriteAllTextAsync(optionsPath, "lang:zh_cn\n");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"创建 options.txt 失败: {ex.Message}");
+                }
+            }
+            
             // 5. 获取 Java 路径
             int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
             
@@ -3228,9 +3263,9 @@ public partial class LaunchViewModel : ObservableRecipient
             
             // 添加分辨率参数
             args.Add("--width");
-            args.Add("1920");
+            args.Add("1280");
             args.Add("--height");
-            args.Add("1080");
+            args.Add("720");
             
             // 构建参数字符串
             string processedArgs = string.Join(" ", args.Select(a =>

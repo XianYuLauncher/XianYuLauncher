@@ -401,12 +401,12 @@ public class VersionSettings
     /// <summary>
     /// 启动窗口宽度
     /// </summary>
-    public int WindowWidth { get; set; } = 1920;
+    public int WindowWidth { get; set; } = 1280;
     
     /// <summary>
     /// 启动窗口高度
     /// </summary>
-    public int WindowHeight { get; set; } = 1080;
+    public int WindowHeight { get; set; } = 720;
 }
 
 public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware
@@ -659,13 +659,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 启动窗口宽度
     /// </summary>
     [ObservableProperty]
-    private int _windowWidth = 1920;
+    private int _windowWidth = 1280;
     
     /// <summary>
     /// 启动窗口高度
     /// </summary>
     [ObservableProperty]
-    private int _windowHeight = 1080;
+    private int _windowHeight = 720;
 
     public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService)
     {

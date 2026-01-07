@@ -645,8 +645,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 InitialHeapMemory = 6.0,
                 MaximumHeapMemory = 12.0,
                 JavaPath = string.Empty,
-                WindowWidth = 1920,
-                WindowHeight = 1080
+                WindowWidth = 1280,
+                WindowHeight = 720
             };
             
             // 序列化到JSON
