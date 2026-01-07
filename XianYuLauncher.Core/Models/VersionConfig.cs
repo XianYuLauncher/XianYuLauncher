@@ -55,10 +55,10 @@ public class VersionConfig
     /// <summary>
     /// 窗口宽度
     /// </summary>
-    public int WindowWidth { get; set; } = 1920;
+    public int WindowWidth { get; set; } = 1280;
     
     /// <summary>
     /// 窗口高度
     /// </summary>
-    public int WindowHeight { get; set; } = 1080;
+    public int WindowHeight { get; set; } = 720;
 }

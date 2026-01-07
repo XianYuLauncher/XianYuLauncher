@@ -561,8 +561,8 @@ namespace XianYuLauncher.Core.Services
                     MaximumHeapMemory = 12.0,
                     JavaPath = string.Empty,
                     UseGlobalJavaSetting = true,
-                    WindowWidth = 1920,
-                    WindowHeight = 1080
+                    WindowWidth = 1280,
+                    WindowHeight = 720
                 };
                 
                 // 序列化配置为JSON格式
