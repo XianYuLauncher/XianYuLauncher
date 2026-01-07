@@ -15,7 +15,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <PlatformTarget>x64</PlatformTarget>
     <UseWindowsForms>False</UseWindowsForms>
-    <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
