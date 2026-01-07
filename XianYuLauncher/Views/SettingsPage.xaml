@@ -531,10 +531,10 @@
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_HideSnapshotVersions" Text="隐藏快照版本" />
+                                            <TextBlock x:Uid="Settings_HideSnapshotVersions" Text="Mod隐藏快照版本" />
                                             <TextBlock 
                                                 x:Uid="Settings_HideSnapshotVersionsDescription"
-                                                Text="隐藏快照、预发布版和候选版本" 
+                                                Text="隐藏Mod下载页快照、预发布版和候选版本" 
                                                 Style="{ThemeResource CaptionTextBlockStyle}" 
                                                 Margin="0,4,0,0" 
                                                 Opacity="0.7"/>

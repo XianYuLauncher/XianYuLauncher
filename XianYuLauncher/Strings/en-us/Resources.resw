@@ -270,18 +270,6 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>Selecting a version list source can affect the speed and stability of game version list retrieval</value>
   </data>
-  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
-    <value>Modrinth Download Source</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
-    <value>Official</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
-    <value>MCIM Mirror</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
-    <value>Select download source for Modrinth resources (Mods, Resource Packs, etc.). MCIM mirror can speed up downloads in China</value>
-  </data>
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>Download Settings</value>
   </data>
@@ -292,7 +280,7 @@
     <value>Auto-download required dependency mods</value>
   </data>
   <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
-    <value>Hide Snapshot Versions</value>
+    <value>Mod Hide Snapshot Versions</value>
   </data>
   <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
     <value>Hide snapshots, pre-releases and release candidates</value>
@@ -1757,5 +1745,17 @@
   </data>
   <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
     <value>OK</value>
+  </data>
+  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
+    <value>Modrinth Download Source</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
+    <value>Official</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM Mirror</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
+    <value>Select download source for Modrinth resources (Mods, Resource Packs, etc.). MCIM mirror can speed up downloads in China</value>
   </data>
 </root>

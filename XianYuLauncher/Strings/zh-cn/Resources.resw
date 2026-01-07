@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -61,8 +120,8 @@
   <data name="AppDisplayName" xml:space="preserve">
     <value>XianYu Launcher</value>
   </data>
-	<data name="AppDescription" xml:space="preserve">
-		<value>XianYu Launcher</value>
+  <data name="AppDescription" xml:space="preserve">
+    <value>XianYu Launcher</value>
   </data>
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>启动</value>
@@ -211,18 +270,6 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>选择版本列表源可以影响游戏版本列表的获取速度和稳定性</value>
   </data>
-  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
-    <value>Modrinth下载源</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
-    <value>官方源</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
-    <value>MCIM镜像源</value>
-  </data>
-  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
-    <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
-  </data>
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>下载设置</value>
   </data>
@@ -233,10 +280,10 @@
     <value>自动下载所需的前置Mod</value>
   </data>
   <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
-    <value>隐藏快照版本</value>
+    <value>Mod隐藏快照版本</value>
   </data>
   <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
-    <value>隐藏快照、预发布版和候选版本</value>
+    <value>隐藏Mod下载页快照、预发布版和候选版本</value>
   </data>
   <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
     <value>下载线程数</value>
@@ -253,7 +300,6 @@
   <data name="Settings_Disclaimer.Text" xml:space="preserve">
     <value>XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。</value>
   </data>
-  <!-- 新手教程页面本地化 -->
   <data name="TutorialPage_Title.Text" xml:space="preserve">
     <value>新手教程</value>
   </data>
@@ -344,7 +390,6 @@
   <data name="TutorialPage_FinishButton.Content" xml:space="preserve">
     <value>完成</value>
   </data>
-  <!-- Tutorial Dialog Translations -->
   <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
     <value>登录要求</value>
   </data>
@@ -375,7 +420,6 @@
   <data name="TutorialPage_CannotOpenLinkDialog_Content" xml:space="preserve">
     <value>无法打开购买链接，请手动访问该网址。</value>
   </data>
-  <!-- Tutorial Step and Login Status Translations -->
   <data name="TutorialPage_StepPrefixText" xml:space="preserve">
     <value>步骤</value>
   </data>
@@ -391,7 +435,6 @@
   <data name="TutorialPage_LoginStatus_Success" xml:space="preserve">
     <value>登录成功</value>
   </data>
-  <!-- Launch Page Translations -->
   <data name="LaunchPage_MicrosoftAccountRenewingText" xml:space="preserve">
     <value>正在进行微软账户续签...</value>
   </data>
@@ -431,8 +474,6 @@
   <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
     <value>启动成功！</value>
   </data>
-  <!-- ModLoader Selection Page Translations -->
-
   <data name="Settings_ThanksToTeam.Text" xml:space="preserve">
     <value>感谢所有参与项目开发的工作室成员</value>
   </data>
@@ -448,11 +489,9 @@
   <data name="Settings_VersionIsolationDescription.Text" xml:space="preserve">
     <value>开启后，每个Minecraft版本将使用独立的游戏目录(.minecraft/versions/{版本ID})</value>
   </data>
-  <!-- 启动页面翻译 -->
   <data name="LaunchPage_Subtitle.Text" xml:space="preserve">
     <value>Minecraft 启动器</value>
   </data>
-  <!-- 资源下载页面翻译 -->
   <data name="ResourceDownloadPage_DatapackTabHeader.Text" xml:space="preserve">
     <value>数据包下载</value>
   </data>
@@ -498,7 +537,6 @@
   <data name="SettingsPage_PrivacyTermsLink.Content" xml:space="preserve">
     <value>最终用户协议(EULA)</value>
   </data>
-  <!-- 联机页面翻译 -->
   <data name="联机Page_Title.Text" xml:space="preserve">
     <value>Terracotta 陶瓦联机</value>
   </data>
@@ -523,7 +561,6 @@
   <data name="联机Page_GuestCardDescription.Text" xml:space="preserve">
     <value>加入其他玩家创建的游戏房间</value>
   </data>
-  <!-- 联机大厅页面翻译 -->
   <data name="联机大厅Page_Title.Text" xml:space="preserve">
     <value>联机大厅</value>
   </data>
@@ -551,7 +588,6 @@
   <data name="联机大厅Page_EasyTierLabel" xml:space="preserve">
     <value>EasyTier版本</value>
   </data>
-  <!-- 联机弹窗文本 -->
   <data name="联机Page_FindingRoomTitle" xml:space="preserve">
     <value>正在寻找房间</value>
   </data>
@@ -615,7 +651,6 @@
   <data name="SettingsPage_PrivacyTermsLink.NavigateUri" xml:space="preserve">
     <value>https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV</value>
   </data>
-  <!-- ResourceDownloadPage 翻译 -->
   <data name="ResourceDownloadPage_PageTitle.Text" xml:space="preserve">
     <value>资源下载</value>
   </data>
@@ -793,7 +828,6 @@
   <data name="ResourceDownloadPage_TweaksCategory.Content" xml:space="preserve">
     <value>微调</value>
   </data>
-  <!-- 数据包下载翻译 -->
   <data name="ResourceDownloadPage_DatapackSearchBox.PlaceholderText" xml:space="preserve">
     <value>搜索数据包...</value>
   </data>
@@ -809,7 +843,6 @@
   <data name="ResourceDownloadPage_DatapackCategoryComboBox.PlaceholderText" xml:space="preserve">
     <value>所有类别</value>
   </data>
-  <!-- 整合包下载翻译 -->
   <data name="ResourceDownloadPage_ModpackSearchBox.PlaceholderText" xml:space="preserve">
     <value>搜索整合包...</value>
   </data>
@@ -825,7 +858,6 @@
   <data name="ResourceDownloadPage_ModpackCategoryComboBox.PlaceholderText" xml:space="preserve">
     <value>所有类别</value>
   </data>
-  <!-- 整合包类别翻译 -->
   <data name="ResourceDownloadPage_ChallengingCategory.Content" xml:space="preserve">
     <value>硬核</value>
   </data>
@@ -841,7 +873,6 @@
   <data name="ResourceDownloadPage_QuestsCategory.Content" xml:space="preserve">
     <value>任务</value>
   </data>
-  <!-- ModLoader选择页面翻译 -->
   <data name="ModLoaderSelectionPage_TitleText.Text" xml:space="preserve">
     <value>下载Minecraft</value>
   </data>
@@ -875,7 +906,6 @@
   <data name="ModLoaderSelectionPage_DownloadProgressDialog.CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
-  <!-- ModLoaderSelectionPage Download Dialog Translations -->
   <data name="ModLoaderSelectionPage_PreparingDownloadText" xml:space="preserve">
     <value>准备开始下载...</value>
   </data>
@@ -924,8 +954,6 @@
   <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
     <value>确定</value>
   </data>
-
-  <!-- ModDownloadDetailPage 翻译 -->
   <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
     <value>选择版本</value>
   </data>
@@ -998,7 +1026,6 @@
   <data name="ModDownloadDetailPage_DownloadStatusTitle.Text" xml:space="preserve">
     <value>下载状态</value>
   </data>
-  <!-- 动态文本本地化 -->
   <data name="ModDownloadDetailPage_SupportedLoadersText_Mod" xml:space="preserve">
     <value>支持的加载器</value>
   </data>
@@ -1044,7 +1071,6 @@
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>已添加角色</value>
   </data>
-  <!-- VersionListPage 本地化 -->
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>版本列表</value>
   </data>
@@ -1075,7 +1101,6 @@
   <data name="VersionListPage_InstallDateLabel.Text" xml:space="preserve">
     <value>安装日期: </value>
   </data>
-  <!-- 版本列表状态消息本地化 -->
   <data name="VersionListPage_LoadingVersionsText" xml:space="preserve">
     <value>正在加载版本列表...</value>
   </data>
@@ -1235,7 +1260,6 @@
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>以下是Mod转移结果：</value>
   </data>
-  <!-- SettingsPage 新增本地化 -->
   <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
     <value>启动游戏实时日志</value>
   </data>
@@ -1254,7 +1278,6 @@
   <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
     <value>本项目使用的开源软件列表：</value>
   </data>
-  <!-- ErrorAnalysisPage 本地化 -->
   <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
     <value>实时游戏日志</value>
   </data>
@@ -1279,7 +1302,6 @@
   <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
     <value>AI正在分析崩溃原因...</value>
   </data>
-  <!-- 联机页面陶瓦下载弹窗文本 -->
   <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
     <value>正在下载陶瓦插件</value>
   </data>
@@ -1340,10 +1362,6 @@
   <data name="VersionManagerPage_UpdateResultDialog.Title" xml:space="preserve">
     <value>更新完成</value>
   </data>
-  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
-    <value>确定</value>
-  </data>
-  <!-- VersionManagerPage 本地化 -->
   <data name="VersionManagerPage_DragDropTip.Text" xml:space="preserve">
     <value>释放以添加文件</value>
   </data>
@@ -1422,8 +1440,6 @@
   <data name="VersionManagerPage_MapManagementTab.Text" xml:space="preserve">
     <value>地图管理</value>
   </data>
-  <!-- 空列表提示本地化 -->
-  <!-- 光影管理 -->
   <data name="VersionManagerPage_NoShadersTitle.Text" xml:space="preserve">
     <value>当前版本没有光影</value>
   </data>
@@ -1433,7 +1449,6 @@
   <data name="VersionManagerPage_NavigateToShaderPageButton.Content" xml:space="preserve">
     <value>前往光影页面</value>
   </data>
-  <!-- 资源包管理 -->
   <data name="VersionManagerPage_NoResourcePacksTitle.Text" xml:space="preserve">
     <value>当前版本没有资源包</value>
   </data>
@@ -1443,7 +1458,6 @@
   <data name="VersionManagerPage_NavigateToResourcePackPageButton.Content" xml:space="preserve">
     <value>前往资源包页面</value>
   </data>
-  <!-- 数据包管理 -->
   <data name="VersionManagerPage_NoDatapacksTitle.Text" xml:space="preserve">
     <value>当前版本没有数据包</value>
   </data>
@@ -1453,14 +1467,12 @@
   <data name="VersionManagerPage_NavigateToDatapackPageButton.Content" xml:space="preserve">
     <value>前往数据包页面</value>
   </data>
-  <!-- 截图管理 -->
   <data name="VersionManagerPage_NoScreenshotsTitle.Text" xml:space="preserve">
     <value>当前版本没有截图</value>
   </data>
   <data name="VersionManagerPage_NoScreenshotsDescription.Text" xml:space="preserve">
     <value>游戏截图将显示在这里</value>
   </data>
-  <!-- 地图管理 -->
   <data name="VersionManagerPage_NoMapsTitle.Text" xml:space="preserve">
     <value>当前版本没有地图</value>
   </data>
@@ -1470,7 +1482,6 @@
   <data name="VersionManagerPage_NavigateToMapPageButton.Content" xml:space="preserve">
     <value>前往地图页面</value>
   </data>
-  <!-- 版本管理页面标题本地化 -->
   <data name="VersionManagerPage_Title" xml:space="preserve">
     <value>版本管理</value>
   </data>
@@ -1483,7 +1494,6 @@
   <data name="VersionManagerPage_Subtitle_SelectVersion" xml:space="preserve">
     <value>请选择一个版本进行管理</value>
   </data>
-  <!-- 文件名/目录名翻译 -->
   <data name="ResourceItemOptionsText.Text" xml:space="preserve">
     <value>玩家游戏设置</value>
   </data>
@@ -1499,15 +1509,12 @@
   <data name="ResourceItemConfig.Text" xml:space="preserve">
     <value>配置文件</value>
   </data>
-  
-  <!-- 截图右键菜单本地化 -->
   <data name="VersionManagerPage_DeleteScreenshotMenuItem.Text" xml:space="preserve">
     <value>删除</value>
   </data>
   <data name="VersionManagerPage_SaveScreenshotAsMenuItem.Text" xml:space="preserve">
     <value>另存为</value>
   </data>
-  <!-- 内存分配开关本地化 -->
   <data name="VersionManagerPage_AutoMemoryToggle.OnContent" xml:space="preserve">
     <value>开启</value>
   </data>
@@ -1532,7 +1539,6 @@
   <data name="VersionManagerPage_DisabledText.OffContent" xml:space="preserve">
     <value>禁用</value>
   </data>
-  <!-- 角色页面本地化 -->
   <data name="ProfilePage_Title.Text" xml:space="preserve">
     <value>角色管理</value>
   </data>
@@ -1596,7 +1602,6 @@
   <data name="ProfilePage_EmptyProfilesDescription.Text" xml:space="preserve">
     <value>点击'添加账户'按钮开始添加您的第一个角色</value>
   </data>
-  <!-- 角色管理页面本地化 -->
   <data name="ProfileManagementPage_CurrentProfileLabel.Text" xml:space="preserve">
     <value>当前角色</value>
   </data>
@@ -1654,21 +1659,18 @@
   <data name="ProfileManagementPage_SaveSkinButton.Content" xml:space="preserve">
     <value>保存皮肤纹理</value>
   </data>
-  <!-- 角色卡片按钮本地化 -->
   <data name="ProfilePage_SwitchProfileButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>切换到该角色</value>
   </data>
   <data name="ProfilePage_DeleteProfileButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>删除角色</value>
   </data>
-  <!-- 账户类型本地化 -->
   <data name="ProfilePage_OfflineProfileText" xml:space="preserve">
     <value>离线角色</value>
   </data>
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>微软账户</value>
   </data>
-  <!-- 缓存管理本地化 -->
   <data name="Settings_CacheManagement.Text" xml:space="preserve">
     <value>缓存管理</value>
   </data>
@@ -1693,7 +1695,6 @@
   <data name="Settings_CacheDescription.Text" xml:space="preserve">
     <value>缓存用于加速资源列表加载，清理后下次访问时会重新下载</value>
   </data>
-  <!-- VersionListPage 右键菜单本地化 -->
   <data name="VersionListPage_GenerateLaunchScriptMenuItem.Text" xml:space="preserve">
     <value>生成启动参数</value>
   </data>
@@ -1706,7 +1707,6 @@
   <data name="VersionListPage_CompleteVersionDialog.CloseButtonText" xml:space="preserve">
     <value>关闭</value>
   </data>
-  <!-- LaunchPage 新闻与公告本地化 -->
   <data name="LaunchPage_NewsAndAnnouncements.Text" xml:space="preserve">
     <value>新闻与公告</value>
   </data>
@@ -1719,7 +1719,6 @@
   <data name="LaunchPage_ModRecommendation.Text" xml:space="preserve">
     <value>Mod推荐：</value>
   </data>
-  <!-- NewsListPage 本地化 -->
   <data name="NewsListPage_Title.Text" xml:space="preserve">
     <value>新闻与公告</value>
   </data>
@@ -1741,7 +1740,6 @@
   <data name="NewsListPage_Loading.Text" xml:space="preserve">
     <value>加载中...</value>
   </data>
-  <!-- NewsDetailPage 本地化 -->
   <data name="NewsDetailPage_Title.Text" xml:space="preserve">
     <value>新闻详情</value>
   </data>
@@ -1754,11 +1752,22 @@
   <data name="NewsDetailPage_FullChangelogHint.Text" xml:space="preserve">
     <value>完整更新日志请访问 Minecraft 官网</value>
   </data>
-  <!-- 新闻类型本地化 -->
   <data name="NewsType_Release" xml:space="preserve">
     <value>正式版</value>
   </data>
   <data name="NewsType_Snapshot" xml:space="preserve">
     <value>快照</value>
+  </data>
+  <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
+    <value>Modrinth下载源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_Official.Content" xml:space="preserve">
+    <value>官方源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM镜像源</value>
+  </data>
+  <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
+    <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
   </data>
 </root>
