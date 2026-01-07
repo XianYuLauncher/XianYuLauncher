@@ -58,6 +58,9 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="secrets.json" Condition="Exists('secrets.json')">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="plugins\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
