@@ -218,7 +218,13 @@
     <value>下载前置Mod</value>
   </data>
   <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
-    <value>下载Mod时自动下载所需的前置Mod，关闭后不会自动下载</value>
+    <value>自动下载所需的前置Mod</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
+    <value>隐藏快照版本</value>
+  </data>
+  <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
+    <value>隐藏快照、预发布版和候选版本</value>
   </data>
   <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
     <value>下载线程数</value>
@@ -1019,6 +1025,9 @@
   </data>
   <data name="ModDownloadDetailPage_VersionSelectionTip_Datapack" xml:space="preserve">
     <value>灰色版本表示不兼容当前数据包版本</value>
+  </data>
+  <data name="ModDownloadDetailPage_VersionsCountSuffix" xml:space="preserve">
+    <value> 个版本</value>
   </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>已添加角色</value>

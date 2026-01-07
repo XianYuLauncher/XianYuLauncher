@@ -478,7 +478,7 @@
                                             <TextBlock x:Uid="Settings_DownloadDependencies" Text="下载前置Mod" />
                                             <TextBlock 
                                                 x:Uid="Settings_DownloadDependenciesDescription"
-                                                Text="下载Mod时自动下载所需的前置Mod，关闭后不会自动下载" 
+                                                Text="自动下载所需的前置Mod" 
                                                 Style="{ThemeResource CaptionTextBlockStyle}" 
                                                 Margin="0,4,0,0" 
                                                 Opacity="0.7"/>
@@ -486,6 +486,26 @@
                                         <ToggleSwitch 
                                             x:Uid="Settings_DownloadDependenciesToggle" 
                                             IsOn="{x:Bind ViewModel.DownloadDependencies, Mode=TwoWay}" 
+                                            VerticalAlignment="Center" 
+                                            Margin="0,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+                                
+                                <!-- 隐藏快照版本设置 -->
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Uid="Settings_HideSnapshotVersions" Text="隐藏快照版本" />
+                                            <TextBlock 
+                                                x:Uid="Settings_HideSnapshotVersionsDescription"
+                                                Text="隐藏快照、预发布版和候选版本" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <ToggleSwitch 
+                                            x:Uid="Settings_HideSnapshotVersionsToggle" 
+                                            IsOn="{x:Bind ViewModel.HideSnapshotVersions, Mode=TwoWay}" 
                                             VerticalAlignment="Center" 
                                             Margin="0,0,0,0" />
                                     </StackPanel>

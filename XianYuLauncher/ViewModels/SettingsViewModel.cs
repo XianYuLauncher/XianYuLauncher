@@ -324,6 +324,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string DownloadDependenciesKey = "DownloadDependencies";
     
     /// <summary>
+    /// 隐藏快照版本设置
+    /// </summary>
+    [ObservableProperty]
+    private bool _hideSnapshotVersions = true;
+    
+    /// <summary>
+    /// 隐藏快照版本设置键
+    /// </summary>
+    private const string HideSnapshotVersionsKey = "HideSnapshotVersions";
+    
+    /// <summary>
     /// 下载线程数设置
     /// </summary>
     [ObservableProperty]
@@ -485,6 +496,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadBackgroundImagePathAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
+        // 加载隐藏快照版本设置
+        LoadHideSnapshotVersionsAsync().ConfigureAwait(false);
         // 加载下载线程数设置
         LoadDownloadThreadCountAsync().ConfigureAwait(false);
         // 加载实时日志设置
@@ -543,6 +556,24 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnDownloadDependenciesChanged(bool value)
     {
         _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// 加载隐藏快照版本设置
+    /// </summary>
+    private async Task LoadHideSnapshotVersionsAsync()
+    {
+        // 读取隐藏快照版本设置，如果不存在则使用默认值true
+        var value = await _localSettingsService.ReadSettingAsync<bool?>(HideSnapshotVersionsKey);
+        HideSnapshotVersions = value ?? true;
+    }
+    
+    /// <summary>
+    /// 当隐藏快照版本设置变化时保存
+    /// </summary>
+    partial void OnHideSnapshotVersionsChanged(bool value)
+    {
+        _localSettingsService.SaveSettingAsync(HideSnapshotVersionsKey, value).ConfigureAwait(false);
     }
     
     /// <summary>

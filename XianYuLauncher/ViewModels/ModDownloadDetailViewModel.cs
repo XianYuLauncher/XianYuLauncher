@@ -280,6 +280,35 @@ namespace XianYuLauncher.ViewModels
             _modrinthService = modrinthService;
         _minecraftVersionService = minecraftVersionService;
         _fileService = App.GetService<IFileService>();
+        _localSettingsService = App.GetService<ILocalSettingsService>();
+        }
+        
+        private readonly ILocalSettingsService _localSettingsService;
+        
+        /// <summary>
+        /// 判断是否为快照版本（包括 snapshot、pre、rc、周快照如 25w13a）
+        /// </summary>
+        private static bool IsSnapshotVersion(string version)
+        {
+            if (string.IsNullOrEmpty(version)) return false;
+            
+            var lowerVersion = version.ToLowerInvariant();
+            
+            // 检查是否包含 snapshot、pre、rc
+            if (lowerVersion.Contains("snapshot") || 
+                lowerVersion.Contains("-pre") || 
+                lowerVersion.Contains("-rc"))
+            {
+                return true;
+            }
+            
+            // 检查周快照格式：如 25w13a、24w10a（数字+w+数字+字母）
+            if (System.Text.RegularExpressions.Regex.IsMatch(lowerVersion, @"^\d{2}w\d{1,2}[a-z]$"))
+            {
+                return true;
+            }
+            
+            return false;
         }
         
         // 语义化版本号比较器
@@ -444,117 +473,112 @@ namespace XianYuLauncher.ViewModels
                 // 更新支持的游戏版本
                 if (projectDetail.GameVersions != null)
                 {
-                    // 使用语义化版本排序（处理如1.21.10在1.21.9之后的情况）
-                    var sortedVersions = projectDetail.GameVersions.OrderByDescending(v => v, Comparer<string>.Create(SemanticVersionComparer.Compare));
+                    // 读取隐藏快照版本设置
+                    var hideSnapshots = await _localSettingsService.ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
                     
-                    // 先在内存中构建完整的数据结构，然后一次性更新UI集合，减少UI更新次数
-                    var tempGameVersions = new List<GameVersionViewModel>();
-                    
-                    // 预格式化所有可能的加载器名称
-                    var allLoaders = allVersions.SelectMany(v => v.Loaders).Distinct().ToList();
-                    foreach (var loader in allLoaders)
+                    // 在后台线程处理数据，避免阻塞 UI
+                    var tempGameVersions = await Task.Run(() =>
                     {
-                        if (!loaderNameCache.ContainsKey(loader))
+                        var result = new List<GameVersionViewModel>();
+                        
+                        // 直接使用 Modrinth 返回的顺序，反转使最新版本在前
+                        var gameVersionsInOrder = projectDetail.GameVersions.AsEnumerable().Reverse();
+                        
+                        // 如果启用了隐藏快照版本，过滤掉快照版本
+                        if (hideSnapshots)
                         {
-                            loaderNameCache[loader] = loader.Substring(0, 1).ToUpper() + loader.Substring(1).ToLower();
+                            gameVersionsInOrder = gameVersionsInOrder.Where(v => !IsSnapshotVersion(v));
                         }
-                    }
-                    
-                    foreach (var gameVersion in sortedVersions)
-                    {
-                        // 直接创建游戏版本视图模型
-                        var gameVersionViewModel = new GameVersionViewModel(gameVersion);
                         
-                        // 过滤出当前游戏版本对应的Mod版本
-                        var gameVersionModVersions = allVersions
-                            .Where(v => v.GameVersions.Contains(gameVersion))
-                            .OrderByDescending(v => v.DatePublished)
-                            .ToList();
+                        var gameVersionsList = gameVersionsInOrder.ToList();
                         
-                        if (gameVersionModVersions.Count == 0) continue;
-                        
-                        // 按加载器分组
-                        var loadersInGameVersion = gameVersionModVersions
-                            .SelectMany(v => v.Loaders)
-                            .Distinct()
-                            .ToList();
-                        
-                        var tempLoaders = new List<LoaderViewModel>();
-                        
-                        foreach (var loader in loadersInGameVersion)
+                        // 预格式化所有可能的加载器名称
+                        var allLoaders = allVersions.SelectMany(v => v.Loaders).Distinct().ToList();
+                        foreach (var loader in allLoaders)
                         {
-                            // 从缓存获取格式化后的加载器名称
-                            loaderNameCache.TryGetValue(loader, out string formattedLoaderName);
-                            
-                            var loaderViewModel = new LoaderViewModel(formattedLoaderName);
-                            
-                            // 过滤出当前加载器对应的版本
-                            var loaderVersions = gameVersionModVersions
-                                .Where(v => v.Loaders.Contains(loader))
-                                .ToList();
-                            
-                            // 为每个版本创建ModVersionViewModel，使用并行处理提高速度
-                            var parallelModVersions = new List<ModVersionViewModel>();
-                            
-                            // 对Mod版本处理进行并行化，这是CPU密集型操作
-                            Parallel.ForEach(loaderVersions, version =>
+                            if (!loaderNameCache.ContainsKey(loader))
                             {
-                                // 获取第一个下载文件
-                                var file = version.Files?.FirstOrDefault();
-                                if (file != null)
+                                loaderNameCache[loader] = char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
+                            }
+                        }
+                        
+                        // 预先按游戏版本分组所有 Mod 版本，避免重复过滤
+                        var versionsByGameVersion = allVersions
+                            .SelectMany(v => v.GameVersions.Select(gv => new { GameVersion = gv, ModVersion = v }))
+                            .GroupBy(x => x.GameVersion)
+                            .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().OrderByDescending(v => v.DatePublished).ToList());
+                        
+                        foreach (var gameVersion in gameVersionsList)
+                        {
+                            // 从预分组数据中获取
+                            if (!versionsByGameVersion.TryGetValue(gameVersion, out var gameVersionModVersions) || gameVersionModVersions.Count == 0)
+                                continue;
+                            
+                            var gameVersionViewModel = new GameVersionViewModel(gameVersion);
+                            
+                            // 按加载器分组
+                            var versionsByLoader = gameVersionModVersions
+                                .SelectMany(v => v.Loaders.Select(l => new { Loader = l, ModVersion = v }))
+                                .GroupBy(x => x.Loader)
+                                .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().ToList());
+                            
+                            var tempLoaders = new List<LoaderViewModel>();
+                            
+                            foreach (var kvp in versionsByLoader)
+                            {
+                                var loader = kvp.Key;
+                                var loaderVersions = kvp.Value;
+                                
+                                // 从缓存获取格式化后的加载器名称
+                                var formattedLoaderName = loaderNameCache.TryGetValue(loader, out var cached) 
+                                    ? cached 
+                                    : char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
+                                
+                                var loaderViewModel = new LoaderViewModel(formattedLoaderName);
+                                
+                                // 批量创建 ModVersionViewModel
+                                var modVersionViewModels = loaderVersions.Select(version =>
                                 {
-                                    // 预格式化加载器列表，使用缓存避免重复计算
-                                    var formattedLoaders = version.Loaders
-                                        .Select(l =>
-                                        {
-                                            if (loaderNameCache.TryGetValue(l, out string cachedName))
-                                                return cachedName;
-                                            return l.Substring(0, 1).ToUpper() + l.Substring(1).ToLower();
-                                        })
-                                        .ToList();
+                                    var file = version.Files?.FirstOrDefault();
+                                    if (file == null) return null;
                                     
-                                    // 直接创建ModVersionViewModel，避免额外的列表操作
-                                    var modVersionViewModel = new ModVersionViewModel
+                                    return new ModVersionViewModel
                                     {
                                         VersionNumber = version.VersionNumber,
                                         ReleaseDate = version.DatePublished,
                                         Changelog = version.Name,
-                                        DownloadUrl = file.Url.ToString(),
+                                        DownloadUrl = file.Url?.ToString(),
                                         FileName = file.Filename,
-                                        Loaders = formattedLoaders,
+                                        Loaders = version.Loaders.Select(l => loaderNameCache.TryGetValue(l, out var c) ? c : l).ToList(),
                                         VersionType = version.VersionType,
-                                        GameVersion = gameVersion, // 设置该Mod版本支持的游戏版本
-                                        IconUrl = ModIconUrl, // 设置图标URL
-                                        OriginalVersion = version // 保存原始Modrinth版本信息，用于获取依赖项
+                                        GameVersion = gameVersion,
+                                        IconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                                        OriginalVersion = version
                                     };
-                                    
-                                    // 使用锁确保线程安全
-                                    lock (parallelModVersions)
-                                    {
-                                        parallelModVersions.Add(modVersionViewModel);
-                                    }
+                                }).Where(v => v != null).ToList();
+                                
+                                // 批量添加到 LoaderViewModel
+                                foreach (var mv in modVersionViewModels)
+                                {
+                                    loaderViewModel.ModVersions.Add(mv);
                                 }
-                            });
-                            
-                            // 直接添加并行处理结果到LoaderViewModel，避免额外的列表操作
-                            foreach (var modVersion in parallelModVersions)
-                            {
-                                loaderViewModel.ModVersions.Add(modVersion);
+                                
+                                tempLoaders.Add(loaderViewModel);
                             }
                             
-                            tempLoaders.Add(loaderViewModel);
+                            // 批量添加加载器
+                            foreach (var loader in tempLoaders)
+                            {
+                                gameVersionViewModel.Loaders.Add(loader);
+                            }
+                            
+                            result.Add(gameVersionViewModel);
                         }
                         
-                        // 一次性添加所有加载器
-                        foreach (var loader in tempLoaders)
-                        {
-                            gameVersionViewModel.Loaders.Add(loader);
-                        }
-                        
-                        tempGameVersions.Add(gameVersionViewModel);
-                    }
+                        return result;
+                    });
                     
-                    // 清空并一次性添加所有游戏版本，减少UI更新次数
+                    // 在 UI 线程批量更新集合
                     SupportedGameVersions.Clear();
                     foreach (var gameVersion in tempGameVersions)
                     {

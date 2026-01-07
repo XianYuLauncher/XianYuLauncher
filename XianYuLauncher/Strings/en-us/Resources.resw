@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -61,9 +120,9 @@
   <data name="AppDisplayName" xml:space="preserve">
     <value>XianYu Launcher</value>
   </data>
-	<data name="AppDescription" xml:space="preserve">
-		<value>XianYu Launcher</value>
-  	</data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>XianYu Launcher</value>
+  </data>
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>Launch</value>
   </data>
@@ -99,9 +158,6 @@
   </data>
   <data name="Settings_VersionIsolation.Text" xml:space="preserve">
     <value>Enable Version Isolation</value>
-  </data>
-  <data name="Settings_Personalization.Text" xml:space="preserve">
-    <value>Personalization</value>
   </data>
   <data name="Settings_Theme.Text" xml:space="preserve">
     <value>Theme</value>
@@ -221,13 +277,19 @@
     <value>Download Dependencies</value>
   </data>
   <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
-    <value>Automatically download required dependency mods when downloading mods. Disable to skip automatic downloads</value>
+    <value>Auto-download required dependency mods</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
+    <value>Hide Snapshot Versions</value>
+  </data>
+  <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
+    <value>Hide snapshots, pre-releases and release candidates</value>
   </data>
   <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
     <value>Download Threads</value>
   </data>
   <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
-    <value>Number of concurrent threads for downloading resources. Higher values increase speed but may use more system resources</value>
+    <value>Number of concurrent threads for downloading resources.</value>
   </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>About</value>
@@ -237,6 +299,180 @@
   </data>
   <data name="Settings_Disclaimer.Text" xml:space="preserve">
     <value>XianYuLauncher is an unofficial Minecraft launcher and has no affiliation or official cooperation with Mojang Studios, Microsoft, or their mainland China agents.</value>
+  </data>
+  <data name="TutorialPage_Title.Text" xml:space="preserve">
+    <value>Tutorial</value>
+  </data>
+  <data name="TutorialPage_Subtitle.Text" xml:space="preserve">
+    <value>Please complete the following settings to run Minecraft properly</value>
+  </data>
+  <data name="TutorialPage_StepText.Text" xml:space="preserve">
+    <value>Step 1/3</value>
+  </data>
+  <data name="TutorialPage_MinecraftPathTitle.Text" xml:space="preserve">
+    <value>Minecraft Path</value>
+  </data>
+  <data name="TutorialPage_MinecraftPathTextBox.PlaceholderText" xml:space="preserve">
+    <value>Please select Minecraft game directory</value>
+  </data>
+  <data name="TutorialPage_BrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="TutorialPage_MinecraftPathDescription.Text" xml:space="preserve">
+    <value>Minecraft game directory, containing versions, saves, etc.</value>
+  </data>
+  <data name="TutorialPage_JavaSettingsTitle.Text" xml:space="preserve">
+    <value>Java Settings</value>
+  </data>
+  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve">
+    <value>Installed Java Versions</value>
+  </data>
+  <data name="TutorialPage_AddJavaButton.Content" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="TutorialPage_RefreshJavaButton.Content" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="TutorialPage_JavaSelectionMode.Text" xml:space="preserve">
+    <value>Java Selection Mode</value>
+  </data>
+  <data name="TutorialPage_AutoJavaSelection.Content" xml:space="preserve">
+    <value>Auto-select Java from list</value>
+  </data>
+  <data name="TutorialPage_ManualJavaSelection.Content" xml:space="preserve">
+    <value>Manually select Java</value>
+  </data>
+  <data name="TutorialPage_JavaPathTitle.Text" xml:space="preserve">
+    <value>Java Path</value>
+  </data>
+  <data name="TutorialPage_JavaPathTextBox.PlaceholderText" xml:space="preserve">
+    <value>Please select Java executable path</value>
+  </data>
+  <data name="TutorialPage_BrowseJavaButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="TutorialPage_ClearJavaButton.Content" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="TutorialPage_JavaPathDescription.Text" xml:space="preserve">
+    <value>Use 'Add' button to manually add Java versions to the list, or directly specify Java path</value>
+  </data>
+  <data name="TutorialPage_ProfileSelectionTitle.Text" xml:space="preserve">
+    <value>Profile Selection</value>
+  </data>
+  <data name="TutorialPage_LoginTypeTitle.Text" xml:space="preserve">
+    <value>Login Type</value>
+  </data>
+  <data name="TutorialPage_MicrosoftLoginRadio.Content" xml:space="preserve">
+    <value>Microsoft Login</value>
+  </data>
+  <data name="TutorialPage_OfflineLoginRadio.Content" xml:space="preserve">
+    <value>Offline Login</value>
+  </data>
+  <data name="TutorialPage_ProfileNameTitle.Text" xml:space="preserve">
+    <value>Profile Name</value>
+  </data>
+  <data name="TutorialPage_LoginButtonText.Text" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="TutorialPage_OfflineProfileNameTitle.Text" xml:space="preserve">
+    <value>Profile Name</value>
+  </data>
+  <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Please enter profile name</value>
+  </data>
+  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="TutorialPage_NextButton.Content" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="TutorialPage_FinishButton.Content" xml:space="preserve">
+    <value>Finish</value>
+  </data>
+  <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
+    <value>Login Required</value>
+  </data>
+  <data name="TutorialPage_LoginRequiredDialog_Content" xml:space="preserve">
+    <value>You are not logged into your Microsoft account!</value>
+  </data>
+  <data name="TutorialPage_OKButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="TutorialPage_LoginFailedDialog_Title" xml:space="preserve">
+    <value>Login Failed</value>
+  </data>
+  <data name="TutorialPage_PurchaseMinecraftDialog_Title" xml:space="preserve">
+    <value>Purchase Minecraft</value>
+  </data>
+  <data name="TutorialPage_PurchaseMinecraftDialog_Content" xml:space="preserve">
+    <value>Your Microsoft account has not purchased Minecraft yet. Please purchase the game first.</value>
+  </data>
+  <data name="TutorialPage_PurchaseButtonText" xml:space="preserve">
+    <value>Go to Purchase</value>
+  </data>
+  <data name="TutorialPage_CancelButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="TutorialPage_CannotOpenLinkDialog_Title" xml:space="preserve">
+    <value>Cannot Open Link</value>
+  </data>
+  <data name="TutorialPage_CannotOpenLinkDialog_Content" xml:space="preserve">
+    <value>Unable to open the purchase link. Please visit the website manually.</value>
+  </data>
+  <data name="TutorialPage_StepPrefixText" xml:space="preserve">
+    <value>Step</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_GettingCode" xml:space="preserve">
+    <value>Getting login code...</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_VisitUrl" xml:space="preserve">
+    <value>Please visit</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_EnterCode" xml:space="preserve">
+    <value>in your browser and enter code</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_Success" xml:space="preserve">
+    <value>Login successful</value>
+  </data>
+  <data name="LaunchPage_MicrosoftAccountRenewingText" xml:space="preserve">
+    <value>Microsoft account renewing...</value>
+  </data>
+  <data name="LaunchPage_MicrosoftAccountRenewedText" xml:space="preserve">
+    <value>Microsoft account renewed successfully...</value>
+  </data>
+  <data name="LaunchPage_PleaseSelectVersionText" xml:space="preserve">
+    <value>Please select a version first</value>
+  </data>
+  <data name="LaunchPage_StartingGameText" xml:space="preserve">
+    <value>Starting game...</value>
+  </data>
+  <data name="LaunchPage_PreparingGameFilesText" xml:space="preserve">
+    <value>Preparing game files...</value>
+  </data>
+  <data name="LaunchPage_PreparingGameFilesProgressText" xml:space="preserve">
+    <value>Preparing game files...</value>
+  </data>
+  <data name="LaunchPage_DownloadingText" xml:space="preserve">
+    <value>Downloading</value>
+  </data>
+  <data name="LaunchPage_PreparingGameFilesFailedText" xml:space="preserve">
+    <value>Failed to prepare game files</value>
+  </data>
+  <data name="LaunchPage_InnerErrorText" xml:space="preserve">
+    <value>Inner error</value>
+  </data>
+  <data name="LaunchPage_FailedToGetMainClassText" xml:space="preserve">
+    <value>Failed to get main class</value>
+  </data>
+  <data name="LaunchPage_BuildingClasspathText" xml:space="preserve">
+    <value>Building classpath...</value>
+  </data>
+  <data name="LaunchPage_GameCommandExecutedText" xml:space="preserve">
+    <value>Game launch command executed, command line window opened!</value>
+  </data>
+  <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
+    <value>Started successfully!</value>
   </data>
   <data name="Settings_ThanksToTeam.Text" xml:space="preserve">
     <value>Thanks to all studio members who participated in the project development</value>
@@ -253,22 +489,8 @@
   <data name="Settings_VersionIsolationDescription.Text" xml:space="preserve">
     <value>When enabled, each Minecraft version will use an independent game directory (.minecraft/versions/{version ID})</value>
   </data>
-  <!-- Launch Page Translations -->
   <data name="LaunchPage_Subtitle.Text" xml:space="preserve">
     <value>Minecraft Launcher</value>
-  </data>
-  <!-- Resource Download Page Translations -->
-  <data name="ResourceDownloadPage_VersionTabHeader.Text" xml:space="preserve">
-    <value>Versions</value>
-  </data>
-  <data name="ResourceDownloadPage_ModTabHeader.Text" xml:space="preserve">
-    <value>Mods</value>
-  </data>
-  <data name="ResourceDownloadPage_ShaderPackTabHeader.Text" xml:space="preserve">
-    <value>Shader Packs</value>
-  </data>
-  <data name="ResourceDownloadPage_ResourcePackTabHeader.Text" xml:space="preserve">
-    <value>Resource Packs</value>
   </data>
   <data name="ResourceDownloadPage_DatapackTabHeader.Text" xml:space="preserve">
     <value>Datapacks</value>
@@ -315,7 +537,6 @@
   <data name="SettingsPage_PrivacyTermsLink.Content" xml:space="preserve">
     <value>End User License Agreement (EULA)</value>
   </data>
-  <!-- Multiplayer Page Translations -->
   <data name="联机Page_Title.Text" xml:space="preserve">
     <value>Terracotta | 陶瓦联机</value>
   </data>
@@ -340,7 +561,6 @@
   <data name="联机Page_GuestCardDescription.Text" xml:space="preserve">
     <value>Join a game room created by other players</value>
   </data>
-  <!-- Multiplayer Lobby Page Translations -->
   <data name="联机大厅Page_Title.Text" xml:space="preserve">
     <value>Multiplayer Lobby</value>
   </data>
@@ -368,7 +588,6 @@
   <data name="联机大厅Page_EasyTierLabel" xml:space="preserve">
     <value>EasyTier Version</value>
   </data>
-  <!-- Multiplayer Dialog Texts -->
   <data name="联机Page_FindingRoomTitle" xml:space="preserve">
     <value>Looking for room</value>
   </data>
@@ -432,7 +651,6 @@
   <data name="SettingsPage_PrivacyTermsLink.NavigateUri" xml:space="preserve">
     <value>https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV</value>
   </data>
-  <!-- ResourceDownloadPage Translations -->
   <data name="ResourceDownloadPage_PageTitle.Text" xml:space="preserve">
     <value>Resource Download</value>
   </data>
@@ -610,7 +828,51 @@
   <data name="ResourceDownloadPage_TweaksCategory.Content" xml:space="preserve">
     <value>Tweaks</value>
   </data>
-  <!-- ModLoader Selection Page Translations -->
+  <data name="ResourceDownloadPage_DatapackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search datapacks...</value>
+  </data>
+  <data name="ResourceDownloadPage_DatapackVersionComboBox.Header" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ResourceDownloadPage_DatapackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ResourceDownloadPage_DatapackCategoryComboBox.Header" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="ResourceDownloadPage_DatapackCategoryComboBox.PlaceholderText" xml:space="preserve">
+    <value>All Categories</value>
+  </data>
+  <data name="ResourceDownloadPage_ModpackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search modpacks...</value>
+  </data>
+  <data name="ResourceDownloadPage_ModpackVersionComboBox.Header" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ResourceDownloadPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ResourceDownloadPage_ModpackCategoryComboBox.Header" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="ResourceDownloadPage_ModpackCategoryComboBox.PlaceholderText" xml:space="preserve">
+    <value>All Categories</value>
+  </data>
+  <data name="ResourceDownloadPage_ChallengingCategory.Content" xml:space="preserve">
+    <value>Challenging</value>
+  </data>
+  <data name="ResourceDownloadPage_KitchenSinkCategory.Content" xml:space="preserve">
+    <value>Kitchen Sink</value>
+  </data>
+  <data name="ResourceDownloadPage_LightweightCategory.Content" xml:space="preserve">
+    <value>Lightweight</value>
+  </data>
+  <data name="ResourceDownloadPage_MultiplayerCategory.Content" xml:space="preserve">
+    <value>Multiplayer</value>
+  </data>
+  <data name="ResourceDownloadPage_QuestsCategory.Content" xml:space="preserve">
+    <value>Quests</value>
+  </data>
   <data name="ModLoaderSelectionPage_TitleText.Text" xml:space="preserve">
     <value>Download Minecraft</value>
   </data>
@@ -644,7 +906,54 @@
   <data name="ModLoaderSelectionPage_DownloadProgressDialog.CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <!-- ModDownloadDetailPage Translations -->
+  <data name="ModLoaderSelectionPage_PreparingDownloadText" xml:space="preserve">
+    <value>Preparing to download...</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingVanillaMinecraftText" xml:space="preserve">
+    <value>Downloading Vanilla Minecraft</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadingText" xml:space="preserve">
+    <value>Downloading</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VersionText" xml:space="preserve">
+    <value>version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_VanillaText" xml:space="preserve">
+    <value>Vanilla</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCompletedText" xml:space="preserve">
+    <value>download completed</value>
+  </data>
+  <data name="ModLoaderSelectionPage_MinecraftVersionText" xml:space="preserve">
+    <value>Minecraft Version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderText" xml:space="preserve">
+    <value>Mod Loader</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ModLoaderVersionText" xml:space="preserve">
+    <value>Mod Loader Version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CustomVersionNameText" xml:space="preserve">
+    <value>Custom Version Name</value>
+  </data>
+  <data name="ModLoaderSelectionPage_PleaseSelectModLoaderVersionText" xml:space="preserve">
+    <value>Please select a Mod Loader version</value>
+  </data>
+  <data name="ModLoaderSelectionPage_InstallingText" xml:space="preserve">
+    <value>Installing</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadCanceledText" xml:space="preserve">
+    <value>Download canceled</value>
+  </data>
+  <data name="ModLoaderSelectionPage_DownloadFailedText" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="ModLoaderSelectionPage_SelectionResultText" xml:space="preserve">
+    <value>Selection Result</value>
+  </data>
+  <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
   <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
     <value>Select Version</value>
   </data>
@@ -717,55 +1026,6 @@
   <data name="ModDownloadDetailPage_DownloadStatusTitle.Text" xml:space="preserve">
     <value>Download Status</value>
   </data>
-  <!-- Datapack Filter Translations -->
-  <data name="ResourceDownloadPage_DatapackSearchBox.PlaceholderText" xml:space="preserve">
-    <value>Search datapacks...</value>
-  </data>
-  <data name="ResourceDownloadPage_DatapackVersionComboBox.Header" xml:space="preserve">
-    <value>Version</value>
-  </data>
-  <data name="ResourceDownloadPage_DatapackVersionComboBox.PlaceholderText" xml:space="preserve">
-    <value>Version</value>
-  </data>
-  <data name="ResourceDownloadPage_DatapackCategoryComboBox.Header" xml:space="preserve">
-    <value>Category</value>
-  </data>
-  <data name="ResourceDownloadPage_DatapackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
-  </data>
-  <!-- Modpack Filter Translations -->
-  <data name="ResourceDownloadPage_ModpackSearchBox.PlaceholderText" xml:space="preserve">
-    <value>Search modpacks...</value>
-  </data>
-  <data name="ResourceDownloadPage_ModpackVersionComboBox.Header" xml:space="preserve">
-    <value>Version</value>
-  </data>
-  <data name="ResourceDownloadPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
-    <value>Version</value>
-  </data>
-  <data name="ResourceDownloadPage_ModpackCategoryComboBox.Header" xml:space="preserve">
-    <value>Category</value>
-  </data>
-  <data name="ResourceDownloadPage_ModpackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
-  </data>
-  <!-- Modpack Specific Category Translations -->
-  <data name="ResourceDownloadPage_ChallengingCategory.Content" xml:space="preserve">
-    <value>Challenging</value>
-  </data>
-  <data name="ResourceDownloadPage_KitchenSinkCategory.Content" xml:space="preserve">
-    <value>Kitchen Sink</value>
-  </data>
-  <data name="ResourceDownloadPage_LightweightCategory.Content" xml:space="preserve">
-    <value>Lightweight</value>
-  </data>
-  <data name="ResourceDownloadPage_MultiplayerCategory.Content" xml:space="preserve">
-    <value>Multiplayer</value>
-  </data>
-  <data name="ResourceDownloadPage_QuestsCategory.Content" xml:space="preserve">
-    <value>Quests</value>
-  </data>
-  <!-- Dynamic text localization -->
   <data name="ModDownloadDetailPage_SupportedLoadersText_Mod" xml:space="preserve">
     <value>Supported Loaders</value>
   </data>
@@ -805,66 +1065,12 @@
   <data name="ModDownloadDetailPage_VersionSelectionTip_Datapack" xml:space="preserve">
     <value>Gray versions are incompatible with the current datapack version</value>
   </data>
+  <data name="ModDownloadDetailPage_VersionsCountSuffix" xml:space="preserve">
+    <value> versions</value>
+  </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>Added Profiles</value>
   </data>
-  <!-- SettingsPage 新增本地化 -->
-  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
-    <value>Launch Game Real-time Log</value>
-  </data>
-  <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
-    <value>When enabled, the real-time log page will automatically open after the game starts successfully</value>
-  </data>
-  <data name="Settings_FontFamily.Text" xml:space="preserve">
-    <value>Font</value>
-  </data>
-  <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
-    <value>Select application font, changes take effect immediately</value>
-  </data>
-  <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
-    <value>Open Source Software License Information</value>
-  </data>
-  <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
-    <value>List of open source software used in this project:</value>
-  </data>
-  <!-- ErrorAnalysisPage 本地化 -->
-  <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
-    <value>Real-time Game Log</value>
-  </data>
-  <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
-    <value>Export Logs</value>
-  </data>
-  <data name="ErrorAnalysis_CopyLogButton.Content" xml:space="preserve">
-    <value>Copy Logs</value>
-  </data>
-  <data name="ErrorAnalysis_ClearLogButton.Content" xml:space="preserve">
-    <value>Clear Logs</value>
-  </data>
-  <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
-    <value>Real-time Log Details</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>AI Error Analysis</value>
-  </data>
-  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
-    <value>No analysis content because Minecraft hasn't crashed yet...</value>
-  </data>
-  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
-    <value>AI is analyzing the crash reason...</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
-    <value>AI analysis completed.</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
-    <value>AI analysis canceled.</value>
-  </data>
-  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
-    <value>AI analysis request failed: {0}</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
-    <value>AI analysis failed: {0}</value>
-  </data>
-  <!-- VersionListPage 本地化 -->
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>Version List</value>
   </data>
@@ -892,7 +1098,6 @@
   <data name="VersionListPage_InstallDateLabel.Text" xml:space="preserve">
     <value>Install Date: </value>
   </data>
-  <!-- Version List Status Messages -->
   <data name="VersionListPage_LoadingVersionsText" xml:space="preserve">
     <value>Loading versions list...</value>
   </data>
@@ -956,57 +1161,6 @@
   <data name="VersionListPage_VersionNumberText.Text" xml:space="preserve">
     <value>Version: </value>
   </data>
-  
-  <!-- ModLoaderSelectionPage Download Dialog Translations -->
-  <data name="ModLoaderSelectionPage_PreparingDownloadText" xml:space="preserve">
-    <value>Preparing to download...</value>
-  </data>
-  <data name="ModLoaderSelectionPage_DownloadingVanillaMinecraftText" xml:space="preserve">
-    <value>Downloading Vanilla Minecraft</value>
-  </data>
-  <data name="ModLoaderSelectionPage_DownloadingText" xml:space="preserve">
-    <value>Downloading</value>
-  </data>
-  <data name="ModLoaderSelectionPage_VersionText" xml:space="preserve">
-    <value>version</value>
-  </data>
-  <data name="ModLoaderSelectionPage_VanillaText" xml:space="preserve">
-    <value>Vanilla</value>
-  </data>
-  <data name="ModLoaderSelectionPage_DownloadCompletedText" xml:space="preserve">
-    <value>download completed</value>
-  </data>
-  <data name="ModLoaderSelectionPage_MinecraftVersionText" xml:space="preserve">
-    <value>Minecraft Version</value>
-  </data>
-  <data name="ModLoaderSelectionPage_ModLoaderText" xml:space="preserve">
-    <value>Mod Loader</value>
-  </data>
-  <data name="ModLoaderSelectionPage_ModLoaderVersionText" xml:space="preserve">
-    <value>Mod Loader Version</value>
-  </data>
-  <data name="ModLoaderSelectionPage_CustomVersionNameText" xml:space="preserve">
-    <value>Custom Version Name</value>
-  </data>
-  <data name="ModLoaderSelectionPage_PleaseSelectModLoaderVersionText" xml:space="preserve">
-    <value>Please select a Mod Loader version</value>
-  </data>
-  <data name="ModLoaderSelectionPage_InstallingText" xml:space="preserve">
-    <value>Installing</value>
-  </data>
-  <data name="ModLoaderSelectionPage_DownloadCanceledText" xml:space="preserve">
-    <value>Download canceled</value>
-  </data>
-  <data name="ModLoaderSelectionPage_DownloadFailedText" xml:space="preserve">
-    <value>Download failed</value>
-  </data>
-  <data name="ModLoaderSelectionPage_SelectionResultText" xml:space="preserve">
-    <value>Selection Result</value>
-  </data>
-  <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
-    <value>OK</value>
-  </data>
-  
   <data name="VersionListPage_InstallDateText.Text" xml:space="preserve">
     <value>Install Date: </value>
   </data>
@@ -1082,11 +1236,11 @@
   <data name="VersionManagerPage_MoveModsMenuItem.Text" xml:space="preserve">
     <value>Move to Other Version</value>
   </data>
-  <data name="VersionManagerPage_MoveModsDialog.Title" xml:space="preserve">
-    <value>Select Target Version</value>
-  </data>
   <data name="VersionManagerPage_MoveModsDialog.PrimaryButtonText" xml:space="preserve">
     <value>Confirm</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog.Title" xml:space="preserve">
+    <value>Select Target Version</value>
   </data>
   <data name="VersionManagerPage_MoveModsDialog.CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
@@ -1097,11 +1251,71 @@
   <data name="VersionManagerPage_MoveResultDialog.Title" xml:space="preserve">
     <value>Mod Transfer Results</value>
   </data>
-  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
     <value>OK</value>
   </data>
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>Mod transfer results:</value>
+  </data>
+  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
+    <value>Launch Game Real-time Log</value>
+  </data>
+  <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
+    <value>When enabled, the real-time log page will automatically open after the game starts successfully</value>
+  </data>
+  <data name="Settings_FontFamily.Text" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
+    <value>Select application font, changes take effect immediately</value>
+  </data>
+  <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
+    <value>Open Source Software License Information</value>
+  </data>
+  <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
+    <value>List of open source software used in this project:</value>
+  </data>
+  <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
+    <value>Real-time Game Log</value>
+  </data>
+  <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
+    <value>Export Logs</value>
+  </data>
+  <data name="ErrorAnalysis_CopyLogButton.Content" xml:space="preserve">
+    <value>Copy Logs</value>
+  </data>
+  <data name="ErrorAnalysis_ClearLogButton.Content" xml:space="preserve">
+    <value>Clear Logs</value>
+  </data>
+  <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
+    <value>Real-time Log Details</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
+    <value>AI Error Analysis</value>
+  </data>
+  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+    <value>No analysis content because Minecraft hasn't crashed yet...</value>
+  </data>
+  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
+    <value>AI is analyzing the crash reason...</value>
+  </data>
+  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+    <value>Downloading Terracotta Plugin</value>
+  </data>
+  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+    <value>Downloading and installing Terracotta plugin, please wait...</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
+    <value>AI analysis completed.</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+    <value>AI analysis canceled.</value>
+  </data>
+  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
+    <value>AI analysis request failed: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+    <value>AI analysis failed: {0}</value>
   </data>
   <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
     <value>Select All</value>
@@ -1145,10 +1359,6 @@
   <data name="VersionManagerPage_UpdateResultDialog.Title" xml:space="preserve">
     <value>Update Completed</value>
   </data>
-  <data name="VersionManagerPage_UpdateResultDialog.PrimaryButtonText" xml:space="preserve">
-    <value>OK</value>
-  </data>
-  <!-- VersionManagerPage Localization -->
   <data name="VersionManagerPage_DragDropTip.Text" xml:space="preserve">
     <value>Release to add files</value>
   </data>
@@ -1227,8 +1437,6 @@
   <data name="VersionManagerPage_MapManagementTab.Text" xml:space="preserve">
     <value>Maps</value>
   </data>
-  <!-- Empty list tips localization -->
-  <!-- Shader Management -->
   <data name="VersionManagerPage_NoShadersTitle.Text" xml:space="preserve">
     <value>No shaders for current version</value>
   </data>
@@ -1238,15 +1446,6 @@
   <data name="VersionManagerPage_NavigateToShaderPageButton.Content" xml:space="preserve">
     <value>Go to Shaders Page</value>
   </data>
-  <!-- Multiplayer Page Terracotta Download Dialog -->
-  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
-    <value>Downloading Terracotta Plugin</value>
-  </data>
-  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
-    <value>Downloading and installing Terracotta plugin, please wait...</value>
-  </data>
-  
-  <!-- Resource Pack Management -->
   <data name="VersionManagerPage_NoResourcePacksTitle.Text" xml:space="preserve">
     <value>No resource packs for current version</value>
   </data>
@@ -1256,7 +1455,6 @@
   <data name="VersionManagerPage_NavigateToResourcePackPageButton.Content" xml:space="preserve">
     <value>Go to Resource Packs Page</value>
   </data>
-  <!-- Datapack Management -->
   <data name="VersionManagerPage_NoDatapacksTitle.Text" xml:space="preserve">
     <value>No datapacks for current version</value>
   </data>
@@ -1266,14 +1464,12 @@
   <data name="VersionManagerPage_NavigateToDatapackPageButton.Content" xml:space="preserve">
     <value>Go to Datapacks Page</value>
   </data>
-  <!-- Screenshot Management -->
   <data name="VersionManagerPage_NoScreenshotsTitle.Text" xml:space="preserve">
     <value>No screenshots for current version</value>
   </data>
   <data name="VersionManagerPage_NoScreenshotsDescription.Text" xml:space="preserve">
     <value>Game screenshots will be displayed here</value>
   </data>
-  <!-- Map Management -->
   <data name="VersionManagerPage_NoMapsTitle.Text" xml:space="preserve">
     <value>No maps for current version</value>
   </data>
@@ -1283,7 +1479,6 @@
   <data name="VersionManagerPage_NavigateToMapPageButton.Content" xml:space="preserve">
     <value>Go to Maps Page</value>
   </data>
-  <!-- Version Manager Page Title Localization -->
   <data name="VersionManagerPage_Title" xml:space="preserve">
     <value>Version</value>
   </data>
@@ -1296,14 +1491,12 @@
   <data name="VersionManagerPage_Subtitle_SelectVersion" xml:space="preserve">
     <value>Please select a version to manage</value>
   </data>
-  <!-- Screenshot Context Menu Localization -->
   <data name="VersionManagerPage_DeleteScreenshotMenuItem.Text" xml:space="preserve">
     <value>Delete</value>
   </data>
   <data name="VersionManagerPage_SaveScreenshotAsMenuItem.Text" xml:space="preserve">
     <value>Save As</value>
   </data>
-  <!-- Memory Allocation Toggle Localization -->
   <data name="VersionManagerPage_AutoMemoryToggle.OnContent" xml:space="preserve">
     <value>On</value>
   </data>
@@ -1328,7 +1521,6 @@
   <data name="VersionManagerPage_DisabledText.OffContent" xml:space="preserve">
     <value>Disabled</value>
   </data>
-  <!-- Profile Page Localization -->
   <data name="ProfilePage_Title.Text" xml:space="preserve">
     <value>Profile Management</value>
   </data>
@@ -1392,7 +1584,6 @@
   <data name="ProfilePage_EmptyProfilesDescription.Text" xml:space="preserve">
     <value>Click the 'Add Account' button to add your first profile</value>
   </data>
-  <!-- Profile Management Page Localization -->
   <data name="ProfileManagementPage_CurrentProfileLabel.Text" xml:space="preserve">
     <value>Current Profile</value>
   </data>
@@ -1450,199 +1641,18 @@
   <data name="ProfileManagementPage_SaveSkinButton.Content" xml:space="preserve">
     <value>Save Skin Texture</value>
   </data>
-  <!-- Profile Card Button Localization -->
   <data name="ProfilePage_SwitchProfileButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Switch to this profile</value>
   </data>
   <data name="ProfilePage_DeleteProfileButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Delete profile</value>
   </data>
-  <!-- Account Type Localization -->
   <data name="ProfilePage_OfflineProfileText" xml:space="preserve">
     <value>Offline Profile</value>
   </data>
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>Microsoft Account</value>
   </data>
-  <!-- Tutorial Page Translations -->
-  <data name="TutorialPage_Title.Text" xml:space="preserve">
-    <value>Tutorial</value>
-  </data>
-  <data name="TutorialPage_Subtitle.Text" xml:space="preserve">
-    <value>Please complete the following settings to run Minecraft properly</value>
-  </data>
-  <data name="TutorialPage_StepText.Text" xml:space="preserve">
-    <value>Step 1/3</value>
-  </data>
-  <data name="TutorialPage_MinecraftPathTitle.Text" xml:space="preserve">
-    <value>Minecraft Path</value>
-  </data>
-  <data name="TutorialPage_MinecraftPathTextBox.PlaceholderText" xml:space="preserve">
-    <value>Please select Minecraft game directory</value>
-  </data>
-  <data name="TutorialPage_BrowseButton.Content" xml:space="preserve">
-    <value>Browse...</value>
-  </data>
-  <data name="TutorialPage_MinecraftPathDescription.Text" xml:space="preserve">
-    <value>Minecraft game directory, containing versions, saves, etc.</value>
-  </data>
-  <data name="TutorialPage_JavaSettingsTitle.Text" xml:space="preserve">
-    <value>Java Settings</value>
-  </data>
-  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve">
-    <value>Installed Java Versions</value>
-  </data>
-  <data name="TutorialPage_AddJavaButton.Content" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="TutorialPage_RefreshJavaButton.Content" xml:space="preserve">
-    <value>Refresh</value>
-  </data>
-  <data name="TutorialPage_JavaSelectionMode.Text" xml:space="preserve">
-    <value>Java Selection Mode</value>
-  </data>
-  <data name="TutorialPage_AutoJavaSelection.Content" xml:space="preserve">
-    <value>Auto-select Java from list</value>
-  </data>
-  <data name="TutorialPage_ManualJavaSelection.Content" xml:space="preserve">
-    <value>Manually select Java</value>
-  </data>
-  <data name="TutorialPage_JavaPathTitle.Text" xml:space="preserve">
-    <value>Java Path</value>
-  </data>
-  <data name="TutorialPage_JavaPathTextBox.PlaceholderText" xml:space="preserve">
-    <value>Please select Java executable path</value>
-  </data>
-  <data name="TutorialPage_BrowseJavaButton.Content" xml:space="preserve">
-    <value>Browse...</value>
-  </data>
-  <data name="TutorialPage_ClearJavaButton.Content" xml:space="preserve">
-    <value>Clear</value>
-  </data>
-  <data name="TutorialPage_JavaPathDescription.Text" xml:space="preserve">
-    <value>Use 'Add' button to manually add Java versions to the list, or directly specify Java path</value>
-  </data>
-  <data name="TutorialPage_ProfileSelectionTitle.Text" xml:space="preserve">
-    <value>Profile Selection</value>
-  </data>
-  <data name="TutorialPage_LoginTypeTitle.Text" xml:space="preserve">
-    <value>Login Type</value>
-  </data>
-  <data name="TutorialPage_MicrosoftLoginRadio.Content" xml:space="preserve">
-    <value>Microsoft Login</value>
-  </data>
-  <data name="TutorialPage_OfflineLoginRadio.Content" xml:space="preserve">
-    <value>Offline Login</value>
-  </data>
-  <data name="TutorialPage_ProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
-  </data>
-  <data name="TutorialPage_LoginButtonText.Text" xml:space="preserve">
-    <value>Login</value>
-  </data>
-  <data name="TutorialPage_OfflineProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
-  </data>
-  <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Please enter profile name</value>
-  </data>
-  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve">
-    <value>Previous</value>
-  </data>
-  <data name="TutorialPage_NextButton.Content" xml:space="preserve">
-    <value>Next</value>
-  </data>
-  <data name="TutorialPage_FinishButton.Content" xml:space="preserve">
-    <value>Finish</value>
-  </data>
-  <!-- Tutorial Dialog Translations -->
-  <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
-    <value>Login Required</value>
-  </data>
-  <data name="TutorialPage_LoginRequiredDialog_Content" xml:space="preserve">
-    <value>You are not logged into your Microsoft account!</value>
-  </data>
-  <data name="TutorialPage_OKButtonText" xml:space="preserve">
-    <value>OK</value>
-  </data>
-  <data name="TutorialPage_LoginFailedDialog_Title" xml:space="preserve">
-    <value>Login Failed</value>
-  </data>
-  <data name="TutorialPage_PurchaseMinecraftDialog_Title" xml:space="preserve">
-    <value>Purchase Minecraft</value>
-  </data>
-  <data name="TutorialPage_PurchaseMinecraftDialog_Content" xml:space="preserve">
-    <value>Your Microsoft account has not purchased Minecraft yet. Please purchase the game first.</value>
-  </data>
-  <data name="TutorialPage_PurchaseButtonText" xml:space="preserve">
-    <value>Go to Purchase</value>
-  </data>
-  <data name="TutorialPage_CancelButtonText" xml:space="preserve">
-    <value>Cancel</value>
-  </data>
-  <data name="TutorialPage_CannotOpenLinkDialog_Title" xml:space="preserve">
-    <value>Cannot Open Link</value>
-  </data>
-  <data name="TutorialPage_CannotOpenLinkDialog_Content" xml:space="preserve">
-    <value>Unable to open the purchase link. Please visit the website manually.</value>
-  </data>
-  <!-- Tutorial Step and Login Status Translations -->
-  <data name="TutorialPage_StepPrefixText" xml:space="preserve">
-    <value>Step</value>
-  </data>
-  <data name="TutorialPage_LoginStatus_GettingCode" xml:space="preserve">
-    <value>Getting login code...</value>
-  </data>
-  <data name="TutorialPage_LoginStatus_VisitUrl" xml:space="preserve">
-    <value>Please visit</value>
-  </data>
-  <data name="TutorialPage_LoginStatus_EnterCode" xml:space="preserve">
-    <value>in your browser and enter code</value>
-  </data>
-  <data name="TutorialPage_LoginStatus_Success" xml:space="preserve">
-    <value>Login successful</value>
-  </data>
-  <!-- Launch Page Translations -->
-  <data name="LaunchPage_MicrosoftAccountRenewingText" xml:space="preserve">
-    <value>Microsoft account renewing...</value>
-  </data>
-  <data name="LaunchPage_MicrosoftAccountRenewedText" xml:space="preserve">
-    <value>Microsoft account renewed successfully...</value>
-  </data>
-  <data name="LaunchPage_PleaseSelectVersionText" xml:space="preserve">
-    <value>Please select a version first</value>
-  </data>
-  <data name="LaunchPage_StartingGameText" xml:space="preserve">
-    <value>Starting game...</value>
-  </data>
-  <data name="LaunchPage_PreparingGameFilesText" xml:space="preserve">
-    <value>Preparing game files...</value>
-  </data>
-  <data name="LaunchPage_PreparingGameFilesProgressText" xml:space="preserve">
-    <value>Preparing game files...</value>
-  </data>
-  <data name="LaunchPage_DownloadingText" xml:space="preserve">
-    <value>Downloading</value>
-  </data>
-  <data name="LaunchPage_PreparingGameFilesFailedText" xml:space="preserve">
-    <value>Failed to prepare game files</value>
-  </data>
-  <data name="LaunchPage_InnerErrorText" xml:space="preserve">
-    <value>Inner error</value>
-  </data>
-  <data name="LaunchPage_FailedToGetMainClassText" xml:space="preserve">
-    <value>Failed to get main class</value>
-  </data>
-  <data name="LaunchPage_BuildingClasspathText" xml:space="preserve">
-    <value>Building classpath...</value>
-  </data>
-  <data name="LaunchPage_GameCommandExecutedText" xml:space="preserve">
-    <value>Game launch command executed, command line window opened!</value>
-  </data>
-  <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
-    <value>Started successfully!</value>
-  </data>
-  <!-- Cache Management Localization -->
   <data name="Settings_CacheManagement.Text" xml:space="preserve">
     <value>Cache Management</value>
   </data>
@@ -1667,7 +1677,6 @@
   <data name="Settings_CacheDescription.Text" xml:space="preserve">
     <value>Cache is used to speed up resource list loading. After clearing, it will be re-downloaded on next access</value>
   </data>
-  <!-- VersionListPage Context Menu Localization -->
   <data name="VersionListPage_GenerateLaunchScriptMenuItem.Text" xml:space="preserve">
     <value>Generate Launch Script</value>
   </data>
@@ -1680,7 +1689,6 @@
   <data name="VersionListPage_CompleteVersionDialog.CloseButtonText" xml:space="preserve">
     <value>Close</value>
   </data>
-  <!-- LaunchPage News and Announcements Localization -->
   <data name="LaunchPage_NewsAndAnnouncements.Text" xml:space="preserve">
     <value>News &amp; Announcements</value>
   </data>
@@ -1693,7 +1701,6 @@
   <data name="LaunchPage_ModRecommendation.Text" xml:space="preserve">
     <value>Mod Recommendation: </value>
   </data>
-  <!-- NewsListPage Localization -->
   <data name="NewsListPage_Title.Text" xml:space="preserve">
     <value>News &amp; Announcements</value>
   </data>
@@ -1715,7 +1722,6 @@
   <data name="NewsListPage_Loading.Text" xml:space="preserve">
     <value>Loading...</value>
   </data>
-  <!-- NewsDetailPage Localization -->
   <data name="NewsDetailPage_Title.Text" xml:space="preserve">
     <value>News Details</value>
   </data>
@@ -1728,11 +1734,16 @@
   <data name="NewsDetailPage_FullChangelogHint.Text" xml:space="preserve">
     <value>For full changelog, please visit the official Minecraft website</value>
   </data>
-  <!-- News Type Localization -->
   <data name="NewsType_Release" xml:space="preserve">
     <value>Release</value>
   </data>
   <data name="NewsType_Snapshot" xml:space="preserve">
     <value>Snapshot</value>
+  </data>
+  <data name="Settings_Personalization.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
   </data>
 </root>
