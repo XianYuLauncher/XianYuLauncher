@@ -15,29 +15,12 @@ public class TelemetryService
     private readonly HttpClient _httpClient;
     private readonly ILogger<TelemetryService> _logger;
     
-    // 统计服务端点
-    private const string TelemetryEndpoint = "***REMOVED***";
-    
-    // API Key（Base64 编码混淆，不是加密）
-    private const string EncodedApiKey = "***REMOVED***"; 
+    // 从配置文件读取
+    private static string TelemetryEndpoint => SecretsService.Config.Telemetry.Endpoint;
+    private static string ApiKey => SecretsService.Config.Telemetry.ApiKey;
     
     // 是否启用遥测（可以通过配置控制）
     private bool _isEnabled = true;
-    
-    /// <summary>
-    /// 解码 API Key
-    /// </summary>
-    private static string GetApiKey()
-    {
-        try
-        {
-            return Encoding.UTF8.GetString(Convert.FromBase64String(EncodedApiKey));
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
 
     public TelemetryService(HttpClient httpClient, ILogger<TelemetryService> logger)
     {
@@ -47,8 +30,8 @@ public class TelemetryService
         // 设置超时，避免阻塞启动
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
         
-        // 添加 API Key 请求头（解码后）
-        var apiKey = GetApiKey();
+        // 添加 API Key 请求头
+        var apiKey = ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
@@ -63,6 +46,13 @@ public class TelemetryService
         if (!_isEnabled)
         {
             System.Diagnostics.Debug.WriteLine("[Telemetry] 遥测已禁用，跳过发送");
+            return;
+        }
+
+        // 检查配置是否有效
+        if (string.IsNullOrEmpty(TelemetryEndpoint))
+        {
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 遥测端点未配置，跳过发送");
             return;
         }
 

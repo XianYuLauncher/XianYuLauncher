@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
+using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -15,9 +16,8 @@ public class MicrosoftAuthService
 {
     private readonly HttpClient _httpClient;
     
-    // Azure应用程序的客户端ID（需要用户自行注册并替换）
-    // 注意：这是示例值，实际使用时需要替换为真实的client_id
-    private const string ClientId = "***REMOVED***";
+    // Azure应用程序的客户端ID（从配置文件读取）
+    private static string ClientId => SecretsService.Config.MicrosoftAuth.ClientId;
     
     public MicrosoftAuthService(HttpClient httpClient)
     {

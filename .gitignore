@@ -223,6 +223,10 @@ _pkginfo.txt
 *.appxbundle
 *.appxupload
 
+# Secrets configuration (contains API keys)
+secrets.json
+!secrets.example.json
+
 # Visual Studio cache files
 # files ending in .cache can be ignored
 *.[Cc]ache
