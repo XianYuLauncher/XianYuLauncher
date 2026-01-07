@@ -626,20 +626,80 @@
             IsSecondaryButtonEnabled="False"
             DefaultButton="None">
             <StackPanel Spacing="16" Width="400">
-                <!-- 版本名称 -->
-                <TextBlock x:Name="CompleteVersionNameText" FontSize="16" FontWeight="SemiBold" Text="" />
+                <!-- 版本信息卡片 -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="8" 
+                        Padding="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <!-- 版本图标 -->
+                        <FontIcon Grid.Column="0" 
+                                  Glyph="&#xE74C;" 
+                                  FontSize="24" 
+                                  Foreground="{ThemeResource AccentFillColorDefaultBrush}" 
+                                  VerticalAlignment="Center" 
+                                  Margin="0,0,12,0" />
+                        <!-- 版本名称 -->
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="CompleteVersionNameText" 
+                                   FontSize="16" 
+                                   FontWeight="SemiBold" 
+                                   Text="" 
+                                   VerticalAlignment="Center" 
+                                   TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </Border>
                 
-                <!-- 当前阶段 -->
-                <TextBlock x:Name="CompleteVersionStageText" FontSize="14" Text="正在检查依赖..." TextWrapping="WrapWholeWords" />
+                <!-- 状态区域 -->
+                <StackPanel Spacing="8">
+                    <!-- 当前阶段 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" 
+                                  Glyph="&#xE896;" 
+                                  FontSize="14" 
+                                  Foreground="{ThemeResource TextFillColorSecondary}" 
+                                  VerticalAlignment="Top" 
+                                  Margin="0,2,8,0" />
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="CompleteVersionStageText" 
+                                   FontSize="14" 
+                                   Text="正在检查依赖..." 
+                                   TextWrapping="WrapWholeWords" />
+                    </Grid>
+                    
+                    <!-- 当前下载文件 -->
+                    <TextBlock x:Name="CompleteVersionCurrentFileText" 
+                               FontSize="12" 
+                               Foreground="{ThemeResource TextFillColorTertiary}" 
+                               Text="" 
+                               TextWrapping="NoWrap" 
+                               TextTrimming="CharacterEllipsis" 
+                               Margin="22,0,0,0" />
+                </StackPanel>
                 
-                <!-- 当前下载文件 -->
-                <TextBlock x:Name="CompleteVersionCurrentFileText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                
-                <!-- 进度条 -->
-                <ProgressBar x:Name="CompleteVersionProgressBar" Value="0" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
-                
-                <!-- 进度百分比文本 -->
-                <TextBlock x:Name="CompleteVersionProgressText" FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="0%" HorizontalTextAlignment="Center" />
+                <!-- 进度区域 -->
+                <StackPanel Spacing="8">
+                    <ProgressBar x:Name="CompleteVersionProgressBar" 
+                                 Value="0" 
+                                 Minimum="0" 
+                                 Maximum="100" 
+                                 Height="6" 
+                                 CornerRadius="3" />
+                    <TextBlock x:Name="CompleteVersionProgressText" 
+                               FontSize="13" 
+                               Foreground="{ThemeResource TextFillColorSecondary}" 
+                               Text="0%" 
+                               HorizontalTextAlignment="Center" />
+                </StackPanel>
             </StackPanel>
         </ContentDialog>
     </Grid>
