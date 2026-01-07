@@ -119,7 +119,19 @@
     <value>Window Material</value>
   </data>
   <data name="Settings_WindowMaterialDescription.Text" xml:space="preserve">
-    <value>Select window material. Different materials have different visual effects and performance characteristics.</value>
+    <value>Select window material. Mica effects and custom background cannot be used simultaneously.</value>
+  </data>
+  <data name="MaterialType_Mica" xml:space="preserve">
+    <value>Mica</value>
+  </data>
+  <data name="MaterialType_MicaAlt" xml:space="preserve">
+    <value>Mica Alt</value>
+  </data>
+  <data name="MaterialType_Acrylic" xml:space="preserve">
+    <value>Acrylic</value>
+  </data>
+  <data name="MaterialType_CustomBackground" xml:space="preserve">
+    <value>Custom Background</value>
   </data>
   <data name="Settings_Language.Text" xml:space="preserve">
     <value>Language</value>
@@ -202,6 +214,21 @@
   <data name="Settings_VersionListSourceDescription.Text" xml:space="preserve">
     <value>Selecting a version list source can affect the speed and stability of game version list retrieval</value>
   </data>
+  <data name="Settings_VersionDownload.Text" xml:space="preserve">
+    <value>Download Settings</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Text" xml:space="preserve">
+    <value>Download Dependencies</value>
+  </data>
+  <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
+    <value>Automatically download required dependency mods when downloading mods. Disable to skip automatic downloads</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
+    <value>Download Threads</value>
+  </data>
+  <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
+    <value>Number of concurrent threads for downloading resources. Higher values increase speed but may use more system resources</value>
+  </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>About</value>
   </data>
@@ -254,6 +281,15 @@
   </data>
   <data name="LaunchPage_SelectVersionPlaceholder.PlaceholderText" xml:space="preserve">
     <value>Please select an installed version</value>
+  </data>
+  <data name="LaunchPage_InstalledVersionsText" xml:space="preserve">
+    <value>Installed Versions</value>
+  </data>
+  <data name="LaunchPage_AddVersion.Text" xml:space="preserve">
+    <value>Add Version</value>
+  </data>
+  <data name="LaunchPage_RefreshVersions.Text" xml:space="preserve">
+    <value>Refresh Version List</value>
   </data>
   <data name="LaunchPage_RefreshVersionsTooltip.ToolTipService.ToolTip" xml:space="preserve">
     <value>Refresh version list</value>
@@ -426,6 +462,21 @@
   </data>
   <data name="ResourceDownloadPage_VersionSearchBox.PlaceholderText" xml:space="preserve">
     <value>Search versions...</value>
+  </data>
+  <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="ResourceDownloadPage_AllVersionTypes.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="ResourceDownloadPage_ReleaseVersionType.Content" xml:space="preserve">
+    <value>Release</value>
+  </data>
+  <data name="ResourceDownloadPage_SnapshotVersionType.Content" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="ResourceDownloadPage_OldVersionType.Content" xml:space="preserve">
+    <value>Old Versions</value>
   </data>
   <data name="ResourceDownloadPage_LoaderComboBox.Header" xml:space="preserve">
     <value>Loader</value>
@@ -1187,6 +1238,14 @@
   <data name="VersionManagerPage_NavigateToShaderPageButton.Content" xml:space="preserve">
     <value>Go to Shaders Page</value>
   </data>
+  <!-- Multiplayer Page Terracotta Download Dialog -->
+  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+    <value>Downloading Terracotta Plugin</value>
+  </data>
+  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+    <value>Downloading and installing Terracotta plugin, please wait...</value>
+  </data>
+  
   <!-- Resource Pack Management -->
   <data name="VersionManagerPage_NoResourcePacksTitle.Text" xml:space="preserve">
     <value>No resource packs for current version</value>
@@ -1582,5 +1641,98 @@
   </data>
   <data name="LaunchPage_GameStartedSuccessfullyText" xml:space="preserve">
     <value>Started successfully!</value>
+  </data>
+  <!-- Cache Management Localization -->
+  <data name="Settings_CacheManagement.Text" xml:space="preserve">
+    <value>Cache Management</value>
+  </data>
+  <data name="Settings_TotalCacheSize.Text" xml:space="preserve">
+    <value>Total Cache Size</value>
+  </data>
+  <data name="Settings_SearchCacheSize.Text" xml:space="preserve">
+    <value>Search Results Cache</value>
+  </data>
+  <data name="Settings_ImageCacheSize.Text" xml:space="preserve">
+    <value>Image Cache</value>
+  </data>
+  <data name="Settings_VersionCacheSize.Text" xml:space="preserve">
+    <value>Version List Cache</value>
+  </data>
+  <data name="Settings_ClearAllCache.Content" xml:space="preserve">
+    <value>Clear All Cache</value>
+  </data>
+  <data name="Settings_ClearImageCache.Content" xml:space="preserve">
+    <value>Clear Image Cache</value>
+  </data>
+  <data name="Settings_CacheDescription.Text" xml:space="preserve">
+    <value>Cache is used to speed up resource list loading. After clearing, it will be re-downloaded on next access</value>
+  </data>
+  <!-- VersionListPage Context Menu Localization -->
+  <data name="VersionListPage_GenerateLaunchScriptMenuItem.Text" xml:space="preserve">
+    <value>Generate Launch Script</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionMenuItem.Text" xml:space="preserve">
+    <value>Complete Version</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionDialog.Title" xml:space="preserve">
+    <value>Complete Version</value>
+  </data>
+  <data name="VersionListPage_CompleteVersionDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <!-- LaunchPage News and Announcements Localization -->
+  <data name="LaunchPage_NewsAndAnnouncements.Text" xml:space="preserve">
+    <value>News &amp; Announcements</value>
+  </data>
+  <data name="LaunchPage_ViewMore.Content" xml:space="preserve">
+    <value>View More</value>
+  </data>
+  <data name="LaunchPage_LauncherChangelog.Text" xml:space="preserve">
+    <value>XianYu Launcher Changelog</value>
+  </data>
+  <data name="LaunchPage_ModRecommendation.Text" xml:space="preserve">
+    <value>Mod Recommendation: </value>
+  </data>
+  <!-- NewsListPage Localization -->
+  <data name="NewsListPage_Title.Text" xml:space="preserve">
+    <value>News &amp; Announcements</value>
+  </data>
+  <data name="NewsListPage_Subtitle.Text" xml:space="preserve">
+    <value>Minecraft Java Edition Updates</value>
+  </data>
+  <data name="NewsListPage_RefreshButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="NewsListPage_FilterAll.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="NewsListPage_FilterRelease.Content" xml:space="preserve">
+    <value>Release</value>
+  </data>
+  <data name="NewsListPage_FilterSnapshot.Content" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="NewsListPage_Loading.Text" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <!-- NewsDetailPage Localization -->
+  <data name="NewsDetailPage_Title.Text" xml:space="preserve">
+    <value>News Details</value>
+  </data>
+  <data name="NewsDetailPage_UpdateContent.Text" xml:space="preserve">
+    <value>Update Content</value>
+  </data>
+  <data name="NewsDetailPage_Loading.Text" xml:space="preserve">
+    <value>Loading details...</value>
+  </data>
+  <data name="NewsDetailPage_FullChangelogHint.Text" xml:space="preserve">
+    <value>For full changelog, please visit the official Minecraft website</value>
+  </data>
+  <!-- News Type Localization -->
+  <data name="NewsType_Release" xml:space="preserve">
+    <value>Release</value>
+  </data>
+  <data name="NewsType_Snapshot" xml:space="preserve">
+    <value>Snapshot</value>
   </data>
 </root>

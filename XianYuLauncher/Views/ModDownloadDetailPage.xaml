@@ -319,26 +319,20 @@
                                 <StackPanel Spacing="4">
                                     <!-- 游戏版本标题栏 -->
                                     <Border Background="{ThemeResource SolidBackgroundFillColorSecondary}" Padding="12" CornerRadius="4">
-                                        <Button Content="{x:Bind GameVersion}" 
-                                                Style="{StaticResource TextBlockButtonStyle}" 
+                                        <Button Style="{StaticResource TextBlockButtonStyle}" 
                                                 HorizontalAlignment="Left"
                                                 Click="GameVersionButton_Click" 
                                                 Tag="{x:Bind}">
-                                            <Button.ContentTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding}" FontSize="16" FontWeight="Bold" />
-                                                            <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
-                                                                    <Run Text="(" />
-                                                                    <Run Text="{Binding ModVersions.Count}" />
-                                                                    <Run Text=")" />
-                                                                </TextBlock>
-                                                            <FontIcon Glyph="{Binding IsExpanded, Converter={StaticResource BoolToGlyphConverter}, ConverterParameter='chevron_down|chevron_right', Mode=OneWay}" 
-                                                                      FontSize="12" 
-                                                                      Foreground="{ThemeResource TextFillColorSecondary}" />
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </Button.ContentTemplate>
+                                            <Button.Content>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind GameVersion}" FontSize="16" FontWeight="Bold" />
+                                                    <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                                        <Run Text="(" />
+                                                        <Run Text="{x:Bind TotalModVersionsCount, Mode=OneWay}" />
+                                                        <Run Text=")" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Button.Content>
                                         </Button>
                                     </Border>
 

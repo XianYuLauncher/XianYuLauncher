@@ -1,60 +1,66 @@
-# XianYu Launcher
+# XianYuLauncher
 
-A modern, feature-rich Minecraft Java Edition launcher with a polished user interface.
+一个基于 .NET 10.0 和 WinUI 3 开发的现代化 Minecraft 启动器，提供流畅的用户体验和丰富的功能。
 
-> **Disclaimer**: This project is unofficial and has no affiliation with Mojang Studios or Microsoft.
+## 🎯 项目简介
 
-[![GitHub Stars](https://img.shields.io/github/stars/N123999/XianYuLauncher.svg?style=flat-square&label=⭐%20Stars)](https://github.com/N123999/XianYuLauncher)
-[![GitHub Release](https://img.shields.io/github/v/release/N123999/XianYuLauncher-Help?style=flat-square%20Release&logo=github)](https://github.com/N123999/XianYuLauncher-Help/releases)
-[![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
-[![Bilibili](https://img.shields.io/badge/bilibili-@Spirit灵动工作室-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
+XianYuLauncher 是一个功能完整的 Minecraft 启动器，支持多种 Minecraft 版本管理、账号登录、游戏设置和实时日志查看等功能。采用现代化的 UI 设计和流畅的交互体验，为玩家提供便捷的游戏管理工具。
 
-## Features
+> **注意**: 本项目采用 MIT 协议进行半开源发布。部分核心功能可能处于闭源状态。
 
-- **Sleek, Modern UI**: Built with WinUI 3 for a native Windows experience
-- **Version Management**: Easy installation and switching between Minecraft versions
-- **Real-time Logs**: Monitor game output with live log viewing
-- **Crash Analysis**: Intelligent error detection and diagnostic tools
-- **Customizable Settings**: Fine-tune your game experience with detailed options
-- **Mod Support**: Manage and organize your mods seamlessly
+## ✨ 主要功能
 
-## Getting Started
+### 核心功能
+- ✅ 支持多种 Minecraft 版本的安装和管理
+- ✅ 账号登录系统（支持微软、离线、外置登录）
+- ✅ 游戏设置自定义（内存分配、分辨率等）
+- ✅ 实时游戏日志查看功能
+- ✅ 游戏崩溃分析和日志导出
+- ✅ 支持 Mod 管理
+- ✅ 支持资源包和光影包管理
+- ✅ 多语言支持
 
-### Prerequisites
-- Windows 10 1809 (17763) or later
-- .NET 10.0 SDK
+### 特色功能
+- 🎨 现代化的 WinUI 3 界面设计
+- 🚀 流畅的性能和响应速度
+- 🔒 多角色管理
+- 📊 详细的版本统计信息
 
-### Installation
+## 🛠️ 技术栈
 
-1. **Download**: Get the latest release from the [Releases](https://github.com/N123999/XianYuLauncher/releases) page.
-2. **Extract**: Unzip the downloaded package to your preferred location.
-3. **Install & Run**: Refer to the `安装教程.txt` file included in the package and follow the steps to complete the installation.
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| .NET | 10.0 | 核心框架 |
+| WinUI 3 | 1.8 | UI 框架 |
+| C# | 13.0 | 开发语言 |
+| Microsoft.WindowsAppSDK | 1.8.251106002 | Windows 应用 SDK |
 
-## Technology Stack
+## 📄 开源协议
 
-- **Framework**: .NET 10.0
-- **UI**: WinUI 3
-- **Architecture**: MVVM with CommunityToolkit.Mvvm
-- **Windows App SDK**: 1.8.251106002
+本项目采用 **MIT 协议**进行半开源发布。
 
-## Open Source License
+### 半开源说明
+- 项目代码部分开源，遵循 MIT 协议
+- 部分核心功能可能处于闭源状态
+- 所有开源代码均受 MIT 协议保护
 
-This project is released under a **MIT License** as semi-open source.
+### MIT 许可证
 
-### Semi-Open Source Statement
-- The project is partially open-sourced under the MIT License.
-- Certain core components may remain closed-source.
-- All open-sourced code is protected by the MIT License.
+完整的许可证文本请查看 [LICENSE](LICENSE) 文件。
 
-### MIT License
+## 🚀 快速开始
 
-For the full license text, please refer to the [LICENSE](LICENSE) file.
+### 环境要求
+- Windows 10 1809 (17763) 或更高版本
 
-## Contact
+### 运行已发布版本
 
-- **GitHub**: [N123999/XianYuLauncher](https://github.com/N123999/XianYuLauncher)
-- **Issues**: [Report bugs or request features](https://github.com/N123999/XianYuLauncher/issues)
+1. 下载最新的发布包
+2. 解压到任意文件夹，按照'安装说明.txt'中的步骤进行安装
+3. 安装完毕后，开始使用 XianYuLauncher
 
----
+##  致谢
 
-**XianYu Launcher** - Elevate your Minecraft experience!
+完整的第三方库声明请查看 [NOTICE.md](NOTICE.md) 文件。
+
+**XianYuLauncher** - 让 Minecraft 游戏体验更加完美

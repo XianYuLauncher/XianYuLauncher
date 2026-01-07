@@ -11,158 +11,325 @@
         <viewModels:LaunchViewModel />
     </Page.DataContext>
 
-    <Grid x:Name="ContentArea" Padding="40,60,20,20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Page.Resources>
+        <Style x:Key="SelectionRowStyle" TargetType="Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+    </Page.Resources>
 
-        <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,40">
-            <TextBlock Text="XianYu Launcher" Style="{StaticResource TitleTextBlockStyle}" FontSize="48" FontWeight="Bold" />
-            <TextBlock x:Uid="LaunchPage_Subtitle" Text="Minecraft 启动器" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,4,0,0" Opacity="0.8" />
-        </StackPanel>
-
-        <!-- 主要内容区域 -->
-        <StackPanel Grid.Row="1" Spacing="28" MaxWidth="600" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <!-- 版本选择 -->
-            <StackPanel Spacing="10">
-                <TextBlock x:Uid="LaunchPage_VersionSelection" Text="选择Minecraft版本" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ComboBox 
-                        x:Name="VersionComboBox"
-                        ItemsSource="{x:Bind ViewModel.InstalledVersions, Mode=OneWay}"
-                        SelectedItem="{x:Bind ViewModel.SelectedVersion, Mode=TwoWay}"
-                        x:Uid="LaunchPage_SelectVersionPlaceholder"
-                        PlaceholderText="请选择已安装的版本"
-                        HorizontalAlignment="Stretch"
-                        Height="40"
-                        Padding="12,0,12,0"
-                        FontSize="14" />
-                    <Button 
-                        Grid.Column="1"
-                        Margin="12,0,0,0"
-                        Command="{x:Bind ViewModel.LoadInstalledVersionsCommand}"
-                        HorizontalAlignment="Right"
-                        Height="40"
-                        Width="40"
-                        Style="{StaticResource DefaultButtonStyle}"
-                        x:Uid="LaunchPage_RefreshVersionsTooltip"
-                        ToolTipService.ToolTip="刷新版本列表">
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" FontSize="18" />
-                    </Button>
-                </Grid>
-            </StackPanel>
-
-
-
-            <!-- 角色选择 -->
-            <StackPanel Spacing="10">
-                <TextBlock x:Uid="LaunchPage_PlayerName" Text="选择角色" Style="{StaticResource TitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
-                <Button 
-                    x:Name="ProfileButton"
-                    HorizontalAlignment="Stretch"
-                    Height="40"
-                    Padding="12,0,12,0"
-                    FontSize="14">
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <!-- 头像 -->
-                        <Border 
-                            Width="24"
-                            Height="24"
-                            CornerRadius="4"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center">
-                            <Image 
-                                x:Name="ProfileAvatar"
-                                Width="24"
-                                Height="24"
-                                Source="ms-appx:///Assets/DefaultAvatar.png"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" 
-                                Stretch="Fill" />
-                        </Border>
-                        <!-- 角色名 -->
-                        <TextBlock 
-                            Text="{x:Bind ViewModel.SelectedProfile.Name, Mode=OneWay}"
-                            VerticalAlignment="Center"
-                            FontSize="14" />
-                    </StackPanel>
-                    <Button.Flyout>
-                        <MenuFlyout x:Name="ProfileMenuFlyout" Opening="ProfileMenuFlyout_Opening">
-                            <!-- 角色列表将在代码中动态生成 -->
-                            <!-- 添加角色选项 -->
-                            <MenuFlyoutItem 
-                                x:Uid="LaunchPage_AddProfile"
-                                Text="添加角色"
-                                Click="AddProfileMenuItem_Click">
-                                <MenuFlyoutItem.Icon>
-                                    <SymbolIcon Symbol="Add" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-            </StackPanel>
-
-            <!-- 启动按钮 -->
-            <Button 
-                x:Name="LaunchButton"
-                x:Uid="LaunchPage_LaunchGame"
-                Content="启动游戏"
-                Style="{StaticResource AccentButtonStyle}"
-                Command="{x:Bind ViewModel.LaunchGameCommand}"
-                IsEnabled="{x:Bind ViewModel.SelectedVersion, Converter={StaticResource StringNullOrEmptyToBoolConverter}, Mode=OneWay}"
-                HorizontalAlignment="Stretch" 
-                Height="48"
-                FontSize="16"
-                FontWeight="SemiBold"
-                Margin="0,16,0,0" />
-
-            <!-- 启动状态 -->
-            <TextBlock 
-                x:Name="StatusTextBlock"
-                Text="{x:Bind ViewModel.LaunchStatus, Mode=OneWay}"
-                Style="{StaticResource BodyTextBlockStyle}"
-                TextAlignment="Left" 
-                Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
-                FontSize="14"
-                Margin="0,12,0,0"
-                Visibility="Collapsed" />
+    <Grid x:Name="ContentArea">
+        <!-- 主内容 -->
+        <ScrollViewer 
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
+            Padding="40,36,40,24">
             
+            <StackPanel Spacing="24" Width="420" HorizontalAlignment="Left">
+                <!-- 页面标题 -->
+                <StackPanel Spacing="4">
+                    <TextBlock 
+                        Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" 
+                        FontSize="{x:Bind ViewModel.PageTitleFontSize, Mode=OneWay}"
+                        Style="{StaticResource TitleTextBlockStyle}" 
+                        FontWeight="SemiBold" />
+                    <TextBlock 
+                        Text="XianYu Launcher" 
+                        Style="{StaticResource CaptionTextBlockStyle}" 
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
 
+                <!-- 选择卡片 -->
+                <Border 
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="4">
+                    <StackPanel>
+                        <!-- 版本选择行 -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button 
+                                x:Name="VersionButton"
+                                Style="{StaticResource SelectionRowStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border 
+                                        Grid.Column="0"
+                                        Width="32" Height="32"
+                                        CornerRadius="6"
+                                        Background="{ThemeResource AccentFillColorDefaultBrush}">
+                                        <FontIcon 
+                                            FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                            Glyph="&#xE7FC;" 
+                                            FontSize="14"
+                                            Foreground="White" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock 
+                                            Text="{x:Bind ViewModel.SelectedVersionDisplay, Mode=OneWay}"
+                                            Style="{StaticResource BodyTextBlockStyle}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock 
+                                            x:Uid="LaunchPage_VersionSelection"
+                                            Text="游戏版本"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                    <FontIcon 
+                                        Grid.Column="2"
+                                        FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                        Glyph="&#xE70D;" 
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                                <Button.Flyout>
+                                    <MenuFlyout x:Name="VersionMenuFlyout" Opening="VersionMenuFlyout_Opening">
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem 
+                                            x:Uid="LaunchPage_AddVersion"
+                                            Text="添加版本"
+                                            Click="AddVersionMenuItem_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <SymbolIcon Symbol="Add" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Button 
+                                Grid.Column="1"
+                                Command="{x:Bind ViewModel.LoadInstalledVersionsCommand}"
+                                Style="{StaticResource SubtleButtonStyle}"
+                                Padding="8"
+                                Margin="0,0,4,0"
+                                CornerRadius="4"
+                                VerticalAlignment="Center"
+                                x:Uid="LaunchPage_RefreshVersionsTooltip"
+                                ToolTipService.ToolTip="刷新版本列表">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" FontSize="12" />
+                            </Button>
+                        </Grid>
 
-            <!-- 下载进度条 -->
-            <ProgressBar 
-                x:Name="DownloadProgressBar"
-                Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
-                Minimum="0"
-                Maximum="100"
-                Height="8"
-                Margin="0,8,0,0"
-                Visibility="{x:Bind ViewModel.DownloadProgress, Mode=OneWay, Converter={StaticResource ProgressVisibilityConverter}}"
-                Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
-                Background="{ThemeResource SystemControlBackgroundBaseLowBrush}"
-                BorderThickness="0"
-                CornerRadius="4" />
-                
+                        <!-- 分隔线 -->
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="12,0" Opacity="0.5" />
 
-        </StackPanel>
-        <!-- 启动成功提示 -->
+                        <!-- 角色选择行 -->
+                        <Button 
+                            x:Name="ProfileButton"
+                            Style="{StaticResource SelectionRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border 
+                                    Grid.Column="0"
+                                    Width="32" Height="32"
+                                    CornerRadius="6"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}">
+                                    <Image 
+                                        x:Name="ProfileAvatar"
+                                        Width="32" Height="32"
+                                        Source="ms-appx:///Assets/DefaultAvatar.png"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock 
+                                        Text="{x:Bind ViewModel.SelectedProfile.Name, Mode=OneWay}"
+                                        Style="{StaticResource BodyTextBlockStyle}"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock 
+                                        x:Uid="LaunchPage_PlayerName"
+                                        Text="游戏角色"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <FontIcon 
+                                    Grid.Column="2"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                    Glyph="&#xE70D;" 
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Grid>
+                            <Button.Flyout>
+                                <MenuFlyout x:Name="ProfileMenuFlyout" Opening="ProfileMenuFlyout_Opening">
+                                    <MenuFlyoutItem 
+                                        x:Uid="LaunchPage_AddProfile"
+                                        Text="添加角色"
+                                        Click="AddProfileMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <SymbolIcon Symbol="Add" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- 新闻/公告卡片 -->
+                <Border 
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock 
+                                x:Uid="LaunchPage_NewsAndAnnouncements"
+                                Text="新闻与公告"
+                                Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <HyperlinkButton 
+                                Grid.Column="1"
+                                x:Uid="LaunchPage_ViewMore"
+                                Content="查看更多"
+                                Padding="0"
+                                FontSize="12"
+                                Click="ViewMoreNews_Click" />
+                        </Grid>
+                        
+                        <!-- 新闻列表 -->
+                        <StackPanel Spacing="8">
+                            <!-- 新闻项 1 - Minecraft 最新（可点击） -->
+                            <Grid 
+                                PointerPressed="LatestNews_PointerPressed"
+                                Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border 
+                                    Width="6" Height="6" 
+                                    CornerRadius="3" 
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,10,0" />
+                                <TextBlock 
+                                    Grid.Column="1"
+                                    Text="{x:Bind ViewModel.LatestMinecraftNews, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                            <!-- 新闻项 2 - 启动器更新日志（可点击） -->
+                            <Grid 
+                                PointerPressed="LauncherChangelog_PointerPressed"
+                                Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border 
+                                    Width="6" Height="6" 
+                                    CornerRadius="3" 
+                                    Background="{ThemeResource TextFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,10,0" />
+                                <TextBlock 
+                                    Grid.Column="1"
+                                    x:Uid="LaunchPage_LauncherChangelog"
+                                    Text="XianYu Launcher 更新日志"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                            <!-- 新闻项 3 - Mod 推荐（可点击） -->
+                            <Grid 
+                                PointerPressed="RecommendedMod_PointerPressed"
+                                Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border 
+                                    Width="6" Height="6" 
+                                    CornerRadius="3" 
+                                    Background="{ThemeResource TextFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,10,0" />
+                                <TextBlock 
+                                    Grid.Column="1"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    TextTrimming="CharacterEllipsis">
+                                    <Run x:Uid="LaunchPage_ModRecommendation" Text="Mod推荐：" />
+                                    <Run Text="{x:Bind ViewModel.RecommendedModTitle, Mode=OneWay}" />
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 启动按钮 -->
+                <Button 
+                    x:Name="LaunchButton"
+                    x:Uid="LaunchPage_LaunchGame"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Command="{x:Bind ViewModel.LaunchGameCommand}"
+                    IsEnabled="{x:Bind ViewModel.SelectedVersion, Converter={StaticResource StringNullOrEmptyToBoolConverter}, Mode=OneWay}"
+                    HorizontalAlignment="Stretch" 
+                    Height="44"
+                    CornerRadius="6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon 
+                            FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                            Glyph="&#xE768;" 
+                            FontSize="16" />
+                        <TextBlock 
+                            Text="启动游戏" 
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 进度状态 -->
+                <StackPanel 
+                    Spacing="6"
+                    Visibility="{x:Bind ViewModel.DownloadProgress, Mode=OneWay, Converter={StaticResource ProgressVisibilityConverter}}">
+                    <ProgressBar 
+                        x:Name="DownloadProgressBar"
+                        Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                        Minimum="0"
+                        Maximum="100"
+                        Height="4"
+                        CornerRadius="2" />
+                    <TextBlock 
+                        x:Name="StatusTextBlock"
+                        Text="{x:Bind ViewModel.LaunchStatus, Mode=OneWay}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- InfoBar 浮动在底部 -->
         <InfoBar 
             x:Name="LaunchSuccessInfoBar"
-            Grid.Row="2"
             x:Uid="LaunchPage_SuccessTitle"
             Title="游戏启动成功"
             Message="{x:Bind ViewModel.LaunchSuccessMessage, Mode=OneWay}"
             IsOpen="{x:Bind ViewModel.IsLaunchSuccessInfoBarOpen, Mode=TwoWay}"
             Visibility="{x:Bind ViewModel.IsLaunchSuccessInfoBarOpen, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-            Margin="0,20,0,0" />
-        
+            VerticalAlignment="Bottom"
+            Margin="20,0,20,20"
+            CornerRadius="8" />
     </Grid>
 </Page>
