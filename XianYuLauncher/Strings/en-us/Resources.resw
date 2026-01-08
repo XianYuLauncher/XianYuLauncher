@@ -954,6 +954,22 @@
   <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="ModLoaderSelectionPage_CleanroomWarningTitleText" xml:space="preserve">
+    <value>Cleanroom Launch Feature Incomplete</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CleanroomWarningContentText" xml:space="preserve">
+    <value>Warning: Cleanroom installation is implemented, but the launch feature is not yet complete. The game may not start properly after download.
+
+This is an experimental feature. We recommend waiting for future updates or community contributions.
+
+Continue downloading?</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ContinueDownloadText" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CancelButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
     <value>Select Version</value>
   </data>

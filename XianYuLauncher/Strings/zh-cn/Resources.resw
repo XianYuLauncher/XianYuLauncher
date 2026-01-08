@@ -954,6 +954,22 @@
   <data name="ModLoaderSelectionPage_OKButtonText" xml:space="preserve">
     <value>确定</value>
   </data>
+  <data name="ModLoaderSelectionPage_CleanroomWarningTitleText" xml:space="preserve">
+    <value>Cleanroom 启动功能未完成</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CleanroomWarningContentText" xml:space="preserve">
+    <value>警告：Cleanroom 的安装功能已实现，但启动功能尚未完成。下载后可能无法正常启动游戏。
+
+这是一个实验性功能，建议等待后续更新或由社区贡献者完善。
+
+是否继续下载？</value>
+  </data>
+  <data name="ModLoaderSelectionPage_ContinueDownloadText" xml:space="preserve">
+    <value>继续下载</value>
+  </data>
+  <data name="ModLoaderSelectionPage_CancelButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
   <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
     <value>选择版本</value>
   </data>
