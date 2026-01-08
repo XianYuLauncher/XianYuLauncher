@@ -20,6 +20,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly NeoForgeService _neoForgeService;
     private readonly ForgeService _forgeService;
     private readonly OptifineService _optifineService;
+    private readonly CleanroomService _cleanroomService;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
@@ -118,6 +119,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _neoForgeService = App.GetService<NeoForgeService>();
         _forgeService = App.GetService<ForgeService>();
         _optifineService = App.GetService<OptifineService>();
+        _cleanroomService = App.GetService<CleanroomService>();
     }
     
     /// <summary>
@@ -231,6 +233,15 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             ModLoaderItems.Add(neoForgeItem);
             ModLoaderItems.Add(quiltItem);
             ModLoaderItems.Add(optifineItem);
+            
+            // 如果是Minecraft 1.12.2，添加Cleanroom选项
+            if (CleanroomService.IsCleanroomSupported(SelectedMinecraftVersion))
+            {
+                var cleanroomItem = new ModLoaderItem("Cleanroom");
+                AddPropertyChangedHandler(cleanroomItem);
+                ModLoaderItems.Add(cleanroomItem);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加Cleanroom选项（Minecraft {SelectedMinecraftVersion}）");
+            }
         
         // 不默认选择任何ModLoader
         SelectedModLoaderItem = null;
@@ -407,6 +418,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     VersionName = $"{SelectedMinecraftVersion}-OptiFine";
                 }
                 break;
+            case "Cleanroom":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-cleanroom-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-cleanroom";
+                }
+                break;
             default:
                 VersionName = SelectedMinecraftVersion;
                 break;
@@ -459,6 +480,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     break;
                 case "Optifine":
                     await LoadOptifineVersionsAsync(modLoaderItem, cts.Token);
+                    break;
+                case "Cleanroom":
+                    await LoadCleanroomVersionsAsync(modLoaderItem, cts.Token);
                     break;
             }
             
@@ -766,6 +790,61 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             {
                 System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Optifine版本列表失败: {ex.Message}");
                 // 不显示错误消息，因为Optifine不是必须的
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 加载Cleanroom版本列表
+    /// </summary>
+    /// <param name="modLoaderItem">ModLoader项</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task LoadCleanroomVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
+    {
+        if (modLoaderItem.Name != "Cleanroom") return;
+        
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载Cleanroom版本列表，Minecraft版本: {SelectedMinecraftVersion}");
+            
+            // 调用CleanroomService获取Cleanroom版本列表
+            List<string> cleanroomVersions = await _cleanroomService.GetCleanroomVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {cleanroomVersions.Count} 个Cleanroom版本");
+            
+            // 将版本添加到对应mod loader的列表中
+            foreach (var version in cleanroomVersions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                modLoaderItem.Versions.Add(version);
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom版本列表填充完成，共 {modLoaderItem.Versions.Count} 个版本");
+            
+            // 如果有版本，默认选择第一个
+            if (modLoaderItem.Versions.Count > 0)
+            {
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 默认选择第一个Cleanroom版本: {modLoaderItem.SelectedVersion}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom版本加载任务被取消");
+        }
+        catch (Exception ex)
+        {
+            if (SelectedModLoader == "Cleanroom")
+            {
+                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Cleanroom版本列表失败 (404): {ex.Message}");
+                }
+                else
+                {
+                    await ShowMessageAsync($"获取Cleanroom版本列表失败: {ex.Message}");
+                }
             }
         }
     }

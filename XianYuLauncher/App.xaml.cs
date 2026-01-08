@@ -119,6 +119,7 @@ public partial class App : Application
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.ForgeInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.NeoForgeInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.OptifineInstaller>();
+            services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.CleanroomInstaller>();
             services.AddSingleton<IModLoaderInstallerFactory, XianYuLauncher.Core.Services.ModLoaderInstallers.ModLoaderInstallerFactory>();
             
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>();
@@ -164,6 +165,10 @@ public partial class App : Application
             // Forge Service
             services.AddHttpClient<ForgeService>();
             services.AddSingleton<ForgeService>();
+            
+            // Cleanroom Service
+            services.AddHttpClient<CleanroomService>();
+            services.AddSingleton<CleanroomService>();
             
             // Optifine Service
             services.AddSingleton<OptifineService>();

@@ -191,6 +191,8 @@ public class ModLoaderItem : INotifyPropertyChanged
                         return "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico";
                     case "Quilt":
                         return "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png";
+                    case "Cleanroom":
+                        return "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png";
                     default:
                         return "";
                 }
