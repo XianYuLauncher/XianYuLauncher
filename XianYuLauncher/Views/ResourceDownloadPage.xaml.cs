@@ -237,6 +237,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             var viewportHeight = scrollViewer.ViewportHeight;
             var shouldLoadMore = !ViewModel.IsModLoadingMore && ViewModel.ModHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
 
+            //System.Diagnostics.Debug.WriteLine($"[Scroll] offset={verticalOffset:F0}, scrollable={scrollableHeight:F0}, viewport={viewportHeight:F0}, IsLoadingMore={ViewModel.IsModLoadingMore}, HasMore={ViewModel.ModHasMoreResults}, shouldLoad={shouldLoadMore}");
+
             if (shouldLoadMore)
             {
                 ViewModel.LoadMoreModsCommand.Execute(null);
@@ -523,6 +525,40 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         if (e.ClickedItem is ModrinthProject datapack)
         {
             await ViewModel.DownloadDatapackCommand.ExecuteAsync(datapack);
+        }
+    }
+    
+    /// <summary>
+    /// Modrinth平台切换事件处理程序
+    /// </summary>
+    private async void ModrinthToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        {
+            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
+            
+            // 只有当Mod下载标签页被选中时，才执行搜索
+            if (ResourceTabView.SelectedIndex == 1)
+            {
+                await ViewModel.SearchModsCommand.ExecuteAsync(null);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// CurseForge平台切换事件处理程序
+    /// </summary>
+    private async void CurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        {
+            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
+            
+            // 只有当Mod下载标签页被选中时，才执行搜索
+            if (ResourceTabView.SelectedIndex == 1)
+            {
+                await ViewModel.SearchModsCommand.ExecuteAsync(null);
+            }
         }
     }
     

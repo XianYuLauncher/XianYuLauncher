@@ -207,97 +207,124 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Mod搜索和过滤 -->
-                            <Grid Grid.Row="0" Margin="20,10,20,20">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                            <!-- Mod搜索和过滤 - 单行布局 -->
+                            <Grid Grid.Row="0" Margin="20,10,20,10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
+                                
+                                <!-- 第一行：搜索框 + 筛选条件 + 平台选择 -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Search Box -->
-                                <AutoSuggestBox
-                                    x:Name="ModSearchBox"
-                                    Grid.Row="0"
-                                    Grid.Column="0"
-                                    PlaceholderText="Search mods..."
-                                    QueryIcon="Find"
-                                    Margin="0,0,10,0"
-                                    Text="{Binding SearchQuery, Mode=TwoWay}"
-                                    QuerySubmitted="ModSearchBox_QuerySubmitted"/>
+                                    <!-- Search Box -->
+                                    <AutoSuggestBox
+                                        x:Name="ModSearchBox"
+                                        x:Uid="ResourceDownloadPage_ModSearchBox"
+                                        Grid.Column="0"
+                                        QueryIcon="Find"
+                                        Margin="0,0,8,0"
+                                        Text="{Binding SearchQuery, Mode=TwoWay}"
+                                        QuerySubmitted="ModSearchBox_QuerySubmitted"/>
 
-                                <!-- Mod Loader Filter -->
-                                <ComboBox
-                                    x:Name="LoaderComboBox"
-                                    x:Uid="ResourceDownloadPage_LoaderComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="1"
-                                    Header="加载器"
-                                    PlaceholderText="加载器"
-                                    Margin="0,0,10,0"
-                                    MinWidth="120"
-                                    SelectedValue="{Binding SelectedLoader, Mode=TwoWay}"
-                                    SelectedValuePath="Tag"
-                                    SelectionChanged="LoaderComboBox_SelectionChanged">
-                                    <ComboBoxItem Content="All" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem Content="Fabric" Tag="fabric" />
-                                    <ComboBoxItem Content="Forge" Tag="forge" />
-                                    <ComboBoxItem Content="Quilt" Tag="quilt" />
-                                    <ComboBoxItem Content="NeoForge" Tag="neoforge" />
-                                </ComboBox>
+                                    <!-- Mod Loader Filter -->
+                                    <ComboBox
+                                        x:Name="LoaderComboBox"
+                                        x:Uid="ResourceDownloadPage_LoaderComboBox"
+                                        Grid.Column="1"
+                                        MinWidth="80"
+                                        Margin="0,0,4,0"
+                                        SelectedValue="{Binding SelectedLoader, Mode=TwoWay}"
+                                        SelectedValuePath="Tag"
+                                        SelectionChanged="LoaderComboBox_SelectionChanged">
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AllLoaders" Content="加载器" Tag="all" IsSelected="True" />
+                                        <ComboBoxItem Content="Fabric" Tag="fabric" />
+                                        <ComboBoxItem Content="Forge" Tag="forge" />
+                                        <ComboBoxItem Content="Quilt" Tag="quilt" />
+                                        <ComboBoxItem Content="NeoForge" Tag="neoforge" />
+                                    </ComboBox>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="VersionComboBox"
-                                    x:Uid="ResourceDownloadPage_VersionComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    Header="版本"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,10,0"
-                                    MinWidth="120"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
-                                    SelectionChanged="VersionComboBox_SelectionChanged">
-                                </ComboBox>
+                                    <!-- Version Filter -->
+                                    <ComboBox
+                                        x:Name="VersionComboBox"
+                                        x:Uid="ResourceDownloadPage_VersionComboBox"
+                                        Grid.Column="2"
+                                        MinWidth="90"
+                                        Margin="0,0,4,0"
+                                        ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
+                                        SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
+                                        SelectionChanged="VersionComboBox_SelectionChanged">
+                                    </ComboBox>
 
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="ModCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_ModCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="3"
-                                    Header="类别"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="120"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
-                                    SelectionChanged="ModCategoryComboBox_SelectionChanged">
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="所有类别" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AdventureCategory" Content="冒险" Tag="adventure" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_DecorationCategory" Content="装饰" Tag="decoration" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_EconomyCategory" Content="经济" Tag="economy" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_EquipmentCategory" Content="装备" Tag="equipment" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_FoodCategory" Content="食物" Tag="food" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_GameMechanicsCategory" Content="机制" Tag="game-mechanics" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_LibraryCategory" Content="前置" Tag="library" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MagicCategory" Content="魔法" Tag="magic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ManagementCategory" Content="管理" Tag="management" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MinigameCategory" Content="迷你游戏" Tag="minigame" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MobsCategory" Content="生物" Tag="mobs" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_OptimizationCategory" Content="性能" Tag="optimization" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_SocialCategory" Content="社交" Tag="social" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_StorageCategory" Content="存储" Tag="storage" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TechnologyCategory" Content="科技" Tag="technology" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TransportationCategory" Content="交通" Tag="transportation" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_UtilityCategory" Content="实用" Tag="utility" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_WorldgenCategory" Content="世界生成" Tag="worldgen" />
-                                </ComboBox>
+                                    <!-- 类别筛选 -->
+                                    <ComboBox
+                                        x:Name="ModCategoryComboBox"
+                                        x:Uid="ResourceDownloadPage_ModCategoryComboBox"
+                                        Grid.Column="3"
+                                        MinWidth="80"
+                                        Margin="0,0,8,0"
+                                        SelectedValuePath="Tag"
+                                        SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
+                                        SelectionChanged="ModCategoryComboBox_SelectionChanged">
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="类别" Tag="all" IsSelected="True" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AdventureCategory" Content="冒险" Tag="adventure" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_DecorationCategory" Content="装饰" Tag="decoration" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_EconomyCategory" Content="经济" Tag="economy" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_EquipmentCategory" Content="装备" Tag="equipment" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_FoodCategory" Content="食物" Tag="food" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_GameMechanicsCategory" Content="机制" Tag="game-mechanics" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_LibraryCategory" Content="前置" Tag="library" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MagicCategory" Content="魔法" Tag="magic" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_ManagementCategory" Content="管理" Tag="management" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MinigameCategory" Content="迷你游戏" Tag="minigame" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MobsCategory" Content="生物" Tag="mobs" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_OptimizationCategory" Content="性能" Tag="optimization" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_SocialCategory" Content="社交" Tag="social" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_StorageCategory" Content="存储" Tag="storage" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_TechnologyCategory" Content="科技" Tag="technology" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_TransportationCategory" Content="交通" Tag="transportation" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_UtilityCategory" Content="实用" Tag="utility" />
+                                        <ComboBoxItem x:Uid="ResourceDownloadPage_WorldgenCategory" Content="世界生成" Tag="worldgen" />
+                                    </ComboBox>
+
+                                    <!-- 平台选择 - 使用 ToggleButtons -->
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
+                                        <ToggleButton 
+                                            x:Name="ModrinthToggle"
+                                            x:Uid="ResourceDownloadPage_ModrinthToggle"
+                                            IsChecked="{Binding IsModrinthEnabled, Mode=TwoWay}"
+                                            Click="ModrinthToggleButton_Click"
+                                            CornerRadius="4,0,0,4"
+                                            Padding="10,6"
+                                            MinWidth="80">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon Glyph="&#xE774;" FontSize="12"/>
+                                                <TextBlock Text="Modrinth" FontSize="12"/>
+                                            </StackPanel>
+                                        </ToggleButton>
+                                        <ToggleButton 
+                                            x:Name="CurseForgeToggle"
+                                            x:Uid="ResourceDownloadPage_CurseForgeToggle"
+                                            IsChecked="{Binding IsCurseForgeEnabled, Mode=TwoWay}"
+                                            Click="CurseForgeToggleButton_Click"
+                                            CornerRadius="0,4,4,0"
+                                            Padding="10,6"
+                                            MinWidth="80">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon Glyph="&#xE945;" FontSize="12"/>
+                                                <TextBlock Text="CurseForge" FontSize="12"/>
+                                            </StackPanel>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Grid>
                             </Grid>
 
                             <!-- Error Message -->
@@ -456,9 +483,9 @@
                                 <!-- Search Box -->
                                 <AutoSuggestBox
                                     x:Name="ShaderPackSearchBox"
+                                    x:Uid="ResourceDownloadPage_ShaderPackSearchBox"
                                     Grid.Row="0"
                                     Grid.Column="0"
-                                    PlaceholderText="Search shader packs..."
                                     QueryIcon="Find"
                                     Margin="0,0,10,0"
                                     Text="{Binding ShaderPackSearchQuery, Mode=TwoWay}"
@@ -657,9 +684,9 @@
                                 <!-- Search Box -->
                                 <AutoSuggestBox
                                     x:Name="ResourcePackSearchBox"
+                                    x:Uid="ResourceDownloadPage_ResourcePackSearchBox"
                                     Grid.Row="0"
                                     Grid.Column="0"
-                                    PlaceholderText="Search resource packs..."
                                     QueryIcon="Find"
                                     Margin="0,0,10,0"
                                     Text="{Binding ResourcePackSearchQuery, Mode=TwoWay}"

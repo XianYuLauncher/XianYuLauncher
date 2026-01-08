@@ -20,6 +20,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
     private readonly ModrinthService _modrinthService;
+    private readonly CurseForgeService _curseForgeService;
     private readonly FabricService _fabricService;
 
     // 版本下载相关属性和命令
@@ -100,6 +101,32 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private ObservableCollection<ModrinthProject> _mods = new();
+    
+    // 平台选择属性
+    [ObservableProperty]
+    private bool _isModrinthEnabled = true;
+    
+    [ObservableProperty]
+    private bool _isCurseForgeEnabled = false;
+    
+    // 监听平台选择变化，触发搜索
+    partial void OnIsModrinthEnabledChanged(bool value)
+    {
+        // 如果当前在Mod标签页，触发搜索
+        if (SelectedTabIndex == 1)
+        {
+            _ = SearchModsCommand.ExecuteAsync(null);
+        }
+    }
+    
+    partial void OnIsCurseForgeEnabledChanged(bool value)
+    {
+        // 如果当前在Mod标签页，触发搜索
+        if (SelectedTabIndex == 1)
+        {
+            _ = SearchModsCommand.ExecuteAsync(null);
+        }
+    }
 
     [ObservableProperty]
     private bool _isModLoading = false;
@@ -109,6 +136,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private int _modOffset = 0;
+    
+    // 为每个平台单独维护offset
+    private int _modrinthModOffset = 0;
+    private int _curseForgeModOffset = 0;
     
     [ObservableProperty]
     private bool _modHasMoreResults = true;
@@ -271,6 +302,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IMinecraftVersionService minecraftVersionService,
         INavigationService navigationService,
         ModrinthService modrinthService,
+        CurseForgeService curseForgeService,
         FabricService fabricService,
         ILocalSettingsService localSettingsService,
         IFileService fileService,
@@ -279,6 +311,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
         _modrinthService = modrinthService;
+        _curseForgeService = curseForgeService;
         _fabricService = fabricService;
         _localSettingsService = localSettingsService;
         _fileService = fileService;
@@ -560,72 +593,149 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         IsModLoading = true;
         ModOffset = 0;
+        _modrinthModOffset = 0;
+        _curseForgeModOffset = 0;
         ModHasMoreResults = true;
 
         try
         {
-            // 尝试从缓存加载
-            var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory);
-            
-            if (cachedData != null)
+            // 如果两个平台都未启用，直接返回
+            if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
-                // 使用缓存数据
                 Mods.Clear();
-                foreach (var item in cachedData.Items)
-                {
-                    Mods.Add(item);
-                }
-                ModOffset = cachedData.Items.Count;
-                ModHasMoreResults = ModOffset < cachedData.TotalHits;
-                System.Diagnostics.Debug.WriteLine($"[Mod缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
                 return;
             }
             
-            // 构建facets参数
-            var facets = new List<List<string>>();
-            
-            // 添加加载器筛选条件
-            if (SelectedLoader != "all")
+            // 尝试从缓存加载（仅当只启用Modrinth时）
+            if (IsModrinthEnabled && !IsCurseForgeEnabled)
             {
-                facets.Add(new List<string> { $"categories:{SelectedLoader}" });
+                var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
+                    "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory);
+                
+                if (cachedData != null)
+                {
+                    // 使用缓存数据
+                    Mods.Clear();
+                    foreach (var item in cachedData.Items)
+                    {
+                        Mods.Add(item);
+                    }
+                    ModOffset = cachedData.Items.Count;
+                    _modrinthModOffset = cachedData.Items.Count;
+                    
+                    // 如果TotalHits等于Items.Count，说明是旧格式缓存（没有正确保存TotalHits）
+                    // 此时假设还有更多数据可以加载
+                    if (cachedData.TotalHits == cachedData.Items.Count)
+                    {
+                        ModHasMoreResults = true; // 旧缓存格式，假设有更多
+                        System.Diagnostics.Debug.WriteLine($"[Mod缓存] 检测到旧格式缓存（TotalHits={cachedData.TotalHits}等于Items数量），假设HasMore=true");
+                    }
+                    else
+                    {
+                        ModHasMoreResults = ModOffset < cachedData.TotalHits;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[Mod缓存] 从缓存加载 {cachedData.Items.Count} 个Mod，TotalHits={cachedData.TotalHits}，ModOffset={ModOffset}，HasMore={ModHasMoreResults}");
+                    return;
+                }
             }
             
-            // 添加版本筛选条件
-            if (!string.IsNullOrEmpty(SelectedVersion))
+            var allMods = new List<ModrinthProject>();
+            int modrinthTotalHits = 0; // 保存Modrinth返回的总数
+            
+            // 从Modrinth搜索
+            if (IsModrinthEnabled)
             {
-                facets.Add(new List<string> { $"versions:{SelectedVersion}" });
-            }
+                // 构建facets参数
+                var facets = new List<List<string>>();
+                
+                // 添加加载器筛选条件
+                if (SelectedLoader != "all")
+                {
+                    facets.Add(new List<string> { $"categories:{SelectedLoader}" });
+                }
+                
+                // 添加版本筛选条件
+                if (!string.IsNullOrEmpty(SelectedVersion))
+                {
+                    facets.Add(new List<string> { $"versions:{SelectedVersion}" });
+                }
 
-            // 添加类别筛选条件
-            if (SelectedModCategory != "all")
+                // 添加类别筛选条件
+                if (SelectedModCategory != "all")
+                {
+                    facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
+                }
+
+                var modrinthResult = await _modrinthService.SearchModsAsync(
+                    query: SearchQuery,
+                    facets: facets,
+                    index: "relevance",
+                    offset: 0,
+                    limit: _modPageSize
+                );
+                
+                allMods.AddRange(modrinthResult.Hits);
+                _modrinthModOffset = modrinthResult.Hits.Count;
+                modrinthTotalHits = modrinthResult.TotalHits; // 保存总数用于缓存
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 搜索到 {modrinthResult.Hits.Count} 个Mod，总计 {modrinthTotalHits} 个");
+            }
+            
+            // 从CurseForge搜索
+            if (IsCurseForgeEnabled)
             {
-                facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
+                try
+                {
+                    // 映射加载器类型
+                    int? modLoaderType = SelectedLoader switch
+                    {
+                        "forge" => 1,
+                        "fabric" => 4,
+                        "quilt" => 5,
+                        "neoforge" => 6,
+                        _ => null
+                    };
+                    
+                    var curseForgeResult = await _curseForgeService.SearchModsAsync(
+                        searchFilter: SearchQuery,
+                        gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
+                        modLoaderType: modLoaderType,
+                        index: 0,
+                        pageSize: _modPageSize
+                    );
+                    
+                    // 转换CurseForge结果为ModrinthProject格式
+                    foreach (var curseForgeMod in curseForgeResult.Data)
+                    {
+                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                        allMods.Add(convertedMod);
+                    }
+                    
+                    _curseForgeModOffset = curseForgeResult.Data.Count; // CurseForge也使用偏移量，初始为返回的数量
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个Mod，下次offset: {_curseForgeModOffset}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索失败: {ex.Message}");
+                    // CurseForge失败不影响Modrinth结果
+                }
             }
-
-            // 这里使用Modrinth API搜索mods，只加载第一页
-            var result = await _modrinthService.SearchModsAsync(
-                query: SearchQuery,
-                facets: facets,
-                index: "relevance",
-                offset: ModOffset,
-                limit: _modPageSize
-            );
 
             // 更新Mod列表
             Mods.Clear();
-            foreach (var hit in result.Hits)
+            foreach (var mod in allMods)
             {
-                Mods.Add(hit);
+                Mods.Add(mod);
             }
-            ModOffset = result.Hits.Count;
-            // 使用total_hits更准确地判断是否还有更多结果
-            ModHasMoreResults = ModOffset < result.TotalHits;
+            ModOffset = allMods.Count;
+            ModHasMoreResults = allMods.Count >= _modPageSize;
             
-            // 保存到缓存
-            await _modrinthCacheService.SaveSearchResultAsync(
-                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
-                result.Hits, result.TotalHits);
+            // 仅当只启用Modrinth时保存到缓存
+            if (IsModrinthEnabled && !IsCurseForgeEnabled)
+            {
+                await _modrinthCacheService.SaveSearchResultAsync(
+                    "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                    allMods, modrinthTotalHits); // 使用API返回的TotalHits，而不是allMods.Count
+            }
         }
         catch (Exception ex)
         {
@@ -637,11 +747,76 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
     }
     
+    /// <summary>
+    /// 转换CurseForge Mod为Modrinth格式
+    /// </summary>
+    private ModrinthProject ConvertCurseForgeToModrinth(CurseForgeMod curseForgeMod)
+    {
+        var project = new ModrinthProject
+        {
+            ProjectId = $"curseforge-{curseForgeMod.Id}",
+            ProjectType = "mod",
+            Slug = curseForgeMod.Slug,
+            Author = curseForgeMod.Authors?.FirstOrDefault()?.Name ?? "Unknown",
+            Title = curseForgeMod.Name,
+            Description = curseForgeMod.Summary,
+            Downloads = (int)Math.Min(curseForgeMod.DownloadCount, int.MaxValue),
+            DateCreated = curseForgeMod.DateCreated.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            DateModified = curseForgeMod.DateModified.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            Categories = new List<string>()
+        };
+        
+        // 设置图标URL
+        if (!string.IsNullOrEmpty(curseForgeMod.Logo?.Url))
+        {
+            if (Uri.TryCreate(curseForgeMod.Logo.Url, UriKind.Absolute, out var iconUri))
+            {
+                project.IconUrl = iconUri;
+            }
+        }
+        
+        // 转换类别和加载器信息
+        if (curseForgeMod.LatestFilesIndexes != null)
+        {
+            foreach (var fileIndex in curseForgeMod.LatestFilesIndexes)
+            {
+                // 添加游戏版本
+                if (!string.IsNullOrEmpty(fileIndex.GameVersion) && !project.Versions.Contains(fileIndex.GameVersion))
+                {
+                    project.Versions.Add(fileIndex.GameVersion);
+                }
+                
+                // 添加加载器类型（ModLoader是int类型，需要映射）
+                if (fileIndex.ModLoader.HasValue)
+                {
+                    var loaderName = fileIndex.ModLoader.Value switch
+                    {
+                        1 => "forge",
+                        4 => "fabric",
+                        5 => "quilt",
+                        6 => "neoforge",
+                        _ => null
+                    };
+                    
+                    if (!string.IsNullOrEmpty(loaderName) && !project.Categories.Contains(loaderName))
+                    {
+                        project.Categories.Add(loaderName);
+                    }
+                }
+            }
+        }
+        
+        return project;
+    }
+    
     [RelayCommand(CanExecute = nameof(CanLoadMoreMods))]
     public async Task LoadMoreModsAsync()
     {
+        System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 调用，IsModLoading={IsModLoading}，IsModLoadingMore={IsModLoadingMore}，ModHasMoreResults={ModHasMoreResults}");
+        
         if (IsModLoading || IsModLoadingMore || !ModHasMoreResults)
         {
+            System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 跳过加载：条件不满足");
             return;
         }
 
@@ -649,51 +824,114 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 构建facets参数
-            var facets = new List<List<string>>();
-            
-            // 添加加载器筛选条件
-            if (SelectedLoader != "all")
+            // 如果两个平台都未启用，直接返回
+            if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
-                facets.Add(new List<string> { $"categories:{SelectedLoader}" });
+                ModHasMoreResults = false;
+                return;
             }
             
-            // 添加版本筛选条件
-            if (!string.IsNullOrEmpty(SelectedVersion))
+            var newMods = new List<ModrinthProject>();
+            int modrinthTotalHits = 0; // 保存Modrinth返回的总数
+            
+            // 从Modrinth加载更多
+            if (IsModrinthEnabled)
             {
-                facets.Add(new List<string> { $"versions:{SelectedVersion}" });
-            }
+                // 构建facets参数
+                var facets = new List<List<string>>();
+                
+                // 添加加载器筛选条件
+                if (SelectedLoader != "all")
+                {
+                    facets.Add(new List<string> { $"categories:{SelectedLoader}" });
+                }
+                
+                // 添加版本筛选条件
+                if (!string.IsNullOrEmpty(SelectedVersion))
+                {
+                    facets.Add(new List<string> { $"versions:{SelectedVersion}" });
+                }
 
-            // 添加类别筛选条件
-            if (SelectedModCategory != "all")
-            {
-                facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
+                // 添加类别筛选条件
+                if (SelectedModCategory != "all")
+                {
+                    facets.Add(new List<string> { $"categories:{SelectedModCategory}" });
+                }
+                
+                // 使用Modrinth专用的offset
+                var result = await _modrinthService.SearchModsAsync(
+                    query: SearchQuery,
+                    facets: facets,
+                    index: "relevance",
+                    offset: _modrinthModOffset,
+                    limit: _modPageSize
+                );
+
+                newMods.AddRange(result.Hits);
+                _modrinthModOffset += result.Hits.Count;
+                modrinthTotalHits = result.TotalHits; // 保存总数用于缓存
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 加载更多 {result.Hits.Count} 个Mod，当前offset: {_modrinthModOffset}，总数: {modrinthTotalHits}");
             }
             
-            // 调用Modrinth API加载更多Mod
-            var result = await _modrinthService.SearchModsAsync(
-                query: SearchQuery,
-                facets: facets,
-                index: "relevance",
-                offset: ModOffset,
-                limit: _modPageSize
-            );
+            // 从CurseForge加载更多
+            if (IsCurseForgeEnabled)
+            {
+                try
+                {
+                    // 映射加载器类型
+                    int? modLoaderType = SelectedLoader switch
+                    {
+                        "forge" => 1,
+                        "fabric" => 4,
+                        "quilt" => 5,
+                        "neoforge" => 6,
+                        _ => null
+                    };
+                    
+                    // 使用CurseForge专用的偏移量offset
+                    var curseForgeResult = await _curseForgeService.SearchModsAsync(
+                        searchFilter: SearchQuery,
+                        gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
+                        modLoaderType: modLoaderType,
+                        index: _curseForgeModOffset,
+                        pageSize: _modPageSize
+                    );
+                    
+                    // 转换CurseForge结果为ModrinthProject格式
+                    foreach (var curseForgeMod in curseForgeResult.Data)
+                    {
+                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                        newMods.Add(convertedMod);
+                    }
+                    
+                    _curseForgeModOffset += curseForgeResult.Data.Count; // CurseForge使用偏移量，增加返回的数量
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeResult.Data.Count} 个Mod，当前offset: {_curseForgeModOffset}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多失败: {ex.Message}");
+                    // CurseForge失败不影响Modrinth结果
+                }
+            }
 
             // 追加到现有列表
-            foreach (var hit in result.Hits)
+            foreach (var mod in newMods)
             {
-                Mods.Add(hit);
+                Mods.Add(mod);
             }
             
-            ModOffset += result.Hits.Count;
+            ModOffset += newMods.Count;
             
-            // 使用total_hits更准确地判断是否还有更多结果
-            ModHasMoreResults = ModOffset < result.TotalHits;
+            // 判断是否还有更多结果
+            ModHasMoreResults = newMods.Count > 0;
             
-            // 追加到缓存
-            await _modrinthCacheService.AppendToSearchResultAsync(
-                "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
-                result.Hits, result.TotalHits);
+            // 仅当只启用Modrinth时追加到缓存
+            if (IsModrinthEnabled && !IsCurseForgeEnabled && newMods.Count > 0)
+            {
+                await _modrinthCacheService.AppendToSearchResultAsync(
+                    "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                    newMods, modrinthTotalHits); // 使用API返回的TotalHits，而不是ModOffset
+            }
         }
         catch (Exception ex)
         {

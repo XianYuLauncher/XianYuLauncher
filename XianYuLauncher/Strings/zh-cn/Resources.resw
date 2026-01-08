@@ -681,6 +681,15 @@
   <data name="ResourceDownloadPage_VersionSearchBox.PlaceholderText" xml:space="preserve">
     <value>搜索版本...</value>
   </data>
+  <data name="ResourceDownloadPage_ModSearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索Mod...</value>
+  </data>
+  <data name="ResourceDownloadPage_ShaderPackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索光影...</value>
+  </data>
+  <data name="ResourceDownloadPage_ResourcePackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索资源包...</value>
+  </data>
   <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
     <value>筛选</value>
   </data>
@@ -696,26 +705,20 @@
   <data name="ResourceDownloadPage_OldVersionType.Content" xml:space="preserve">
     <value>旧版</value>
   </data>
-  <data name="ResourceDownloadPage_LoaderComboBox.Header" xml:space="preserve">
-    <value>加载器</value>
-  </data>
   <data name="ResourceDownloadPage_LoaderComboBox.PlaceholderText" xml:space="preserve">
     <value>加载器</value>
   </data>
-  <data name="ResourceDownloadPage_VersionComboBox.Header" xml:space="preserve">
-    <value>版本</value>
+  <data name="ResourceDownloadPage_AllLoaders.Content" xml:space="preserve">
+    <value>加载器</value>
   </data>
   <data name="ResourceDownloadPage_VersionComboBox.PlaceholderText" xml:space="preserve">
     <value>版本</value>
   </data>
-  <data name="ResourceDownloadPage_ModCategoryComboBox.Header" xml:space="preserve">
+  <data name="ResourceDownloadPage_ModCategoryComboBox.PlaceholderText" xml:space="preserve">
     <value>类别</value>
   </data>
-  <data name="ResourceDownloadPage_ModCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>所有类别</value>
-  </data>
   <data name="ResourceDownloadPage_AllCategories.Content" xml:space="preserve">
-    <value>所有类别</value>
+    <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_AdventureCategory.Content" xml:space="preserve">
     <value>冒险</value>
@@ -784,7 +787,7 @@
     <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_ShaderPackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>所有类别</value>
+    <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_CartoonCategory.Content" xml:space="preserve">
     <value>卡通</value>
@@ -811,7 +814,7 @@
     <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_ResourcePackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>所有类别</value>
+    <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_CombatCategory.Content" xml:space="preserve">
     <value>战斗</value>
@@ -841,7 +844,7 @@
     <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_DatapackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>所有类别</value>
+    <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_ModpackSearchBox.PlaceholderText" xml:space="preserve">
     <value>搜索整合包...</value>
@@ -856,7 +859,7 @@
     <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_ModpackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>所有类别</value>
+    <value>类别</value>
   </data>
   <data name="ResourceDownloadPage_ChallengingCategory.Content" xml:space="preserve">
     <value>硬核</value>

@@ -681,6 +681,15 @@
   <data name="ResourceDownloadPage_VersionSearchBox.PlaceholderText" xml:space="preserve">
     <value>Search versions...</value>
   </data>
+  <data name="ResourceDownloadPage_ModSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search mods...</value>
+  </data>
+  <data name="ResourceDownloadPage_ShaderPackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search shaders...</value>
+  </data>
+  <data name="ResourceDownloadPage_ResourcePackSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search resource packs...</value>
+  </data>
   <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
     <value>Filter</value>
   </data>
@@ -696,26 +705,20 @@
   <data name="ResourceDownloadPage_OldVersionType.Content" xml:space="preserve">
     <value>Old Versions</value>
   </data>
-  <data name="ResourceDownloadPage_LoaderComboBox.Header" xml:space="preserve">
-    <value>Loader</value>
-  </data>
   <data name="ResourceDownloadPage_LoaderComboBox.PlaceholderText" xml:space="preserve">
     <value>Loader</value>
   </data>
-  <data name="ResourceDownloadPage_VersionComboBox.Header" xml:space="preserve">
-    <value>Version</value>
+  <data name="ResourceDownloadPage_AllLoaders.Content" xml:space="preserve">
+    <value>Loader</value>
   </data>
   <data name="ResourceDownloadPage_VersionComboBox.PlaceholderText" xml:space="preserve">
     <value>Version</value>
   </data>
-  <data name="ResourceDownloadPage_ModCategoryComboBox.Header" xml:space="preserve">
-    <value>Category</value>
-  </data>
   <data name="ResourceDownloadPage_ModCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_AllCategories.Content" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_AdventureCategory.Content" xml:space="preserve">
     <value>Adventure</value>
@@ -784,7 +787,7 @@
     <value>Category</value>
   </data>
   <data name="ResourceDownloadPage_ShaderPackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_CartoonCategory.Content" xml:space="preserve">
     <value>Cartoon</value>
@@ -811,7 +814,7 @@
     <value>Category</value>
   </data>
   <data name="ResourceDownloadPage_ResourcePackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_CombatCategory.Content" xml:space="preserve">
     <value>Combat</value>
@@ -841,7 +844,7 @@
     <value>Category</value>
   </data>
   <data name="ResourceDownloadPage_DatapackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_ModpackSearchBox.PlaceholderText" xml:space="preserve">
     <value>Search modpacks...</value>
@@ -856,7 +859,7 @@
     <value>Category</value>
   </data>
   <data name="ResourceDownloadPage_ModpackCategoryComboBox.PlaceholderText" xml:space="preserve">
-    <value>All Categories</value>
+    <value>Categories</value>
   </data>
   <data name="ResourceDownloadPage_ChallengingCategory.Content" xml:space="preserve">
     <value>Challenging</value>
@@ -1756,12 +1759,6 @@ Continue downloading?</value>
   <data name="NewsType_Snapshot" xml:space="preserve">
     <value>Snapshot</value>
   </data>
-  <data name="Settings_Personalization.Text" xml:space="preserve">
-    <value>Personalization</value>
-  </data>
-  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
-    <value>OK</value>
-  </data>
   <data name="Settings_SelectModrinthDownloadSource.Text" xml:space="preserve">
     <value>Modrinth Download Source</value>
   </data>
@@ -1791,5 +1788,11 @@ Continue downloading?</value>
   </data>
   <data name="Settings_CheckForUpdates.Content" xml:space="preserve">
     <value>Check for Updates</value>
+  </data>
+  <data name="Settings_Personalization.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
   </data>
 </root>

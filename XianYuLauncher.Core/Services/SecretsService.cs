@@ -80,6 +80,7 @@ public class SecretsConfig
     public MicrosoftAuthConfig MicrosoftAuth { get; set; } = new();
     public TelemetryConfig Telemetry { get; set; } = new();
     public AiAnalysisConfig AiAnalysis { get; set; } = new();
+    public CurseForgeConfig CurseForge { get; set; } = new();
 }
 
 public class MicrosoftAuthConfig
@@ -98,4 +99,9 @@ public class AiAnalysisConfig
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "Qwen/Qwen3-14B";
     public string BaseUrl { get; set; } = "https://api.siliconflow.cn/v1/chat/completions";
+}
+
+public class CurseForgeConfig
+{
+    public string ApiKey { get; set; } = string.Empty;
 }

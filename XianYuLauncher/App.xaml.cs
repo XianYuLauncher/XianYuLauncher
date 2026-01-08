@@ -155,6 +155,10 @@ public partial class App : Application
             // Modrinth Cache Service
             services.AddSingleton<ModrinthCacheService>();
             
+            // CurseForge Service
+            services.AddHttpClient<CurseForgeService>();
+            services.AddSingleton<CurseForgeService>();
+            
             // Microsoft Auth Service
             services.AddHttpClient<MicrosoftAuthService>();
             
