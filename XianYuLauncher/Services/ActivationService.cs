@@ -98,6 +98,13 @@ public class ActivationService : IActivationService
     {
         try
         {
+            // 检查是否从微软商店安装
+            if (IsInstalledFromMicrosoftStore())
+            {
+                Serilog.Log.Information("应用从微软商店安装，跳过更新检查");
+                return;
+            }
+            
             // 获取自动检查更新设置
             var localSettingsService = App.GetService<ILocalSettingsService>();
             var autoUpdateCheckModeStr = await localSettingsService.ReadSettingAsync<string>("AutoUpdateCheckMode");
@@ -326,6 +333,38 @@ public class ActivationService : IActivationService
             {
                 Serilog.Log.Error(ex.InnerException, "内部异常: {InnerErrorMessage}", ex.InnerException.Message);
             }
+        }
+    }
+    
+    /// <summary>
+    /// 检查应用是否从微软商店安装
+    /// </summary>
+    /// <returns>如果从商店安装返回true，否则返回false</returns>
+    private bool IsInstalledFromMicrosoftStore()
+    {
+        try
+        {
+            // 检查应用的签名证书发布者
+            // 微软商店应用使用商店证书签名，发布者为 CN=<GUID>
+            // 自签名版本使用自定义证书
+            var package = Windows.ApplicationModel.Package.Current;
+            var publisherId = package.Id.Publisher;
+            
+            Serilog.Log.Information("应用发布者: {Publisher}", publisherId);
+            
+            // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
+            // 这是在 Package.appxmanifest 中配置的商店证书
+            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
+            
+            Serilog.Log.Information("是否为商店版本: {IsStoreVersion}", isStoreVersion);
+            
+            return isStoreVersion;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "检查应用安装来源失败: {ErrorMessage}", ex.Message);
+            // 如果检查失败，为安全起见，假设不是商店版本，允许更新检查
+            return false;
         }
     }
 }

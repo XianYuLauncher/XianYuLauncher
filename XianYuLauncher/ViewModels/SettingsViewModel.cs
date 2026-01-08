@@ -2071,6 +2071,22 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
+            // 检查是否从微软商店安装
+            if (IsInstalledFromMicrosoftStore())
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 应用从微软商店安装，不支持手动更新");
+                
+                var storeDialog = new ContentDialog
+                {
+                    Title = "检查更新",
+                    Content = "您使用的是微软商店版本，应用将通过商店自动更新。",
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await storeDialog.ShowAsync();
+                return;
+            }
+            
             var updateService = App.GetService<UpdateService>();
             var updateInfo = await updateService.CheckForUpdatesAsync();
             
@@ -2155,6 +2171,34 @@ public partial class SettingsViewModel : ObservableRecipient
         finally
         {
             IsCheckingForUpdates = false;
+        }
+    }
+    
+    /// <summary>
+    /// 检查应用是否从微软商店安装
+    /// </summary>
+    /// <returns>如果从商店安装返回true，否则返回false</returns>
+    private bool IsInstalledFromMicrosoftStore()
+    {
+        try
+        {
+            // 检查应用的签名证书发布者
+            var package = Windows.ApplicationModel.Package.Current;
+            var publisherId = package.Id.Publisher;
+            
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 应用发布者: {publisherId}");
+            
+            // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
+            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
+            
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 是否为商店版本: {isStoreVersion}");
+            
+            return isStoreVersion;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查应用安装来源失败: {ex.Message}");
+            return false;
         }
     }
 }
