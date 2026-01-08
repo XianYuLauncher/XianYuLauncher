@@ -1,161 +1,65 @@
-# XianYuLauncher
+# XianYu Launcher
 
-一个基于 .NET 10.0 和 WinUI 3 开发的现代化 Minecraft 启动器，提供流畅的用户体验和丰富的功能。
+A modern, feature-rich Minecraft Java Edition launcher with a polished user interface.
 
-## 项目简介
+> **Disclaimer**: This project is unofficial and has no affiliation with Mojang Studios or Microsoft.
 
-XianYuLauncher 是一个功能完整的 Minecraft 启动器，支持多种 Minecraft 版本管理、账号登录、游戏设置和实时日志查看等功能。采用现代化的 UI 设计和流畅的交互体验，为玩家提供便捷的游戏管理工具。
+[![GitHub Stars](https://img.shields.io/github/stars/XianYuLauncher/XianYuLauncher.svg?style=flat-square&label=⭐%20Stars)](https://github.com/N123999/XianYuLauncher)
+[![GitHub Release](https://img.shields.io/github/v/release/XianYuLauncher/XianYuLauncher?style=flat-square%20Release&logo=github)](https://github.com/N123999/XianYuLauncher-Help/releases)
+[![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
+[![Bilibili](https://img.shields.io/badge/bilibili-@Spirit灵动工作室-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
 
-> **本项目现已完全开源！** 采用 MIT 协议，欢迎社区贡献和使用。
+## Features
 
-## 主要功能
+- **Sleek, Modern UI**: Built with WinUI 3 for a native Windows experience
+- **Version Management**: Easy installation and switching between Minecraft versions
+- **ModLoader Support**: Full support for Forge, Fabric, NeoForge, Quilt, Optifine, and Cleanroom (experimental)
+- **Account Management**: Microsoft, offline, and third-party authentication support
+- **Real-time Logs**: Monitor game output with live log viewing
+- **Crash Analysis**: Intelligent error detection and diagnostic tools
+- **Resource Downloads**: Browse and install mods, resource packs, and shaders from Modrinth
+- **Customizable Settings**: Fine-tune your game experience with detailed options including memory allocation, resolution, and JVM arguments
+- **Multi-language Support**: Available in English and Chinese
 
-### 核心功能
-- 支持多种 Minecraft 版本的安装和管理
-- 账号登录系统（支持微软、离线、外置登录）
-- 游戏设置自定义（内存分配、分辨率等）
-- 实时游戏日志查看功能
-- 游戏崩溃分析和日志导出
-- 支持 Mod 管理
-- 支持资源包和光影包管理
-- 多语言支持
+## Getting Started
 
-### 特色功能
-- 现代化的 WinUI 3 界面设计
-- 流畅的性能和响应速度
-- 多角色管理
-- 详细的版本统计信息
-
-## 技术栈
-
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| .NET | 10.0 | 核心框架 |
-| WinUI 3 | 1.8 | UI 框架 |
-| C# | 13.0 | 开发语言 |
-| Microsoft.WindowsAppSDK | 1.8.251106002 | Windows 应用 SDK |
-
-## 开源协议
-
-本项目采用 **MIT 协议**完全开源。
-
-### MIT 许可证
-
-本项目使用 MIT 许可证，这意味着：
-- 可以自由使用、复制、修改、合并、发布、分发、再许可和/或销售本软件
-- 可以用于商业用途
-- 可以修改源代码
-- 可以私有使用
-- 需要在副本中包含版权声明和许可声明
-- 软件按"原样"提供，不提供任何形式的保证
-
-完整的许可证文本请查看 [LICENSE](LICENSE) 文件。
-
-## 快速开始
-
-### 环境要求
-- Windows 10 1809 (17763) 或更高版本
-
-### 运行已发布版本
-
-1. 前往 [Releases](../../releases) 页面下载最新版本
-2. 解压到任意文件夹，按照'安装说明.txt'中的步骤进行安装
-3. 安装完毕后，开始使用 XianYuLauncher
-
-### 从源码构建
-
-#### 环境要求
-- Visual Studio 2022 (17.12 或更高版本)
+### Prerequisites
+- Windows 10 1809 (17763) or later
 - .NET 10.0 SDK
-- Windows 10 SDK (10.0.19041.0 或更高版本)
 
-#### 构建步骤
+### Installation
 
-1. 克隆仓库
-   ```bash
-   git clone https://github.com/XianYuLauncher/XianYuLauncher.git
-   cd XianYuLauncher
-   ```
+1. **Download**: Get the latest release from the [Releases](https://github.com/N123999/XianYuLauncher/releases) page.
+2. **Extract**: Unzip the downloaded package to your preferred location.
+3. **Install & Run**: Refer to the `安装教程.txt` file included in the package and follow the steps to complete the installation.
 
-2. 配置 secrets.json
-   ```bash
-   # 复制示例配置文件
-   copy XianYuLauncher\secrets.example.json XianYuLauncher\secrets.json
-   # 编辑 secrets.json，填入你的配置（可选）
-   ```
+## Technology Stack
 
-3. 使用 Visual Studio 打开 `XianYuLauncher.slnx`
+- **Framework**: .NET 10.0
+- **UI**: WinUI 3
+- **Architecture**: MVVM with CommunityToolkit.Mvvm
+- **Windows App SDK**: 1.8.251106002
 
-4. 还原 NuGet 包
-   ```bash
-   dotnet restore
-   ```
+## Open Source License
 
-5. 构建项目
-   - 在 Visual Studio 中按 `Ctrl+Shift+B`
-   - 或使用命令行：
-     ```bash
-     dotnet build
-     ```
+This project is released under a **MIT License** as open source.
 
-6. 运行项目
-   - 在 Visual Studio 中按 `F5`
-   - 或使用命令行：
-     ```bash
-     dotnet run --project XianYuLauncher
-     ```
+### Open Source Statement
+- The project is open-sourced under the MIT License.
+- All open-sourced code is protected by the MIT License.
 
-## 贡献指南
+### MIT License
 
-欢迎所有形式的贡献！无论是报告 Bug、提出新功能建议，还是提交代码改进。
+For the full license text, please refer to the [LICENSE](LICENSE) file.
 
-### 如何贡献
+## A Quick Note from the Developer
+~~This project is a labor of love. The code might be very messy in places, so please be kind when browsing the source! All constructive feedback is welcome.~~
 
-1. Fork 本仓库
-2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交你的改动 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
+## Contact
 
-### 代码规范
-
-- 遵循 C# 编码规范
-- 保持代码整洁和可读性
-- 为新功能添加适当的注释
-- 确保代码通过所有测试
-
-## 问题反馈
-
-如果你发现了 Bug 或有功能建议，请在 [Issues](../../issues) 页面提交。
-
-提交 Issue 时请包含：
-- 问题的详细描述
-- 复现步骤
-- 预期行为和实际行为
-- 系统环境信息（Windows 版本、.NET 版本等）
-- 相关截图或日志（如果有）
-
-## 致谢
-
-感谢所有为本项目做出贡献的开发者和使用者！
-
-完整的第三方库声明请查看 [NOTICE.md](NOTICE.md) 文件。
-
-特别感谢：
-- [bangbang93](https://github.com/bangbang93) - BMCLAPI 镜像源支持
-- 所有提交 Issue 和 PR 的贡献者
-- 使用并支持本项目的玩家们
-
-## 联系方式
-
-- 项目主页：[GitHub](https://github.com/XianYuLauncher/XianYuLauncher)
-- 问题反馈：[Issues](../../issues)
-- 讨论交流：[Discussions](../../discussions)
-
-## Star History
-
-如果这个项目对你有帮助，请给我们一个 Star
+- **GitHub**: [N123999/XianYuLauncher](https://github.com/N123999/XianYuLauncher)
+- **Issues**: [Report bugs or request features](https://github.com/N123999/XianYuLauncher/issues)
 
 ---
 
-**XianYuLauncher** - 让 Minecraft 游戏体验更加完美
+**XianYu Launcher** - Elevate your Minecraft experience!
