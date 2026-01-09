@@ -407,3 +407,12 @@ public class CurseForgeModsResponse
     [JsonPropertyName("data")]
     public List<CurseForgeMod> Data { get; set; } = new();
 }
+
+/// <summary>
+/// CurseForge类别列表响应
+/// </summary>
+public class CurseForgeCategoriesResponse
+{
+    [JsonPropertyName("data")]
+    public List<CurseForgeCategory> Data { get; set; } = new();
+}

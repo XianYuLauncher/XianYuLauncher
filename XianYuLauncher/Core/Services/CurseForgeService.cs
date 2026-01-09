@@ -777,4 +777,63 @@ public class CurseForgeService
             return string.Empty;
         }
     }
+    
+    /// <summary>
+    /// 获取CurseForge类别列表
+    /// </summary>
+    /// <param name="classId">资源类型ID (6=Mods, 12=ResourcePacks, 4471=Modpacks, 6552=Shaders, 6945=DataPacks)</param>
+    /// <returns>类别列表</returns>
+    public async Task<List<CurseForgeCategory>> GetCategoriesAsync(int? classId = null)
+    {
+        try
+        {
+            var url = $"{ApiBaseUrl}/v1/categories?gameId={MinecraftGameId}";
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 获取类别列表: {url}");
+            
+            using var request = CreateRequest(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            
+            var json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+            
+            var result = JsonSerializer.Deserialize<CurseForgeCategoriesResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            
+            var categories = result?.Data ?? new List<CurseForgeCategory>();
+            
+            // 如果指定了classId，则筛选对应的类别
+            if (classId.HasValue)
+            {
+                categories = categories
+                    .Where(c => c.ClassId == classId.Value && c.ParentCategoryId == classId.Value)
+                    .ToList();
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 获取到 {categories.Count} 个类别");
+            
+            return categories;
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMsg = $"获取类别列表失败: {ex.Message}";
+            if (ex.StatusCode.HasValue)
+            {
+                errorMsg += $" (状态码: {ex.StatusCode})";
+            }
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] {errorMsg}");
+            throw new Exception(errorMsg);
+        }
+        catch (JsonException ex)
+        {
+            throw new Exception($"解析类别列表失败: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"获取类别列表时发生错误: {ex.Message}");
+        }
+    }
 }
+

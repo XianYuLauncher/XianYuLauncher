@@ -270,30 +270,11 @@
                                         Grid.Column="3"
                                         MinWidth="80"
                                         Margin="0,0,8,0"
+                                        ItemsSource="{Binding ModCategories}"
+                                        DisplayMemberPath="DisplayName"
                                         SelectedValuePath="Tag"
                                         SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
-                                        SelectionChanged="ModCategoryComboBox_SelectionChanged">
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="类别" Tag="all" IsSelected="True" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AdventureCategory" Content="冒险" Tag="adventure" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_DecorationCategory" Content="装饰" Tag="decoration" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_EconomyCategory" Content="经济" Tag="economy" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_EquipmentCategory" Content="装备" Tag="equipment" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_FoodCategory" Content="食物" Tag="food" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_GameMechanicsCategory" Content="机制" Tag="game-mechanics" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_LibraryCategory" Content="前置" Tag="library" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MagicCategory" Content="魔法" Tag="magic" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_ManagementCategory" Content="管理" Tag="management" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MinigameCategory" Content="迷你游戏" Tag="minigame" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_MobsCategory" Content="生物" Tag="mobs" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_OptimizationCategory" Content="性能" Tag="optimization" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_SocialCategory" Content="社交" Tag="social" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_StorageCategory" Content="存储" Tag="storage" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_TechnologyCategory" Content="科技" Tag="technology" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_TransportationCategory" Content="交通" Tag="transportation" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_UtilityCategory" Content="实用" Tag="utility" />
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_WorldgenCategory" Content="世界生成" Tag="worldgen" />
-                                    </ComboBox>
+                                        SelectionChanged="ModCategoryComboBox_SelectionChanged" />
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
                                     <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
@@ -515,17 +496,11 @@
                                     PlaceholderText="所有类别"
                                     MinWidth="80"
                                     Margin="0,0,8,0"
+                                    ItemsSource="{Binding ShaderPackCategories}"
+                                    DisplayMemberPath="DisplayName"
                                     SelectedValuePath="Tag"
                                     SelectedValue="{Binding SelectedShaderPackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ShaderPackCategoryComboBox_SelectionChanged">
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="所有类别" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CartoonCategory" Content="卡通" Tag="cartoon" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_FantasyCategory" Content="奇幻" Tag="fantasy" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_RealisticCategory" Content="写实" Tag="realistic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_SemiRealisticCategory" Content="半写实" Tag="semi-realistic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_VanillaLikeCategory" Content="原版风" Tag="vanilla-like" />
-                                </ComboBox>
+                                    SelectionChanged="ShaderPackCategoryComboBox_SelectionChanged" />
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
@@ -746,21 +721,11 @@
                                     PlaceholderText="所有类别"
                                     MinWidth="80"
                                     Margin="0,0,8,0"
+                                    ItemsSource="{Binding ResourcePackCategories}"
+                                    DisplayMemberPath="DisplayName"
                                     SelectedValuePath="Tag"
                                     SelectedValue="{Binding SelectedResourcePackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ResourcePackCategoryComboBox_SelectionChanged">
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="所有类别" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CombatCategory" Content="战斗" Tag="combat" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_DecorationCategory" Content="装饰" Tag="decoration" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ModdedCategory" Content="适配模组" Tag="modded" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_RealisticCategory" Content="写实" Tag="realistic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_SimplisticCategory" Content="简约" Tag="simplistic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ThemedCategory" Content="主题化" Tag="themed" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TweaksCategory" Content="微调" Tag="tweaks" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_UtilityCategory" Content="实用" Tag="utility" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_VanillaLikeCategory" Content="原版风" Tag="vanilla-like" />
-                                </ComboBox>
+                                    SelectionChanged="ResourcePackCategoryComboBox_SelectionChanged" />
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
@@ -982,30 +947,11 @@
                                     PlaceholderText="所有类别"
                                     MinWidth="80"
                                     Margin="0,0,8,0"
+                                    ItemsSource="{Binding DatapackCategories}"
+                                    DisplayMemberPath="DisplayName"
                                     SelectedValuePath="Tag"
                                     SelectedValue="{Binding SelectedDatapackCategory, Mode=TwoWay}"
-                                    SelectionChanged="DatapackCategoryComboBox_SelectionChanged">
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="所有类别" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AdventureCategory" Content="冒险" Tag="adventure" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CursedCategory" Content="整活" Tag="cursed" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_DecorationCategory" Content="装饰" Tag="decoration" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_EconomyCategory" Content="经济" Tag="economy" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_EquipmentCategory" Content="装备" Tag="equipment" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_FoodCategory" Content="食物" Tag="food" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_GameMechanicsCategory" Content="游戏机制" Tag="game-mechanics" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_LibraryCategory" Content="前置" Tag="library" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MagicCategory" Content="魔法" Tag="magic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ManagementCategory" Content="管理" Tag="management" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MinigameCategory" Content="迷你游戏" Tag="minigame" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MobsCategory" Content="生物" Tag="mobs" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_OptimizationCategory" Content="性能" Tag="optimization" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_SocialCategory" Content="社交" Tag="social" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_StorageCategory" Content="存储" Tag="storage" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TechnologyCategory" Content="科技" Tag="technology" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TransportationCategory" Content="交通" Tag="transportation" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_UtilityCategory" Content="实用" Tag="utility" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_WorldgenCategory" Content="世界生成" Tag="worldgen" />
-                                </ComboBox>
+                                    SelectionChanged="DatapackCategoryComboBox_SelectionChanged" />
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
@@ -1227,21 +1173,11 @@
                                     PlaceholderText="所有类别"
                                     MinWidth="80"
                                     Margin="0,0,8,0"
+                                    ItemsSource="{Binding ModpackCategories}"
+                                    DisplayMemberPath="DisplayName"
                                     SelectedValuePath="Tag"
                                     SelectedValue="{Binding SelectedModpackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ModpackCategoryComboBox_SelectionChanged">
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AllCategories" Content="所有类别" Tag="all" IsSelected="True" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_AdventureCategory" Content="冒险" Tag="adventure" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_ChallengingCategory" Content="硬核" Tag="challenging" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_CombatCategory" Content="战斗" Tag="combat" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_KitchenSinkCategory" Content="全能型" Tag="kitchen-sink" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_LightweightCategory" Content="轻量" Tag="lightweight" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MagicCategory" Content="魔法" Tag="magic" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_MultiplayerCategory" Content="联机" Tag="multiplayer" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_OptimizationCategory" Content="性能" Tag="optimization" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_QuestsCategory" Content="任务" Tag="quests" />
-                                    <ComboBoxItem x:Uid="ResourceDownloadPage_TechnologyCategory" Content="科技" Tag="technology" />
-                                </ComboBox>
+                                    SelectionChanged="ModpackCategoryComboBox_SelectionChanged" />
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">

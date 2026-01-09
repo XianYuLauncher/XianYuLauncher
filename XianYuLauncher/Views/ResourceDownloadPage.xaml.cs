@@ -93,6 +93,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 1: // Mod下载标签页
                 if (!_modsLoaded)
                 {
+                    // 加载Mod类别
+                    await ViewModel.LoadCategoriesAsync("mod");
                     await ViewModel.SearchModsCommand.ExecuteAsync(null);
                     _modsLoaded = true;
                 }
@@ -100,6 +102,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 2: // 光影下载标签页
                 if (!_shaderPacksLoaded)
                 {
+                    // 加载光影类别
+                    await ViewModel.LoadCategoriesAsync("shader");
                     await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
                     _shaderPacksLoaded = true;
                 }
@@ -107,6 +111,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 3: // 资源包下载标签页
                 if (!_resourcePacksLoaded)
                 {
+                    // 加载资源包类别
+                    await ViewModel.LoadCategoriesAsync("resourcepack");
                     await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
                     _resourcePacksLoaded = true;
                 }
@@ -114,6 +120,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 4: // 数据包下载标签页
                 if (!_datapacksLoaded)
                 {
+                    // 加载数据包类别
+                    await ViewModel.LoadCategoriesAsync("datapack");
                     await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
                     _datapacksLoaded = true;
                 }
@@ -121,6 +129,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 5: // 整合包下载标签页
                 if (!_modpacksLoaded)
                 {
+                    // 加载整合包类别
+                    await ViewModel.LoadCategoriesAsync("modpack");
                     await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
                     _modpacksLoaded = true;
                 }
