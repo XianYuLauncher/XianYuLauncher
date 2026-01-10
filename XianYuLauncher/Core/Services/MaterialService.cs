@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Core.Services
 {

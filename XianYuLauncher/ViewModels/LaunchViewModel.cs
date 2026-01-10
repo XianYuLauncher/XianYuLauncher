@@ -591,6 +591,7 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly INavigationService _navigationService;
     private readonly ILogger<LaunchViewModel> _logger;
     private readonly AuthlibInjectorService _authlibInjectorService;
+    private readonly IJavaRuntimeService _javaRuntimeService;
     
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
@@ -601,37 +602,6 @@ public partial class LaunchViewModel : ObservableRecipient
     private const string JavaVersionsKey = "JavaVersions";
     private const string SelectedJavaVersionKey = "SelectedJavaVersion";
     private const string OfflineLaunchCountKey = "OfflineLaunchCount";
-
-    /// <summary>
-    /// Java版本信息类
-    /// </summary>
-    public class JavaVersionInfo
-    {
-        /// <summary>
-        /// Java路径
-        /// </summary>
-        public string Path { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Java版本
-        /// </summary>
-        public string Version { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Java主版本号
-        /// </summary>
-        public int MajorVersion { get; set; }
-
-        /// <summary>
-        /// 是否为默认版本
-        /// </summary>
-        public bool IsDefault { get; set; }
-
-        /// <summary>
-        /// 是否为JDK版本
-        /// </summary>
-        public bool IsJDK { get; set; }
-    }
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     private const string SelectedVersionKey = "SelectedMinecraftVersion";
 
@@ -815,6 +785,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _logger = App.GetService<ILogger<LaunchViewModel>>();
         _authlibInjectorService = App.GetService<AuthlibInjectorService>();
         _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
+        _javaRuntimeService = App.GetService<IJavaRuntimeService>();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1438,8 +1409,8 @@ public partial class LaunchViewModel : ObservableRecipient
             }
             else
             {
-                // 使用全局Java设置
-                javaPath = await GetJavaPathAsync(requiredJavaVersion);
+                // 使用全局Java设置 - 通过 JavaRuntimeService
+                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, versionJavaPath);
             }
             
             if (string.IsNullOrEmpty(javaPath))
@@ -1831,23 +1802,14 @@ public partial class LaunchViewModel : ObservableRecipient
             // 首先获取当前使用的Java版本
             int currentJavaMajorVersion = 8; // 默认Java 8
             
-            // 查找当前使用的Java版本信息
+            // 使用JavaRuntimeService获取Java版本信息
             System.Diagnostics.Debug.WriteLine("[DEBUG] 开始获取当前使用的Java版本信息");
-            var javaVersions = await _localSettingsService.ReadSettingAsync<List<JavaVersionInfo>>(JavaVersionsKey) ?? new List<JavaVersionInfo>();
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已加载Java版本列表，共 {javaVersions.Count} 个版本");
-            
-            // 输出所有Java版本信息
-            foreach (var javaVer in javaVersions)
+            var javaVersionInfo = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath);
+            if (javaVersionInfo != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java版本信息: 路径={javaVer.Path}, 版本={javaVer.Version}, 主版本号={javaVer.MajorVersion}");
-            }
-            
-            var currentJavaVersion = javaVersions.FirstOrDefault(j => j.Path == javaPath);
-            if (currentJavaVersion != null)
-            {
-                currentJavaMajorVersion = currentJavaVersion.MajorVersion;
-                LaunchStatus += $"\n当前使用的Java版本: {currentJavaVersion.Version}, 主版本号: {currentJavaMajorVersion}";
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到当前使用的Java版本: 路径={currentJavaVersion.Path}, 版本={currentJavaVersion.Version}, 主版本号={currentJavaMajorVersion}");
+                currentJavaMajorVersion = javaVersionInfo.MajorVersion;
+                LaunchStatus += $"\n当前使用的Java版本: {javaVersionInfo.FullVersion}, 主版本号: {currentJavaMajorVersion}";
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到当前使用的Java版本: 路径={javaVersionInfo.Path}, 版本={javaVersionInfo.FullVersion}, 主版本号={currentJavaMajorVersion}");
             }
             else
             {
@@ -2516,329 +2478,7 @@ public partial class LaunchViewModel : ObservableRecipient
         return libraryPath;
     }
 
-    /// <summary>
-    /// 获取Java可执行文件路径
-    /// </summary>
-    private async Task<string> GetJavaPathAsync(int requiredJavaVersion)
-    {
-        try
-        {
-            // 获取用户的Java选择方式
-            JavaSelectionModeType? javaSelectionMode = await _localSettingsService.ReadSettingAsync<JavaSelectionModeType>(JavaSelectionModeKey);
-            if (javaSelectionMode == null)
-            {
-                javaSelectionMode = JavaSelectionModeType.Auto;
-            }
-            LaunchStatus += $"\nJava选择方式: {javaSelectionMode}";
 
-            // 从本地设置中加载Java版本列表
-            var javaVersions = await _localSettingsService.ReadSettingAsync<List<JavaVersionInfo>>(JavaVersionsKey);
-            if (javaVersions == null)
-            {
-                javaVersions = new List<JavaVersionInfo>();
-            }
-            LaunchStatus += $"\n已加载Java版本列表: {javaVersions.Count} 个版本";
-
-            if (javaSelectionMode == JavaSelectionModeType.Auto)
-            {
-                // 自动模式：从列表中选择适合的Java版本
-                // 优先选择与所需主版本号完全匹配的版本，然后选择JDK和最高版本
-                // 如果找不到完全匹配的，再选择主版本号大于所需版本的Java
-                var matchingJava = javaVersions
-                    .Where(j => File.Exists(j.Path))
-                    .OrderByDescending(j => j.MajorVersion == requiredJavaVersion) // 优先完全匹配主版本号
-                    .ThenByDescending(j => j.IsJDK) // 然后优先选择JDK
-                    .ThenBy(j => Math.Abs(j.MajorVersion - requiredJavaVersion)) // 然后选择最接近的版本
-                    .FirstOrDefault();
-                
-                if (matchingJava != null)
-                {
-                    LaunchStatus += $"\n从列表中找到适合的Java版本: {matchingJava.Path} (版本: {matchingJava.Version}, 类型: {(matchingJava.IsJDK ? "JDK" : "JRE")})";
-                    return matchingJava.Path;
-                }
-                else
-                {
-                    LaunchStatus += $"\n列表中未找到适合的Java {requiredJavaVersion} 版本，尝试自动寻找...";
-                }
-            }
-            else
-            {
-                // 手动模式：使用用户选中的Java版本
-                var selectedJavaVersion = await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey);
-                if (!string.IsNullOrEmpty(selectedJavaVersion))
-                {
-                    var selectedJava = javaVersions.FirstOrDefault(j => j.Path == selectedJavaVersion && File.Exists(j.Path));
-                    if (selectedJava != null)
-                    {
-                        LaunchStatus += $"\n使用手动选择的Java版本: {selectedJava.Path}";
-                        return selectedJava.Path;
-                    }
-                    else
-                    {
-                        LaunchStatus += $"\n手动选择的Java版本不存在，尝试自动寻找...";
-                    }
-                }
-            }
-
-            // 兼容旧版：优先检查用户自定义的Java路径
-            string customJavaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
-            if (!string.IsNullOrEmpty(customJavaPath) && File.Exists(customJavaPath))
-            {
-                LaunchStatus += $"\n使用自定义Java路径: {customJavaPath}";
-                return customJavaPath;
-            }
-            else if (!string.IsNullOrEmpty(customJavaPath) && !File.Exists(customJavaPath))
-            {
-                LaunchStatus += $"\n自定义Java路径不存在: {customJavaPath}，正在自动寻找...";
-            }
-
-            // 根据requiredJavaVersion寻找匹配的Java版本
-            {
-                LaunchStatus += $"\n正在寻找匹配Java {requiredJavaVersion} 的安装...";
-                
-                // 1. 检查注册表中的Java安装路径（Windows）- 优先查找匹配版本
-                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-                {
-                    using (var javaKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Runtime Environment"))
-                    {
-                        if (javaKey != null)
-                        {
-                            // 获取所有Java版本
-                            string[] versions = javaKey.GetSubKeyNames();
-                            foreach (string version in versions)
-                            {
-                                using (var versionKey = javaKey.OpenSubKey(version))
-                                {
-                                    if (versionKey != null)
-                                    {
-                                        // 获取Java版本号信息
-                                        string javaHomePath = versionKey.GetValue("JavaHome") as string;
-                                        string javaVersion = versionKey.GetValue("JavaVersion") as string;
-                                        
-                                        if (javaHomePath != null)
-                                        {
-                                            string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
-                                            if (File.Exists(javaPath))
-                                            {
-                                                // 尝试解析版本号
-                                                if (TryParseJavaVersion(javaVersion, out int majorVersion))
-                                                {
-                                                    if (majorVersion == requiredJavaVersion)
-                                                    {
-                                                        LaunchStatus += $"\n找到匹配的Java {requiredJavaVersion} 版本: {javaPath}";
-                                                        return javaPath;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // 检查JDK路径
-                    using (var jdkKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Development Kit"))
-                    {
-                        if (jdkKey != null)
-                        {
-                            // 获取所有JDK版本
-                            string[] versions = jdkKey.GetSubKeyNames();
-                            foreach (string version in versions)
-                            {
-                                using (var versionKey = jdkKey.OpenSubKey(version))
-                                {
-                                    if (versionKey != null)
-                                    {
-                                        // 获取Java版本号信息
-                                        string javaHomePath = versionKey.GetValue("JavaHome") as string;
-                                        string javaVersion = versionKey.GetValue("JavaVersion") as string;
-                                        
-                                        if (javaHomePath != null)
-                                        {
-                                            string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
-                                            if (File.Exists(javaPath))
-                                            {
-                                                // 尝试解析版本号
-                                                if (TryParseJavaVersion(javaVersion, out int majorVersion))
-                                                {
-                                                    if (majorVersion == requiredJavaVersion)
-                                                    {
-                                                        LaunchStatus += $"\n找到匹配的Java {requiredJavaVersion} JDK版本: {javaPath}";
-                                                        return javaPath;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 2. 尝试在常见路径中查找匹配版本
-                string[] commonVersionPaths = new string[]
-                {
-                    @$"C:\Program Files\Java\jdk-{requiredJavaVersion}\bin\java.exe",
-                    @$"C:\Program Files\Java\jre-{requiredJavaVersion}\bin\java.exe",
-                    @$"C:\Program Files\Java\jdk1.{requiredJavaVersion}.0_xxx\bin\java.exe",
-                    @$"C:\Program Files\Java\jre1.{requiredJavaVersion}.0_xxx\bin\java.exe"
-                };
-                
-                foreach (string pathPattern in commonVersionPaths)
-                {
-                    string basePath = Path.GetDirectoryName(pathPattern);
-                    if (basePath != null)
-                    {
-                        string parentDir = Path.GetDirectoryName(basePath);
-                        if (parentDir != null)
-                        {
-                            try
-                            {
-                                foreach (string dir in Directory.GetDirectories(parentDir))
-                                {
-                                    string dirName = Path.GetFileName(dir);
-                                    if (dirName.StartsWith($"jdk{requiredJavaVersion}") || dirName.StartsWith($"jre{requiredJavaVersion}") ||
-                                        dirName.StartsWith($"jdk1.{requiredJavaVersion}") || dirName.StartsWith($"jre1.{requiredJavaVersion}"))
-                                    {
-                                        string javaPath = Path.Combine(dir, "bin", "java.exe");
-                                        if (File.Exists(javaPath))
-                                        {
-                                            LaunchStatus += $"\n在常见路径找到匹配的Java {requiredJavaVersion} 版本: {javaPath}";
-                                            return javaPath;
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                // 忽略目录访问错误
-                                Console.WriteLine($"检查Java路径时出错: {ex.Message}");
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 如果是自定义模式或者自动模式下没有找到匹配版本，继续使用原来的查找逻辑
-            LaunchStatus += $"\n未找到完全匹配的Java版本，尝试寻找兼容版本...";
-            
-            // 检查系统环境变量中的java路径
-            string javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
-            if (!string.IsNullOrEmpty(javaHome))
-            {
-                string javaPath = Path.Combine(javaHome, "bin", "java.exe");
-                if (File.Exists(javaPath))
-                {
-                    LaunchStatus += $"\n使用环境变量JAVA_HOME中的Java路径: {javaPath}";
-                    return javaPath;
-                }
-            }
-
-            // 检查注册表中的默认Java版本
-            using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-            {
-                using (var javaKey = baseKey.OpenSubKey(@"SOFTWARE\JavaSoft\Java Runtime Environment"))
-                {
-                    if (javaKey != null)
-                    {
-                        string currentVersion = javaKey.GetValue("CurrentVersion") as string;
-                        if (currentVersion != null)
-                        {
-                            using (var versionKey = javaKey.OpenSubKey(currentVersion))
-                            {
-                                if (versionKey != null)
-                                {
-                                    string javaHomePath = versionKey.GetValue("JavaHome") as string;
-                                    if (javaHomePath != null)
-                                    {
-                                        string javaPath = Path.Combine(javaHomePath, "bin", "java.exe");
-                                        if (File.Exists(javaPath))
-                                        {
-                                            LaunchStatus += $"\n使用注册表中的默认Java版本: {javaPath}";
-                                            return javaPath;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 尝试在常见路径中查找
-            string[] commonPaths = new string[]
-            {
-                @"C:\Program Files\Java\jdk1.8.0_301\bin\java.exe",
-                @"C:\Program Files\Java\jre1.8.0_301\bin\java.exe",
-                @"C:\Program Files\Java\jdk-17\bin\java.exe",
-                @"C:\Program Files\Java\jre-17\bin\java.exe",
-                @"C:\Program Files\Java\jdk-21\bin\java.exe",
-                @"C:\Program Files\Java\jre-21\bin\java.exe"
-            };
-
-            foreach (string path in commonPaths)
-            {
-                if (File.Exists(path))
-                {
-                    LaunchStatus += $"\n在常见路径找到Java: {path}";
-                    return path;
-                }
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            LaunchStatus = "查找Java路径时出错：" + ex.Message;
-            return null;
-        }
-    }
-    
-    /// <summary>
-    /// 尝试解析Java版本号
-    /// </summary>
-    /// <param name="javaVersionString">Java版本字符串</param>
-    /// <param name="majorVersion">解析出的主版本号</param>
-    /// <returns>是否解析成功</returns>
-    private bool TryParseJavaVersion(string javaVersionString, out int majorVersion)
-    {
-        majorVersion = 0;
-        
-        if (string.IsNullOrEmpty(javaVersionString))
-        {
-            return false;
-        }
-        
-        try
-        {
-            // 处理不同格式的版本字符串
-            // 格式1: 1.8.0_301
-            if (javaVersionString.StartsWith("1."))
-            {
-                string[] parts = javaVersionString.Split('.');
-                if (parts.Length >= 2)
-                {
-                    return int.TryParse(parts[1], out majorVersion);
-                }
-            }
-            // 格式2: 17.0.1
-            // 格式3: 17
-            else
-            {
-                string[] parts = javaVersionString.Split('.');
-                return int.TryParse(parts[0], out majorVersion);
-            }
-        }
-        catch (Exception)
-        {
-            // 忽略解析错误
-        }
-        
-        return false;
-    }
-    
     /// <summary>
     /// 显示消息对话框
     /// </summary>
@@ -3034,7 +2674,7 @@ public partial class LaunchViewModel : ObservableRecipient
             }
             else
             {
-                javaPath = await GetJavaPathAsync(requiredJavaVersion);
+                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, versionJavaPath);
             }
             
             if (string.IsNullOrEmpty(javaPath))

@@ -3,6 +3,7 @@ using Microsoft.Windows.ApplicationModel.Resources;
 using Windows.Globalization;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Services;

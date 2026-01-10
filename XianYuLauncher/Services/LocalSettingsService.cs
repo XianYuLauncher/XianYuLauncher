@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using Windows.ApplicationModel;
 using Windows.Storage;
 
-using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;

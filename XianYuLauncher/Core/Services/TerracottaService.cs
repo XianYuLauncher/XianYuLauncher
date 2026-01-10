@@ -1,4 +1,4 @@
-using System; using System.Collections.Generic; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Contracts.Services; using System.Runtime.InteropServices;
+using System; using System.Collections.Generic; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
 
 namespace XianYuLauncher.Core.Services
 {

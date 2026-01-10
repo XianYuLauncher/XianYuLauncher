@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
-using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;

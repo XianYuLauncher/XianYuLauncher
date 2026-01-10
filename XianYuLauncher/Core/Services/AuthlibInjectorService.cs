@@ -1,5 +1,5 @@
 using System; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Security.Cryptography; using System.Diagnostics;
-using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Helpers;
 

@@ -72,7 +72,7 @@ public class VersionInfo
     public string? Assets { get; set; }
     
     [JsonProperty("javaVersion")]
-    public JavaVersion? JavaVersion { get; set; }
+    public MinecraftJavaVersion? JavaVersion { get; set; }
     
     [JsonProperty("inheritsFrom")]
     public string? InheritsFrom { get; set; }
@@ -82,9 +82,10 @@ public class VersionInfo
 }
 
 /// <summary>
-/// Java版本信息
+/// <summary>
+/// Minecraft 版本所需的 Java 版本信息（来自 version.json）
 /// </summary>
-public class JavaVersion
+public class MinecraftJavaVersion
 {
     [JsonProperty("majorVersion")]
     public int MajorVersion { get; set; }

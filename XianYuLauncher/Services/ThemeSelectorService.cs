@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Services;

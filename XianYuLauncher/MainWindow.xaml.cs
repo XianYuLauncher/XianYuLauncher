@@ -54,7 +54,7 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            var localSettingsService = App.GetService<XianYuLauncher.Contracts.Services.ILocalSettingsService>();
+            var localSettingsService = App.GetService<XianYuLauncher.Core.Contracts.Services.ILocalSettingsService>();
             const string FontFamilyKey = "FontFamily";
             
             // 加载保存的字体设置

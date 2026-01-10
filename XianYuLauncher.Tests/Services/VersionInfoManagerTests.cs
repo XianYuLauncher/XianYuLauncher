@@ -251,7 +251,7 @@ public class VersionInfoManagerTests : IDisposable
             Id = "1.20.4",
             MainClass = "net.minecraft.client.main.Main",
             Assets = "1.20",
-            JavaVersion = new JavaVersion { MajorVersion = 17 }
+            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 }
         };
 
         // Act
@@ -278,7 +278,7 @@ public class VersionInfoManagerTests : IDisposable
             Id = "1.20.4",
             MainClass = "net.minecraft.client.main.Main",
             Assets = "1.20",
-            JavaVersion = new JavaVersion { MajorVersion = 17 },
+            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
             Downloads = new Downloads
             {
                 Client = new DownloadFile { Url = "https://example.com/client.jar" }
