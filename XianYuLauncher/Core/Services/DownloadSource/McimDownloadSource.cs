@@ -77,6 +77,66 @@ public class McimDownloadSource : IDownloadSource
     
     #endregion
     
+    #region CurseForge API
+    
+    /// <summary>
+    /// 获取CurseForge API基础URL
+    /// URL映射：api.curseforge.com -> mod.mcimirror.top/curseforge
+    /// </summary>
+    public string GetCurseForgeApiBaseUrl() => "https://mod.mcimirror.top/curseforge";
+    
+    /// <summary>
+    /// 获取CurseForge CDN基础URL
+    /// URL映射：edge.forgecdn.net -> mod.mcimirror.top
+    /// 注意：mediafilez.forgecdn.net 不应被映射
+    /// </summary>
+    public string GetCurseForgeCdnBaseUrl() => "https://mod.mcimirror.top";
+    
+    /// <summary>
+    /// 转换CurseForge API URL
+    /// </summary>
+    public string TransformCurseForgeApiUrl(string originalUrl)
+    {
+        if (string.IsNullOrWhiteSpace(originalUrl))
+            return originalUrl;
+            
+        return originalUrl.Replace("https://api.curseforge.com", "https://mod.mcimirror.top/curseforge");
+    }
+    
+    /// <summary>
+    /// 转换CurseForge CDN URL
+    /// 注意：只转换 edge.forgecdn.net，不转换 mediafilez.forgecdn.net
+    /// </summary>
+    public string TransformCurseForgeCdnUrl(string originalUrl)
+    {
+        if (string.IsNullOrWhiteSpace(originalUrl))
+            return originalUrl;
+        
+        // 只转换 edge.forgecdn.net，不转换 mediafilez.forgecdn.net
+        if (originalUrl.Contains("mediafilez.forgecdn.net"))
+            return originalUrl;
+            
+        return originalUrl.Replace("https://edge.forgecdn.net", "https://mod.mcimirror.top");
+    }
+    
+    /// <summary>
+    /// 获取CurseForge请求的User-Agent
+    /// MCIM镜像要求设置User-Agent，符合中国MC启动器社区规范
+    /// </summary>
+    public string? GetCurseForgeUserAgent() => VersionHelper.GetBmclapiUserAgent();
+    
+    /// <summary>
+    /// 是否需要为CurseForge请求设置特殊User-Agent（MCIM需要）
+    /// </summary>
+    public bool RequiresCurseForgeUserAgent => true;
+    
+    /// <summary>
+    /// 是否应在CurseForge请求中包含API Key（MCIM镜像严禁包含API Key！）
+    /// </summary>
+    public bool ShouldIncludeCurseForgeApiKey => false;
+    
+    #endregion
+    
     #region Minecraft资源（MCIM不支持，返回官方URL）
     
     public string GetVersionInfoUrl(string versionId, string originalUrl) => originalUrl;

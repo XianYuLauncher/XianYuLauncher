@@ -58,6 +58,45 @@ public class BmclapiDownloadSource : IDownloadSource
     
     #endregion
     
+    #region CurseForge API（BMCLAPI不支持CurseForge镜像，使用官方源）
+    
+    /// <summary>
+    /// 获取CurseForge API基础URL（BMCLAPI不支持，使用官方源）
+    /// </summary>
+    public string GetCurseForgeApiBaseUrl() => "https://api.curseforge.com";
+    
+    /// <summary>
+    /// 获取CurseForge CDN基础URL（BMCLAPI不支持，使用官方源）
+    /// </summary>
+    public string GetCurseForgeCdnBaseUrl() => "https://edge.forgecdn.net";
+    
+    /// <summary>
+    /// 转换CurseForge API URL（BMCLAPI不支持，不转换）
+    /// </summary>
+    public string TransformCurseForgeApiUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 转换CurseForge CDN URL（BMCLAPI不支持，不转换）
+    /// </summary>
+    public string TransformCurseForgeCdnUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 获取CurseForge请求的User-Agent（BMCLAPI不支持CurseForge镜像，不需要特殊UA）
+    /// </summary>
+    public string? GetCurseForgeUserAgent() => null;
+    
+    /// <summary>
+    /// 是否需要为CurseForge请求设置特殊User-Agent（BMCLAPI不需要）
+    /// </summary>
+    public bool RequiresCurseForgeUserAgent => false;
+    
+    /// <summary>
+    /// 是否应在CurseForge请求中包含API Key（BMCLAPI使用官方源，需要API Key）
+    /// </summary>
+    public bool ShouldIncludeCurseForgeApiKey => true;
+    
+    #endregion
+    
     /// <summary>
     /// 获取指定版本的详细信息URL
     /// </summary>

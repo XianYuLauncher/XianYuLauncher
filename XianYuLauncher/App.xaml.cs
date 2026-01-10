@@ -155,9 +155,15 @@ public partial class App : Application
             // Modrinth Cache Service
             services.AddSingleton<ModrinthCacheService>();
             
-            // CurseForge Service
+            // CurseForge Service (支持MCIM镜像源)
             services.AddHttpClient<CurseForgeService>();
-            services.AddSingleton<CurseForgeService>();
+            services.AddSingleton<CurseForgeService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(CurseForgeService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                return new CurseForgeService(httpClient, downloadSourceFactory);
+            });
             
             // CurseForge Cache Service
             services.AddSingleton<CurseForgeCacheService>();

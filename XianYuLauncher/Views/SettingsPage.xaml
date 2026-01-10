@@ -471,37 +471,37 @@
                                         Opacity="0.7"/>
                                 </StackPanel>
                                 
-                                <!-- Modrinth下载源设置 -->
+                                <!-- 社区资源下载源设置 (Modrinth + CurseForge) -->
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <TextBlock x:Uid="Settings_SelectModrinthDownloadSource" Text="Modrinth下载源" />
+                                    <TextBlock x:Uid="Settings_SelectCommunityDownloadSource" Text="社区资源下载源" />
 
                                     <StackPanel Margin="{StaticResource XSmallTopMargin}">
                                         <RadioButton
-                                            x:Uid="Settings_ModrinthDownloadSource_Official"
+                                            x:Uid="Settings_CommunityDownloadSource_Official"
                                             Content="官方源"
                                             Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
                                             FontSize="15"
-                                            GroupName="ModrinthDownloadSource">
+                                            GroupName="CommunityDownloadSource">
                                             <RadioButton.CommandParameter>
                                                 <x:String>Official</x:String>
                                             </RadioButton.CommandParameter>
                                         </RadioButton>
                                         <RadioButton
-                                            x:Uid="Settings_ModrinthDownloadSource_MCIM"
+                                            x:Uid="Settings_CommunityDownloadSource_MCIM"
                                             Content="MCIM镜像源"
                                             Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}"
                                             IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=MCIM, Mode=OneWay}"
                                             FontSize="15"
-                                            GroupName="ModrinthDownloadSource">
+                                            GroupName="CommunityDownloadSource">
                                             <RadioButton.CommandParameter>
                                                 <x:String>MCIM</x:String>
                                             </RadioButton.CommandParameter>
                                         </RadioButton>
                                     </StackPanel>
                                     <TextBlock 
-                                        x:Uid="Settings_ModrinthDownloadSourceDescription"
-                                        Text="选择Modrinth资源（Mod、资源包等）的下载源" 
+                                        x:Uid="Settings_CommunityDownloadSourceDescription"
+                                        Text="选择Modrinth和CurseForge资源（Mod、资源包、整合包等）的下载源" 
                                         Style="{ThemeResource CaptionTextBlockStyle}" 
                                         Margin="{StaticResource XSmallTopMargin}" 
                                         Opacity="0.7"/>

@@ -7,21 +7,29 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
 /// CurseForge服务类，用于调用CurseForge API
+/// 支持官方源和MCIM镜像源切换
 /// </summary>
 public class CurseForgeService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     
     /// <summary>
-    /// CurseForge API基础URL
+    /// CurseForge官方API基础URL
     /// </summary>
-    private const string ApiBaseUrl = "https://api.curseforge.com";
+    private const string OfficialApiBaseUrl = "https://api.curseforge.com";
+    
+    /// <summary>
+    /// 官方下载源（用于回退）
+    /// </summary>
+    private readonly IDownloadSource _officialSource = new OfficialDownloadSource();
     
     /// <summary>
     /// Minecraft游戏ID
@@ -53,9 +61,10 @@ public class CurseForgeService
     /// </summary>
     private const int DatapacksClassId = 6945;
 
-    public CurseForgeService(HttpClient httpClient)
+    public CurseForgeService(HttpClient httpClient, DownloadSourceFactory downloadSourceFactory)
     {
         _httpClient = httpClient;
+        _downloadSourceFactory = downloadSourceFactory;
         _apiKey = SecretsService.Config.CurseForge.ApiKey;
         
         if (string.IsNullOrEmpty(_apiKey))
@@ -65,17 +74,83 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 创建带有API Key的HttpRequestMessage
+    /// 获取当前CurseForge下载源（与Modrinth共享设置）
     /// </summary>
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url)
+    private IDownloadSource GetCurseForgeSource() => _downloadSourceFactory.GetModrinthSource();
+    
+    /// <summary>
+    /// 判断当前是否使用镜像源
+    /// </summary>
+    private bool IsUsingMirror() => GetCurseForgeSource().Key != "official";
+    
+    /// <summary>
+    /// 获取当前使用的API基础URL
+    /// </summary>
+    private string GetApiBaseUrl() => GetCurseForgeSource().GetCurseForgeApiBaseUrl();
+    
+    /// <summary>
+    /// 转换API URL（根据当前下载源）
+    /// </summary>
+    private string TransformApiUrl(string originalUrl)
     {
+        return GetCurseForgeSource().TransformCurseForgeApiUrl(originalUrl);
+    }
+    
+    /// <summary>
+    /// 转换CDN下载URL（根据当前下载源）
+    /// </summary>
+    private string TransformCdnUrl(string originalUrl)
+    {
+        return GetCurseForgeSource().TransformCurseForgeCdnUrl(originalUrl);
+    }
+    
+    /// <summary>
+    /// 创建HttpRequestMessage
+    /// 根据下载源决定是否添加API Key和User-Agent
+    /// 重要：镜像源严禁携带API Key！
+    /// </summary>
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource source = null)
+    {
+        source ??= GetCurseForgeSource();
         var request = new HttpRequestMessage(method, url);
-        if (!string.IsNullOrEmpty(_apiKey))
+        
+        // 只有当下载源允许时才添加API Key（官方源需要，镜像源严禁！）
+        if (source.ShouldIncludeCurseForgeApiKey && !string.IsNullOrEmpty(_apiKey))
         {
             request.Headers.Add("x-api-key", _apiKey);
         }
+        
+        // 如果下载源需要特殊User-Agent，添加它
+        if (source.RequiresCurseForgeUserAgent)
+        {
+            var userAgent = source.GetCurseForgeUserAgent();
+            if (!string.IsNullOrEmpty(userAgent))
+            {
+                request.Headers.UserAgent.ParseAdd(userAgent);
+            }
+        }
+        
         request.Headers.Add("Accept", "application/json");
         return request;
+    }
+    
+    /// <summary>
+    /// 判断是否应该回退到官方源
+    /// </summary>
+    private bool ShouldFallback(System.Net.HttpStatusCode statusCode)
+    {
+        return statusCode == System.Net.HttpStatusCode.NotFound ||
+               (int)statusCode >= 500;
+    }
+    
+    /// <summary>
+    /// 回退到官方源执行GET请求
+    /// </summary>
+    private async Task<HttpResponseMessage> FallbackToOfficialAsync(string originalUrl)
+    {
+        System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 回退到官方源: {originalUrl}");
+        using var fallbackRequest = CreateRequest(HttpMethod.Get, originalUrl, _officialSource);
+        return await _httpClient.SendAsync(fallbackRequest);
     }
 
     /// <summary>
@@ -103,7 +178,7 @@ public class CurseForgeService
         try
         {
             // 构建API URL
-            var url = $"{ApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={ModsClassId}";
+            var url = $"{GetApiBaseUrl()}/v1/mods/search?gameId={MinecraftGameId}&classId={ModsClassId}";
             
             if (!string.IsNullOrEmpty(searchFilter))
             {
@@ -184,7 +259,7 @@ public class CurseForgeService
         try
         {
             // 构建API URL
-            var url = $"{ApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={classId}";
+            var url = $"{GetApiBaseUrl()}/v1/mods/search?gameId={MinecraftGameId}&classId={classId}";
             
             if (!string.IsNullOrEmpty(searchFilter))
             {
@@ -244,7 +319,7 @@ public class CurseForgeService
     {
         try
         {
-            var url = $"{ApiBaseUrl}/v1/mods/{modId}";
+            var url = $"{GetApiBaseUrl()}/v1/mods/{modId}";
             
             using var request = CreateRequest(HttpMethod.Get, url);
             var response = await _httpClient.SendAsync(request);
@@ -296,7 +371,7 @@ public class CurseForgeService
     {
         try
         {
-            var url = $"{ApiBaseUrl}/v1/mods/{modId}/files?index={index}&pageSize={pageSize}";
+            var url = $"{GetApiBaseUrl()}/v1/mods/{modId}/files?index={index}&pageSize={pageSize}";
             
             if (!string.IsNullOrEmpty(gameVersion))
             {
@@ -357,7 +432,17 @@ public class CurseForgeService
         try
         {
             string fileName = Path.GetFileName(destinationPath);
+            string originalUrl = downloadUrl;
+            
+            // 转换CDN URL（根据当前下载源）
+            // 注意：只转换 edge.forgecdn.net，不转换 mediafilez.forgecdn.net
+            downloadUrl = TransformCdnUrl(downloadUrl);
+            
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 开始下载文件: {downloadUrl}");
+            if (downloadUrl != originalUrl)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 原始URL: {originalUrl}");
+            }
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 目标路径: {destinationPath}");
             
             progressCallback?.Invoke(fileName, 0);
@@ -369,10 +454,46 @@ public class CurseForgeService
                 Directory.CreateDirectory(parentDir);
             }
             
-            using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
-            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            HttpResponseMessage response = null;
+            bool usedFallback = false;
             
-            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] HTTP响应状态: {response.StatusCode}");
+            try
+            {
+                // 创建请求（CDN下载不需要API Key，但镜像源需要UA）
+                using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+                var source = GetCurseForgeSource();
+                if (source.RequiresCurseForgeUserAgent)
+                {
+                    var userAgent = source.GetCurseForgeUserAgent();
+                    if (!string.IsNullOrEmpty(userAgent))
+                    {
+                        request.Headers.UserAgent.ParseAdd(userAgent);
+                    }
+                }
+                
+                response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                
+                // 如果是镜像URL且失败，回退到官方CDN
+                if (!response.IsSuccessStatusCode && ShouldFallback(response.StatusCode) && downloadUrl.Contains("mcimirror.top"))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 镜像下载失败({response.StatusCode})，回退到官方CDN");
+                    response.Dispose();
+                    
+                    // 使用原始URL回退
+                    using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, originalUrl);
+                    response = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    usedFallback = true;
+                }
+            }
+            catch (HttpRequestException ex) when (downloadUrl.Contains("mcimirror.top"))
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 镜像下载网络错误，回退到官方CDN: {ex.Message}");
+                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, originalUrl);
+                response = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                usedFallback = true;
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] HTTP响应状态: {response.StatusCode}{(usedFallback ? " (已回退到官方源)" : "")}");
             response.EnsureSuccessStatusCode();
             
             long totalBytes = response.Content.Headers.ContentLength ?? 0;
@@ -399,6 +520,7 @@ public class CurseForgeService
                 }
             }
             
+            response?.Dispose();
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 文件下载完成: {destinationPath}");
             progressCallback?.Invoke(fileName, 100);
             
@@ -435,7 +557,7 @@ public class CurseForgeService
 
         try
         {
-            var url = $"{ApiBaseUrl}/v1/mods";
+            var url = $"{GetApiBaseUrl()}/v1/mods";
             
             using var request = CreateRequest(HttpMethod.Post, url);
             var requestBody = new { modIds = modIds };
@@ -490,7 +612,7 @@ public class CurseForgeService
 
         try
         {
-            var url = $"{ApiBaseUrl}/v1/mods/files";
+            var url = $"{GetApiBaseUrl()}/v1/mods/files";
             
             using var request = CreateRequest(HttpMethod.Post, url);
             var requestBody = new { fileIds = fileIds };
@@ -545,7 +667,7 @@ public class CurseForgeService
     {
         try
         {
-            var url = $"{ApiBaseUrl}/v1/mods/{modId}/files/{fileId}";
+            var url = $"{GetApiBaseUrl()}/v1/mods/{modId}/files/{fileId}";
             
             using var request = CreateRequest(HttpMethod.Get, url);
             var response = await _httpClient.SendAsync(request);
@@ -887,7 +1009,7 @@ public class CurseForgeService
     {
         try
         {
-            var url = $"{ApiBaseUrl}/v1/categories?gameId={MinecraftGameId}";
+            var url = $"{GetApiBaseUrl()}/v1/categories?gameId={MinecraftGameId}";
             
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 获取类别列表: {url}");
             

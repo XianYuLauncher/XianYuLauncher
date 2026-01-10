@@ -1756,6 +1756,18 @@
   <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
     <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
   </data>
+  <data name="Settings_SelectCommunityDownloadSource.Text" xml:space="preserve">
+    <value>社区资源下载源</value>
+  </data>
+  <data name="Settings_CommunityDownloadSource_Official.Content" xml:space="preserve">
+    <value>官方源</value>
+  </data>
+  <data name="Settings_CommunityDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM镜像源</value>
+  </data>
+  <data name="Settings_CommunityDownloadSourceDescription.Text" xml:space="preserve">
+    <value>选择Modrinth和CurseForge资源（Mod、资源包、整合包等）的下载源，MCIM镜像可加速国内下载</value>
+  </data>
   <data name="Settings_UpdateSettings.Text" xml:space="preserve">
     <value>更新设置</value>
   </data>

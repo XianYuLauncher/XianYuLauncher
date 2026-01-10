@@ -58,6 +58,45 @@ public class OfficialDownloadSource : IDownloadSource
     
     #endregion
     
+    #region CurseForge API
+    
+    /// <summary>
+    /// 获取CurseForge API基础URL
+    /// </summary>
+    public string GetCurseForgeApiBaseUrl() => "https://api.curseforge.com";
+    
+    /// <summary>
+    /// 获取CurseForge CDN基础URL
+    /// </summary>
+    public string GetCurseForgeCdnBaseUrl() => "https://edge.forgecdn.net";
+    
+    /// <summary>
+    /// 转换CurseForge API URL（官方源不转换）
+    /// </summary>
+    public string TransformCurseForgeApiUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 转换CurseForge CDN URL（官方源不转换）
+    /// </summary>
+    public string TransformCurseForgeCdnUrl(string originalUrl) => originalUrl;
+    
+    /// <summary>
+    /// 获取CurseForge请求的User-Agent（官方源不需要特殊UA）
+    /// </summary>
+    public string? GetCurseForgeUserAgent() => null;
+    
+    /// <summary>
+    /// 是否需要为CurseForge请求设置特殊User-Agent（官方源不需要）
+    /// </summary>
+    public bool RequiresCurseForgeUserAgent => false;
+    
+    /// <summary>
+    /// 是否应在CurseForge请求中包含API Key（官方源需要）
+    /// </summary>
+    public bool ShouldIncludeCurseForgeApiKey => true;
+    
+    #endregion
+    
     /// <summary>
     /// 获取指定版本的详细信息URL
     /// </summary>

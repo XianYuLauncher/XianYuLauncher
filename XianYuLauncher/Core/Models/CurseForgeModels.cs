@@ -104,6 +104,9 @@ public class CurseForgeMod
     
     [JsonPropertyName("gamePopularityRank")]
     public int GamePopularityRank { get; set; }
+    
+    [JsonPropertyName("classId")]
+    public int? ClassId { get; set; }
 }
 
 /// <summary>

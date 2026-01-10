@@ -1738,12 +1738,25 @@ Continue downloading?</value>
   <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
     <value>Select download source for Modrinth resources (Mods, Resource Packs, etc.). MCIM mirror can speed up downloads in China</value>
   </data>
+  <data name="Settings_SelectCommunityDownloadSource.Text" xml:space="preserve">
+    <value>Community Resource Download Source</value>
+  </data>
+  <data name="Settings_CommunityDownloadSource_Official.Content" xml:space="preserve">
+    <value>Official</value>
+  </data>
+  <data name="Settings_CommunityDownloadSource_MCIM.Content" xml:space="preserve">
+    <value>MCIM Mirror</value>
+  </data>
+  <data name="Settings_CommunityDownloadSourceDescription.Text" xml:space="preserve">
+    <value>Select download source for Modrinth and CurseForge resources (Mods, Resource Packs, Modpacks, etc.). MCIM mirror can speed up downloads in China</value>
+  </data>
   <data name="Settings_UpdateSettings.Text" xml:space="preserve">
     <value>Update Settings</value>
   </data>
   <data name="Settings_AutoUpdateCheck.Text" xml:space="preserve">
     <value>Auto Update Check</value>
   </data>
+  ...
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>Show popup on every launch</value>
   </data>

@@ -93,46 +93,47 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 1: // Mod下载标签页
                 if (!_modsLoaded)
                 {
-                    // 加载Mod类别
-                    await ViewModel.LoadCategoriesAsync("mod");
-                    await ViewModel.SearchModsCommand.ExecuteAsync(null);
                     _modsLoaded = true;
+                    // 并行加载：类别和搜索结果同时进行，搜索结果优先显示
+                    var categoryTask = ViewModel.LoadCategoriesAsync("mod");
+                    await ViewModel.SearchModsCommand.ExecuteAsync(null);
+                    _ = categoryTask; // 类别在后台加载完成
                 }
                 break;
             case 2: // 光影下载标签页
                 if (!_shaderPacksLoaded)
                 {
-                    // 加载光影类别
-                    await ViewModel.LoadCategoriesAsync("shader");
-                    await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
                     _shaderPacksLoaded = true;
+                    var categoryTask = ViewModel.LoadCategoriesAsync("shader");
+                    await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+                    _ = categoryTask;
                 }
                 break;
             case 3: // 资源包下载标签页
                 if (!_resourcePacksLoaded)
                 {
-                    // 加载资源包类别
-                    await ViewModel.LoadCategoriesAsync("resourcepack");
-                    await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
                     _resourcePacksLoaded = true;
+                    var categoryTask = ViewModel.LoadCategoriesAsync("resourcepack");
+                    await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+                    _ = categoryTask;
                 }
                 break;
             case 4: // 数据包下载标签页
                 if (!_datapacksLoaded)
                 {
-                    // 加载数据包类别
-                    await ViewModel.LoadCategoriesAsync("datapack");
-                    await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
                     _datapacksLoaded = true;
+                    var categoryTask = ViewModel.LoadCategoriesAsync("datapack");
+                    await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+                    _ = categoryTask;
                 }
                 break;
             case 5: // 整合包下载标签页
                 if (!_modpacksLoaded)
                 {
-                    // 加载整合包类别
-                    await ViewModel.LoadCategoriesAsync("modpack");
-                    await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
                     _modpacksLoaded = true;
+                    var categoryTask = ViewModel.LoadCategoriesAsync("modpack");
+                    await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+                    _ = categoryTask;
                 }
                 break;
         }

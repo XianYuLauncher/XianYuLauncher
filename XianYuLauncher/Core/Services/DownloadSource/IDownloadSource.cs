@@ -63,6 +63,55 @@ public interface IDownloadSource
     
     #endregion
     
+    #region CurseForge API
+    
+    /// <summary>
+    /// 获取CurseForge API基础URL
+    /// </summary>
+    /// <returns>CurseForge API基础URL</returns>
+    string GetCurseForgeApiBaseUrl();
+    
+    /// <summary>
+    /// 获取CurseForge CDN基础URL
+    /// </summary>
+    /// <returns>CurseForge CDN基础URL</returns>
+    string GetCurseForgeCdnBaseUrl();
+    
+    /// <summary>
+    /// 转换CurseForge API URL
+    /// </summary>
+    /// <param name="originalUrl">原始CurseForge API URL</param>
+    /// <returns>转换后的URL</returns>
+    string TransformCurseForgeApiUrl(string originalUrl);
+    
+    /// <summary>
+    /// 转换CurseForge CDN URL（文件下载）
+    /// 注意：mediafilez.forgecdn.net 不应被转换
+    /// </summary>
+    /// <param name="originalUrl">原始CurseForge CDN URL</param>
+    /// <returns>转换后的URL</returns>
+    string TransformCurseForgeCdnUrl(string originalUrl);
+    
+    /// <summary>
+    /// 获取CurseForge请求的User-Agent
+    /// 符合中国MC启动器社区规范
+    /// </summary>
+    /// <returns>User-Agent字符串，如果不需要特殊UA则返回null</returns>
+    string? GetCurseForgeUserAgent();
+    
+    /// <summary>
+    /// 是否需要为CurseForge请求设置特殊User-Agent
+    /// </summary>
+    bool RequiresCurseForgeUserAgent { get; }
+    
+    /// <summary>
+    /// 是否应在CurseForge请求中包含API Key
+    /// 镜像源不应包含API Key
+    /// </summary>
+    bool ShouldIncludeCurseForgeApiKey { get; }
+    
+    #endregion
+    
     /// <summary>
     /// 获取指定版本的详细信息URL
     /// </summary>

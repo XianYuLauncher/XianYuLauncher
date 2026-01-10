@@ -2061,7 +2061,12 @@ namespace XianYuLauncher.ViewModels
                     string mrpackPath = Path.Combine(tempDir, modVersion.FileName);
                     Directory.CreateDirectory(tempDir);
 
-                    // 检查DownloadUrl是否是本地文件路径
+                    // 检查DownloadUrl是否为空或是本地文件路径
+                    if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                    {
+                        throw new Exception("下载链接为空，无法下载整合包");
+                    }
+                    
                     if (modVersion.DownloadUrl.StartsWith("http://") || modVersion.DownloadUrl.StartsWith("https://"))
                     {
                         // 远程文件：使用HttpClient下载
@@ -2382,7 +2387,8 @@ namespace XianYuLauncher.ViewModels
             {
                 IsInstalling = false;
                 IsModpackInstallDialogOpen = false;
-                _installCancellationTokenSource.Dispose();
+                _installCancellationTokenSource?.Dispose();
+                _installCancellationTokenSource = null;
             }
         }
 
@@ -2503,12 +2509,34 @@ namespace XianYuLauncher.ViewModels
                 InstallProgress = 65;
                 InstallProgressText = "65%";
 
-                // 7. 下载整合包中的Mod文件
+                // 7. 下载整合包中的文件（Mod、资源包、光影等）
                 if (manifest.Files != null && manifest.Files.Count > 0)
                 {
-                    InstallStatus = "正在获取Mod下载信息...";
+                    InstallStatus = "正在获取资源信息...";
+                    
+                    // 获取所有项目的classId，用于确定文件应放置的目录
+                    var projectIds = manifest.Files.Select(f => f.ProjectId).Distinct().ToList();
+                    var projectClassIdMap = new Dictionary<int, int>(); // projectId -> classId
+                    
+                    try
+                    {
+                        var modInfos = await _curseForgeService.GetModsByIdsAsync(projectIds);
+                        foreach (var mod in modInfos)
+                        {
+                            if (mod.ClassId.HasValue)
+                            {
+                                projectClassIdMap[mod.Id] = mod.ClassId.Value;
+                            }
+                        }
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 获取到 {projectClassIdMap.Count} 个项目的classId信息");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 获取项目classId失败: {ex.Message}");
+                    }
+                    
+                    // 获取文件详情
                     var fileIds = manifest.Files.Select(f => f.FileId).ToList();
-
                     List<CurseForgeFile> fileDetails;
                     try
                     {
@@ -2529,21 +2557,42 @@ namespace XianYuLauncher.ViewModels
                     }
 
                     InstallProgress = 70;
+                    
+                    // 预先创建可能需要的目录
                     string modsDir = Path.Combine(modpackVersionDir, "mods");
-                    Directory.CreateDirectory(modsDir);
-
+                    string resourcePacksDir = Path.Combine(modpackVersionDir, "resourcepacks");
+                    string shaderPacksDir = Path.Combine(modpackVersionDir, "shaderpacks");
+                    string dataPacksDir = Path.Combine(modpackVersionDir, "datapacks");
+                    
                     int totalFiles = fileDetails.Count;
                     int downloadedFiles = 0;
 
                     foreach (var file in fileDetails)
                     {
                         _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
-                        string fileName = file.FileName ?? $"mod_{file.Id}.jar";
+                        string fileName = file.FileName ?? $"file_{file.Id}";
                         InstallStatus = $"正在下载: {fileName} ({downloadedFiles + 1}/{totalFiles})";
 
                         if (!string.IsNullOrEmpty(file.DownloadUrl))
                         {
-                            string targetPath = Path.Combine(modsDir, fileName);
+                            // 根据classId确定目标目录
+                            string targetDir = modsDir; // 默认放到mods
+                            
+                            if (projectClassIdMap.TryGetValue(file.ModId, out int classId))
+                            {
+                                targetDir = classId switch
+                                {
+                                    6 => modsDir,           // Mods
+                                    12 => resourcePacksDir, // ResourcePacks
+                                    6552 => shaderPacksDir, // Shaders
+                                    6945 => dataPacksDir,   // DataPacks
+                                    _ => modsDir            // 未知类型默认放mods
+                                };
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] {fileName} classId={classId} -> {Path.GetFileName(targetDir)}");
+                            }
+                            
+                            Directory.CreateDirectory(targetDir);
+                            string targetPath = Path.Combine(targetDir, fileName);
                             await _curseForgeService.DownloadFileAsync(file.DownloadUrl, targetPath, null, _installCancellationTokenSource.Token);
                         }
 

@@ -345,18 +345,36 @@ public partial class VersionListViewModel : ObservableRecipient
                 string modpackFilePath = file.Path;
                 string modpackFileName = file.Name;
 
-                // 如果是 .zip 文件,需要提取其中的 .mrpack 文件
+                // 如果是 .zip 文件，检测整合包类型
                 if (file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
-                    var extractedMrpack = await ExtractMrpackFromZipAsync(file.Path);
-                    if (extractedMrpack.HasValue)
+                    var modpackType = await DetectModpackTypeFromZipAsync(file.Path);
+                    
+                    if (modpackType == ModpackType.CurseForge)
                     {
-                        modpackFilePath = extractedMrpack.Value.FilePath;
-                        modpackFileName = extractedMrpack.Value.FileName;
+                        // CurseForge 整合包：直接使用 zip 文件路径
+                        // InstallModpackAsync 会自动检测 manifest.json 并走 CurseForge 流程
+                        modpackFilePath = file.Path;
+                        modpackFileName = file.Name;
+                    }
+                    else if (modpackType == ModpackType.Modrinth)
+                    {
+                        // Modrinth 整合包包装在 zip 中：提取 .mrpack 文件
+                        var extractedMrpack = await ExtractMrpackFromZipAsync(file.Path);
+                        if (extractedMrpack.HasValue)
+                        {
+                            modpackFilePath = extractedMrpack.Value.FilePath;
+                            modpackFileName = extractedMrpack.Value.FileName;
+                        }
+                        else
+                        {
+                            StatusMessage = "ZIP 文件中未找到 .mrpack 文件";
+                            return;
+                        }
                     }
                     else
                     {
-                        StatusMessage = "ZIP 文件中未找到 .mrpack 文件";
+                        StatusMessage = "无法识别的整合包格式：未找到 manifest.json (CurseForge) 或 .mrpack 文件 (Modrinth)";
                         return;
                     }
                 }
@@ -385,6 +403,55 @@ public partial class VersionListViewModel : ObservableRecipient
         {
             StatusMessage = $"导入整合包失败: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// 整合包类型枚举
+    /// </summary>
+    private enum ModpackType
+    {
+        Unknown,
+        CurseForge,  // 包含 manifest.json
+        Modrinth     // 包含 .mrpack 文件
+    }
+
+    /// <summary>
+    /// 检测 ZIP 文件中的整合包类型
+    /// </summary>
+    private async Task<ModpackType> DetectModpackTypeFromZipAsync(string zipFilePath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(zipFilePath))
+                {
+                    // 优先检查是否为 CurseForge 整合包 (包含 manifest.json)
+                    var manifestEntry = archive.Entries.FirstOrDefault(e =>
+                        e.FullName.Equals("manifest.json", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (manifestEntry != null)
+                    {
+                        return ModpackType.CurseForge;
+                    }
+                    
+                    // 检查是否包含 .mrpack 文件 (Modrinth 整合包的包装)
+                    var mrpackEntry = archive.Entries.FirstOrDefault(e =>
+                        e.Name.EndsWith(".mrpack", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (mrpackEntry != null)
+                    {
+                        return ModpackType.Modrinth;
+                    }
+                    
+                    return ModpackType.Unknown;
+                }
+            }
+            catch
+            {
+                return ModpackType.Unknown;
+            }
+        });
     }
 
     /// <summary>
