@@ -70,7 +70,7 @@ public class TelemetryService
             var json = JsonSerializer.Serialize(telemetryData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            System.Diagnostics.Debug.WriteLine($"[Telemetry] 准备发送到: {TelemetryEndpoint}");
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 准备发送遥测数据");
             System.Diagnostics.Debug.WriteLine($"[Telemetry] 数据内容: {json}");
 
             // 异步发送，不等待结果
