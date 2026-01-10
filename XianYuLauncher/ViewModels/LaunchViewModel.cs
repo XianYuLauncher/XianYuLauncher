@@ -2574,6 +2574,21 @@ public partial class LaunchViewModel : ObservableRecipient
 
 
     /// <summary>
+    /// 构建启动参数（内部共享方法）
+    /// </summary>
+    /// <param name="versionName">版本名称</param>
+    /// <param name="profile">角色信息</param>
+    /// <returns>包含参数列表、Java路径和版本目录的元组，如果失败返回 null</returns>
+    private async Task<(List<string> Args, string JavaPath, string VersionDir)?> BuildLaunchArgumentsInternalAsync(
+        string versionName, 
+        MinecraftProfile profile)
+    {
+        // TODO: 这里将包含从 LaunchGameAsync 提取的所有参数构建逻辑
+        // 暂时返回 null，后续步骤会逐步填充
+        return null;
+    }
+
+    /// <summary>
     /// 生成启动命令字符串（供导出使用）
     /// </summary>
     /// <param name="versionName">版本名称</param>
@@ -2588,332 +2603,16 @@ public partial class LaunchViewModel : ObservableRecipient
         
         try
         {
-            // 1. 获取游戏目录路径
-            string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionsDir = Path.Combine(minecraftPath, "versions");
-            string versionDir = Path.Combine(versionsDir, versionName);
-            string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
-            string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
-            string librariesPath = Path.Combine(minecraftPath, "libraries");
-            string assetsPath = Path.Combine(minecraftPath, "assets");
-            
-            // 2. 检查必要文件
-            if (!File.Exists(jarPath) || !File.Exists(jsonPath))
+            // 调用共享的参数构建逻辑
+            var result = await BuildLaunchArgumentsInternalAsync(versionName, profile);
+            if (result == null)
             {
                 return null;
             }
             
-            // 3. 读取版本信息
-            string versionJsonContent = await File.ReadAllTextAsync(jsonPath);
-            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent);
+            var (args, javaPath, versionDir) = result.Value;
             
-            if (versionInfo == null || string.IsNullOrEmpty(versionInfo.MainClass))
-            {
-                return null;
-            }
-            
-            // 4. 根据版本隔离设置生成游戏目录
-            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
-            bool enableVersionIsolation = versionIsolationValue ?? true;
-            string gameDir = enableVersionIsolation ? versionDir : minecraftPath;
-            
-            // 4.1 检查并创建 options.txt（设置默认语言为简体中文）
-            string optionsPath = Path.Combine(gameDir, "options.txt");
-            if (!File.Exists(optionsPath))
-            {
-                try
-                {
-                    // 确保目录存在
-                    if (!Directory.Exists(gameDir))
-                    {
-                        Directory.CreateDirectory(gameDir);
-                    }
-                    await File.WriteAllTextAsync(optionsPath, "lang:zh_cn\n");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"创建 options.txt 失败: {ex.Message}");
-                }
-            }
-            
-            // 5. 获取 Java 路径
-            int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
-            
-            // 检查版本特定的 Java 路径
-            bool useGlobalJavaSetting = true;
-            string versionJavaPath = string.Empty;
-            string settingsFilePath = Path.Combine(versionDir, "XianYuL.cfg");
-            
-            if (File.Exists(settingsFilePath))
-            {
-                try
-                {
-                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
-                    dynamic settings = JsonConvert.DeserializeObject(settingsJson);
-                    
-                    bool? useGlobalSetting = null;
-                    string configJavaPath = null;
-                    
-                    try { useGlobalSetting = settings.UseGlobalJavaSetting; } catch { }
-                    if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useglobaljavasetting; } catch { }
-                    
-                    try { configJavaPath = settings.JavaPath; } catch { }
-                    if (configJavaPath == null) try { configJavaPath = settings.javaPath; } catch { }
-                    if (configJavaPath == null) try { configJavaPath = settings.javapath; } catch { }
-                    
-                    useGlobalJavaSetting = useGlobalSetting ?? true;
-                    versionJavaPath = configJavaPath ?? string.Empty;
-                }
-                catch { }
-            }
-            
-            string javaPath;
-            if (!useGlobalJavaSetting && !string.IsNullOrEmpty(versionJavaPath) && File.Exists(versionJavaPath))
-            {
-                javaPath = versionJavaPath;
-            }
-            else
-            {
-                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, versionJavaPath);
-            }
-            
-            if (string.IsNullOrEmpty(javaPath))
-            {
-                return null;
-            }
-            
-            // 6. 构建 Classpath（复用现有逻辑）
-            HashSet<string> classpathEntries = new HashSet<string>();
-            classpathEntries.Add(jarPath);
-            
-            if (versionInfo.Libraries != null)
-            {
-                // 判断是否为 Fabric 相关版本
-                bool isFabricVersion = false;
-                try
-                {
-                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(versionName, versionDir);
-                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
-                    {
-                        isFabricVersion = versionConfig.ModLoaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-                catch { }
-                
-                if (!isFabricVersion)
-                {
-                    isFabricVersion = versionName.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) ||
-                                      (versionName.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                                       versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
-                }
-                
-                // ASM 库版本跟踪（用于 Fabric 去重）
-                Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();
-                
-                if (isFabricVersion)
-                {
-                    foreach (var library in versionInfo.Libraries)
-                    {
-                        if (library.Name.StartsWith("org.ow2.asm:asm:"))
-                        {
-                            string[] parts = library.Name.Split(':');
-                            if (parts.Length >= 3)
-                            {
-                                asmLibraryVersions[library.Name] = parts[2];
-                            }
-                        }
-                    }
-                }
-                
-                // 找出最新的 ASM 版本
-                string latestAsmVersion = "0.0";
-                foreach (var kvp in asmLibraryVersions)
-                {
-                    if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
-                    {
-                        latestAsmVersion = kvp.Value;
-                    }
-                }
-                
-                // 添加库到 classpath
-                foreach (var library in versionInfo.Libraries)
-                {
-                    // 检查规则
-                    bool isAllowed = true;
-                    if (library.Rules != null)
-                    {
-                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
-                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
-                        {
-                            isAllowed = false;
-                        }
-                    }
-                    
-                    if (!isAllowed) continue;
-                    
-                    // 跳过旧版 ASM 库（Fabric 版本）
-                    if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
-                    {
-                        string[] parts = library.Name.Split(':');
-                        if (parts.Length >= 3 && parts[2] != latestAsmVersion)
-                        {
-                            continue;
-                        }
-                    }
-                    
-                    // 跳过原生库
-                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
-                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
-                    if (isNativeLibrary) continue;
-                    
-                    // 跳过 neoforge-universal 和 installertools
-                    if (library.Name.Contains("neoforge-universal", StringComparison.OrdinalIgnoreCase) ||
-                        library.Name.Contains("installertools", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-                    
-                    // 获取库路径
-                    string libPath = GetLibraryPath(library.Name, librariesPath);
-                    if (File.Exists(libPath))
-                    {
-                        classpathEntries.Add(libPath);
-                    }
-                }
-            }
-            
-            string classpath = string.Join(";", classpathEntries);
-            
-            // 7. 构建启动参数
-            var args = new List<string>();
-            
-            // JVM 参数
-            args.Add("-XX:+UseG1GC");
-            args.Add("-XX:-UseAdaptiveSizePolicy");
-            args.Add("-XX:-OmitStackTraceInFastThrow");
-            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
-            args.Add("-Dlog4j2.formatMsgNoLookups=true");
-            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
-            
-            // 处理 JVM 参数
-            bool hasClasspath = false;
-            if (versionInfo.Arguments?.Jvm != null)
-            {
-                foreach (var jvmArg in versionInfo.Arguments.Jvm)
-                {
-                    if (jvmArg is string argStr)
-                    {
-                        string processedArg = argStr
-                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{versionName}-natives"))
-                            .Replace("${launcher_name}", "XianYuLauncher")
-                            .Replace("${launcher_version}", "1.0")
-                            .Replace("${classpath}", classpath)
-                            .Replace("${classpath_separator}", ";")
-                            .Replace("${version_name}", versionName)
-                            .Replace("${library_directory}", librariesPath);
-                        
-                        args.Add(processedArg);
-                        
-                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
-                        {
-                            hasClasspath = true;
-                        }
-                    }
-                }
-            }
-            
-            // 确保添加 classpath
-            if (!hasClasspath)
-            {
-                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{versionName}-natives")}");
-                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
-                args.Add("-Dminecraft.launcher.version=1.0");
-                args.Add($"-cp");
-                args.Add(classpath);
-            }
-            
-            // 主类
-            args.Add(versionInfo.MainClass);
-            
-            // 确定 userType
-            string userType = profile.IsOffline ? "offline" : (profile.TokenType == "external" ? "mojang" : "msa");
-            
-            // 游戏参数
-            string assetIndex = versionInfo.AssetIndex?.Id ?? versionName;
-            
-            // 处理 minecraftArguments（旧版格式）
-            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
-            {
-                string minecraftArgs = versionInfo.MinecraftArguments
-                    .Replace("${auth_player_name}", profile.Name)
-                    .Replace("${version_name}", versionName)
-                    .Replace("${game_directory}", gameDir)
-                    .Replace("${assets_root}", assetsPath)
-                    .Replace("${assets_index_name}", assetIndex)
-                    .Replace("${auth_uuid}", profile.Id)
-                    .Replace("${auth_access_token}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
-                    .Replace("${auth_session}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
-                    .Replace("${user_type}", userType)
-                    .Replace("${user_properties}", "{}")
-                    .Replace("${version_type}", versionInfo.Type ?? "release");
-                
-                var extraArgs = minecraftArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                args.AddRange(extraArgs);
-            }
-            // 处理 Arguments.Game（新版格式）
-            else if (versionInfo.Arguments?.Game != null)
-            {
-                foreach (var gameArg in versionInfo.Arguments.Game)
-                {
-                    if (gameArg is string argStr)
-                    {
-                        string processedArg = argStr
-                            .Replace("${auth_player_name}", profile.Name)
-                            .Replace("${version_name}", versionName)
-                            .Replace("${game_directory}", gameDir)
-                            .Replace("${assets_root}", assetsPath)
-                            .Replace("${assets_index_name}", assetIndex)
-                            .Replace("${auth_uuid}", profile.Id)
-                            .Replace("${auth_access_token}", string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken)
-                            .Replace("${auth_xuid}", "")
-                            .Replace("${clientid}", "0")
-                            .Replace("${version_type}", versionInfo.Type ?? "release");
-                        
-                        args.Add(processedArg);
-                    }
-                }
-            }
-            else
-            {
-                // 默认游戏参数
-                args.Add("--username");
-                args.Add(profile.Name);
-                args.Add("--version");
-                args.Add(versionName);
-                args.Add("--gameDir");
-                args.Add(gameDir);
-                args.Add("--assetsDir");
-                args.Add(assetsPath);
-                args.Add("--assetIndex");
-                args.Add(assetIndex);
-                args.Add("--uuid");
-                args.Add(profile.Id);
-                args.Add("--accessToken");
-                args.Add(string.IsNullOrEmpty(profile.AccessToken) ? "0" : profile.AccessToken);
-                args.Add("--userType");
-                args.Add(userType);
-                args.Add("--versionType");
-                args.Add("XianYuLauncher");
-            }
-            
-            // 添加分辨率参数
-            args.Add("--width");
-            args.Add("1280");
-            args.Add("--height");
-            args.Add("720");
-            
-            // 构建参数字符串
+            // 将参数列表转换为字符串
             string processedArgs = string.Join(" ", args.Select(a =>
                 (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
             

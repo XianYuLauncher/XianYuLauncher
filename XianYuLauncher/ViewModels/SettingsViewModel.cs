@@ -1771,28 +1771,8 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value != null)
         {
-            // 检测目录是否包含空格
-            if (value.Contains(' '))
-            {
-                // 弹窗提示目录带空格
-                var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-                {
-                    Title = "警告",
-                    Content = "目录路径包含空格，可能会导致游戏启动失败。建议选择不包含空格的目录。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
-                };
-                
-                // 显示弹窗
-                var result = dialog.ShowAsync();
-                
-                // 回退到之前的目录
-                if (_previousMinecraftPath != null)
-                {
-                    MinecraftPath = _previousMinecraftPath;
-                    return;
-                }
-            }
+            // 移除了空格检查限制，允许用户使用带空格的路径
+            // TODO: 确保启动参数正确处理带空格的路径（使用引号包裹）
             
             // 保存当前路径作为之前的路径，用于下一次回退
             _previousMinecraftPath = value;
