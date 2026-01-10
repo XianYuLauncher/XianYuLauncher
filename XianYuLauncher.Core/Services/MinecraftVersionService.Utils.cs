@@ -9,7 +9,6 @@ using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Core.Services;
 

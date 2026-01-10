@@ -121,6 +121,11 @@ public class ActivationService : IActivationService
             // 获取更新服务实例
             var updateService = App.GetService<UpdateService>();
             
+            // 设置当前应用版本（从 MSIX 包获取）
+            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
+            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
+            updateService.SetCurrentVersion(currentVersion);
+            
             // 检查是否有更新
             var updateInfo = await updateService.CheckForUpdatesAsync();
             

@@ -10,30 +10,11 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels
 {
-    /// <summary>
-    /// 角色信息类
-    /// </summary>
-    public class MinecraftProfile
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string AccessToken { get; set; }
-        public string RefreshToken { get; set; }
-        public string ClientToken { get; set; }
-        public string TokenType { get; set; }
-        public int ExpiresIn { get; set; }
-        public DateTime IssueInstant { get; set; }
-        public DateTime NotAfter { get; set; }
-        public string[] Roles { get; set; }
-        public bool IsOffline { get; set; }
-        public bool IsActive { get; set; }
-        public string AuthServer { get; set; }
-    }
-
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>

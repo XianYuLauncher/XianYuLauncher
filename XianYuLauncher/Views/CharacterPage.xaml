@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:models="using:XianYuLauncher.Core.Models"
     mc:Ignorable="d">
     
     <Page.Resources>
@@ -162,7 +163,7 @@
                     <!-- 角色卡片列表 -->
                     <ItemsControl x:Name="ProfileCardList" ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}" Margin="0,16,0,0" HorizontalAlignment="Stretch">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="viewModels:MinecraftProfile">
+                            <DataTemplate x:DataType="models:MinecraftProfile">
                                 <Grid HorizontalAlignment="Stretch">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />

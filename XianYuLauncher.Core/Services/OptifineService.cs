@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Helpers;
+using Microsoft.Extensions.Http;
 
 namespace XianYuLauncher.Core.Services;
 

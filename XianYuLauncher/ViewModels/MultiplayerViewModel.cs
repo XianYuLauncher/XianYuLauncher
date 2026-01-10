@@ -13,6 +13,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 
@@ -55,14 +56,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
-    
-    // 角色信息类
-    private class MinecraftProfile
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public bool IsActive { get; set; }
-    }
 
     public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, ILocalSettingsService localSettingsService)
     {

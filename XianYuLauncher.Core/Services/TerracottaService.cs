@@ -1,4 +1,4 @@
-using System; using System.Collections.Generic; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
+using System; using System.Collections.Generic; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
 
 namespace XianYuLauncher.Core.Services
 {
@@ -17,8 +17,9 @@ namespace XianYuLauncher.Core.Services
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.2.5");
             
-            // 获取应用缓存目录
-            _cacheDirectory = Path.Combine(ApplicationData.Current.LocalFolder.Path, "terracotta");
+            // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "terracotta");
             Directory.CreateDirectory(_cacheDirectory);
             
             Debug.WriteLine($"[TerracottaService] 初始化完成，缓存目录: {_cacheDirectory}");

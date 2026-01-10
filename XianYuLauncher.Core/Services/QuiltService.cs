@@ -33,9 +33,8 @@ public class QuiltService
     {
         try
         {
-            // 获取当前版本列表源设置（枚举类型）
-            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<XianYuLauncher.ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
-            var versionListSource = versionListSourceEnum.ToString();
+            // 获取当前版本列表源设置（字符串类型）
+            var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
             
             // 根据设置获取对应的下载源
             var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());

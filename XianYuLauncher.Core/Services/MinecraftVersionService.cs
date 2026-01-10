@@ -1,4 +1,18 @@
-using System; using System.Collections.Generic; using System.IO; using System.IO.Compression; using System.Net.Http; using System.Security.Cryptography; using System.Threading.Tasks; using Newtonsoft.Json; using Newtonsoft.Json.Linq; using XianYuLauncher.Core.Contracts.Services; using Microsoft.Extensions.Logging; using XianYuLauncher.Core.Models; using System.Linq; using System.Text.RegularExpressions; using XianYuLauncher.Core.Services.DownloadSource; using XianYuLauncher.ViewModels; using XianYuLauncher.Contracts.Services;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using XianYuLauncher.Core.Contracts.Services;
+using Microsoft.Extensions.Logging;
+using XianYuLauncher.Core.Models;
+using System.Linq;
+using System.Text.RegularExpressions;
+using XianYuLauncher.Core.Services.DownloadSource;
 using VersionManifest = XianYuLauncher.Core.Models.VersionManifest;
 using VersionInfo = XianYuLauncher.Core.Models.VersionInfo;
 using Library = XianYuLauncher.Core.Models.Library;
@@ -124,9 +138,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogInformation("正在获取Minecraft版本清单");
             
-            // 获取当前版本列表源设置（枚举类型）
-            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
-            var versionListSource = versionListSourceEnum.ToString();
+            // 获取当前版本列表源设置（字符串类型）
+            var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
             _logger.LogInformation("当前版本列表源: {VersionListSource}", versionListSource);
             
             // 根据设置获取对应的下载源
@@ -309,8 +322,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         }
 
                         // 获取当前版本列表源设置，转换版本信息URL
-                        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
-                        var versionListSource = versionListSourceEnum.ToString();
+                        var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
                         var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
                         var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                         
@@ -395,8 +407,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
 
                 // 获取当前版本列表源设置，转换版本信息URL
-                var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.VersionListSourceType>("VersionListSource");
-                var versionListSource = versionListSourceEnum.ToString();
+                var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
                 var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
                 var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                 
@@ -507,8 +518,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             const int bufferSize = 65536;
             
             // 获取当前配置的下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
             
             // 使用下载源获取客户端JAR的下载URL
             var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
@@ -1240,8 +1251,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
 
         // 获取当前下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         
         // 使用下载源获取正确的库文件URL
         string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
@@ -1758,8 +1769,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         try
         {
             // 获取当前下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
             _logger.LogInformation("当前assets下载源: {DownloadSource}", downloadSource.Name);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets下载源: {downloadSource.Name}");
 
@@ -2060,8 +2071,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 progressCallback?.Invoke(0);
 
                 // 获取当前下载源
-                var downloadSourceType = await _localSettingsService.ReadSettingAsync<ViewModels.SettingsViewModel.DownloadSourceType>("DownloadSource");
-                var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToString().ToLower());
+                var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+                var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
                 
                 // 转换资源索引URL
                 string convertedAssetIndexUrl = downloadSource.GetResourceUrl("asset_index", assetIndexUrl);

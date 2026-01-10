@@ -18,6 +18,7 @@ using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels;
@@ -82,14 +83,6 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     // 玩家列表是否为空的属性，用于绑定到UI
     [ObservableProperty]
     private bool _isPlayerListEmpty = true;
-    
-    // 角色信息类
-    private class MinecraftProfile
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public bool IsActive { get; set; }
-    }
     
     public MultiplayerLobbyViewModel(INavigationService navigationService, IFileService fileService)
     {

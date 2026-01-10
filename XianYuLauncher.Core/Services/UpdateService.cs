@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using System.Diagnostics;
@@ -31,7 +30,7 @@ public class UpdateService
         "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version.json"
     };
     
-    // 当前应用版本，从Package.appxmanifest获取
+    // 当前应用版本
     private Version _currentVersion;
     
     public UpdateService(
@@ -47,9 +46,19 @@ public class UpdateService
         _localSettingsService = localSettingsService;
         _fileService = fileService;
         
-        // 获取当前应用版本
-        _currentVersion = GetCurrentAppVersion();
-        _logger.LogInformation("当前应用版本: {CurrentVersion}", _currentVersion);
+        // 默认版本，应由 UI 层通过 SetCurrentVersion 设置正确的 MSIX 包版本
+        _currentVersion = new Version(1, 0, 0, 0);
+    }
+    
+    /// <summary>
+    /// 设置当前应用版本号（应由 UI 层在初始化时调用，传入 MSIX 包版本）
+    /// </summary>
+    /// <param name="version">当前应用版本</param>
+    public void SetCurrentVersion(Version version)
+    {
+        _currentVersion = version;
+        _logger.LogInformation("当前应用版本已设置: {CurrentVersion}", _currentVersion);
+        Debug.WriteLine($"[DEBUG] 当前应用版本已设置: {_currentVersion}");
     }
     
     /// <summary>
@@ -338,31 +347,6 @@ public class UpdateService
             _logger.LogError(ex, "版本号解析失败: {LatestVersion}", latestVersion);
             Debug.WriteLine($"[DEBUG] 版本号解析失败: {latestVersion}，错误: {ex.Message}");
             return false;
-        }
-    }
-    
-    /// <summary>
-    /// 获取当前应用的版本号
-    /// </summary>
-    /// <returns>当前应用版本号</returns>
-    private Version GetCurrentAppVersion()
-    {
-        try
-        {
-            // 从Package.appxmanifest获取版本号
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            return new Version(
-                packageVersion.Major,
-                packageVersion.Minor,
-                packageVersion.Build,
-                packageVersion.Revision);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取当前应用版本失败，使用默认版本1.0.0.0");
-            Debug.WriteLine($"[DEBUG] 获取当前应用版本失败，使用默认版本1.0.0.0，错误: {ex.Message}");
-            // 如果获取失败，返回默认版本1.0.0.0
-            return new Version(1, 0, 0, 0);
         }
     }
     

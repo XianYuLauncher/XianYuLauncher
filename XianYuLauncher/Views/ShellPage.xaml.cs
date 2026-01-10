@@ -46,8 +46,48 @@ public sealed partial class ShellPage : Page
         _materialService = App.GetService<MaterialService>();
         _materialService.BackgroundChanged += OnBackgroundChanged;
         
+        // 设置材质应用委托（UI层实现）
+        _materialService.ApplyMaterialAction = ApplyMaterialToWindowImpl;
+        
         // 初始化时加载背景设置
         LoadBackgroundAsync();
+    }
+    
+    /// <summary>
+    /// 应用材质到窗口的实现（UI层）
+    /// </summary>
+    private void ApplyMaterialToWindowImpl(object windowObj, MaterialType materialType)
+    {
+        if (windowObj is not Window window) return;
+        
+        try
+        {
+            switch (materialType)
+            {
+                case MaterialType.Mica:
+                    window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
+                    {
+                        Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.Base
+                    };
+                    break;
+                case MaterialType.MicaAlt:
+                    window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
+                    {
+                        Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.BaseAlt
+                    };
+                    break;
+                case MaterialType.Acrylic:
+                    window.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+                    break;
+                case MaterialType.CustomBackground:
+                    window.SystemBackdrop = null;
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"应用窗口材质失败: {ex.Message}");
+        }
     }
     
     /// <summary>

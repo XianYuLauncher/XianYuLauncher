@@ -1750,7 +1750,7 @@ namespace XianYuLauncher.Views
                 Debug.WriteLine($"[角色Page] 保存的认证服务器地址: {resolvedAuthServer}");
                 
                 // 创建外置角色
-                var externalMinecraftProfile = new ViewModels.MinecraftProfile
+                var externalMinecraftProfile = new MinecraftProfile
                 {
                     Id = externalProfile.Id,
                     Name = externalProfile.Name,

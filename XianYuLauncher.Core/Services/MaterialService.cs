@@ -1,9 +1,4 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Contracts.Services;
 
@@ -43,6 +38,7 @@ namespace XianYuLauncher.Core.Services
 
     /// <summary>
     /// 材质服务，用于处理窗口材质的加载和应用
+    /// 注意：UI相关的应用方法需要在UI层实现
     /// </summary>
     public class MaterialService
     {
@@ -54,6 +50,11 @@ namespace XianYuLauncher.Core.Services
         /// 背景设置变更事件
         /// </summary>
         public event EventHandler<BackgroundChangedEventArgs>? BackgroundChanged;
+        
+        /// <summary>
+        /// 应用材质到窗口的委托（由UI层设置）
+        /// </summary>
+        public Action<object, MaterialType>? ApplyMaterialAction { get; set; }
 
         public MaterialService(ILocalSettingsService localSettingsService)
         {
@@ -97,41 +98,16 @@ namespace XianYuLauncher.Core.Services
         }
 
         /// <summary>
-        /// 应用材质到窗口
+        /// 应用材质到窗口（通过委托调用UI层实现）
         /// </summary>
-        /// <param name="window">要应用材质的窗口</param>
+        /// <param name="window">要应用材质的窗口对象</param>
         /// <param name="materialType">材质类型</param>
-        public void ApplyMaterialToWindow(Window window, MaterialType materialType)
+        public void ApplyMaterialToWindow(object window, MaterialType materialType)
         {
             try
             {
                 if (window == null) return;
-
-                switch (materialType)
-                {
-                    case MaterialType.Mica:
-                        // 设置Mica Base材质
-                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
-                        {
-                            Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.Base
-                        };
-                        break;
-                    case MaterialType.MicaAlt:
-                        // 设置Mica Alt材质
-                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop()
-                        {
-                            Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.BaseAlt
-                        };
-                        break;
-                    case MaterialType.Acrylic:
-                        // 设置Acrylic材质
-                        window.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
-                        break;
-                    case MaterialType.CustomBackground:
-                        // 自定义背景时，移除系统材质，使用纯色背景
-                        window.SystemBackdrop = null;
-                        break;
-                }
+                ApplyMaterialAction?.Invoke(window, materialType);
             }
             catch (Exception ex)
             {
@@ -142,8 +118,8 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 从设置加载并应用材质到窗口
         /// </summary>
-        /// <param name="window">要应用材质的窗口</param>
-        public async Task LoadAndApplyMaterialAsync(Window window)
+        /// <param name="window">要应用材质的窗口对象</param>
+        public async Task LoadAndApplyMaterialAsync(object window)
         {
             var materialType = await LoadMaterialTypeAsync();
             ApplyMaterialToWindow(window, materialType);

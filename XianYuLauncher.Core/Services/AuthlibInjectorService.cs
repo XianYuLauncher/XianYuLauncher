@@ -1,7 +1,7 @@
-using System; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Windows.Storage; using Newtonsoft.Json; using System.Security.Cryptography; using System.Diagnostics;
+using System; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Newtonsoft.Json; using System.Security.Cryptography; using System.Diagnostics;
 using XianYuLauncher.Core.Contracts.Services;
-using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services
 {
@@ -18,8 +18,9 @@ namespace XianYuLauncher.Core.Services
             _localSettingsService = localSettingsService;
             _httpClient = new HttpClient();
             
-            // 获取应用缓存目录
-            _cacheDirectory = Path.Combine(ApplicationData.Current.LocalFolder.Path, "authlib-injector");
+            // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "authlib-injector");
             Directory.CreateDirectory(_cacheDirectory);
             
             Debug.WriteLine($"[AuthlibInjectorService] 初始化完成，缓存目录: {_cacheDirectory}");

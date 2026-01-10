@@ -2068,6 +2068,12 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             
             var updateService = App.GetService<UpdateService>();
+            
+            // 设置当前应用版本（从 MSIX 包获取）
+            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
+            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
+            updateService.SetCurrentVersion(currentVersion);
+            
             var updateInfo = await updateService.CheckForUpdatesAsync();
             
             if (updateInfo != null)
