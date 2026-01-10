@@ -416,3 +416,94 @@ public class CurseForgeCategoriesResponse
     [JsonPropertyName("data")]
     public List<CurseForgeCategory> Data { get; set; } = new();
 }
+
+/// <summary>
+/// CurseForge批量获取文件响应
+/// </summary>
+public class CurseForgeFilesListResponse
+{
+    [JsonPropertyName("data")]
+    public List<CurseForgeFile> Data { get; set; } = new();
+}
+
+/// <summary>
+/// CurseForge单个文件响应
+/// </summary>
+public class CurseForgeFileResponse
+{
+    [JsonPropertyName("data")]
+    public CurseForgeFile Data { get; set; }
+}
+
+#region CurseForge 整合包 Manifest 模型
+
+/// <summary>
+/// CurseForge整合包manifest.json根对象
+/// </summary>
+public class CurseForgeManifest
+{
+    [JsonPropertyName("minecraft")]
+    public CurseForgeManifestMinecraft Minecraft { get; set; }
+    
+    [JsonPropertyName("manifestType")]
+    public string ManifestType { get; set; }
+    
+    [JsonPropertyName("manifestVersion")]
+    public int ManifestVersion { get; set; }
+    
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+    
+    [JsonPropertyName("version")]
+    public string Version { get; set; }
+    
+    [JsonPropertyName("author")]
+    public string Author { get; set; }
+    
+    [JsonPropertyName("files")]
+    public List<CurseForgeManifestFile> Files { get; set; } = new();
+    
+    [JsonPropertyName("overrides")]
+    public string Overrides { get; set; }
+}
+
+/// <summary>
+/// CurseForge整合包Minecraft信息
+/// </summary>
+public class CurseForgeManifestMinecraft
+{
+    [JsonPropertyName("version")]
+    public string Version { get; set; }
+    
+    [JsonPropertyName("modLoaders")]
+    public List<CurseForgeManifestModLoader> ModLoaders { get; set; } = new();
+}
+
+/// <summary>
+/// CurseForge整合包ModLoader信息
+/// </summary>
+public class CurseForgeManifestModLoader
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; }
+    
+    [JsonPropertyName("primary")]
+    public bool Primary { get; set; }
+}
+
+/// <summary>
+/// CurseForge整合包文件引用
+/// </summary>
+public class CurseForgeManifestFile
+{
+    [JsonPropertyName("projectID")]
+    public int ProjectId { get; set; }
+    
+    [JsonPropertyName("fileID")]
+    public int FileId { get; set; }
+    
+    [JsonPropertyName("required")]
+    public bool Required { get; set; }
+}
+
+#endregion

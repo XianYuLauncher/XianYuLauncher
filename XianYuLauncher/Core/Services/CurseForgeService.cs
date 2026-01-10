@@ -477,6 +477,106 @@ public class CurseForgeService
     }
 
     /// <summary>
+    /// 批量获取文件详情（用于整合包安装）
+    /// </summary>
+    /// <param name="fileIds">文件ID列表</param>
+    /// <returns>文件详情列表</returns>
+    public async Task<List<CurseForgeFile>> GetFilesByIdsAsync(List<int> fileIds)
+    {
+        if (fileIds == null || fileIds.Count == 0)
+        {
+            return new List<CurseForgeFile>();
+        }
+
+        try
+        {
+            var url = $"{ApiBaseUrl}/v1/mods/files";
+            
+            using var request = CreateRequest(HttpMethod.Post, url);
+            var requestBody = new { fileIds = fileIds };
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                System.Text.Encoding.UTF8,
+                "application/json");
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 批量获取文件详情，文件数量: {fileIds.Count}");
+            
+            var response = await _httpClient.SendAsync(request);
+            
+            var json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+            
+            var result = JsonSerializer.Deserialize<CurseForgeFilesListResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 成功获取 {result?.Data?.Count ?? 0} 个文件详情");
+            
+            return result?.Data ?? new List<CurseForgeFile>();
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMsg = $"批量获取文件详情失败: {ex.Message}";
+            if (ex.StatusCode.HasValue)
+            {
+                errorMsg += $" (状态码: {ex.StatusCode})";
+            }
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] {errorMsg}");
+            throw new Exception(errorMsg);
+        }
+        catch (JsonException ex)
+        {
+            throw new Exception($"解析文件详情失败: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"批量获取文件详情时发生错误: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取单个文件详情
+    /// </summary>
+    /// <param name="modId">Mod ID</param>
+    /// <param name="fileId">文件ID</param>
+    /// <returns>文件详情</returns>
+    public async Task<CurseForgeFile> GetFileAsync(int modId, int fileId)
+    {
+        try
+        {
+            var url = $"{ApiBaseUrl}/v1/mods/{modId}/files/{fileId}";
+            
+            using var request = CreateRequest(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            
+            var json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+            
+            var result = JsonSerializer.Deserialize<CurseForgeFileResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            
+            return result?.Data;
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMsg = $"获取文件详情失败: {ex.Message}";
+            if (ex.StatusCode.HasValue)
+            {
+                errorMsg += $" (状态码: {ex.StatusCode})";
+            }
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] {errorMsg}");
+            throw new Exception(errorMsg);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"获取文件详情时发生错误: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 处理CurseForge依赖下载（递归）
     /// </summary>
     /// <param name="dependencies">依赖列表</param>

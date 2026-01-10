@@ -2136,12 +2136,26 @@ namespace XianYuLauncher.ViewModels
                     InstallProgress = 40;
                     InstallProgressText = "40%";
 
-                    // 3. 解析modrinth.index.json文件
-                    string indexPath = Path.Combine(extractDir, "modrinth.index.json");
+                    // 3. 检测整合包类型：CurseForge (manifest.json) 或 Modrinth (modrinth.index.json)
+                    string curseForgeManifestPath = Path.Combine(extractDir, "manifest.json");
+                    string modrinthIndexPath = Path.Combine(extractDir, "modrinth.index.json");
+                    
+                    if (File.Exists(curseForgeManifestPath))
+                    {
+                        // CurseForge 整合包
+                        System.Diagnostics.Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
+                        await InstallCurseForgeModpackAsync(extractDir, curseForgeManifestPath, minecraftPath, tempDir);
+                        return;
+                    }
+                    
+                    // Modrinth 整合包
+                    string indexPath = modrinthIndexPath;
                     if (!File.Exists(indexPath))
                     {
-                        throw new Exception("整合包中缺少modrinth.index.json文件，无法安装");
+                        throw new Exception("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
                     }
+                    
+                    System.Diagnostics.Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
 
                     string indexJson = await File.ReadAllTextAsync(indexPath, _installCancellationTokenSource.Token);
                     dynamic indexData = JsonConvert.DeserializeObject(indexJson);
@@ -2372,20 +2386,201 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
+        /// <summary>
+        /// 安装CurseForge整合包
+        /// </summary>
+        /// <param name="extractDir">解压目录</param>
+        /// <param name="manifestPath">manifest.json路径</param>
+        /// <param name="minecraftPath">Minecraft数据路径</param>
+        /// <param name="tempDir">临时目录（用于清理）</param>
+        private async Task InstallCurseForgeModpackAsync(string extractDir, string manifestPath, string minecraftPath, string tempDir)
+        {
+            try
+            {
+                // 1. 解析manifest.json
+                string manifestJson = await File.ReadAllTextAsync(manifestPath, _installCancellationTokenSource.Token);
+                var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (manifest == null)
+                {
+                    throw new Exception("无法解析CurseForge整合包manifest.json");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 名称: {manifest.Name}, 版本: {manifest.Version}");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] Minecraft版本: {manifest.Minecraft?.Version}");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 文件数量: {manifest.Files?.Count ?? 0}");
+
+                // 2. 提取Minecraft版本信息
+                string minecraftVersion = manifest.Minecraft?.Version;
+                if (string.IsNullOrEmpty(minecraftVersion))
+                {
+                    throw new Exception("整合包中缺少Minecraft版本信息");
+                }
+
+                // 3. 提取ModLoader信息
+                string modLoaderType = "";
+                string modLoaderName = "";
+                string modLoaderVersion = "";
+
+                var primaryModLoader = manifest.Minecraft?.ModLoaders?.FirstOrDefault(ml => ml.Primary) 
+                    ?? manifest.Minecraft?.ModLoaders?.FirstOrDefault();
+
+                if (primaryModLoader != null && !string.IsNullOrEmpty(primaryModLoader.Id))
+                {
+                    var loaderParts = primaryModLoader.Id.Split('-', 2);
+                    if (loaderParts.Length >= 2)
+                    {
+                        string loaderPrefix = loaderParts[0].ToLower();
+                        modLoaderVersion = loaderParts[1];
+
+                        switch (loaderPrefix)
+                        {
+                            case "forge":
+                                modLoaderType = "Forge";
+                                modLoaderName = "forge";
+                                break;
+                            case "fabric":
+                                modLoaderType = "Fabric";
+                                modLoaderName = "fabric";
+                                break;
+                            case "quilt":
+                                modLoaderType = "Quilt";
+                                modLoaderName = "quilt";
+                                break;
+                            case "neoforge":
+                                modLoaderType = "NeoForge";
+                                modLoaderName = "neoforge";
+                                break;
+                            default:
+                                throw new Exception($"不支持的Mod Loader类型: {loaderPrefix}");
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception($"无法解析ModLoader信息: {primaryModLoader.Id}");
+                    }
+                }
+                else
+                {
+                    throw new Exception("整合包中缺少ModLoader信息");
+                }
+
+                // 4. 构建整合包版本名称
+                string modpackName = (manifest.Name ?? ModName).Replace(" ", "-");
+                string modpackVersionId = $"{modpackName}-{minecraftVersion}-{modLoaderName}";
+
+                InstallStatus = $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...";
+                InstallProgress = 45;
+                InstallProgressText = "45%";
+
+                // 5. 下载Minecraft版本和ModLoader
+                await _minecraftVersionService.DownloadModLoaderVersionAsync(
+                    minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
+                    {
+                        InstallProgress = 45 + (progress / 100) * 15;
+                        InstallProgressText = $"{InstallProgress:F1}%";
+                    }, _installCancellationTokenSource.Token, modpackVersionId);
+
+                InstallStatus = "版本下载完成，正在部署整合包文件...";
+                InstallProgress = 60;
+                InstallProgressText = "60%";
+
+                string versionsDir = Path.Combine(minecraftPath, "versions");
+                string modpackVersionDir = Path.Combine(versionsDir, modpackVersionId);
+
+                // 6. 复制overrides目录
+                string overridesFolderName = manifest.Overrides ?? "overrides";
+                string overridesDir = Path.Combine(extractDir, overridesFolderName);
+                if (Directory.Exists(overridesDir))
+                {
+                    InstallStatus = "正在复制覆盖文件...";
+                    await Task.Run(() => CopyDirectory(overridesDir, modpackVersionDir), _installCancellationTokenSource.Token);
+                }
+
+                InstallProgress = 65;
+                InstallProgressText = "65%";
+
+                // 7. 下载整合包中的Mod文件
+                if (manifest.Files != null && manifest.Files.Count > 0)
+                {
+                    InstallStatus = "正在获取Mod下载信息...";
+                    var fileIds = manifest.Files.Select(f => f.FileId).ToList();
+
+                    List<CurseForgeFile> fileDetails;
+                    try
+                    {
+                        fileDetails = await _curseForgeService.GetFilesByIdsAsync(fileIds);
+                    }
+                    catch
+                    {
+                        fileDetails = new List<CurseForgeFile>();
+                        foreach (var mf in manifest.Files)
+                        {
+                            try
+                            {
+                                var file = await _curseForgeService.GetFileAsync(mf.ProjectId, mf.FileId);
+                                if (file != null) fileDetails.Add(file);
+                            }
+                            catch { }
+                        }
+                    }
+
+                    InstallProgress = 70;
+                    string modsDir = Path.Combine(modpackVersionDir, "mods");
+                    Directory.CreateDirectory(modsDir);
+
+                    int totalFiles = fileDetails.Count;
+                    int downloadedFiles = 0;
+
+                    foreach (var file in fileDetails)
+                    {
+                        _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
+                        string fileName = file.FileName ?? $"mod_{file.Id}.jar";
+                        InstallStatus = $"正在下载: {fileName} ({downloadedFiles + 1}/{totalFiles})";
+
+                        if (!string.IsNullOrEmpty(file.DownloadUrl))
+                        {
+                            string targetPath = Path.Combine(modsDir, fileName);
+                            await _curseForgeService.DownloadFileAsync(file.DownloadUrl, targetPath, null, _installCancellationTokenSource.Token);
+                        }
+
+                        downloadedFiles++;
+                        InstallProgress = 70 + ((double)downloadedFiles / totalFiles) * 30;
+                        InstallProgressText = $"{InstallProgress:F1}%";
+                    }
+                }
+
+                InstallStatus = "整合包安装完成！";
+                InstallProgress = 100;
+                InstallProgressText = "100%";
+
+                IsModpackInstallDialogOpen = false;
+                await Task.Delay(100);
+                await ShowMessageAsync($"整合包 '{manifest.Name ?? ModName}' 安装成功！");
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+                {
+                    try { Directory.Delete(tempDir, true); } catch { }
+                }
+                IsInstalling = false;
+                IsModpackInstallDialogOpen = false;
+            }
+        }
+
         // 复制目录的辅助方法
         private void CopyDirectory(string sourceDir, string destinationDir)
         {
-            // 创建目标目录
             Directory.CreateDirectory(destinationDir);
-
-            // 获取源目录中的所有文件
             foreach (string file in Directory.GetFiles(sourceDir))
             {
                 string destFile = Path.Combine(destinationDir, Path.GetFileName(file));
                 File.Copy(file, destFile, true);
             }
-
-            // 递归复制子目录
             foreach (string subDir in Directory.GetDirectories(sourceDir))
             {
                 string destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
