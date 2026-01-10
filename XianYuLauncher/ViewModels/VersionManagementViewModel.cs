@@ -19,6 +19,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
@@ -415,6 +416,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
     private readonly ModrinthService _modrinthService;
+    private readonly CurseForgeService _curseForgeService;
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
     
     /// <summary>
@@ -701,12 +703,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private int _windowHeight = 720;
 
-    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService, XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
+    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService, CurseForgeService curseForgeService, XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
         _modrinthService = modrinthService;
+        _curseForgeService = curseForgeService;
         _downloadSourceFactory = downloadSourceFactory;
         
         // 订阅Minecraft路径变化事件
@@ -1026,53 +1029,73 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadAllIconsAsync()
         {
+            // 不等待，让图标在后台逐个加载
+            // 这样页面可以立即显示，图标会逐渐出现
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // 使用 SemaphoreSlim 限制并发数量，避免同时发起太多网络请求
+                    var semaphore = new System.Threading.SemaphoreSlim(3); // 最多同时3个请求
+                    
+                    // 优先加载 Mod 图标（用户最常查看）
+                    var modTasks = new List<Task>();
+                    foreach (var modInfo in Mods)
+                    {
+                        modTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => modInfo.Icon = icon, modInfo.FilePath, "mod", true));
+                    }
+                    
+                    // 等待 Mod 图标加载完成后再加载其他资源
+                    await Task.WhenAll(modTasks);
+                    
+                    // 加载光影图标
+                    var shaderTasks = new List<Task>();
+                    foreach (var shaderInfo in Shaders)
+                    {
+                        bool isModrinthSupported = shaderInfo.FilePath.EndsWith(".zip");
+                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", isModrinthSupported));
+                    }
+                    await Task.WhenAll(shaderTasks);
+                    
+                    // 加载资源包图标和预览图
+                    var resourcePackTasks = new List<Task>();
+                    foreach (var resourcePackInfo in ResourcePacks)
+                    {
+                        bool isModrinthSupported = resourcePackInfo.FilePath.EndsWith(".zip");
+                        resourcePackTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", isModrinthSupported));
+                        // 预览图加载（本地操作）
+                        resourcePackTasks.Add(LoadResourcePackPreviewAsync(resourcePackInfo));
+                    }
+                    await Task.WhenAll(resourcePackTasks);
+                    
+                    // 最后加载地图图标（本地操作）
+                    var mapTasks = new List<Task>();
+                    foreach (var mapInfo in Maps)
+                    {
+                        mapTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
+                    }
+                    await Task.WhenAll(mapTasks);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"加载图标失败：{ex.Message}");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// 使用信号量限制并发的图标加载
+        /// </summary>
+        private async Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported)
+        {
+            await semaphore.WaitAsync();
             try
             {
-                // 异步加载所有mod的图标
-                var modIconTasks = new List<Task>();
-                foreach (var modInfo in Mods)
-                {
-                    modIconTasks.Add(LoadResourceIconAsync(icon => modInfo.Icon = icon, modInfo.FilePath, "mod", true));
-                }
-                
-                // 异步加载所有光影的图标（启用Modrinth支持）
-                var shaderIconTasks = new List<Task>();
-                foreach (var shaderInfo in Shaders)
-                {
-                    // 只对zip文件启用Modrinth支持，文件夹类型不支持
-                    bool isModrinthSupported = shaderInfo.FilePath.EndsWith(".zip");
-                    shaderIconTasks.Add(LoadResourceIconAsync(icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", isModrinthSupported));
-                }
-                
-                // 异步加载所有资源包的图标和预览图（启用Modrinth支持）
-                var resourcePackIconTasks = new List<Task>();
-                foreach (var resourcePackInfo in ResourcePacks)
-                {
-                    // 只对zip文件启用Modrinth支持，文件夹类型不支持
-                    bool isModrinthSupported = resourcePackInfo.FilePath.EndsWith(".zip");
-                    resourcePackIconTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", isModrinthSupported));
-                    // 加载资源包预览图
-                    resourcePackIconTasks.Add(LoadResourcePackPreviewAsync(resourcePackInfo));
-                }
-                
-                // 异步加载所有地图的图标
-                var mapIconTasks = new List<Task>();
-                foreach (var mapInfo in Maps)
-                {
-                    mapIconTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
-                }
-                
-                // 合并所有任务并执行
-                var allIconTasks = modIconTasks.Concat(shaderIconTasks)
-                                             .Concat(resourcePackIconTasks)
-                                             .Concat(mapIconTasks);
-                
-                // 限制并发数量，避免系统资源占用过高
-                await Task.WhenAll(allIconTasks);
+                await LoadResourceIconAsync(iconProperty, filePath, resourceType, isModrinthSupported);
             }
-            catch (Exception ex)
+            finally
             {
-                System.Diagnostics.Debug.WriteLine($"加载图标失败：{ex.Message}");
+                semaphore.Release();
             }
         }
 
@@ -1125,6 +1148,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 {
                     System.Diagnostics.Debug.WriteLine($"找到Modrinth图标: {modrinthIconPattern}");
                     return modrinthIconPattern;
+                }
+                
+                // 3. 搜索从CurseForge下载的图标（格式：curseforge_fileName_icon.png）
+                string curseForgeIconPattern = Path.Combine(iconDir, $"curseforge_{fileBaseName}_icon.png");
+                if (File.Exists(curseForgeIconPattern))
+                {
+                    System.Diagnostics.Debug.WriteLine($"找到CurseForge图标: {curseForgeIconPattern}");
+                    return curseForgeIconPattern;
                 }
             }
             catch (Exception ex)
@@ -1304,6 +1335,103 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         /// <summary>
+        /// 从CurseForge API获取mod图标URL
+        /// </summary>
+        /// <param name="filePath">mod文件路径</param>
+        /// <returns>图标URL，如果获取失败则返回null</returns>
+        private async Task<string> GetCurseForgeIconUrlAsync(string filePath)
+        {
+            try
+            {
+                // 计算文件的CurseForge Fingerprint
+                uint fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(filePath);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 计算Fingerprint: {fingerprint}");
+
+                // 调用CurseForge API查询Fingerprint
+                var result = await _curseForgeService.GetFingerprintMatchesAsync(new List<uint> { fingerprint });
+                
+                if (result?.ExactMatches != null && result.ExactMatches.Count > 0)
+                {
+                    var match = result.ExactMatches[0];
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 找到匹配的Mod ID: {match.Id}");
+                    
+                    // 获取Mod详情以获取Logo信息
+                    var modDetail = await _curseForgeService.GetModDetailAsync(match.Id);
+                    
+                    if (modDetail?.Logo != null && !string.IsNullOrEmpty(modDetail.Logo.ThumbnailUrl))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 获取到图标URL: {modDetail.Logo.ThumbnailUrl}");
+                        return modDetail.Logo.ThumbnailUrl;
+                    }
+                    else if (modDetail?.Logo != null && !string.IsNullOrEmpty(modDetail.Logo.Url))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 获取到图标URL: {modDetail.Logo.Url}");
+                        return modDetail.Logo.Url;
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 未找到匹配的Mod");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 从CurseForge获取图标失败: {ex.Message}");
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 保存CurseForge图标到本地
+        /// </summary>
+        /// <param name="filePath">资源文件路径</param>
+        /// <param name="iconUrl">图标URL</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <returns>本地图标路径，如果保存失败则返回null</returns>
+        private async Task<string> SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType)
+        {
+            try
+            {
+                // 获取Minecraft数据路径
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                // 构建图标目录路径
+                string iconDir = Path.Combine(minecraftPath, "icons", resourceType);
+                Directory.CreateDirectory(iconDir);
+                
+                // 获取文件名
+                string fileName = Path.GetFileName(filePath);
+                // 去掉.disabled后缀（如果存在）
+                if (fileName.EndsWith(".disabled"))
+                {
+                    fileName = fileName.Substring(0, fileName.Length - ".disabled".Length);
+                }
+                // 去掉文件扩展名
+                string fileBaseName = Path.GetFileNameWithoutExtension(fileName);
+                
+                // 生成唯一图标文件名
+                string iconFileName = $"curseforge_{fileBaseName}_icon.png";
+                string iconFilePath = Path.Combine(iconDir, iconFileName);
+                
+                // 下载并保存图标
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 下载图标: {iconUrl}");
+                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl);
+                    await File.WriteAllBytesAsync(iconFilePath, iconBytes);
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 图标保存到本地: {iconFilePath}");
+                    
+                    return iconFilePath;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 保存CurseForge图标失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 异步加载并更新单个资源的图标
         /// </summary>
         /// <param name="iconProperty">图标属性的Action委托</param>
@@ -1331,6 +1459,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     {
                         // 保存图标到本地，传递资源类型
                         string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType);
+                        if (!string.IsNullOrEmpty(localIconPath))
+                        {
+                            iconProperty(localIconPath);
+                            return;
+                        }
+                    }
+                    
+                    // Modrinth 失败，尝试 CurseForge
+                    System.Diagnostics.Debug.WriteLine($"Modrinth未找到图标，尝试从CurseForge API获取{resourceType}图标: {filePath}");
+                    string curseForgeIconUrl = await GetCurseForgeIconUrlAsync(filePath);
+                    if (!string.IsNullOrEmpty(curseForgeIconUrl))
+                    {
+                        // 保存图标到本地，传递资源类型
+                        string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
                             iconProperty(localIconPath);
@@ -1514,113 +1656,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     {
                         System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
                         
-                        // 计算Mod的SHA1哈希值
-                        string sha1Hash = CalculateSHA1(mod.FilePath);
+                        // 第一步：尝试通过 Modrinth 处理
+                        bool modrinthSuccess = await TryMoveModViaModrinthAsync(mod, modLoader, gameVersion, targetVersionPath, result);
                         
-                        // 获取当前Mod版本的Modrinth信息
-                        ModrinthVersion modrinthVersion = null;
-                        try
+                        // 第二步：如果 Modrinth 失败，尝试通过 CurseForge 处理
+                        if (!modrinthSuccess)
                         {
-                            modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"无法获取Mod信息: {ex.Message}");
-                        }
-                        
-                        if (modrinthVersion != null)
-                        {
-                            // 检查Mod是否兼容目标版本
-                            bool isCompatible = modrinthVersion.GameVersions.Contains(gameVersion) && 
-                                              modrinthVersion.Loaders.Contains(modLoader);
+                            System.Diagnostics.Debug.WriteLine($"[MoveMod] Modrinth 失败，尝试 CurseForge: {mod.Name}");
+                            bool curseForgeSuccess = await TryMoveModViaCurseForgeAsync(mod, modLoader, gameVersion, targetVersionPath, result);
                             
-                            if (isCompatible)
+                            // 如果 CurseForge 也失败，尝试直接复制
+                            if (!curseForgeSuccess)
                             {
-                                // 直接复制文件到目标版本
+                                System.Diagnostics.Debug.WriteLine($"[MoveMod] CurseForge 失败，直接复制: {mod.Name}");
                                 string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
-                                
-                                // 确保目标目录存在
                                 Directory.CreateDirectory(targetVersionPath);
-                                
-                                // 复制文件
                                 File.Copy(mod.FilePath, targetFilePath, true);
-                                
-                                // 更新结果
-                                result.Status = MoveModStatus.Success;
+                                result.Status = MoveModStatus.Copied;
                                 result.TargetPath = targetFilePath;
-                                
-                                System.Diagnostics.Debug.WriteLine($"成功转移Mod: {mod.Name} 到 {targetFilePath}");
                             }
-                            else
-                            {
-                                // 尝试获取兼容目标版本的Mod版本
-                                var compatibleVersions = await _modrinthService.GetProjectVersionsAsync(
-                                    modrinthVersion.ProjectId,
-                                    new List<string> { modLoader },
-                                    new List<string> { gameVersion });
-                                
-                                if (compatibleVersions != null && compatibleVersions.Count > 0)
-                                {
-                                    // 选择最新版本
-                                    var latestCompatibleVersion = compatibleVersions.OrderByDescending(v => v.DatePublished).First();
-                                    
-                                    if (latestCompatibleVersion.Files != null && latestCompatibleVersion.Files.Count > 0)
-                                    {
-                                        var primaryFile = latestCompatibleVersion.Files.FirstOrDefault(f => f.Primary) ?? latestCompatibleVersion.Files[0];
-                                        string downloadUrl = primaryFile.Url.AbsoluteUri;
-                                        string fileName = primaryFile.Filename;
-                                        string tempFilePath = Path.Combine(targetVersionPath, $"{fileName}.tmp");
-                                        string finalFilePath = Path.Combine(targetVersionPath, fileName);
-                                        
-                                        // 下载兼容版本
-                                        CurrentDownloadItem = fileName;
-                                        bool downloadSuccess = await DownloadModAsync(downloadUrl, tempFilePath);
-                                        
-                                        if (downloadSuccess)
-                                        {
-                                            // 处理依赖
-                                            if (latestCompatibleVersion.Dependencies != null && latestCompatibleVersion.Dependencies.Count > 0)
-                                            {
-                                                await ProcessDependenciesAsync(latestCompatibleVersion.Dependencies, targetVersionPath);
-                                            }
-                                            
-                                            // 重命名临时文件
-                                            if (File.Exists(finalFilePath))
-                                            {
-                                                File.Delete(finalFilePath);
-                                            }
-                                            File.Move(tempFilePath, finalFilePath);
-                                            
-                                            // 更新结果
-                                            result.Status = MoveModStatus.Updated;
-                                            result.TargetPath = finalFilePath;
-                                            result.NewVersion = latestCompatibleVersion.VersionNumber;
-                                            
-                                            System.Diagnostics.Debug.WriteLine($"成功更新并转移Mod: {mod.Name} 到 {finalFilePath}");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        result.Status = MoveModStatus.Incompatible;
-                                        System.Diagnostics.Debug.WriteLine($"Mod {mod.Name} 没有兼容的目标版本");
-                                    }
-                                }
-                                else
-                                {
-                                    result.Status = MoveModStatus.Incompatible;
-                                    System.Diagnostics.Debug.WriteLine($"Mod {mod.Name} 不兼容目标版本");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // 无法获取Modrinth信息，尝试直接复制
-                            string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
-                            File.Copy(mod.FilePath, targetFilePath, true);
-                            result.Status = MoveModStatus.Copied;
-                            result.TargetPath = targetFilePath;
-                            
-                            System.Diagnostics.Debug.WriteLine($"无法获取Mod信息，直接复制Mod: {mod.Name} 到 {targetFilePath}");
                         }
                     }
                     catch (Exception ex)
@@ -1662,6 +1716,193 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
                 IsMoveModsDialogVisible = false;
+            }
+        }
+        
+        /// <summary>
+        /// 尝试通过 Modrinth 转移 Mod
+        /// </summary>
+        private async Task<bool> TryMoveModViaModrinthAsync(ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result)
+        {
+            try
+            {
+                // 计算Mod的SHA1哈希值
+                string sha1Hash = CalculateSHA1(mod.FilePath);
+                
+                // 获取当前Mod版本的Modrinth信息
+                ModrinthVersion modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+                
+                if (modrinthVersion == null)
+                {
+                    return false;
+                }
+                
+                // 检查Mod是否兼容目标版本
+                bool isCompatible = modrinthVersion.GameVersions.Contains(gameVersion) && 
+                                  modrinthVersion.Loaders.Contains(modLoader);
+                
+                if (isCompatible)
+                {
+                    // 直接复制文件到目标版本
+                    string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
+                    Directory.CreateDirectory(targetVersionPath);
+                    File.Copy(mod.FilePath, targetFilePath, true);
+                    
+                    result.Status = MoveModStatus.Success;
+                    result.TargetPath = targetFilePath;
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功转移Mod: {mod.Name}");
+                    return true;
+                }
+                else
+                {
+                    // 尝试获取兼容目标版本的Mod版本
+                    var compatibleVersions = await _modrinthService.GetProjectVersionsAsync(
+                        modrinthVersion.ProjectId,
+                        new List<string> { modLoader },
+                        new List<string> { gameVersion });
+                    
+                    if (compatibleVersions != null && compatibleVersions.Count > 0)
+                    {
+                        var latestCompatibleVersion = compatibleVersions.OrderByDescending(v => v.DatePublished).First();
+                        
+                        if (latestCompatibleVersion.Files != null && latestCompatibleVersion.Files.Count > 0)
+                        {
+                            var primaryFile = latestCompatibleVersion.Files.FirstOrDefault(f => f.Primary) ?? latestCompatibleVersion.Files[0];
+                            string downloadUrl = primaryFile.Url.AbsoluteUri;
+                            string fileName = primaryFile.Filename;
+                            string tempFilePath = Path.Combine(targetVersionPath, $"{fileName}.tmp");
+                            string finalFilePath = Path.Combine(targetVersionPath, fileName);
+                            
+                            CurrentDownloadItem = fileName;
+                            bool downloadSuccess = await DownloadModAsync(downloadUrl, tempFilePath);
+                            
+                            if (downloadSuccess)
+                            {
+                                if (latestCompatibleVersion.Dependencies != null && latestCompatibleVersion.Dependencies.Count > 0)
+                                {
+                                    await ProcessDependenciesAsync(latestCompatibleVersion.Dependencies, targetVersionPath);
+                                }
+                                
+                                if (File.Exists(finalFilePath))
+                                {
+                                    File.Delete(finalFilePath);
+                                }
+                                File.Move(tempFilePath, finalFilePath);
+                                
+                                result.Status = MoveModStatus.Updated;
+                                result.TargetPath = finalFilePath;
+                                result.NewVersion = latestCompatibleVersion.VersionNumber;
+                                System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功更新并转移Mod: {mod.Name}");
+                                return true;
+                            }
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 转移Mod失败: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 尝试通过 CurseForge 转移 Mod
+        /// </summary>
+        private async Task<bool> TryMoveModViaCurseForgeAsync(ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result)
+        {
+            try
+            {
+                // 计算 CurseForge Fingerprint
+                uint fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(mod.FilePath);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] Fingerprint: {fingerprint}");
+                
+                // 查询 Fingerprint
+                var fingerprintResult = await _curseForgeService.GetFingerprintMatchesAsync(new List<uint> { fingerprint });
+                
+                if (fingerprintResult?.ExactMatches == null || fingerprintResult.ExactMatches.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 未找到匹配");
+                    return false;
+                }
+                
+                var match = fingerprintResult.ExactMatches[0];
+                System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 找到匹配 Mod ID: {match.Id}");
+                
+                // 转换 ModLoader 类型为 CurseForge 格式
+                int? modLoaderType = modLoader.ToLower() switch
+                {
+                    "forge" => 1,
+                    "fabric" => 4,
+                    "quilt" => 5,
+                    "neoforge" => 6,
+                    _ => null
+                };
+                
+                // 检查当前文件是否兼容目标版本
+                if (match.File != null && 
+                    match.File.GameVersions.Contains(gameVersion) &&
+                    (modLoaderType == null || match.File.GameVersions.Any(v => v.Equals(modLoader, StringComparison.OrdinalIgnoreCase))))
+                {
+                    // 直接复制
+                    string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
+                    Directory.CreateDirectory(targetVersionPath);
+                    File.Copy(mod.FilePath, targetFilePath, true);
+                    
+                    result.Status = MoveModStatus.Success;
+                    result.TargetPath = targetFilePath;
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功转移Mod: {mod.Name}");
+                    return true;
+                }
+                
+                // 获取兼容版本的文件列表
+                var files = await _curseForgeService.GetModFilesAsync(match.Id, gameVersion, modLoaderType);
+                
+                if (files != null && files.Count > 0)
+                {
+                    // 选择最新的 Release 版本
+                    var latestFile = files
+                        .Where(f => f.ReleaseType == 1) // 1 = Release
+                        .OrderByDescending(f => f.FileDate)
+                        .FirstOrDefault() ?? files.OrderByDescending(f => f.FileDate).First();
+                    
+                    if (!string.IsNullOrEmpty(latestFile.DownloadUrl))
+                    {
+                        string fileName = latestFile.FileName;
+                        string tempFilePath = Path.Combine(targetVersionPath, $"{fileName}.tmp");
+                        string finalFilePath = Path.Combine(targetVersionPath, fileName);
+                        
+                        CurrentDownloadItem = fileName;
+                        bool downloadSuccess = await _curseForgeService.DownloadFileAsync(
+                            latestFile.DownloadUrl,
+                            tempFilePath,
+                            (name, progress) => DownloadProgress = progress);
+                        
+                        if (downloadSuccess)
+                        {
+                            if (File.Exists(finalFilePath))
+                            {
+                                File.Delete(finalFilePath);
+                            }
+                            File.Move(tempFilePath, finalFilePath);
+                            
+                            result.Status = MoveModStatus.Updated;
+                            result.TargetPath = finalFilePath;
+                            result.NewVersion = latestFile.DisplayName;
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功更新并转移Mod: {mod.Name}");
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 转移Mod失败: {ex.Message}");
+                return false;
             }
         }
         
@@ -1816,7 +2057,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
                 
-                // 计算选中Mod的SHA1哈希值
+                // 计算选中Mod的SHA1哈希值（用于Modrinth）
                 var modHashes = new List<string>();
                 var modFilePathMap = new Dictionary<string, string>();
                 
@@ -1877,151 +2118,56 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 System.Diagnostics.Debug.WriteLine($"当前版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
                 
-                // 构建API请求
-                var requestBody = new
-                {
-                    hashes = modHashes,
-                    algorithm = "sha1",
-                    loaders = new[] { modLoader },
-                    game_versions = new[] { gameVersion }
-                };
+                // 获取Mods文件夹路径
+                string modsPath = GetVersionSpecificPath("mods");
                 
-                System.Diagnostics.Debug.WriteLine($"请求Modrinth API，获取{selectedMods.Count}个Mod的更新信息");
+                int updatedCount = 0;
+                int upToDateCount = 0;
                 
-                // 调用Modrinth API
-                using (var httpClient = new System.Net.Http.HttpClient())
+                // 第一步：尝试通过 Modrinth 更新
+                System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {selectedMods.Count} 个Mod");
+                var modrinthResult = await TryUpdateModsViaModrinthAsync(
+                    modHashes, 
+                    modFilePathMap, 
+                    modLoader, 
+                    gameVersion, 
+                    modsPath);
+                
+                updatedCount += modrinthResult.UpdatedCount;
+                upToDateCount += modrinthResult.UpToDateCount;
+                
+                // 第二步：对于 Modrinth 未找到的 Mod，尝试通过 CurseForge 更新
+                var modrinthFailedMods = selectedMods
+                    .Where(mod => !modrinthResult.ProcessedMods.Contains(mod.FilePath))
+                    .ToList();
+                
+                if (modrinthFailedMods.Count > 0)
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
+                    System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第二步：尝试通过 CurseForge 更新 {modrinthFailedMods.Count} 个Mod");
+                    var curseForgeResult = await TryUpdateModsViaCurseForgeAsync(
+                        modrinthFailedMods,
+                        modLoader,
+                        gameVersion,
+                        modsPath);
                     
-                    string apiUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files/update");
-                    var content = new System.Net.Http.StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(requestBody),
-                        System.Text.Encoding.UTF8,
-                        "application/json");
-                    
-                    var response = await httpClient.PostAsync(apiUrl, content);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string responseContent = await response.Content.ReadAsStringAsync();
-                        System.Diagnostics.Debug.WriteLine($"API响应: {responseContent}");
-                        
-                        // 解析响应
-                        var updateInfo = System.Text.Json.JsonSerializer.Deserialize<
-                            System.Collections.Generic.Dictionary<string, ModrinthUpdateInfo>
-                        >(responseContent);
-                        
-                        if (updateInfo != null)
-                        {
-                            int updatedCount = 0;
-                            int upToDateCount = 0;
-                            
-                            // 获取Mods文件夹路径
-                            string modsPath = GetVersionSpecificPath("mods");
-                            
-                            // 处理每个Mod的更新
-                            foreach (var kvp in updateInfo)
-                            {
-                                string hash = kvp.Key;
-                                ModrinthUpdateInfo info = kvp.Value;
-                                
-                                if (modFilePathMap.TryGetValue(hash, out string modFilePath))
-                                {
-                                    // 检查是否需要更新
-                                    bool needsUpdate = true;
-                                    
-                                    // 检查是否已有相同SHA1的Mod
-                                    if (info.files != null && info.files.Count > 0)
-                                    {
-                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                        if (primaryFile.hashes.TryGetValue("sha1", out string newSha1))
-                                        {
-                                            // 计算当前Mod的SHA1
-                                            string currentSha1 = CalculateSHA1(modFilePath);
-                                            if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"Mod {Path.GetFileName(modFilePath)} 已经是最新版本");
-                                                needsUpdate = false;
-                                                upToDateCount++;
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (needsUpdate)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"正在更新Mod: {Path.GetFileName(modFilePath)}");
-                                        
-                                        // 获取主要文件
-                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                        if (!string.IsNullOrEmpty(primaryFile.url) && !string.IsNullOrEmpty(primaryFile.filename))
-                                        {
-                                            // 临时文件路径
-                                            string tempFilePath = Path.Combine(modsPath, $"{primaryFile.filename}.tmp");
-                                            // 最终文件路径
-                                            string finalFilePath = Path.Combine(modsPath, primaryFile.filename);
-                                            
-                                            // 下载最新版本
-                                            bool downloadSuccess = await DownloadModAsync(primaryFile.url, tempFilePath);
-                                            if (downloadSuccess)
-                                            {
-                                                // 处理依赖关系
-                                                if (info.dependencies != null && info.dependencies.Count > 0)
-                                                {
-                                                    // 转换依赖类型
-                                                    var coreDependencies = info.dependencies.Select(dep => new Core.Models.Dependency
-                                                    {
-                                                        VersionId = dep.version_id,
-                                                        ProjectId = dep.project_id,
-                                                        FileName = dep.file_name
-                                                    }).ToList();
-                                                    await ProcessDependenciesAsync(coreDependencies, modsPath);
-                                                }
-                                                
-                                                // 删除旧Mod文件
-                                                if (File.Exists(modFilePath))
-                                                {
-                                                    File.Delete(modFilePath);
-                                                    System.Diagnostics.Debug.WriteLine($"已删除旧Mod文件: {modFilePath}");
-                                                }
-                                                
-                                                // 重命名临时文件为最终文件名
-                                                // 先检查目标文件是否已存在，如果存在则删除
-                                                if (File.Exists(finalFilePath))
-                                                {
-                                                    File.Delete(finalFilePath);
-                                                    System.Diagnostics.Debug.WriteLine($"已删除已存在的目标文件: {finalFilePath}");
-                                                }
-                                                File.Move(tempFilePath, finalFilePath);
-                                                System.Diagnostics.Debug.WriteLine($"已更新Mod: {finalFilePath}");
-                                                
-                                                updatedCount++;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 重新加载Mod列表，刷新UI
-                            await LoadModsListOnlyAsync();
-                            
-                            // 异步加载图标，不阻塞UI
-                            _ = LoadAllIconsAsync();
-                            
-                            // 显示结果
-                            StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-                            
-                            // 保存结果到属性，用于结果弹窗
-                            UpdateResults = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-                            
-                            // 显示结果弹窗
-                            IsResultDialogVisible = true;
-                        }
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"API调用失败: {response.StatusCode}");
-                        StatusMessage = $"获取更新信息失败: {response.StatusCode}";
-                    }
+                    updatedCount += curseForgeResult.UpdatedCount;
+                    upToDateCount += curseForgeResult.UpToDateCount;
                 }
+                
+                // 重新加载Mod列表，刷新UI
+                await LoadModsListOnlyAsync();
+                
+                // 异步加载图标，不阻塞UI
+                _ = LoadAllIconsAsync();
+                
+                // 显示结果
+                StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
+                
+                // 保存结果到属性，用于结果弹窗
+                UpdateResults = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
+                
+                // 显示结果弹窗
+                IsResultDialogVisible = true;
             }
             catch (Exception ex)
             {
@@ -2076,6 +2222,384 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             public string filename { get; set; }
             public bool primary { get; set; }
             public long size { get; set; }
+        }
+        
+        /// <summary>
+        /// 尝试通过 Modrinth 更新 Mod
+        /// </summary>
+        /// <returns>更新结果</returns>
+        private async Task<ModUpdateResult> TryUpdateModsViaModrinthAsync(
+            List<string> modHashes,
+            Dictionary<string, string> modFilePathMap,
+            string modLoader,
+            string gameVersion,
+            string modsPath)
+        {
+            var result = new ModUpdateResult();
+            
+            try
+            {
+                // 构建API请求
+                var requestBody = new
+                {
+                    hashes = modHashes,
+                    algorithm = "sha1",
+                    loaders = new[] { modLoader },
+                    game_versions = new[] { gameVersion }
+                };
+                
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 请求更新信息，Mod数量: {modHashes.Count}");
+                
+                // 调用Modrinth API
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
+                    
+                    string apiUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files/update");
+                    var content = new System.Net.Http.StringContent(
+                        System.Text.Json.JsonSerializer.Serialize(requestBody),
+                        System.Text.Encoding.UTF8,
+                        "application/json");
+                    
+                    var response = await httpClient.PostAsync(apiUrl, content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string responseContent = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"[Modrinth] API响应成功");
+                        
+                        // 解析响应
+                        var updateInfo = System.Text.Json.JsonSerializer.Deserialize<
+                            System.Collections.Generic.Dictionary<string, ModrinthUpdateInfo>
+                        >(responseContent);
+                        
+                        if (updateInfo != null && updateInfo.Count > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 找到 {updateInfo.Count} 个Mod的更新信息");
+                            
+                            // 处理每个Mod的更新
+                            foreach (var kvp in updateInfo)
+                            {
+                                string hash = kvp.Key;
+                                ModrinthUpdateInfo info = kvp.Value;
+                                
+                                if (modFilePathMap.TryGetValue(hash, out string modFilePath))
+                                {
+                                    result.ProcessedMods.Add(modFilePath);
+                                    
+                                    // 检查是否需要更新
+                                    bool needsUpdate = true;
+                                    
+                                    // 检查是否已有相同SHA1的Mod
+                                    if (info.files != null && info.files.Count > 0)
+                                    {
+                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
+                                        if (primaryFile.hashes.TryGetValue("sha1", out string newSha1))
+                                        {
+                                            // 计算当前Mod的SHA1
+                                            string currentSha1 = CalculateSHA1(modFilePath);
+                                            if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"[Modrinth] Mod {Path.GetFileName(modFilePath)} 已经是最新版本");
+                                                needsUpdate = false;
+                                                result.UpToDateCount++;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (needsUpdate)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新Mod: {Path.GetFileName(modFilePath)}");
+                                        
+                                        // 获取主要文件
+                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
+                                        if (!string.IsNullOrEmpty(primaryFile.url) && !string.IsNullOrEmpty(primaryFile.filename))
+                                        {
+                                            // 临时文件路径
+                                            string tempFilePath = Path.Combine(modsPath, $"{primaryFile.filename}.tmp");
+                                            // 最终文件路径
+                                            string finalFilePath = Path.Combine(modsPath, primaryFile.filename);
+                                            
+                                            // 下载最新版本
+                                            bool downloadSuccess = await DownloadModAsync(primaryFile.url, tempFilePath);
+                                            if (downloadSuccess)
+                                            {
+                                                // 处理依赖关系
+                                                if (info.dependencies != null && info.dependencies.Count > 0)
+                                                {
+                                                    // 转换依赖类型
+                                                    var coreDependencies = info.dependencies.Select(dep => new Core.Models.Dependency
+                                                    {
+                                                        VersionId = dep.version_id,
+                                                        ProjectId = dep.project_id,
+                                                        FileName = dep.file_name
+                                                    }).ToList();
+                                                    await ProcessDependenciesAsync(coreDependencies, modsPath);
+                                                }
+                                                
+                                                // 删除旧Mod文件
+                                                if (File.Exists(modFilePath))
+                                                {
+                                                    File.Delete(modFilePath);
+                                                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除旧Mod文件: {modFilePath}");
+                                                }
+                                                
+                                                // 重命名临时文件为最终文件名
+                                                // 先检查目标文件是否已存在，如果存在则删除
+                                                if (File.Exists(finalFilePath))
+                                                {
+                                                    File.Delete(finalFilePath);
+                                                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除已存在的目标文件: {finalFilePath}");
+                                                }
+                                                File.Move(tempFilePath, finalFilePath);
+                                                System.Diagnostics.Debug.WriteLine($"[Modrinth] 已更新Mod: {finalFilePath}");
+                                                
+                                                result.UpdatedCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 没有找到任何Mod的更新信息");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Modrinth] API调用失败: {response.StatusCode}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 更新失败: {ex.Message}");
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 尝试通过 CurseForge 更新 Mod
+        /// </summary>
+        /// <returns>更新结果</returns>
+        private async Task<ModUpdateResult> TryUpdateModsViaCurseForgeAsync(
+            List<ModInfo> mods,
+            string modLoader,
+            string gameVersion,
+            string modsPath)
+        {
+            var result = new ModUpdateResult();
+            
+            try
+            {
+                // 计算 CurseForge Fingerprint
+                var fingerprintMap = new Dictionary<uint, string>(); // fingerprint -> filePath
+                var fingerprints = new List<uint>();
+                
+                foreach (var mod in mods)
+                {
+                    try
+                    {
+                        uint fingerprint = Core.Helpers.CurseForgeFingerprintHelper.ComputeFingerprint(mod.FilePath);
+                        fingerprints.Add(fingerprint);
+                        fingerprintMap[fingerprint] = mod.FilePath;
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] Mod {mod.Name} 的Fingerprint: {fingerprint}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 计算Fingerprint失败: {mod.Name}, 错误: {ex.Message}");
+                    }
+                }
+                
+                if (fingerprints.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 没有可查询的Fingerprint");
+                    return result;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[CurseForge] 查询 {fingerprints.Count} 个Mod的Fingerprint");
+                
+                // 调用 CurseForge API
+                var curseForgeService = App.GetService<Core.Services.CurseForgeService>();
+                if (curseForgeService == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] CurseForgeService 未注册");
+                    return result;
+                }
+                
+                var matchResult = await curseForgeService.GetFingerprintMatchesAsync(fingerprints);
+                
+                if (matchResult.ExactMatches != null && matchResult.ExactMatches.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 找到 {matchResult.ExactMatches.Count} 个精确匹配");
+                    
+                    // 转换 ModLoader 类型到 CurseForge 的枚举值
+                    int? modLoaderType = modLoader.ToLower() switch
+                    {
+                        "forge" => 1,
+                        "fabric" => 4,
+                        "quilt" => 5,
+                        "neoforge" => 6,
+                        _ => null
+                    };
+                    
+                    foreach (var match in matchResult.ExactMatches)
+                    {
+                        if (match.File == null)
+                            continue;
+                        
+                        // 查找对应的文件路径
+                        uint matchedFingerprint = (uint)match.File.FileFingerprint;
+                        if (!fingerprintMap.TryGetValue(matchedFingerprint, out string modFilePath))
+                            continue;
+                        
+                        result.ProcessedMods.Add(modFilePath);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 处理Mod: {Path.GetFileName(modFilePath)}");
+                        
+                        // 获取最新的兼容文件
+                        Core.Models.CurseForgeFile latestFile = null;
+                        
+                        if (match.LatestFiles != null && match.LatestFiles.Count > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] LatestFiles 数量: {match.LatestFiles.Count}");
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] 当前游戏版本: {gameVersion}, ModLoader: {modLoader}");
+                            
+                            // 输出所有可用文件的信息
+                            for (int i = 0; i < match.LatestFiles.Count; i++)
+                            {
+                                var file = match.LatestFiles[i];
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge] 文件 {i + 1}: {file.FileName}");
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge]   - 支持的版本: {string.Join(", ", file.GameVersions ?? new List<string>())}");
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge]   - 文件日期: {file.FileDate}");
+                            }
+                            
+                            // 筛选兼容的文件
+                            var compatibleFiles = match.LatestFiles
+                                .Where(f => f.GameVersions != null &&
+                                           f.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
+                                .ToList();
+                            
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] 游戏版本兼容的文件数量: {compatibleFiles.Count}");
+                            
+                            // 如果指定了 ModLoader，进一步筛选
+                            if (modLoaderType.HasValue)
+                            {
+                                var loaderCompatibleFiles = compatibleFiles
+                                    .Where(f => f.GameVersions.Any(v => 
+                                        v.Equals(modLoader, StringComparison.OrdinalIgnoreCase)))
+                                    .ToList();
+                                
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge] ModLoader 兼容的文件数量: {loaderCompatibleFiles.Count}");
+                                
+                                if (loaderCompatibleFiles.Count > 0)
+                                {
+                                    compatibleFiles = loaderCompatibleFiles;
+                                }
+                            }
+                            
+                            // 选择最新的文件
+                            latestFile = compatibleFiles
+                                .OrderByDescending(f => f.FileDate)
+                                .FirstOrDefault();
+                            
+                            if (latestFile != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge] 选择的文件: {latestFile.FileName}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] LatestFiles 为空或数量为 0");
+                        }
+                        
+                        if (latestFile == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] 没有找到兼容的文件");
+                            continue;
+                        }
+                        
+                        // 检查是否需要更新
+                        bool needsUpdate = match.File.Id != latestFile.Id;
+                        
+                        if (!needsUpdate)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] Mod {Path.GetFileName(modFilePath)} 已经是最新版本");
+                            result.UpToDateCount++;
+                            continue;
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 正在更新Mod: {Path.GetFileName(modFilePath)}");
+                        
+                        // 下载最新版本
+                        if (!string.IsNullOrEmpty(latestFile.DownloadUrl) && !string.IsNullOrEmpty(latestFile.FileName))
+                        {
+                            string tempFilePath = Path.Combine(modsPath, $"{latestFile.FileName}.tmp");
+                            string finalFilePath = Path.Combine(modsPath, latestFile.FileName);
+                            
+                            bool downloadSuccess = await curseForgeService.DownloadFileAsync(
+                                latestFile.DownloadUrl,
+                                tempFilePath,
+                                (fileName, progress) =>
+                                {
+                                    CurrentDownloadItem = fileName;
+                                    DownloadProgress = progress;
+                                });
+                            
+                            if (downloadSuccess)
+                            {
+                                // 处理依赖关系
+                                if (latestFile.Dependencies != null && latestFile.Dependencies.Count > 0)
+                                {
+                                    await curseForgeService.ProcessDependenciesAsync(
+                                        latestFile.Dependencies,
+                                        modsPath,
+                                        latestFile);
+                                }
+                                
+                                // 删除旧Mod文件
+                                if (File.Exists(modFilePath))
+                                {
+                                    File.Delete(modFilePath);
+                                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 已删除旧Mod文件: {modFilePath}");
+                                }
+                                
+                                // 重命名临时文件为最终文件名
+                                if (File.Exists(finalFilePath))
+                                {
+                                    File.Delete(finalFilePath);
+                                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 已删除已存在的目标文件: {finalFilePath}");
+                                }
+                                File.Move(tempFilePath, finalFilePath);
+                                System.Diagnostics.Debug.WriteLine($"[CurseForge] 已更新Mod: {finalFilePath}");
+                                
+                                result.UpdatedCount++;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 没有找到任何精确匹配");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge] 更新失败: {ex.Message}");
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// Mod 更新结果
+        /// </summary>
+        private class ModUpdateResult
+        {
+            public HashSet<string> ProcessedMods { get; set; } = new HashSet<string>();
+            public int UpdatedCount { get; set; } = 0;
+            public int UpToDateCount { get; set; } = 0;
         }
         
         /// <summary>

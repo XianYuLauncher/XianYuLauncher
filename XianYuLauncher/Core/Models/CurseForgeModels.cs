@@ -510,3 +510,59 @@ public class CurseForgeManifestFile
 }
 
 #endregion
+
+
+#region CurseForge Fingerprint 模型
+
+/// <summary>
+/// CurseForge Fingerprint 匹配响应
+/// </summary>
+public class CurseForgeFingerprintMatchesResponse
+{
+    [JsonPropertyName("data")]
+    public CurseForgeFingerprintMatchesResult Data { get; set; }
+}
+
+/// <summary>
+/// CurseForge Fingerprint 匹配结果
+/// </summary>
+public class CurseForgeFingerprintMatchesResult
+{
+    [JsonPropertyName("isCacheBuilt")]
+    public bool IsCacheBuilt { get; set; }
+    
+    [JsonPropertyName("exactMatches")]
+    public List<CurseForgeFingerprintMatch> ExactMatches { get; set; } = new();
+    
+    [JsonPropertyName("exactFingerprints")]
+    public List<uint> ExactFingerprints { get; set; } = new();
+    
+    [JsonPropertyName("partialMatches")]
+    public List<CurseForgeFingerprintMatch> PartialMatches { get; set; } = new();
+    
+    [JsonPropertyName("partialMatchFingerprints")]
+    public Dictionary<string, List<uint>> PartialMatchFingerprints { get; set; } = new();
+    
+    [JsonPropertyName("installedFingerprints")]
+    public List<uint> InstalledFingerprints { get; set; } = new();
+    
+    [JsonPropertyName("unmatchedFingerprints")]
+    public List<uint> UnmatchedFingerprints { get; set; } = new();
+}
+
+/// <summary>
+/// CurseForge Fingerprint 匹配项
+/// </summary>
+public class CurseForgeFingerprintMatch
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+    
+    [JsonPropertyName("file")]
+    public CurseForgeFile File { get; set; }
+    
+    [JsonPropertyName("latestFiles")]
+    public List<CurseForgeFile> LatestFiles { get; set; } = new();
+}
+
+#endregion

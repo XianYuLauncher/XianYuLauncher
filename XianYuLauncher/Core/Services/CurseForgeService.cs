@@ -1057,5 +1057,74 @@ public class CurseForgeService
             throw new Exception($"获取类别列表时发生错误: {ex.Message}");
         }
     }
+    
+    /// <summary>
+    /// 通过 Fingerprint 查询 Mod 文件信息
+    /// </summary>
+    /// <param name="fingerprints">Fingerprint 列表</param>
+    /// <returns>Fingerprint 匹配结果</returns>
+    public async Task<CurseForgeFingerprintMatchesResult> GetFingerprintMatchesAsync(List<uint> fingerprints)
+    {
+        if (fingerprints == null || fingerprints.Count == 0)
+        {
+            return new CurseForgeFingerprintMatchesResult
+            {
+                ExactMatches = new List<CurseForgeFingerprintMatch>(),
+                ExactFingerprints = new List<uint>(),
+                UnmatchedFingerprints = new List<uint>()
+            };
+        }
+
+        try
+        {
+            var url = $"{GetApiBaseUrl()}/v1/fingerprints/{MinecraftGameId}";
+            
+            using var request = CreateRequest(HttpMethod.Post, url);
+            var requestBody = new { fingerprints = fingerprints };
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                System.Text.Encoding.UTF8,
+                "application/json");
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 查询 Fingerprint，数量: {fingerprints.Count}");
+            
+            var response = await _httpClient.SendAsync(request);
+            
+            var json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+            
+            var result = JsonSerializer.Deserialize<CurseForgeFingerprintMatchesResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 精确匹配: {result?.Data?.ExactMatches?.Count ?? 0}, 未匹配: {result?.Data?.UnmatchedFingerprints?.Count ?? 0}");
+            
+            return result?.Data ?? new CurseForgeFingerprintMatchesResult
+            {
+                ExactMatches = new List<CurseForgeFingerprintMatch>(),
+                ExactFingerprints = new List<uint>(),
+                UnmatchedFingerprints = new List<uint>()
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMsg = $"查询 Fingerprint 失败: {ex.Message}";
+            if (ex.StatusCode.HasValue)
+            {
+                errorMsg += $" (状态码: {ex.StatusCode})";
+            }
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] {errorMsg}");
+            throw new Exception(errorMsg);
+        }
+        catch (JsonException ex)
+        {
+            throw new Exception($"解析 Fingerprint 结果失败: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"查询 Fingerprint 时发生错误: {ex.Message}");
+        }
+    }
 }
 
