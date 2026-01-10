@@ -1086,7 +1086,7 @@ namespace XianYuLauncher.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头: Bearer {ViewModel.CurrentProfile.AccessToken.Substring(0, Math.Min(10, ViewModel.CurrentProfile.AccessToken.Length))}...");
+                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头");
             }
             else
             {
@@ -1328,7 +1328,7 @@ namespace XianYuLauncher.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头: Bearer {ViewModel.CurrentProfile.AccessToken.Substring(0, Math.Min(10, ViewModel.CurrentProfile.AccessToken.Length))}...");
+                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头");
             }
             else
             {
