@@ -12,6 +12,7 @@ using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -22,9 +23,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
 {
     private readonly HttpClient _httpClient;
     private readonly IProcessorExecutor _processorExecutor;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly ILocalSettingsService _localSettingsService;
     
     /// <summary>
-    /// Forge Maven仓库URL
+    /// Forge Maven仓库URL（官方源备用）
     /// </summary>
     private const string ForgeMavenUrl = "https://maven.minecraftforge.net";
     
@@ -36,10 +39,14 @@ public class ForgeInstaller : ModLoaderInstallerBase
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
         IProcessorExecutor processorExecutor,
+        DownloadSourceFactory downloadSourceFactory,
+        ILocalSettingsService localSettingsService,
         ILogger<ForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
         _processorExecutor = processorExecutor;
+        _downloadSourceFactory = downloadSourceFactory;
+        _localSettingsService = localSettingsService;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
     }
@@ -118,7 +125,15 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(cacheDirectory);
             
             forgeInstallerPath = Path.Combine(cacheDirectory, $"forge-{minecraftVersionId}-{modLoaderVersion}-installer.jar");
-            var forgeInstallerUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
+            
+            // 获取当前下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+            var forgeInstallerUrl = downloadSource.GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
+            var officialUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
+            
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载Forge安装器: {Url}", downloadSource.Name, forgeInstallerUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载Forge安装器: {forgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 forgeInstallerUrl,
@@ -126,6 +141,20 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 null, // Forge Installer 没有提供 SHA1
                 p => ReportProgress(progressCallback, p, 35, 55),
                 cancellationToken);
+
+            // 如果主下载源失败，尝试官方源
+            if (!downloadResult.Success && forgeInstallerUrl != officialUrl)
+            {
+                Logger.LogWarning("主下载源失败，切换到官方源: {OfficialUrl}", officialUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 主下载源失败: {forgeInstallerUrl}，正在切换到备用源: {officialUrl}");
+                
+                downloadResult = await DownloadManager.DownloadFileAsync(
+                    officialUrl,
+                    forgeInstallerPath,
+                    null,
+                    p => ReportProgress(progressCallback, p, 35, 55),
+                    cancellationToken);
+            }
 
             if (!downloadResult.Success)
             {
@@ -361,6 +390,10 @@ public class ForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
+        // 获取当前下载源
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+
         foreach (var library in libraries)
         {
             if (string.IsNullOrEmpty(library.Name)) continue;
@@ -368,27 +401,34 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var libraryPath = LibraryManager.GetLibraryPath(library.Name, librariesDirectory);
             if (File.Exists(libraryPath)) continue;
 
-            string? downloadUrl = null;
+            string? originalUrl = null;
             string? sha1 = null;
 
             // 优先使用 Downloads.Artifact
             if (library.Downloads?.Artifact != null && !string.IsNullOrEmpty(library.Downloads.Artifact.Url))
             {
-                downloadUrl = library.Downloads.Artifact.Url;
+                originalUrl = library.Downloads.Artifact.Url;
                 sha1 = library.Downloads.Artifact.Sha1;
             }
             // 其次使用 library.Url 构建下载地址（旧版 Forge 格式）
             else if (!string.IsNullOrEmpty(library.Url))
             {
-                downloadUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
+                originalUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
             }
             // 最后使用默认 Maven 仓库
             else
             {
-                downloadUrl = BuildLibraryDownloadUrl(library.Name, "https://libraries.minecraft.net/");
+                originalUrl = BuildLibraryDownloadUrl(library.Name, "https://libraries.minecraft.net/");
             }
 
-            if (string.IsNullOrEmpty(downloadUrl)) continue;
+            if (string.IsNullOrEmpty(originalUrl)) continue;
+
+            // 使用下载源转换URL
+            var downloadUrl = downloadSource.GetLibraryUrl(library.Name, originalUrl);
+            
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {LibraryName}", downloadSource.Name, library.Name);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {library.Name}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG]   URL: {downloadUrl}");
 
             downloadTasks.Add(new DownloadTask
             {

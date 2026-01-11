@@ -13,6 +13,7 @@ using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -44,15 +45,21 @@ public class ProcessorExecutor : IProcessorExecutor
 {
     private readonly IDownloadManager _downloadManager;
     private readonly ILibraryManager _libraryManager;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly ILocalSettingsService _localSettingsService;
     private readonly ILogger<ProcessorExecutor> _logger;
 
     public ProcessorExecutor(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
+        DownloadSourceFactory downloadSourceFactory,
+        ILocalSettingsService localSettingsService,
         ILogger<ProcessorExecutor> logger)
     {
         _downloadManager = downloadManager;
         _libraryManager = libraryManager;
+        _downloadSourceFactory = downloadSourceFactory;
+        _localSettingsService = localSettingsService;
         _logger = logger;
     }
 
@@ -484,9 +491,36 @@ public class ProcessorExecutor : IProcessorExecutor
             ? $"{artifactId}-{version}.jar" 
             : $"{artifactId}-{version}-{classifier}.jar";
 
-        string downloadUrl = $"https://maven.minecraftforge.net/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
+        // 获取当前下载源
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        
+        // 构建官方源URL
+        string officialUrl = $"https://maven.minecraftforge.net/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
+        
+        // 如果是NeoForge相关的库，使用NeoForge Maven
+        if (groupId.StartsWith("net.neoforged", StringComparison.OrdinalIgnoreCase))
+        {
+            officialUrl = $"https://maven.neoforged.net/releases/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
+        }
+        
+        // 使用下载源获取URL
+        string downloadUrl = downloadSource.GetLibraryUrl(processedJarName, officialUrl);
+        
+        _logger.LogInformation("使用下载源 {DownloadSource} 下载处理器库: {Url}", downloadSource.Name, downloadUrl);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载处理器库: {downloadUrl}");
 
         var result = await _downloadManager.DownloadFileAsync(downloadUrl, libraryPath, null, null, cancellationToken);
+        
+        // 如果主下载源失败，尝试官方源
+        if (!result.Success && downloadUrl != officialUrl)
+        {
+            _logger.LogWarning("主下载源失败，切换到官方源: {OfficialUrl}", officialUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 主下载源失败: {downloadUrl}，正在切换到备用源: {officialUrl}");
+            
+            result = await _downloadManager.DownloadFileAsync(officialUrl, libraryPath, null, null, cancellationToken);
+        }
+        
         if (!result.Success)
         {
             throw new ProcessorExecutionException($"下载installertools失败: {result.ErrorMessage}", jarName, null, null, result.Exception);

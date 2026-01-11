@@ -12,6 +12,7 @@ using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -22,9 +23,11 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 {
     private readonly HttpClient _httpClient;
     private readonly IProcessorExecutor _processorExecutor;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly ILocalSettingsService _localSettingsService;
     
     /// <summary>
-    /// NeoForge Maven仓库URL
+    /// NeoForge Maven仓库URL（官方源备用）
     /// </summary>
     private const string NeoForgeMavenUrl = "https://maven.neoforged.net/releases";
     
@@ -36,10 +39,14 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
         IProcessorExecutor processorExecutor,
+        DownloadSourceFactory downloadSourceFactory,
+        ILocalSettingsService localSettingsService,
         ILogger<NeoForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
         _processorExecutor = processorExecutor;
+        _downloadSourceFactory = downloadSourceFactory;
+        _localSettingsService = localSettingsService;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
     }
@@ -118,7 +125,15 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(cacheDirectory);
             
             neoforgeInstallerPath = Path.Combine(cacheDirectory, $"neoforge-{modLoaderVersion}-installer.jar");
-            var neoforgeInstallerUrl = GetNeoForgeInstallerUrl(modLoaderVersion);
+            
+            // 获取当前下载源
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+            var neoforgeInstallerUrl = downloadSource.GetNeoForgeInstallerUrl(modLoaderVersion);
+            var officialUrl = GetNeoForgeInstallerUrl(modLoaderVersion);
+            
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载NeoForge安装器: {Url}", downloadSource.Name, neoforgeInstallerUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载NeoForge安装器: {neoforgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 neoforgeInstallerUrl,
@@ -126,6 +141,20 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 null,
                 p => ReportProgress(progressCallback, p, 35, 55),
                 cancellationToken);
+
+            // 如果主下载源失败，尝试官方源
+            if (!downloadResult.Success && neoforgeInstallerUrl != officialUrl)
+            {
+                Logger.LogWarning("主下载源失败，切换到官方源: {OfficialUrl}", officialUrl);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 主下载源失败: {neoforgeInstallerUrl}，正在切换到备用源: {officialUrl}");
+                
+                downloadResult = await DownloadManager.DownloadFileAsync(
+                    officialUrl,
+                    neoforgeInstallerPath,
+                    null,
+                    p => ReportProgress(progressCallback, p, 35, 55),
+                    cancellationToken);
+            }
 
             if (!downloadResult.Success)
             {
@@ -344,6 +373,10 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
+        // 获取当前下载源
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+
         foreach (var library in libraries)
         {
             if (library.Downloads?.Artifact == null) continue;
@@ -351,9 +384,17 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var libraryPath = LibraryManager.GetLibraryPath(library.Name, librariesDirectory);
             if (File.Exists(libraryPath)) continue;
 
+            // 使用下载源转换URL
+            var originalUrl = library.Downloads.Artifact.Url ?? string.Empty;
+            var downloadUrl = downloadSource.GetLibraryUrl(library.Name, originalUrl);
+            
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {LibraryName}", downloadSource.Name, library.Name);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {library.Name}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG]   URL: {downloadUrl}");
+
             downloadTasks.Add(new DownloadTask
             {
-                Url = library.Downloads.Artifact.Url ?? string.Empty,
+                Url = downloadUrl,
                 TargetPath = libraryPath,
                 ExpectedSha1 = library.Downloads.Artifact.Sha1,
                 Description = $"库文件: {library.Name}"

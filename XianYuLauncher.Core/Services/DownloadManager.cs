@@ -70,17 +70,20 @@ public class DownloadManager : IDownloadManager
                 await DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, cancellationToken);
                 
                 _logger.LogInformation("文件下载成功: {TargetPath}", targetPath);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] ✓ 文件下载成功: {Path.GetFileName(targetPath)}");
                 return DownloadResult.Succeeded(targetPath, url);
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("下载已取消: {Url}", url);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] ✗ 下载已取消: {url}");
                 throw;
             }
             catch (HashVerificationException ex)
             {
                 // SHA1验证失败不重试，直接返回失败
                 _logger.LogError(ex, "SHA1验证失败，不重试: {Url}", url);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] ✗ SHA1验证失败: {url}");
                 return DownloadResult.Failed(url, ex.Message, ex, retryCount);
             }
             catch (Exception ex)
@@ -89,11 +92,13 @@ public class DownloadManager : IDownloadManager
                 retryCount++;
                 _logger.LogWarning(ex, "下载失败 ({RetryCount}/{MaxRetries}): {Url}", 
                     retryCount, DefaultMaxRetries, url);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] ✗ 下载失败 ({retryCount}/{DefaultMaxRetries}): {url}, 错误: {ex.Message}");
             }
         }
 
         string errorMessage = $"下载失败，已重试 {DefaultMaxRetries} 次: {url}";
         _logger.LogError(lastException, errorMessage);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] ✗ 下载彻底失败: {url}");
         return DownloadResult.Failed(url, errorMessage, lastException, retryCount);
     }
 
@@ -267,6 +272,8 @@ public class DownloadManager : IDownloadManager
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("开始下载文件: {Url} -> {TargetPath}", url, targetPath);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始下载文件: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG]   -> 目标路径: {targetPath}");
 
         // 确保目标目录存在
         var targetDirectory = Path.GetDirectoryName(targetPath);

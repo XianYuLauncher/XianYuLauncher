@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -20,9 +21,11 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 public class FabricInstaller : ModLoaderInstallerBase
 {
     private readonly HttpClient _httpClient;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly ILocalSettingsService _localSettingsService;
     
     /// <summary>
-    /// Fabric Meta API基础URL
+    /// Fabric Meta API基础URL（官方源备用）
     /// </summary>
     private const string FabricMetaApiUrl = "https://meta.fabricmc.net/v2";
     
@@ -33,9 +36,13 @@ public class FabricInstaller : ModLoaderInstallerBase
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
+        DownloadSourceFactory downloadSourceFactory,
+        ILocalSettingsService localSettingsService,
         ILogger<FabricInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
+        _downloadSourceFactory = downloadSourceFactory;
+        _localSettingsService = localSettingsService;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
     }
@@ -181,23 +188,53 @@ public class FabricInstaller : ModLoaderInstallerBase
         string fabricVersion,
         CancellationToken cancellationToken)
     {
-        var url = $"{FabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
-        Logger.LogDebug("获取Fabric Profile: {Url}", url);
+        // 获取当前下载源
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        var url = downloadSource.GetFabricProfileUrl(minecraftVersionId, fabricVersion);
+        var officialUrl = $"{FabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
+        
+        Logger.LogInformation("使用下载源 {DownloadSource} 获取Fabric Profile: {Url}", downloadSource.Name, url);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取Fabric Profile: {url}");
 
-        var response = await _httpClient.GetStringAsync(url, cancellationToken);
-        var profile = JObject.Parse(response);
-
-        if (profile == null)
+        try
         {
-            throw new ModLoaderInstallException(
-                "无法解析Fabric Profile",
-                ModLoaderType,
-                fabricVersion,
-                minecraftVersionId,
-                "获取Profile");
-        }
+            var response = await _httpClient.GetStringAsync(url, cancellationToken);
+            var profile = JObject.Parse(response);
 
-        return profile;
+            if (profile == null)
+            {
+                throw new ModLoaderInstallException(
+                    "无法解析Fabric Profile",
+                    ModLoaderType,
+                    fabricVersion,
+                    minecraftVersionId,
+                    "获取Profile");
+            }
+
+            return profile;
+        }
+        catch (Exception ex) when (url != officialUrl && ex is not ModLoaderInstallException)
+        {
+            // 主下载源失败，尝试官方源
+            Logger.LogWarning("主下载源失败，切换到官方源: {OfficialUrl}", officialUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 主下载源失败: {url}，正在切换到备用源: {officialUrl}");
+            
+            var response = await _httpClient.GetStringAsync(officialUrl, cancellationToken);
+            var profile = JObject.Parse(response);
+
+            if (profile == null)
+            {
+                throw new ModLoaderInstallException(
+                    "无法解析Fabric Profile",
+                    ModLoaderType,
+                    fabricVersion,
+                    minecraftVersionId,
+                    "获取Profile");
+            }
+
+            return profile;
+        }
     }
 
     /// <summary>
