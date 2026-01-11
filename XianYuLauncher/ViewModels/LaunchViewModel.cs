@@ -131,143 +131,19 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="launchCommand">启动命令</param>
     private async Task MonitorGameProcessExitAsync(Process process, string launchCommand)
     {
-        try
-        {
-            // 等待进程退出
-            await Task.Run(() => process.WaitForExit());
-            
-            // 进程退出时的处理逻辑
-            int exitCode = process.ExitCode;
-            LaunchStatus += $"\n游戏进程已退出，退出代码: {exitCode}";
-            
-            // 移除自动保存启动命令到文件的操作
-            
-            // 检查是否异常退出（排除用户主动终止的情况）
-            if (exitCode != 0 && !_isUserTerminated)
-            {
-                // 异常退出，显示错误分析弹窗
-                Console.WriteLine($"游戏异常退出，退出代码: {exitCode}");
-                
-                // 保存当前日志的副本，避免弹窗显示时日志被清空
-                List<string> currentOutput = new List<string>(_gameOutput);
-                List<string> currentError = new List<string>(_gameError);
-                string currentLaunchCommand = _launchCommand;
-                
-                App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
-                {
-                    // 使用日志副本显示弹窗
-                    await ShowErrorAnalysisDialog(exitCode, currentLaunchCommand, currentOutput, currentError);
-                });
-            }
-            else if (_isUserTerminated)
-            {
-                // 用户主动终止，不显示崩溃弹窗
-                Console.WriteLine("游戏被用户主动终止");
-            }
-            
-            // 重置用户终止标志
-            _isUserTerminated = false;
-            
-            // 清空日志，准备下一次启动
-            _gameOutput.Clear();
-            _gameError.Clear();
-            _launchCommand = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"监控游戏进程时发生错误: {ex.Message}");
-        }
-        finally
-        {
-            // 释放资源
-            process.Dispose();
-        }
+        // 使用 GameProcessMonitor 服务进行监控
+        await _gameProcessMonitor.MonitorProcessAsync(process, launchCommand);
     }
 
     /// <summary>
-    /// 异步读取进程输出
+    /// 异步读取进程输出（已由 GameProcessMonitor 事件处理，保留方法签名以兼容现有代码）
     /// </summary>
     /// <param name="process">游戏进程</param>
-    private async Task ReadProcessOutputAsync(Process process)
+    private Task ReadProcessOutputAsync(Process process)
     {
-        try
-        {
-            // 并行读取标准输出和标准错误，避免死锁
-            var outputTask = Task.Run(async () =>
-            {
-                try
-                {
-                    while (!process.StandardOutput.EndOfStream)
-                    {
-                        string line = await process.StandardOutput.ReadLineAsync();
-                        if (!string.IsNullOrEmpty(line))
-                        {
-                            lock (_gameOutput)
-                            {
-                                _gameOutput.Add(line);
-                            }
-                            Console.WriteLine($"[Minecraft Output]: {line}");
-                            
-                            // 实时更新到ErrorAnalysisViewModel
-                            try
-                            {
-                                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                                errorAnalysisViewModel.AddGameOutputLog(line);
-                            }
-                            catch (Exception)
-                            {
-                                // 如果ErrorAnalysisViewModel不可用（比如未导航到该页面），忽略错误
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"读取标准输出时出错：{ex.Message}");
-                }
-            });
-            
-            var errorTask = Task.Run(async () =>
-            {
-                try
-                {
-                    while (!process.StandardError.EndOfStream)
-                    {
-                        string line = await process.StandardError.ReadLineAsync();
-                        if (!string.IsNullOrEmpty(line))
-                        {
-                            lock (_gameError)
-                            {
-                                _gameError.Add(line);
-                            }
-                            Console.WriteLine($"[Minecraft Error]: {line}");
-                            
-                            // 实时更新到ErrorAnalysisViewModel
-                            try
-                            {
-                                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                                errorAnalysisViewModel.AddGameErrorLog(line);
-                            }
-                            catch (Exception)
-                            {
-                                // 如果ErrorAnalysisViewModel不可用，忽略错误
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"读取标准错误时出错：{ex.Message}");
-                }
-            });
-            
-            // 等待两个任务都完成
-            await Task.WhenAll(outputTask, errorTask);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"读取进程输出时出错：{ex.Message}");
-        }
+        // 输出读取已由 GameProcessMonitor 的事件处理
+        // 此方法保留以兼容现有代码结构
+        return Task.CompletedTask;
     }
     
     /// <summary>
@@ -349,26 +225,9 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <returns>崩溃分析结果</returns>
     private string AnalyzeCrash(List<string> gameOutput, List<string> gameError)
     {
-        // 检查输出日志中是否包含特定的崩溃信息
-        foreach (var line in gameOutput)
-        {
-            if (line.Contains("Manually triggered debug crash", StringComparison.OrdinalIgnoreCase))
-            {
-                return "玩家手动触发崩溃";
-            }
-        }
-        
-        // 检查错误日志中是否包含特定的崩溃信息
-        foreach (var line in gameError)
-        {
-            if (line.Contains("Manually triggered debug crash", StringComparison.OrdinalIgnoreCase))
-            {
-                return "玩家手动触发崩溃";
-            }
-        }
-        
-        // 默认分析结果
-        return "未知崩溃原因";
+        // 使用 CrashAnalyzer 服务进行分析
+        var result = _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError).GetAwaiter().GetResult();
+        return result.Analysis;
     }
     
     /// <summary>
@@ -593,6 +452,14 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly AuthlibInjectorService _authlibInjectorService;
     private readonly IJavaRuntimeService _javaRuntimeService;
     
+    // 新增：Phase 5 重构服务
+    private readonly IGameLaunchService _gameLaunchService;
+    private readonly IGameProcessMonitor _gameProcessMonitor;
+    private readonly ICrashAnalyzer _crashAnalyzer;
+    private readonly IRegionValidator _regionValidator;
+    private readonly ITokenRefreshService _tokenRefreshService;
+    private readonly IVersionConfigService _versionConfigService;
+    
     // 保存游戏输出日志
     private List<string> _gameOutput = new List<string>();
     private List<string> _gameError = new List<string>();
@@ -787,10 +654,142 @@ public partial class LaunchViewModel : ObservableRecipient
         _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
         _javaRuntimeService = App.GetService<IJavaRuntimeService>();
         
+        // 新增：Phase 5 重构服务
+        _gameLaunchService = App.GetService<IGameLaunchService>();
+        _gameProcessMonitor = App.GetService<IGameProcessMonitor>();
+        _crashAnalyzer = App.GetService<ICrashAnalyzer>();
+        _regionValidator = App.GetService<IRegionValidator>();
+        _tokenRefreshService = App.GetService<ITokenRefreshService>();
+        _versionConfigService = App.GetService<IVersionConfigService>();
+        
+        // 设置 authlib-injector 回调
+        _gameLaunchService.SetAuthlibInjectorCallback(new AuthlibInjectorCallbackImpl(_authlibInjectorService));
+        
+        // 设置令牌刷新回调
+        _tokenRefreshService.SetCallback(new TokenRefreshCallbackImpl(this));
+        
+        // 订阅进程监控事件
+        _gameProcessMonitor.ProcessExited += OnGameProcessExited;
+        _gameProcessMonitor.OutputReceived += OnGameOutputReceived;
+        _gameProcessMonitor.ErrorReceived += OnGameErrorReceived;
+        
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         InitializeAsync().ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// Authlib-Injector 回调实现
+    /// </summary>
+    private class AuthlibInjectorCallbackImpl : IAuthlibInjectorCallback
+    {
+        private readonly AuthlibInjectorService _authlibInjectorService;
+        
+        public AuthlibInjectorCallbackImpl(AuthlibInjectorService authlibInjectorService)
+        {
+            _authlibInjectorService = authlibInjectorService;
+        }
+        
+        public async Task<List<string>> GetJvmArgumentsAsync(string authServer)
+        {
+            return await _authlibInjectorService.GetJvmArgumentsAsync(authServer);
+        }
+    }
+    
+    /// <summary>
+    /// 令牌刷新回调实现
+    /// </summary>
+    private class TokenRefreshCallbackImpl : ITokenRefreshCallback
+    {
+        private readonly LaunchViewModel _viewModel;
+        
+        public TokenRefreshCallbackImpl(LaunchViewModel viewModel)
+        {
+            _viewModel = viewModel;
+        }
+        
+        public async Task<MinecraftProfile?> RefreshTokenAsync(MinecraftProfile profile)
+        {
+            var characterManagementViewModel = App.GetService<CharacterManagementViewModel>();
+            characterManagementViewModel.CurrentProfile = profile;
+            await characterManagementViewModel.ForceRefreshTokenAsync();
+            return characterManagementViewModel.CurrentProfile;
+        }
+    }
+    
+    /// <summary>
+    /// 游戏进程退出事件处理
+    /// </summary>
+    private async void OnGameProcessExited(object? sender, ProcessExitedEventArgs e)
+    {
+        LaunchStatus += $"\n游戏进程已退出，退出代码: {e.ExitCode}";
+        
+        // 检查是否异常退出（排除用户主动终止的情况）
+        if (e.ExitCode != 0 && !e.IsUserTerminated)
+        {
+            Console.WriteLine($"游戏异常退出，退出代码: {e.ExitCode}");
+            
+            App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+            {
+                await ShowErrorAnalysisDialog(e.ExitCode, e.LaunchCommand, e.OutputLogs, e.ErrorLogs);
+            });
+        }
+        else if (e.IsUserTerminated)
+        {
+            Console.WriteLine("游戏被用户主动终止");
+        }
+        
+        // 清空日志，准备下一次启动
+        _gameOutput.Clear();
+        _gameError.Clear();
+        _launchCommand = string.Empty;
+    }
+    
+    /// <summary>
+    /// 游戏输出接收事件处理
+    /// </summary>
+    private void OnGameOutputReceived(object? sender, OutputReceivedEventArgs e)
+    {
+        lock (_gameOutput)
+        {
+            _gameOutput.Add(e.Line);
+        }
+        Console.WriteLine($"[Minecraft Output]: {e.Line}");
+        
+        // 实时更新到ErrorAnalysisViewModel
+        try
+        {
+            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+            errorAnalysisViewModel.AddGameOutputLog(e.Line);
+        }
+        catch (Exception)
+        {
+            // 如果ErrorAnalysisViewModel不可用，忽略错误
+        }
+    }
+    
+    /// <summary>
+    /// 游戏错误接收事件处理
+    /// </summary>
+    private void OnGameErrorReceived(object? sender, ErrorReceivedEventArgs e)
+    {
+        lock (_gameError)
+        {
+            _gameError.Add(e.Line);
+        }
+        Console.WriteLine($"[Minecraft Error]: {e.Line}");
+        
+        // 实时更新到ErrorAnalysisViewModel
+        try
+        {
+            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+            errorAnalysisViewModel.AddGameErrorLog(e.Line);
+        }
+        catch (Exception)
+        {
+            // 如果ErrorAnalysisViewModel不可用，忽略错误
+        }
     }
     
     /// <summary>
@@ -1108,35 +1107,8 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
     private bool IsChinaMainland()
     {
-        try
-        {
-            // 获取当前CultureInfo
-            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-            var currentUICulture = System.Globalization.CultureInfo.CurrentUICulture;
-            
-            // 使用RegionInfo检测地区
-            var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
-            bool isCN = regionInfo.TwoLetterISORegionName == "CN";
-            
-            // 添加Debug输出，显示详细信息
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 当前CultureInfo: {currentCulture.Name} ({currentCulture.DisplayName})");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 当前UICulture: {currentUICulture.Name} ({currentUICulture.DisplayName})");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 当前RegionInfo: {regionInfo.Name} ({regionInfo.DisplayName})");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 三字母ISO代码: {regionInfo.ThreeLetterISORegionName}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 英文名称: {regionInfo.EnglishName}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 本地化名称: {regionInfo.NativeName}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 是否为中国大陆: {isCN}");
-            
-            return isCN;
-        } catch (Exception ex)
-        {
-            // 添加Debug输出，显示异常信息
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 检测失败，异常: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测] 默认不允许离线登录");
-            // 如果检测失败，默认不允许离线登录
-            return false;
-        }
+        // 使用 RegionValidator 服务
+        return _regionValidator.IsChinaMainland();
     }
 
     /// <summary>
@@ -1149,65 +1121,48 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             try
             {
-                // 检查网络连接
-                var connectionProfile = Windows.Networking.Connectivity.NetworkInformation.GetInternetConnectionProfile();
-                bool isInternetAvailable = connectionProfile != null && 
-                                         connectionProfile.GetNetworkConnectivityLevel() == Windows.Networking.Connectivity.NetworkConnectivityLevel.InternetAccess;
-                
-                if (!isInternetAvailable)
-                {
-                    // 没联网，跳过令牌刷新
-                    return;
-                }
-                
-                // 计算令牌剩余有效期
+                // 计算令牌剩余有效期，判断是否需要刷新
                 var issueTime = SelectedProfile.IssueInstant;
                 var expiresIn = SelectedProfile.ExpiresIn;
                 var expiryTime = issueTime.AddSeconds(expiresIn);
                 var timeUntilExpiry = expiryTime - DateTime.UtcNow;
                 
-                // 如果剩余有效期小于1小时，刷新令牌
+                // 如果剩余有效期小于1小时，显示续签提示
                 if (timeUntilExpiry < TimeSpan.FromHours(1))
                 {
                     // 根据角色类型显示不同的续签消息
-                    string renewingText, renewedText;
-                    if (SelectedProfile.TokenType == "external")
-                    {
-                        renewingText = "正在进行外置登录续签";
-                        renewedText = "外置登录续签成功";
-                    }
-                    else
-                    {
-                        renewingText = "LaunchPage_MicrosoftAccountRenewingText".GetLocalized();
-                        renewedText = "LaunchPage_MicrosoftAccountRenewedText".GetLocalized();
-                    }
+                    string renewingText = SelectedProfile.TokenType == "external" 
+                        ? "正在进行外置登录续签" 
+                        : "LaunchPage_MicrosoftAccountRenewingText".GetLocalized();
                     
-                    // 显示InfoBar消息
+                    // 显示InfoBar消息（刷新开始前）
                     IsLaunchSuccessInfoBarOpen = true;
                     LaunchSuccessMessage = $"{SelectedVersion} {renewingText}";
+                }
+                
+                var result = await _tokenRefreshService.CheckAndRefreshTokenAsync(SelectedProfile);
+                
+                if (result.WasRefreshed && result.UpdatedProfile != null)
+                {
+                    // 根据角色类型显示不同的完成消息
+                    string renewedText = SelectedProfile.TokenType == "external" 
+                        ? "外置登录续签成功" 
+                        : "LaunchPage_MicrosoftAccountRenewedText".GetLocalized();
                     
-                    // 调用令牌刷新方法
-                    var characterManagementViewModel = App.GetService<CharacterManagementViewModel>();
-                    // 更新当前角色到角色管理ViewModel
-                    characterManagementViewModel.CurrentProfile = SelectedProfile;
-                    // 刷新令牌
-                    await characterManagementViewModel.ForceRefreshTokenAsync();
+                    // 更新InfoBar消息（刷新完成后）
+                    LaunchSuccessMessage = $"{SelectedVersion} {renewedText}";
                     
                     // 刷新成功，更新当前角色信息
-                    SelectedProfile = characterManagementViewModel.CurrentProfile;
-                    
-                    // 更新InfoBar消息
-                    LaunchSuccessMessage = $"{SelectedVersion} {renewedText}";
+                    SelectedProfile = result.UpdatedProfile;
                 }
-            }
-            catch (HttpRequestException ex)
-            {
-                // 网络异常，跳过刷新，继续启动
-                Console.WriteLine($"网络异常，跳过令牌刷新: {ex.Message}");
+                else if (!string.IsNullOrEmpty(result.StatusMessage))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TokenRefresh] {result.StatusMessage}");
+                }
             }
             catch (Exception ex)
             {
-                // 其他刷新失败，继续启动，但记录错误
+                // 刷新失败，继续启动，但记录错误
                 Console.WriteLine($"令牌刷新失败: {ex.Message}");
             }
         }
@@ -1222,54 +1177,26 @@ public partial class LaunchViewModel : ObservableRecipient
             return;
         }
 
-        // 检查是否为离线角色且非中国大陆地区
-        if (SelectedProfile != null && SelectedProfile.IsOffline && !IsChinaMainland())
+        // 使用 RegionValidator 检查地区限制
+        var regionValidation = _regionValidator.ValidateLoginMethod(SelectedProfile);
+        if (!regionValidation.IsValid)
         {
             // 显示地区限制弹窗
             var dialog = new ContentDialog
             {
                 Title = "地区限制",
-                Content = "当前地区无法使用离线登录，请添加微软账户登录。",
+                Content = regionValidation.Errors.FirstOrDefault() ?? "当前地区无法使用此登录方式",
                 PrimaryButtonText = "前往",
                 CloseButtonText = "取消",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = App.MainWindow.Content.XamlRoot
             };
 
-            // 处理前往按钮点击事件
             dialog.PrimaryButtonClick += (sender, args) =>
             {
-                // 跳转到角色页面
                 _navigationService.NavigateTo("角色");
             };
 
-            // 显示弹窗
-            await dialog.ShowAsync();
-            return;
-        }
-        
-        // 检查是否为外置登录角色且非中国大陆地区
-        if (SelectedProfile != null && SelectedProfile.TokenType == "external" && !IsChinaMainland())
-        {
-            // 显示地区限制弹窗
-            var dialog = new ContentDialog
-            {
-                Title = "地区限制",
-                Content = "当前地区无法使用外置登录，请添加微软账户登录。",
-                PrimaryButtonText = "前往",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
-            };
-
-            // 处理前往按钮点击事件
-            dialog.PrimaryButtonClick += (sender, args) =>
-            {
-                // 跳转到角色页面
-                _navigationService.NavigateTo("角色");
-            };
-
-            // 显示弹窗
             await dialog.ShowAsync();
             return;
         }
@@ -1279,156 +1206,10 @@ public partial class LaunchViewModel : ObservableRecipient
 
         try
         {
-            // 1. 获取游戏目录路径并记录日志
-            string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionsDir = Path.Combine(minecraftPath, "versions");
-            string versionDir = Path.Combine(versionsDir, SelectedVersion);
-            string jarPath = Path.Combine(versionDir, $"{SelectedVersion}.jar");
-            string jsonPath = Path.Combine(versionDir, $"{SelectedVersion}.json");
-            string librariesPath = Path.Combine(minecraftPath, "libraries");
-            string assetsPath = Path.Combine(minecraftPath, "assets");
-            
-            // 2. 根据版本隔离设置生成游戏目录
-            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
-            bool enableVersionIsolation = versionIsolationValue ?? true; // 如果设置不存在，默认启用版本隔离
-            string gameDir = enableVersionIsolation 
-                ? Path.Combine(minecraftPath, "versions", SelectedVersion) 
-                : minecraftPath;
-            
-            // 3. 如果启用了版本隔离，确保目录存在
-            if (enableVersionIsolation && !Directory.Exists(gameDir))
-            {
-                Directory.CreateDirectory(gameDir);
-            }
-
-            // 4. 检查并创建 options.txt（设置默认语言为简体中文）
-            string optionsPath = Path.Combine(gameDir, "options.txt");
-            if (!File.Exists(optionsPath))
-            {
-                try
-                {
-                    await File.WriteAllTextAsync(optionsPath, "lang:zh_cn\n");
-                    LaunchStatus += $"\n已创建默认游戏设置文件: {optionsPath}";
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"创建 options.txt 失败: {ex.Message}");
-                    // 不阻止启动，只是记录错误
-                }
-            }
-
-            // 2. 检查必要文件是否存在
-            if (!Directory.Exists(gameDir))
-            {
-                LaunchStatus = $"游戏目录不存在: {gameDir}";
-                return;
-            }
-            
-            if (!Directory.Exists(versionDir))
-            {
-                LaunchStatus = $"版本目录不存在: {versionDir}";
-                return;
-            }
-            
-            if (!File.Exists(jarPath))
-            {
-                LaunchStatus = $"游戏JAR文件不存在: {jarPath}";
-                return;
-            }
-            
-            if (!File.Exists(jsonPath))
-            {
-                LaunchStatus = $"游戏JSON文件不存在: {jsonPath}";
-                return;
-            }
-            
-            // 3. 读取version.json获取版本信息
-            LaunchStatus = $"正在读取版本信息: {jsonPath}";
-            string versionJson = await File.ReadAllTextAsync(jsonPath);
-            VersionInfo versionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(versionJson);
-            
-            if (versionInfo == null)
-            {
-                LaunchStatus = $"解析版本信息失败";
-                return;
-            }
-            
-            // 4. 读取XianYuL.cfg配置文件，应用版本特定设置
-            bool useGlobalJavaSetting = true;
-            string versionJavaPath = string.Empty;
-            string settingsFileName = "XianYuL.cfg";
-            string settingsFilePath = Path.Combine(versionDir, settingsFileName);
-            
-            if (File.Exists(settingsFilePath))
-            {
-                try
-                {
-                    // 读取配置文件
-                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
-                    
-                    // 使用Newtonsoft.Json进行反序列化，保持属性名大小写
-                    var settings = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(settingsJson);
-                    
-                    if (settings != null)
-                    {
-                        // 处理Java设置，尝试多种可能的属性名大小写
-                        bool? useGlobalSetting = null;
-                        string? configJavaPath = null;
-                        
-                        // 尝试不同的属性名大小写
-                        try { useGlobalSetting = settings.UseGlobalJavaSetting; } catch { }
-                        if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useGlobalJavaSetting; } catch { }
-                        if (!useGlobalSetting.HasValue) try { useGlobalSetting = settings.useglobaljavasetting; } catch { }
-                        
-                        try { configJavaPath = settings.JavaPath; } catch { }
-                        if (configJavaPath == null) try { configJavaPath = settings.javaPath; } catch { }
-                        if (configJavaPath == null) try { configJavaPath = settings.javapath; } catch { }
-                        
-                        // 使用获取到的值或默认值
-                        useGlobalJavaSetting = useGlobalSetting ?? true;
-                        versionJavaPath = configJavaPath ?? string.Empty;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LaunchStatus += $"\n读取配置文件失败：{ex.Message}";
-                }
-            }
-            
-            // 5. 获取Java路径并记录日志
-            LaunchStatus = "正在查找Java运行时环境...";
-            int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8; // 默认使用Java 8
-            string javaPath = string.Empty;
-            
-            // 检查是否使用版本特定的Java路径
-            if (!useGlobalJavaSetting && !string.IsNullOrEmpty(versionJavaPath))
-            {
-                // 使用版本特定的Java路径
-                javaPath = versionJavaPath;
-                LaunchStatus += $"\n使用版本特定Java路径: {javaPath}";
-            }
-            else
-            {
-                // 使用全局Java设置 - 通过 JavaRuntimeService
-                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, versionJavaPath);
-            }
-            
-            if (string.IsNullOrEmpty(javaPath))
-            {
-                LaunchStatus = "未找到Java运行时环境，请先安装Java";
-                // 显示消息对话框提示用户
-                await ShowJavaNotFoundMessageAsync();
-                return;
-            }
-            
-            // 5. 检查并刷新令牌（如果需要）
+            // 检查并刷新令牌（如果需要）
             await CheckAndRefreshTokenIfNeededAsync();
             
-            // 6. 确保版本依赖和资源文件可用
-            LaunchStatus = $"正在检查版本依赖和资源文件...";
-            DownloadProgress = 0;
-            
-            // 在补全版本时显示InfoBar
+            // 显示准备中的 InfoBar
             IsLaunchSuccessInfoBarOpen = true;
             CurrentDownloadItem = "LaunchPage_PreparingGameFilesText".GetLocalized();
             LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_PreparingGameFilesText".GetLocalized()}";
@@ -1437,31 +1218,11 @@ public partial class LaunchViewModel : ObservableRecipient
             _isPreparingGame = true;
             _downloadCancellationTokenSource = new CancellationTokenSource();
             
-            // 这里会等待版本补全完成后才继续执行
-            try
-            {
-                // 创建当前下载回调，用于显示当前下载的文件名
-                Action<string> currentDownloadCallback = (currentHash) =>
-                {
-                    if (!string.IsNullOrEmpty(currentHash))
-                    {
-                        // 更新InfoBar消息，显示当前下载的文件名
-                                string currentStatus = LaunchStatus;
-                                if (currentStatus.Contains("LaunchPage_PreparingGameFilesProgressText".GetLocalized()))
-                                {
-                                    // 提取当前进度
-                                    int percentIndex = currentStatus.IndexOf('%');
-                                    if (percentIndex > 0)
-                                    {
-                                        string progressPart = currentStatus.Substring(0, percentIndex + 1);
-                                        CurrentDownloadItem = $"{progressPart} {"LaunchPage_DownloadingText".GetLocalized()}: {currentHash}";
-                                        LaunchSuccessMessage = $"{SelectedVersion} {progressPart} {"LaunchPage_DownloadingText".GetLocalized()}: {currentHash}";
-                                    }
-                                }
-                    }
-                };
-                
-                await _minecraftVersionService.EnsureVersionDependenciesAsync(SelectedVersion, minecraftPath, progress =>
+            // 调用 GameLaunchService 启动游戏
+            var result = await _gameLaunchService.LaunchGameAsync(
+                SelectedVersion,
+                SelectedProfile,
+                progress =>
                 {
                     // 检查是否已取消
                     if (_downloadCancellationTokenSource?.IsCancellationRequested == true)
@@ -1471,868 +1232,74 @@ public partial class LaunchViewModel : ObservableRecipient
                     
                     DownloadProgress = progress;
                     LaunchStatus = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
-                    
-                    // 更新InfoBar消息，显示当前进度
                     CurrentDownloadItem = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
                     LaunchSuccessMessage = string.Format("{0} {1:F0}%", $"{SelectedVersion} {"LaunchPage_PreparingGameFilesProgressText".GetLocalized()}", progress);
-                }, currentDownloadCallback);
-            }
-            catch (OperationCanceledException)
-            {
-                LaunchStatus = "已取消下载";
-                _isPreparingGame = false;
-                return;
-            }
-            catch (Exception ex)
-            {
-                // 显示详细的错误信息，帮助用户定位问题
-                LaunchStatus = string.Format("{0}: {1}", "LaunchPage_PreparingGameFilesFailedText".GetLocalized(), ex.Message);
-                Console.WriteLine($"启动失败: {ex.Message}");
-                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
-                if (ex.InnerException != null)
+                },
+                status =>
                 {
-                    Console.WriteLine($"内部错误: {ex.InnerException.Message}");
-                    Console.WriteLine($"内部错误堆栈: {ex.InnerException.StackTrace}");
-                    LaunchStatus += $"\n{"LaunchPage_InnerErrorText".GetLocalized()}: {ex.InnerException.Message}";
-                }
-                _isPreparingGame = false;
-                return;
-            }
-            finally
-            {
-                _downloadCancellationTokenSource?.Dispose();
-                _downloadCancellationTokenSource = null;
-            }
+                    LaunchStatus = status;
+                },
+                _downloadCancellationTokenSource.Token);
             
-            if (string.IsNullOrEmpty(versionInfo.MainClass))
+            _downloadCancellationTokenSource?.Dispose();
+            _downloadCancellationTokenSource = null;
+            _isPreparingGame = false;
+            
+            if (!result.Success)
             {
-                LaunchStatus = "LaunchPage_FailedToGetMainClassText".GetLocalized();
+                LaunchStatus = result.ErrorMessage ?? "启动失败";
+                
+                // 如果是 Java 未找到，显示提示
+                if (result.ErrorMessage?.Contains("Java") == true)
+                {
+                    await ShowJavaNotFoundMessageAsync();
+                }
                 return;
             }
             
-            // 5. 构建Classpath
-            LaunchStatus = "LaunchPage_BuildingClasspathText".GetLocalized();
-            HashSet<string> classpathEntries = new HashSet<string>(); // 使用HashSet避免重复
-            
-            // 添加游戏JAR文件
-            classpathEntries.Add(jarPath);
-            
-            // 添加所有依赖库
-            if (versionInfo.Libraries != null)
+            // 启动成功
+            if (result.GameProcess != null)
             {
-                LaunchStatus += $"\n发现 {versionInfo.Libraries.Count} 个库";
-                int addedCount = 0;
-                int skippedCount = 0;
+                _currentGameProcess = result.GameProcess;
+                _launchCommand = result.LaunchCommand ?? string.Empty;
                 
-                // 判断是否为Fabric相关版本（包括Fabric原生版本和整合包版本）
-                bool isFabricVersion = false;
-                
-                // 1. 优先使用统一版本信息服务判断
-                try
-                {
-                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-                    string versionDirectory = Path.Combine(minecraftPath, "versions", SelectedVersion);
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion, versionDirectory);
-                    
-                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
-                    {
-                        isFabricVersion = versionConfig.ModLoaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"使用统一版本信息服务判断Fabric版本失败: {ex.Message}");
-                }
-                
-                // 2. 如果统一服务判断失败，回退到旧的判断逻辑
-                if (!isFabricVersion)
-                {
-                    isFabricVersion = SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) || 
-                                      (SelectedVersion.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 && !SelectedVersion.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) && versionInfo.Libraries != null && 
-                                       versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
-                }
-                
-                // 如果是Fabric版本，跟踪ASM库的版本
-                Dictionary<string, string> asmLibraryVersions = new Dictionary<string, string>();
-                Dictionary<string, Library> asmLibraries = new Dictionary<string, Library>();
-                
-                // 第一次遍历：收集所有ASM库
-                if (isFabricVersion)
-                {
-                    foreach (var library in versionInfo.Libraries)
-                    {
-                        if (library.Name.StartsWith("org.ow2.asm:asm:"))
-                        {
-                            string[] parts = library.Name.Split(':');
-                            if (parts.Length >= 3)
-                            {
-                                string version = parts[2];
-                                asmLibraryVersions[library.Name] = version;
-                                asmLibraries[library.Name] = library;
-                            }
-                        }
-                    }
-                    
-                    // 找出最新的ASM版本
-                    string latestAsmVersion = "0.0";
-                    string latestAsmLibraryName = "";
-                    foreach (var kvp in asmLibraryVersions)
-                    {
-                        if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
-                        {
-                            latestAsmVersion = kvp.Value;
-                            latestAsmLibraryName = kvp.Key;
-                        }
-                    }
-                    
-                    LaunchStatus += $"\n检测到Fabric版本，最新ASM版本: {latestAsmVersion}";
-                }
-                
-                // 第二次遍历：添加库到classpath
-                foreach (var library in versionInfo.Libraries)
-                {
-                    // 添加调试信息
-                    bool isJoptSimple = library.Name.Contains("jopt") || library.Name.Contains("joptsimple");
-                    if (isJoptSimple)
-                    {
-                        LaunchStatus += $"\n找到 jopt-simple 库: {library.Name}";
-                    }
-                    
-                    // 检查是否是ASM库，且不是最新版本（仅Fabric版本需要）
-                    bool isOldAsmLibrary = false;
-                    if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
-                    {
-                        // 找出最新的ASM版本
-                        string latestAsmVersion = "0.0";
-                        foreach (var kvp in asmLibraryVersions)
-                        {
-                            if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
-                            {
-                                latestAsmVersion = kvp.Value;
-                            }
-                        }
-                        
-                        // 检查当前库是否是旧版本
-                        string[] parts = library.Name.Split(':');
-                        if (parts.Length >= 3 && parts[2] != latestAsmVersion)
-                        {
-                            isOldAsmLibrary = true;
-                            LaunchStatus += $"\n跳过旧版ASM库: {library.Name}";
-                            skippedCount++;
-                            continue;
-                        }
-                    }
-                    
-                    // 检查规则（简单版本，只处理Windows）
-                    bool isAllowed = true;
-                    if (library.Rules != null)
-                    {
-                        isAllowed = library.Rules.Any(r => r.Action == "allow" && (r.Os == null || r.Os.Name == "windows"));
-                        if (isAllowed && library.Rules.Any(r => r.Action == "disallow" && (r.Os == null || r.Os.Name == "windows")))
-                        {
-                            isAllowed = false;
-                        }
-                    }
-                    
-                    if (!isAllowed)
-                    {
-                        if (isJoptSimple)
-                        {
-                            LaunchStatus += $"\n但被规则过滤掉了!";
-                        }
-                        skippedCount++;
-                        continue;
-                    }
-                    
-                    // 处理库的情况：
-                    // 1. 检查库名称是否包含classifier（如:natives-windows或@zip）
-                    bool hasClassifier = library.Name.Count(c => c == ':') > 2;
-                    
-                    // 2. 检查是否为原生库（根据library.Name是否包含natives-前缀来判断）
-                    bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
-                    
-                    if (isNativeLibrary)
-                    {
-                        // 名称中包含classifier的原生库
-                        // 原生库已在下载阶段解压到natives目录，这里不需要添加到classpath
-                        continue;
-                    }
-                    else
-                    {
-                        // 常规库，添加到classpath
-                        bool isOptifineLibrary = library.Name.StartsWith("optifine:", StringComparison.OrdinalIgnoreCase);
-                        
-                        // 所有非原生库都添加到classpath，无论是否有Artifact字段
-                        // 兼容其他启动器生成的json格式，确保所有依赖库都能被正确加载
-                        if (true) // 无条件添加所有非原生库
-                        {
-                            // 检查是否为neoforge-universal.jar，如果是则跳过
-                            if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
-                                (library.Name.Contains("universal", StringComparison.OrdinalIgnoreCase) || 
-                                 library.Name.Contains("installertools", StringComparison.OrdinalIgnoreCase)))
-                            {
-                                _logger.LogInformation("跳过添加neoforge-universal或installertools到classpath");
-                                skippedCount++;
-                                continue;
-                            }
-                            
-                            // 对于带有classifier的库，需要特殊处理文件名
-                            string classifier = hasClassifier ? library.Name.Split(':')[3] : null;
-                            string libPath = GetLibraryFilePath(library.Name, librariesPath, classifier);
-                            
-                            if (File.Exists(libPath))
-                            {
-                                bool wasAdded = classpathEntries.Add(libPath);
-                                if (wasAdded)
-                                {
-                                    addedCount++;
-                                    if (isJoptSimple)
-                                    {
-                                        LaunchStatus += $"\n已添加到classpath: {libPath}";
-                                    }
-                                    else if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
-                                    {
-                                        LaunchStatus += $"\n已添加ASM库: {library.Name}";
-                                    }
-                                    else if (library.Name.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        LaunchStatus += $"\n已添加NeoForge库: {library.Name}";
-                                    }
-                                    else if (isOptifineLibrary)
-                                    {
-                                        LaunchStatus += $"\n已添加Optifine库: {library.Name}";
-                                        _logger.LogInformation("已添加Optifine库到classpath: {LibraryName}", library.Name);
-                                    }
-                                }
-                                else
-                                {
-                                    // 库已存在于classpath中
-                                    if (isJoptSimple)
-                                    {
-                                        LaunchStatus += $"\n已存在于classpath中: {libPath}";
-                                    }
-                                    skippedCount++;
-                                }
-                            }
-                            else
-                            {
-                                // 如果库文件不存在，尝试使用不带classifier的文件名
-                                string libPathWithoutClassifier = GetLibraryFilePath(library.Name, librariesPath, null);
-                                if (File.Exists(libPathWithoutClassifier))
-                                {
-                                    bool wasAdded = classpathEntries.Add(libPathWithoutClassifier);
-                                    if (wasAdded)
-                                    {
-                                        addedCount++;
-                                        if (isJoptSimple)
-                                        {
-                                            LaunchStatus += $"\n已添加到classpath（使用不带classifier的文件名）: {libPathWithoutClassifier}";
-                                        }
-                                        else if (isOptifineLibrary)
-                                        {
-                                            LaunchStatus += $"\n已添加Optifine库（使用不带classifier的文件名）: {library.Name}";
-                                            _logger.LogInformation("已添加Optifine库到classpath（使用不带classifier的文件名）: {LibraryName}", library.Name);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        skippedCount++;
-                                    }
-                                }
-                                else
-                                {
-                                    if (isJoptSimple)
-                                    {
-                                        LaunchStatus += $"\n但文件不存在: {libPath}";
-                                    }
-                                    else if (isOptifineLibrary)
-                                    {
-                                        LaunchStatus += $"\nOptifine库文件不存在: {libPath}";
-                                        _logger.LogError("Optifine库文件不存在: {LibPath}", libPath);
-                                    }
-                                    skippedCount++;
-                                }
-                            }
-                        }
-                        else if (library.Downloads?.Classifiers != null && library.Natives != null)
-                        {
-                            // 这种情况是旧格式的原生库定义，已在下载阶段处理，不需要添加到classpath
-                            continue;
-                        }
-                        else if (isOptifineLibrary)
-                        {
-                            // 对于Optifine库，如果上面的条件都不满足，也尝试添加
-                            string libPath = GetLibraryFilePath(library.Name, librariesPath, null);
-                            if (File.Exists(libPath))
-                            {
-                                bool wasAdded = classpathEntries.Add(libPath);
-                                if (wasAdded)
-                                {
-                                    addedCount++;
-                                    LaunchStatus += $"\n已添加Optifine库: {library.Name}";
-                                    _logger.LogInformation("已添加Optifine库到classpath: {LibraryName}", library.Name);
-                                }
-                                else
-                                {
-                                    skippedCount++;
-                                }
-                            }
-                            else
-                            {
-                                LaunchStatus += $"\nOptifine库文件不存在: {libPath}";
-                                _logger.LogError("Optifine库文件不存在: {LibPath}", libPath);
-                                skippedCount++;
-                            }
-                        }
-                    }
-                }
-                
-                LaunchStatus += $"\n成功添加 {addedCount} 个库到classpath，跳过 {skippedCount} 个库";
-            }
-            
-            // 构建Classpath字符串（使用分号分隔，每个路径不加引号）
-            string classpath = string.Join(";", classpathEntries);
-
-            // 6. 构建启动参数
-            List<string> args = new List<string>();
-            
-            // 添加JVM参数
-            // 基础JVM参数
-            // 根据Java版本动态添加编码参数
-            // 首先获取当前使用的Java版本
-            int currentJavaMajorVersion = 8; // 默认Java 8
-            
-            // 使用JavaRuntimeService获取Java版本信息
-            System.Diagnostics.Debug.WriteLine("[DEBUG] 开始获取当前使用的Java版本信息");
-            var javaVersionInfo = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath);
-            if (javaVersionInfo != null)
-            {
-                currentJavaMajorVersion = javaVersionInfo.MajorVersion;
-                LaunchStatus += $"\n当前使用的Java版本: {javaVersionInfo.FullVersion}, 主版本号: {currentJavaMajorVersion}";
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 找到当前使用的Java版本: 路径={javaVersionInfo.Path}, 版本={javaVersionInfo.FullVersion}, 主版本号={currentJavaMajorVersion}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 未找到当前使用的Java版本信息，使用默认主版本号: {currentJavaMajorVersion}");
-            }
-            
-            // 根据Java版本添加编码参数
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前Java主版本号: {currentJavaMajorVersion}, 开始添加编码参数");
-            
-            // Java 9及以上版本，添加编码参数
-            if (currentJavaMajorVersion > 8)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，添加编码参数: -Dstderr.encoding=UTF-8");
-                args.Add("-Dstderr.encoding=UTF-8");
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，添加编码参数: -Dstdout.encoding=UTF-8");
-                args.Add("-Dstdout.encoding=UTF-8");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Java {currentJavaMajorVersion}，不添加编码参数");
-            }
-            
-            args.Add("-XX:+UseG1GC");
-            args.Add("-XX:-UseAdaptiveSizePolicy");
-            args.Add("-XX:-OmitStackTraceInFastThrow");
-            args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
-            args.Add("-Dlog4j2.formatMsgNoLookups=true");
-            args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
-            
-            // 读取XianYuL.cfg配置文件，应用版本特定设置
-            // 注意：settingsFileName和settingsFilePath已经在前面定义过了
-            
-            if (File.Exists(settingsFilePath))
-            {
-                try
-                {
-                    // 读取配置文件
-                    string settingsJson = await File.ReadAllTextAsync(settingsFilePath);
-                    
-                    // 使用Newtonsoft.Json进行反序列化，保持属性名大小写
-                    var settings = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(settingsJson);
-                    
-                    if (settings != null)
-                    {
-                        // 处理内存分配设置，尝试多种可能的属性名大小写
-                        bool? autoMemoryAllocation = null;
-                        double? initialHeapMemory = null;
-                        double? maximumHeapMemory = null;
-                        int? windowWidth = null;
-                        int? windowHeight = null;
-                        
-                        // 尝试不同的属性名大小写
-                        try { autoMemoryAllocation = settings.AutoMemoryAllocation; } catch { } 
-                        if (!autoMemoryAllocation.HasValue) try { autoMemoryAllocation = settings.autoMemoryAllocation; } catch { } 
-                        if (!autoMemoryAllocation.HasValue) try { autoMemoryAllocation = settings.automemoryallocation; } catch { } 
-                        
-                        try { initialHeapMemory = settings.InitialHeapMemory; } catch { } 
-                        if (!initialHeapMemory.HasValue) try { initialHeapMemory = settings.initialHeapMemory; } catch { } 
-                        if (!initialHeapMemory.HasValue) try { initialHeapMemory = settings.initialheapmemory; } catch { } 
-                        
-                        try { maximumHeapMemory = settings.MaximumHeapMemory; } catch { } 
-                        if (!maximumHeapMemory.HasValue) try { maximumHeapMemory = settings.maximumHeapMemory; } catch { } 
-                        if (!maximumHeapMemory.HasValue) try { maximumHeapMemory = settings.maximumheapmemory; } catch { } 
-                        
-                        try { windowWidth = settings.WindowWidth; } catch { } 
-                        if (!windowWidth.HasValue) try { windowWidth = settings.windowWidth; } catch { } 
-                        if (!windowWidth.HasValue) try { windowWidth = settings.windowwidth; } catch { } 
-                        
-                        try { windowHeight = settings.WindowHeight; } catch { } 
-                        if (!windowHeight.HasValue) try { windowHeight = settings.windowHeight; } catch { } 
-                        if (!windowHeight.HasValue) try { windowHeight = settings.windowheight; } catch { } 
-                        
-                        // 使用获取到的值或默认值
-                        bool finalAutoMemoryAllocation = autoMemoryAllocation ?? true;
-                        double finalInitialHeapMemory = initialHeapMemory ?? 6.0;
-                        double finalMaximumHeapMemory = maximumHeapMemory ?? 12.0;
-                        int finalWindowWidth = windowWidth ?? 1280;
-                        int finalWindowHeight = windowHeight ?? 720;
-                        
-                        if (finalAutoMemoryAllocation)
-                        {
-                            // 自动分配内存：让JVM自动管理内存，不添加-Xms/-Xmx参数
-                            LaunchStatus += $"\n使用JVM自动内存管理，不添加-Xms/-Xmx参数";
-                        }
-                        else
-                        {
-                            // 手动分配内存：添加用户设置的-Xms/-Xmx参数
-                            // 将GB转换为MB，处理小数情况
-                            string initialHeapParam = GetInitialHeapParam(finalInitialHeapMemory);
-                            string maximumHeapParam = GetMaximumHeapParam(finalMaximumHeapMemory);
-                            
-                            args.Add(initialHeapParam);
-                            args.Add(maximumHeapParam);
-                            LaunchStatus += $"\n手动分配内存：初始堆 {finalInitialHeapMemory}G，最大堆 {finalMaximumHeapMemory}G";
-                            LaunchStatus += $"\n转换为JVM参数：{initialHeapParam} {maximumHeapParam}";
-                        }
-                        
-                        // 处理分辨率设置
-                        // 保存分辨率设置，稍后添加到游戏参数
-                        _windowWidth = finalWindowWidth;
-                        _windowHeight = finalWindowHeight;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LaunchStatus += $"\n读取配置文件失败：{ex.Message}";
-                }
-            }
-            else
-            {
-                // 未找到配置文件，使用JVM自动内存管理
-                LaunchStatus += $"\n未找到配置文件，使用JVM自动内存管理，不添加-Xms/-Xmx参数";
-            }
-            
-            // 处理JVM参数（区分1.12及以下版本和1.13及以上版本）
-            bool hasClasspath = false;
-            // 状态变量：标记下一个参数是否是-p的值
-            bool isNextArgPValue = false;
-            
-            if (versionInfo.Arguments != null && versionInfo.Arguments.Jvm != null)
-            {
-                // 1.13及以上版本：使用version.json中的Arguments字段
-                foreach (var jvmArg in versionInfo.Arguments.Jvm)
-                {
-                    if (jvmArg is string argStr)
-                    {
-                        // 获取不带.jar后缀的版本名称
-                        string versionName = Path.GetFileNameWithoutExtension(jarPath);
-                        
-                        // 替换占位符
-                        string processedArg = argStr
-                            .Replace("${natives_directory}", Path.Combine(versionDir, $"{SelectedVersion}-natives"))
-                            .Replace("${launcher_name}", "XianYuLauncher")
-                            .Replace("${launcher_version}", "1.0")
-                            .Replace("${classpath}", classpath)
-                            .Replace("${classpath_separator}", ";") // 添加对classpath_separator的处理
-                            .Replace("${version_name}", versionName); // 添加对${version_name}占位符的处理
-                        
-                        // 检查是否是-p参数的标记
-                        if (processedArg == "-p")
-                        {
-                            // 这是-p参数标记，下一个参数是路径值
-                            isNextArgPValue = true;
-                            args.Add(processedArg); // 直接添加-p参数
-                            continue; // 跳过后续处理，等待处理下一个参数
-                        }
-                        
-                        // 检查是否是-p参数的值
-                        if (isNextArgPValue)
-                        {
-                            // 这是-p参数的值，如"${library_directory}/path/to/file.jar;..."
-                            // 替换${library_directory}为实际路径
-                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
-                            
-                            // 替换所有/为反斜杠
-                            processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
-                            
-                            // 移除末尾的空格
-                            processedArg = processedArg.Trim();
-                            
-                            // 不再手动添加引号，统一由后续处理添加
-                            processedArg = processedArg;
-                            
-                            // 重置状态变量
-                            isNextArgPValue = false;
-                        }
-                        // 处理-D参数（如-DlibraryDirectory）
-                        else if (processedArg.StartsWith("-D"))
-                        {
-                            // 检查是否包含=${library_directory}
-                            if (processedArg.Contains("=${library_directory}"))
-                            {
-                                // 替换${library_directory}为实际路径，不再手动添加引号
-                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
-                            }
-                            // 处理其他-D参数中的路径
-                            else if (processedArg.Contains("=") && processedArg.Contains("${"))
-                            {
-                                // 这里可以添加其他-D参数的处理
-                            }
-                        }
-                        // 处理其他包含${library_directory}的参数
-                        else if (processedArg.Contains("${library_directory}"))
-                        {
-                            // 替换${library_directory}为实际路径
-                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
-                            
-                            // 只在路径中替换/为\，不在JVM模块参数中替换
-                            if (processedArg.Contains(".jar") || processedArg.Contains(".zip"))
-                            {
-                                processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
-                            }
-                        }
-                        else
-                        {
-                            // 其他参数，不替换/为\
-                            processedArg = processedArg.Replace("${library_directory}", librariesPath);
-                        }
-                        
-                        args.Add(processedArg);
-                        
-                        // 检查是否包含classpath
-                        if (processedArg.Contains("-cp") || processedArg.Contains("-classpath"))
-                        {
-                            hasClasspath = true;
-                        }
-                    }
-                    // 处理规则对象（暂时简单跳过）
-                }
-            }
-            
-            // 无论如何都确保添加classpath参数
-            if (!hasClasspath)
-            {
-                // 添加classpath参数（将-cp和路径作为一个参数处理，确保格式为：-cp "path1;path2;path3"）
-                args.Add($"-cp \"{classpath}\"");
-                // 添加原生库路径
-                args.Add($"-Djava.library.path={Path.Combine(versionDir, $"{SelectedVersion}-natives")}");
-                // 添加启动器品牌和版本信息
-                args.Add("-Dminecraft.launcher.brand=XianYuLauncher");
-                args.Add("-Dminecraft.launcher.version=1.0");
-            }
-            
-            // 检查是否为外置登录角色
-            bool isExternalLogin = SelectedProfile != null && !string.IsNullOrEmpty(SelectedProfile.AuthServer) && SelectedProfile.TokenType == "external";
-            if (isExternalLogin)
-            {
-                Debug.WriteLine("[LaunchViewModel] 检测到外置登录角色，开始添加authlib-injector相关参数");
-                
-                // 添加authlib-injector相关的JVM参数
-                var externalJvmArgs = await _authlibInjectorService.GetJvmArgumentsAsync(SelectedProfile.AuthServer);
-                args.InsertRange(0, externalJvmArgs); // 插入到JVM参数列表开头
-            }
-            
-            // 确定userType，提升作用域以便后续使用
-            string userType = isExternalLogin ? "mojang" : (SelectedProfile.IsOffline ? "offline" : "msa");
-            
-            // 添加主类
-            args.Add(versionInfo.MainClass);
-            
-            // 游戏基本参数
-            args.Add($"--version");
-            args.Add(SelectedVersion);
-            args.Add($"--gameDir");
-            args.Add(gameDir);
-            args.Add($"--assetsDir");
-            args.Add(assetsPath);
-            
-            // 从version.json获取assetIndex
-            string assetIndex = SelectedVersion;
-            if (versionInfo.AssetIndex != null && !string.IsNullOrEmpty(versionInfo.AssetIndex.Id))
-            {
-                assetIndex = versionInfo.AssetIndex.Id;
-            }
-            args.Add($"--assetIndex");
-            args.Add(assetIndex);
-            
-            // 添加用户名参数
-            args.Add($"--username");
-            args.Add(SelectedProfile.Name);
-            
-            // 添加UUID参数，使用角色的Id
-            args.Add($"--uuid");
-            args.Add(SelectedProfile.Id);
-            
-            // 为所有玩家添加accessToken和userType参数
-            // 添加AccessToken参数，离线玩家使用默认值
-            args.Add($"--accessToken");
-            args.Add(string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken);
-            
-            // 添加userType参数，离线玩家使用"offline"，微软登录使用"msa"，外置登录使用"mojang"
-            args.Add($"--userType");
-            args.Add(userType);
-            
-            // 添加versionType参数，标识启动器类型
-            args.Add($"--versionType");
-            args.Add("XianYuLauncher");
-            
-            // 为1.9以下版本添加--userProperties参数
-            if (IsVersionBelow1_9(SelectedVersion))
-            {
-                args.Add("--userProperties");
-                args.Add("{}");
-            }
-
-            // 为特定的早期版本添加AlphaVanillaTweaker参数
-            if (NeedsAlphaVanillaTweaker(SelectedVersion))
-            {
-                args.Add("--tweakClass");
-                args.Add("net.minecraft.launchwrapper.AlphaVanillaTweaker");
-            }
-            
-            // 检查version.json中是否存在minecraftArguments字段（旧版Forge使用）
-            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
-            {
-                // 使用minecraftArguments构建游戏参数
-                string minecraftArgs = versionInfo.MinecraftArguments;
-                
-                // 替换所有占位符
-                minecraftArgs = minecraftArgs
-                    .Replace("${auth_player_name}", SelectedProfile.Name)
-                    .Replace("${version_name}", SelectedVersion)
-                    .Replace("${game_directory}", gameDir)
-                    .Replace("${assets_root}", assetsPath)
-                    .Replace("${assets_index_name}", versionInfo.AssetIndex?.Id ?? SelectedVersion)
-                    .Replace("${auth_uuid}", SelectedProfile.Id)
-                    .Replace("${auth_access_token}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
-                    .Replace("${auth_session}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
-                    .Replace("${user_type}", userType)
-                    .Replace("${user_properties}", "{}")
-                    .Replace("${version_type}", "XianYuLauncher")
-                    .Replace("${auth_xuid}", "") // Xuid属性不存在，使用默认空值
-                    .Replace("${clientid}", "0"); // ClientId属性不存在，使用默认值0
-                
-                // 解析参数，考虑空格情况
-                var parsedArgs = ParseArguments(minecraftArgs);
-                
-                // 收集已经添加的参数键（如--version、--gameDir等）
-                var addedArgKeys = new HashSet<string>();
-                foreach (var arg in args)
-                {
-                    if (arg.StartsWith("--"))
-                    {
-                        // 提取参数键（--versionType除外）
-                        addedArgKeys.Add(arg);
-                    }
-                }
-                
-                // 添加解析后的参数，跳过已经存在的参数（--versionType除外）
-                for (int i = 0; i < parsedArgs.Count; i++)
-                {
-                    string arg = parsedArgs[i];
-                    
-                    // 检查是否是--versionType参数
-                    if (arg == "--versionType")
-                    {
-                        // 跳过--versionType和它的值，由启动器统一设置
-                        i++; // 跳过值
-                        continue;
-                    }
-                    
-                    // 检查是否是其他已经添加过的参数
-                    if (arg.StartsWith("--") && addedArgKeys.Contains(arg))
-                    {
-                        // 跳过已经添加过的参数和它的值
-                        i++; // 跳过值
-                        continue;
-                    }
-                    
-                    // 添加参数和值
-                    args.Add(arg);
-                    LaunchStatus += $"\n从minecraftArguments添加参数: {arg}";
-                    
-                    // 如果还有下一个参数且不是以--开头，它是当前参数的值
-                    if (i + 1 < parsedArgs.Count && !parsedArgs[i + 1].StartsWith("--"))
-                    {
-                        i++;
-                        args.Add(parsedArgs[i]);
-                        LaunchStatus += $"\n从minecraftArguments添加参数值: {parsedArgs[i]}";
-                    }
-                }
-            }
-            // 检查version.json中是否有游戏参数（用于NeoForge等ModLoader）
-            else if (versionInfo.Arguments != null && versionInfo.Arguments.Game != null)
-            {
-                // 添加version.json中的额外游戏参数（特别是NeoForge所需的参数）
-                foreach (var gameArg in versionInfo.Arguments.Game)
-                {
-                    if (gameArg is string argStr)
-                    {
-                        // 跳过已经手动添加的基本参数
-                        if (argStr.StartsWith("--version") || 
-                            argStr.StartsWith("--gameDir") || 
-                            argStr.StartsWith("--assetsDir") || 
-                            argStr.StartsWith("--assetIndex") || 
-                            argStr.StartsWith("--username") || 
-                            argStr.StartsWith("--uuid") || 
-                            argStr.StartsWith("--accessToken") || 
-                            argStr.StartsWith("--userType") || 
-                            argStr == "--userProperties" || 
-                            argStr == "{}")
-                        {
-                            continue;
-                        }
-                        
-                        // 替换占位符
-                        string processedArg = argStr
-                            .Replace("${auth_player_name}", SelectedProfile.Name)
-                            .Replace("${version_name}", SelectedVersion)
-                            .Replace("${game_directory}", gameDir)
-                            .Replace("${assets_root}", assetsPath)
-                            .Replace("${assets_index_name}", versionInfo.AssetIndex?.Id ?? SelectedVersion)
-                            .Replace("${auth_uuid}", SelectedProfile.Id)
-                            .Replace("${auth_access_token}", string.IsNullOrEmpty(SelectedProfile.AccessToken) ? "0" : SelectedProfile.AccessToken)
-                            .Replace("${auth_xuid}", "") // Xuid属性不存在，使用默认空值
-                            .Replace("${clientid}", "0") // ClientId属性不存在，使用默认值0
-                            .Replace("${version_type}", versionInfo.Type ?? "release");
-                        
-                        args.Add(processedArg);
-                        LaunchStatus += $"\n添加游戏参数: {processedArg}";
-                    }
-                    // 处理规则对象（暂时简单跳过）
-                }
-            }
-            
-            // 添加分辨率参数
-            args.Add($"--width");
-            args.Add(_windowWidth.ToString());
-            args.Add($"--height");
-            args.Add(_windowHeight.ToString());
-            LaunchStatus += $"\n添加分辨率参数: --width {_windowWidth} --height {_windowHeight}";
-
-            // 7. 构建完整的启动命令并显示
-            // 对参数添加双引号，但如果参数已经包含引号则不再添加
-            string processedArgs = string.Join(" ", args.Select(a => 
-                (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
-            string fullCommand = $"\"{javaPath}\" {processedArgs}";
-            LaunchStatus = $"完整启动命令：{fullCommand}";
-            
-            // 保存启动命令，以便在进程退出时使用
-            _launchCommand = fullCommand;
-            
-            // 重置日志列表，准备新的启动
-            _gameOutput.Clear();
-            _gameError.Clear();
-            
-            // 直接执行Java命令，不生成bat文件
-            // 尝试使用 javaw.exe 代替 java.exe，javaw 不会创建控制台窗口
-            string javaExecutable = javaPath;
-            if (javaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
-            {
-                string javawPath = javaPath.Substring(0, javaPath.Length - 8) + "javaw.exe";
-                if (File.Exists(javawPath))
-                {
-                    javaExecutable = javawPath;
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 使用 javaw.exe 代替 java.exe: {javawPath}");
-                }
-            }
-            
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = javaExecutable,
-                Arguments = processedArgs, // 使用已经处理过的带引号的参数列表
-                UseShellExecute = false, // 设置为false以便捕获输出
-                CreateNoWindow = false, // 不隐藏控制台窗口，让Java自己创建窗口
-                WorkingDirectory = versionDir, // 设置工作目录为当前版本目录，解决mod启动崩溃问题
-                RedirectStandardError = true, // 重定向标准错误以便后续分析
-                RedirectStandardOutput = true, // 重定向标准输出以便后续分析
-                StandardErrorEncoding = System.Text.Encoding.UTF8, // 设置编码为UTF-8
-                StandardOutputEncoding = System.Text.Encoding.UTF8 // 设置编码为UTF-8
-            };
-
-            Process gameProcess = new Process { StartInfo = startInfo };
-
-            // 启动进程
-            try
-            {
-                gameProcess.Start();
-                
-                // 保存进程引用，用于后续终止
-                _currentGameProcess = gameProcess;
-                _isPreparingGame = false;
-                
-                LaunchStatus = "LaunchPage_GameCommandExecutedText".GetLocalized();
-                
-                // 显示启动成功InfoBar
+                // 显示启动成功 InfoBar
                 LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_GameStartedSuccessfullyText".GetLocalized()}";
                 IsLaunchSuccessInfoBarOpen = true;
                 
-                // 设置EnableRaisingEvents为true
-                gameProcess.EnableRaisingEvents = true;
-                
                 // 检查是否启用了实时日志
-                // 直接从本地存储读取，确保获取最新值
                 bool isRealTimeLogsEnabled = false;
                 try
                 {
-                    var localSettingsService = App.GetService<ILocalSettingsService>();
-                    isRealTimeLogsEnabled = await localSettingsService.ReadSettingAsync<bool?>("EnableRealTimeLogs") ?? false;
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 直接从本地存储读取实时日志设置，值为: {isRealTimeLogsEnabled}");
+                    isRealTimeLogsEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableRealTimeLogs") ?? false;
                 }
-                catch (Exception ex)
+                catch
                 {
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 读取本地存储失败: {ex.Message}");
-                    // 读取失败时，使用SettingsViewModel的值作为备选
                     var settingsViewModel = App.GetService<SettingsViewModel>();
                     isRealTimeLogsEnabled = settingsViewModel.EnableRealTimeLogs;
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 使用SettingsViewModel的实时日志设置，值为: {isRealTimeLogsEnabled}");
                 }
                 
                 if (isRealTimeLogsEnabled)
                 {
-                    // 导航到实时日志页面，并传递启动命令
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 实时日志选项已开启，准备导航到ErrorAnalysisPage");
-                    
-                    // 先获取 ErrorAnalysisViewModel 并设置启动命令
                     var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
                     errorAnalysisViewModel.SetLaunchCommand(_launchCommand);
-                    
                     _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
-                    System.Diagnostics.Debug.WriteLine($"LaunchViewModel: 导航到ErrorAnalysisPage成功");
                 }
                 
-                // 异步读取输出（用于实时捕获游戏输出）
-                _ = Task.Run(() => ReadProcessOutputAsync(gameProcess));
+                // 使用 GameProcessMonitor 监控进程
+                _ = _gameProcessMonitor.MonitorProcessAsync(result.GameProcess, _launchCommand);
                 
-                // 启动异步监控进程退出
-                _ = MonitorGameProcessExitAsync(gameProcess, _launchCommand);
-                
-                // 检查是否为离线角色
+                // 检查是否为离线角色，处理离线启动计数
                 if (SelectedProfile.IsOffline)
                 {
-                    // 增加离线启动计数
                     int offlineLaunchCount = await _localSettingsService.ReadSettingAsync<int>(OfflineLaunchCountKey) + 1;
                     await _localSettingsService.SaveSettingAsync(OfflineLaunchCountKey, offlineLaunchCount);
                     
-                    // 检查是否是10的倍数
                     if (offlineLaunchCount % 10 == 0)
                     {
-                        // 显示离线游玩提示弹窗
                         App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
                         {
-                            var dialog = new ContentDialog
+                            var offlineDialog = new ContentDialog
                             {
                                 Title = "离线游玩提示",
                                 Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
@@ -2341,10 +1308,9 @@ public partial class LaunchViewModel : ObservableRecipient
                                 XamlRoot = App.MainWindow.Content.XamlRoot
                             };
                             
-                            var result = await dialog.ShowAsync();
-                            if (result == ContentDialogResult.Secondary)
+                            var dialogResult = await offlineDialog.ShowAsync();
+                            if (dialogResult == ContentDialogResult.Secondary)
                             {
-                                // 跳转到Minecraft官方商店页面
                                 var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
                                 await Windows.System.Launcher.LaunchUriAsync(uri);
                             }
@@ -2352,22 +1318,23 @@ public partial class LaunchViewModel : ObservableRecipient
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                LaunchStatus += $"\n启动游戏进程失败：{ex.Message}";
-                Console.WriteLine($"启动游戏进程失败：{ex.Message}");
-                Console.WriteLine($"错误堆栈：{ex.StackTrace}");
-                return;
-            }
-            // 游戏启动后保持在当前页面，不进行自动导航
+        }
+        catch (OperationCanceledException)
+        {
+            LaunchStatus = "已取消下载";
+            _isPreparingGame = false;
         }
         catch (Exception ex)
         {
             LaunchStatus = $"游戏启动异常: {ex.Message}";
+            Console.WriteLine($"启动失败: {ex.Message}");
+            Console.WriteLine($"错误堆栈: {ex.StackTrace}");
         }
         finally
         {
             IsLaunching = false;
+            _downloadCancellationTokenSource?.Dispose();
+            _downloadCancellationTokenSource = null;
         }
     }
     

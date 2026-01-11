@@ -53,6 +53,11 @@ public class VersionConfig
     public string JavaPath { get; set; } = string.Empty;
     
     /// <summary>
+    /// 是否使用全局Java设置
+    /// </summary>
+    public bool UseGlobalJavaSetting { get; set; } = true;
+    
+    /// <summary>
     /// 窗口宽度
     /// </summary>
     public int WindowWidth { get; set; } = 1280;

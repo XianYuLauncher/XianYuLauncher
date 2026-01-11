@@ -128,6 +128,15 @@ public partial class App : Application
             services.AddSingleton<MaterialService>();
             services.AddSingleton<UpdateService>();
             
+            // LaunchViewModel 重构 - 新增服务
+            services.AddSingleton<IGameLaunchService, GameLaunchService>();
+            services.AddSingleton<ICrashAnalyzer, CrashAnalyzer>();
+            services.AddSingleton<IProfileManager, ProfileManager>();
+            services.AddSingleton<IVersionConfigService, VersionConfigService>();
+            services.AddSingleton<IRegionValidator, RegionValidator>();
+            services.AddSingleton<ITokenRefreshService, TokenRefreshService>();
+            services.AddTransient<IGameProcessMonitor, GameProcessMonitor>(); // 瞬态：每个进程独立监控器
+            
             // HTTP Client
             services.AddHttpClient();
             

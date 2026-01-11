@@ -1,0 +1,58 @@
+namespace XianYuLauncher.Core.Models;
+
+/// <summary>
+/// 崩溃分析结果
+/// </summary>
+public class CrashAnalysisResult
+{
+    /// <summary>
+    /// 崩溃分析结果
+    /// </summary>
+    public string Analysis { get; set; } = "未知崩溃原因";
+    
+    /// <summary>
+    /// 诊断建议列表
+    /// </summary>
+    public List<string> Suggestions { get; set; } = new();
+    
+    /// <summary>
+    /// 崩溃类型
+    /// </summary>
+    public CrashType Type { get; set; } = CrashType.Unknown;
+}
+
+/// <summary>
+/// 崩溃类型枚举
+/// </summary>
+public enum CrashType
+{
+    /// <summary>
+    /// 未知崩溃
+    /// </summary>
+    Unknown,
+    
+    /// <summary>
+    /// 手动触发的崩溃（调试用）
+    /// </summary>
+    ManuallyTriggered,
+    
+    /// <summary>
+    /// 内存不足
+    /// </summary>
+    OutOfMemory,
+    
+    /// <summary>
+    /// Mod 冲突
+    /// </summary>
+    ModConflict,
+    
+    /// <summary>
+    /// 缺少依赖
+    /// </summary>
+    MissingDependency,
+    
+    /// <summary>
+    /// Java 版本不匹配
+    /// </summary>
+    JavaVersionMismatch
+}
