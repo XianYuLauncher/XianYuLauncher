@@ -18,6 +18,27 @@ public sealed partial class VersionListPage : Page
     private bool _isInstallDialogOpen = false; // 用于跟踪安装弹窗状态
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
     private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
+    
+    // 动态创建的弹窗引用
+    private ContentDialog? _loadingDialog;
+    private ContentDialog? _modpackInstallDialog;
+    private ContentDialog? _completeVersionDialog;
+    
+    // 弹窗内的控件引用
+    private ProgressRing? _loadingProgressRing;
+    private TextBlock? _loadingStatusText;
+    private ProgressBar? _loadingProgressBar;
+    private TextBlock? _loadingProgressText;
+    
+    private TextBlock? _installStatusText;
+    private ProgressBar? _installProgressBar;
+    private TextBlock? _installProgressText;
+    
+    private TextBlock? _completeVersionNameText;
+    private TextBlock? _completeVersionStageText;
+    private TextBlock? _completeVersionCurrentFileText;
+    private ProgressBar? _completeVersionProgressBar;
+    private TextBlock? _completeVersionProgressText;
 
     public VersionListPage()
     {
@@ -72,7 +93,8 @@ public sealed partial class VersionListPage : Page
                         Title = "重命名版本",
                         PrimaryButtonText = "确定",
                         CloseButtonText = "取消",
-                        DefaultButton = ContentDialogButton.Primary
+                        DefaultButton = ContentDialogButton.Primary,
+                        VerticalAlignment = VerticalAlignment.Center
                     };
                     
                     // 创建内容
@@ -116,7 +138,8 @@ public sealed partial class VersionListPage : Page
                                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
                                 Title = "重命名失败",
                                 Content = message,
-                                CloseButtonText = "确定"
+                                CloseButtonText = "确定",
+                                VerticalAlignment = VerticalAlignment.Center
                             };
                             
                             await errorDialog.ShowAsync();
@@ -138,24 +161,135 @@ public sealed partial class VersionListPage : Page
     }
     
     /// <summary>
-    /// 处理版本补全请求事件，打开版本补全弹窗
+    /// 处理版本补全请求事件，动态创建并打开版本补全弹窗
     /// </summary>
     private async void OnCompleteVersionRequested(object? sender, VersionListViewModel.VersionInfoItem e)
     {
+        if (_isCompleteVersionDialogOpen) return;
+        
         _isCompleteVersionDialogOpen = true;
         
-        // 初始化弹窗内容
-        CompleteVersionNameText.Text = e.Name;
-        CompleteVersionStageText.Text = "正在检查依赖...";
-        CompleteVersionCurrentFileText.Text = "";
-        CompleteVersionProgressBar.Value = 0;
-        CompleteVersionProgressText.Text = "0%";
+        // 动态创建ContentDialog
+        _completeVersionDialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            Title = "版本补全",
+            CloseButtonText = "关闭",
+            IsPrimaryButtonEnabled = false,
+            IsSecondaryButtonEnabled = false,
+            DefaultButton = ContentDialogButton.None
+        };
         
-        // 设置弹窗的 XamlRoot
-        CompleteVersionDialog.XamlRoot = this.XamlRoot;
+        var mainStack = new StackPanel { Spacing = 16, Width = 400 };
+        
+        // 版本信息卡片
+        var versionCard = new Border
+        {
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12)
+        };
+        
+        var cardGrid = new Grid();
+        cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        var versionIcon = new FontIcon
+        {
+            Glyph = "\uE74C",
+            FontSize = 24,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12, 0)
+        };
+        Grid.SetColumn(versionIcon, 0);
+        
+        _completeVersionNameText = new TextBlock
+        {
+            FontSize = 16,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Text = e.Name,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+        Grid.SetColumn(_completeVersionNameText, 1);
+        
+        cardGrid.Children.Add(versionIcon);
+        cardGrid.Children.Add(_completeVersionNameText);
+        versionCard.Child = cardGrid;
+        mainStack.Children.Add(versionCard);
+        
+        // 状态区域
+        var statusStack = new StackPanel { Spacing = 8 };
+        
+        var stageGrid = new Grid();
+        stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        var stageIcon = new FontIcon
+        {
+            Glyph = "\uE896",
+            FontSize = 14,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 2, 8, 0)
+        };
+        Grid.SetColumn(stageIcon, 0);
+        
+        _completeVersionStageText = new TextBlock
+        {
+            FontSize = 14,
+            Text = "正在检查依赖...",
+            TextWrapping = TextWrapping.WrapWholeWords
+        };
+        Grid.SetColumn(_completeVersionStageText, 1);
+        
+        stageGrid.Children.Add(stageIcon);
+        stageGrid.Children.Add(_completeVersionStageText);
+        statusStack.Children.Add(stageGrid);
+        
+        _completeVersionCurrentFileText = new TextBlock
+        {
+            FontSize = 12,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+            Text = "",
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(22, 0, 0, 0)
+        };
+        statusStack.Children.Add(_completeVersionCurrentFileText);
+        mainStack.Children.Add(statusStack);
+        
+        // 进度区域
+        var progressStack = new StackPanel { Spacing = 8 };
+        
+        _completeVersionProgressBar = new ProgressBar
+        {
+            Value = 0,
+            Minimum = 0,
+            Maximum = 100,
+            Height = 6,
+            CornerRadius = new CornerRadius(3)
+        };
+        progressStack.Children.Add(_completeVersionProgressBar);
+        
+        _completeVersionProgressText = new TextBlock
+        {
+            FontSize = 13,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Text = "0%",
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+        progressStack.Children.Add(_completeVersionProgressText);
+        mainStack.Children.Add(progressStack);
+        
+        _completeVersionDialog.Content = mainStack;
         
         // 显示弹窗（非阻塞）
-        _ = CompleteVersionDialog.ShowAsync();
+        _ = _completeVersionDialog.ShowAsync();
     }
     
     /// <summary>
@@ -168,22 +302,22 @@ public sealed partial class VersionListPage : Page
         // 在 UI 线程更新
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (e.Progress >= 0)
+            if (e.Progress >= 0 && _completeVersionProgressBar != null && _completeVersionProgressText != null)
             {
-                CompleteVersionProgressBar.Value = e.Progress;
-                CompleteVersionProgressText.Text = $"{e.Progress:F1}%";
+                _completeVersionProgressBar.Value = e.Progress;
+                _completeVersionProgressText.Text = $"{e.Progress:F1}%";
             }
             
-            if (!string.IsNullOrEmpty(e.Stage))
+            if (!string.IsNullOrEmpty(e.Stage) && _completeVersionStageText != null)
             {
-                CompleteVersionStageText.Text = e.Stage;
+                _completeVersionStageText.Text = e.Stage;
             }
             
-            if (!string.IsNullOrEmpty(e.CurrentFile))
+            if (!string.IsNullOrEmpty(e.CurrentFile) && _completeVersionCurrentFileText != null)
             {
                 // 只显示文件名的前 8 位（hash）
                 string displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
-                CompleteVersionCurrentFileText.Text = $"当前: {displayFile}";
+                _completeVersionCurrentFileText.Text = $"当前: {displayFile}";
             }
         });
     }
@@ -197,14 +331,19 @@ public sealed partial class VersionListPage : Page
         {
             if (e.Success)
             {
-                CompleteVersionStageText.Text = "补全完成！";
-                CompleteVersionProgressBar.Value = 100;
-                CompleteVersionProgressText.Text = "100%";
-                CompleteVersionCurrentFileText.Text = "";
+                if (_completeVersionStageText != null)
+                    _completeVersionStageText.Text = "补全完成！";
+                if (_completeVersionProgressBar != null)
+                    _completeVersionProgressBar.Value = 100;
+                if (_completeVersionProgressText != null)
+                    _completeVersionProgressText.Text = "100%";
+                if (_completeVersionCurrentFileText != null)
+                    _completeVersionCurrentFileText.Text = "";
             }
             else
             {
-                CompleteVersionStageText.Text = e.Message;
+                if (_completeVersionStageText != null)
+                    _completeVersionStageText.Text = e.Message;
             }
             
             _isCompleteVersionDialogOpen = false;
@@ -212,21 +351,283 @@ public sealed partial class VersionListPage : Page
     }
     
     /// <summary>
-    /// 处理导出整合包请求事件，打开导出整合包弹窗
+    /// 处理导出整合包请求事件，动态创建并显示导出整合包弹窗
     /// </summary>
     private async void OnExportModpackRequested(object? sender, VersionListViewModel.VersionInfoItem e)
     {
-        if (DataContext is VersionListViewModel viewModel)
+        if (DataContext is not VersionListViewModel viewModel)
+            return;
+        
+        // 设置整合包名称和版本的默认值
+        viewModel.ModpackName = e.Name;
+        viewModel.ModpackVersion = "1.0.0";
+        
+        // 动态创建ContentDialog
+        var dialog = new ContentDialog
         {
-            // 设置整合包名称和版本的默认值
-            viewModel.ModpackName = e.Name; // 默认使用版本名称
-            viewModel.ModpackVersion = "1.0.0"; // 默认版本号
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            Title = "导出整合包",
+            PrimaryButtonText = "确认",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        
+        // 创建ScrollViewer包裹内容
+        var scrollViewer = new ScrollViewer
+        {
+            HorizontalScrollMode = ScrollMode.Disabled,
+            VerticalScrollMode = ScrollMode.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Visible
+        };
+        
+        var mainStack = new StackPanel { Spacing = 0 };
+        
+        // 说明文字
+        var instructionText = new TextBlock
+        {
+            Text = "请选择要导出的数据：",
+            FontSize = 14,
+            Margin = new Thickness(0, 0, 0, 12),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        mainStack.Children.Add(instructionText);
+        
+        // 导出选项区域
+        var optionsStack = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        
+        // 资源目录区域（只在有资源时显示）
+        if (viewModel.ResourceDirectories.Count > 0)
+        {
+            var resourceStack = new StackPanel();
+            
+            // 资源目录总复选框和展开/折叠按钮
+            var headerGrid = new Grid
+            {
+                Margin = new Thickness(0, 4, 0, 2),
+                Padding = new Thickness(4)
+            };
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            
+            // 展开/折叠按钮
+            var toggleButton = new Button
+            {
+                Content = "▶",
+                Width = 24,
+                Height = 24,
+                Padding = new Thickness(0),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            Grid.SetColumn(toggleButton, 0);
+            
+            // 资源目录总复选框
+            var resourceAllCheckBox = new CheckBox
+            {
+                Content = "版本目录资源",
+                IsThreeState = true,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(resourceAllCheckBox, 1);
+            
+            // 资源目录TreeView
+            var treeView = new ItemsControl
+            {
+                Margin = new Thickness(0, 0, 0, 2),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Visibility = Visibility.Collapsed
+            };
+            
+            // 绑定数据源
+            treeView.ItemsSource = viewModel.ResourceDirectories;
+            treeView.ItemTemplate = (DataTemplate)this.Resources["ResourceItemTemplate"];
+            
+            // 展开/折叠按钮事件
+            bool isExpanded = false;
+            toggleButton.Click += (s, args) =>
+            {
+                isExpanded = !isExpanded;
+                treeView.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+                toggleButton.Content = isExpanded ? "▼" : "▶";
+            };
+            
+            // 总复选框事件
+            resourceAllCheckBox.Checked += (s, args) =>
+            {
+                foreach (var dir in viewModel.ResourceDirectories)
+                    dir.IsSelected = true;
+            };
+            
+            resourceAllCheckBox.Unchecked += (s, args) =>
+            {
+                foreach (var dir in viewModel.ResourceDirectories)
+                    dir.IsSelected = false;
+            };
+            
+            // 监听子项变化更新总复选框状态
+            void UpdateResourceAllState()
+            {
+                if (viewModel.ResourceDirectories.Count == 0)
+                {
+                    resourceAllCheckBox.IsChecked = false;
+                    return;
+                }
+                
+                bool allSelected = true;
+                bool noneSelected = true;
+                
+                foreach (var item in viewModel.ResourceDirectories)
+                {
+                    if (item.IsSelected)
+                        noneSelected = false;
+                    else
+                        allSelected = false;
+                    
+                    if (!allSelected && !noneSelected)
+                        break;
+                }
+                
+                if (noneSelected)
+                    resourceAllCheckBox.IsChecked = false;
+                else if (allSelected)
+                    resourceAllCheckBox.IsChecked = true;
+                else
+                    resourceAllCheckBox.IsChecked = null;
+            }
+            
+            // 订阅资源项变化
+            foreach (var item in viewModel.ResourceDirectories)
+            {
+                item.SelectedChanged += (s, args) => UpdateResourceAllState();
+            }
+            
+            headerGrid.Children.Add(toggleButton);
+            headerGrid.Children.Add(resourceAllCheckBox);
+            
+            resourceStack.Children.Add(headerGrid);
+            resourceStack.Children.Add(treeView);
+            
+            optionsStack.Children.Add(resourceStack);
         }
         
-        // 打开导出整合包弹窗
-        await ExportModpackDialog.ShowAsync();
+        mainStack.Children.Add(optionsStack);
+        
+        // 整合包信息输入区域
+        var inputStack = new StackPanel
+        {
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        
+        // 整合包名称
+        var nameStack = new StackPanel { Spacing = 4 };
+        nameStack.Children.Add(new TextBlock { Text = "整合包名称", FontSize = 14 });
+        var nameTextBox = new TextBox
+        {
+            PlaceholderText = "请输入整合包名称",
+            Text = viewModel.ModpackName,
+            Width = 400,
+            MaxWidth = 400
+        };
+        nameTextBox.TextChanged += (s, args) => viewModel.ModpackName = nameTextBox.Text;
+        nameStack.Children.Add(nameTextBox);
+        inputStack.Children.Add(nameStack);
+        
+        // 整合包版本
+        var versionStack = new StackPanel { Spacing = 4 };
+        versionStack.Children.Add(new TextBlock { Text = "整合包版本", FontSize = 14 });
+        var versionTextBox = new TextBox
+        {
+            PlaceholderText = "请输入整合包版本",
+            Text = viewModel.ModpackVersion,
+            Width = 400,
+            MaxWidth = 400
+        };
+        versionTextBox.TextChanged += (s, args) => viewModel.ModpackVersion = versionTextBox.Text;
+        versionStack.Children.Add(versionTextBox);
+        inputStack.Children.Add(versionStack);
+        
+        // 复选框选项
+        var checkBoxStack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 32,
+            Margin = new Thickness(0, 8, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        
+        var offlineModeCheckBox = new CheckBox
+        {
+            Content = "非联网模式",
+            IsChecked = viewModel.IsOfflineMode,
+            FontSize = 14,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        
+        var serverOnlyCheckBox = new CheckBox
+        {
+            Content = "导出服务端整合包",
+            IsChecked = viewModel.IsServerOnly,
+            FontSize = 14,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        
+        // 离线模式警告InfoBar
+        var warningInfoBar = new InfoBar
+        {
+            Title = "许可证警告",
+            Message = "直接将 Mod 放入整合包可能会违反部分条例，请不要进行分发！",
+            Severity = InfoBarSeverity.Warning,
+            IsOpen = true,
+            IsClosable = false,
+            Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        
+        // 复选框事件
+        offlineModeCheckBox.Checked += (s, args) =>
+        {
+            viewModel.IsOfflineMode = true;
+            warningInfoBar.Visibility = Visibility.Visible;
+        };
+        
+        offlineModeCheckBox.Unchecked += (s, args) =>
+        {
+            viewModel.IsOfflineMode = false;
+            warningInfoBar.Visibility = Visibility.Collapsed;
+        };
+        
+        serverOnlyCheckBox.Checked += (s, args) => viewModel.IsServerOnly = true;
+        serverOnlyCheckBox.Unchecked += (s, args) => viewModel.IsServerOnly = false;
+        
+        checkBoxStack.Children.Add(offlineModeCheckBox);
+        checkBoxStack.Children.Add(serverOnlyCheckBox);
+        inputStack.Children.Add(checkBoxStack);
+        
+        mainStack.Children.Add(inputStack);
+        mainStack.Children.Add(warningInfoBar);
+        
+        scrollViewer.Content = mainStack;
+        dialog.Content = scrollViewer;
+        
+        // 显示弹窗
+        var result = await dialog.ShowAsync();
+        
+        if (result == ContentDialogResult.Primary)
+        {
+            // 调用原有的确认按钮逻辑
+            await ExportModpackDialog_PrimaryButtonClick_Logic();
+        }
     }
-
+    
     /// <summary>
     /// 版本项点击事件处理，导航至版本管理页面
     /// </summary>
@@ -243,6 +644,14 @@ public sealed partial class VersionListPage : Page
     /// 导出整合包弹窗确认按钮点击事件处理
     /// </summary>
     private async void ExportModpackDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        await ExportModpackDialog_PrimaryButtonClick_Logic();
+    }
+    
+    /// <summary>
+    /// 导出整合包确认按钮逻辑（从原事件处理中提取）
+    /// </summary>
+    private async Task ExportModpackDialog_PrimaryButtonClick_Logic()
     {
         if (DataContext is VersionListViewModel viewModel)
         {
@@ -262,12 +671,11 @@ public sealed partial class VersionListPage : Page
             }
             System.Diagnostics.Debug.WriteLine("====================");
             
-            // 关闭导出弹窗
-            ExportModpackDialog.Hide();
+            // 导出弹窗会在ShowAsync返回后自动关闭,无需手动调用Hide()
             
             // 打开加载弹窗（非阻塞方式）
+            ShowLoadingDialog();
             UpdateLoadingDialog("正在获取Modrinth资源...", 0.0);
-            _ = LoadingDialog.ShowAsync();
             
             // 在后台线程执行导出逻辑
             _ = Task.Run(async () =>
@@ -448,7 +856,7 @@ public sealed partial class VersionListPage : Page
                         DispatcherQueue.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine("导出已取消");
-                            LoadingDialog.Hide();
+                            HideLoadingDialog();
                         });
                         return;
                     }
@@ -723,7 +1131,7 @@ public sealed partial class VersionListPage : Page
                                 DispatcherQueue.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine("导出已取消");
-                                    LoadingDialog.Hide();
+                                    HideLoadingDialog();
                                 });
                                 return;
                             }
@@ -745,7 +1153,7 @@ public sealed partial class VersionListPage : Page
                                 DispatcherQueue.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine("导出已取消");
-                                    LoadingDialog.Hide();
+                                    HideLoadingDialog();
                                 });
                                 return;
                             }
@@ -763,7 +1171,7 @@ public sealed partial class VersionListPage : Page
                                 {
                                     DispatcherQueue.TryEnqueue(() =>
                                     {
-                                        LoadingDialog.Hide();
+                                        HideLoadingDialog();
                                     });
                                     return;
                                 }
@@ -784,7 +1192,7 @@ public sealed partial class VersionListPage : Page
                                     
                                     // 延迟关闭加载弹窗，让用户看到完成状态
                                     await Task.Delay(1000);
-                                    LoadingDialog.Hide();
+                                    HideLoadingDialog();
                                 });
                             }
                             else
@@ -797,7 +1205,7 @@ public sealed partial class VersionListPage : Page
                                     {
                                         File.Delete(file.Path);
                                     }
-                                    LoadingDialog.Hide();
+                                    HideLoadingDialog();
                                 });
                             }
                         }
@@ -815,7 +1223,7 @@ public sealed partial class VersionListPage : Page
                         // 用户取消了文件保存对话框
                         DispatcherQueue.TryEnqueue(() =>
                         {
-                            LoadingDialog.Hide();
+                            HideLoadingDialog();
                         });
                     }
                 }
@@ -826,7 +1234,7 @@ public sealed partial class VersionListPage : Page
                         System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
                         UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);
                         await Task.Delay(2000);
-                        LoadingDialog.Hide();
+                        HideLoadingDialog();
                     });
                 }
             });
@@ -834,24 +1242,104 @@ public sealed partial class VersionListPage : Page
     }
     
     /// <summary>
+    /// 动态创建并显示加载弹窗
+    /// </summary>
+    private void ShowLoadingDialog()
+    {
+        if (_loadingDialog != null) return;
+        
+        _loadingDialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            Title = "正在导出整合包",
+            IsPrimaryButtonEnabled = false,
+            IsSecondaryButtonEnabled = true,
+            SecondaryButtonText = "取消"
+        };
+        
+        _loadingDialog.SecondaryButtonClick += (s, args) =>
+        {
+            _isExportCancelled = true;
+            UpdateLoadingDialog("正在取消导出...", 0.0);
+            if (_loadingProgressRing != null)
+                _loadingProgressRing.IsActive = false;
+        };
+        
+        var mainStack = new StackPanel
+        {
+            Width = double.NaN,
+            Spacing = 16,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        
+        _loadingProgressRing = new ProgressRing
+        {
+            IsActive = true,
+            Width = 64,
+            Height = 64,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemControlHighlightAccentBrush"],
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        mainStack.Children.Add(_loadingProgressRing);
+        
+        _loadingStatusText = new TextBlock
+        {
+            Text = "正在获取Modrinth资源...",
+            FontSize = 14,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextAlignment = TextAlignment.Center
+        };
+        mainStack.Children.Add(_loadingStatusText);
+        
+        _loadingProgressBar = new ProgressBar
+        {
+            Value = 0,
+            Maximum = 100,
+            Width = 300,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        mainStack.Children.Add(_loadingProgressBar);
+        
+        _loadingProgressText = new TextBlock
+        {
+            Text = "0.0%",
+            FontSize = 14,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        };
+        mainStack.Children.Add(_loadingProgressText);
+        
+        _loadingDialog.Content = mainStack;
+        
+        _ = _loadingDialog.ShowAsync();
+    }
+    
+    /// <summary>
+    /// 隐藏加载弹窗
+    /// </summary>
+    private void HideLoadingDialog()
+    {
+        _loadingDialog?.Hide();
+        _loadingDialog = null;
+        _loadingProgressRing = null;
+        _loadingStatusText = null;
+        _loadingProgressBar = null;
+        _loadingProgressText = null;
+    }
+    
+    /// <summary>
     /// 更新加载弹窗的状态和进度
     /// </summary>
     private void UpdateLoadingDialog(string status, double progress)
     {
-        LoadingStatusText.Text = status;
-        LoadingProgressBar.Value = progress;
-        LoadingProgressText.Text = $"{progress:0.0}%";
-    }
-    
-    /// <summary>
-    /// 加载弹窗取消按钮点击事件处理
-    /// </summary>
-    private void LoadingDialog_SecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        // 设置取消标志
-        _isExportCancelled = true;
-        UpdateLoadingDialog("正在取消导出...", 0.0);
-        LoadingProgressRing.IsActive = false;
+        if (_loadingStatusText != null)
+            _loadingStatusText.Text = status;
+        if (_loadingProgressBar != null)
+            _loadingProgressBar.Value = progress;
+        if (_loadingProgressText != null)
+            _loadingProgressText.Text = $"{progress:0.0}%";
     }
     
     /// <summary>
@@ -897,13 +1385,6 @@ public sealed partial class VersionListPage : Page
     }
 
     /// <summary>
-    /// 导出整合包弹窗关闭按钮点击事件处理
-    /// </summary>
-    private void ExportModpackDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        // 这里将在后续实现具体的关闭逻辑
-    }
-
     #region 资源目录复选框事件处理
     /// <summary>
     /// 资源目录总复选框点击事件处理（全选）
@@ -976,105 +1457,8 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void UpdateResourceAllState()
     {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 查找资源目录总复选框
-            CheckBox allCheckBox = null;
-            // 遍历ResourceDirectoriesStackPanel的子元素，找到资源目录总复选框
-            foreach (var child in ResourceDirectoriesStackPanel.Children)
-            {
-                if (child is Grid grid)
-                {
-                    foreach (var gridChild in grid.Children)
-                    {
-                        if (gridChild is CheckBox checkBox && checkBox.Content.ToString() == "版本目录资源")
-                        {
-                            allCheckBox = checkBox;
-                            break;
-                        }
-                    }
-                    if (allCheckBox != null)
-                    {
-                        break;
-                    }
-                }
-            }
-            
-            if (allCheckBox != null)
-            {
-                // 计算总选择状态
-                bool allSelected = true;
-                bool noneSelected = true;
-                
-                foreach (var item in viewModel.ResourceDirectories)
-                {
-                    if (item.IsSelected)
-                    {
-                        noneSelected = false;
-                    }
-                    else
-                    {
-                        allSelected = false;
-                    }
-                    
-                    // 如果已经确定不是全选也不是全不选，可以提前退出
-                    if (!allSelected && !noneSelected)
-                    {
-                        break;
-                    }
-                }
-                
-                if (noneSelected)
-                {
-                    allCheckBox.IsChecked = false;
-                }
-                else if (allSelected)
-                {
-                    allCheckBox.IsChecked = true;
-                }
-                else
-                {
-                    allCheckBox.IsChecked = null;
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 展开/折叠按钮点击事件处理
-    /// </summary>
-    private void ToggleResourceDirectoriesButton_Click(object sender, RoutedEventArgs e)
-    {
-        // 切换TreeView的可见性
-        if (ResourceDirectoriesTreeView.Visibility == Visibility.Visible)
-        {
-            // 折叠
-            ResourceDirectoriesTreeView.Visibility = Visibility.Collapsed;
-            ToggleResourceDirectoriesButton.Content = "▶"; // 右箭头
-        }
-        else
-        {
-            // 展开
-            ResourceDirectoriesTreeView.Visibility = Visibility.Visible;
-            ToggleResourceDirectoriesButton.Content = "▼"; // 下箭头
-        }
-    }
-    
-    /// <summary>
-    /// 资源目录StackPanel加载事件处理，根据资源目录数量设置可见性
-    /// </summary>
-    private void ResourceDirectoriesStackPanel_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 根据资源目录数量设置StackPanel的可见性
-            ResourceDirectoriesStackPanel.Visibility = viewModel.ResourceDirectories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            
-            // 初始化TreeView可见性（默认隐藏）
-            ResourceDirectoriesTreeView.Visibility = Visibility.Collapsed;
-            // 初始化按钮内容
-            ToggleResourceDirectoriesButton.Content = "▶"; // 右箭头
-        }
+        // 此方法已不再需要,因为导出弹窗已改为动态创建
+        // 保留方法定义以避免其他地方的调用出错
     }
     
     /// <summary>
@@ -1082,30 +1466,92 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void ResourceDirectories_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 根据资源目录数量设置StackPanel的可见性
-            ResourceDirectoriesStackPanel.Visibility = viewModel.ResourceDirectories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        }
+        // 资源目录变化处理已移至动态创建的弹窗中
     }
     
     /// <summary>
-    /// 整合包安装弹窗关闭按钮点击事件处理
+    /// 动态创建并显示整合包安装弹窗
     /// </summary>
-    private void ModpackInstallDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private void ShowModpackInstallDialog()
     {
-        // 取消安装
-        if (_modDownloadViewModel != null && _modDownloadViewModel.IsInstalling)
+        if (_modpackInstallDialog != null || _isInstallDialogOpen) return;
+        
+        _isInstallDialogOpen = true;
+        
+        _modpackInstallDialog = new ContentDialog
         {
-            // 取消安装操作
-            _modDownloadViewModel.CancelInstallCommand.Execute(null);
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            Title = "整合包安装中",
+            CloseButtonText = "取消",
+            IsPrimaryButtonEnabled = false,
+            IsSecondaryButtonEnabled = false,
+            DefaultButton = ContentDialogButton.None
+        };
+        
+        _modpackInstallDialog.CloseButtonClick += (s, args) =>
+        {
+            // 取消安装
+            if (_modDownloadViewModel != null && _modDownloadViewModel.IsInstalling)
+            {
+                _modDownloadViewModel.CancelInstallCommand.Execute(null);
+            }
+        };
+        
+        var mainStack = new StackPanel { Spacing = 16, Width = 400 };
+        
+        _installStatusText = new TextBlock
+        {
+            FontSize = 16,
+            Text = "正在准备整合包安装...",
+            TextWrapping = TextWrapping.WrapWholeWords
+        };
+        mainStack.Children.Add(_installStatusText);
+        
+        _installProgressBar = new ProgressBar
+        {
+            Value = 0,
+            Minimum = 0,
+            Maximum = 100,
+            Height = 8,
+            CornerRadius = new CornerRadius(4)
+        };
+        mainStack.Children.Add(_installProgressBar);
+        
+        _installProgressText = new TextBlock
+        {
+            FontSize = 14,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Text = "0%",
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+        mainStack.Children.Add(_installProgressText);
+        
+        _modpackInstallDialog.Content = mainStack;
+        
+        _ = _modpackInstallDialog.ShowAsync();
+    }
+    
+    /// <summary>
+    /// 隐藏整合包安装弹窗
+    /// </summary>
+    private void HideModpackInstallDialog()
+    {
+        if (_modpackInstallDialog != null && _isInstallDialogOpen)
+        {
+            _modpackInstallDialog.Hide();
+            _modpackInstallDialog = null;
+            _installStatusText = null;
+            _installProgressBar = null;
+            _installProgressText = null;
+            _isInstallDialogOpen = false;
         }
     }
     
     /// <summary>
     /// ModDownloadDetailViewModel属性变化事件处理
     /// </summary>
-    private async void ModDownloadViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ModDownloadViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (_modDownloadViewModel == null)
         {
@@ -1117,20 +1563,15 @@ public sealed partial class VersionListPage : Page
         {
             if (_modDownloadViewModel.IsModpackInstallDialogOpen)
             {
-                // 显示安装弹窗，添加防护措施避免重复调用
-                if (ModpackInstallDialog.XamlRoot != null && !_isInstallDialogOpen)
+                // 显示安装弹窗
+                try
                 {
-                    try
-                    {
-                        _isInstallDialogOpen = true;
-                        await ModpackInstallDialog.ShowAsync();
-                        _isInstallDialogOpen = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"显示安装弹窗失败: {ex.Message}");
-                        _isInstallDialogOpen = false;
-                    }
+                    ShowModpackInstallDialog();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示安装弹窗失败: {ex.Message}");
+                    _isInstallDialogOpen = false;
                 }
             }
             else
@@ -1138,11 +1579,7 @@ public sealed partial class VersionListPage : Page
                 // 隐藏安装弹窗
                 try
                 {
-                    if (_isInstallDialogOpen)
-                    {
-                        ModpackInstallDialog.Hide();
-                        _isInstallDialogOpen = false;
-                    }
+                    HideModpackInstallDialog();
                 }
                 catch (Exception ex)
                 {
@@ -1154,36 +1591,21 @@ public sealed partial class VersionListPage : Page
         // 更新安装状态文本
         else if (e.PropertyName == nameof(_modDownloadViewModel.InstallStatus))
         {
-            InstallStatusText.Text = _modDownloadViewModel.InstallStatus;
+            if (_installStatusText != null)
+                _installStatusText.Text = _modDownloadViewModel.InstallStatus;
         }
         // 更新安装进度条
         else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgress))
         {
-            InstallProgressBar.Value = _modDownloadViewModel.InstallProgress;
+            if (_installProgressBar != null)
+                _installProgressBar.Value = _modDownloadViewModel.InstallProgress;
         }
         // 更新安装进度文本
         else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgressText))
         {
-            InstallProgressText.Text = _modDownloadViewModel.InstallProgressText;
+            if (_installProgressText != null)
+                _installProgressText.Text = _modDownloadViewModel.InstallProgressText;
         }
-    }
-    
-    /// <summary>
-    /// 离线模式复选框选中事件
-    /// </summary>
-    private void OfflineModeCheckBox_Checked(object sender, RoutedEventArgs e)
-    {
-        // 显示警告 InfoBar
-        OfflineModeWarningInfoBar.Visibility = Visibility.Visible;
-    }
-    
-    /// <summary>
-    /// 离线模式复选框取消选中事件
-    /// </summary>
-    private void OfflineModeCheckBox_Unchecked(object sender, RoutedEventArgs e)
-    {
-        // 隐藏警告 InfoBar
-        OfflineModeWarningInfoBar.Visibility = Visibility.Collapsed;
     }
     #endregion
 }

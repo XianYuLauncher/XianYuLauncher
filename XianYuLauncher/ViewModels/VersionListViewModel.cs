@@ -545,10 +545,11 @@ public partial class VersionListViewModel : ObservableRecipient
                 DefaultButton = ContentDialogButton.Close
             };
 
-            // 设置XamlRoot
+            // 设置XamlRoot和Style
             if (App.MainWindow.Content is FrameworkElement rootElement)
             {
                 dialog.XamlRoot = rootElement.XamlRoot;
+                dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
             }
 
             // 显示对话框
@@ -1250,10 +1251,11 @@ public partial class VersionListViewModel : ObservableRecipient
                     DefaultButton = ContentDialogButton.Close
                 };
                 
-                // 设置XamlRoot
+                // 设置XamlRoot和Style
                 if (App.MainWindow.Content is FrameworkElement rootElement)
                 {
                     dialog.XamlRoot = rootElement.XamlRoot;
+                    dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
                 }
                 
                 await dialog.ShowAsync();
