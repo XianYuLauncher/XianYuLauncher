@@ -1,58 +1,50 @@
 using Microsoft.UI.Xaml.Data;
+using System;
 
 namespace XianYuLauncher.Helpers;
 
 /// <summary>
-/// 将布尔值转换为对应的透明度值
+/// 布尔值到不透明度转换器
+/// 支持参数格式: "trueOpacity,falseOpacity" (例如 "1.0,0.5")
+/// 默认: true -> 1.0, false -> 0.5
 /// </summary>
 public class BoolToOpacityConverter : IValueConverter
 {
-    /// <summary>
-    /// 转换方法
-    /// </summary>
-    /// <param name="value">布尔值</param>
-    /// <param name="targetType">目标类型</param>
-    /// <param name="parameter">参数，格式为"true值,false值"，例如"1.0,0.5"</param>
-    /// <param name="language">语言</param>
-    /// <returns>对应的透明度值</returns>
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        if (value is bool boolValue)
+        double trueOpacity = 1.0;
+        double falseOpacity = 0.5;
+        
+        // 解析参数
+        if (parameter is string paramStr && !string.IsNullOrEmpty(paramStr))
         {
-            // 默认值：true为1.0，false为0.5
-            double trueOpacity = 1.0;
-            double falseOpacity = 0.5;
-
-            // 如果提供了参数，解析参数获取自定义值
-            if (parameter is string paramString)
+            var parts = paramStr.Split(',');
+            if (parts.Length >= 2)
             {
-                string[] parts = paramString.Split(',');
-                if (parts.Length == 2)
+                if (double.TryParse(parts[0], out double parsedTrue))
                 {
-                    if (double.TryParse(parts[0], out double trueVal))
-                    {
-                        trueOpacity = trueVal;
-                    }
-                    if (double.TryParse(parts[1], out double falseVal))
-                    {
-                        falseOpacity = falseVal;
-                    }
+                    trueOpacity = parsedTrue;
+                }
+                if (double.TryParse(parts[1], out double parsedFalse))
+                {
+                    falseOpacity = parsedFalse;
                 }
             }
-
-            // 返回对应的透明度值
-            return boolValue ? trueOpacity : falseOpacity;
         }
         
-        // 默认返回不透明
-        return 1.0;
+        if (value is bool boolValue)
+        {
+            return boolValue ? trueOpacity : falseOpacity;
+        }
+        return falseOpacity;
     }
-    
-    /// <summary>
-    /// 反向转换方法（未使用）
-    /// </summary>
+
     public object ConvertBack(object value, Type targetType, object parameter, string language)
     {
-        throw new NotImplementedException();
+        if (value is double doubleValue)
+        {
+            return doubleValue > 0.5;
+        }
+        return false;
     }
 }

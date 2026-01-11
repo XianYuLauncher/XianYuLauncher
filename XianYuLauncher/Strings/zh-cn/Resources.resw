@@ -498,6 +498,18 @@
   <data name="ResourceDownloadPage_ModpackTabHeader.Text" xml:space="preserve">
     <value>整合包下载</value>
   </data>
+  <data name="ResourceDownloadPage_WorldTabHeader.Text" xml:space="preserve">
+    <value>世界下载</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldSearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索世界...</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>版本</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldCategoryComboBox.PlaceholderText" xml:space="preserve">
+    <value>所有类别</value>
+  </data>
   <data name="LaunchPage_VersionSelection.Text" xml:space="preserve">
     <value>选择Minecraft版本</value>
   </data>

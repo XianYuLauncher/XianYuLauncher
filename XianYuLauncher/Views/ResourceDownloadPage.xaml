@@ -658,7 +658,7 @@
                         </Grid>
                     </TabViewItem>
 
-                    <!-- 资源包下载标签 -->
+                    <!-- 资源包标签 -->
                     <TabViewItem>
                         <TabViewItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -883,7 +883,7 @@
                         </Grid>
                     </TabViewItem>
                     
-                    <!-- 数据包下载标签 -->
+                    <!-- 数据包标签 -->
                     <TabViewItem>
                         <TabViewItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1326,6 +1326,234 @@
                                         <ListView.Footer>
                                             <ProgressRing 
                                                 IsActive="{Binding IsModpackLoadingMore, Mode=OneWay}" 
+                                                Width="32" Height="32" 
+                                                Margin="0,10,0,10" 
+                                                HorizontalAlignment="Center"/>
+                                        </ListView.Footer>
+                                    </ListView>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabViewItem>
+                    
+                    <!-- 世界标签 -->
+                    <TabViewItem>
+                        <TabViewItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE909;" FontSize="16" />
+                                <TextBlock x:Uid="ResourceDownloadPage_WorldTabHeader" Text="世界" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </TabViewItem.Header>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- 世界搜索和过滤 -->
+                            <Grid Grid.Row="0" Margin="20,10,20,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Search Box -->
+                                <AutoSuggestBox
+                                    x:Name="WorldSearchBox"
+                                    x:Uid="ResourceDownloadPage_WorldSearchBox"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    PlaceholderText="Search worlds..."
+                                    QueryIcon="Find"
+                                    Margin="0,0,8,0"
+                                    Text="{Binding WorldSearchQuery, Mode=TwoWay}"
+                                    QuerySubmitted="WorldSearchBox_QuerySubmitted"/>
+
+                                <!-- Version Filter -->
+                                <ComboBox
+                                    x:Name="WorldVersionComboBox"
+                                    x:Uid="ResourceDownloadPage_WorldVersionComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    PlaceholderText="版本"
+                                    Margin="0,0,4,0"
+                                    MinWidth="90"
+                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
+                                    SelectedItem="{Binding SelectedWorldVersion, Mode=TwoWay}"
+                                    SelectionChanged="WorldVersionComboBox_SelectionChanged">
+                                </ComboBox>
+
+                                <!-- 类别筛选 -->
+                                <ComboBox
+                                    x:Name="WorldCategoryComboBox"
+                                    x:Uid="ResourceDownloadPage_WorldCategoryComboBox"
+                                    Grid.Row="0"
+                                    Grid.Column="2"
+                                    PlaceholderText="所有类别"
+                                    MinWidth="80"
+                                    Margin="0,0,8,0"
+                                    ItemsSource="{Binding WorldCategories}"
+                                    DisplayMemberPath="DisplayName"
+                                    SelectedValuePath="Tag"
+                                    SelectedValue="{Binding SelectedWorldCategory, Mode=TwoWay}"
+                                    SelectionChanged="WorldCategoryComboBox_SelectionChanged" />
+
+                                <!-- 平台选择 - 使用 ToggleButtons -->
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                    <ToggleButton 
+                                        x:Name="WorldModrinthToggle"
+                                        x:Uid="ResourceDownloadPage_ModrinthToggle"
+                                        IsChecked="False"
+                                        IsEnabled="False"
+                                        Click="WorldModrinthToggleButton_Click"
+                                        CornerRadius="4,0,0,4"
+                                        Padding="10,6"
+                                        MinWidth="80"
+                                        ToolTipService.ToolTip="Modrinth 不支持世界下载">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <FontIcon Glyph="&#xE774;" FontSize="12"/>
+                                            <TextBlock Text="Modrinth" FontSize="12"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                    <ToggleButton 
+                                        x:Name="WorldCurseForgeToggle"
+                                        x:Uid="ResourceDownloadPage_CurseForgeToggle"
+                                        IsChecked="{Binding IsCurseForgeEnabled, Mode=TwoWay}"
+                                        Click="WorldCurseForgeToggleButton_Click"
+                                        CornerRadius="0,4,4,0"
+                                        Padding="10,6"
+                                        MinWidth="80">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <FontIcon Glyph="&#xE945;" FontSize="12"/>
+                                            <TextBlock Text="CurseForge" FontSize="12"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Error Message -->
+                            <Grid
+                                Grid.Row="2"
+                                Margin="20,10,20,10"
+                                Background="#FFFDE7E9"
+                                BorderBrush="#FFD53939"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="⚠"
+                                    FontSize="24"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,12,0"
+                                    Foreground="#FFD53939"/>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding ErrorMessage, Mode=OneWay}"
+                                    Foreground="#FFD53939"
+                                    Style="{ThemeResource BodyTextBlockStyle}"
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Loading Indicator -->
+                            <ProgressRing
+                                Grid.Row="2"
+                                Margin="20"
+                                IsActive="{Binding IsWorldLoading, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="{Binding IsWorldLoading, Mode=OneWay}"/>
+
+                            <!-- 世界列表 -->
+                            <ScrollViewer 
+                                x:Name="WorldListScrollViewer"
+                                Grid.Row="2"
+                                Margin="20"
+                                VerticalScrollBarVisibility="Auto"
+                                ViewChanged="WorldListScrollViewer_ScrollChanged">
+                                    <!-- 世界列表 -->
+                                    <ListView 
+                                        x:Name="WorldListView"
+                                        SelectionMode="Single"
+                                        ItemsSource="{Binding Worlds, Mode=OneWay}"
+                                        IsItemClickEnabled="True"
+                                        ItemClick="WorldListView_ItemClick"
+                                        Visibility="{Binding IsWorldLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <ListView.Resources>
+                                            <Style TargetType="ScrollViewer">
+                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                            </Style>
+                                        </ListView.Resources>
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Margin" Value="0,0,0,12"/>
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ModrinthProject">
+                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="WorldItem_Tapped">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- 世界图标 -->
+                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
+                                                            CornerRadius="32" Background="Transparent">
+                                                        <Image Stretch="UniformToFill">
+                                                            <Image.Source>
+                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
+                                                            </Image.Source>
+                                                        </Image>
+                                                    </Border>
+
+                                                    <!-- 世界名称 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                               FontSize="16" FontWeight="SemiBold"/>
+
+                                                    <!-- 世界描述 -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description, Mode=OneWay}"
+                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
+                                                               MaxLines="2" VerticalAlignment="Center"/>
+
+                                                    <!-- 世界信息 -->
+                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                        <!-- Loading More Indicator -->
+                                        <ListView.Footer>
+                                            <ProgressRing 
+                                                IsActive="{Binding IsWorldLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
                                                 HorizontalAlignment="Center"/>

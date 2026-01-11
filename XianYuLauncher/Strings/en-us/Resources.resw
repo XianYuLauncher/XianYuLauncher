@@ -498,6 +498,18 @@
   <data name="ResourceDownloadPage_ModpackTabHeader.Text" xml:space="preserve">
     <value>Modpacks</value>
   </data>
+  <data name="ResourceDownloadPage_WorldTabHeader.Text" xml:space="preserve">
+    <value>Worlds</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search worlds...</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ResourceDownloadPage_WorldCategoryComboBox.PlaceholderText" xml:space="preserve">
+    <value>All Categories</value>
+  </data>
   <data name="LaunchPage_VersionSelection.Text" xml:space="preserve">
     <value>Select Minecraft Version</value>
   </data>
