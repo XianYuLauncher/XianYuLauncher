@@ -2467,7 +2467,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 await LoadModsListOnlyAsync();
                 
                 // 异步加载图标，不阻塞UI
-                _ = LoadAllIconsAsync();
+                _ = LoadAllIconsAsync(_pageCancellationTokenSource?.Token ?? default);
                 
                 StatusMessage = $"Mod转移完成，共处理 {moveResults.Count} 个Mod";
             }
@@ -2924,7 +2924,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 await LoadModsListOnlyAsync();
                 
                 // 异步加载图标，不阻塞UI
-                _ = LoadAllIconsAsync();
+                _ = LoadAllIconsAsync(_pageCancellationTokenSource?.Token ?? default);
                 
                 // 显示结果
                 StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";

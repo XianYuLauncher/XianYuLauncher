@@ -1383,6 +1383,113 @@ public partial class VersionListViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 新版本名称（用于重命名）
+    /// </summary>
+    [ObservableProperty]
+    private string _newVersionName = string.Empty;
+    
+    /// <summary>
+    /// 是否显示重命名弹窗
+    /// </summary>
+    [ObservableProperty]
+    private bool _isRenameDialogVisible = false;
+    
+    /// <summary>
+    /// 重命名版本命令
+    /// </summary>
+    [RelayCommand]
+    private void RenameVersion(VersionInfoItem version)
+    {
+        if (version == null || string.IsNullOrEmpty(version.Path))
+        {
+            StatusMessage = "VersionListPage_InvalidVersionInfoText".GetLocalized();
+            return;
+        }
+        
+        // 设置当前选中的版本
+        SelectedVersion = version;
+        
+        // 设置默认的新版本名称为当前版本名称
+        NewVersionName = version.Name;
+        
+        // 显示重命名弹窗
+        IsRenameDialogVisible = true;
+    }
+    
+    /// <summary>
+    /// 执行重命名版本
+    /// </summary>
+    public async Task<(bool Success, string Message)> ExecuteRenameVersionAsync()
+    {
+        if (SelectedVersion == null || string.IsNullOrEmpty(SelectedVersion.Path))
+        {
+            return (false, "VersionListPage_InvalidVersionInfoText".GetLocalized());
+        }
+        
+        if (string.IsNullOrWhiteSpace(NewVersionName))
+        {
+            return (false, "版本名称不能为空");
+        }
+        
+        // 检查新版本名称是否包含非法字符
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        if (NewVersionName.IndexOfAny(invalidChars) >= 0)
+        {
+            return (false, "版本名称包含非法字符");
+        }
+        
+        // 检查新版本名称是否与当前版本名称相同
+        if (NewVersionName == SelectedVersion.Name)
+        {
+            return (false, "新版本名称与当前版本名称相同");
+        }
+        
+        try
+        {
+            string minecraftPath = _fileService.GetMinecraftDataPath();
+            string versionsPath = Path.Combine(minecraftPath, "versions");
+            string oldVersionPath = SelectedVersion.Path;
+            string newVersionPath = Path.Combine(versionsPath, NewVersionName);
+            
+            // 检查新版本目录是否已存在
+            if (Directory.Exists(newVersionPath))
+            {
+                return (false, $"版本 {NewVersionName} 已存在");
+            }
+            
+            // 重命名版本目录
+            Directory.Move(oldVersionPath, newVersionPath);
+            
+            // 重命名.jar文件
+            string oldJarPath = Path.Combine(newVersionPath, $"{SelectedVersion.Name}.jar");
+            string newJarPath = Path.Combine(newVersionPath, $"{NewVersionName}.jar");
+            if (File.Exists(oldJarPath))
+            {
+                File.Move(oldJarPath, newJarPath);
+            }
+            
+            // 重命名.json文件
+            string oldJsonPath = Path.Combine(newVersionPath, $"{SelectedVersion.Name}.json");
+            string newJsonPath = Path.Combine(newVersionPath, $"{NewVersionName}.json");
+            if (File.Exists(oldJsonPath))
+            {
+                File.Move(oldJsonPath, newJsonPath);
+            }
+            
+            // 刷新版本列表
+            await LoadVersionsAsync();
+            
+            StatusMessage = $"版本已重命名为 {NewVersionName}";
+            return (true, $"版本已重命名为 {NewVersionName}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"重命名失败: {ex.Message}";
+            return (false, $"重命名失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
     /// 生成启动命令
     /// </summary>
     private async Task<string> GenerateLaunchCommandAsync(string versionName)

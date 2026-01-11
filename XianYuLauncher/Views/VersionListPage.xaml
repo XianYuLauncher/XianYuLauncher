@@ -313,6 +313,15 @@
                                         </MenuFlyoutItem>
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem 
+                                            x:Uid="VersionListPage_RenameMenuItem"
+                                            Text="重命名"
+                                            Command="{Binding DataContext.RenameVersionCommand, ElementName=VersionsListView}" 
+                                            CommandParameter="{Binding}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8AC;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem 
                                             x:Uid="VersionListPage_DeleteMenuItem"
                                             Command="{Binding DataContext.DeleteVersionCommand, ElementName=VersionsListView}" 
                                             CommandParameter="{Binding}">

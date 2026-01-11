@@ -17,6 +17,7 @@ public sealed partial class VersionListPage : Page
     private ModDownloadDetailViewModel _modDownloadViewModel;
     private bool _isInstallDialogOpen = false; // 用于跟踪安装弹窗状态
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
+    private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
 
     public VersionListPage()
     {
@@ -38,10 +39,102 @@ public sealed partial class VersionListPage : Page
             viewModel.CompleteVersionRequested += OnCompleteVersionRequested;
             viewModel.CompleteVersionProgressUpdated += OnCompleteVersionProgressUpdated;
             viewModel.CompleteVersionCompleted += OnCompleteVersionCompleted;
+            // 监听属性变化以显示弹窗
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
         
         // 订阅ModDownloadDetailViewModel的属性变化事件
         _modDownloadViewModel.PropertyChanged += ModDownloadViewModel_PropertyChanged;
+    }
+    
+    /// <summary>
+    /// ViewModel属性变化事件处理
+    /// </summary>
+    private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is not VersionListViewModel viewModel)
+            return;
+        
+        // 处理重命名弹窗显示/隐藏
+        if (e.PropertyName == nameof(viewModel.IsRenameDialogVisible))
+        {
+            if (viewModel.IsRenameDialogVisible && !_isRenameDialogOpen)
+            {
+                try
+                {
+                    _isRenameDialogOpen = true;
+                    
+                    // 动态创建ContentDialog（参考官方示例）
+                    var dialog = new ContentDialog
+                    {
+                        XamlRoot = this.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        Title = "重命名版本",
+                        PrimaryButtonText = "确定",
+                        CloseButtonText = "取消",
+                        DefaultButton = ContentDialogButton.Primary
+                    };
+                    
+                    // 创建内容
+                    var contentStack = new StackPanel { Spacing = 12, Width = 400 };
+                    
+                    // 说明文字
+                    var instructionText = new TextBlock
+                    {
+                        Text = "请输入新的版本名称：",
+                        FontSize = 14
+                    };
+                    contentStack.Children.Add(instructionText);
+                    
+                    // 输入框
+                    var nameTextBox = new TextBox
+                    {
+                        PlaceholderText = "新版本名称",
+                        Text = viewModel.NewVersionName,
+                        MaxLength = 100
+                    };
+                    // 双向绑定
+                    nameTextBox.TextChanged += (s, args) => viewModel.NewVersionName = nameTextBox.Text;
+                    contentStack.Children.Add(nameTextBox);
+                    
+                    dialog.Content = contentStack;
+                    
+                    // 显示弹窗
+                    var result = await dialog.ShowAsync();
+                    
+                    if (result == ContentDialogResult.Primary)
+                    {
+                        // 执行重命名
+                        var (success, message) = await viewModel.ExecuteRenameVersionAsync();
+                        
+                        if (!success)
+                        {
+                            // 显示错误消息
+                            var errorDialog = new ContentDialog
+                            {
+                                XamlRoot = this.XamlRoot,
+                                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                                Title = "重命名失败",
+                                Content = message,
+                                CloseButtonText = "确定"
+                            };
+                            
+                            await errorDialog.ShowAsync();
+                        }
+                    }
+                    
+                    _isRenameDialogOpen = false;
+                    // 弹窗关闭后重置状态
+                    viewModel.IsRenameDialogVisible = false;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示重命名弹窗失败: {ex.Message}");
+                    _isRenameDialogOpen = false;
+                    viewModel.IsRenameDialogVisible = false;
+                }
+            }
+        }
     }
     
     /// <summary>

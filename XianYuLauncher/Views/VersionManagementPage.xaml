@@ -139,8 +139,26 @@
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,32">
-            <TextBlock x:Name="PageTitle" Style="{StaticResource PageTitleStyle}" FontSize="36" FontWeight="Bold" />
-            <TextBlock x:Name="PageSubtitle" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
+            <Viewbox 
+                HorizontalAlignment="Left" 
+                VerticalAlignment="Top" 
+                MaxHeight="48"
+                Stretch="Uniform"
+                StretchDirection="DownOnly">
+                <TextBlock 
+                    x:Name="PageTitle" 
+                    Style="{StaticResource PageTitleStyle}" 
+                    FontSize="36" 
+                    FontWeight="Bold"
+                    TextTrimming="CharacterEllipsis" />
+            </Viewbox>
+            <TextBlock 
+                x:Name="PageSubtitle" 
+                Style="{StaticResource BodyTextStyle}" 
+                Margin="0,8,0,0" 
+                Opacity="0.7"
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="NoWrap" />
         </StackPanel>
 
         <!-- 控制区域 -->
