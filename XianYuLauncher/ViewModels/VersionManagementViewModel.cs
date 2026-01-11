@@ -795,6 +795,29 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IDownloadManager _downloadManager;
+    
+    /// <summary>
+    /// 用于取消页面异步操作的令牌源
+    /// </summary>
+    private CancellationTokenSource? _pageCancellationTokenSource;
+    
+    /// <summary>
+    /// 是否正在安装扩展
+    /// </summary>
+    [ObservableProperty]
+    private bool _isInstallingExtension = false;
+    
+    /// <summary>
+    /// 扩展安装进度（0-100）
+    /// </summary>
+    [ObservableProperty]
+    private double _extensionInstallProgress = 0;
+    
+    /// <summary>
+    /// 扩展安装状态消息
+    /// </summary>
+    [ObservableProperty]
+    private string _extensionInstallStatus = string.Empty;
 
     public VersionManagementViewModel(
         IFileService fileService, 
@@ -940,7 +963,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public void OnNavigatedFrom()
     {
-        // 清理资源
+        // 取消所有正在进行的异步操作
+        _pageCancellationTokenSource?.Cancel();
+        _pageCancellationTokenSource?.Dispose();
+        _pageCancellationTokenSource = null;
+        
+        System.Diagnostics.Debug.WriteLine("[DEBUG] 页面导航离开，已取消所有异步操作");
     }
 
     /// <summary>
@@ -1332,7 +1360,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         try
         {
-            IsLoading = true;
+            // 使用弹窗显示进度，而不是整页加载环
+            IsInstallingExtension = true;
+            ExtensionInstallProgress = 0;
+            ExtensionInstallStatus = "正在准备安装...";
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始保存扩展配置并安装加载器");
             
             // 获取所有已选择的加载器
@@ -1355,8 +1386,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             var primaryLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() != "optifine");
             var optifineLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() == "optifine");
             
+            // 计算总步骤数
+            int totalSteps = 2; // 下载JSON + 保存配置
+            if (primaryLoader != null) totalSteps++;
+            if (optifineLoader != null) totalSteps++;
+            int currentStep = 0;
+            
             // 步骤1：下载原版JSON并覆盖（重置为原版状态）
-            StatusMessage = "正在下载原版版本信息...";
+            ExtensionInstallStatus = "正在下载原版版本信息...";
+            ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤1: 下载原版JSON");
             
             var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
@@ -1368,11 +1406,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 原版JSON已保存到: {versionJsonPath}");
+            currentStep++;
+            ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
             
             // 步骤2：安装主加载器（如果有）
             if (primaryLoader != null)
             {
-                StatusMessage = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
+                ExtensionInstallStatus = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤2: 安装主加载器 {primaryLoader.Name} {primaryLoader.SelectedVersion}");
                 
                 var installer = _modLoaderInstallerFactory.GetInstaller(primaryLoader.LoaderType);
@@ -1383,6 +1423,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     OverwriteExisting = true
                 };
                 
+                double stepStartProgress = (double)currentStep / totalSteps * 100;
+                double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
+                
                 await installer.InstallAsync(
                     minecraftVersion,
                     primaryLoader.SelectedVersion!,
@@ -1390,9 +1433,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     installOptions,
                     progress => 
                     {
+                        // 将安装器的进度映射到当前步骤的进度范围
+                        ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] 安装进度: {progress:F1}%");
                     });
                 
+                currentStep++;
+                ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 主加载器安装完成");
             }
             
@@ -1400,7 +1447,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             // 注意：Optifine需要在Forge之后安装（如果同时选择了Forge和Optifine）
             if (optifineLoader != null)
             {
-                StatusMessage = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
+                ExtensionInstallStatus = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤3: 安装Optifine {optifineLoader.SelectedVersion}");
                 
                 var optifineInstaller = _modLoaderInstallerFactory.GetInstaller("optifine");
@@ -1411,6 +1458,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     OverwriteExisting = true
                 };
                 
+                double stepStartProgress = (double)currentStep / totalSteps * 100;
+                double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
+                
                 await optifineInstaller.InstallAsync(
                     minecraftVersion,
                     optifineLoader.SelectedVersion!,
@@ -1418,14 +1468,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     optifineOptions,
                     progress =>
                     {
+                        ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装进度: {progress:F1}%");
                     });
                 
+                currentStep++;
+                ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装完成");
             }
             
             // 步骤4：保存配置文件
-            StatusMessage = "正在保存配置...";
+            ExtensionInstallStatus = "正在保存配置...";
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤4: 保存配置文件");
             
             string settingsFilePath = GetSettingsFilePath();
@@ -1467,6 +1520,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             await File.WriteAllTextAsync(settingsFilePath, jsonContent);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置已保存到: {settingsFilePath}");
             
+            ExtensionInstallProgress = 100;
+            ExtensionInstallStatus = "安装完成！";
+            
             // 更新UI
             UpdateCurrentLoaderInfo(new VersionSettings
             {
@@ -1487,13 +1543,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
+            ExtensionInstallStatus = $"安装失败：{ex.Message}";
             StatusMessage = $"安装失败：{ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[ERROR] 保存扩展配置失败: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈: {ex.StackTrace}");
         }
         finally
         {
-            IsLoading = false;
+            // 延迟关闭弹窗，让用户看到完成状态
+            await Task.Delay(500);
+            IsInstallingExtension = false;
         }
     }
     
@@ -1604,6 +1663,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 return;
             }
+            
+            // 取消之前的操作并创建新的取消令牌
+            _pageCancellationTokenSource?.Cancel();
+            _pageCancellationTokenSource?.Dispose();
+            _pageCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _pageCancellationTokenSource.Token;
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
@@ -1611,8 +1676,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 先加载版本设置，这个比较轻量
                 await LoadSettingsAsync();
+                
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 // 快速加载所有资源列表（不加载图标）
                 await Task.WhenAll(
@@ -1626,10 +1695,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
                 
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 然后在后台异步加载图标，不阻塞UI
-                _ = LoadAllIconsAsync();
+                _ = LoadAllIconsAsync(cancellationToken);
 
                 StatusMessage = $"已加载版本 {SelectedVersion.Name} 的数据";
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 版本数据加载已取消");
+                IsLoading = false;
             }
             catch (Exception ex)
             {
@@ -1641,7 +1717,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 异步加载所有资源的图标
         /// </summary>
-        private async Task LoadAllIconsAsync()
+        private async Task LoadAllIconsAsync(CancellationToken cancellationToken = default)
         {
             // 不等待，让图标在后台逐个加载
             // 这样页面可以立即显示，图标会逐渐出现
@@ -1656,56 +1732,83 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     var modTasks = new List<Task>();
                     foreach (var modInfo in Mods)
                     {
-                        modTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => modInfo.Icon = icon, modInfo.FilePath, "mod", true));
+                        cancellationToken.ThrowIfCancellationRequested();
+                        modTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => modInfo.Icon = icon, modInfo.FilePath, "mod", true, cancellationToken));
                     }
                     
                     // 等待 Mod 图标加载完成后再加载其他资源
                     await Task.WhenAll(modTasks);
                     
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     // 加载光影图标
                     var shaderTasks = new List<Task>();
                     foreach (var shaderInfo in Shaders)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         bool isModrinthSupported = shaderInfo.FilePath.EndsWith(".zip");
-                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", isModrinthSupported));
+                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", isModrinthSupported, cancellationToken));
                     }
                     await Task.WhenAll(shaderTasks);
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
                     
                     // 加载资源包图标和预览图
                     var resourcePackTasks = new List<Task>();
                     foreach (var resourcePackInfo in ResourcePacks)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         bool isModrinthSupported = resourcePackInfo.FilePath.EndsWith(".zip");
-                        resourcePackTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", isModrinthSupported));
+                        resourcePackTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", isModrinthSupported, cancellationToken));
                         // 预览图加载（本地操作）
                         resourcePackTasks.Add(LoadResourcePackPreviewAsync(resourcePackInfo));
                     }
                     await Task.WhenAll(resourcePackTasks);
                     
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     // 最后加载地图图标（本地操作）
                     var mapTasks = new List<Task>();
                     foreach (var mapInfo in Maps)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         mapTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
                     }
                     await Task.WhenAll(mapTasks);
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("[DEBUG] 图标加载已取消");
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"加载图标失败：{ex.Message}");
                 }
-            });
+            }, cancellationToken);
         }
         
         /// <summary>
         /// 使用信号量限制并发的图标加载
         /// </summary>
-        private async Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported)
+        private async Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported, CancellationToken cancellationToken = default)
         {
-            await semaphore.WaitAsync();
             try
             {
-                await LoadResourceIconAsync(iconProperty, filePath, resourceType, isModrinthSupported);
+                await semaphore.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await LoadResourceIconAsync(iconProperty, filePath, resourceType, isModrinthSupported, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // 取消操作，静默退出
             }
             finally
             {
@@ -1801,11 +1904,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// 从Modrinth API获取mod图标URL
         /// </summary>
         /// <param name="filePath">mod文件路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>图标URL，如果获取失败则返回null</returns>
-        private async Task<string> GetModrinthIconUrlAsync(string filePath)
+        private async Task<string> GetModrinthIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 计算文件的SHA1哈希值
                 string sha1Hash = CalculateSHA1(filePath);
                 System.Diagnostics.Debug.WriteLine($"计算SHA1哈希值: {sha1Hash}");
@@ -1829,11 +1935,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         "application/json");
                     
                     System.Diagnostics.Debug.WriteLine($"调用Modrinth API: {versionFilesUrl}");
-                    var response = await httpClient.PostAsync(versionFilesUrl, content);
+                    var response = await httpClient.PostAsync(versionFilesUrl, content, cancellationToken);
                     
                     if (response.IsSuccessStatusCode)
                     {
-                        string responseContent = await response.Content.ReadAsStringAsync();
+                        string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
                         System.Diagnostics.Debug.WriteLine($"API响应: {responseContent}");
                         
                         // 解析响应
@@ -1848,14 +1954,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             
                             System.Diagnostics.Debug.WriteLine($"获取到project_id: {projectId}");
                             
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
                             // 调用Modrinth API的GET /project/{id}端点
                             string projectUrl = TransformModrinthApiUrl($"https://api.modrinth.com/v2/project/{projectId}");
                             System.Diagnostics.Debug.WriteLine($"调用Modrinth API获取项目信息: {projectUrl}");
-                            var projectResponse = await httpClient.GetAsync(projectUrl);
+                            var projectResponse = await httpClient.GetAsync(projectUrl, cancellationToken);
                             
                             if (projectResponse.IsSuccessStatusCode)
                             {
-                                string projectContent = await projectResponse.Content.ReadAsStringAsync();
+                                string projectContent = await projectResponse.Content.ReadAsStringAsync(cancellationToken);
                                 System.Diagnostics.Debug.WriteLine($"项目API响应: {projectContent}");
                                 
                                 // 解析项目响应
@@ -1875,6 +1983,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"从Modrinth获取图标失败: {ex.Message}");
@@ -1889,11 +2001,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="filePath">资源文件路径</param>
         /// <param name="iconUrl">图标URL</param>
         /// <param name="resourceType">资源类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>本地图标路径，如果保存失败则返回null</returns>
-        private async Task<string> SaveModrinthIconAsync(string filePath, string iconUrl, string resourceType)
+        private async Task<string> SaveModrinthIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 获取Minecraft数据路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 // 构建图标目录路径
@@ -1918,12 +2033,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
                     System.Diagnostics.Debug.WriteLine($"下载图标: {iconUrl}");
-                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl);
-                    await File.WriteAllBytesAsync(iconFilePath, iconBytes);
+                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
+                    await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
                     System.Diagnostics.Debug.WriteLine($"图标保存到本地: {iconFilePath}");
                     
                     return iconFilePath;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
             }
             catch (Exception ex)
             {
@@ -1952,15 +2071,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// 从CurseForge API获取mod图标URL
         /// </summary>
         /// <param name="filePath">mod文件路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>图标URL，如果获取失败则返回null</returns>
-        private async Task<string> GetCurseForgeIconUrlAsync(string filePath)
+        private async Task<string> GetCurseForgeIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 计算文件的CurseForge Fingerprint
                 uint fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(filePath);
                 System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 计算Fingerprint: {fingerprint}");
 
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 调用CurseForge API查询Fingerprint
                 var result = await _curseForgeService.GetFingerprintMatchesAsync(new List<uint> { fingerprint });
                 
@@ -1968,6 +2092,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 {
                     var match = result.ExactMatches[0];
                     System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 找到匹配的Mod ID: {match.Id}");
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
                     
                     // 获取Mod详情以获取Logo信息
                     var modDetail = await _curseForgeService.GetModDetailAsync(match.Id);
@@ -1988,6 +2114,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 未找到匹配的Mod");
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 从CurseForge获取图标失败: {ex.Message}");
@@ -2002,11 +2132,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="filePath">资源文件路径</param>
         /// <param name="iconUrl">图标URL</param>
         /// <param name="resourceType">资源类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>本地图标路径，如果保存失败则返回null</returns>
-        private async Task<string> SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType)
+        private async Task<string> SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 获取Minecraft数据路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 // 构建图标目录路径
@@ -2031,12 +2164,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
                     System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 下载图标: {iconUrl}");
-                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl);
-                    await File.WriteAllBytesAsync(iconFilePath, iconBytes);
+                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
+                    await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
                     System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 图标保存到本地: {iconFilePath}");
                     
                     return iconFilePath;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
             }
             catch (Exception ex)
             {
@@ -2052,10 +2189,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="filePath">资源文件路径</param>
         /// <param name="resourceType">资源类型</param>
         /// <param name="isModrinthSupported">是否支持从Modrinth API获取</param>
-        private async Task LoadResourceIconAsync(Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported = false)
+        /// <param name="cancellationToken">取消令牌</param>
+        private async Task LoadResourceIconAsync(Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported = false, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 检查本地图标
                 string localIcon = GetLocalIconPath(filePath, resourceType);
                 if (!string.IsNullOrEmpty(localIcon))
@@ -2067,12 +2207,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 如果支持Modrinth且本地没有图标，尝试从Modrinth API获取
                 if (isModrinthSupported)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     System.Diagnostics.Debug.WriteLine($"本地没有图标，尝试从Modrinth API获取{resourceType}图标: {filePath}");
-                    string iconUrl = await GetModrinthIconUrlAsync(filePath);
+                    string iconUrl = await GetModrinthIconUrlAsync(filePath, cancellationToken);
                     if (!string.IsNullOrEmpty(iconUrl))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
                         // 保存图标到本地，传递资源类型
-                        string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType);
+                        string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
                             iconProperty(localIconPath);
@@ -2080,19 +2224,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         }
                     }
                     
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     // Modrinth 失败，尝试 CurseForge
                     System.Diagnostics.Debug.WriteLine($"Modrinth未找到图标，尝试从CurseForge API获取{resourceType}图标: {filePath}");
-                    string curseForgeIconUrl = await GetCurseForgeIconUrlAsync(filePath);
+                    string curseForgeIconUrl = await GetCurseForgeIconUrlAsync(filePath, cancellationToken);
                     if (!string.IsNullOrEmpty(curseForgeIconUrl))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
                         // 保存图标到本地，传递资源类型
-                        string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType);
+                        string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
                             iconProperty(localIconPath);
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 加载{resourceType}图标已取消: {filePath}");
             }
             catch (Exception ex)
             {

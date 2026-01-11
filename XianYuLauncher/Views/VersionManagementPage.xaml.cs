@@ -34,12 +34,35 @@ public sealed partial class VersionManagementPage : Page
         {
             try
             {
-                if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
+                if (e.PropertyName == nameof(ViewModel.IsInstallingExtension))
+                {
+                    if (ViewModel.IsInstallingExtension)
+                    {
+                        // 关闭所有可能打开的弹窗
+                        MoveModsDialog.Hide();
+                        ResultDialog.Hide();
+                        MoveResultDialog.Hide();
+                        DownloadProgressDialog.Hide();
+                        
+                        // 等待足够长的时间，确保所有弹窗完全关闭
+                        await Task.Delay(100);
+                        
+                        // 显示扩展安装进度弹窗
+                        await ExtensionInstallDialog.ShowAsync();
+                    }
+                    else
+                    {
+                        // 关闭扩展安装进度弹窗
+                        ExtensionInstallDialog.Hide();
+                    }
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
                 {
                     // 关闭所有可能打开的弹窗
                     MoveModsDialog.Hide();
                     ResultDialog.Hide();
                     MoveResultDialog.Hide();
+                    ExtensionInstallDialog.Hide();
                     
                     // 等待足够长的时间，确保所有弹窗完全关闭
                     await Task.Delay(100);
@@ -51,6 +74,7 @@ public sealed partial class VersionManagementPage : Page
                 {
                     // 关闭下载进度弹窗（如果显示）
                     DownloadProgressDialog.Hide();
+                    ExtensionInstallDialog.Hide();
                     
                     // 等待足够长的时间，确保弹窗完全关闭
                     await Task.Delay(100);
@@ -64,6 +88,7 @@ public sealed partial class VersionManagementPage : Page
                     DownloadProgressDialog.Hide();
                     ResultDialog.Hide();
                     MoveResultDialog.Hide();
+                    ExtensionInstallDialog.Hide();
                     
                     // 等待足够长的时间，确保所有弹窗完全关闭
                     await Task.Delay(100);
@@ -75,6 +100,7 @@ public sealed partial class VersionManagementPage : Page
                 {
                     // 关闭下载进度弹窗（如果显示）
                     DownloadProgressDialog.Hide();
+                    ExtensionInstallDialog.Hide();
                     
                     // 等待足够长的时间，确保弹窗完全关闭
                     await Task.Delay(100);

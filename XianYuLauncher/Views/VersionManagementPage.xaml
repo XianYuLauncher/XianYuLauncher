@@ -1489,6 +1489,42 @@
                 </Grid>
             </TabViewItem>
         </TabView>
+        <!-- 扩展安装进度弹窗 -->
+        <ContentDialog 
+            x:Name="ExtensionInstallDialog"
+            Grid.RowSpan="3"
+            x:Uid="VersionManagerPage_ExtensionInstallDialog"
+            Title="安装加载器"
+            PrimaryButtonText=""
+            IsPrimaryButtonEnabled="False"
+            CloseButtonText=""
+            DefaultButton="None"
+            Width="400">
+            <StackPanel Spacing="16">
+                <!-- 当前安装状态 -->
+                <TextBlock 
+                    Text="{Binding ExtensionInstallStatus, Mode=OneWay}" 
+                    FontSize="16" 
+                    FontWeight="Medium"
+                    TextWrapping="WrapWholeWords"/>
+                
+                <!-- 进度条 -->
+                <ProgressBar 
+                    Value="{Binding ExtensionInstallProgress, Mode=OneWay}" 
+                    Minimum="0" 
+                    Maximum="100" 
+                    Height="8"
+                    CornerRadius="4"/>
+                
+                <!-- 进度百分比 -->
+                <TextBlock 
+                    Text="{Binding ExtensionInstallProgress, Mode=OneWay, Converter={StaticResource DoubleToPercentageConverter}}" 
+                    FontSize="12" 
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    HorizontalAlignment="Right"/>
+            </StackPanel>
+        </ContentDialog>
+        
         <!-- 下载进度弹窗 -->
         <ContentDialog 
             x:Name="DownloadProgressDialog"
@@ -1538,5 +1574,4 @@
                 HorizontalAlignment="Center"/>
         </ContentDialog>
     </Grid>
-</Page> 
-                               
+</Page>
