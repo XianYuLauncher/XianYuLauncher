@@ -46,6 +46,25 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string? customVersionName = null);
 
     /// <inheritdoc/>
+    public virtual Task<string> InstallAsync(
+        string minecraftVersionId,
+        string modLoaderVersion,
+        string minecraftDirectory,
+        ModLoaderInstallOptions options,
+        Action<double>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 默认实现：调用原有方法，子类可以重写以支持更多选项
+        return InstallAsync(
+            minecraftVersionId,
+            modLoaderVersion,
+            minecraftDirectory,
+            progressCallback,
+            cancellationToken,
+            options.CustomVersionName);
+    }
+
+    /// <inheritdoc/>
     public abstract Task<List<string>> GetAvailableVersionsAsync(
         string minecraftVersionId,
         CancellationToken cancellationToken = default);
@@ -175,6 +194,36 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         }
 
         Logger.LogInformation("Minecraft JAR下载完成: {JarPath}", jarPath);
+    }
+    
+    /// <summary>
+    /// 确保Minecraft JAR文件存在（如果不存在则下载）
+    /// </summary>
+    protected async Task EnsureMinecraftJarAsync(
+        string versionDirectory,
+        string versionId,
+        VersionInfo originalVersionInfo,
+        bool skipDownload,
+        Action<double>? progressCallback,
+        CancellationToken cancellationToken)
+    {
+        var jarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
+        
+        if (File.Exists(jarPath))
+        {
+            Logger.LogInformation("Minecraft JAR已存在，跳过下载: {JarPath}", jarPath);
+            progressCallback?.Invoke(100);
+            return;
+        }
+        
+        if (skipDownload)
+        {
+            Logger.LogInformation("跳过JAR下载（skipDownload=true），JAR文件不存在: {JarPath}", jarPath);
+            progressCallback?.Invoke(100);
+            return;
+        }
+        
+        await DownloadMinecraftJarAsync(versionDirectory, versionId, originalVersionInfo, progressCallback, cancellationToken);
     }
 
     /// <summary>

@@ -6,6 +6,27 @@ using System.Threading.Tasks;
 namespace XianYuLauncher.Core.Contracts.Services;
 
 /// <summary>
+/// ModLoader安装选项
+/// </summary>
+public class ModLoaderInstallOptions
+{
+    /// <summary>
+    /// 是否跳过JAR下载（用于重新安装加载器时，JAR已存在的情况）
+    /// </summary>
+    public bool SkipJarDownload { get; set; } = false;
+    
+    /// <summary>
+    /// 自定义版本名称（可选）
+    /// </summary>
+    public string? CustomVersionName { get; set; }
+    
+    /// <summary>
+    /// 是否覆盖现有安装
+    /// </summary>
+    public bool OverwriteExisting { get; set; } = true;
+}
+
+/// <summary>
 /// ModLoader安装器接口，定义统一的ModLoader安装流程
 /// </summary>
 public interface IModLoaderInstaller
@@ -32,6 +53,24 @@ public interface IModLoaderInstaller
         Action<double>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null);
+    
+    /// <summary>
+    /// 安装ModLoader版本（带选项）
+    /// </summary>
+    /// <param name="minecraftVersionId">Minecraft版本ID</param>
+    /// <param name="modLoaderVersion">ModLoader版本</param>
+    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="options">安装选项</param>
+    /// <param name="progressCallback">进度回调（0-100）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>安装后的版本ID</returns>
+    Task<string> InstallAsync(
+        string minecraftVersionId, 
+        string modLoaderVersion,
+        string minecraftDirectory,
+        ModLoaderInstallOptions options,
+        Action<double>? progressCallback = null,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// 获取指定Minecraft版本可用的ModLoader版本列表

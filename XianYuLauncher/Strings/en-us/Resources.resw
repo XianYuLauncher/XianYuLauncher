@@ -1802,4 +1802,25 @@ Continue downloading?</value>
   <data name="VersionListPage_ExportModpackDialog_OfflineModeWarningInfoBar.Message" xml:space="preserve">
     <value>Including mods directly in the modpack may violate certain terms. Please do not distribute!</value>
   </data>
+  <data name="VersionManagerPage_ExtensionTab.Text" xml:space="preserve">
+    <value>Extension</value>
+  </data>
+  <data name="VersionManagerPage_CurrentLoaderTitle.Text" xml:space="preserve">
+    <value>Current Loader</value>
+  </data>
+  <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
+    <value>Manage Loaders</value>
+  </data>
+  <data name="VersionManagerPage_SaveExtensionConfigButton.Content" xml:space="preserve">
+    <value>Save Configuration</value>
+  </data>
+  <data name="VersionManagerPage_InstalledTag.Text" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="VersionManagerPage_InstallLoaderButton.Content" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="VersionManagerPage_RemoveLoaderButton.Content" xml:space="preserve">
+    <value>Remove</value>
+  </data>
 </root>

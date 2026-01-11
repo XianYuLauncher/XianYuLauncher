@@ -33,16 +33,24 @@ public class QuiltService
     {
         try
         {
-            // 获取当前版本列表源设置（字符串类型）
-            var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
+            // 获取当前版本列表源设置（枚举类型，然后转为字符串）
+            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
+            string versionListSource = versionListSourceEnum switch
+            {
+                0 => "official",
+                1 => "bmclapi",
+                2 => "mcim",
+                _ => "official"
+            };
             
             // 根据设置获取对应的下载源
-            var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+            var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
             
             // 使用下载源获取Quilt版本列表URL
             string url = downloadSource.GetQuiltVersionsUrl(minecraftVersion);
             
             // 添加Debug输出，显示当前下载源和请求URL
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取{downloadSource.Name} Quilt版本列表URL: {url}");
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Quilt版本列表，下载源: {downloadSource.Name}，请求URL: {url}");
             
             // 创建请求消息，为BMCLAPI请求添加User-Agent

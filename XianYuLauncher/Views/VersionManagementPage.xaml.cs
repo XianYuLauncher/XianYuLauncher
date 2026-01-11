@@ -256,4 +256,107 @@ public sealed partial class VersionManagementPage : Page
     }
     
     #endregion
+    
+    #region 扩展Tab事件处理
+    
+    /// <summary>
+    /// 处理加载器Expander展开事件，加载版本列表
+    /// </summary>
+    private async void LoaderExpander_Expanding(Expander sender, ExpanderExpandingEventArgs args)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] LoaderExpander_Expanding 事件被触发");
+        
+        // 从 Expander.Header 的 DataContext 获取 LoaderItemViewModel
+        if (sender.Header is Grid headerGrid && headerGrid.DataContext is LoaderItemViewModel loader)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 从 Header.DataContext 找到 LoaderItemViewModel: {loader.Name}");
+            await ViewModel.LoadLoaderVersionsAsync(loader);
+        }
+        // 尝试从 Tag 获取
+        else if (sender.Tag is LoaderItemViewModel loaderFromTag)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 从 Tag 找到 LoaderItemViewModel: {loaderFromTag.Name}");
+            await ViewModel.LoadLoaderVersionsAsync(loaderFromTag);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 无法获取 LoaderItemViewModel！");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] sender.Header 类型: {sender.Header?.GetType().Name}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] sender.Tag 类型: {sender.Tag?.GetType().Name}");
+        }
+    }
+    
+    /// <summary>
+    /// 处理版本列表选择变化事件 - 只更新临时选择状态，并处理互斥逻辑
+    /// </summary>
+    private void LoaderVersionListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] LoaderVersionListView_SelectionChanged 事件被触发");
+        
+        if (sender is ListView listView && listView.Tag is LoaderItemViewModel loader)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 选中版本: {loader.SelectedVersion}");
+            
+            // 如果选择了版本，需要处理互斥逻辑
+            if (!string.IsNullOrEmpty(loader.SelectedVersion))
+            {
+                // 获取当前选择的加载器类型
+                string currentLoaderType = loader.LoaderType.ToLower();
+                
+                // 清除其他互斥的加载器选择
+                // 规则：只有 Forge 和 Optifine 可以同时选择，其他都互斥
+                foreach (var otherLoader in ViewModel.AvailableLoaders)
+                {
+                    if (otherLoader == loader)
+                        continue;
+                    
+                    string otherLoaderType = otherLoader.LoaderType.ToLower();
+                    
+                    // 检查是否需要清除
+                    bool shouldClear = false;
+                    
+                    if (currentLoaderType == "forge" && otherLoaderType == "optifine")
+                    {
+                        // Forge 和 Optifine 可以共存
+                        shouldClear = false;
+                    }
+                    else if (currentLoaderType == "optifine" && otherLoaderType == "forge")
+                    {
+                        // Optifine 和 Forge 可以共存
+                        shouldClear = false;
+                    }
+                    else if (!string.IsNullOrEmpty(otherLoader.SelectedVersion))
+                    {
+                        // 其他情况都互斥
+                        shouldClear = true;
+                    }
+                    
+                    if (shouldClear)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 清除互斥的加载器选择: {otherLoader.Name}");
+                        otherLoader.SelectedVersion = null;
+                        otherLoader.IsExpanded = false;
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 处理取消加载器按钮点击事件，卸载加载器
+    /// </summary>
+    private async void CancelLoader_Click(object sender, RoutedEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] CancelLoader_Click 事件被触发");
+        
+        if (sender is Button button && button.Tag is LoaderItemViewModel loader)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 准备卸载加载器: {loader.Name}");
+            
+            // 调用ViewModel的卸载加载器命令
+            await ViewModel.UninstallLoaderCommand.ExecuteAsync(loader);
+        }
+    }
+    
+    #endregion
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +25,66 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.ViewModels;
+
+/// <summary>
+/// 加载器项视图模型，用于扩展Tab中的加载器列表
+/// </summary>
+public partial class LoaderItemViewModel : ObservableObject
+{
+    /// <summary>
+    /// 加载器名称
+    /// </summary>
+    [ObservableProperty]
+    private string _name = string.Empty;
+    
+    /// <summary>
+    /// 加载器类型标识（fabric, forge, neoforge, quilt, cleanroom, optifine）
+    /// </summary>
+    [ObservableProperty]
+    private string _loaderType = string.Empty;
+    
+    /// <summary>
+    /// 加载器图标URL
+    /// </summary>
+    [ObservableProperty]
+    private string _iconUrl = string.Empty;
+    
+    /// <summary>
+    /// 是否已安装
+    /// </summary>
+    [ObservableProperty]
+    private bool _isInstalled;
+    
+    /// <summary>
+    /// 是否展开
+    /// </summary>
+    [ObservableProperty]
+    private bool _isExpanded;
+    
+    /// <summary>
+    /// 是否正在加载版本列表
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLoading;
+    
+    /// <summary>
+    /// 可用版本列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _versions = new();
+    
+    /// <summary>
+    /// 选中的版本
+    /// </summary>
+    [ObservableProperty]
+    private string? _selectedVersion;
+    
+    /// <summary>
+    /// 已安装的版本号
+    /// </summary>
+    [ObservableProperty]
+    private string _installedVersion = string.Empty;
+}
 
 /// <summary>
     /// Mod信息类
@@ -541,6 +602,28 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public bool IsScreenshotListEmpty => Screenshots.Count == 0;
     
+    #region 扩展Tab相关属性
+    
+    /// <summary>
+    /// 当前加载器显示名称
+    /// </summary>
+    [ObservableProperty]
+    private string _currentLoaderDisplayName = "原版";
+    
+    /// <summary>
+    /// 当前加载器版本
+    /// </summary>
+    [ObservableProperty]
+    private string _currentLoaderVersion = string.Empty;
+    
+    /// <summary>
+    /// 可用的加载器列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<LoaderItemViewModel> _availableLoaders = new();
+    
+    #endregion
+    
     // 当资源列表变化时，通知空状态属性变化
     partial void OnModsChanged(ObservableCollection<ModInfo> value)
     {
@@ -703,7 +786,32 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private int _windowHeight = 720;
 
-    public VersionManagementViewModel(IFileService fileService, IMinecraftVersionService minecraftVersionService, INavigationService navigationService, ModrinthService modrinthService, CurseForgeService curseForgeService, XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
+    private readonly FabricService _fabricService;
+    private readonly ForgeService _forgeService;
+    private readonly NeoForgeService _neoForgeService;
+    private readonly QuiltService _quiltService;
+    private readonly OptifineService _optifineService;
+    private readonly CleanroomService _cleanroomService;
+    private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
+    private readonly IVersionInfoManager _versionInfoManager;
+    private readonly IDownloadManager _downloadManager;
+
+    public VersionManagementViewModel(
+        IFileService fileService, 
+        IMinecraftVersionService minecraftVersionService, 
+        INavigationService navigationService, 
+        ModrinthService modrinthService, 
+        CurseForgeService curseForgeService, 
+        XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
+        FabricService fabricService,
+        ForgeService forgeService,
+        NeoForgeService neoForgeService,
+        QuiltService quiltService,
+        OptifineService optifineService,
+        CleanroomService cleanroomService,
+        IModLoaderInstallerFactory modLoaderInstallerFactory,
+        IVersionInfoManager versionInfoManager,
+        IDownloadManager downloadManager)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -711,6 +819,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _downloadSourceFactory = downloadSourceFactory;
+        _fabricService = fabricService;
+        _forgeService = forgeService;
+        _neoForgeService = neoForgeService;
+        _quiltService = quiltService;
+        _optifineService = optifineService;
+        _cleanroomService = cleanroomService;
+        _modLoaderInstallerFactory = modLoaderInstallerFactory;
+        _versionInfoManager = versionInfoManager;
+        _downloadManager = downloadManager;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -869,6 +986,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     JavaPath = settings.JavaPath;
                     WindowWidth = settings.WindowWidth;
                     WindowHeight = settings.WindowHeight;
+                    
+                    // 更新当前加载器信息
+                    UpdateCurrentLoaderInfo(settings);
                 }
             }
             else
@@ -876,10 +996,504 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 // 设置文件不存在，创建默认设置文件
                 await SaveSettingsAsync();
             }
+            
+            // 初始化可用加载器列表
+            InitializeAvailableLoaders();
         }
         catch (Exception ex)
         {
             StatusMessage = $"加载设置失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 更新当前加载器信息显示
+    /// </summary>
+    private void UpdateCurrentLoaderInfo(VersionSettings? settings)
+    {
+        if (settings == null || string.IsNullOrEmpty(settings.ModLoaderType) || settings.ModLoaderType == "vanilla")
+        {
+            CurrentLoaderDisplayName = "原版";
+            CurrentLoaderVersion = settings?.MinecraftVersion ?? string.Empty;
+            return;
+        }
+        
+        CurrentLoaderDisplayName = settings.ModLoaderType switch
+        {
+            "fabric" => "Fabric",
+            "forge" => "Forge",
+            "neoforge" => "NeoForge",
+            "quilt" => "Quilt",
+            "cleanroom" => "Cleanroom",
+            "optifine" => "OptiFine",
+            _ => settings.ModLoaderType
+        };
+        CurrentLoaderVersion = settings.ModLoaderVersion ?? string.Empty;
+    }
+    
+    /// <summary>
+    /// 初始化可用加载器列表
+    /// </summary>
+    private void InitializeAvailableLoaders()
+    {
+        AvailableLoaders.Clear();
+        
+        // 获取当前版本的Minecraft版本号
+        string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+        
+        // 添加常用加载器（使用项目中已有的图标）
+        AvailableLoaders.Add(new LoaderItemViewModel
+        {
+            Name = "Fabric",
+            LoaderType = "fabric",
+            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+            IsInstalled = IsLoaderInstalled("fabric")
+        });
+        
+        AvailableLoaders.Add(new LoaderItemViewModel
+        {
+            Name = "Forge",
+            LoaderType = "forge",
+            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
+            IsInstalled = IsLoaderInstalled("forge")
+        });
+        
+        AvailableLoaders.Add(new LoaderItemViewModel
+        {
+            Name = "NeoForge",
+            LoaderType = "neoforge",
+            IconUrl = "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
+            IsInstalled = IsLoaderInstalled("neoforge")
+        });
+        
+        AvailableLoaders.Add(new LoaderItemViewModel
+        {
+            Name = "Quilt",
+            LoaderType = "quilt",
+            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
+            IsInstalled = IsLoaderInstalled("quilt")
+        });
+        
+        AvailableLoaders.Add(new LoaderItemViewModel
+        {
+            Name = "OptiFine",
+            LoaderType = "optifine",
+            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+            IsInstalled = IsLoaderInstalled("optifine")
+        });
+        
+        // 如果是1.12.2版本，添加Cleanroom加载器
+        if (minecraftVersion == "1.12.2")
+        {
+            AvailableLoaders.Add(new LoaderItemViewModel
+            {
+                Name = "Cleanroom",
+                LoaderType = "cleanroom",
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
+                IsInstalled = IsLoaderInstalled("cleanroom")
+            });
+        }
+    }
+    
+    /// <summary>
+    /// 从选中的版本获取Minecraft版本号
+    /// </summary>
+    private string GetMinecraftVersionFromSelectedVersion()
+    {
+        if (SelectedVersion == null)
+        {
+            return string.Empty;
+        }
+        
+        // 使用VersionInfoService统一获取版本号，支持从XianYuL.cfg、PCL2、HMCL、MultiMC等配置读取
+        var versionInfoService = App.GetService<IVersionInfoService>();
+        if (versionInfoService != null)
+        {
+            var versionConfig = versionInfoService.GetVersionConfigFromDirectory(SelectedVersion.Path);
+            if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+            {
+                return versionConfig.MinecraftVersion;
+            }
+        }
+        
+        // 回退方案：直接使用VersionNumber属性
+        return SelectedVersion.VersionNumber;
+    }
+    
+    /// <summary>
+    /// 检查指定加载器是否已安装
+    /// </summary>
+    private bool IsLoaderInstalled(string loaderType)
+    {
+        if (SelectedVersion == null)
+        {
+            return false;
+        }
+        
+        string versionName = SelectedVersion.Name.ToLower();
+        return versionName.Contains(loaderType);
+    }
+    
+    /// <summary>
+    /// 加载指定加载器的版本列表
+    /// </summary>
+    public async Task LoadLoaderVersionsAsync(LoaderItemViewModel loader)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] LoadLoaderVersionsAsync 被调用，加载器: {loader.Name}, LoaderType: {loader.LoaderType}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] IsLoading: {loader.IsLoading}, Versions.Count: {loader.Versions.Count}");
+        
+        if (loader.IsLoading || loader.Versions.Count > 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 跳过加载 - IsLoading={loader.IsLoading}, Versions.Count={loader.Versions.Count}");
+            return;
+        }
+        
+        loader.IsLoading = true;
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载版本列表...");
+        
+        try
+        {
+            string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Minecraft版本: {minecraftVersion}");
+            
+            var versions = await GetLoaderVersionsAsync(loader.LoaderType, minecraftVersion);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {versions.Count} 个版本");
+            
+            loader.Versions.Clear();
+            foreach (var version in versions)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加版本: {version}");
+                loader.Versions.Add(version);
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本列表填充完成，总共 {loader.Versions.Count} 个版本");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 加载{loader.Name}版本列表失败：{ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
+            StatusMessage = $"加载{loader.Name}版本列表失败：{ex.Message}";
+        }
+        finally
+        {
+            loader.IsLoading = false;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] IsLoading 设置为 false");
+        }
+    }
+    
+    /// <summary>
+    /// 获取加载器版本列表
+    /// </summary>
+    private async Task<List<string>> GetLoaderVersionsAsync(string loaderType, string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetLoaderVersionsAsync - loaderType: {loaderType}, minecraftVersion: {minecraftVersion}");
+        
+        try
+        {
+            var result = loaderType.ToLower() switch
+            {
+                "fabric" => await GetFabricVersionsAsync(minecraftVersion),
+                "forge" => await GetForgeVersionsAsync(minecraftVersion),
+                "neoforge" => await GetNeoForgeVersionsAsync(minecraftVersion),
+                "quilt" => await GetQuiltVersionsAsync(minecraftVersion),
+                "optifine" => await GetOptifineVersionsAsync(minecraftVersion),
+                "cleanroom" => await GetCleanroomVersionsAsync(minecraftVersion),
+                _ => new List<string>()
+            };
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] GetLoaderVersionsAsync 返回 {result.Count} 个版本");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] GetLoaderVersionsAsync 异常: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈: {ex.StackTrace}");
+            throw;
+        }
+    }
+    
+    private async Task<List<string>> GetFabricVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetFabricVersionsAsync 开始");
+        var fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(minecraftVersion);
+        var result = fabricVersions.Select(v => v.Loader.Version).ToList();
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetFabricVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    private async Task<List<string>> GetForgeVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetForgeVersionsAsync 开始");
+        var result = await _forgeService.GetForgeVersionsAsync(minecraftVersion);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetForgeVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    private async Task<List<string>> GetNeoForgeVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetNeoForgeVersionsAsync 开始");
+        var result = await _neoForgeService.GetNeoForgeVersionsAsync(minecraftVersion);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetNeoForgeVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    private async Task<List<string>> GetQuiltVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetQuiltVersionsAsync 开始");
+        var quiltVersions = await _quiltService.GetQuiltLoaderVersionsAsync(minecraftVersion);
+        var result = quiltVersions.Select(v => v.Loader.Version).ToList();
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetQuiltVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    private async Task<List<string>> GetOptifineVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetOptifineVersionsAsync 开始");
+        var optifineVersions = await _optifineService.GetOptifineVersionsAsync(minecraftVersion);
+        var result = optifineVersions.Select(v => $"{v.Type}_{v.Patch}").ToList();
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetOptifineVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    private async Task<List<string>> GetCleanroomVersionsAsync(string minecraftVersion)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetCleanroomVersionsAsync 开始");
+        var result = await _cleanroomService.GetCleanroomVersionsAsync(minecraftVersion);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetCleanroomVersionsAsync 返回 {result.Count} 个版本");
+        return result;
+    }
+    
+    /// <summary>
+    /// 安装加载器命令
+    /// </summary>
+    /// <summary>
+    /// 安装加载器命令
+    /// </summary>
+    [RelayCommand]
+    private async Task InstallLoaderAsync(LoaderItemViewModel loader)
+    {
+        if (loader == null || string.IsNullOrEmpty(loader.SelectedVersion))
+        {
+            return;
+        }
+        
+        // TODO: 实现加载器安装逻辑
+        StatusMessage = $"正在安装 {loader.Name} {loader.SelectedVersion}...";
+    }
+    
+    /// <summary>
+    /// 移除加载器命令 - 只清除临时选择状态，不修改配置文件
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveLoaderAsync(LoaderItemViewModel loader)
+    {
+        if (loader == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 取消选择加载器: {loader.Name}");
+            
+            // 清除临时选择状态
+            loader.SelectedVersion = null;
+            loader.IsExpanded = false;
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已清除 {loader.Name} 的选择状态");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 取消选择失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 卸载加载器命令（RemoveLoaderAsync的别名）
+    /// </summary>
+    [RelayCommand]
+    private async Task UninstallLoaderAsync(LoaderItemViewModel loader)
+    {
+        await RemoveLoaderAsync(loader);
+    }
+    
+    /// <summary>
+    /// 保存扩展配置命令 - 将选中的加载器安装到版本目录
+    /// 流程：下载原版JSON覆盖 → 执行安装逻辑（跳过JAR下载）
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveExtensionConfigAsync()
+    {
+        if (SelectedVersion == null)
+        {
+            StatusMessage = "未选择版本";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始保存扩展配置并安装加载器");
+            
+            // 获取所有已选择的加载器
+            var selectedLoaders = AvailableLoaders
+                .Where(l => !string.IsNullOrEmpty(l.SelectedVersion))
+                .ToList();
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已选择 {selectedLoaders.Count} 个加载器");
+            
+            // 获取Minecraft版本号和目录
+            string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+            string minecraftDirectory = _fileService.GetMinecraftDataPath();
+            string versionDirectory = SelectedVersion.Path;
+            string versionId = SelectedVersion.Name;
+            
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Minecraft版本: {minecraftVersion}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本目录: {versionDirectory}");
+            
+            // 确定主加载器和Optifine
+            var primaryLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() != "optifine");
+            var optifineLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() == "optifine");
+            
+            // 步骤1：下载原版JSON并覆盖（重置为原版状态）
+            StatusMessage = "正在下载原版版本信息...";
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤1: 下载原版JSON");
+            
+            var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
+                minecraftVersion,
+                minecraftDirectory,
+                allowNetwork: true);
+            
+            // 覆盖版本JSON文件
+            var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
+            await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 原版JSON已保存到: {versionJsonPath}");
+            
+            // 步骤2：安装主加载器（如果有）
+            if (primaryLoader != null)
+            {
+                StatusMessage = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤2: 安装主加载器 {primaryLoader.Name} {primaryLoader.SelectedVersion}");
+                
+                var installer = _modLoaderInstallerFactory.GetInstaller(primaryLoader.LoaderType);
+                var installOptions = new ModLoaderInstallOptions
+                {
+                    SkipJarDownload = true, // 跳过JAR下载，因为JAR已存在
+                    CustomVersionName = versionId, // 使用现有版本名称
+                    OverwriteExisting = true
+                };
+                
+                await installer.InstallAsync(
+                    minecraftVersion,
+                    primaryLoader.SelectedVersion!,
+                    minecraftDirectory,
+                    installOptions,
+                    progress => 
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 安装进度: {progress:F1}%");
+                    });
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 主加载器安装完成");
+            }
+            
+            // 步骤3：安装Optifine（如果有）
+            // 注意：Optifine需要在Forge之后安装（如果同时选择了Forge和Optifine）
+            if (optifineLoader != null)
+            {
+                StatusMessage = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤3: 安装Optifine {optifineLoader.SelectedVersion}");
+                
+                var optifineInstaller = _modLoaderInstallerFactory.GetInstaller("optifine");
+                var optifineOptions = new ModLoaderInstallOptions
+                {
+                    SkipJarDownload = true,
+                    CustomVersionName = versionId,
+                    OverwriteExisting = true
+                };
+                
+                await optifineInstaller.InstallAsync(
+                    minecraftVersion,
+                    optifineLoader.SelectedVersion!,
+                    minecraftDirectory,
+                    optifineOptions,
+                    progress =>
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装进度: {progress:F1}%");
+                    });
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装完成");
+            }
+            
+            // 步骤4：保存配置文件
+            StatusMessage = "正在保存配置...";
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤4: 保存配置文件");
+            
+            string settingsFilePath = GetSettingsFilePath();
+            XianYuLauncher.Core.Models.VersionConfig config;
+            
+            if (File.Exists(settingsFilePath))
+            {
+                string existingJson = await File.ReadAllTextAsync(settingsFilePath);
+                config = JsonSerializer.Deserialize<XianYuLauncher.Core.Models.VersionConfig>(existingJson) ?? new XianYuLauncher.Core.Models.VersionConfig();
+            }
+            else
+            {
+                config = new XianYuLauncher.Core.Models.VersionConfig();
+                config.CreatedAt = DateTime.Now;
+            }
+            
+            config.MinecraftVersion = minecraftVersion;
+            
+            if (primaryLoader != null)
+            {
+                config.ModLoaderType = primaryLoader.LoaderType.ToLower();
+                config.ModLoaderVersion = primaryLoader.SelectedVersion ?? string.Empty;
+            }
+            else
+            {
+                config.ModLoaderType = "vanilla";
+                config.ModLoaderVersion = string.Empty;
+            }
+            
+            config.OptifineVersion = optifineLoader?.SelectedVersion;
+            config.AutoMemoryAllocation = AutoMemoryAllocation;
+            config.InitialHeapMemory = InitialHeapMemory;
+            config.MaximumHeapMemory = MaximumHeapMemory;
+            config.JavaPath = JavaPath;
+            config.WindowWidth = WindowWidth;
+            config.WindowHeight = WindowHeight;
+            
+            string jsonContent = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(settingsFilePath, jsonContent);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置已保存到: {settingsFilePath}");
+            
+            // 更新UI
+            UpdateCurrentLoaderInfo(new VersionSettings
+            {
+                ModLoaderType = config.ModLoaderType,
+                ModLoaderVersion = config.ModLoaderVersion,
+                MinecraftVersion = config.MinecraftVersion
+            });
+            
+            foreach (var loader in AvailableLoaders)
+            {
+                loader.IsInstalled = IsLoaderInstalled(loader.LoaderType);
+            }
+            
+            StatusMessage = selectedLoaders.Count > 0 
+                ? $"加载器安装完成：{string.Join(", ", selectedLoaders.Select(l => l.Name))}"
+                : "已重置为原版";
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 扩展配置保存成功");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"安装失败：{ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 保存扩展配置失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈: {ex.StackTrace}");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
     

@@ -53,8 +53,26 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
-        Logger.LogInformation("开始安装NeoForge: {NeoForgeVersion} for Minecraft {MinecraftVersion}",
-            modLoaderVersion, minecraftVersionId);
+        return await InstallAsync(
+            minecraftVersionId,
+            modLoaderVersion,
+            minecraftDirectory,
+            new ModLoaderInstallOptions { CustomVersionName = customVersionName },
+            progressCallback,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public override async Task<string> InstallAsync(
+        string minecraftVersionId,
+        string modLoaderVersion,
+        string minecraftDirectory,
+        ModLoaderInstallOptions options,
+        Action<double>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.LogInformation("开始安装NeoForge: {NeoForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+            modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         string? cacheDirectory = null;
         string? neoforgeInstallerPath = null;
@@ -63,7 +81,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         try
         {
             // 1. 生成版本ID和创建目录
-            var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, customVersionName);
+            var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
@@ -82,12 +100,13 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(10);
 
-            // 4. 下载原版Minecraft JAR
-            Logger.LogInformation("下载Minecraft JAR");
-            await DownloadMinecraftJarAsync(
+            // 4. 下载原版Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
                 originalVersionInfo,
+                options.SkipJarDownload,
                 p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 

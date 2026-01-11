@@ -1813,4 +1813,25 @@
   <data name="VersionListPage_ExportModpackDialog_OfflineModeWarningInfoBar.Message" xml:space="preserve">
     <value>直接将 Mod 放入整合包可能会违反部分条例，请不要进行分发！</value>
   </data>
+  <data name="VersionManagerPage_ExtensionTab.Text" xml:space="preserve">
+    <value>扩展</value>
+  </data>
+  <data name="VersionManagerPage_CurrentLoaderTitle.Text" xml:space="preserve">
+    <value>当前加载器</value>
+  </data>
+  <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
+    <value>管理加载器</value>
+  </data>
+  <data name="VersionManagerPage_SaveExtensionConfigButton.Content" xml:space="preserve">
+    <value>保存配置</value>
+  </data>
+  <data name="VersionManagerPage_InstalledTag.Text" xml:space="preserve">
+    <value>已安装</value>
+  </data>
+  <data name="VersionManagerPage_InstallLoaderButton.Content" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="VersionManagerPage_RemoveLoaderButton.Content" xml:space="preserve">
+    <value>移除</value>
+  </data>
 </root>

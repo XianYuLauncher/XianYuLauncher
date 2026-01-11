@@ -350,6 +350,231 @@
                 </Grid>
             </TabViewItem>
 
+            <!-- 扩展模块 -->
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE74C;" FontSize="16" />
+                        <TextBlock x:Uid="VersionManagerPage_ExtensionTab" Text="扩展" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- 扩展内容 -->
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <ScrollViewer Grid.Row="0" Margin="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Padding="0,0,0,24" HorizontalAlignment="Stretch">
+                            <!-- 当前加载器信息卡片 -->
+                            <Border 
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- 左侧图标 -->
+                                    <Border 
+                                        Grid.Column="0"
+                                        Width="40" Height="40"
+                                        CornerRadius="8"
+                                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                        Margin="0,0,16,0">
+                                        <FontIcon 
+                                            FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                            Glyph="&#xE946;" 
+                                            FontSize="18"
+                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                    </Border>
+                                    
+                                    <!-- 右侧信息 -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock 
+                                            Text="{Binding CurrentLoaderDisplayName, Mode=OneWay}" 
+                                            Style="{StaticResource BodyTextBlockStyle}"
+                                            FontWeight="SemiBold" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock 
+                                                x:Uid="VersionManagerPage_CurrentLoaderTitle" 
+                                                Text="当前加载器"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock 
+                                                Text="{Binding CurrentLoaderVersion, Mode=OneWay}" 
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <!-- 加载器选择区域标题 -->
+                            <TextBlock 
+                                x:Uid="VersionManagerPage_ManageLoaderTitle" 
+                                Text="管理加载器" 
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Margin="0,8,0,0" />
+                            
+                            <!-- 加载器列表 -->
+                            <ItemsRepeater ItemsSource="{Binding AvailableLoaders, Mode=OneWay}">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="8" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:LoaderItemViewModel">
+                                        <Expander 
+                                            IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}" 
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Expanding="LoaderExpander_Expanding"
+                                            Tag="{x:Bind}">
+                                            <Expander.Header>
+                                                <Grid Padding="4,8" HorizontalAlignment="Stretch" DataContext="{x:Bind}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    
+                                                    <!-- 加载器图标 -->
+                                                    <Border 
+                                                        Grid.Column="0"
+                                                        Width="32" Height="32"
+                                                        CornerRadius="6"
+                                                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                                        Margin="0,0,12,0">
+                                                        <Image 
+                                                            Source="{x:Bind IconUrl, Mode=OneWay}" 
+                                                            Width="20" Height="20" 
+                                                            Stretch="Uniform" />
+                                                    </Border>
+                                                    
+                                                    <!-- 加载器名称 - 只显示名称，不显示版本 -->
+                                                    <TextBlock 
+                                                        Grid.Column="1"
+                                                        Text="{x:Bind Name, Mode=OneWay}"
+                                                        Style="{StaticResource BodyTextBlockStyle}"
+                                                        VerticalAlignment="Center" />
+                                                    
+                                                    <!-- 取消按钮 - 只要选择了版本就显示 -->
+                                                    <Button
+                                                        x:Uid="VersionManagerPage_CancelLoaderButton"
+                                                        Grid.Column="2"
+                                                        Width="24"
+                                                        Height="24"
+                                                        Padding="0"
+                                                        Margin="-8,0,0,0"
+                                                        Background="Transparent"
+                                                        BorderBrush="Transparent"
+                                                        Foreground="{ThemeResource TextFillColorSecondary}"
+                                                        Click="CancelLoader_Click"
+                                                        Tag="{x:Bind}"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{x:Bind SelectedVersion, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"
+                                                        ToolTipService.ToolTip="取消选择">
+                                                        <FontIcon Glyph="&#xE711;" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Button>
+                                                </Grid>
+                                            </Expander.Header>
+                                            
+                                            <!-- Expander 内容 -->
+                                            <Grid Padding="4,8,4,12" HorizontalAlignment="Stretch" MinHeight="100">
+                                                <!-- 加载指示器 -->
+                                                <ProgressRing 
+                                                    IsActive="{x:Bind IsLoading, Mode=OneWay}"
+                                                    Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Width="32"
+                                                    Height="32" />
+                                                
+                                                <!-- 版本列表 -->
+                                                <ListView
+                                                    x:Name="LoaderVersionListView"
+                                                    ItemsSource="{x:Bind Versions, Mode=OneWay}"
+                                                    SelectedItem="{x:Bind SelectedVersion, Mode=TwoWay}"
+                                                    SelectionMode="Single"
+                                                    SelectionChanged="LoaderVersionListView_SelectionChanged"
+                                                    Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Stretch"
+                                                    MaxHeight="200"
+                                                    Tag="{x:Bind Mode=OneWay}">
+                                                    <ListView.ItemTemplate>
+                                                        <DataTemplate x:DataType="x:String">
+                                                            <Grid HorizontalAlignment="Stretch">
+                                                                <Border 
+                                                                    Padding="12,8" 
+                                                                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" 
+                                                                    CornerRadius="6" 
+                                                                    Margin="0,4,0,4" 
+                                                                    HorizontalAlignment="Stretch">
+                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                                                                        <!-- ModLoader图标 -->
+                                                                        <Image 
+                                                                            Source="{Binding ElementName=LoaderVersionListView, Path=Tag.IconUrl}" 
+                                                                            Width="20" 
+                                                                            Height="20" 
+                                                                            Margin="0,0,12,0" 
+                                                                            VerticalAlignment="Center"
+                                                                            Stretch="UniformToFill" />
+                                                                        
+                                                                        <!-- 版本号 -->
+                                                                        <TextBlock 
+                                                                            Text="{x:Bind}" 
+                                                                            FontSize="15" 
+                                                                            VerticalAlignment="Center" 
+                                                                            HorizontalAlignment="Left" />
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ListView.ItemTemplate>
+                                                </ListView>
+                                            </Grid>
+                                        </Expander>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+                    </ScrollViewer>
+                    
+                    <!-- 保存配置按钮 -->
+                    <Border 
+                        Grid.Row="1" 
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,16,0,0">
+                        <Button
+                            x:Uid="VersionManagerPage_SaveExtensionConfigButton"
+                            Content="保存配置"
+                            Command="{Binding SaveExtensionConfigCommand}"
+                            Style="{StaticResource DefaultButtonStyle}"
+                            HorizontalAlignment="Right"
+                            MinWidth="120"
+                            Height="36" />
+                    </Border>
+                </Grid>
+                </Grid>
+            </TabViewItem>
+            
             <!-- Mod管理模块 -->
             <TabViewItem>
                 <TabViewItem.Header>
