@@ -146,6 +146,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             case 5: // 整合包标签页
                 _ = SearchModpacksCommand.ExecuteAsync(null);
                 break;
+            case 6: // 世界标签页
+                _ = SearchWorldsCommand.ExecuteAsync(null);
+                break;
         }
     }
     
@@ -177,6 +180,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             case 5: // 整合包标签页
                 _ = SearchModpacksCommand.ExecuteAsync(null);
                 break;
+            case 6: // 世界标签页
+                _ = SearchWorldsCommand.ExecuteAsync(null);
+                break;
         }
     }
     
@@ -192,6 +198,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             3 => "resourcepack",
             4 => "datapack",
             5 => "modpack",
+            6 => "world",
             _ => null
         };
         
@@ -244,6 +251,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedModpackCategory = "all";
     
+    [ObservableProperty]
+    private string _selectedWorldCategory = "all";
+    
     // 类别集合（用于动态绑定）
     [ObservableProperty]
     private ObservableCollection<Models.CategoryItem> _modCategories = new();
@@ -259,6 +269,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private ObservableCollection<Models.CategoryItem> _modpackCategories = new();
+    
+    [ObservableProperty]
+    private ObservableCollection<Models.CategoryItem> _worldCategories = new();
     
     // CurseForge类别缓存（内存缓存，避免每次都请求API）
     private static Dictionary<int, List<CurseForgeCategory>> _curseForgeCategoryCache = new();
@@ -383,6 +396,28 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     // 兼容旧页面的数据包列表
     public ObservableCollection<ModrinthProject> DatapackList => Datapacks;
     
+    // 世界相关属性
+    [ObservableProperty]
+    private string _worldSearchQuery = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _worlds = new ObservableCollection<ModrinthProject>();
+    
+    [ObservableProperty]
+    private bool _isWorldLoading = false;
+    
+    [ObservableProperty]
+    private bool _isWorldLoadingMore = false;
+    
+    [ObservableProperty]
+    private int _worldOffset = 0;
+    
+    [ObservableProperty]
+    private bool _worldHasMoreResults = true;
+    
+    [ObservableProperty]
+    private string _selectedWorldVersion = string.Empty;
+    
     // TabView选中索引，用于控制显示哪个标签页
     [ObservableProperty]
     private int _selectedTabIndex = 0;
@@ -418,6 +453,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         
         // 加载保存的平台选择
         LoadPlatformSelection();
+        
+        // 加载下载源配置
+        LoadDownloadSourceSettings();
         
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
@@ -468,6 +506,53 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"加载平台选择失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 加载下载源配置
+    /// </summary>
+    private async void LoadDownloadSourceSettings()
+    {
+        try
+        {
+            var factory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
+            if (factory == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[下载源配置] DownloadSourceFactory 未找到");
+                return;
+            }
+            
+            // 加载 Minecraft 下载源配置
+            var savedDownloadSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+            if (!string.IsNullOrEmpty(savedDownloadSource))
+            {
+                string sourceKey = savedDownloadSource.ToLower() switch
+                {
+                    "bmclapi" => "bmclapi",
+                    "mcim" => "mcim",
+                    _ => "official"
+                };
+                factory.SetDefaultSource(sourceKey);
+                System.Diagnostics.Debug.WriteLine($"[下载源配置] Minecraft下载源已设置为: {sourceKey}");
+            }
+            
+            // 加载 Modrinth 下载源配置
+            var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
+            if (!string.IsNullOrEmpty(savedModrinthSource))
+            {
+                string sourceKey = savedModrinthSource.ToLower() switch
+                {
+                    "mcim" => "mcim",
+                    _ => "official"
+                };
+                factory.SetModrinthSource(sourceKey);
+                System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth下载源已设置为: {sourceKey}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[下载源配置] 加载失败: {ex.Message}");
         }
     }
     
@@ -541,6 +626,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 case "modpack":
                     ModpackCategories = new ObservableCollection<Models.CategoryItem>(uniqueCategories);
                     SelectedModpackCategory = "all";
+                    break;
+                case "world":
+                    WorldCategories = new ObservableCollection<Models.CategoryItem>(uniqueCategories);
+                    SelectedWorldCategory = "all";
                     break;
             }
             
@@ -2354,5 +2443,165 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 导航到数据包下载详情页面，传递完整的数据包对象和来源类型
         _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(datapack, "datapack"));
+    }
+    
+    // 世界搜索命令
+    [RelayCommand]
+    private async Task SearchWorldsAsync()
+    {
+        IsWorldLoading = true;
+        WorldOffset = 0;
+        WorldHasMoreResults = true;
+
+        try
+        {
+            // 世界只支持 CurseForge 平台，Modrinth 不支持
+            if (!IsCurseForgeEnabled)
+            {
+                Worlds.Clear();
+                return;
+            }
+            
+            var curseForgeWorlds = new List<ModrinthProject>();
+            int curseForgeTotalHits = 0;
+            
+            // 从CurseForge搜索或缓存加载
+            var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
+                "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory);
+            
+            if (cachedData != null)
+            {
+                curseForgeWorlds.AddRange(cachedData.Items);
+                curseForgeTotalHits = cachedData.TotalHits;
+                System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 从缓存加载 {cachedData.Items.Count} 个世界");
+            }
+            else
+            {
+                try
+                {
+                    var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                        classId: 17, // Worlds classId
+                        searchFilter: WorldSearchQuery,
+                        gameVersion: string.IsNullOrEmpty(SelectedWorldVersion) ? null : SelectedWorldVersion,
+                        index: 0,
+                        pageSize: _modPageSize
+                    );
+                    
+                    foreach (var curseForgeWorld in curseForgeResult.Data)
+                    {
+                        var convertedWorld = ConvertCurseForgeToModrinth(curseForgeWorld);
+                        curseForgeWorlds.Add(convertedWorld);
+                    }
+                    
+                    curseForgeTotalHits = curseForgeResult.Data.Count;
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个世界");
+                    
+                    // 保存到缓存
+                    await _curseForgeCacheService.SaveSearchResultAsync(
+                        "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        curseForgeWorlds, curseForgeTotalHits);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索世界失败: {ex.Message}");
+                }
+            }
+
+            // 更新世界列表
+            Worlds.Clear();
+            foreach (var world in curseForgeWorlds)
+            {
+                Worlds.Add(world);
+            }
+            WorldOffset = curseForgeWorlds.Count;
+            WorldHasMoreResults = curseForgeWorlds.Count >= _modPageSize;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsWorldLoading = false;
+        }
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanLoadMoreWorlds))]
+    public async Task LoadMoreWorldsAsync()
+    {
+        if (IsWorldLoading || IsWorldLoadingMore || !WorldHasMoreResults)
+        {
+            return;
+        }
+
+        IsWorldLoadingMore = true;
+
+        try
+        {
+            var newWorlds = new List<ModrinthProject>();
+            int totalHits = 0;
+            
+            // 世界只支持 CurseForge 平台
+            if (IsCurseForgeEnabled)
+            {
+                try
+                {
+                    var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                        classId: 17, // Worlds classId
+                        searchFilter: WorldSearchQuery,
+                        gameVersion: string.IsNullOrEmpty(SelectedWorldVersion) ? null : SelectedWorldVersion,
+                        index: WorldOffset,
+                        pageSize: _modPageSize
+                    );
+                    
+                    foreach (var curseForgeWorld in curseForgeResult.Data)
+                    {
+                        newWorlds.Add(ConvertCurseForgeToModrinth(curseForgeWorld));
+                    }
+                    totalHits = WorldOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
+                    
+                    await _curseForgeCacheService.AppendToSearchResultAsync(
+                        "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        newWorlds, totalHits);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多世界失败: {ex.Message}");
+                }
+            }
+
+            foreach (var world in newWorlds)
+            {
+                Worlds.Add(world);
+            }
+            
+            WorldOffset += newWorlds.Count;
+            WorldHasMoreResults = newWorlds.Count >= _modPageSize;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsWorldLoadingMore = false;
+        }
+    }
+    
+    private bool CanLoadMoreWorlds()
+    {
+        return !IsWorldLoading && !IsWorldLoadingMore && WorldHasMoreResults;
+    }
+    
+    [RelayCommand]
+    private async Task NavigateToWorldDetailAsync(ModrinthProject world)
+    {
+        if (world == null)
+        {
+            return;
+        }
+
+        // 导航到世界下载详情页面，传递完整的世界对象和来源类型
+        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(world, "world"));
     }
 }

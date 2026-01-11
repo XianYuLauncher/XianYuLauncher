@@ -389,6 +389,7 @@ public partial class SettingsViewModel : ObservableRecipient
     // 已经在上方定义：private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
     
     private readonly ModrinthCacheService _modrinthCacheService;
+    private readonly CurseForgeCacheService _curseForgeCacheService;
     
     /// <summary>
     /// 缓存大小信息
@@ -449,7 +450,7 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService, ModrinthCacheService modrinthCacheService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService, ModrinthCacheService modrinthCacheService, CurseForgeCacheService curseForgeCacheService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -458,6 +459,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _navigationService = navigationService;
         _languageSelectorService = languageSelectorService;
         _modrinthCacheService = modrinthCacheService;
+        _curseForgeCacheService = curseForgeCacheService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -808,13 +810,73 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            CacheSizeInfo = _modrinthCacheService.GetCacheSizeInfo();
-            System.Diagnostics.Debug.WriteLine($"[设置页] 缓存大小已刷新: {CacheSizeInfo.TotalSizeFormatted}");
+            // 获取 Modrinth 和 CurseForge 的缓存信息并合并
+            var modrinthInfo = _modrinthCacheService.GetCacheSizeInfo();
+            var curseforgeInfo = GetCurseForgeCacheSizeInfo();
+            
+            // 合并缓存信息
+            CacheSizeInfo = new CacheSizeInfo
+            {
+                SearchCacheSize = modrinthInfo.SearchCacheSize + curseforgeInfo.SearchCacheSize,
+                SearchCacheCount = modrinthInfo.SearchCacheCount + curseforgeInfo.SearchCacheCount,
+                ImageCacheSize = modrinthInfo.ImageCacheSize + curseforgeInfo.ImageCacheSize,
+                ImageCacheCount = modrinthInfo.ImageCacheCount + curseforgeInfo.ImageCacheCount,
+                VersionCacheSize = modrinthInfo.VersionCacheSize,
+                TotalSize = modrinthInfo.TotalSize + curseforgeInfo.TotalSize
+            };
+            
+            System.Diagnostics.Debug.WriteLine($"[设置页] 缓存大小已刷新: {CacheSizeInfo.TotalSizeFormatted} (Modrinth: {modrinthInfo.TotalSizeFormatted}, CurseForge: {ModrinthCacheService.FormatSize(curseforgeInfo.TotalSize)})");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[设置页] 刷新缓存大小失败: {ex.Message}");
         }
+    }
+    
+    /// <summary>
+    /// 获取 CurseForge 缓存大小信息
+    /// </summary>
+    private CacheSizeInfo GetCurseForgeCacheSizeInfo()
+    {
+        var info = new CacheSizeInfo();
+        
+        try
+        {
+            var cacheRoot = Path.Combine(_fileService.GetMinecraftDataPath(), "curseforge_cache");
+            
+            if (!Directory.Exists(cacheRoot))
+            {
+                return info;
+            }
+            
+            // 计算搜索结果缓存大小
+            foreach (var file in Directory.GetFiles(cacheRoot, "*.json"))
+            {
+                var fileInfo = new FileInfo(file);
+                info.SearchCacheSize += fileInfo.Length;
+                info.SearchCacheCount++;
+            }
+            
+            // 计算图片缓存大小
+            var imageCachePath = Path.Combine(cacheRoot, "images");
+            if (Directory.Exists(imageCachePath))
+            {
+                foreach (var file in Directory.GetFiles(imageCachePath))
+                {
+                    var fileInfo = new FileInfo(file);
+                    info.ImageCacheSize += fileInfo.Length;
+                    info.ImageCacheCount++;
+                }
+            }
+            
+            info.TotalSize = info.SearchCacheSize + info.ImageCacheSize;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存统计] 获取缓存大小失败: {ex.Message}");
+        }
+        
+        return info;
     }
     
     /// <summary>
@@ -826,7 +888,14 @@ public partial class SettingsViewModel : ObservableRecipient
         IsClearingCache = true;
         try
         {
+            // 清理 Modrinth 缓存
             await _modrinthCacheService.ClearAllCacheAsync();
+            System.Diagnostics.Debug.WriteLine("[设置页] Modrinth 缓存已清理");
+            
+            // 清理 CurseForge 缓存
+            await _curseForgeCacheService.ClearAllCacheAsync();
+            System.Diagnostics.Debug.WriteLine("[设置页] CurseForge 缓存已清理");
+            
             RefreshCacheSizeInfo();
             System.Diagnostics.Debug.WriteLine("[设置页] 所有缓存已清理");
         }
@@ -849,7 +918,14 @@ public partial class SettingsViewModel : ObservableRecipient
         IsClearingCache = true;
         try
         {
+            // 清理 Modrinth 图片缓存
             _modrinthCacheService.ClearImageCache();
+            System.Diagnostics.Debug.WriteLine("[设置页] Modrinth 图片缓存已清理");
+            
+            // 清理 CurseForge 图片缓存
+            _curseForgeCacheService.ClearImageCache();
+            System.Diagnostics.Debug.WriteLine("[设置页] CurseForge 图片缓存已清理");
+            
             RefreshCacheSizeInfo();
             System.Diagnostics.Debug.WriteLine("[设置页] 图片缓存已清理");
         }
@@ -872,7 +948,14 @@ public partial class SettingsViewModel : ObservableRecipient
         IsClearingCache = true;
         try
         {
+            // 清理 Modrinth 搜索缓存
             _modrinthCacheService.ClearSearchCache();
+            System.Diagnostics.Debug.WriteLine("[设置页] Modrinth 搜索缓存已清理");
+            
+            // 清理 CurseForge 搜索缓存
+            _curseForgeCacheService.ClearSearchCache();
+            System.Diagnostics.Debug.WriteLine("[设置页] CurseForge 搜索缓存已清理");
+            
             RefreshCacheSizeInfo();
             System.Diagnostics.Debug.WriteLine("[设置页] 搜索缓存已清理");
         }

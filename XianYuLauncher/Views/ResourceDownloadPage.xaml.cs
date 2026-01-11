@@ -31,6 +31,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     // 标记是否已经加载过数据包数据
     private bool _datapacksLoaded = false;
     
+    // 标记是否已经加载过世界数据
+    private bool _worldsLoaded = false;
+
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
@@ -133,6 +136,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                     _modpacksLoaded = true;
                     var categoryTask = ViewModel.LoadCategoriesAsync("modpack");
                     await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+                    _ = categoryTask;
+                }
+                break;
+            case 6: // 世界下载标签页
+                if (!_worldsLoaded)
+                {
+                    _worldsLoaded = true;
+                    var categoryTask = ViewModel.LoadCategoriesAsync("world");
+                    await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
                     _ = categoryTask;
                 }
                 break;
@@ -716,6 +728,117 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             if (ResourceTabView.SelectedIndex == 5)
             {
                 await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+            }
+        }
+    }
+    
+    // ==================== 世界相关事件处理程序 ====================
+    
+    /// <summary>
+    /// 世界搜索框提交事件处理程序
+    /// </summary>
+    private async void WorldSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+    }
+    
+    /// <summary>
+    /// 世界版本筛选变化事件处理程序
+    /// </summary>
+    private async void WorldVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当世界下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 6)
+        {
+            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+        }
+    }
+    
+    /// <summary>
+    /// 世界类别筛选变化事件处理程序
+    /// </summary>
+    private async void WorldCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 只有当世界下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 6)
+        {
+            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+        }
+    }
+    
+    /// <summary>
+    /// 世界列表滚动事件处理程序，实现滚动加载更多
+    /// </summary>
+    private void WorldListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (sender is ScrollViewer scrollViewer)
+        {
+            // 检查是否滚动到底部
+            if (scrollViewer.VerticalOffset >= scrollViewer.ScrollableHeight - 100)
+            {
+                // 触发加载更多命令
+                if (ViewModel.LoadMoreWorldsCommand.CanExecute(null))
+                {
+                    ViewModel.LoadMoreWorldsCommand.Execute(null);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 世界列表项点击事件处理程序
+    /// </summary>
+    private async void WorldListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ModrinthProject world)
+        {
+            // 导航到世界详情页
+            await ViewModel.NavigateToWorldDetailCommand.ExecuteAsync(world);
+        }
+    }
+    
+    /// <summary>
+    /// 世界项点击事件处理程序
+    /// </summary>
+    private async void WorldItem_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Grid grid && grid.DataContext is ModrinthProject world)
+        {
+            // 导航到世界详情页
+            await ViewModel.NavigateToWorldDetailCommand.ExecuteAsync(world);
+        }
+    }
+    
+    /// <summary>
+    /// 世界 Modrinth 平台切换事件处理程序
+    /// </summary>
+    private async void WorldModrinthToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        {
+            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
+            
+            // 只有当世界下载标签页被选中时，才执行搜索
+            if (ResourceTabView.SelectedIndex == 6)
+            {
+                await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 世界 CurseForge 平台切换事件处理程序
+    /// </summary>
+    private async void WorldCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        {
+            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
+            
+            // 只有当世界下载标签页被选中时，才执行搜索
+            if (ResourceTabView.SelectedIndex == 6)
+            {
+                await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
             }
         }
     }

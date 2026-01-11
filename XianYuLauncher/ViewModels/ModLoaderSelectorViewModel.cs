@@ -91,6 +91,64 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _versionName = "";
     
+    // 版本名称验证相关
+    [ObservableProperty]
+    private bool _isVersionNameValid = true;
+    
+    [ObservableProperty]
+    private string _versionNameErrorMessage = "";
+    
+    /// <summary>
+    /// 版本名称描述文本（根据验证状态动态变化）
+    /// </summary>
+    public string VersionNameDescription => IsVersionNameValid 
+        ? "自定义版本名称，下载时将使用此名称创建版本文件夹、jar文件和json文件。" 
+        : VersionNameErrorMessage;
+    
+    partial void OnVersionNameChanged(string value)
+    {
+        ValidateVersionName();
+    }
+    
+    partial void OnIsVersionNameValidChanged(bool value)
+    {
+        OnPropertyChanged(nameof(VersionNameDescription));
+    }
+    
+    partial void OnVersionNameErrorMessageChanged(string value)
+    {
+        OnPropertyChanged(nameof(VersionNameDescription));
+    }
+    
+    /// <summary>
+    /// 验证版本名称是否已存在
+    /// </summary>
+    private void ValidateVersionName()
+    {
+        if (string.IsNullOrWhiteSpace(VersionName))
+        {
+            IsVersionNameValid = false;
+            VersionNameErrorMessage = "版本名称不能为空";
+            return;
+        }
+        
+        // 检查版本目录是否已存在
+        string minecraftDirectory = _fileService.GetMinecraftDataPath();
+        string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+        string versionDirectory = Path.Combine(versionsDirectory, VersionName);
+        
+        if (Directory.Exists(versionDirectory))
+        {
+            IsVersionNameValid = false;
+            VersionNameErrorMessage = $"版本 '{VersionName}' 已存在，请使用其他名称";
+        }
+        else
+        {
+            IsVersionNameValid = true;
+            VersionNameErrorMessage = "";
+        }
+    }
+    
     // 下载进度相关属性
     [ObservableProperty]
     private bool _isDownloadDialogOpen = false;

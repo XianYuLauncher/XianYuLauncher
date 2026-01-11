@@ -146,11 +146,11 @@
                     SelectionMode="Single"
                     MaxHeight="300">
                     <ListView.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="viewModels:InstalledGameVersionViewModel">
                             <Grid Padding="8">
                                 <TextBlock
-                                    Text="{Binding DisplayName}"
-                                    Opacity="{Binding IsCompatible, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}" />
+                                    Text="{x:Bind DisplayName}"
+                                    Opacity="{x:Bind IsCompatible, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -245,12 +245,6 @@
         <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollMode="Enabled" Margin="0,48,0,0">
             <StackPanel Spacing="16" Padding="16">
                 
-                <!-- 错误信息 -->
-                <TextBlock Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" 
-                           Foreground="Red" 
-                           TextWrapping="WrapWholeWords" 
-                           Margin="0,8" 
-                           Visibility="{x:Bind ViewModel.ErrorMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, Mode=OneWay}" />
                 <!-- Mod基本信息 -->
                 <StackPanel Spacing="8">
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">

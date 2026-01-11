@@ -15,6 +15,8 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+        <helpers:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <helpers:InverseBoolToOpacityConverter x:Key="InverseBoolToOpacityConverter" />
         <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
         <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" />
         <helpers:ModLoaderToIconConverter x:Key="ModLoaderToIconConverter" />
@@ -52,13 +54,14 @@
                 CornerRadius="8"
                 Padding="16">
                 <StackPanel>
-                    <TextBlock x:Uid="ModLoaderSelectionPage_VersionNameDescription" Text="自定义版本名称，下载时将使用此名称创建版本文件夹、jar文件和json文件。" 
-                               FontSize="14"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Margin="0,0,0,8" />
+                    <TextBlock 
+                        Text="{x:Bind ViewModel.VersionNameDescription, Mode=OneWay}"
+                        FontSize="14"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Margin="0,0,0,8" />
                     <TextBox 
                         x:Uid="ModLoaderSelectionPage_VersionNameTextBox"
-                        Text="{x:Bind ViewModel.VersionName, Mode=TwoWay}"
+                        Text="{x:Bind ViewModel.VersionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         PlaceholderText="例如: 1.21.10-fabric-0.15.3"
                         FontSize="16"
                         Padding="12"
@@ -235,6 +238,7 @@
                 x:Uid="ModLoaderSelectionPage_ConfirmDownloadButton"
                 Content="确认下载"
                 Command="{x:Bind ViewModel.ConfirmSelectionCommand}"
+                IsEnabled="{x:Bind ViewModel.IsVersionNameValid, Mode=OneWay}"
                 MinWidth="120" />
         </StackPanel>
         

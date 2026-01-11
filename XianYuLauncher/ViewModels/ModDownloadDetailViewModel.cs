@@ -530,7 +530,7 @@ namespace XianYuLauncher.ViewModels
                         }
                     }
                 }
-                else if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader")
+                else if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader" || ProjectType == "world")
                 {
                     // 清空加载器列表
                     SupportedLoaders.Clear();
@@ -1581,11 +1581,11 @@ namespace XianYuLauncher.ViewModels
                     string loaderVersion = "";
                     
                     // 使用统一的版本信息服务获取加载器类型和游戏版本
-                    var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+                    var versionInfoService = App.GetService<IVersionInfoService>();
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
                     
                     // 获取完整的版本配置信息
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(installedVersion, versionDir);
+                    VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(installedVersion, versionDir);
                     
                     // 1. 优先从配置中获取游戏版本号
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
@@ -1644,10 +1644,10 @@ namespace XianYuLauncher.ViewModels
                 bool isDatapack = ProjectType == "datapack" || 
                                  (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
                 
-                // 如果是资源包、光影或数据包，只基于游戏版本号进行兼容性检测
-                if (ProjectType == "resourcepack" || ProjectType == "shader" || isDatapack)
+                // 如果是资源包、光影、数据包或世界，只基于游戏版本号进行兼容性检测
+                if (ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack)
                 {
-                    // 数据包和资源包、光影一样，只基于游戏版本号兼容
+                    // 这些类型只基于游戏版本号兼容，不需要检查加载器
                     if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
                     {
                         isCompatible = true;
@@ -1761,8 +1761,8 @@ namespace XianYuLauncher.ViewModels
                 bool isDatapack = ProjectType == "datapack" || 
                                  (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
                 
-                // 如果是资源包、光影或数据包，只基于游戏版本号进行兼容性检测
-                if (ProjectType == "resourcepack" || ProjectType == "shader" || isDatapack)
+                // 如果是资源包、光影、数据包或世界，只基于游戏版本号进行兼容性检测
+                if (ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack)
                 {
                     // 检查游戏版本是否匹配
                     if (gameVersion == modVersion.GameVersion)
@@ -1874,6 +1874,13 @@ namespace XianYuLauncher.ViewModels
             if (ProjectType == "modpack")
             {
                 await InstallModpackAsync(modVersion);
+                return;
+            }
+            
+            // 如果是世界，使用世界安装流程
+            if (ProjectType == "world")
+            {
+                await InstallWorldAsync(modVersion);
                 return;
             }
 
@@ -2389,6 +2396,228 @@ namespace XianYuLauncher.ViewModels
                 IsModpackInstallDialogOpen = false;
                 _installCancellationTokenSource?.Dispose();
                 _installCancellationTokenSource = null;
+            }
+        }
+
+        /// <summary>
+        /// 安装世界存档
+        /// </summary>
+        /// <param name="modVersion">世界版本信息</param>
+        public async Task InstallWorldAsync(ModVersionViewModel modVersion)
+        {
+            IsDownloading = true;
+            IsDownloadProgressDialogOpen = true;
+            DownloadStatus = "正在准备下载世界存档...";
+            DownloadProgress = 0;
+            DownloadProgressText = "0%";
+
+            try
+            {
+                if (modVersion == null)
+                {
+                    throw new Exception("未选择要下载的世界版本");
+                }
+
+                // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
+                if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
+                {
+                    throw new Exception("未选择要安装的游戏版本");
+                }
+
+                string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                Directory.CreateDirectory(tempDir);
+                string zipPath = Path.Combine(tempDir, modVersion.FileName);
+
+                try
+                {
+                    // 1. 下载世界存档 .zip 文件
+                    DownloadStatus = "正在下载世界存档...";
+                    
+                    if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                    {
+                        throw new Exception("下载链接为空，无法下载世界存档");
+                    }
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                            long totalRead = 0;
+
+                            using (Stream contentStream = await response.Content.ReadAsStreamAsync())
+                            using (Stream fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            {
+                                byte[] buffer = new byte[8192];
+                                int bytesRead;
+
+                                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                                {
+                                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                                    totalRead += bytesRead;
+
+                                    // 更新下载进度（0%-70%用于下载）
+                                    if (totalBytes > 0)
+                                    {
+                                        DownloadProgress = (double)totalRead / totalBytes * 70;
+                                        DownloadProgressText = $"{DownloadProgress:F1}%";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    DownloadStatus = "下载完成，正在解压世界存档...";
+                    DownloadProgress = 70;
+                    DownloadProgressText = "70%";
+
+                    // 2. 确定目标 saves 目录
+                    string savesDir;
+                    if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
+                    {
+                        savesDir = CustomDownloadPath;
+                    }
+                    else
+                    {
+                        string minecraftPath = _fileService.GetMinecraftDataPath();
+                        string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                        savesDir = Path.Combine(versionDir, "saves");
+                    }
+
+                    // 确保 saves 目录存在
+                    _fileService.CreateDirectory(savesDir);
+
+                    // 3. 生成唯一的世界目录名称
+                    string worldBaseName = Path.GetFileNameWithoutExtension(modVersion.FileName);
+                    string worldDir = GetUniqueDirectoryPath(savesDir, worldBaseName);
+
+                    DownloadStatus = $"正在解压到: {Path.GetFileName(worldDir)}";
+                    DownloadProgress = 80;
+                    DownloadProgressText = "80%";
+
+                    // 4. 创建世界目录并解压
+                    Directory.CreateDirectory(worldDir);
+                    
+                    await Task.Run(() =>
+                    {
+                        using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+                        {
+                            // 检查压缩包结构：是否有根目录
+                            var entries = archive.Entries.ToList();
+                            bool hasRootFolder = false;
+                            string rootFolderName = null;
+                            
+                            // 检查是否所有文件都在同一个根目录下
+                            if (entries.Count > 0)
+                            {
+                                var firstEntry = entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.FullName));
+                                if (firstEntry != null)
+                                {
+                                    var parts = firstEntry.FullName.Split('/');
+                                    if (parts.Length > 1)
+                                    {
+                                        rootFolderName = parts[0];
+                                        hasRootFolder = entries.All(e => 
+                                            string.IsNullOrEmpty(e.FullName) || 
+                                            e.FullName.StartsWith(rootFolderName + "/") ||
+                                            e.FullName == rootFolderName);
+                                    }
+                                }
+                            }
+
+                            if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
+                            {
+                                // 压缩包有根目录，解压时去掉根目录
+                                foreach (var entry in entries)
+                                {
+                                    if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
+                                        continue;
+
+                                    string relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
+                                    if (string.IsNullOrEmpty(relativePath))
+                                        continue;
+
+                                    string destPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+                                    if (entry.FullName.EndsWith("/"))
+                                    {
+                                        Directory.CreateDirectory(destPath);
+                                    }
+                                    else
+                                    {
+                                        Directory.CreateDirectory(Path.GetDirectoryName(destPath));
+                                        entry.ExtractToFile(destPath, true);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // 压缩包没有根目录，直接解压到目标目录
+                                archive.ExtractToDirectory(worldDir);
+                            }
+                        }
+                    });
+
+                    DownloadStatus = "世界存档安装完成！";
+                    DownloadProgress = 100;
+                    DownloadProgressText = "100%";
+
+                    await Task.Delay(1000);
+                    IsDownloadProgressDialogOpen = false;
+                    
+                    await ShowMessageAsync($"世界存档已安装到: {Path.GetFileName(worldDir)}");
+                }
+                finally
+                {
+                    // 清理临时文件
+                    try
+                    {
+                        if (Directory.Exists(tempDir))
+                        {
+                            Directory.Delete(tempDir, true);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+                DownloadStatus = "下载失败！";
+                IsDownloadProgressDialogOpen = false;
+                await ShowMessageAsync($"世界存档安装失败: {ex.Message}");
+            }
+            finally
+            {
+                IsDownloading = false;
+            }
+        }
+
+        /// <summary>
+        /// 获取唯一的目录路径（如果目录已存在，则添加 _1, _2 等后缀）
+        /// </summary>
+        /// <param name="parentDir">父目录</param>
+        /// <param name="baseName">基础名称</param>
+        /// <returns>唯一的目录路径</returns>
+        private string GetUniqueDirectoryPath(string parentDir, string baseName)
+        {
+            string targetPath = Path.Combine(parentDir, baseName);
+            
+            if (!Directory.Exists(targetPath))
+            {
+                return targetPath;
+            }
+
+            int counter = 1;
+            while (true)
+            {
+                string newPath = Path.Combine(parentDir, $"{baseName}_{counter}");
+                if (!Directory.Exists(newPath))
+                {
+                    return newPath;
+                }
+                counter++;
             }
         }
 
