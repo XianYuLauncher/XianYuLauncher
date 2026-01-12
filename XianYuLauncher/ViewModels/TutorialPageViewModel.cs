@@ -881,8 +881,8 @@ namespace XianYuLauncher.ViewModels
             // 保存Minecraft路径
             _localSettingsService.SaveSettingAsync("MinecraftPath", MinecraftPath);
             
-            // 保存Java设置
-            _localSettingsService.SaveSettingAsync("JavaSelectionMode", JavaSelectionMode.ToString());
+            // 保存Java设置 - 保存枚举的整数值而不是字符串
+            _localSettingsService.SaveSettingAsync("JavaSelectionMode", (int)JavaSelectionMode);
             if (SelectedJavaVersion != null)
             {
                 _localSettingsService.SaveSettingAsync("SelectedJavaVersion", SelectedJavaVersion.Path);

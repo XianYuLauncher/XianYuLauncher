@@ -1186,16 +1186,24 @@ public partial class LaunchViewModel : ObservableRecipient
     [RelayCommand]
     private async Task LaunchGameAsync()
     {
+        _logger.LogInformation("=== 开始启动游戏流程 ===");
+        _logger.LogInformation("选中版本: {Version}", SelectedVersion);
+        _logger.LogInformation("选中角色: {Profile}", SelectedProfile?.Name ?? "null");
+        
         if (string.IsNullOrEmpty(SelectedVersion))
         {
+            _logger.LogWarning("未选择版本，启动中止");
             LaunchStatus = "LaunchPage_PleaseSelectVersionText".GetLocalized();
             return;
         }
 
         // 使用 RegionValidator 检查地区限制
+        _logger.LogInformation("开始检查地区限制...");
         var regionValidation = _regionValidator.ValidateLoginMethod(SelectedProfile);
         if (!regionValidation.IsValid)
         {
+            _logger.LogWarning("地区限制检查失败: {Errors}", string.Join(", ", regionValidation.Errors));
+            
             // 显示地区限制弹窗
             var dialog = new ContentDialog
             {
@@ -1215,16 +1223,21 @@ public partial class LaunchViewModel : ObservableRecipient
             await dialog.ShowAsync();
             return;
         }
+        _logger.LogInformation("地区限制检查通过");
 
         IsLaunching = true;
         LaunchStatus = "LaunchPage_StartingGameText".GetLocalized();
+        _logger.LogInformation("设置启动状态: IsLaunching=true");
 
         try
         {
             // 检查并刷新令牌（如果需要）
+            _logger.LogInformation("开始检查并刷新令牌...");
             await CheckAndRefreshTokenIfNeededAsync();
+            _logger.LogInformation("令牌检查完成");
             
             // 显示准备中的 InfoBar
+            _logger.LogInformation("显示准备游戏文件 InfoBar");
             IsLaunchSuccessInfoBarOpen = true;
             CurrentDownloadItem = "LaunchPage_PreparingGameFilesText".GetLocalized();
             LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_PreparingGameFilesText".GetLocalized()}";
@@ -1234,6 +1247,7 @@ public partial class LaunchViewModel : ObservableRecipient
             _downloadCancellationTokenSource = new CancellationTokenSource();
             
             // 调用 GameLaunchService 启动游戏
+            _logger.LogInformation("调用 GameLaunchService.LaunchGameAsync...");
             var result = await _gameLaunchService.LaunchGameAsync(
                 SelectedVersion,
                 SelectedProfile,
@@ -1260,17 +1274,24 @@ public partial class LaunchViewModel : ObservableRecipient
             _downloadCancellationTokenSource = null;
             _isPreparingGame = false;
             
+            _logger.LogInformation("GameLaunchService 返回结果: Success={Success}, ErrorMessage={ErrorMessage}", 
+                result.Success, result.ErrorMessage ?? "null");
+            
             if (!result.Success)
             {
+                _logger.LogError("游戏启动失败: {ErrorMessage}", result.ErrorMessage);
                 LaunchStatus = result.ErrorMessage ?? "启动失败";
                 
                 // 如果是 Java 未找到，显示提示
                 if (result.ErrorMessage?.Contains("Java") == true)
                 {
+                    _logger.LogWarning("Java 未找到，显示提示弹窗");
                     await ShowJavaNotFoundMessageAsync();
                 }
                 return;
             }
+            
+            _logger.LogInformation("游戏启动成功！");
             
             // 启动成功
             if (result.GameProcess != null)
@@ -1334,23 +1355,37 @@ public partial class LaunchViewModel : ObservableRecipient
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
+            _logger.LogWarning(ex, "用户取消了下载操作");
             LaunchStatus = "已取消下载";
             _isPreparingGame = false;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "游戏启动异常: {Message}", ex.Message);
+            _logger.LogError("异常类型: {ExceptionType}", ex.GetType().FullName);
+            _logger.LogError("堆栈跟踪: {StackTrace}", ex.StackTrace);
+            
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerMessage}", ex.InnerException.Message);
+                _logger.LogError("内部异常堆栈: {InnerStackTrace}", ex.InnerException.StackTrace);
+            }
+            
             LaunchStatus = $"游戏启动异常: {ex.Message}";
             Console.WriteLine($"启动失败: {ex.Message}");
             Console.WriteLine($"错误堆栈: {ex.StackTrace}");
         }
         finally
         {
+            _logger.LogInformation("启动流程结束，清理资源");
             IsLaunching = false;
             _downloadCancellationTokenSource?.Dispose();
             _downloadCancellationTokenSource = null;
         }
+        
+        _logger.LogInformation("=== 启动游戏流程结束 ===");
     }
     
     /// <summary>

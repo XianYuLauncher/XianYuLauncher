@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -16,6 +17,7 @@ public class GameLaunchService : IGameLaunchService
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoService _versionInfoService;
+    private readonly ILogger<GameLaunchService> _logger;
     
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     
@@ -31,7 +33,8 @@ public class GameLaunchService : IGameLaunchService
         IFileService fileService,
         ILocalSettingsService localSettingsService,
         IMinecraftVersionService minecraftVersionService,
-        IVersionInfoService versionInfoService)
+        IVersionInfoService versionInfoService,
+        ILogger<GameLaunchService> logger)
     {
         _javaRuntimeService = javaRuntimeService;
         _versionConfigService = versionConfigService;
@@ -39,6 +42,7 @@ public class GameLaunchService : IGameLaunchService
         _localSettingsService = localSettingsService;
         _minecraftVersionService = minecraftVersionService;
         _versionInfoService = versionInfoService;
+        _logger = logger;
     }
     
     /// <summary>
@@ -172,23 +176,35 @@ public class GameLaunchService : IGameLaunchService
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("=== GameLaunchService.LaunchGameAsync 开始 ===");
+        _logger.LogInformation("版本名称: {VersionName}", versionName);
+        _logger.LogInformation("角色名称: {ProfileName}, 类型: {ProfileType}", 
+            profile?.Name ?? "null", 
+            profile?.IsOffline == true ? "离线" : "在线");
+        
         try
         {
             // 1. 验证输入
+            _logger.LogInformation("步骤 1: 验证输入参数");
             if (string.IsNullOrEmpty(versionName))
             {
+                _logger.LogError("版本名称为空");
                 return new GameLaunchResult { Success = false, ErrorMessage = "版本名称不能为空" };
             }
             
             if (profile == null)
             {
+                _logger.LogError("角色信息为空");
                 return new GameLaunchResult { Success = false, ErrorMessage = "角色信息不能为空" };
             }
             
             statusCallback?.Invoke("正在准备启动...");
             
             // 2. 获取路径
+            _logger.LogInformation("步骤 2: 获取游戏路径");
             string minecraftPath = _fileService.GetMinecraftDataPath();
+            _logger.LogInformation("Minecraft 根目录: {MinecraftPath}", minecraftPath);
+            
             string versionsDir = Path.Combine(minecraftPath, "versions");
             string versionDir = Path.Combine(versionsDir, versionName);
             string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
@@ -196,85 +212,114 @@ public class GameLaunchService : IGameLaunchService
             string librariesPath = Path.Combine(minecraftPath, "libraries");
             string assetsPath = Path.Combine(minecraftPath, "assets");
             
+            _logger.LogInformation("版本目录: {VersionDir}", versionDir);
+            _logger.LogInformation("JAR 路径: {JarPath}", jarPath);
+            _logger.LogInformation("JSON 路径: {JsonPath}", jsonPath);
+            
             // 3. 检查版本隔离设置
+            _logger.LogInformation("步骤 3: 检查版本隔离设置");
             bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
             bool enableVersionIsolation = versionIsolationValue ?? true;
+            _logger.LogInformation("版本隔离: {EnableVersionIsolation}", enableVersionIsolation);
+            
             string gameDir = enableVersionIsolation 
                 ? Path.Combine(minecraftPath, "versions", versionName) 
                 : minecraftPath;
+            _logger.LogInformation("游戏目录: {GameDir}", gameDir);
             
             // 4. 确保目录存在
+            _logger.LogInformation("步骤 4: 确保目录存在");
             if (enableVersionIsolation && !Directory.Exists(gameDir))
             {
+                _logger.LogInformation("创建游戏目录: {GameDir}", gameDir);
                 Directory.CreateDirectory(gameDir);
             }
             
             // 5. 创建 options.txt（设置默认语言为简体中文）
+            _logger.LogInformation("步骤 5: 检查 options.txt");
             string optionsPath = Path.Combine(gameDir, "options.txt");
             if (!File.Exists(optionsPath))
             {
                 try
                 {
                     await File.WriteAllTextAsync(optionsPath, "lang:zh_cn\n", cancellationToken);
-                    System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 已创建默认游戏设置文件: {optionsPath}");
+                    _logger.LogInformation("已创建默认游戏设置文件: {OptionsPath}", optionsPath);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 创建 options.txt 失败: {ex.Message}");
+                    _logger.LogWarning(ex, "创建 options.txt 失败");
                 }
             }
             
             // 6. 检查必要文件
+            _logger.LogInformation("步骤 6: 检查必要文件");
             if (!File.Exists(jarPath))
             {
+                _logger.LogError("游戏 JAR 文件不存在: {JarPath}", jarPath);
                 return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JAR文件不存在: {jarPath}" };
             }
+            _logger.LogInformation("JAR 文件存在");
             
             if (!File.Exists(jsonPath))
             {
+                _logger.LogError("游戏 JSON 文件不存在: {JsonPath}", jsonPath);
                 return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JSON文件不存在: {jsonPath}" };
             }
+            _logger.LogInformation("JSON 文件存在");
             
             // 7. 读取版本信息
+            _logger.LogInformation("步骤 7: 读取版本信息");
             statusCallback?.Invoke("正在读取版本信息...");
             string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
             var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
             
             if (versionInfo == null)
             {
+                _logger.LogError("解析版本信息失败");
                 return new GameLaunchResult { Success = false, ErrorMessage = "解析版本信息失败" };
             }
+            _logger.LogInformation("版本信息解析成功，主类: {MainClass}", versionInfo.MainClass);
             
             if (string.IsNullOrEmpty(versionInfo.MainClass))
             {
+                _logger.LogError("主类信息为空");
                 return new GameLaunchResult { Success = false, ErrorMessage = "无法获取主类信息" };
             }
             
             // 8. 加载版本配置
+            _logger.LogInformation("步骤 8: 加载版本配置");
             var config = await _versionConfigService.LoadConfigAsync(versionName);
             _windowWidth = config.WindowWidth;
             _windowHeight = config.WindowHeight;
+            _logger.LogInformation("版本配置加载完成，窗口大小: {Width}x{Height}", _windowWidth, _windowHeight);
             
             // 9. 选择 Java 运行时
+            _logger.LogInformation("步骤 9: 选择 Java 运行时");
             statusCallback?.Invoke("正在查找Java运行时环境...");
             int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
+            _logger.LogInformation("需要 Java 版本: {RequiredVersion}", requiredJavaVersion);
             
             string? javaPath;
             if (!config.UseGlobalJavaSetting && !string.IsNullOrEmpty(config.JavaPath))
             {
+                _logger.LogInformation("使用版本专用 Java: {JavaPath}", config.JavaPath);
                 javaPath = config.JavaPath;
             }
             else
             {
+                _logger.LogInformation("使用全局 Java 设置");
                 javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, config.JavaPath);
             }
             
             if (string.IsNullOrEmpty(javaPath))
             {
+                _logger.LogError("未找到 Java 运行时环境");
                 return new GameLaunchResult { Success = false, ErrorMessage = "未找到Java运行时环境，请先安装Java" };
             }
+            _logger.LogInformation("选中 Java 路径: {JavaPath}", javaPath);
             
             // 10. 确保版本依赖完整
+            _logger.LogInformation("步骤 10: 确保版本依赖完整");
             statusCallback?.Invoke("正在检查版本依赖...");
             
             try
@@ -289,25 +334,31 @@ public class GameLaunchService : IGameLaunchService
                         statusCallback?.Invoke($"正在准备游戏文件... {progress:F0}%");
                     },
                     null);
+                _logger.LogInformation("版本依赖检查完成");
             }
             catch (OperationCanceledException)
             {
+                _logger.LogWarning("用户取消了下载");
                 return new GameLaunchResult { Success = false, ErrorMessage = "已取消下载" };
             }
             
             // 11. 构建启动参数
+            _logger.LogInformation("步骤 11: 构建启动参数");
             statusCallback?.Invoke("正在构建启动参数...");
             var launchArgs = await BuildLaunchArgumentsAsync(
                 versionInfo, profile, config, versionName, versionDir, gameDir,
                 jarPath, librariesPath, assetsPath, javaPath, minecraftPath);
+            _logger.LogInformation("启动参数构建完成，共 {Count} 个参数", launchArgs.Count);
             
             // 12. 创建进程
+            _logger.LogInformation("步骤 12: 创建游戏进程");
             string javaExecutable = javaPath;
             if (javaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
             {
                 string javawPath = javaPath.Substring(0, javaPath.Length - 8) + "javaw.exe";
                 if (File.Exists(javawPath))
                 {
+                    _logger.LogInformation("使用 javaw.exe 替代 java.exe");
                     javaExecutable = javawPath;
                 }
             }
@@ -315,6 +366,8 @@ public class GameLaunchService : IGameLaunchService
             string processedArgs = string.Join(" ", launchArgs.Select(a => 
                 (a.Contains('"') || !a.Contains(' ')) ? a : $"\"{a}\""));
             string fullCommand = $"\"{javaExecutable}\" {processedArgs}";
+            
+            _logger.LogInformation("完整启动命令长度: {Length} 字符", fullCommand.Length);
             
             var startInfo = new ProcessStartInfo
             {
@@ -332,11 +385,13 @@ public class GameLaunchService : IGameLaunchService
             var gameProcess = new Process { StartInfo = startInfo };
             
             // 13. 启动进程
+            _logger.LogInformation("步骤 13: 启动游戏进程");
             statusCallback?.Invoke("正在启动游戏...");
             gameProcess.Start();
             gameProcess.EnableRaisingEvents = true;
             
-            System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 游戏启动成功: {versionName}");
+            _logger.LogInformation("游戏进程启动成功，PID: {ProcessId}", gameProcess.Id);
+            _logger.LogInformation("=== GameLaunchService.LaunchGameAsync 成功完成 ===");
             
             return new GameLaunchResult
             {
@@ -345,13 +400,22 @@ public class GameLaunchService : IGameLaunchService
                 LaunchCommand = fullCommand
             };
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
+            _logger.LogWarning(ex, "启动已取消");
             return new GameLaunchResult { Success = false, ErrorMessage = "启动已取消" };
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 启动失败: {ex.Message}");
+            _logger.LogError(ex, "启动失败: {Message}", ex.Message);
+            _logger.LogError("异常类型: {ExceptionType}", ex.GetType().FullName);
+            _logger.LogError("堆栈跟踪: {StackTrace}", ex.StackTrace);
+            
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerMessage}", ex.InnerException.Message);
+            }
+            
             return new GameLaunchResult { Success = false, ErrorMessage = $"启动失败: {ex.Message}" };
         }
     }

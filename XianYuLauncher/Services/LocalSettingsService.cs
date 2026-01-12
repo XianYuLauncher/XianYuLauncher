@@ -54,6 +54,39 @@ public class LocalSettingsService : ILocalSettingsService
         {
             if (ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var obj))
             {
+                // 特殊处理：自动修复 JavaSelectionMode 的错误格式
+                if (key == "JavaSelectionMode" && obj is string strValue)
+                {
+                    var underlyingType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+                    
+                    // 检查目标类型是否为 int 或 int?
+                    if (underlyingType == typeof(int))
+                    {
+                        // 先尝试反序列化 JSON 字符串（可能是 "\"Auto\"" 格式）
+                        string actualValue = strValue;
+                        try
+                        {
+                            actualValue = JsonConvert.DeserializeObject<string>(strValue) ?? strValue;
+                        }
+                        catch
+                        {
+                            // 如果反序列化失败，使用原始值
+                        }
+                        
+                        // 如果是字符串 "Auto" 或 "Manual"，转换为整数并重新保存
+                        if (string.Equals(actualValue, "Auto", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await SaveSettingAsync(key, 0); // Auto = 0
+                            return (T)(object)(typeof(T) == typeof(int?) ? (int?)0 : 0);
+                        }
+                        else if (string.Equals(actualValue, "Manual", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await SaveSettingAsync(key, 1); // Manual = 1
+                            return (T)(object)(typeof(T) == typeof(int?) ? (int?)1 : 1);
+                        }
+                    }
+                }
+                
                 return await Json.ToObjectAsync<T>((string)obj);
             }
         }
@@ -63,6 +96,28 @@ public class LocalSettingsService : ILocalSettingsService
 
             if (_settings != null && _settings.TryGetValue(key, out var obj))
             {
+                // 特殊处理：自动修复 JavaSelectionMode 的错误格式（非 MSIX 模式）
+                if (key == "JavaSelectionMode" && obj is string strValue)
+                {
+                    var underlyingType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+                    
+                    // 检查目标类型是否为 int 或 int?
+                    if (underlyingType == typeof(int))
+                    {
+                        // 如果是字符串 "Auto" 或 "Manual"，转换为整数并重新保存
+                        if (string.Equals(strValue, "Auto", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await SaveSettingAsync(key, 0); // Auto = 0
+                            return (T)(object)(typeof(T) == typeof(int?) ? (int?)0 : 0);
+                        }
+                        else if (string.Equals(strValue, "Manual", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await SaveSettingAsync(key, 1); // Manual = 1
+                            return (T)(object)(typeof(T) == typeof(int?) ? (int?)1 : 1);
+                        }
+                    }
+                }
+                
                 // 调试：检查读取的Java版本数据
                 if (key == "JavaVersions")
                 {
@@ -97,8 +152,34 @@ public class LocalSettingsService : ILocalSettingsService
                 if (obj is not T && obj != null)
                 {
                     Console.WriteLine($"  类型不匹配，需要转换: {obj.GetType().Name} -> {typeof(T).Name}");
-                    var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+                    
+                    try
+                    {
+                        var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
+                        return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+                    }
+                    catch (JsonException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 类型转换失败 '{key}': {ex.Message}");
+                        
+                        // 尝试智能转换
+                        if (typeof(T) == typeof(int) || typeof(T) == typeof(int?))
+                        {
+                            var objStr = obj?.ToString();
+                            if (string.Equals(objStr, "Auto", StringComparison.OrdinalIgnoreCase))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 将 'Auto' 转换为 null (int?)");
+                                return default;
+                            }
+                            
+                            if (int.TryParse(objStr, out int intValue))
+                            {
+                                return (T)(object)intValue;
+                            }
+                        }
+                        
+                        return default;
+                    }
                 }
                 return (T)obj;
             }
