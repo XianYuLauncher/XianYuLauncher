@@ -15,8 +15,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <PlatformTarget>x64</PlatformTarget>
     <UseWindowsForms>False</UseWindowsForms>
-    <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
-    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
     <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
@@ -27,7 +27,7 @@
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <AppxPackageDir>C:\Users\pc\Pictures\XuWorld_res\microsoft_store_build\1.3.1.2\</AppxPackageDir>
+    <AppxPackageDir>C:\Users\pc\Pictures\XuWorld_res\microsoft_store_build\1.3.2_Store\</AppxPackageDir>
   </PropertyGroup>
 
   <ItemGroup>
