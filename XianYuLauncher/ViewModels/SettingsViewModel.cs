@@ -54,6 +54,30 @@ public enum JavaSelectionModeType
     Manual
 }
 
+/// <summary>
+/// Minecraft游戏目录项
+/// </summary>
+public partial class MinecraftPathItem : ObservableObject
+{
+    /// <summary>
+    /// 目录名称（用户自定义或自动生成）
+    /// </summary>
+    [ObservableProperty]
+    private string _name = string.Empty;
+    
+    /// <summary>
+    /// 目录路径
+    /// </summary>
+    [ObservableProperty]
+    private string _path = string.Empty;
+    
+    /// <summary>
+    /// 是否为当前激活的目录
+    /// </summary>
+    [ObservableProperty]
+    private bool _isActive;
+}
+
 public partial class SettingsViewModel : ObservableRecipient
     {
         private readonly IThemeSelectorService _themeSelectorService;
@@ -300,6 +324,23 @@ public partial class SettingsViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string? _minecraftPath;
+    
+    /// <summary>
+    /// Minecraft游戏目录列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<MinecraftPathItem> _minecraftPaths = new ObservableCollection<MinecraftPathItem>();
+    
+    /// <summary>
+    /// 当前选中的游戏目录项
+    /// </summary>
+    [ObservableProperty]
+    private MinecraftPathItem? _selectedMinecraftPathItem;
+    
+    /// <summary>
+    /// Minecraft路径列表存储键
+    /// </summary>
+    private const string MinecraftPathsKey = "MinecraftPaths";
     
     /// <summary>
     /// 所有检测到的Java版本列表
@@ -560,7 +601,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 加载Java选择方式
         LoadJavaSelectionModeAsync().ConfigureAwait(false);
         // 加载Minecraft路径
-        LoadMinecraftPathAsync().ConfigureAwait(false);
+        LoadMinecraftPathsAsync().ConfigureAwait(false);
         // 加载下载源设置
         LoadDownloadSourceAsync().ConfigureAwait(false);
         // 加载Modrinth下载源设置
@@ -2270,4 +2311,195 @@ public partial class SettingsViewModel : ObservableRecipient
             return false;
         }
     }
+    
+    #region Minecraft游戏目录管理
+    
+    /// <summary>
+    /// 加载Minecraft游戏目录列表
+    /// </summary>
+    private async Task LoadMinecraftPathsAsync()
+    {
+        try
+        {
+            var pathsJson = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathsKey);
+            if (!string.IsNullOrEmpty(pathsJson))
+            {
+                var paths = System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(pathsJson);
+                if (paths != null && paths.Count > 0)
+                {
+                    MinecraftPaths.Clear();
+                    foreach (var path in paths)
+                    {
+                        MinecraftPaths.Add(path);
+                    }
+                    
+                    // 设置当前激活的路径
+                    var activePath = MinecraftPaths.FirstOrDefault(p => p.IsActive);
+                    if (activePath != null)
+                    {
+                        MinecraftPath = activePath.Path;
+                    }
+                    return;
+                }
+            }
+            
+            // 如果没有保存的列表，使用当前路径创建默认项
+            var currentPath = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathKey);
+            if (string.IsNullOrEmpty(currentPath))
+            {
+                currentPath = _fileService.GetMinecraftDataPath();
+            }
+            
+            MinecraftPaths.Clear();
+            MinecraftPaths.Add(new MinecraftPathItem
+            {
+                Name = "Settings_DefaultGameDirectory".GetLocalized(),
+                Path = currentPath,
+                IsActive = true
+            });
+            MinecraftPath = currentPath;
+            
+            await SaveMinecraftPathsAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 加载游戏目录列表失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 保存Minecraft游戏目录列表
+    /// </summary>
+    private async Task SaveMinecraftPathsAsync()
+    {
+        try
+        {
+            var pathsJson = System.Text.Json.JsonSerializer.Serialize(MinecraftPaths.ToList());
+            await _localSettingsService.SaveSettingAsync(MinecraftPathsKey, pathsJson);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 保存游戏目录列表失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 添加Minecraft游戏目录
+    /// </summary>
+    [RelayCommand]
+    private async Task AddMinecraftPathAsync()
+    {
+        var folderPicker = new FolderPicker();
+        folderPicker.FileTypeFilter.Add("*");
+        
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+        
+        var folder = await folderPicker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            // 检查是否已存在
+            if (MinecraftPaths.Any(p => p.Path.Equals(folder.Path, StringComparison.OrdinalIgnoreCase)))
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Settings_Hint".GetLocalized(),
+                    Content = "Settings_DirectoryAlreadyExists".GetLocalized(),
+                    CloseButtonText = "Settings_OK".GetLocalized(),
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await dialog.ShowAsync();
+                return;
+            }
+            
+            // 生成目录名称
+            string name = string.Format("Settings_GameDirectoryFormat".GetLocalized(), MinecraftPaths.Count + 1);
+            
+            // 添加到列表
+            MinecraftPaths.Add(new MinecraftPathItem
+            {
+                Name = name,
+                Path = folder.Path,
+                IsActive = false
+            });
+            
+            await SaveMinecraftPathsAsync();
+        }
+    }
+    
+    /// <summary>
+    /// 删除选中的Minecraft游戏目录
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveMinecraftPathAsync()
+    {
+        if (SelectedMinecraftPathItem == null)
+        {
+            return;
+        }
+        
+        var itemToRemove = SelectedMinecraftPathItem;
+        
+        // 确认删除
+        var confirmDialog = new ContentDialog
+        {
+            Title = "确认删除",
+            Content = $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
+            PrimaryButtonText = "删除",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = App.MainWindow.Content.XamlRoot
+        };
+        
+        var result = await confirmDialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            // 如果删除的是当前激活的目录，需要先切换到其他目录
+            if (itemToRemove.IsActive && MinecraftPaths.Count > 1)
+            {
+                // 找到第一个不是当前目录的项并激活它
+                var nextActiveItem = MinecraftPaths.FirstOrDefault(p => p != itemToRemove);
+                if (nextActiveItem != null)
+                {
+                    nextActiveItem.IsActive = true;
+                    MinecraftPath = nextActiveItem.Path;
+                }
+            }
+            else if (itemToRemove.IsActive && MinecraftPaths.Count == 1)
+            {
+                // 如果是最后一个目录，删除后清空路径
+                MinecraftPath = string.Empty;
+            }
+            
+            MinecraftPaths.Remove(itemToRemove);
+            SelectedMinecraftPathItem = null;
+            await SaveMinecraftPathsAsync();
+        }
+    }
+    
+    /// <summary>
+    /// 切换到指定的Minecraft游戏目录
+    /// </summary>
+    [RelayCommand]
+    private async Task SwitchMinecraftPathAsync(MinecraftPathItem pathItem)
+    {
+        if (pathItem == null || pathItem.IsActive)
+        {
+            return;
+        }
+        
+        // 取消所有目录的激活状态
+        foreach (var item in MinecraftPaths)
+        {
+            item.IsActive = false;
+        }
+        
+        // 激活选中的目录
+        pathItem.IsActive = true;
+        MinecraftPath = pathItem.Path;
+        
+        await SaveMinecraftPathsAsync();
+    }
+    
+    #endregion
 }

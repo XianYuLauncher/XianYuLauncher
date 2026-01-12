@@ -148,4 +148,15 @@ public sealed partial class SettingsPage : Page
             }
         }
     }
+    
+    /// <summary>
+    /// 处理游戏目录列表的双击事件
+    /// </summary>
+    private async void MinecraftPathListBox_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (ViewModel.SelectedMinecraftPathItem != null)
+        {
+            await ViewModel.SwitchMinecraftPathCommand.ExecuteAsync(ViewModel.SelectedMinecraftPathItem);
+        }
+    }
 }

@@ -25,7 +25,7 @@ public sealed partial class LaunchPage : Page
     }
 
     private readonly HttpClient _httpClient = new HttpClient();
-    private const string DefaultAvatarPath = "ms-appx:///Assets/DefaultAvatar.png";
+    private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
     private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
@@ -249,21 +249,43 @@ public sealed partial class LaunchPage : Page
     {
         if (ViewModel.SelectedProfile == null)
         {
-            ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            // 没有选中角色时，显示处理过的 Steve 头像
+            if (_processedSteveAvatar != null)
+            {
+                ProfileAvatar.Source = _processedSteveAvatar;
+            }
+            else
+            {
+                // 如果预加载的头像还没准备好，先显示原始头像，然后异步处理
+                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+                var steveAvatar = await ProcessSteveAvatarAsync();
+                if (steveAvatar != null)
+                {
+                    ProfileAvatar.Source = steveAvatar;
+                }
+            }
             return;
         }
 
         // 1. 离线玩家使用Steve头像
         if (ViewModel.SelectedProfile.IsOffline)
         {
-            // 先显示原始Steve头像
-            ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
-            
-            // 异步处理Steve头像，确保清晰显示
-            var steveAvatar = await ProcessSteveAvatarAsync();
-            if (steveAvatar != null)
+            // 使用预加载的处理过的 Steve 头像
+            if (_processedSteveAvatar != null)
             {
-                ProfileAvatar.Source = steveAvatar;
+                ProfileAvatar.Source = _processedSteveAvatar;
+            }
+            else
+            {
+                // 先显示原始Steve头像
+                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                
+                // 异步处理Steve头像，确保清晰显示
+                var steveAvatar = await ProcessSteveAvatarAsync();
+                if (steveAvatar != null)
+                {
+                    ProfileAvatar.Source = steveAvatar;
+                }
             }
             return;
         }

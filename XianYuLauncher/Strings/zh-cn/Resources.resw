@@ -444,6 +444,39 @@
   <data name="LaunchPage_PleaseSelectVersionText" xml:space="preserve">
     <value>请先选择一个版本</value>
   </data>
+  <data name="LaunchPage_DefaultTitle" xml:space="preserve">
+    <value>启动游戏</value>
+  </data>
+  <data name="LaunchPage_SelectVersionText" xml:space="preserve">
+    <value>请选择游戏版本</value>
+  </data>
+  <data name="LaunchPage_SelectCharacterText" xml:space="preserve">
+    <value>请选择游戏角色</value>
+  </data>
+  <data name="Settings_AddedGameDirectories" xml:space="preserve">
+    <value>已添加的游戏目录</value>
+  </data>
+  <data name="Settings_AddDirectory.Content" xml:space="preserve">
+    <value>添加目录</value>
+  </data>
+  <data name="Settings_RemoveDirectory.Content" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Settings_DefaultGameDirectory" xml:space="preserve">
+    <value>默认游戏目录</value>
+  </data>
+  <data name="Settings_GameDirectoryFormat" xml:space="preserve">
+    <value>游戏目录 {0}</value>
+  </data>
+  <data name="Settings_Hint" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Settings_DirectoryAlreadyExists" xml:space="preserve">
+    <value>该游戏目录已存在于列表中</value>
+  </data>
+  <data name="Settings_OK" xml:space="preserve">
+    <value>确定</value>
+  </data>
   <data name="LaunchPage_StartingGameText" xml:space="preserve">
     <value>正在启动游戏...</value>
   </data>

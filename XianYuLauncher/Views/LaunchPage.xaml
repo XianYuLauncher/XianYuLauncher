@@ -144,12 +144,12 @@
                                     <Image 
                                         x:Name="ProfileAvatar"
                                         Width="32" Height="32"
-                                        Source="ms-appx:///Assets/DefaultAvatar.png"
+                                        Source="ms-appx:///Assets/Icons/Avatars/Steve.png"
                                         Stretch="UniformToFill" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                     <TextBlock 
-                                        Text="{x:Bind ViewModel.SelectedProfile.Name, Mode=OneWay}"
+                                        Text="{x:Bind ViewModel.SelectedProfileDisplay, Mode=OneWay}"
                                         Style="{StaticResource BodyTextBlockStyle}"
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock 

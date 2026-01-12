@@ -482,7 +482,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 页面标题，显示当前选中的版本或默认文本
     /// </summary>
     public string PageTitle => string.IsNullOrEmpty(SelectedVersion) 
-        ? "Minecraft" 
+        ? "LaunchPage_DefaultTitle".GetLocalized() 
         : SelectedVersion;
 
     /// <summary>
@@ -512,7 +512,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 版本选择按钮显示文本
     /// </summary>
     public string SelectedVersionDisplay => string.IsNullOrEmpty(SelectedVersion) 
-        ? "LaunchPage_SelectVersionPlaceholder".GetLocalized() 
+        ? "LaunchPage_SelectVersionText".GetLocalized() 
         : SelectedVersion;
 
     [ObservableProperty]
@@ -541,6 +541,21 @@ public partial class LaunchViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private MinecraftProfile _selectedProfile;
+    
+    /// <summary>
+    /// 角色选择按钮显示文本
+    /// </summary>
+    public string SelectedProfileDisplay => SelectedProfile == null || string.IsNullOrEmpty(SelectedProfile.Name)
+        ? "LaunchPage_SelectCharacterText".GetLocalized() 
+        : SelectedProfile.Name;
+    
+    /// <summary>
+    /// 当 SelectedProfile 变化时通知 UI 更新显示文本
+    /// </summary>
+    partial void OnSelectedProfileChanged(MinecraftProfile value)
+    {
+        OnPropertyChanged(nameof(SelectedProfileDisplay));
+    }
 
     /// <summary>
     /// 启动成功消息，用于InfoBar显示

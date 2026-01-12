@@ -444,6 +444,39 @@
   <data name="LaunchPage_PleaseSelectVersionText" xml:space="preserve">
     <value>Please select a version first</value>
   </data>
+  <data name="LaunchPage_DefaultTitle" xml:space="preserve">
+    <value>Launch Game</value>
+  </data>
+  <data name="LaunchPage_SelectVersionText" xml:space="preserve">
+    <value>Select a game version</value>
+  </data>
+  <data name="LaunchPage_SelectCharacterText" xml:space="preserve">
+    <value>Select a character</value>
+  </data>
+  <data name="Settings_AddedGameDirectories" xml:space="preserve">
+    <value>Added Game Directories</value>
+  </data>
+  <data name="Settings_AddDirectory.Content" xml:space="preserve">
+    <value>Add Directory</value>
+  </data>
+  <data name="Settings_RemoveDirectory.Content" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Settings_DefaultGameDirectory" xml:space="preserve">
+    <value>Default Game Directory</value>
+  </data>
+  <data name="Settings_GameDirectoryFormat" xml:space="preserve">
+    <value>Game Directory {0}</value>
+  </data>
+  <data name="Settings_Hint" xml:space="preserve">
+    <value>Hint</value>
+  </data>
+  <data name="Settings_DirectoryAlreadyExists" xml:space="preserve">
+    <value>This game directory already exists in the list</value>
+  </data>
+  <data name="Settings_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
   <data name="LaunchPage_StartingGameText" xml:space="preserve">
     <value>Starting game...</value>
   </data>
