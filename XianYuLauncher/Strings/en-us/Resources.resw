@@ -1099,6 +1099,21 @@ Continue downloading?</value>
   <data name="ModDownloadDetailPage_VersionsCountSuffix" xml:space="preserve">
     <value> versions</value>
   </data>
+  <data name="ModDownloadDetailPage_QuickInstallButton.Text" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
+    <value>Select Game Version</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText.Text" xml:space="preserve">
+    <value>Please select the game version to install the mod:</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip.Text" xml:space="preserve">
+    <value>Gray versions are not supported by this mod</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title.Title" xml:space="preserve">
+    <value>Select Mod Version</value>
+  </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>Added Profiles</value>
   </data>

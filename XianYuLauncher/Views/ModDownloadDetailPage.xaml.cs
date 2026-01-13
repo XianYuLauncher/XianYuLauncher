@@ -85,6 +85,28 @@ namespace XianYuLauncher.Views
                     DownloadProgressDialog.Hide();
                 }
             }
+            else if (e.PropertyName == nameof(ViewModel.IsQuickInstallGameVersionDialogOpen))
+            {
+                if (ViewModel.IsQuickInstallGameVersionDialogOpen)
+                {
+                    await QuickInstallGameVersionDialog.ShowAsync();
+                }
+                else
+                {
+                    QuickInstallGameVersionDialog.Hide();
+                }
+            }
+            else if (e.PropertyName == nameof(ViewModel.IsQuickInstallModVersionDialogOpen))
+            {
+                if (ViewModel.IsQuickInstallModVersionDialogOpen)
+                {
+                    await QuickInstallModVersionDialog.ShowAsync();
+                }
+                else
+                {
+                    QuickInstallModVersionDialog.Hide();
+                }
+            }
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -243,6 +265,48 @@ namespace XianYuLauncher.Views
         private void DownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             ViewModel.CancelDownloadCommand.Execute(null);
+        }
+        
+        // 一键安装 - 游戏版本选择弹窗 - 下一步按钮点击事件
+        private async void QuickInstallGameVersionDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            if (ViewModel.SelectedQuickInstallVersion == null)
+            {
+                args.Cancel = true;
+                await ViewModel.ShowMessageAsync("请选择一个游戏版本");
+                return;
+            }
+            
+            ViewModel.IsQuickInstallGameVersionDialogOpen = false;
+            await Task.Delay(100);
+            await ViewModel.ShowQuickInstallModVersionSelectionAsync();
+        }
+        
+        // 一键安装 - 游戏版本选择弹窗 - 取消按钮点击事件
+        private void QuickInstallGameVersionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.IsQuickInstallGameVersionDialogOpen = false;
+        }
+        
+        // 一键安装 - Mod版本选择弹窗 - 安装按钮点击事件
+        private async void QuickInstallModVersionDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            if (ViewModel.SelectedQuickInstallModVersion == null)
+            {
+                args.Cancel = true;
+                await ViewModel.ShowMessageAsync("请选择一个Mod版本");
+                return;
+            }
+            
+            ViewModel.IsQuickInstallModVersionDialogOpen = false;
+            await Task.Delay(100);
+            await ViewModel.DownloadModVersionToGameAsync(ViewModel.SelectedQuickInstallModVersion, ViewModel.SelectedQuickInstallVersion);
+        }
+        
+        // 一键安装 - Mod版本选择弹窗 - 取消按钮点击事件
+        private void QuickInstallModVersionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        {
+            ViewModel.IsQuickInstallModVersionDialogOpen = false;
         }
     }
 }

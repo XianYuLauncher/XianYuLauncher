@@ -27,4 +27,7 @@ public interface IMinecraftVersionService
     
     // 获取已安装的Minecraft版本
     Task<List<string>> GetInstalledVersionsAsync(string minecraftDirectory = null);
+    
+    // 获取版本配置信息
+    Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory = null);
 }

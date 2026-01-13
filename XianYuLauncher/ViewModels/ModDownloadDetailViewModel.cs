@@ -369,9 +369,36 @@ namespace XianYuLauncher.ViewModels
                     VersionSelectionTip = "ModDownloadDetailPage_VersionSelectionTip_Mod".GetLocalized();
                     break;
             }
+            
+            // 通知安装按钮可见性属性更新
+            OnPropertyChanged(nameof(IsQuickInstallButtonVisible));
         }
         
+        /// <summary>
+        /// 判断是否显示一键安装按钮（整合包不显示）
+        /// </summary>
+        public bool IsQuickInstallButtonVisible => ProjectType != "modpack";
+        
         private CancellationTokenSource _downloadCancellationTokenSource;
+        
+        // 一键安装相关属性
+        [ObservableProperty]
+        private ObservableCollection<InstalledGameVersionViewModel> _quickInstallGameVersions = new();
+        
+        [ObservableProperty]
+        private InstalledGameVersionViewModel _selectedQuickInstallVersion;
+        
+        [ObservableProperty]
+        private ObservableCollection<ModVersionViewModel> _quickInstallModVersions = new();
+        
+        [ObservableProperty]
+        private ModVersionViewModel _selectedQuickInstallModVersion;
+        
+        [ObservableProperty]
+        private bool _isQuickInstallGameVersionDialogOpen = false;
+        
+        [ObservableProperty]
+        private bool _isQuickInstallModVersionDialogOpen = false;
         
         // 自定义下载路径相关属性
         private string _customDownloadPath;
@@ -1017,10 +1044,10 @@ namespace XianYuLauncher.ViewModels
                     }
                 }
                 
-                // 如果没有找到加载器，添加一个默认的"通用"加载器
+                // 如果没有找到加载器,添加一个默认的"Generic"加载器
                 if (loaders.Count == 0)
                 {
-                    loaders.Add("通用");
+                    loaders.Add("Generic");
                 }
                 
                 // 为每个游戏版本和加载器组合创建条目
@@ -2040,6 +2067,12 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public async Task DownloadModAsync(ModVersionViewModel modVersion)
         {
+            System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] 开始执行");
+            System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] ProjectType: {ProjectType}");
+            System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] modVersion: {modVersion?.VersionNumber}");
+            System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] UseCustomDownloadPath: {UseCustomDownloadPath}");
+            System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] SelectedInstalledVersion: {SelectedInstalledVersion?.OriginalVersionName}");
+            
             // 如果是整合包，使用整合包安装流程
             if (ProjectType == "modpack")
             {
@@ -2058,12 +2091,14 @@ namespace XianYuLauncher.ViewModels
             {
                 if (modVersion == null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] 错误: modVersion 为 null");
                     throw new Exception("未选择要下载的Mod版本");
                 }
                 
                 // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
                 if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] 错误: SelectedInstalledVersion 为 null");
                     throw new Exception("未选择要安装的游戏版本");
                 }
                 
@@ -3119,6 +3154,437 @@ namespace XianYuLauncher.ViewModels
                 {
                     System.Diagnostics.Debug.WriteLine($"[ERROR] 打开平台 URL 失败: {ex.Message}");
                 }
+            }
+        }
+        
+        /// <summary>
+        /// 一键安装命令 - 打开游戏版本选择弹窗
+        /// </summary>
+        [RelayCommand]
+        private async Task QuickInstallAsync()
+        {
+            try
+            {
+                // 加载已安装的游戏版本
+                await LoadQuickInstallGameVersionsAsync();
+                
+                if (QuickInstallGameVersions.Count == 0)
+                {
+                    await ShowMessageAsync("未找到已安装的游戏版本，请先安装游戏版本。");
+                    return;
+                }
+                
+                // 打开游戏版本选择弹窗
+                IsQuickInstallGameVersionDialogOpen = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 一键安装失败: {ex.Message}");
+                await ShowMessageAsync($"一键安装失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 加载一键安装的游戏版本列表
+        /// </summary>
+        private async Task LoadQuickInstallGameVersionsAsync()
+        {
+            QuickInstallGameVersions.Clear();
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[QuickInstall] ========== 开始加载游戏版本 ==========");
+                
+                // 获取实际已安装的游戏版本
+                var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 找到 {installedVersions.Count} 个已安装的游戏版本");
+                
+                // 获取当前Mod支持的所有游戏版本和加载器
+                var supportedGameVersions = new HashSet<string>();
+                var supportedLoaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 当前Mod支持的游戏版本数量: {SupportedGameVersions.Count}");
+                
+                foreach (var gameVersion in SupportedGameVersions)
+                {
+                    supportedGameVersions.Add(gameVersion.GameVersion);
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 支持的游戏版本: {gameVersion.GameVersion}");
+                    
+                    foreach (var loader in gameVersion.Loaders)
+                    {
+                        var loaderName = loader.LoaderName.ToLower();
+                        supportedLoaders.Add(loaderName);
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall]   - 支持的加载器: {loaderName}");
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 支持的游戏版本集合: {string.Join(", ", supportedGameVersions)}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 支持的加载器集合: {string.Join(", ", supportedLoaders)}");
+                
+                // 获取Minecraft目录
+                string minecraftDirectory = _fileService.GetMinecraftDataPath();
+                
+                foreach (var version in installedVersions)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] ---------- 处理版本: {version} ----------");
+                    
+                    // 先尝试从配置文件读取版本信息
+                    var versionConfig = await _minecraftVersionService.GetVersionConfigAsync(version, minecraftDirectory);
+                    
+                    string gameVersion = null;
+                    string loaderType = "vanilla";
+                    string loaderVersion = "";
+                    
+                    if (versionConfig != null)
+                    {
+                        // 从配置文件获取信息
+                        gameVersion = versionConfig.MinecraftVersion;
+                        loaderType = versionConfig.ModLoaderType?.ToLower() ?? "vanilla";
+                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                        
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] ✅ 从配置文件读取:");
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall]   游戏版本: {gameVersion}");
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall]   加载器类型: {loaderType}");
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall]   加载器版本: {loaderVersion}");
+                    }
+                    else
+                    {
+                        // 配置文件不存在，尝试从version.json解析
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] ⚠️ 配置文件不存在，尝试从version.json解析");
+                        
+                        var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(version);
+                        if (versionInfo == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall] ❌ 无法获取版本信息，跳过");
+                            continue;
+                        }
+                        
+                        gameVersion = versionInfo.Id;
+                        
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] 版本ID: {versionInfo.Id}");
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] InheritsFrom: {versionInfo.InheritsFrom ?? "null"}");
+                        
+                        // 检测加载器类型（从版本ID字符串）
+                        if (versionInfo.Id.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "fabric";
+                        }
+                        else if (versionInfo.Id.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "neoforge";
+                        }
+                        else if (versionInfo.Id.Contains("forge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "forge";
+                        }
+                        else if (versionInfo.Id.Contains("quilt", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "quilt";
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到的加载器类型: {loaderType}");
+                        
+                        // 提取游戏版本号
+                        if (versionInfo.InheritsFrom != null)
+                        {
+                            gameVersion = versionInfo.InheritsFrom;
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall] 从InheritsFrom提取游戏版本: {gameVersion}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall] 使用版本ID作为游戏版本: {gameVersion}");
+                        }
+                    }
+                    
+                    // 检查兼容性：游戏版本和加载器都要匹配
+                    bool gameVersionMatch = supportedGameVersions.Contains(gameVersion);
+                    
+                    // 定义通用加载器类型列表
+                    // 资源通用类型：这些类型的资源兼容所有游戏版本
+                    var resourceUniversalTypes = new[] { "generic", "通用", "optifine", "iris", "minecraft", "datapack" };
+                    // 游戏通用类型：这些类型的游戏版本只兼容通用资源，不兼容特定加载器的Mod
+                    var gameUniversalTypes = new[] { "vanilla", "minecraft" };
+                    
+                    // 加载器匹配逻辑：
+                    // 1. 如果资源支持的加载器包含通用类型 → 兼容所有游戏版本
+                    // 2. 如果游戏版本的加载器是通用类型 → 只兼容通用资源（检查资源是否也是通用类型）
+                    // 3. 否则，检查游戏版本的加载器是否在资源支持的加载器列表中（精确匹配）
+                    bool resourceHasUniversalLoader = supportedLoaders.Any(l => 
+                        resourceUniversalTypes.Any(u => u.Equals(l, StringComparison.OrdinalIgnoreCase)));
+                    bool gameHasUniversalLoader = gameUniversalTypes.Any(u => 
+                        u.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
+                    
+                    bool loaderMatch;
+                    if (resourceHasUniversalLoader)
+                    {
+                        // 资源是通用类型 → 兼容所有游戏版本
+                        loaderMatch = true;
+                    }
+                    else if (gameHasUniversalLoader)
+                    {
+                        // 游戏是通用类型，但资源不是通用类型 → 不兼容
+                        loaderMatch = false;
+                    }
+                    else
+                    {
+                        // 都不是通用类型 → 精确匹配加载器
+                        loaderMatch = supportedLoaders.Contains(loaderType);
+                    }
+                    
+                    bool isCompatible = gameVersionMatch && loaderMatch;
+                    
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 游戏版本匹配: {gameVersionMatch} (查找 '{gameVersion}')");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 加载器匹配: {loaderMatch} (游戏加载器: '{loaderType}', 资源支持通用: {resourceHasUniversalLoader}, 游戏是通用: {gameHasUniversalLoader})");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 最终兼容性: {isCompatible}");
+                    
+                    QuickInstallGameVersions.Add(new InstalledGameVersionViewModel
+                    {
+                        GameVersion = gameVersion,
+                        LoaderType = loaderType,
+                        LoaderVersion = loaderVersion,
+                        IsCompatible = isCompatible,
+                        OriginalVersionName = version
+                    });
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] ========== 加载完成，共 {QuickInstallGameVersions.Count} 个游戏版本 ==========");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 兼容版本数: {QuickInstallGameVersions.Count(v => v.IsCompatible)}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 不兼容版本数: {QuickInstallGameVersions.Count(v => !v.IsCompatible)}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 加载游戏版本失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
+            }
+        }
+        
+        /// <summary>
+        /// 显示Mod版本选择弹窗
+        /// </summary>
+        public async Task ShowQuickInstallModVersionSelectionAsync()
+        {
+            try
+            {
+                // 加载兼容的Mod版本
+                LoadQuickInstallModVersions();
+                
+                if (QuickInstallModVersions.Count == 0)
+                {
+                    await ShowMessageAsync($"未找到支持 {SelectedQuickInstallVersion.DisplayName} 的Mod版本。");
+                    return;
+                }
+                
+                // 打开Mod版本选择弹窗
+                IsQuickInstallModVersionDialogOpen = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 显示Mod版本选择失败: {ex.Message}");
+                await ShowMessageAsync($"显示Mod版本选择失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 加载兼容的Mod版本列表
+        /// </summary>
+        private void LoadQuickInstallModVersions()
+        {
+            QuickInstallModVersions.Clear();
+            
+            try
+            {
+                var selectedGameVersion = SelectedQuickInstallVersion.GameVersion;
+                var selectedLoader = SelectedQuickInstallVersion.LoaderType.ToLower();
+                
+                // 从SupportedGameVersions中查找匹配的版本
+                var matchingGameVersion = SupportedGameVersions.FirstOrDefault(gv => 
+                    gv.GameVersion == selectedGameVersion);
+                
+                if (matchingGameVersion != null)
+                {
+                    // 查找匹配的加载器
+                    var matchingLoader = matchingGameVersion.Loaders.FirstOrDefault(l => 
+                        l.LoaderName.Equals(selectedLoader, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (matchingLoader != null)
+                    {
+                        // 添加所有Mod版本
+                        foreach (var modVersion in matchingLoader.ModVersions)
+                        {
+                            QuickInstallModVersions.Add(modVersion);
+                        }
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 找到 {QuickInstallModVersions.Count} 个兼容的Mod版本");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 加载Mod版本失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 下载Mod版本到指定游戏版本
+        /// <summary>
+        /// 下载Mod版本到指定游戏版本（一键安装）
+        /// </summary>
+        public async Task DownloadModVersionToGameAsync(ModVersionViewModel modVersion, InstalledGameVersionViewModel gameVersion)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 开始一键安装");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] Mod版本: {modVersion?.VersionNumber}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 游戏版本: {gameVersion?.OriginalVersionName}");
+                
+                if (gameVersion == null || modVersion == null)
+                {
+                    throw new Exception("参数不能为 null");
+                }
+                
+                // 直接构建下载路径，不依赖 SelectedInstalledVersion
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
+                
+                // 根据项目类型选择文件夹
+                string targetFolder = ProjectType switch
+                {
+                    "resourcepack" => "resourcepacks",
+                    "shader" => "shaderpacks",
+                    _ => "mods"
+                };
+                
+                string targetDir = Path.Combine(versionDir, targetFolder);
+                _fileService.CreateDirectory(targetDir);
+                string savePath = Path.Combine(targetDir, modVersion.FileName);
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载路径: {savePath}");
+                
+                // 显示下载进度弹窗
+                IsDownloadProgressDialogOpen = true;
+                IsDownloading = true;
+                DownloadStatus = "正在准备下载...";
+                DownloadProgress = 0;
+                DownloadProgressText = "0.0%";
+                
+                // 处理Mod依赖（仅当是Mod时）
+                if (ProjectType == "mod")
+                {
+                    var settingsService = App.GetService<ILocalSettingsService>();
+                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool?>("DownloadDependencies");
+                    bool downloadDependencies = downloadDependenciesSetting ?? true;
+                    
+                    if (downloadDependencies)
+                    {
+                        // Modrinth依赖处理
+                        if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
+                        {
+                            var requiredDependencies = modVersion.OriginalVersion.Dependencies
+                                .Where(d => d.DependencyType == "required")
+                                .ToList();
+                            
+                            if (requiredDependencies.Count > 0)
+                            {
+                                DownloadStatus = "正在下载前置Mod...";
+                                await _modrinthService.ProcessDependenciesAsync(
+                                    requiredDependencies,
+                                    targetDir,
+                                    modVersion.OriginalVersion,
+                                    (fileName, progress) =>
+                                    {
+                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
+                                        DownloadProgress = progress;
+                                        DownloadProgressText = $"{progress:F1}%";
+                                    });
+                            }
+                        }
+                        // CurseForge依赖处理
+                        else if (modVersion.OriginalCurseForgeFile?.Dependencies != null && modVersion.OriginalCurseForgeFile.Dependencies.Count > 0)
+                        {
+                            var requiredDependencies = modVersion.OriginalCurseForgeFile.Dependencies
+                                .Where(d => d.RelationType == 3)
+                                .ToList();
+                            
+                            if (requiredDependencies.Count > 0)
+                            {
+                                DownloadStatus = "正在下载前置Mod...";
+                                await _curseForgeService.ProcessDependenciesAsync(
+                                    requiredDependencies,
+                                    targetDir,
+                                    modVersion.OriginalCurseForgeFile,
+                                    (fileName, progress) =>
+                                    {
+                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
+                                        DownloadProgress = progress;
+                                        DownloadProgressText = $"{progress:F1}%";
+                                    });
+                            }
+                        }
+                    }
+                }
+                
+                // 下载主Mod
+                DownloadStatus = $"正在下载 {modVersion.FileName}...";
+                DownloadProgress = 0;
+                
+                _downloadCancellationTokenSource = new CancellationTokenSource();
+                
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromMinutes(30);
+                    
+                    using (var response = await httpClient.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationTokenSource.Token))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        
+                        var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                        var downloadedBytes = 0L;
+                        
+                        using (var contentStream = await response.Content.ReadAsStreamAsync())
+                        using (var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                        {
+                            var buffer = new byte[8192];
+                            int bytesRead;
+                            
+                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _downloadCancellationTokenSource.Token)) > 0)
+                            {
+                                await fileStream.WriteAsync(buffer, 0, bytesRead, _downloadCancellationTokenSource.Token);
+                                downloadedBytes += bytesRead;
+                                
+                                if (totalBytes > 0)
+                                {
+                                    DownloadProgress = (double)downloadedBytes / totalBytes * 100;
+                                    DownloadProgressText = $"{DownloadProgress:F1}%";
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 下载完成
+                IsDownloadProgressDialogOpen = false;
+                IsDownloading = false;
+                
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 安装完成: {savePath}");
+            }
+            catch (OperationCanceledException)
+            {
+                IsDownloadProgressDialogOpen = false;
+                IsDownloading = false;
+                await ShowMessageAsync("下载已取消。");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 一键安装失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
+                IsDownloadProgressDialogOpen = false;
+                IsDownloading = false;
+                await ShowMessageAsync($"安装失败: {ex.Message}");
+            }
+            finally
+            {
+                _downloadCancellationTokenSource?.Dispose();
+                _downloadCancellationTokenSource = null;
             }
         }
     }

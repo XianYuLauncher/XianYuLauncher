@@ -1099,6 +1099,21 @@
   <data name="ModDownloadDetailPage_VersionsCountSuffix" xml:space="preserve">
     <value> 个版本</value>
   </data>
+  <data name="ModDownloadDetailPage_QuickInstallButton.Text" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
+    <value>选择游戏版本</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText.Text" xml:space="preserve">
+    <value>请选择要安装Mod的游戏版本：</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip.Text" xml:space="preserve">
+    <value>灰色版本表示当前Mod不支持该版本</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title.Title" xml:space="preserve">
+    <value>选择Mod版本</value>
+  </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>已添加角色</value>
   </data>

@@ -231,6 +231,97 @@
                 <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" HorizontalTextAlignment="Center" />
             </StackPanel>
         </ContentDialog>
+        
+        <!-- 一键安装 - 游戏版本选择弹窗 -->
+        <ContentDialog
+            x:Name="QuickInstallGameVersionDialog"
+            x:Uid="ModDownloadDetailPage_QuickInstallGameVersionDialog"
+            Title="选择游戏版本"
+            PrimaryButtonText="下一步"
+            CloseButtonText="取消"
+            DefaultButton="Primary"
+            PrimaryButtonClick="QuickInstallGameVersionDialog_PrimaryButtonClick"
+            CloseButtonClick="QuickInstallGameVersionDialog_CloseButtonClick">
+            <StackPanel Spacing="12">
+                <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText" Text="请选择要安装Mod的游戏版本：" FontSize="14" />
+                <ListView
+                    ItemsSource="{x:Bind ViewModel.QuickInstallGameVersions, Mode=OneWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedQuickInstallVersion, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    MaxHeight="300">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="viewModels:InstalledGameVersionViewModel">
+                            <Grid Padding="8">
+                                <TextBlock
+                                    Text="{x:Bind DisplayName}"
+                                    Opacity="{x:Bind IsCompatible, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter='1.0,0.5'}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip" FontSize="12" Foreground="{ThemeResource TextFillColorSecondary}" Text="灰色版本表示当前Mod不支持该版本" />
+            </StackPanel>
+        </ContentDialog>
+        
+        <!-- 一键安装 - Mod版本选择弹窗 -->
+        <ContentDialog
+            x:Name="QuickInstallModVersionDialog"
+            x:Uid="ModDownloadDetailPage_QuickInstallModVersionDialog"
+            Title="选择Mod版本"
+            PrimaryButtonText="安装"
+            CloseButtonText="取消"
+            DefaultButton="Primary"
+            PrimaryButtonClick="QuickInstallModVersionDialog_PrimaryButtonClick"
+            CloseButtonClick="QuickInstallModVersionDialog_CloseButtonClick">
+            <StackPanel Spacing="12">
+                <TextBlock FontSize="14" TextWrapping="WrapWholeWords">
+                    <Run Text="请选择要安装到 " />
+                    <Run Text="{x:Bind ViewModel.SelectedQuickInstallVersion.DisplayName, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text=" 的Mod版本：" />
+                </TextBlock>
+                <ListView
+                    ItemsSource="{x:Bind ViewModel.QuickInstallModVersions, Mode=OneWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedQuickInstallModVersion, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    MaxHeight="400">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="viewModels:ModVersionViewModel">
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6" 
+                                    Padding="12"
+                                    Margin="0,4">
+                                <StackPanel Spacing="4">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{x:Bind VersionNumber}" 
+                                                   FontSize="15" 
+                                                   FontWeight="SemiBold" />
+                                        <Border CornerRadius="4" 
+                                                Padding="6,2"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                            <TextBlock Text="{x:Bind VersionType, Converter={StaticResource FirstLetterToUpperConverter}}" 
+                                                       FontSize="11" 
+                                                       Foreground="{ThemeResource TextFillColorSecondary}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock FontSize="12" 
+                                               Foreground="{ThemeResource TextFillColorSecondary}">
+                                        <Run x:Uid="ModDownloadDetailPage_ReleaseDateText" Text="发布日期: " />
+                                        <Run Text="{x:Bind ReleaseDate}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{x:Bind FileName}" 
+                                               FontSize="11" 
+                                               Foreground="{ThemeResource TextFillColorTertiary}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+        </ContentDialog>
+        
         <!-- 顶部导航栏 -->
         <Grid Padding="0,16,0,0">
             <Button x:Uid="ModDownloadDetailPage_BackButton"
@@ -247,26 +338,55 @@
                 
                 <!-- Mod基本信息 -->
                 <StackPanel Spacing="8">
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <Border CornerRadius="8" Clip="{Binding ElementName=ImageBorder, Path=CornerRadius}">
-                            <Image x:Name="ImageBorder" Source="{x:Bind ViewModel.ModIconUrl, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
-                        </Border>
-                        <StackPanel>
-                            <TextBlock Text="{x:Bind ViewModel.ModName, Mode=OneWay}" FontSize="24" FontWeight="Bold" />
-                            <TextBlock Text="{x:Bind ViewModel.ModAuthor, Mode=OneWay}" FontSize="16" Foreground="{ThemeResource TextFillColorSecondary}" />
-                            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
-                                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
-                                    <Run x:Uid="ModDownloadDetailPage_LicenseText" Text="许可证: " />
-                                    <Run Text="{x:Bind ViewModel.ModLicense, Mode=OneWay}" />
-                                </TextBlock>
-                                <TextBlock Text="|" FontSize="14" Foreground="{ThemeResource TextFillColorTertiary}" />
-                                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
-                                    <Run x:Uid="ModDownloadDetailPage_DownloadsText" Text="下载量: " />
-                                    <Run Text="{x:Bind ViewModel.ModDownloads, Mode=OneWay}" />
-                                </TextBlock>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- 左侧：图标和信息 -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="0,4,0,0">
+                            <Border CornerRadius="8" Clip="{Binding ElementName=ImageBorder, Path=CornerRadius}">
+                                <Image x:Name="ImageBorder" Source="{x:Bind ViewModel.ModIconUrl, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.ModName, Mode=OneWay}" FontSize="24" FontWeight="Bold" />
+                                <TextBlock Text="{x:Bind ViewModel.ModAuthor, Mode=OneWay}" FontSize="16" Foreground="{ThemeResource TextFillColorSecondary}" />
+                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                    <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                        <Run x:Uid="ModDownloadDetailPage_LicenseText" Text="许可证: " />
+                                        <Run Text="{x:Bind ViewModel.ModLicense, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Text="|" FontSize="14" Foreground="{ThemeResource TextFillColorTertiary}" />
+                                    <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                        <Run x:Uid="ModDownloadDetailPage_DownloadsText" Text="下载量: " />
+                                        <Run Text="{x:Bind ViewModel.ModDownloads, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                        
+                        <!-- 右侧：安装按钮 -->
+                        <Button Grid.Column="1" 
+                                Command="{x:Bind ViewModel.QuickInstallCommand}"
+                                Visibility="{x:Bind ViewModel.IsQuickInstallButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                CornerRadius="8"
+                                Height="44"
+                                Padding="16,10"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Right"
+                                Margin="0,0,16,0"
+                                MinWidth="120">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE896;" FontSize="16" />
+                                <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallButton" Text="安装" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Mod描述 -->
@@ -283,8 +403,13 @@
                         <ItemsControl ItemsSource="{x:Bind ViewModel.SupportedLoaders, Mode=OneWay}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{ThemeResource SolidBackgroundFillColorSecondary}" Padding="8,4" Margin="0,0,8,0" CornerRadius="4">
-                                        <TextBlock Text="{Binding}" FontSize="14" />
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            Padding="12,6" 
+                                            Margin="0,0,8,0" 
+                                            CornerRadius="6">
+                                        <TextBlock Text="{Binding}" FontSize="14" VerticalAlignment="Center" />
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

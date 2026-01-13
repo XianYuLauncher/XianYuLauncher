@@ -431,6 +431,22 @@ public partial class MinecraftVersionService
     {
         return await _versionInfoManager.GetVersionConfigAsync(versionId, minecraftDirectory);
     }
+    
+    /// <summary>
+    /// 获取版本配置信息（公共接口）
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="minecraftDirectory">Minecraft目录，如果为null则使用默认目录</param>
+    /// <returns>版本配置</returns>
+    public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory = null)
+    {
+        if (string.IsNullOrEmpty(minecraftDirectory))
+        {
+            minecraftDirectory = _fileService.GetMinecraftDataPath();
+        }
+        
+        return await GetVersionConfigWithManagerAsync(versionId, minecraftDirectory);
+    }
 
     /// <summary>
     /// 使用 VersionInfoManager 保存版本配置
