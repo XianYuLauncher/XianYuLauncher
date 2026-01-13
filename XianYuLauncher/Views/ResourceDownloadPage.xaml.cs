@@ -96,56 +96,55 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 1: // Mod下载标签页
                 if (!_modsLoaded)
                 {
-                    _modsLoaded = true;
-                    // 并行加载：类别和搜索结果同时进行，搜索结果优先显示
-                    var categoryTask = ViewModel.LoadCategoriesAsync("mod");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("mod");
                     await ViewModel.SearchModsCommand.ExecuteAsync(null);
-                    _ = categoryTask; // 类别在后台加载完成
+                    _modsLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
             case 2: // 光影下载标签页
                 if (!_shaderPacksLoaded)
                 {
-                    _shaderPacksLoaded = true;
-                    var categoryTask = ViewModel.LoadCategoriesAsync("shader");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("shader");
                     await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-                    _ = categoryTask;
+                    _shaderPacksLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
             case 3: // 资源包下载标签页
                 if (!_resourcePacksLoaded)
                 {
-                    _resourcePacksLoaded = true;
-                    var categoryTask = ViewModel.LoadCategoriesAsync("resourcepack");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("resourcepack");
                     await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-                    _ = categoryTask;
+                    _resourcePacksLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
             case 4: // 数据包下载标签页
                 if (!_datapacksLoaded)
                 {
-                    _datapacksLoaded = true;
-                    var categoryTask = ViewModel.LoadCategoriesAsync("datapack");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("datapack");
                     await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-                    _ = categoryTask;
+                    _datapacksLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
             case 5: // 整合包下载标签页
                 if (!_modpacksLoaded)
                 {
-                    _modpacksLoaded = true;
-                    var categoryTask = ViewModel.LoadCategoriesAsync("modpack");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("modpack");
                     await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-                    _ = categoryTask;
+                    _modpacksLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
             case 6: // 世界下载标签页
                 if (!_worldsLoaded)
                 {
-                    _worldsLoaded = true;
-                    var categoryTask = ViewModel.LoadCategoriesAsync("world");
+                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
+                    await ViewModel.LoadCategoriesAsync("world");
                     await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-                    _ = categoryTask;
+                    _worldsLoaded = true; // 在搜索完成后才设置标记
                 }
                 break;
         }
@@ -168,8 +167,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当资源包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 3) // 资源包下载标签页索引
+        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded) // 资源包下载标签页索引
         {
             await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
         }
@@ -288,8 +287,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void LoaderComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当Mod下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -297,8 +296,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void VersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当Mod下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -321,8 +320,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当光影下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 2) // 光影下载标签页索引
+        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded) // 光影下载标签页索引
         {
             await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
         }
@@ -333,8 +332,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当Mod下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -345,8 +345,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当光影下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 2) // 光影下载标签页索引
+        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded) // 光影下载标签页索引
         {
             await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
         }
@@ -357,8 +358,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当资源包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 3) // 资源包下载标签页索引
+        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded) // 资源包下载标签页索引
         {
             await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
         }
@@ -369,8 +371,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当数据包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 4) // 数据包下载标签页索引
+        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded) // 数据包下载标签页索引
         {
             await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
         }
@@ -381,8 +384,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当整合包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 5) // 整合包下载标签页索引
+        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded) // 整合包下载标签页索引
         {
             await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
         }
@@ -447,8 +451,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当整合包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 5) // 整合包下载标签页索引
+        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded) // 整合包下载标签页索引
         {
             await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
         }
@@ -513,8 +517,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当数据包下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 4) // 数据包下载标签页索引
+        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded) // 数据包下载标签页索引
         {
             await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
         }
@@ -556,15 +560,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当Mod下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 1)
-            {
-                await ViewModel.SearchModsCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
     }
     
@@ -573,15 +573,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void CurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当Mod下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 1)
-            {
-                await ViewModel.SearchModsCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
     }
     
@@ -601,15 +597,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当光影下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 2)
-            {
-                await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -618,15 +610,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ShaderPackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当光影下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 2)
-            {
-                await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -635,15 +623,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当资源包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 3)
-            {
-                await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -652,15 +636,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourcePackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当资源包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 3)
-            {
-                await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -669,15 +649,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当数据包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 4)
-            {
-                await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -686,15 +662,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void DatapackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当数据包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 4)
-            {
-                await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -703,15 +675,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当整合包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 5)
-            {
-                await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -720,15 +688,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ModpackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当整合包下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 5)
-            {
-                await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
         }
     }
     
@@ -747,8 +711,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void WorldVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当世界下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 6)
+        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
         {
             await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
@@ -759,8 +723,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void WorldCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 只有当世界下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 6)
+        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
+        // 这样可以避免在初始化类别时触发重复搜索
+        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
         {
             await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
@@ -814,15 +779,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void WorldModrinthToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
+        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
         {
-            ViewModel.IsModrinthEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当世界下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 6)
-            {
-                await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
     }
     
@@ -831,15 +792,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void WorldCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton toggleButton)
+        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
+        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
         {
-            ViewModel.IsCurseForgeEnabled = toggleButton.IsChecked == true;
-            
-            // 只有当世界下载标签页被选中时，才执行搜索
-            if (ResourceTabView.SelectedIndex == 6)
-            {
-                await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-            }
+            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
     }
 }

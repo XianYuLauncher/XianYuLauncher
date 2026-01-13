@@ -117,39 +117,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private const string IsModrinthEnabledKey = "ResourceDownload_IsModrinthEnabled";
     private const string IsCurseForgeEnabledKey = "ResourceDownload_IsCurseForgeEnabled";
     
-    // 监听平台选择变化，触发搜索并保存设置
+    // 监听平台选择变化，保存设置并重新加载类别
     partial void OnIsModrinthEnabledChanged(bool value)
     {
         // 保存设置
         _ = _localSettingsService.SaveSettingAsync(IsModrinthEnabledKey, value);
         
-        System.Diagnostics.Debug.WriteLine($"[平台切换] Modrinth启用状态变更: {value}, 当前标签页: {SelectedTabIndex}");
-        
         // 重新加载当前标签页的类别
         _ = ReloadCurrentTabCategories();
         
-        // 根据当前标签页触发相应的搜索
-        switch (SelectedTabIndex)
-        {
-            case 1: // Mod标签页
-                _ = SearchModsCommand.ExecuteAsync(null);
-                break;
-            case 2: // 光影标签页
-                _ = SearchShaderPacksCommand.ExecuteAsync(null);
-                break;
-            case 3: // 资源包标签页
-                _ = SearchResourcePacksCommand.ExecuteAsync(null);
-                break;
-            case 4: // 数据包标签页
-                _ = SearchDatapacksCommand.ExecuteAsync(null);
-                break;
-            case 5: // 整合包标签页
-                _ = SearchModpacksCommand.ExecuteAsync(null);
-                break;
-            case 6: // 世界标签页
-                _ = SearchWorldsCommand.ExecuteAsync(null);
-                break;
-        }
+        // 不在这里触发搜索，由 ToggleButton 的 Click 事件处理器负责
     }
     
     partial void OnIsCurseForgeEnabledChanged(bool value)
@@ -157,33 +134,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         // 保存设置
         _ = _localSettingsService.SaveSettingAsync(IsCurseForgeEnabledKey, value);
         
-        System.Diagnostics.Debug.WriteLine($"[平台切换] CurseForge启用状态变更: {value}, 当前标签页: {SelectedTabIndex}");
-        
         // 重新加载当前标签页的类别
         _ = ReloadCurrentTabCategories();
         
-        // 根据当前标签页触发相应的搜索
-        switch (SelectedTabIndex)
-        {
-            case 1: // Mod标签页
-                _ = SearchModsCommand.ExecuteAsync(null);
-                break;
-            case 2: // 光影标签页
-                _ = SearchShaderPacksCommand.ExecuteAsync(null);
-                break;
-            case 3: // 资源包标签页
-                _ = SearchResourcePacksCommand.ExecuteAsync(null);
-                break;
-            case 4: // 数据包标签页
-                _ = SearchDatapacksCommand.ExecuteAsync(null);
-                break;
-            case 5: // 整合包标签页
-                _ = SearchModpacksCommand.ExecuteAsync(null);
-                break;
-            case 6: // 世界标签页
-                _ = SearchWorldsCommand.ExecuteAsync(null);
-                break;
-        }
+        // 不在这里触发搜索，由 ToggleButton 的 Click 事件处理器负责
     }
     
     /// <summary>
@@ -421,6 +375,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     // TabView选中索引，用于控制显示哪个标签页
     [ObservableProperty]
     private int _selectedTabIndex = 0;
+    
+    // 标记各个标签页是否已经加载过数据（用于防止重复搜索）
+    private bool _modsLoadedOnce = false;
+    private bool _shaderPacksLoadedOnce = false;
+    private bool _resourcePacksLoadedOnce = false;
+    private bool _datapacksLoadedOnce = false;
+    private bool _modpacksLoadedOnce = false;
+    private bool _worldsLoadedOnce = false;
 
     // 版本列表缓存相关
     private const string VersionCacheFileName = "version_cache.json";
@@ -1048,6 +1010,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记Mod标签页已加载过数据
+            _modsLoadedOnce = true;
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -1482,6 +1447,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记资源包标签页已加载过数据
+            _resourcePacksLoadedOnce = true;
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -1724,6 +1692,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记光影标签页已加载过数据
+            _shaderPacksLoadedOnce = true;
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -1967,6 +1938,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记整合包标签页已加载过数据
+            _modpacksLoadedOnce = true;
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -2213,6 +2187,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记数据包标签页已加载过数据
+            _datapacksLoadedOnce = true;
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -2455,6 +2432,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 标记世界标签页已加载过数据
+            _worldsLoadedOnce = true;
+            
             // 世界只支持 CurseForge 平台，Modrinth 不支持
             if (!IsCurseForgeEnabled)
             {
