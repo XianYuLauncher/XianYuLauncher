@@ -54,5 +54,20 @@ public enum CrashType
     /// <summary>
     /// Java 版本不匹配
     /// </summary>
-    JavaVersionMismatch
+    JavaVersionMismatch,
+    
+    /// <summary>
+    /// 图形驱动问题
+    /// </summary>
+    GraphicsDriver,
+    
+    /// <summary>
+    /// 网络错误
+    /// </summary>
+    NetworkError,
+    
+    /// <summary>
+    /// 存档损坏
+    /// </summary>
+    CorruptedWorld
 }

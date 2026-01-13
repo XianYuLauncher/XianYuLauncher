@@ -20,6 +20,18 @@ public interface ICrashAnalyzer
         List<string> errorLogs);
     
     /// <summary>
+    /// 获取仿流式分析结果（逐字输出，模拟 AI 效果）
+    /// </summary>
+    /// <param name="exitCode">进程退出代码</param>
+    /// <param name="outputLogs">输出日志</param>
+    /// <param name="errorLogs">错误日志</param>
+    /// <returns>流式文本块</returns>
+    IAsyncEnumerable<string> GetStreamingAnalysisAsync(
+        int exitCode,
+        List<string> outputLogs,
+        List<string> errorLogs);
+    
+    /// <summary>
     /// 导出崩溃日志到桌面
     /// </summary>
     /// <param name="launchCommand">启动命令</param>

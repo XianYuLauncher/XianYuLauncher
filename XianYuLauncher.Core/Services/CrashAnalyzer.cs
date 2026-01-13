@@ -10,10 +10,12 @@ namespace XianYuLauncher.Core.Services;
 public class CrashAnalyzer : ICrashAnalyzer
 {
     private readonly IFileService _fileService;
+    private readonly ErrorKnowledgeBaseService _knowledgeBaseService;
     
     public CrashAnalyzer(IFileService fileService)
     {
         _fileService = fileService;
+        _knowledgeBaseService = new ErrorKnowledgeBaseService();
     }
     
     /// <summary>
@@ -24,8 +26,6 @@ public class CrashAnalyzer : ICrashAnalyzer
         List<string> outputLogs,
         List<string> errorLogs)
     {
-        await Task.CompletedTask; // 异步占位
-        
         var result = new CrashAnalysisResult();
         
         // 合并所有日志用于分析
@@ -33,67 +33,103 @@ public class CrashAnalyzer : ICrashAnalyzer
         allLogs.AddRange(outputLogs);
         allLogs.AddRange(errorLogs);
         
-        // 检测手动触发的崩溃
-        if (allLogs.Any(log => log.Contains("Manually triggered debug crash")))
-        {
-            result.Type = CrashType.ManuallyTriggered;
-            result.Analysis = "这是手动触发的调试崩溃，用于测试崩溃处理功能。";
-            result.Suggestions.Add("这不是真正的游戏崩溃，无需担心。");
-            return result;
-        }
+        // 使用知识库查询匹配的错误规则
+        var matchedRule = await _knowledgeBaseService.QueryErrorAsync(allLogs);
         
-        // 检测内存不足
-        if (allLogs.Any(log => log.Contains("OutOfMemoryError") || log.Contains("Java heap space")))
+        if (matchedRule != null)
         {
-            result.Type = CrashType.OutOfMemory;
-            result.Analysis = "游戏因内存不足而崩溃。";
-            result.Suggestions.Add("尝试增加游戏分配的内存（在版本管理中设置）");
-            result.Suggestions.Add("关闭其他占用内存的程序");
-            result.Suggestions.Add("减少游戏中的渲染距离和图形设置");
-            return result;
+            // 找到匹配的规则
+            result.Type = ParseCrashType(matchedRule.Type);
+            result.Analysis = matchedRule.Analysis;
+            result.Suggestions.AddRange(matchedRule.Suggestions);
+            
+            System.Diagnostics.Debug.WriteLine($"[CrashAnalyzer] 使用知识库规则: {matchedRule.Id}");
         }
-        
-        // 检测 Mod 冲突
-        if (allLogs.Any(log => log.Contains("Mod") && (log.Contains("conflict") || log.Contains("incompatible"))))
+        else
         {
-            result.Type = CrashType.ModConflict;
-            result.Analysis = "检测到 Mod 冲突或不兼容。";
-            result.Suggestions.Add("检查崩溃日志中提到的 Mod");
-            result.Suggestions.Add("尝试移除最近添加的 Mod");
-            result.Suggestions.Add("确保所有 Mod 版本与游戏版本匹配");
-            return result;
+            // 未找到匹配规则，返回默认分析
+            result.Type = CrashType.Unknown;
+            result.Analysis = $"游戏异常退出（退出代码: {exitCode}）。未能识别具体的崩溃原因。";
+            result.Suggestions.Add("查看导出的崩溃日志以获取更多信息");
+            result.Suggestions.Add("尝试重新启动游戏");
+            result.Suggestions.Add("检查游戏文件完整性");
+            result.Suggestions.Add("如果问题持续，请在社区寻求帮助");
+            
+            System.Diagnostics.Debug.WriteLine($"[CrashAnalyzer] 未找到匹配的知识库规则");
         }
-        
-        // 检测缺少依赖
-        if (allLogs.Any(log => log.Contains("ClassNotFoundException") || log.Contains("NoClassDefFoundError")))
-        {
-            result.Type = CrashType.MissingDependency;
-            result.Analysis = "游戏缺少必要的依赖文件。";
-            result.Suggestions.Add("尝试重新安装游戏版本");
-            result.Suggestions.Add("检查是否缺少必要的库文件");
-            result.Suggestions.Add("确保游戏文件完整");
-            return result;
-        }
-        
-        // 检测 Java 版本问题
-        if (allLogs.Any(log => log.Contains("UnsupportedClassVersionError") || log.Contains("java.lang.UnsupportedClassVersionError")))
-        {
-            result.Type = CrashType.JavaVersionMismatch;
-            result.Analysis = "Java 版本不匹配。";
-            result.Suggestions.Add("检查游戏所需的 Java 版本");
-            result.Suggestions.Add("在设置中选择正确的 Java 版本");
-            result.Suggestions.Add("尝试使用 Java 17 或更高版本");
-            return result;
-        }
-        
-        // 未知崩溃
-        result.Type = CrashType.Unknown;
-        result.Analysis = $"游戏异常退出（退出代码: {exitCode}）";
-        result.Suggestions.Add("查看导出的崩溃日志以获取更多信息");
-        result.Suggestions.Add("尝试重新启动游戏");
-        result.Suggestions.Add("检查游戏文件完整性");
         
         return result;
+    }
+    
+    /// <summary>
+    /// 解析崩溃类型字符串
+    /// </summary>
+    private CrashType ParseCrashType(string typeString)
+    {
+        if (Enum.TryParse<CrashType>(typeString, true, out var crashType))
+        {
+            return crashType;
+        }
+        return CrashType.Unknown;
+    }
+    
+    /// <summary>
+    /// 获取仿流式分析结果
+    /// </summary>
+    public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(
+        int exitCode,
+        List<string> outputLogs,
+        List<string> errorLogs)
+    {
+        // 合并所有日志
+        var allLogs = new List<string>();
+        allLogs.AddRange(outputLogs);
+        allLogs.AddRange(errorLogs);
+        
+        // 查询匹配的规则
+        var matchedRule = await _knowledgeBaseService.QueryErrorAsync(allLogs);
+        
+        if (matchedRule != null)
+        {
+            // 使用知识库的流式输出
+            await foreach (var chunk in _knowledgeBaseService.StreamAnalysisAsync(matchedRule))
+            {
+                yield return chunk;
+            }
+        }
+        else
+        {
+            // 默认分析的流式输出
+            yield return "## 问题分析\n\n";
+            await Task.Delay(60);
+            
+            var defaultAnalysis = $"游戏异常退出（退出代码: {exitCode}）。未能识别具体的崩溃原因。\n\n";
+            await foreach (var chunk in _knowledgeBaseService.StreamTextAsync(defaultAnalysis))
+            {
+                yield return chunk;
+            }
+            
+            yield return "## 解决建议\n\n";
+            await Task.Delay(60);
+            
+            var suggestions = new[]
+            {
+                "查看导出的崩溃日志以获取更多信息",
+                "尝试重新启动游戏",
+                "检查游戏文件完整性",
+                "如果问题持续，请在社区寻求帮助"
+            };
+            
+            for (int i = 0; i < suggestions.Length; i++)
+            {
+                var suggestion = $"{i + 1}. {suggestions[i]}\n\n";
+                await foreach (var chunk in _knowledgeBaseService.StreamTextAsync(suggestion))
+                {
+                    yield return chunk;
+                }
+                await Task.Delay(60);
+            }
+        }
     }
     
     /// <summary>

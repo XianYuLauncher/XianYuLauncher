@@ -1,0 +1,214 @@
+{
+  "version": "1.0.0",
+  "errors": [
+    {
+      "id": "manually_triggered",
+      "type": "ManuallyTriggered",
+      "priority": 100,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "Manually triggered debug crash"
+        }
+      ],
+      "analysis": "这是手动触发的调试崩溃，用于测试崩溃处理功能。",
+      "suggestions": [
+        "这不是真正的游戏崩溃，无需担心。"
+      ]
+    },
+    {
+      "id": "out_of_memory",
+      "type": "OutOfMemory",
+      "priority": 90,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "OutOfMemoryError"
+        },
+        {
+          "type": "contains",
+          "value": "Java heap space"
+        },
+        {
+          "type": "contains",
+          "value": "unable to create new native thread"
+        }
+      ],
+      "analysis": "游戏因内存不足而崩溃。Java 虚拟机无法分配足够的内存来运行游戏。",
+      "suggestions": [
+        "尝试增加游戏分配的内存（在版本管理中设置 JVM 参数）",
+        "关闭其他占用内存的程序，如浏览器、视频播放器等",
+        "减少游戏中的渲染距离和图形设置",
+        "如果使用了大量 Mod，考虑减少 Mod 数量",
+        "对于 32 位系统，建议升级到 64 位系统以支持更大内存"
+      ]
+    },
+    {
+      "id": "mod_conflict",
+      "type": "ModConflict",
+      "priority": 85,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)mod.*conflict"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)mod.*incompatible"
+        },
+        {
+          "type": "contains",
+          "value": "Mod file"
+        }
+      ],
+      "analysis": "检测到 Mod 冲突或不兼容。这通常是因为多个 Mod 修改了相同的游戏内容，或者 Mod 版本与游戏版本不匹配。",
+      "suggestions": [
+        "仔细查看崩溃日志中提到的具体 Mod 名称",
+        "尝试移除最近添加的 Mod，逐个测试",
+        "确保所有 Mod 版本与当前游戏版本匹配",
+        "检查 Mod 的依赖关系，确保安装了所有前置 Mod",
+        "访问 Mod 的官方页面查看兼容性说明"
+      ]
+    },
+    {
+      "id": "missing_dependency",
+      "type": "MissingDependency",
+      "priority": 80,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "ClassNotFoundException"
+        },
+        {
+          "type": "contains",
+          "value": "NoClassDefFoundError"
+        },
+        {
+          "type": "contains",
+          "value": "FileNotFoundException"
+        }
+      ],
+      "analysis": "游戏缺少必要的依赖文件或类库。这可能是因为游戏文件不完整，或者某些 Mod 缺少前置依赖。",
+      "suggestions": [
+        "尝试重新下载并安装游戏版本",
+        "检查是否缺少必要的库文件（libraries 文件夹）",
+        "确保游戏文件完整，没有被杀毒软件误删",
+        "如果使用了 Mod，检查是否安装了所有前置 Mod",
+        "尝试使用启动器的修复功能重新下载缺失文件"
+      ]
+    },
+    {
+      "id": "java_version_mismatch",
+      "type": "JavaVersionMismatch",
+      "priority": 95,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "UnsupportedClassVersionError"
+        },
+        {
+          "type": "contains",
+          "value": "java.lang.UnsupportedClassVersionError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)unsupported.*class.*version"
+        }
+      ],
+      "analysis": "Java 版本不匹配。游戏或 Mod 需要更高版本的 Java 才能运行。",
+      "suggestions": [
+        "检查游戏所需的 Java 版本（通常在游戏说明中）",
+        "在启动器设置中选择正确的 Java 版本",
+        "Minecraft 1.17+ 需要 Java 16 或更高版本",
+        "Minecraft 1.18+ 建议使用 Java 17",
+        "Minecraft 1.20.5+ 需要 Java 21",
+        "尝试下载并安装最新的 Java 运行环境"
+      ]
+    },
+    {
+      "id": "graphics_driver",
+      "type": "GraphicsDriver",
+      "priority": 75,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "OpenGL"
+        },
+        {
+          "type": "contains",
+          "value": "GLFW"
+        },
+        {
+          "type": "contains",
+          "value": "graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)pixel format"
+        }
+      ],
+      "analysis": "图形驱动程序问题。游戏无法正确初始化图形渲染系统。",
+      "suggestions": [
+        "更新显卡驱动程序到最新版本",
+        "如果使用笔记本电脑，确保游戏使用独立显卡而非集成显卡",
+        "尝试在启动参数中添加 -Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true",
+        "检查 OpenGL 版本是否满足游戏要求（通常需要 OpenGL 3.2+）",
+        "对于老旧显卡，考虑使用 OptiFine 等优化 Mod"
+      ]
+    },
+    {
+      "id": "network_error",
+      "type": "NetworkError",
+      "priority": 70,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "Connection refused"
+        },
+        {
+          "type": "contains",
+          "value": "Connection timed out"
+        },
+        {
+          "type": "contains",
+          "value": "UnknownHostException"
+        }
+      ],
+      "analysis": "网络连接问题。游戏无法连接到服务器或下载必要的资源。",
+      "suggestions": [
+        "检查网络连接是否正常",
+        "如果连接多人服务器，确认服务器地址和端口正确",
+        "尝试关闭防火墙或杀毒软件的网络拦截",
+        "检查是否需要配置代理服务器",
+        "如果下载资源失败，尝试切换下载源"
+      ]
+    },
+    {
+      "id": "corrupted_world",
+      "type": "CorruptedWorld",
+      "priority": 65,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)corrupt.*chunk"
+        },
+        {
+          "type": "contains",
+          "value": "Failed to load chunk"
+        },
+        {
+          "type": "contains",
+          "value": "region file"
+        }
+      ],
+      "analysis": "存档文件损坏。游戏世界的某些区块数据出现问题。",
+      "suggestions": [
+        "尝试使用备份恢复存档",
+        "使用 MCEdit 等工具修复损坏的区块",
+        "如果只是部分区块损坏，可以删除对应的 region 文件（会重新生成地形）",
+        "定期备份重要存档以防数据丢失",
+        "检查硬盘是否有坏道或空间不足"
+      ]
+    }
+  ]
+}
