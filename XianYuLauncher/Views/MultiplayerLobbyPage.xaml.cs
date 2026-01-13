@@ -27,8 +27,8 @@ public sealed partial class MultiplayerLobbyPage : Page
     {
         if (sender is Border border)
         {
-            // 使用与玩家列表项相同的悬停颜色
-            border.Background = new SolidColorBrush(Color.FromArgb(255, 243, 243, 243));
+            // 使用主题资源，适配深色模式
+            border.Background = (SolidColorBrush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
             // 设置手型光标
             if (Window.Current != null)
             {

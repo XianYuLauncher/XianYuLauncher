@@ -4458,18 +4458,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         string folderType = string.Empty;
         bool isSupported = false;
         
-        // 根据文件类型确定目标文件夹
+        // 根据当前选中的 Tab 确定目标文件夹，而不是根据文件扩展名
+        folderType = GetFolderTypeBySelectedTab();
+        
+        // 检查文件类型是否支持
         switch (fileExtension)
         {
             case ".jar":
-                // Mod文件
-                folderType = "mods";
-                isSupported = true;
-                break;
             case ".zip":
-                // 检查zip文件是否为资源包、光影或数据包
-                // 这里简化处理，根据当前选中的Tab来判断
-                folderType = GetFolderTypeBySelectedTab();
                 isSupported = true;
                 break;
             default:
@@ -4538,15 +4534,19 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         switch (SelectedTabIndex)
         {
-            case 0: // Mod管理
+            case 0: // 设置
+                return "mods"; // 设置页面默认使用 mods
+            case 1: // 扩展
+                return "mods"; // 扩展页面默认使用 mods
+            case 2: // Mod管理
                 return "mods";
-            case 1: // 光影管理
+            case 3: // 光影管理
                 return "shaderpacks";
-            case 2: // 资源包管理
+            case 4: // 资源包管理
                 return "resourcepacks";
-            case 3: // 数据包管理
-                return "datapacks";
-            case 4: // 地图安装
+            case 5: // 截图管理
+                return "screenshots";
+            case 6: // 地图管理
                 return "saves";
             default:
                 return "mods"; // 默认使用mods文件夹
@@ -4739,19 +4739,22 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             case 0: // 设置
                 // 设置tab没有对应的文件夹，跳过
                 break;
-            case 1: // Mod管理
+            case 1: // 扩展
+                // 扩展tab没有对应的文件夹，跳过
+                break;
+            case 2: // Mod管理
                 await OpenFolderByTypeAsync("mods");
                 break;
-            case 2: // 光影管理
+            case 3: // 光影管理
                 await OpenShaderFolderAsync();
                 break;
-            case 3: // 资源包管理
+            case 4: // 资源包管理
                 await OpenResourcePackFolderAsync();
                 break;
-            case 4: // 截图管理
+            case 5: // 截图管理
                 await OpenScreenshotsFolderAsync();
                 break;
-            case 5: // 地图管理
+            case 6: // 地图管理
                 await OpenMapsFolderAsync();
                 break;
         }
