@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Windows.ApplicationModel.Resources;
 
 namespace XianYuLauncher.Helpers;
 
@@ -8,106 +9,146 @@ namespace XianYuLauncher.Helpers;
 /// </summary>
 public static class CategoryLocalizationHelper
 {
+    private static readonly ResourceLoader _resourceLoader = new ResourceLoader();
+    
     /// <summary>
     /// CurseForge类别名称到本地化键的映射
     /// </summary>
-    private static readonly Dictionary<string, string> CurseForgeCategoryMap = new()
+    private static readonly Dictionary<string, string> CurseForgeCategoryKeyMap = new()
     {
         // Mods类别
-        { "Armor, Tools, and Weapons", "装备" },
-        { "Adventure and RPG", "冒险" },
-        { "API and Library", "前置" },
-        { "Automation", "自动化" },
-        { "Biomes", "生物群系" },
-        { "Bug Fixes", "修复" },
-        { "Cosmetic", "装饰" },
-        { "Cursed", "整活" },
-        { "Dimensions", "维度" },
-        { "Economy", "经济" },
-        { "Education", "教育" },
-        { "Energy, Fluid, and Item Transport", "传输" },
-        { "Equipment", "装备" },
-        { "Farming", "农业" },
-        { "Food", "食物" },
-        { "Game Mechanics", "机制" },
-        { "Library", "前置" },
-        { "Magic", "魔法" },
-        { "Management", "管理" },
-        { "Map and Information", "地图" },
-        { "Minigame", "迷你游戏" },
-        { "Mobs", "生物" },
-        { "Optimization", "性能" },
-        { "Performance", "性能" },
-        { "Redstone", "红石" },
-        { "Server Utility", "服务器" },
-        { "Social", "社交" },
-        { "Storage", "存储" },
-        { "Structures", "结构" },
-        { "Technology", "科技" },
-        { "Transportation", "交通" },
-        { "Twitch Integration", "Twitch" },
-        { "Utility", "实用" },
-        { "Utility & QoL", "实用QoL" },
-        { "World Gen", "世界生成" },
-        { "Worldgen", "世界生成WG" },
-        { "Ores and Resources", "矿物" },
-        { "Player Transport", "玩家传送" },
-        { "Processing", "加工" },
-        { "Energy", "能源" },
-        { "Genetics", "遗传" },
-        { "MCreator", "MCreator" },
-        { "ModJam 2025", "ModJam 2025" },
-        { "CreativeMode", "创造模式" },
+        { "Armor, Tools, and Weapons", "Category_Equipment" },
+        { "Adventure and RPG", "Category_Adventure" },
+        { "API and Library", "Category_Library" },
+        { "Automation", "Category_Automation" },
+        { "Biomes", "Category_Biomes" },
+        { "Bug Fixes", "Category_BugFixes" },
+        { "Cosmetic", "Category_Decoration" },
+        { "Cursed", "Category_Cursed" },
+        { "Dimensions", "Category_Dimensions" },
+        { "Economy", "Category_Economy" },
+        { "Education", "Category_Education" },
+        { "Energy, Fluid, and Item Transport", "Category_Transport" },
+        { "Equipment", "Category_Equipment" },
+        { "Farming", "Category_Farming" },
+        { "Food", "Category_Food" },
+        { "Game Mechanics", "Category_GameMechanics" },
+        { "Library", "Category_Library" },
+        { "Magic", "Category_Magic" },
+        { "Management", "Category_Management" },
+        { "Map and Information", "Category_Map" },
+        { "Minigame", "Category_Minigame" },
+        { "Mobs", "Category_Mobs" },
+        { "Optimization", "Category_Optimization" },
+        { "Performance", "Category_Optimization" },
+        { "Redstone", "Category_Redstone" },
+        { "Server Utility", "Category_ServerUtility" },
+        { "Social", "Category_Social" },
+        { "Storage", "Category_Storage" },
+        { "Structures", "Category_Structures" },
+        { "Technology", "Category_Technology" },
+        { "Transportation", "Category_Transportation" },
+        { "Twitch Integration", "Category_Twitch" },
+        { "Utility", "Category_Utility" },
+        { "Utility & QoL", "Category_UtilityQoL" },
+        { "World Gen", "Category_Worldgen" },
+        { "Worldgen", "Category_Worldgen" },
+        { "Ores and Resources", "Category_Ores" },
+        { "Player Transport", "Category_PlayerTransport" },
+        { "Processing", "Category_Processing" },
+        { "Energy", "Category_Energy" },
+        { "Genetics", "Category_Genetics" },
+        { "MCreator", "Category_MCreator" },
+        { "ModJam 2025", "Category_ModJam2025" },
+        { "CreativeMode", "Category_CreativeMode" },
         
         // Shaders类别
-        { "Realistic", "真实" },
-        { "Fantasy", "幻想" },
-        { "Vanilla", "原版" },
-        { "Cartoon", "卡通" },
-        { "Semi-Realistic", "半真实" },
-        { "Simplistic", "简约" },
-        { "Atmospheric", "氛围" },
-        { "Vibrant", "鲜艳" },
+        { "Realistic", "Category_Realistic" },
+        { "Fantasy", "Category_Fantasy" },
+        { "Vanilla", "Category_Vanilla" },
+        { "Cartoon", "Category_Cartoon" },
+        { "Semi-Realistic", "Category_SemiRealistic" },
+        { "Simplistic", "Category_Simplistic" },
+        { "Atmospheric", "Category_Atmospheric" },
+        { "Vibrant", "Category_Vibrant" },
         
         // Resource Packs类别
-        { "16x", "16x" },
-        { "32x", "32x" },
-        { "64x", "64x" },
-        { "128x", "128x" },
-        { "256x", "256x" },
-        { "512x and Higher", "512x+" },
-        { "Animated", "动画" },
-        { "Combat", "战斗" },
-        { "Font Packs", "字体" },
-        { "Medieval", "中世纪" },
-        { "Miscellaneous", "杂项" },
-        { "Modern", "现代" },
-        { "Mod Support", "模组支持" },
-        { "Photo Realistic", "照片级" },
-        { "Steampunk", "蒸汽朋克" },
-        { "Traditional", "传统" },
-        { "Tweaks", "调整" },
+        { "16x", "Category_16x" },
+        { "32x", "Category_32x" },
+        { "64x", "Category_64x" },
+        { "128x", "Category_128x" },
+        { "256x", "Category_256x" },
+        { "512x and Higher", "Category_512xPlus" },
+        { "Animated", "Category_Animated" },
+        { "Combat", "Category_Combat" },
+        { "Font Packs", "Category_FontPacks" },
+        { "Medieval", "Category_Medieval" },
+        { "Miscellaneous", "Category_Miscellaneous" },
+        { "Modern", "Category_Modern" },
+        { "Mod Support", "Category_ModSupport" },
+        { "Photo Realistic", "Category_PhotoRealistic" },
+        { "Steampunk", "Category_Steampunk" },
+        { "Traditional", "Category_Traditional" },
+        { "Tweaks", "Category_Tweaks" },
         
         // Modpacks类别
-        { "Combat / PvP", "战斗PvP" },
-        { "Expert", "专家" },
-        { "Exploration", "探索" },
-        { "Extra Large", "超大型" },
-        { "FTB Official Pack", "FTB官方" },
-        { "Hardcore", "硬核" },
-        { "Horror", "恐怖" },
-        { "Map Based", "地图" },
-        { "Mini Game", "迷你游戏" },
-        { "Multiplayer", "多人" },
-        { "Quests", "任务" },
-        { "Sci-Fi", "科幻" },
-        { "Skyblock", "空岛" },
-        { "Small / Light", "轻量" },
-        { "Tech", "科技" },
-        { "Vanilla+", "原版+" },
+        { "Combat / PvP", "Category_CombatPvP" },
+        { "Expert", "Category_Expert" },
+        { "Exploration", "Category_Exploration" },
+        { "Extra Large", "Category_ExtraLarge" },
+        { "FTB Official Pack", "Category_FTBOfficial" },
+        { "Hardcore", "Category_Hardcore" },
+        { "Horror", "Category_Horror" },
+        { "Map Based", "Category_MapBased" },
+        { "Mini Game", "Category_Minigame" },
+        { "Multiplayer", "Category_Multiplayer" },
+        { "Quests", "Category_Quests" },
+        { "Sci-Fi", "Category_SciFi" },
+        { "Skyblock", "Category_Skyblock" },
+        { "Small / Light", "Category_SmallLight" },
+        { "Tech", "Category_Tech" },
+        { "Vanilla+", "Category_VanillaPlus" },
         
-        // Data Packs类别 (使用不同的键名避免冲突)
-        { "Adventure", "冒险DP" },
+        // Data Packs类别
+        { "Adventure", "Category_Adventure" },
+    };
+    
+    /// <summary>
+    /// Modrinth类别标签到本地化键的映射
+    /// </summary>
+    private static readonly Dictionary<string, string> ModrinthCategoryKeyMap = new()
+    {
+        { "all", "Category_All" },
+        { "adventure", "Category_Adventure" },
+        { "cursed", "Category_Cursed" },
+        { "decoration", "Category_Decoration" },
+        { "economy", "Category_Economy" },
+        { "equipment", "Category_Equipment" },
+        { "food", "Category_Food" },
+        { "game-mechanics", "Category_GameMechanics" },
+        { "library", "Category_Library" },
+        { "magic", "Category_Magic" },
+        { "management", "Category_Management" },
+        { "minigame", "Category_Minigame" },
+        { "mobs", "Category_Mobs" },
+        { "optimization", "Category_Optimization" },
+        { "social", "Category_Social" },
+        { "storage", "Category_Storage" },
+        { "technology", "Category_Technology" },
+        { "transportation", "Category_Transportation" },
+        { "utility", "Category_Utility" },
+        { "worldgen", "Category_Worldgen" },
+        { "cartoon", "Category_Cartoon" },
+        { "fantasy", "Category_Fantasy" },
+        { "realistic", "Category_Realistic" },
+        { "vanilla-like", "Category_Vanilla" },
+        { "combat", "Category_Combat" },
+        { "core-shaders", "Category_CoreShaders" },
+        { "high-performance", "Category_HighPerformance" },
+        { "potato", "Category_Potato" },
+        { "screenshot", "Category_Screenshot" },
+        { "themed", "Category_Themed" },
+        { "tweaks", "Category_Tweaks" },
     };
     
     /// <summary>
@@ -122,9 +163,17 @@ public static class CategoryLocalizationHelper
             return categoryName;
         }
         
-        if (CurseForgeCategoryMap.TryGetValue(categoryName, out var localizedName))
+        if (CurseForgeCategoryKeyMap.TryGetValue(categoryName, out var resourceKey))
         {
-            return localizedName;
+            try
+            {
+                var localizedName = _resourceLoader.GetString(resourceKey);
+                return string.IsNullOrEmpty(localizedName) ? categoryName : localizedName;
+            }
+            catch
+            {
+                return categoryName;
+            }
         }
         
         // 如果没有映射，返回原名称
@@ -138,45 +187,22 @@ public static class CategoryLocalizationHelper
     /// <returns>本地化名称</returns>
     public static string GetModrinthCategoryName(string tag)
     {
-        // 这里可以从资源文件读取，暂时返回映射
-        var modrinthMap = new Dictionary<string, string>
+        if (string.IsNullOrEmpty(tag))
         {
-            { "all", "所有类别" },
-            { "adventure", "冒险" },
-            { "cursed", "整活" },
-            { "decoration", "装饰" },
-            { "economy", "经济" },
-            { "equipment", "装备" },
-            { "food", "食物" },
-            { "game-mechanics", "机制" },
-            { "library", "前置" },
-            { "magic", "魔法" },
-            { "management", "管理" },
-            { "minigame", "迷你游戏" },
-            { "mobs", "生物" },
-            { "optimization", "性能" },
-            { "social", "社交" },
-            { "storage", "存储" },
-            { "technology", "科技" },
-            { "transportation", "交通" },
-            { "utility", "实用" },
-            { "worldgen", "世界生成" },
-            { "cartoon", "卡通" },
-            { "fantasy", "幻想" },
-            { "realistic", "真实" },
-            { "vanilla-like", "原版" },
-            { "combat", "战斗" },
-            { "core-shaders", "核心" },
-            { "high-performance", "高性能" },
-            { "potato", "低配" },
-            { "screenshot", "截图" },
-            { "themed", "主题" },
-            { "tweaks", "调整" },
-        };
+            return tag;
+        }
         
-        if (modrinthMap.TryGetValue(tag, out var name))
+        if (ModrinthCategoryKeyMap.TryGetValue(tag, out var resourceKey))
         {
-            return name;
+            try
+            {
+                var localizedName = _resourceLoader.GetString(resourceKey);
+                return string.IsNullOrEmpty(localizedName) ? tag : localizedName;
+            }
+            catch
+            {
+                return tag;
+            }
         }
         
         return tag;

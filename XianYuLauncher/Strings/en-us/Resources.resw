@@ -709,10 +709,10 @@
     <value>Mods</value>
   </data>
   <data name="ResourceDownloadPage_ShaderPackTabHeader.Text" xml:space="preserve">
-    <value>Shader Packs</value>
+    <value>Shaders</value>
   </data>
   <data name="ResourceDownloadPage_ResourcePackTabHeader.Text" xml:space="preserve">
-    <value>Resource Packs</value>
+    <value>Resourcepacks</value>
   </data>
   <data name="ResourceDownloadPage_LatestRelease.Text" xml:space="preserve">
     <value>Latest Release</value>
@@ -1873,5 +1873,265 @@ Continue downloading?</value>
   </data>
   <data name="VersionManagerPage_RemoveLoaderButton.Content" xml:space="preserve">
     <value>Remove</value>
+  </data>
+  
+  <!-- Category Localization -->
+  <data name="Category_All" xml:space="preserve">
+    <value>All Categories</value>
+  </data>
+  <data name="Category_Adventure" xml:space="preserve">
+    <value>Adventure</value>
+  </data>
+  <data name="Category_Cursed" xml:space="preserve">
+    <value>Cursed</value>
+  </data>
+  <data name="Category_Decoration" xml:space="preserve">
+    <value>Decoration</value>
+  </data>
+  <data name="Category_Economy" xml:space="preserve">
+    <value>Economy</value>
+  </data>
+  <data name="Category_Equipment" xml:space="preserve">
+    <value>Equipment</value>
+  </data>
+  <data name="Category_Food" xml:space="preserve">
+    <value>Food</value>
+  </data>
+  <data name="Category_GameMechanics" xml:space="preserve">
+    <value>Game Mechanics</value>
+  </data>
+  <data name="Category_Library" xml:space="preserve">
+    <value>Library</value>
+  </data>
+  <data name="Category_Magic" xml:space="preserve">
+    <value>Magic</value>
+  </data>
+  <data name="Category_Management" xml:space="preserve">
+    <value>Management</value>
+  </data>
+  <data name="Category_Minigame" xml:space="preserve">
+    <value>Minigame</value>
+  </data>
+  <data name="Category_Mobs" xml:space="preserve">
+    <value>Mobs</value>
+  </data>
+  <data name="Category_Optimization" xml:space="preserve">
+    <value>Optimization</value>
+  </data>
+  <data name="Category_Social" xml:space="preserve">
+    <value>Social</value>
+  </data>
+  <data name="Category_Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Category_Technology" xml:space="preserve">
+    <value>Technology</value>
+  </data>
+  <data name="Category_Transportation" xml:space="preserve">
+    <value>Transportation</value>
+  </data>
+  <data name="Category_Utility" xml:space="preserve">
+    <value>Utility</value>
+  </data>
+  <data name="Category_Worldgen" xml:space="preserve">
+    <value>World Generation</value>
+  </data>
+  <data name="Category_Cartoon" xml:space="preserve">
+    <value>Cartoon</value>
+  </data>
+  <data name="Category_Fantasy" xml:space="preserve">
+    <value>Fantasy</value>
+  </data>
+  <data name="Category_Realistic" xml:space="preserve">
+    <value>Realistic</value>
+  </data>
+  <data name="Category_Vanilla" xml:space="preserve">
+    <value>Vanilla</value>
+  </data>
+  <data name="Category_Combat" xml:space="preserve">
+    <value>Combat</value>
+  </data>
+  <data name="Category_CoreShaders" xml:space="preserve">
+    <value>Core Shaders</value>
+  </data>
+  <data name="Category_HighPerformance" xml:space="preserve">
+    <value>High Performance</value>
+  </data>
+  <data name="Category_Potato" xml:space="preserve">
+    <value>Potato</value>
+  </data>
+  <data name="Category_Screenshot" xml:space="preserve">
+    <value>Screenshot</value>
+  </data>
+  <data name="Category_Themed" xml:space="preserve">
+    <value>Themed</value>
+  </data>
+  <data name="Category_Tweaks" xml:space="preserve">
+    <value>Tweaks</value>
+  </data>
+  <data name="Category_Automation" xml:space="preserve">
+    <value>Automation</value>
+  </data>
+  <data name="Category_Biomes" xml:space="preserve">
+    <value>Biomes</value>
+  </data>
+  <data name="Category_BugFixes" xml:space="preserve">
+    <value>Bug Fixes</value>
+  </data>
+  <data name="Category_Dimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="Category_Education" xml:space="preserve">
+    <value>Education</value>
+  </data>
+  <data name="Category_Transport" xml:space="preserve">
+    <value>Transport</value>
+  </data>
+  <data name="Category_Farming" xml:space="preserve">
+    <value>Farming</value>
+  </data>
+  <data name="Category_Map" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="Category_Redstone" xml:space="preserve">
+    <value>Redstone</value>
+  </data>
+  <data name="Category_ServerUtility" xml:space="preserve">
+    <value>Server Utility</value>
+  </data>
+  <data name="Category_Structures" xml:space="preserve">
+    <value>Structures</value>
+  </data>
+  <data name="Category_Twitch" xml:space="preserve">
+    <value>Twitch</value>
+  </data>
+  <data name="Category_UtilityQoL" xml:space="preserve">
+    <value>Utility &amp; QoL</value>
+  </data>
+  <data name="Category_Ores" xml:space="preserve">
+    <value>Ores and Resources</value>
+  </data>
+  <data name="Category_PlayerTransport" xml:space="preserve">
+    <value>Player Transport</value>
+  </data>
+  <data name="Category_Processing" xml:space="preserve">
+    <value>Processing</value>
+  </data>
+  <data name="Category_Energy" xml:space="preserve">
+    <value>Energy</value>
+  </data>
+  <data name="Category_Genetics" xml:space="preserve">
+    <value>Genetics</value>
+  </data>
+  <data name="Category_MCreator" xml:space="preserve">
+    <value>MCreator</value>
+  </data>
+  <data name="Category_ModJam2025" xml:space="preserve">
+    <value>ModJam 2025</value>
+  </data>
+  <data name="Category_CreativeMode" xml:space="preserve">
+    <value>Creative Mode</value>
+  </data>
+  <data name="Category_SemiRealistic" xml:space="preserve">
+    <value>Semi-Realistic</value>
+  </data>
+  <data name="Category_Simplistic" xml:space="preserve">
+    <value>Simplistic</value>
+  </data>
+  <data name="Category_Atmospheric" xml:space="preserve">
+    <value>Atmospheric</value>
+  </data>
+  <data name="Category_Vibrant" xml:space="preserve">
+    <value>Vibrant</value>
+  </data>
+  <data name="Category_16x" xml:space="preserve">
+    <value>16x</value>
+  </data>
+  <data name="Category_32x" xml:space="preserve">
+    <value>32x</value>
+  </data>
+  <data name="Category_64x" xml:space="preserve">
+    <value>64x</value>
+  </data>
+  <data name="Category_128x" xml:space="preserve">
+    <value>128x</value>
+  </data>
+  <data name="Category_256x" xml:space="preserve">
+    <value>256x</value>
+  </data>
+  <data name="Category_512xPlus" xml:space="preserve">
+    <value>512x and Higher</value>
+  </data>
+  <data name="Category_Animated" xml:space="preserve">
+    <value>Animated</value>
+  </data>
+  <data name="Category_FontPacks" xml:space="preserve">
+    <value>Font Packs</value>
+  </data>
+  <data name="Category_Medieval" xml:space="preserve">
+    <value>Medieval</value>
+  </data>
+  <data name="Category_Miscellaneous" xml:space="preserve">
+    <value>Miscellaneous</value>
+  </data>
+  <data name="Category_Modern" xml:space="preserve">
+    <value>Modern</value>
+  </data>
+  <data name="Category_ModSupport" xml:space="preserve">
+    <value>Mod Support</value>
+  </data>
+  <data name="Category_PhotoRealistic" xml:space="preserve">
+    <value>Photo Realistic</value>
+  </data>
+  <data name="Category_Steampunk" xml:space="preserve">
+    <value>Steampunk</value>
+  </data>
+  <data name="Category_Traditional" xml:space="preserve">
+    <value>Traditional</value>
+  </data>
+  <data name="Category_CombatPvP" xml:space="preserve">
+    <value>Combat / PvP</value>
+  </data>
+  <data name="Category_Expert" xml:space="preserve">
+    <value>Expert</value>
+  </data>
+  <data name="Category_Exploration" xml:space="preserve">
+    <value>Exploration</value>
+  </data>
+  <data name="Category_ExtraLarge" xml:space="preserve">
+    <value>Extra Large</value>
+  </data>
+  <data name="Category_FTBOfficial" xml:space="preserve">
+    <value>FTB Official Pack</value>
+  </data>
+  <data name="Category_Hardcore" xml:space="preserve">
+    <value>Hardcore</value>
+  </data>
+  <data name="Category_Horror" xml:space="preserve">
+    <value>Horror</value>
+  </data>
+  <data name="Category_MapBased" xml:space="preserve">
+    <value>Map Based</value>
+  </data>
+  <data name="Category_Multiplayer" xml:space="preserve">
+    <value>Multiplayer</value>
+  </data>
+  <data name="Category_Quests" xml:space="preserve">
+    <value>Quests</value>
+  </data>
+  <data name="Category_SciFi" xml:space="preserve">
+    <value>Sci-Fi</value>
+  </data>
+  <data name="Category_Skyblock" xml:space="preserve">
+    <value>Skyblock</value>
+  </data>
+  <data name="Category_SmallLight" xml:space="preserve">
+    <value>Small / Light</value>
+  </data>
+  <data name="Category_Tech" xml:space="preserve">
+    <value>Tech</value>
+  </data>
+  <data name="Category_VanillaPlus" xml:space="preserve">
+    <value>Vanilla+</value>
   </data>
 </root>

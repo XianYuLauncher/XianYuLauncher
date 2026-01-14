@@ -535,7 +535,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             categories.Add(new Models.CategoryItem
             {
                 Tag = "all",
-                DisplayName = "所有类别",
+                DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("all"),
                 Source = "common"
             });
             

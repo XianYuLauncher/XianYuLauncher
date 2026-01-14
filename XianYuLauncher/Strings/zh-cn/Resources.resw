@@ -1885,4 +1885,264 @@
   <data name="VersionManagerPage_RemoveLoaderButton.Content" xml:space="preserve">
     <value>移除</value>
   </data>
+  
+  <!-- 类别本地化 -->
+  <data name="Category_All" xml:space="preserve">
+    <value>所有类别</value>
+  </data>
+  <data name="Category_Adventure" xml:space="preserve">
+    <value>冒险</value>
+  </data>
+  <data name="Category_Cursed" xml:space="preserve">
+    <value>整活</value>
+  </data>
+  <data name="Category_Decoration" xml:space="preserve">
+    <value>装饰</value>
+  </data>
+  <data name="Category_Economy" xml:space="preserve">
+    <value>经济</value>
+  </data>
+  <data name="Category_Equipment" xml:space="preserve">
+    <value>装备</value>
+  </data>
+  <data name="Category_Food" xml:space="preserve">
+    <value>食物</value>
+  </data>
+  <data name="Category_GameMechanics" xml:space="preserve">
+    <value>机制</value>
+  </data>
+  <data name="Category_Library" xml:space="preserve">
+    <value>前置</value>
+  </data>
+  <data name="Category_Magic" xml:space="preserve">
+    <value>魔法</value>
+  </data>
+  <data name="Category_Management" xml:space="preserve">
+    <value>管理</value>
+  </data>
+  <data name="Category_Minigame" xml:space="preserve">
+    <value>迷你游戏</value>
+  </data>
+  <data name="Category_Mobs" xml:space="preserve">
+    <value>生物</value>
+  </data>
+  <data name="Category_Optimization" xml:space="preserve">
+    <value>性能</value>
+  </data>
+  <data name="Category_Social" xml:space="preserve">
+    <value>社交</value>
+  </data>
+  <data name="Category_Storage" xml:space="preserve">
+    <value>存储</value>
+  </data>
+  <data name="Category_Technology" xml:space="preserve">
+    <value>科技</value>
+  </data>
+  <data name="Category_Transportation" xml:space="preserve">
+    <value>交通</value>
+  </data>
+  <data name="Category_Utility" xml:space="preserve">
+    <value>实用</value>
+  </data>
+  <data name="Category_Worldgen" xml:space="preserve">
+    <value>世界生成</value>
+  </data>
+  <data name="Category_Cartoon" xml:space="preserve">
+    <value>卡通</value>
+  </data>
+  <data name="Category_Fantasy" xml:space="preserve">
+    <value>幻想</value>
+  </data>
+  <data name="Category_Realistic" xml:space="preserve">
+    <value>真实</value>
+  </data>
+  <data name="Category_Vanilla" xml:space="preserve">
+    <value>原版</value>
+  </data>
+  <data name="Category_Combat" xml:space="preserve">
+    <value>战斗</value>
+  </data>
+  <data name="Category_CoreShaders" xml:space="preserve">
+    <value>核心</value>
+  </data>
+  <data name="Category_HighPerformance" xml:space="preserve">
+    <value>高性能</value>
+  </data>
+  <data name="Category_Potato" xml:space="preserve">
+    <value>低配</value>
+  </data>
+  <data name="Category_Screenshot" xml:space="preserve">
+    <value>截图</value>
+  </data>
+  <data name="Category_Themed" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="Category_Tweaks" xml:space="preserve">
+    <value>调整</value>
+  </data>
+  <data name="Category_Automation" xml:space="preserve">
+    <value>自动化</value>
+  </data>
+  <data name="Category_Biomes" xml:space="preserve">
+    <value>生物群系</value>
+  </data>
+  <data name="Category_BugFixes" xml:space="preserve">
+    <value>修复</value>
+  </data>
+  <data name="Category_Dimensions" xml:space="preserve">
+    <value>维度</value>
+  </data>
+  <data name="Category_Education" xml:space="preserve">
+    <value>教育</value>
+  </data>
+  <data name="Category_Transport" xml:space="preserve">
+    <value>传输</value>
+  </data>
+  <data name="Category_Farming" xml:space="preserve">
+    <value>农业</value>
+  </data>
+  <data name="Category_Map" xml:space="preserve">
+    <value>地图</value>
+  </data>
+  <data name="Category_Redstone" xml:space="preserve">
+    <value>红石</value>
+  </data>
+  <data name="Category_ServerUtility" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="Category_Structures" xml:space="preserve">
+    <value>结构</value>
+  </data>
+  <data name="Category_Twitch" xml:space="preserve">
+    <value>Twitch</value>
+  </data>
+  <data name="Category_UtilityQoL" xml:space="preserve">
+    <value>实用QoL</value>
+  </data>
+  <data name="Category_Ores" xml:space="preserve">
+    <value>矿物</value>
+  </data>
+  <data name="Category_PlayerTransport" xml:space="preserve">
+    <value>玩家传送</value>
+  </data>
+  <data name="Category_Processing" xml:space="preserve">
+    <value>加工</value>
+  </data>
+  <data name="Category_Energy" xml:space="preserve">
+    <value>能源</value>
+  </data>
+  <data name="Category_Genetics" xml:space="preserve">
+    <value>遗传</value>
+  </data>
+  <data name="Category_MCreator" xml:space="preserve">
+    <value>MCreator</value>
+  </data>
+  <data name="Category_ModJam2025" xml:space="preserve">
+    <value>ModJam 2025</value>
+  </data>
+  <data name="Category_CreativeMode" xml:space="preserve">
+    <value>创造模式</value>
+  </data>
+  <data name="Category_SemiRealistic" xml:space="preserve">
+    <value>半真实</value>
+  </data>
+  <data name="Category_Simplistic" xml:space="preserve">
+    <value>简约</value>
+  </data>
+  <data name="Category_Atmospheric" xml:space="preserve">
+    <value>氛围</value>
+  </data>
+  <data name="Category_Vibrant" xml:space="preserve">
+    <value>鲜艳</value>
+  </data>
+  <data name="Category_16x" xml:space="preserve">
+    <value>16x</value>
+  </data>
+  <data name="Category_32x" xml:space="preserve">
+    <value>32x</value>
+  </data>
+  <data name="Category_64x" xml:space="preserve">
+    <value>64x</value>
+  </data>
+  <data name="Category_128x" xml:space="preserve">
+    <value>128x</value>
+  </data>
+  <data name="Category_256x" xml:space="preserve">
+    <value>256x</value>
+  </data>
+  <data name="Category_512xPlus" xml:space="preserve">
+    <value>512x+</value>
+  </data>
+  <data name="Category_Animated" xml:space="preserve">
+    <value>动画</value>
+  </data>
+  <data name="Category_FontPacks" xml:space="preserve">
+    <value>字体</value>
+  </data>
+  <data name="Category_Medieval" xml:space="preserve">
+    <value>中世纪</value>
+  </data>
+  <data name="Category_Miscellaneous" xml:space="preserve">
+    <value>杂项</value>
+  </data>
+  <data name="Category_Modern" xml:space="preserve">
+    <value>现代</value>
+  </data>
+  <data name="Category_ModSupport" xml:space="preserve">
+    <value>模组支持</value>
+  </data>
+  <data name="Category_PhotoRealistic" xml:space="preserve">
+    <value>照片级</value>
+  </data>
+  <data name="Category_Steampunk" xml:space="preserve">
+    <value>蒸汽朋克</value>
+  </data>
+  <data name="Category_Traditional" xml:space="preserve">
+    <value>传统</value>
+  </data>
+  <data name="Category_CombatPvP" xml:space="preserve">
+    <value>战斗PvP</value>
+  </data>
+  <data name="Category_Expert" xml:space="preserve">
+    <value>专家</value>
+  </data>
+  <data name="Category_Exploration" xml:space="preserve">
+    <value>探索</value>
+  </data>
+  <data name="Category_ExtraLarge" xml:space="preserve">
+    <value>超大型</value>
+  </data>
+  <data name="Category_FTBOfficial" xml:space="preserve">
+    <value>FTB官方</value>
+  </data>
+  <data name="Category_Hardcore" xml:space="preserve">
+    <value>硬核</value>
+  </data>
+  <data name="Category_Horror" xml:space="preserve">
+    <value>恐怖</value>
+  </data>
+  <data name="Category_MapBased" xml:space="preserve">
+    <value>地图</value>
+  </data>
+  <data name="Category_Multiplayer" xml:space="preserve">
+    <value>多人</value>
+  </data>
+  <data name="Category_Quests" xml:space="preserve">
+    <value>任务</value>
+  </data>
+  <data name="Category_SciFi" xml:space="preserve">
+    <value>科幻</value>
+  </data>
+  <data name="Category_Skyblock" xml:space="preserve">
+    <value>空岛</value>
+  </data>
+  <data name="Category_SmallLight" xml:space="preserve">
+    <value>轻量</value>
+  </data>
+  <data name="Category_Tech" xml:space="preserve">
+    <value>科技</value>
+  </data>
+  <data name="Category_VanillaPlus" xml:space="preserve">
+    <value>原版+</value>
+  </data>
 </root>
