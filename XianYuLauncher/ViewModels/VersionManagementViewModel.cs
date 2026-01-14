@@ -210,6 +210,18 @@ public partial class ShaderInfo : ObservableObject
     private string _icon;
     
     /// <summary>
+    /// 光影描述（已翻译）
+    /// </summary>
+    [ObservableProperty]
+    private string? _description;
+    
+    /// <summary>
+    /// 是否正在加载描述
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLoadingDescription;
+    
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="filePath">文件路径</param>
@@ -227,6 +239,10 @@ public partial class ShaderInfo : ObservableObject
             displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
         }
         Name = displayName;
+        
+        // 初始化描述相关属性
+        Description = null;
+        IsLoadingDescription = false;
     }
 }
 
@@ -278,6 +294,23 @@ public partial class ShaderInfo : ObservableObject
         /// </summary>
         [ObservableProperty]
         private string? _source;
+        
+        /// <summary>
+        /// 预览是否打开
+        /// </summary>
+        [ObservableProperty]
+        private bool _isPreviewOpen;
+        
+        /// <summary>
+        /// 是否正在加载预览
+        /// </summary>
+        [ObservableProperty]
+        private bool _isLoadingPreview;
+        
+        /// <summary>
+        /// 预览纹理路径列表（2x2 网格，共4个）
+        /// </summary>
+        public List<string> PreviewTextures { get; set; } = new List<string>();
         
         // TODO: 未来功能 - 资源包画廊
         // 点击资源包后打开一个专门的画廊页面，展示该资源包的所有纹理贴图
@@ -1789,13 +1822,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    // 加载光影图标
+                    // 加载光影图标和描述
                     var shaderTasks = new List<Task>();
                     foreach (var shaderInfo in Shaders)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         // 光影包不从 Modrinth/CurseForge 获取图标，只使用本地图标
                         shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", false, cancellationToken));
+                        // 加载光影描述（与 Mod 一样从 Modrinth/CurseForge 获取）
+                        shaderTasks.Add(LoadShaderDescriptionAsync(shaderInfo, cancellationToken));
                     }
                     await Task.WhenAll(shaderTasks);
                     
@@ -2307,7 +2342,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 string localIcon = GetLocalIconPath(filePath, resourceType);
                 if (!string.IsNullOrEmpty(localIcon))
                 {
-                    iconProperty(localIcon);
+                    // 确保在 UI 线程上更新属性
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            iconProperty(localIcon);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                        }
+                    });
                     return;
                 }
                 
@@ -2326,7 +2372,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
-                            iconProperty(localIconPath);
+                            // 确保在 UI 线程上更新属性
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                try
+                                {
+                                    iconProperty(localIconPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                                }
+                            });
                             return;
                         }
                     }
@@ -2344,7 +2401,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
-                            iconProperty(localIconPath);
+                            // 确保在 UI 线程上更新属性
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                try
+                                {
+                                    iconProperty(localIconPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                                }
+                            });
                         }
                     }
                 }
@@ -3817,6 +3885,49 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
                     resourcePack.IsLoadingDescription = false;
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 加载单个光影的描述信息
+        /// </summary>
+        private async Task LoadShaderDescriptionAsync(ShaderInfo shader, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // 在 UI 线程设置加载状态
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    shader.IsLoadingDescription = true;
+                });
+                
+                // 在后台线程获取数据（使用与 Mod 相同的服务）
+                var metadata = await _modInfoService.GetModInfoAsync(shader.FilePath, cancellationToken);
+                
+                // 在 UI 线程更新属性
+                if (metadata != null)
+                {
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        shader.Description = metadata.Description;
+                    });
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 取消操作，忽略
+            }
+            catch
+            {
+                // 静默失败
+            }
+            finally
+            {
+                // 在 UI 线程重置加载状态
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    shader.IsLoadingDescription = false;
                 });
             }
         }

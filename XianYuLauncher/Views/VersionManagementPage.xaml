@@ -7,6 +7,7 @@
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:local="using:XianYuLauncher.Views"
     xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     mc:Ignorable="d">
 
     <Grid x:Name="ContentArea" Padding="40,60,40,20" AllowDrop="True" DragEnter="ContentArea_DragEnter" DragOver="ContentArea_DragOver" DragLeave="ContentArea_DragLeave" Drop="ContentArea_Drop">
@@ -882,8 +883,8 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ShaderInfo">
-                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        <Grid MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
@@ -908,14 +909,41 @@
                                                     Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                             </Grid>
                                             
-                                            <!-- 光影名称 -->
-                                            <TextBlock 
-                                                Grid.Column="1"
-                                                Text="{Binding Name}" 
-                                                VerticalAlignment="Center" 
-                                                FontSize="14" 
-                                                FontWeight="Medium"
-                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+                                            <!-- 光影名称和描述 -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                <TextBlock 
+                                                    Text="{Binding Name}" 
+                                                    FontSize="14" 
+                                                    FontWeight="Medium"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    TextTrimming="CharacterEllipsis"/>
+                                                
+                                                <!-- 光影描述区域 -->
+                                                <Grid>
+                                                    <!-- 加载中指示器 -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" 
+                                                               Visibility="{Binding IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <ProgressRing Width="12" Height="12" IsActive="True" />
+                                                        <TextBlock 
+                                                            x:Uid="VersionManagerPage_LoadingDescription"
+                                                            Text="加载描述中..." 
+                                                            FontSize="12" 
+                                                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                            Opacity="0.7"/>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- 描述文本 -->
+                                                    <TextBlock 
+                                                        Text="{Binding Description, Mode=OneWay}" 
+                                                        FontSize="12" 
+                                                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                        TextWrapping="Wrap"
+                                                        MaxLines="2"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Opacity="0.8"
+                                                        Visibility="{Binding Description, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                </Grid>
+                                            </StackPanel>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
@@ -1035,14 +1063,41 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ResourcePackInfo">
-                                        <Grid MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        <Grid x:Name="ResourcePackItemGrid" MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                               CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                              BorderThickness="1">
+                                              BorderThickness="1"
+                                              PointerPressed="ResourcePackItem_PointerPressed">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 资源包预览 TeachingTip -->
+                                            <TeachingTip x:Name="ResourcePackPreviewTip"
+                                                        Target="{Binding ElementName=ResourcePackItemGrid}"
+                                                        IsLightDismissEnabled="True"
+                                                        PreferredPlacement="Right"
+                                                        PlacementMargin="20"
+                                                        IsOpen="{Binding IsPreviewOpen, Mode=TwoWay}">
+                                                <TeachingTip.Content>
+                                                    <Grid>
+                                                        <!-- Win2D Canvas 用于绘制纹理预览 (2x2 网格) - 增加尺寸避免裁剪 -->
+                                                        <canvas:CanvasControl Width="340" Height="340"
+                                                                            Draw="PreviewCanvas_Draw"
+                                                                            CreateResources="PreviewCanvas_CreateResources"
+                                                                            Loaded="PreviewCanvas_Loaded"
+                                                                            Tag="{Binding}"/>
+                                                        
+                                                        <!-- 加载中指示器 -->
+                                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                   Visibility="{Binding IsLoadingPreview, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                            <ProgressRing Width="40" Height="40" IsActive="True" />
+                                                            <TextBlock Text="加载预览中..." Margin="0,12,0,0" FontSize="14" Foreground="Gray"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </TeachingTip.Content>
+                                            </TeachingTip>
                                             
                                             <!-- 资源包图标 -->
                                             <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
