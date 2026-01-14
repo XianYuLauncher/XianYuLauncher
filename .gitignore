@@ -67,6 +67,7 @@ artifacts/
 ScaffoldingReadMe.txt
 
 # other
+.vscode/
 .trae/
 .kiro/
 XianYuLauncher/.trae/

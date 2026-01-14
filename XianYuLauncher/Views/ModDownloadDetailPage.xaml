@@ -304,6 +304,16 @@
                                                        FontSize="11" 
                                                        Foreground="{ThemeResource TextFillColorSecondary}" />
                                         </Border>
+                                        <!-- 资源类型标签（仅对非Mod资源显示，如光影、资源包、数据包） -->
+                                        <Border CornerRadius="4" 
+                                                Padding="6,2"
+                                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                Visibility="{x:Bind ResourceTypeTag, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
+                                            <TextBlock Text="{x:Bind ResourceTypeTag, Mode=OneWay}" 
+                                                       FontSize="11" 
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource TextOnAccentFillColorPrimary}" />
+                                        </Border>
                                     </StackPanel>
                                     <TextBlock FontSize="12" 
                                                Foreground="{ThemeResource TextFillColorSecondary}">

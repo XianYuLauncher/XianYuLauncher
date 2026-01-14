@@ -3417,24 +3417,71 @@ namespace XianYuLauncher.ViewModels
                 var selectedGameVersion = SelectedQuickInstallVersion.GameVersion;
                 var selectedLoader = SelectedQuickInstallVersion.LoaderType.ToLower();
                 
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 开始加载Mod版本，游戏版本: {selectedGameVersion}, 加载器: {selectedLoader}");
+                
+                // 定义已知的Mod加载器类型（这些需要精确匹配加载器）
+                var knownModLoaders = new[] { "fabric", "forge", "neoforge", "quilt", "liteloader" };
+                
                 // 从SupportedGameVersions中查找匹配的版本
                 var matchingGameVersion = SupportedGameVersions.FirstOrDefault(gv => 
                     gv.GameVersion == selectedGameVersion);
                 
                 if (matchingGameVersion != null)
                 {
-                    // 查找匹配的加载器
-                    var matchingLoader = matchingGameVersion.Loaders.FirstOrDefault(l => 
-                        l.LoaderName.Equals(selectedLoader, StringComparison.OrdinalIgnoreCase));
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 找到匹配的游戏版本: {matchingGameVersion.GameVersion}");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 该版本有 {matchingGameVersion.Loaders.Count} 个加载器");
                     
-                    if (matchingLoader != null)
+                    // 遍历所有加载器
+                    foreach (var loader in matchingGameVersion.Loaders)
                     {
-                        // 添加所有Mod版本
-                        foreach (var modVersion in matchingLoader.ModVersions)
+                        var loaderName = loader.LoaderName.ToLower();
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检查加载器: {loaderName}");
+                        
+                        // 判断是否为已知的Mod加载器
+                        bool isKnownModLoader = knownModLoaders.Any(t => 
+                            loaderName.Equals(t, StringComparison.OrdinalIgnoreCase));
+                        
+                        bool shouldInclude = false;
+                        
+                        if (isKnownModLoader)
                         {
-                            QuickInstallModVersions.Add(modVersion);
+                            // 已知Mod加载器：需要精确匹配加载器
+                            shouldInclude = loaderName.Equals(selectedLoader, StringComparison.OrdinalIgnoreCase);
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   {(shouldInclude ? "✅" : "❌")} 已知Mod加载器，需要精确匹配: {shouldInclude}");
+                        }
+                        else
+                        {
+                            // 未知类型（光影、资源包、数据包等）：只要游戏版本匹配就包含
+                            shouldInclude = true;
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   ✅ 未知资源类型 '{loaderName}'，只检查游戏版本，包含");
+                        }
+                        
+                        if (shouldInclude)
+                        {
+                            // 添加所有Mod版本，并为非Mod资源添加类型标签
+                            foreach (var modVersion in loader.ModVersions)
+                            {
+                                // 为非Mod加载器添加类型标签（首字母大写）
+                                if (!isKnownModLoader)
+                                {
+                                    // 将加载器名称转换为首字母大写格式
+                                    modVersion.ResourceTypeTag = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(loaderName);
+                                    System.Diagnostics.Debug.WriteLine($"[QuickInstall]     添加版本: {modVersion.VersionNumber} (标签: {modVersion.ResourceTypeTag})");
+                                }
+                                else
+                                {
+                                    modVersion.ResourceTypeTag = null;
+                                    System.Diagnostics.Debug.WriteLine($"[QuickInstall]     添加版本: {modVersion.VersionNumber}");
+                                }
+                                
+                                QuickInstallModVersions.Add(modVersion);
+                            }
                         }
                     }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] ❌ 未找到匹配的游戏版本");
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"[QuickInstall] 找到 {QuickInstallModVersions.Count} 个兼容的Mod版本");
@@ -3442,6 +3489,7 @@ namespace XianYuLauncher.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ERROR] 加载Mod版本失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
             }
         }
         
@@ -3662,6 +3710,10 @@ namespace XianYuLauncher.ViewModels
         // 图标URL属性
         [ObservableProperty]
         private string _iconUrl;
+        
+        // 资源类型标签（用于非Mod资源，如 IRIS、OPTIFINE、MINECRAFT、DATAPACK）
+        [ObservableProperty]
+        private string? _resourceTypeTag;
         
         // Modrinth原始版本信息，用于获取依赖项
         public ModrinthVersion OriginalVersion { get; set; }
