@@ -33,6 +33,18 @@ public class CrashAnalyzer : ICrashAnalyzer
         allLogs.AddRange(outputLogs);
         allLogs.AddRange(errorLogs);
         
+        // 检查是否为正常启动过程（避免误判）
+        if (IsNormalStartup(allLogs))
+        {
+            result.Type = CrashType.Unknown;
+            result.Analysis = "游戏正在启动中，暂未检测到明确的崩溃原因。";
+            result.Suggestions.Add("如果游戏启动失败，请等待完整的错误信息");
+            result.Suggestions.Add("查看完整的游戏日志以获取更多信息");
+            
+            System.Diagnostics.Debug.WriteLine($"[CrashAnalyzer] 检测到正常启动过程，跳过错误匹配");
+            return result;
+        }
+        
         // 使用知识库查询匹配的错误规则
         var matchedRule = await _knowledgeBaseService.QueryErrorAsync(allLogs);
         
@@ -59,6 +71,31 @@ public class CrashAnalyzer : ICrashAnalyzer
         }
         
         return result;
+    }
+    
+    /// <summary>
+    /// 检查是否为正常启动过程
+    /// </summary>
+    private bool IsNormalStartup(List<string> logs)
+    {
+        // 检查是否包含正常启动的标志
+        var hasLoadingMessage = logs.Any(log => 
+            log.Contains("Loading Minecraft", StringComparison.OrdinalIgnoreCase) ||
+            log.Contains("Loading mods", StringComparison.OrdinalIgnoreCase) ||
+            log.Contains("Datafixer optimizations", StringComparison.OrdinalIgnoreCase));
+        
+        // 检查是否只有警告而没有真正的错误
+        var hasOnlyWarnings = logs.Any(log => log.Contains("[WARN]")) && 
+                             !logs.Any(log => log.Contains("[ERROR]") || log.Contains("[FATAL]"));
+        
+        // 检查是否包含 Mixin 相关的警告（这些通常是正常的）
+        var hasMixinWarnings = logs.Any(log => 
+            log.Contains("Reference map", StringComparison.OrdinalIgnoreCase) ||
+            log.Contains("@Mixin target", StringComparison.OrdinalIgnoreCase) ||
+            log.Contains("Force-disabling mixin", StringComparison.OrdinalIgnoreCase));
+        
+        // 如果有加载信息且只有警告（特别是 Mixin 警告），认为是正常启动
+        return hasLoadingMessage && hasOnlyWarnings && hasMixinWarnings;
     }
     
     /// <summary>

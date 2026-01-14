@@ -536,8 +536,11 @@ namespace XianYuLauncher.ViewModels
         // 分析崩溃原因
         private string AnalyzeCrash(List<string> gameOutput, List<string> gameError)
         {
-            // 优化分析逻辑，先检查错误日志，再检查输出日志
-            // 并且使用更高效的方式检查关键词
+            // 检查是否为正常启动过程（避免误判）
+            if (IsNormalStartup(gameOutput, gameError))
+            {
+                return "游戏正在启动中";
+            }
             
             // 检查手动触发崩溃
             if (ContainsKeyword(gameError, "Manually triggered debug crash") || ContainsKeyword(gameOutput, "Manually triggered debug crash"))
@@ -560,8 +563,9 @@ namespace XianYuLauncher.ViewModels
                 return "致命错误导致崩溃";
             }
             
-            // 检查Java异常
-            if (ContainsKeyword(gameError, "java.lang.Exception") || ContainsKeyword(gameOutput, "java.lang.Exception"))
+            // 检查Java异常（排除警告中的异常）
+            if (ContainsKeywordWithContext(gameError, "java.lang.Exception", "[ERROR]", "[FATAL]") || 
+                ContainsKeywordWithContext(gameOutput, "java.lang.Exception", "[ERROR]", "[FATAL]"))
             {
                 return "Java异常导致崩溃";
             }
@@ -578,13 +582,65 @@ namespace XianYuLauncher.ViewModels
                 return "玩家手动触发崩溃";
             }
             
-            // 检查普通错误
-            if (ContainsKeyword(gameError, "[ERROR]") || ContainsKeyword(gameOutput, "[ERROR]"))
+            // 检查真正的错误（不是警告）
+            if (ContainsKeyword(gameError, "[ERROR]") || ContainsKeyword(gameOutput, "[ERROR]") ||
+                ContainsKeyword(gameError, "[FATAL]") || ContainsKeyword(gameOutput, "[FATAL]"))
             {
                 return "错误日志中存在错误信息";
             }
 
             return "未知崩溃原因";
+        }
+        
+        /// <summary>
+        /// 检查是否为正常启动过程
+        /// </summary>
+        private bool IsNormalStartup(List<string> gameOutput, List<string> gameError)
+        {
+            // 合并所有日志
+            var allLogs = new List<string>();
+            allLogs.AddRange(gameOutput);
+            allLogs.AddRange(gameError);
+            
+            // 检查是否包含正常启动的标志
+            bool hasLoadingMessage = ContainsKeyword(allLogs, "Loading Minecraft") ||
+                                    ContainsKeyword(allLogs, "Loading mods") ||
+                                    ContainsKeyword(allLogs, "Datafixer optimizations");
+            
+            // 检查是否只有警告而没有真正的错误
+            bool hasOnlyWarnings = (ContainsKeyword(allLogs, "[WARN]") || ContainsKeyword(allLogs, "[INFO]")) && 
+                                  !ContainsKeyword(allLogs, "[ERROR]") && 
+                                  !ContainsKeyword(allLogs, "[FATAL]");
+            
+            // 检查是否包含 Mixin 相关的警告（这些通常是正常的）
+            bool hasMixinWarnings = ContainsKeyword(allLogs, "Reference map") ||
+                                   ContainsKeyword(allLogs, "@Mixin target") ||
+                                   ContainsKeyword(allLogs, "Force-disabling mixin");
+            
+            // 如果有加载信息且只有警告（特别是 Mixin 警告），认为是正常启动
+            return hasLoadingMessage && hasOnlyWarnings && hasMixinWarnings;
+        }
+        
+        /// <summary>
+        /// 检查关键词是否在特定上下文中出现
+        /// </summary>
+        private bool ContainsKeywordWithContext(List<string> lines, string keyword, params string[] contextKeywords)
+        {
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (lines[i].Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    // 检查是否包含任何上下文关键词
+                    foreach (var contextKeyword in contextKeywords)
+                    {
+                        if (lines[i].Contains(contextKeyword, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         }
         
         /// <summary>

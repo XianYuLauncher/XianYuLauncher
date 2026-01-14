@@ -112,7 +112,7 @@ public class GameProcessMonitor : IGameProcessMonitor
             
             if (!process.HasExited)
             {
-                process.Kill();
+                process.Kill(entireProcessTree: true);
                 System.Diagnostics.Debug.WriteLine($"[GameProcessMonitor] 进程已终止（用户操作: {isUserTerminated}）");
             }
         }

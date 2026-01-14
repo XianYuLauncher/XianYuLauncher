@@ -652,11 +652,6 @@ public partial class LaunchViewModel : ObservableRecipient
     private bool _isPreparingGame = false;
     
     /// <summary>
-    /// 是否是用户主动终止进程
-    /// </summary>
-    private bool _isUserTerminated = false;
-    
-    /// <summary>
     /// 当前版本路径，用于彩蛋显示
     /// </summary>
     public string CurrentVersionPath
@@ -1141,9 +1136,8 @@ public partial class LaunchViewModel : ObservableRecipient
             {
                 try
                 {
-                    // 标记为用户主动终止
-                    _isUserTerminated = true;
-                    _currentGameProcess.Kill(entireProcessTree: true);
+                    // 通过 GameProcessMonitor 终止进程，标记为用户主动终止
+                    _gameProcessMonitor.TerminateProcess(_currentGameProcess, isUserTerminated: true);
                     LaunchStatus = "游戏进程已终止";
                     System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 用户终止了游戏进程");
                 }

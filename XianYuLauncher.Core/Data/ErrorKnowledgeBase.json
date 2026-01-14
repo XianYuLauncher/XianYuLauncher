@@ -50,15 +50,27 @@
       "patterns": [
         {
           "type": "regex",
-          "value": "(?i)mod.*conflict"
+          "value": "\\[ERROR\\].*(?i)mod.*conflict"
         },
         {
           "type": "regex",
-          "value": "(?i)mod.*incompatible"
+          "value": "\\[FATAL\\].*(?i)mod.*conflict"
         },
         {
-          "type": "contains",
-          "value": "Mod file"
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Mod file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Mod file"
         }
       ],
       "analysis": "检测到 Mod 冲突或不兼容。这通常是因为多个 Mod 修改了相同的游戏内容，或者 Mod 版本与游戏版本不匹配。",
@@ -76,16 +88,36 @@
       "priority": 80,
       "patterns": [
         {
-          "type": "contains",
-          "value": "ClassNotFoundException"
+          "type": "regex",
+          "value": "\\[ERROR\\].*ClassNotFoundException"
         },
         {
-          "type": "contains",
-          "value": "NoClassDefFoundError"
+          "type": "regex",
+          "value": "\\[FATAL\\].*ClassNotFoundException"
         },
         {
-          "type": "contains",
-          "value": "FileNotFoundException"
+          "type": "regex",
+          "value": "(?i)caused by.*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)caused by.*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*FileNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*FileNotFoundException"
         }
       ],
       "analysis": "游戏缺少必要的依赖文件或类库。这可能是因为游戏文件不完整，或者某些 Mod 缺少前置依赖。",
@@ -140,20 +172,36 @@
       "priority": 75,
       "patterns": [
         {
-          "type": "contains",
-          "value": "OpenGL"
-        },
-        {
-          "type": "contains",
-          "value": "GLFW"
-        },
-        {
-          "type": "contains",
-          "value": "graphics driver"
+          "type": "regex",
+          "value": "\\[ERROR\\].*OpenGL"
         },
         {
           "type": "regex",
-          "value": "(?i)pixel format"
+          "value": "\\[FATAL\\].*OpenGL"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*pixel format"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*pixel format"
         }
       ],
       "analysis": "图形驱动程序问题。游戏无法正确初始化图形渲染系统。",
@@ -171,16 +219,28 @@
       "priority": 70,
       "patterns": [
         {
-          "type": "contains",
-          "value": "Connection refused"
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection refused"
         },
         {
-          "type": "contains",
-          "value": "Connection timed out"
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection refused"
         },
         {
-          "type": "contains",
-          "value": "UnknownHostException"
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*UnknownHostException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*UnknownHostException"
         }
       ],
       "analysis": "网络连接问题。游戏无法连接到服务器或下载必要的资源。",
@@ -199,15 +259,27 @@
       "patterns": [
         {
           "type": "regex",
-          "value": "(?i)corrupt.*chunk"
+          "value": "\\[ERROR\\].*(?i)corrupt.*chunk"
         },
         {
-          "type": "contains",
-          "value": "Failed to load chunk"
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)corrupt.*chunk"
         },
         {
-          "type": "contains",
-          "value": "region file"
+          "type": "regex",
+          "value": "\\[ERROR\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*region file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*region file"
         }
       ],
       "analysis": "存档文件损坏。游戏世界的某些区块数据出现问题。",
