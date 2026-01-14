@@ -1102,6 +1102,9 @@ Continue downloading?</value>
   <data name="ModDownloadDetailPage_QuickInstallButton.Text" xml:space="preserve">
     <value>Install</value>
   </data>
+  <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
+    <value>MCMOD</value>
+  </data>
   <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
     <value>Select Game Version</value>
   </data>

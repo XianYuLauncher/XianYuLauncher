@@ -1102,6 +1102,9 @@
   <data name="ModDownloadDetailPage_QuickInstallButton.Text" xml:space="preserve">
     <value>安装</value>
   </data>
+  <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
+    <value>MC百科</value>
+  </data>
   <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
     <value>选择游戏版本</value>
   </data>

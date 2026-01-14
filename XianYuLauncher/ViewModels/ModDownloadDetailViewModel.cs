@@ -3158,6 +3158,27 @@ namespace XianYuLauncher.ViewModels
         }
         
         /// <summary>
+        /// 打开MC百科搜索命令
+        /// </summary>
+        [RelayCommand]
+        private async Task OpenMcmodAsync()
+        {
+            if (!string.IsNullOrEmpty(ModName))
+            {
+                try
+                {
+                    var encodedName = Uri.EscapeDataString(ModName);
+                    var mcmodUrl = $"https://search.mcmod.cn/s?key={encodedName}";
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(mcmodUrl));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ERROR] 打开MC百科失败: {ex.Message}");
+                }
+            }
+        }
+        
+        /// <summary>
         /// 一键安装命令 - 打开游戏版本选择弹窗
         /// </summary>
         [RelayCommand]
