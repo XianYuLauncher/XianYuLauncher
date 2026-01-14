@@ -85,6 +85,7 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IFileService _fileService;
         private readonly INavigationService _navigationService;
         private readonly ILanguageSelectorService _languageSelectorService;
+        private readonly ModInfoService _modInfoService;
         private const string JavaPathKey = "JavaPath";
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
@@ -491,7 +492,7 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService, ModrinthCacheService modrinthCacheService, CurseForgeCacheService curseForgeCacheService)
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ILocalSettingsService localSettingsService, IFileService fileService, MaterialService materialService, INavigationService navigationService, ILanguageSelectorService languageSelectorService, ModrinthCacheService modrinthCacheService, CurseForgeCacheService curseForgeCacheService, ModInfoService modInfoService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -501,6 +502,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _languageSelectorService = languageSelectorService;
         _modrinthCacheService = modrinthCacheService;
         _curseForgeCacheService = curseForgeCacheService;
+        _modInfoService = modInfoService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -936,6 +938,10 @@ public partial class SettingsViewModel : ObservableRecipient
             // 清理 CurseForge 缓存
             await _curseForgeCacheService.ClearAllCacheAsync();
             System.Diagnostics.Debug.WriteLine("[设置页] CurseForge 缓存已清理");
+            
+            // 清理 Mod 描述缓存
+            await _modInfoService.ClearCacheAsync();
+            System.Diagnostics.Debug.WriteLine("[设置页] Mod 描述缓存已清理");
             
             RefreshCacheSizeInfo();
             System.Diagnostics.Debug.WriteLine("[设置页] 所有缓存已清理");

@@ -205,6 +205,17 @@ public partial class App : Application
             // Optifine Service
             services.AddSingleton<OptifineService>();
             
+            // Mod Info Service (获取 Mod 描述信息)
+            services.AddHttpClient<ModInfoService>();
+            services.AddSingleton<ModInfoService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(ModInfoService));
+                var translationService = sp.GetRequiredService<ITranslationService>();
+                var curseForgeService = sp.GetRequiredService<CurseForgeService>();
+                return new ModInfoService(httpClient, translationService, curseForgeService);
+            });
+            
             // AuthlibInjector Service
             services.AddHttpClient<AuthlibInjectorService>();
             services.AddSingleton<AuthlibInjectorService>();

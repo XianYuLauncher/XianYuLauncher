@@ -650,10 +650,10 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ModInfo">
-                                        <Grid Height="60" 
+                                        <Grid MinHeight="70" 
                                               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                               CornerRadius="8" 
-                                              Padding="16,8,16,8" 
+                                              Padding="16,12,16,12" 
                                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <!-- 右键菜单 -->
@@ -716,13 +716,40 @@
                                             </Grid>
                                             
                                             <!-- Mod名称 -->
-                                            <TextBlock 
-                                                Grid.Column="2"
-                                                Text="{Binding Name}" 
-                                                VerticalAlignment="Center" 
-                                                FontSize="14" 
-                                                FontWeight="Medium"
-                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
+                                                <TextBlock 
+                                                    Text="{Binding Name}" 
+                                                    FontSize="14" 
+                                                    FontWeight="Medium"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    TextTrimming="CharacterEllipsis"/>
+                                                
+                                                <!-- Mod描述区域 -->
+                                                <Grid>
+                                                    <!-- 加载中指示器 -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" 
+                                                               Visibility="{Binding IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <ProgressRing Width="12" Height="12" IsActive="True" />
+                                                        <TextBlock 
+                                                            x:Uid="VersionManagerPage_LoadingDescription"
+                                                            Text="加载描述中..." 
+                                                            FontSize="12" 
+                                                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                            Opacity="0.7"/>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- 描述文本 -->
+                                                    <TextBlock 
+                                                        Text="{Binding Description, Mode=OneWay}" 
+                                                        FontSize="12" 
+                                                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                        TextWrapping="Wrap"
+                                                        MaxLines="2"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Opacity="0.8"
+                                                        Visibility="{Binding Description, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                </Grid>
+                                            </StackPanel>
                                             
                                             <!-- 启用/禁用开关 -->
                                             <ToggleSwitch 
@@ -1008,13 +1035,12 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ResourcePackInfo">
-                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        <Grid MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                              CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
@@ -1035,61 +1061,49 @@
                                                     Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                             </Grid>
                                             
-                                            <!-- 资源包名称 -->
-                                            <TextBlock 
-                                                Grid.Column="1"
-                                                Text="{Binding Name}" 
-                                                VerticalAlignment="Center" 
-                                                FontSize="14" 
-                                                FontWeight="Medium"
-                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
-                                            
-                                            <!-- 资源包预览图 -->
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                <!-- 第一个图标：资源包预览图1 -->
-                                                <Border 
-                                                    Width="20" 
-                                                    Height="20" 
-                                                    CornerRadius="4" 
-                                                    Background="{ThemeResource SystemControlForegroundBaseLowBrush}"
-                                                    Padding="0">
-                                                    <Image 
-                                                        Source="{Binding PreviewImage1}"
-                                                        Stretch="Fill" 
-                                                        Width="20" 
-                                                        Height="20"/>
-                                                </Border>
-                                                <!-- 第二个图标：资源包预览图2 -->
-                                                <Border 
-                                                    Width="20" 
-                                                    Height="20" 
-                                                    CornerRadius="4" 
-                                                    Background="{ThemeResource SystemControlForegroundBaseLowBrush}"
-                                                    Padding="0">
-                                                    <Image 
-                                                        Source="{Binding PreviewImage2}"
-                                                        Stretch="Fill" 
-                                                        Width="20" 
-                                                        Height="20"/>
-                                                </Border>
-                                                <!-- 第三个图标：资源包预览图3 -->
-                                                <Border 
-                                                    Width="20" 
-                                                    Height="20" 
-                                                    CornerRadius="4" 
-                                                    Background="{ThemeResource SystemControlForegroundBaseLowBrush}"
-                                                    Padding="0">
-                                                    <Image 
-                                                        Source="{Binding PreviewImage3}"
-                                                        Stretch="Fill" 
-                                                        Width="20" 
-                                                        Height="20"/>
-                                                </Border>
+                                            <!-- 资源包名称和描述 -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                <TextBlock 
+                                                    Text="{Binding Name}" 
+                                                    FontSize="14" 
+                                                    FontWeight="Medium"
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                                                    TextTrimming="CharacterEllipsis"/>
+                                                
+                                                <!-- 资源包描述区域 -->
+                                                <Grid>
+                                                    <!-- 加载中指示器 -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" 
+                                                               Visibility="{Binding IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <ProgressRing Width="12" Height="12" IsActive="True" />
+                                                        <TextBlock 
+                                                            x:Uid="VersionManagerPage_LoadingDescription"
+                                                            Text="加载描述中..." 
+                                                            FontSize="12" 
+                                                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                            Opacity="0.7"/>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- 描述文本 -->
+                                                    <TextBlock 
+                                                        Text="{Binding Description, Mode=OneWay}" 
+                                                        FontSize="12" 
+                                                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                                        TextWrapping="Wrap"
+                                                        MaxLines="2"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Opacity="0.8"
+                                                        Visibility="{Binding Description, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                </Grid>
                                             </StackPanel>
+                                            
+                                            <!-- TODO: 未来功能 - 资源包画廊
+                                                 点击资源包后打开一个专门的画廊页面，展示该资源包的所有纹理贴图
+                                                 整个页面都是贴图预览，提供更好的浏览体验 -->
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="3"
+                                                Grid.Column="2"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 
