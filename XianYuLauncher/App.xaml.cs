@@ -237,6 +237,8 @@ public partial class App : Application
             services.AddTransient<VersionListPage>();
             services.AddTransient<VersionManagementViewModel>();
             services.AddTransient<VersionManagementPage>();
+            services.AddTransient<WorldManagementViewModel>();
+            services.AddTransient<WorldManagementPage>();
             services.AddTransient<ResourceDownloadViewModel>();
             services.AddTransient<ResourceDownloadPage>();
             services.AddTransient<CharacterViewModel>();

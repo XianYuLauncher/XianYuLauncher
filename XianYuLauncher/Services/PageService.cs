@@ -22,6 +22,7 @@ public class PageService : IPageService
                     Configure<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();
                     Configure<VersionListViewModel, VersionListPage>();
                     Configure<VersionManagementViewModel, VersionManagementPage>();
+                    Configure<WorldManagementViewModel, WorldManagementPage>();
                     Configure<ResourceDownloadViewModel, ResourceDownloadPage>();
                     Configure<CharacterViewModel, CharacterPage>();
                     Configure<CharacterManagementViewModel, CharacterManagementPage>();

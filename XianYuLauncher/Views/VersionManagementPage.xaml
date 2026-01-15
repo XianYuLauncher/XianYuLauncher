@@ -1726,11 +1726,6 @@
                     <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedMapForDetail.Seed, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
                 </Grid>
                 
-                <TextBlock Text="注：游戏模式、难度和种子需要NBT解析支持，当前显示默认值" 
-                           FontSize="11" 
-                           Foreground="{ThemeResource TextFillColorTertiary}" 
-                           TextWrapping="Wrap" />
-                
                 <!-- 重命名输入框 -->
                 <TextBox Header="重命名地图" 
                          Text="{Binding MapRenameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 

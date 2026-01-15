@@ -350,7 +350,7 @@ public partial class ShaderInfo : ObservableObject
 
 
 /// <summary>
-    /// 地图信息类
+    /// 地图信息类（仅用于列表展示）
     /// </summary>
     public partial class MapInfo : ObservableObject
     {
@@ -391,16 +391,6 @@ public partial class ShaderInfo : ObservableObject
         public long SizeInBytes { get; set; }
         
         /// <summary>
-        /// 创建时间
-        /// </summary>
-        public DateTime CreationTime { get; set; }
-        
-        /// <summary>
-        /// 格式化的创建时间
-        /// </summary>
-        public string FormattedCreationTime => CreationTime.ToString("yyyy-MM-dd HH:mm:ss");
-        
-        /// <summary>
         /// 最后修改时间（用作最后游玩时间）
         /// </summary>
         public DateTime LastPlayedTime { get; set; }
@@ -411,27 +401,11 @@ public partial class ShaderInfo : ObservableObject
         public string FormattedLastPlayedTime => LastPlayedTime.ToString("yyyy-MM-dd HH:mm:ss");
         
         /// <summary>
-        /// 游戏模式（暂时默认值，未来可通过NBT读取）
-        /// </summary>
-        public string GameMode { get; set; } = "未知";
-        
-        /// <summary>
-        /// 难度（暂时默认值，未来可通过NBT读取）
-        /// </summary>
-        public string Difficulty { get; set; } = "未知";
-        
-        /// <summary>
-        /// 种子（暂时默认值，未来可通过NBT读取）
-        /// </summary>
-        public string Seed { get; set; } = "未知";
-        
-        /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="filePath">文件路径</param>
         public MapInfo(string filePath)
         {
-            // 确保文件路径是完整的，没有被截断
             FilePath = filePath;
             FileName = Path.GetFileName(filePath);
             IsEnabled = !FileName.EndsWith(".disabled");
@@ -444,28 +418,38 @@ public partial class ShaderInfo : ObservableObject
             }
             Name = displayName;
             
-            // 获取文件夹信息
-            try
+            // 设置默认值
+            Size = "计算中...";
+            SizeInBytes = 0;
+            LastPlayedTime = DateTime.MinValue;
+        }
+        
+        /// <summary>
+        /// 异步加载基本信息（大小和时间）
+        /// </summary>
+        public async Task LoadBasicInfoAsync()
+        {
+            await Task.Run(() =>
             {
-                var dirInfo = new DirectoryInfo(filePath);
-                if (dirInfo.Exists)
+                try
                 {
-                    // 计算文件夹大小
-                    SizeInBytes = CalculateDirectorySize(dirInfo);
-                    Size = FormatFileSize(SizeInBytes);
-                    
-                    // 获取创建时间和最后修改时间
-                    CreationTime = dirInfo.CreationTime;
-                    LastPlayedTime = dirInfo.LastWriteTime;
+                    var dirInfo = new DirectoryInfo(FilePath);
+                    if (dirInfo.Exists)
+                    {
+                        // 计算文件夹大小
+                        SizeInBytes = CalculateDirectorySize(dirInfo);
+                        Size = FormatFileSize(SizeInBytes);
+                        
+                        // 获取最后修改时间
+                        LastPlayedTime = dirInfo.LastWriteTime;
+                    }
                 }
-            }
-            catch
-            {
-                Size = "未知";
-                SizeInBytes = 0;
-                CreationTime = DateTime.MinValue;
-                LastPlayedTime = DateTime.MinValue;
-            }
+                catch
+                {
+                    Size = "未知";
+                    SizeInBytes = 0;
+                }
+            });
         }
         
         /// <summary>
@@ -476,7 +460,6 @@ public partial class ShaderInfo : ObservableObject
             long size = 0;
             try
             {
-                // 计算所有文件大小
                 foreach (var file in directory.GetFiles("*", SearchOption.AllDirectories))
                 {
                     size += file.Length;
@@ -909,12 +892,39 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private int _selectedTabIndex = 0;
     
     /// <summary>
-    /// 监听 Tab 切换
+    /// 标记各个 Tab 是否已加载图标
+    /// </summary>
+    private readonly HashSet<int> _tabIconsLoaded = new();
+    
+    /// <summary>
+    /// 监听 Tab 切换 - 延迟加载图标
     /// </summary>
     partial void OnSelectedTabIndexChanged(int value)
     {
-        // Tab 切换逻辑（如果需要的话）
-        // TODO: 未来可以在这里实现资源包画廊的延迟加载
+        // 如果该 Tab 的图标已加载，直接返回
+        if (_tabIconsLoaded.Contains(value))
+        {
+            return;
+        }
+        
+        // 标记为已加载
+        _tabIconsLoaded.Add(value);
+        
+        // 延迟加载图标，避免阻塞 UI
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(300); // 等待 Tab 切换动画完成
+            
+            switch (value)
+            {
+                case 4: // 资源包 Tab
+                    await LoadResourcePackIconsAsync();
+                    break;
+                case 6: // 地图 Tab
+                    await LoadMapIconsAsync();
+                    break;
+            }
+        });
     }
     
     /// <summary>
@@ -2088,9 +2098,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     foreach (var shaderInfo in Shaders)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        // 光影包不从 Modrinth/CurseForge 获取图标，只使用本地图标
-                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", false, cancellationToken));
-                        // 加载光影描述（与 Mod 一样从 Modrinth/CurseForge 获取）
+                        // 光影包从 Modrinth/CurseForge 获取图标和描述
+                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", true, cancellationToken));
+                        // 加载光影描述
                         shaderTasks.Add(LoadShaderDescriptionAsync(shaderInfo, cancellationToken));
                     }
                     await Task.WhenAll(shaderTasks);
@@ -2199,24 +2209,52 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 string[] iconFiles = Directory.GetFiles(iconDir, $"*_{fileBaseName}_icon.png");
                 if (iconFiles.Length > 0)
                 {
-                    // 返回第一个匹配的图标文件路径
-                    return iconFiles[0];
+                    // 验证图标文件是否有效（大小大于0）
+                    foreach (var iconFile in iconFiles)
+                    {
+                        if (IsValidIconFile(iconFile))
+                        {
+                            return iconFile;
+                        }
+                        else
+                        {
+                            // 删除损坏的图标文件
+                            System.Diagnostics.Debug.WriteLine($"删除损坏的图标文件: {iconFile}");
+                            try { File.Delete(iconFile); } catch { }
+                        }
+                    }
                 }
                 
                 // 2. 搜索从Modrinth下载的图标（格式：modrinth_fileName_icon.png）
                 string modrinthIconPattern = Path.Combine(iconDir, $"modrinth_{fileBaseName}_icon.png");
                 if (File.Exists(modrinthIconPattern))
                 {
-                    System.Diagnostics.Debug.WriteLine($"找到Modrinth图标: {modrinthIconPattern}");
-                    return modrinthIconPattern;
+                    if (IsValidIconFile(modrinthIconPattern))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"找到Modrinth图标: {modrinthIconPattern}");
+                        return modrinthIconPattern;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"删除损坏的Modrinth图标: {modrinthIconPattern}");
+                        try { File.Delete(modrinthIconPattern); } catch { }
+                    }
                 }
                 
                 // 3. 搜索从CurseForge下载的图标（格式：curseforge_fileName_icon.png）
                 string curseForgeIconPattern = Path.Combine(iconDir, $"curseforge_{fileBaseName}_icon.png");
                 if (File.Exists(curseForgeIconPattern))
                 {
-                    System.Diagnostics.Debug.WriteLine($"找到CurseForge图标: {curseForgeIconPattern}");
-                    return curseForgeIconPattern;
+                    if (IsValidIconFile(curseForgeIconPattern))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"找到CurseForge图标: {curseForgeIconPattern}");
+                        return curseForgeIconPattern;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"删除损坏的CurseForge图标: {curseForgeIconPattern}");
+                        try { File.Delete(curseForgeIconPattern); } catch { }
+                    }
                 }
                 
                 // 4. 对于资源包，尝试从 zip 文件中提取 pack.png
@@ -2240,6 +2278,26 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             // 返回null，表示没有本地图标
             return null;
+        }
+        
+        /// <summary>
+        /// 验证图标文件是否有效
+        /// </summary>
+        private bool IsValidIconFile(string iconPath)
+        {
+            try
+            {
+                if (!File.Exists(iconPath))
+                    return false;
+                
+                var fileInfo = new FileInfo(iconPath);
+                // 检查文件大小是否大于100字节（一个有效的PNG至少应该有这么大）
+                return fileInfo.Length > 100;
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         /// <summary>
@@ -4131,6 +4189,19 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         resourcePack.Source = metadata.Source;
                     });
                 }
+                else
+                {
+                    // 网络获取失败，尝试从 pack.mcmeta 读取
+                    var localDescription = await ExtractPackMetaDescriptionAsync(resourcePack.FilePath);
+                    if (!string.IsNullOrEmpty(localDescription))
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            resourcePack.Description = localDescription;
+                            resourcePack.Source = "本地";
+                        });
+                    }
+                }
             }
             catch (OperationCanceledException)
             {
@@ -4138,7 +4209,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             catch
             {
-                // 静默失败
+                // 静默失败，尝试从本地读取
+                try
+                {
+                    var localDescription = await ExtractPackMetaDescriptionAsync(resourcePack.FilePath);
+                    if (!string.IsNullOrEmpty(localDescription))
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            resourcePack.Description = localDescription;
+                            resourcePack.Source = "本地";
+                        });
+                    }
+                }
+                catch { }
             }
             finally
             {
@@ -4148,6 +4232,71 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     resourcePack.IsLoadingDescription = false;
                 });
             }
+        }
+        
+        /// <summary>
+        /// 从资源包的 pack.mcmeta 文件中提取描述
+        /// </summary>
+        private async Task<string> ExtractPackMetaDescriptionAsync(string resourcePackPath)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    if (!File.Exists(resourcePackPath))
+                        return null;
+                    
+                    using var archive = System.IO.Compression.ZipFile.OpenRead(resourcePackPath);
+                    var metaEntry = archive.GetEntry("pack.mcmeta");
+                    
+                    if (metaEntry == null)
+                        return null;
+                    
+                    using var stream = metaEntry.Open();
+                    using var reader = new StreamReader(stream);
+                    var jsonContent = reader.ReadToEnd();
+                    
+                    // 解析 JSON
+                    var jsonDoc = Newtonsoft.Json.Linq.JObject.Parse(jsonContent);
+                    var packNode = jsonDoc["pack"];
+                    
+                    if (packNode == null)
+                        return null;
+                    
+                    var descriptionNode = packNode["description"];
+                    
+                    if (descriptionNode == null)
+                        return null;
+                    
+                    // 处理两种格式
+                    if (descriptionNode.Type == Newtonsoft.Json.Linq.JTokenType.String)
+                    {
+                        // 简单字符串格式
+                        return descriptionNode.ToString();
+                    }
+                    else if (descriptionNode.Type == Newtonsoft.Json.Linq.JTokenType.Array)
+                    {
+                        // 复杂格式：数组对象
+                        var textParts = new List<string>();
+                        foreach (var item in descriptionNode)
+                        {
+                            var text = item["text"]?.ToString();
+                            if (!string.IsNullOrEmpty(text))
+                            {
+                                textParts.Add(text);
+                            }
+                        }
+                        return string.Join("", textParts);
+                    }
+                    
+                    return null;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"提取 pack.mcmeta 描述失败: {ex.Message}");
+                    return null;
+                }
+            });
         }
         
         /// <summary>
@@ -4443,7 +4592,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             var iconTasks = new List<Task>();
             foreach (var shaderInfo in Shaders)
             {
-                iconTasks.Add(LoadResourceIconAsync(icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader"));
+                iconTasks.Add(LoadResourceIconAsync(icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", true));
             }
             
             // 并行执行图标加载任务
@@ -4554,23 +4703,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         
         /// <summary>
-        /// 加载资源包列表
+        /// 加载资源包列表（不加载图标，图标延迟到 Tab 切换时加载）
         /// </summary>
         private async Task LoadResourcePacksAsync()
         {
             await LoadResourcePacksListOnlyAsync();
-            
-            // 异步加载所有资源包的图标，不阻塞UI
-            var loadTasks = new List<Task>();
-            foreach (var resourcePackInfo in ResourcePacks)
-            {
-                // 加载资源包图标
-                loadTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack"));
-                // TODO: 预览图已移除，未来将通过专门的画廊页面展示
-            }
-            
-            // 并行执行加载任务
-            await Task.WhenAll(loadTasks);
+            // 图标加载已移到 OnSelectedTabIndexChanged 中延迟执行
         }
         
         /// <summary>
@@ -4634,7 +4772,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     #region 地图安装
 
     /// <summary>
-        /// 异步加载并更新单个地图的图标
+        /// 异步加载并更新单个地图的图标和世界数据
         /// </summary>
         /// <param name="mapInfo">地图信息对象</param>
         /// <param name="mapFolder">地图文件夹路径</param>
@@ -4642,16 +4780,62 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             try
             {
-                // 地图图标直接从地图文件夹的 icon.png 读取
-                string iconPath = Path.Combine(mapFolder, "icon.png");
-                if (File.Exists(iconPath))
+                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 开始加载地图: {mapInfo.Name}");
+                
+                // 在后台线程执行所有 IO 操作
+                string iconPath = await Task.Run(() =>
                 {
-                    mapInfo.Icon = iconPath;
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 检查图标: {mapInfo.Name}");
+                        // 地图图标直接从地图文件夹的 icon.png 读取
+                        string path = Path.Combine(mapFolder, "icon.png");
+                        if (File.Exists(path))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 找到图标: {path}");
+                            return path;
+                        }
+                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 未找到图标: {mapInfo.Name}");
+                        return null;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程异常: {ex.Message}");
+                        return null;
+                    }
+                });
+                
+                // 必须在 UI 线程更新属性（因为有数据绑定）
+                if (!string.IsNullOrEmpty(iconPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 调度到UI线程 - 设置图标: {mapInfo.Name}");
+                    
+                    // 使用 TaskCompletionSource 等待 UI 线程完成更新
+                    var tcs = new TaskCompletionSource<bool>();
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            mapInfo.Icon = iconPath;
+                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程 - 图标已设置: {mapInfo.Name}");
+                            tcs.SetResult(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程异常: {ex.Message}");
+                            tcs.SetException(ex);
+                        }
+                    });
+                    
+                    await tcs.Task;
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 完成加载地图: {mapInfo.Name}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载地图图标失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 加载地图图标失败: {mapInfo.Name}, 错误: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4660,23 +4844,49 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadMapsListOnlyAsync()
         {
+            System.Diagnostics.Debug.WriteLine("[LoadMapsList] 开始加载地图列表");
+            
             if (SelectedVersion == null)
             {
+                System.Diagnostics.Debug.WriteLine("[LoadMapsList] SelectedVersion 为空");
                 return;
             }
 
             var savesPath = GetVersionSpecificPath("saves");
-            if (Directory.Exists(savesPath))
+            System.Diagnostics.Debug.WriteLine($"[LoadMapsList] saves路径: {savesPath}");
+            
+            // 在后台线程获取地图文件夹列表
+            var mapFolders = await Task.Run(() =>
             {
-                // 获取所有地图文件夹
-                var mapFolders = Directory.GetDirectories(savesPath);
-                
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 检查目录存在");
+                    if (Directory.Exists(savesPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 获取子目录");
+                        return Directory.GetDirectories(savesPath);
+                    }
+                    System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 目录不存在");
+                    return Array.Empty<string>();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 后台线程异常: {ex.Message}");
+                    return Array.Empty<string>();
+                }
+            });
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 找到 {mapFolders.Length} 个地图");
+            
+            if (mapFolders.Length > 0)
+            {
                 // 创建新的地图列表，减少CollectionChanged事件触发次数
                 var newMaps = new ObservableCollection<MapInfo>();
                 
                 // 添加所有地图文件夹
                 foreach (var mapFolder in mapFolders)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 创建 MapInfo: {Path.GetFileName(mapFolder)}");
                     var mapInfo = new MapInfo(mapFolder);
                     
                     // 先设置默认图标为空，后续异步加载
@@ -4685,32 +4895,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     newMaps.Add(mapInfo);
                 }
                 
+                System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 设置 Maps 集合，共 {newMaps.Count} 个");
                 // 立即显示地图列表，不等待图标加载完成
                 Maps = newMaps;
             }
             else
             {
+                System.Diagnostics.Debug.WriteLine("[LoadMapsList] 清空地图列表");
                 // 清空地图列表
                 Maps.Clear();
             }
+            
+            System.Diagnostics.Debug.WriteLine("[LoadMapsList] 完成加载地图列表");
         }
         
         /// <summary>
-        /// 加载地图列表
+        /// 加载地图列表（不加载图标，图标延迟到 Tab 切换时加载）
         /// </summary>
         private async Task LoadMapsAsync()
         {
             await LoadMapsListOnlyAsync();
-            
-            // 异步加载所有地图的图标，不阻塞UI
-            var iconTasks = new List<Task>();
-            foreach (var mapInfo in Maps)
-            {
-                iconTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
-            }
-            
-            // 并行执行图标加载任务
-            await Task.WhenAll(iconTasks);
+            // 图标和世界数据加载已移到 OnSelectedTabIndexChanged 中延迟执行
         }
 
     /// <summary>
@@ -4781,9 +4986,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
         
-        SelectedMapForDetail = map;
-        MapRenameInput = map.Name;
-        IsMapDetailDialogOpen = true;
+        // 导航到世界管理页面
+        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, map.FilePath);
     }
     
     /// <summary>
@@ -5416,5 +5620,55 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
     }
 
+    #endregion
+    
+    #region 延迟加载图标方法
+    
+    /// <summary>
+    /// 延迟加载资源包图标（仅在切换到资源包 Tab 时调用）
+    /// </summary>
+    private async Task LoadResourcePackIconsAsync()
+    {
+        System.Diagnostics.Debug.WriteLine("[延迟加载] 开始加载资源包图标");
+        
+        var loadTasks = new List<Task>();
+        foreach (var resourcePackInfo in ResourcePacks)
+        {
+            if (string.IsNullOrEmpty(resourcePackInfo.Icon))
+            {
+                loadTasks.Add(LoadResourceIconAsync(icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack"));
+            }
+        }
+        
+        if (loadTasks.Count > 0)
+        {
+            await Task.WhenAll(loadTasks);
+            System.Diagnostics.Debug.WriteLine($"[延迟加载] 完成加载 {loadTasks.Count} 个资源包图标");
+        }
+    }
+    
+    /// <summary>
+    /// 延迟加载地图图标（仅在切换到地图 Tab 时调用）
+    /// </summary>
+    private async Task LoadMapIconsAsync()
+    {
+        System.Diagnostics.Debug.WriteLine("[延迟加载] 开始加载地图图标");
+        
+        var loadTasks = new List<Task>();
+        foreach (var mapInfo in Maps)
+        {
+            if (string.IsNullOrEmpty(mapInfo.Icon))
+            {
+                loadTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
+            }
+        }
+        
+        if (loadTasks.Count > 0)
+        {
+            await Task.WhenAll(loadTasks);
+            System.Diagnostics.Debug.WriteLine($"[延迟加载] 完成加载 {loadTasks.Count} 个地图图标");
+        }
+    }
+    
     #endregion
 }
