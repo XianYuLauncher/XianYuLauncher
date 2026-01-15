@@ -96,14 +96,14 @@
                               VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Disabled" 
                               MaxHeight="300"
-                              x:Name="AiScrollViewer">
+                              x:Name="KnowledgeBaseScrollViewer">
                         <TextBlock 
                                Text="{x:Bind ViewModel.AiAnalysisResult, Mode=OneWay}" 
                                TextWrapping="Wrap" 
                                FontSize="14"
                                LineHeight="24"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
-                               x:Name="AiTextBlock" 
+                               x:Name="KnowledgeBaseTextBlock" 
                                IsTextSelectionEnabled="True" />
                     </ScrollViewer>
                 </Grid>
