@@ -36,7 +36,7 @@ public class ModrinthCacheService
     /// </summary>
     private string GetCacheRootPath()
     {
-        var basePath = _fileService.GetMinecraftDataPath();
+        var basePath = _fileService.GetLauncherCachePath();
         var cachePath = Path.Combine(basePath, CacheFolder);
         if (!Directory.Exists(cachePath))
         {
@@ -386,7 +386,7 @@ public class ModrinthCacheService
             }
             
             // 计算版本列表缓存大小
-            var versionCachePath = Path.Combine(_fileService.GetMinecraftDataPath(), "version_cache.json");
+            var versionCachePath = Path.Combine(_fileService.GetLauncherCachePath(), "version_cache.json");
             if (File.Exists(versionCachePath))
             {
                 var fileInfo = new FileInfo(versionCachePath);
@@ -428,7 +428,7 @@ public class ModrinthCacheService
             }
             
             // 删除版本列表缓存
-            var versionCachePath = Path.Combine(_fileService.GetMinecraftDataPath(), "version_cache.json");
+            var versionCachePath = Path.Combine(_fileService.GetLauncherCachePath(), "version_cache.json");
             if (File.Exists(versionCachePath))
             {
                 File.Delete(versionCachePath);

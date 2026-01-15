@@ -34,7 +34,7 @@ public class MinecraftNewsService
     /// </summary>
     private string GetCacheFilePath()
     {
-        var basePath = _fileService.GetMinecraftDataPath();
+        var basePath = _fileService.GetLauncherCachePath();
         return Path.Combine(basePath, CacheFileName);
     }
     

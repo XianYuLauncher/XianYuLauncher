@@ -148,6 +148,21 @@ public class FileService : IFileService
         return AppContext.BaseDirectory;
     }
 
+    public string GetLauncherCachePath()
+    {
+        // 返回启动器专用的缓存目录，位于 LocalApplicationData/XianYuLauncher/Cache
+        string appDataPath = GetAppDataPath();
+        string cachePath = Path.Combine(appDataPath, "Cache");
+        
+        // 确保目录存在
+        if (!Directory.Exists(cachePath))
+        {
+            Directory.CreateDirectory(cachePath);
+        }
+        
+        return cachePath;
+    }
+
     public T Read<T>(string folderPath, string fileName)
     {
         var filePath = Path.Combine(folderPath, fileName);

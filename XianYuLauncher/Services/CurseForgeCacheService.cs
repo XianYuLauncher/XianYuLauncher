@@ -36,7 +36,7 @@ public class CurseForgeCacheService
     /// </summary>
     private string GetCacheRootPath()
     {
-        var basePath = _fileService.GetMinecraftDataPath();
+        var basePath = _fileService.GetLauncherCachePath();
         var cachePath = Path.Combine(basePath, CacheFolder);
         if (!Directory.Exists(cachePath))
         {

@@ -1098,6 +1098,17 @@
                                                 <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
                                             </StackPanel>
 
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://github.com/mstefarov/fNbt">
+                                                        <Run Text="fNbt" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) 2012-2025, Matvei &quot;fragmer&quot; Stefarov" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：BSD 3-Clause License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                                <TextBlock Text="用于解析 Minecraft NBT 格式文件" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.6" FontStyle="Italic" />
+                                            </StackPanel>
+
                                             <!-- 许可证说明 -->
                                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="12" CornerRadius="8">
                                                 <TextBlock Text="本项目使用的所有开源软件均遵循其各自的许可证要求，详细许可证信息可通过项目地址查看。" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords" />

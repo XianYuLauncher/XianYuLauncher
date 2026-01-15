@@ -1714,8 +1714,8 @@ namespace XianYuLauncher.ViewModels
                     try
                     {
                         // 构建图标保存路径
-                        string minecraftPath = _fileService.GetMinecraftDataPath();
-                        string iconDir = Path.Combine(minecraftPath, "icons", ProjectType);
+                        string cachePath = _fileService.GetLauncherCachePath();
+                        string iconDir = Path.Combine(cachePath, "icons", ProjectType);
                         _fileService.CreateDirectory(iconDir);
                         
                         // 使用项目ID和文件名生成唯一图标文件名

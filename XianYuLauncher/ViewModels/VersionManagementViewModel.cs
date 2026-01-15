@@ -2172,10 +2172,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             try
             {
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
+                // 获取启动器缓存路径
+                string cachePath = _fileService.GetLauncherCachePath();
                 // 构建图标目录路径
-                string iconDir = Path.Combine(minecraftPath, "icons", resourceType);
+                string iconDir = Path.Combine(cachePath, "icons", resourceType);
                 
                 // 创建图标目录（如果不存在）
                 Directory.CreateDirectory(iconDir);
@@ -2412,10 +2412,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
+                // 获取启动器缓存路径
+                string cachePath = _fileService.GetLauncherCachePath();
                 // 构建图标目录路径
-                string iconDir = Path.Combine(minecraftPath, "icons", resourceType);
+                string iconDir = Path.Combine(cachePath, "icons", resourceType);
                 Directory.CreateDirectory(iconDir);
                 
                 // 获取文件名
@@ -2543,10 +2543,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
+                // 获取启动器缓存路径
+                string cachePath = _fileService.GetLauncherCachePath();
                 // 构建图标目录路径
-                string iconDir = Path.Combine(minecraftPath, "icons", resourceType);
+                string iconDir = Path.Combine(cachePath, "icons", resourceType);
                 Directory.CreateDirectory(iconDir);
                 
                 // 获取文件名

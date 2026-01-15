@@ -885,7 +885,7 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            var cacheRoot = Path.Combine(_fileService.GetMinecraftDataPath(), "curseforge_cache");
+            var cacheRoot = Path.Combine(_fileService.GetLauncherCachePath(), "curseforge_cache");
             
             if (!Directory.Exists(cacheRoot))
             {

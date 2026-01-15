@@ -807,7 +807,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         System.Diagnostics.Debug.WriteLine($"[版本缓存] 缓存未过期，剩余 {remainingTime.TotalHours:F1} 小时刷新");
                         
                         // 从文件读取缓存
-                        var cacheFilePath = System.IO.Path.Combine(_fileService.GetMinecraftDataPath(), VersionCacheFileName);
+                        var cacheFilePath = System.IO.Path.Combine(_fileService.GetLauncherCachePath(), VersionCacheFileName);
                         if (System.IO.File.Exists(cacheFilePath))
                         {
                             try
@@ -877,7 +877,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     ReleaseTime = v.ReleaseTime
                 }).ToList();
                 
-                var cacheFilePath = System.IO.Path.Combine(_fileService.GetMinecraftDataPath(), VersionCacheFileName);
+                var cacheFilePath = System.IO.Path.Combine(_fileService.GetLauncherCachePath(), VersionCacheFileName);
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(cacheData, Newtonsoft.Json.Formatting.None);
                 await System.IO.File.WriteAllTextAsync(cacheFilePath, json);
                 
