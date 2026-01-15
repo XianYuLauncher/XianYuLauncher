@@ -67,6 +67,13 @@ public partial class VersionManagementViewModel
                     }
                 });
                 
+                // 检查是否已取消
+                if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 操作已取消: {mapInfo.Name}");
+                    return;
+                }
+                
                 // 必须在 UI 线程更新属性（因为有数据绑定）
                 if (!string.IsNullOrEmpty(iconPath))
                 {
@@ -78,6 +85,14 @@ public partial class VersionManagementViewModel
                     {
                         try
                         {
+                            // 再次检查是否已取消（双重检查）
+                            if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程 - 操作已取消: {mapInfo.Name}");
+                                tcs.SetCanceled();
+                                return;
+                            }
+                            
                             mapInfo.Icon = iconPath;
                             System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程 - 图标已设置: {mapInfo.Name}");
                             tcs.SetResult(true);
@@ -93,6 +108,10 @@ public partial class VersionManagementViewModel
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 完成加载地图: {mapInfo.Name}");
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 操作已取消: {mapInfo.Name}");
             }
             catch (Exception ex)
             {

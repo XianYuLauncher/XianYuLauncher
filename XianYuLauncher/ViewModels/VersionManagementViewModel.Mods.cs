@@ -522,11 +522,18 @@ public partial class VersionManagementViewModel
                 string localIcon = GetLocalIconPath(filePath, resourceType);
                 if (!string.IsNullOrEmpty(localIcon))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     // 确保在 UI 线程上更新属性
                     App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                     {
                         try
                         {
+                            // 再次检查是否已取消
+                            if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                            {
+                                return;
+                            }
                             iconProperty(localIcon);
                         }
                         catch (Exception ex)
@@ -552,11 +559,18 @@ public partial class VersionManagementViewModel
                         string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
                             // 确保在 UI 线程上更新属性
                             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                             {
                                 try
                                 {
+                                    // 再次检查是否已取消
+                                    if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                                    {
+                                        return;
+                                    }
                                     iconProperty(localIconPath);
                                 }
                                 catch (Exception ex)
@@ -581,11 +595,18 @@ public partial class VersionManagementViewModel
                         string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType, cancellationToken);
                         if (!string.IsNullOrEmpty(localIconPath))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
                             // 确保在 UI 线程上更新属性
                             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                             {
                                 try
                                 {
+                                    // 再次检查是否已取消
+                                    if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                                    {
+                                        return;
+                                    }
                                     iconProperty(localIconPath);
                                 }
                                 catch (Exception ex)

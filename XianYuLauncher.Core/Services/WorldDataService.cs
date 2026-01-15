@@ -98,7 +98,21 @@ public class WorldDataService
                 worldData.LevelName = levelNameTag.Value;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[WorldDataService] 成功读取世界数据: {worldData.LevelName}, 种子: {worldData.Seed}, 难度: {worldData.Difficulty}, 模式: {worldData.GameMode}");
+            // 读取游戏时间（游戏刻）
+            var timeTag = dataTag.Get<NbtLong>("Time");
+            if (timeTag != null)
+            {
+                worldData.Time = timeTag.Value;
+            }
+            
+            // 读取是否允许命令
+            var allowCommandsTag = dataTag.Get<NbtByte>("allowCommands");
+            if (allowCommandsTag != null)
+            {
+                worldData.AllowCommands = allowCommandsTag.Value != 0;
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[WorldDataService] 成功读取世界数据: {worldData.LevelName}, 种子: {worldData.Seed}, 难度: {worldData.Difficulty}, 模式: {worldData.GameMode}, 时间: {worldData.Time} 刻, 允许命令: {worldData.AllowCommands}");
             
             return worldData;
         }
@@ -134,4 +148,14 @@ public class WorldData
     /// 世界名称
     /// </summary>
     public string LevelName { get; set; } = "未知";
+    
+    /// <summary>
+    /// 游戏时间（游戏刻）
+    /// </summary>
+    public long Time { get; set; }
+    
+    /// <summary>
+    /// 是否允许命令
+    /// </summary>
+    public bool AllowCommands { get; set; }
 }

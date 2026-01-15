@@ -36,7 +36,9 @@ namespace XianYuLauncher.Helpers
                     // 将本地文件路径转换为Uri（添加file:///协议）
                     if (System.IO.Path.IsPathRooted(path))
                     {
-                        return new Uri($"file:///{path.Replace('\\', '/')}");
+                        // 添加时间戳参数以防止缓存
+                        var timestamp = DateTime.Now.Ticks;
+                        return new Uri($"file:///{path.Replace('\\', '/')}?t={timestamp}");
                     }
                     
                     return null;

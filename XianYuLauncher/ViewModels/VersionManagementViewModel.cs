@@ -314,16 +314,33 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         // 延迟加载图标，避免阻塞 UI
         _ = Task.Run(async () =>
         {
-            await Task.Delay(300); // 等待 Tab 切换动画完成
-            
-            switch (value)
+            try
             {
-                case 4: // 资源包 Tab
-                    await LoadResourcePackIconsAsync();
-                    break;
-                case 6: // 地图 Tab
-                    await LoadMapIconsAsync();
-                    break;
+                await Task.Delay(300); // 等待 Tab 切换动画完成
+                
+                // 检查是否已取消
+                if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                {
+                    return;
+                }
+                
+                switch (value)
+                {
+                    case 4: // 资源包 Tab
+                        await LoadResourcePackIconsAsync();
+                        break;
+                    case 6: // 地图 Tab
+                        await LoadMapIconsAsync();
+                        break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("[延迟加载] 操作已取消");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[延迟加载] 异常: {ex.Message}");
             }
         });
     }
