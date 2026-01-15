@@ -1,7 +1,13 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Input;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Text;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views
@@ -21,6 +27,103 @@ namespace XianYuLauncher.Views
             
             // 订阅ViewModel的PropertyChanged事件，实现分析结果自动滚动
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            
+            // 订阅LogLines集合变化事件，实现自动滚动到底部
+            ViewModel.LogLines.CollectionChanged += LogLines_CollectionChanged;
+            
+            // 添加键盘快捷键支持
+            LogListView.KeyDown += LogListView_KeyDown;
+        }
+        
+        /// <summary>
+        /// 处理键盘快捷键
+        /// </summary>
+        private void LogListView_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            // Ctrl+C 复制选中的日志行
+            if (e.Key == VirtualKey.C && 
+                (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)))
+            {
+                CopySelectedLogLines();
+                e.Handled = true;
+            }
+            // Ctrl+A 全选
+            else if (e.Key == VirtualKey.A && 
+                     (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)))
+            {
+                LogListView.SelectAll();
+                e.Handled = true;
+            }
+        }
+        
+        /// <summary>
+        /// 复制选中的日志行到剪贴板
+        /// </summary>
+        private void CopySelectedLogLines()
+        {
+            try
+            {
+                if (LogListView.SelectedItems.Count > 0)
+                {
+                    var sb = new StringBuilder();
+                    foreach (var item in LogListView.SelectedItems)
+                    {
+                        if (item is string line)
+                        {
+                            sb.AppendLine(line);
+                        }
+                    }
+                    
+                    var dataPackage = new DataPackage();
+                    dataPackage.SetText(sb.ToString());
+                    Clipboard.SetContent(dataPackage);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"复制日志失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 日志集合变化时自动滚动到底部
+        /// </summary>
+        private void LogLines_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // 只在添加新项时滚动
+            if (e.Action == NotifyCollectionChangedAction.Add)
+            {
+                // 使用防抖机制减少频繁滚动导致的UI卡顿
+                if (!_isScrollPending)
+                {
+                    _isScrollPending = true;
+                    
+                    // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
+                    System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
+                    {
+                        // 确保在UI线程上执行滚动操作
+                        this.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            try
+                            {
+                                // 滚动到最后一项
+                                if (LogListView.Items.Count > 0)
+                                {
+                                    LogListView.ScrollIntoView(LogListView.Items[LogListView.Items.Count - 1]);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"滚动到底部失败: {ex.Message}");
+                            }
+                            finally
+                            {
+                                _isScrollPending = false;
+                            }
+                        });
+                    });
+                }
+            }
         }
         
         /// <summary>
@@ -37,7 +140,7 @@ namespace XianYuLauncher.Views
                     _isScrollPending = true;
                     
                     // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
-                    Task.Delay(100).ContinueWith(_ =>
+                    System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
                     {
                         // 确保在UI线程上执行滚动操作
                         this.DispatcherQueue.TryEnqueue(() =>
@@ -82,32 +185,6 @@ namespace XianYuLauncher.Views
             if (Frame.CanGoBack)
             {
                 Frame.GoBack();
-            }
-        }
-
-        /// <summary>
-        /// 日志文本变化事件，自动滚动到底部
-        /// 使用防抖机制减少频繁滚动导致的UI卡顿
-        /// </summary>
-        private void LogTextBox_TextChanged(object sender, Microsoft.UI.Xaml.Controls.TextChangedEventArgs e)
-        {
-            // 如果已经有滚动操作在等待，就不再重复处理
-            if (!_isScrollPending)
-            {
-                _isScrollPending = true;
-                
-                // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
-                Task.Delay(100).ContinueWith(_ =>
-                {
-                    // 确保在UI线程上执行滚动操作
-                    this.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        // 使用ChangeView方法实现自动滚动到底部
-                        // 将垂直偏移量设置为最大值，实现滚动到底部的效果
-                        LogScrollViewer.ChangeView(null, double.MaxValue, null);
-                        _isScrollPending = false;
-                    });
-                });
             }
         }
     }

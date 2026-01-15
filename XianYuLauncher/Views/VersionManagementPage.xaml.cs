@@ -18,6 +18,9 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionManagementPage : Page
 {
     public VersionManagementViewModel ViewModel { get; }
+    
+    // 标记页面是否正在卸载
+    private bool _isUnloading = false;
 
     public VersionManagementPage()
     {
@@ -28,8 +31,44 @@ public sealed partial class VersionManagementPage : Page
         // 立即注册ViewModel的属性变化事件，确保OnNavigatedTo时能触发
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         
+        // 注册页面卸载事件，快速清理资源
+        this.Unloaded += VersionManagementPage_Unloaded;
+        
         // 初始更新标题
         UpdatePageTitle();
+    }
+    
+    /// <summary>
+    /// 页面卸载时快速清理资源
+    /// </summary>
+    private void VersionManagementPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        // 立即标记为卸载中，阻止所有异步操作
+        _isUnloading = true;
+        
+        // 极速清理策略：在后台线程清理，不阻塞UI
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                // 清理 Canvas 资源
+                foreach (var bitmap in _previewBitmaps.Values)
+                {
+                    try { bitmap?.Dispose(); } catch { }
+                }
+                _previewBitmaps.Clear();
+                _canvasControls.Clear();
+                _currentPreviewPack = null;
+            }
+            catch
+            {
+                // 完全忽略清理异常
+            }
+        });
+        
+        // 取消注册事件，防止内存泄漏
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        this.Unloaded -= VersionManagementPage_Unloaded;
     }
     
     /// <summary>
@@ -37,6 +76,10 @@ public sealed partial class VersionManagementPage : Page
         /// </summary>
         private async void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            // 如果页面正在卸载，直接返回
+            if (_isUnloading)
+                return;
+                
             try
             {
                 if (e.PropertyName == nameof(ViewModel.IsInstallingExtension))

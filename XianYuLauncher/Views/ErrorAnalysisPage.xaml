@@ -40,28 +40,35 @@
             
             <TextBlock x:Uid="ErrorAnalysis_LogDetails" Text="实时日志详情" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
             
-            <ScrollViewer Grid.Row="1" 
-                           VerticalScrollBarVisibility="Auto" 
-                           HorizontalScrollBarVisibility="Disabled" 
-                           Background="{ThemeResource TextControlBackground}" 
-                           BorderBrush="{ThemeResource TextControlBorderBrush}" 
-                           BorderThickness="1" 
-                           CornerRadius="4" 
-                           Padding="8" 
-                           x:Name="LogScrollViewer">
-                <TextBox Text="{x:Bind ViewModel.FullLog, Mode=OneWay}" 
-                         FontFamily="Consolas" 
-                         FontSize="12" 
-                         TextWrapping="Wrap" 
-                         AcceptsReturn="True" 
-                         IsReadOnly="True" 
-                         Background="Transparent" 
-                         BorderBrush="Transparent" 
-                         BorderThickness="0" 
-                         TextChanged="LogTextBox_TextChanged" 
-                         x:Name="LogTextBox" 
-                         HorizontalAlignment="Stretch" />
-            </ScrollViewer>
+            <Border Grid.Row="1" 
+                    Background="{ThemeResource TextControlBackground}" 
+                    BorderBrush="{ThemeResource TextControlBorderBrush}" 
+                    BorderThickness="1" 
+                    CornerRadius="4">
+                <ListView ItemsSource="{x:Bind ViewModel.LogLines, Mode=OneWay}"
+                          x:Name="LogListView"
+                          SelectionMode="Extended"
+                          IsItemClickEnabled="False"
+                          Background="Transparent"
+                          Padding="8">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{x:Bind}" 
+                                       FontFamily="Consolas" 
+                                       FontSize="12" 
+                                       TextWrapping="Wrap"
+                                       Margin="0,2" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="MinHeight" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+            </Border>
         </Grid>
         
         <!-- 错误分析区域 -->

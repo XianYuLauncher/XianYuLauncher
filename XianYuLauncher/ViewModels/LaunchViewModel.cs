@@ -460,6 +460,9 @@ public partial class LaunchViewModel : ObservableRecipient
     private List<string> _gameOutput = new List<string>();
     private List<string> _gameError = new List<string>();
     private string _launchCommand = string.Empty;
+    
+    // 实时日志开关状态
+    private bool _isRealTimeLogsEnabled = false;
     private const string JavaPathKey = "JavaPath";
     private const string JavaSelectionModeKey = "JavaSelectionMode";
     private const string JavaVersionsKey = "JavaVersions";
@@ -794,15 +797,18 @@ public partial class LaunchViewModel : ObservableRecipient
         }
         Console.WriteLine($"[Minecraft Output]: {e.Line}");
         
-        // 实时更新到ErrorAnalysisViewModel
-        try
+        // 只有在启用实时日志时才更新到ErrorAnalysisViewModel
+        if (_isRealTimeLogsEnabled)
         {
-            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-            errorAnalysisViewModel.AddGameOutputLog(e.Line);
-        }
-        catch (Exception)
-        {
-            // 如果ErrorAnalysisViewModel不可用，忽略错误
+            try
+            {
+                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                errorAnalysisViewModel.AddGameOutputLog(e.Line);
+            }
+            catch (Exception)
+            {
+                // 如果ErrorAnalysisViewModel不可用，忽略错误
+            }
         }
     }
     
@@ -817,15 +823,18 @@ public partial class LaunchViewModel : ObservableRecipient
         }
         Console.WriteLine($"[Minecraft Error]: {e.Line}");
         
-        // 实时更新到ErrorAnalysisViewModel
-        try
+        // 只有在启用实时日志时才更新到ErrorAnalysisViewModel
+        if (_isRealTimeLogsEnabled)
         {
-            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-            errorAnalysisViewModel.AddGameErrorLog(e.Line);
-        }
-        catch (Exception)
-        {
-            // 如果ErrorAnalysisViewModel不可用，忽略错误
+            try
+            {
+                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                errorAnalysisViewModel.AddGameErrorLog(e.Line);
+            }
+            catch (Exception)
+            {
+                // 如果ErrorAnalysisViewModel不可用，忽略错误
+            }
         }
     }
     
@@ -1358,27 +1367,26 @@ public partial class LaunchViewModel : ObservableRecipient
                 System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] IsInfoBarOpen should now be: {IsInfoBarOpen}");
                 
                 // 检查是否启用了实时日志
-                bool isRealTimeLogsEnabled = false;
                 try
                 {
-                    isRealTimeLogsEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableRealTimeLogs") ?? false;
+                    _isRealTimeLogsEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableRealTimeLogs") ?? false;
                 }
                 catch
                 {
                     var settingsViewModel = App.GetService<SettingsViewModel>();
-                    isRealTimeLogsEnabled = settingsViewModel.EnableRealTimeLogs;
+                    _isRealTimeLogsEnabled = settingsViewModel.EnableRealTimeLogs;
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] Real-time logs enabled: {isRealTimeLogsEnabled}");
+                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] Real-time logs enabled: {_isRealTimeLogsEnabled}");
                 
                 // 更新"查看日志"按钮可见性
-                IsViewLogsButtonVisible = isRealTimeLogsEnabled;
+                IsViewLogsButtonVisible = _isRealTimeLogsEnabled;
                 
                 // 更新启动成功消息
                 LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_GameStartedSuccessfullyText".GetLocalized()}";
                 System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] LaunchSuccessMessage set to: {LaunchSuccessMessage}");
                 
-                if (isRealTimeLogsEnabled)
+                if (_isRealTimeLogsEnabled)
                 {
                     var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
                     errorAnalysisViewModel.SetLaunchCommand(_launchCommand);

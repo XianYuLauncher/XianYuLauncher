@@ -336,7 +336,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine("[延迟加载] 操作已取消");
+                // 操作被取消，静默处理
             }
             catch (Exception ex)
             {
@@ -598,12 +598,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public void OnNavigatedFrom()
     {
-        // 取消所有正在进行的异步操作
-        _pageCancellationTokenSource?.Cancel();
-        _pageCancellationTokenSource?.Dispose();
+        // 极速退出策略：直接放弃清理，让 GC 处理
+        // 标记为 null，防止后续访问
+        var oldCts = _pageCancellationTokenSource;
         _pageCancellationTokenSource = null;
         
-        System.Diagnostics.Debug.WriteLine("[DEBUG] 页面导航离开，已取消所有异步操作");
+        // 在后台线程尝试取消，完全不阻塞 UI
+        if (oldCts != null)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    oldCts.Cancel();
+                    oldCts.Dispose();
+                }
+                catch
+                {
+                    // 完全忽略
+                }
+            });
+        }
     }
 
     /// <summary>
@@ -1434,11 +1449,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 return;
             }
             
-            // 取消之前的操作并创建新的取消令牌
-            _pageCancellationTokenSource?.Cancel();
-            _pageCancellationTokenSource?.Dispose();
+            // 极速切换策略：直接替换，不等待旧的完成
+            var oldCts = _pageCancellationTokenSource;
             _pageCancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = _pageCancellationTokenSource.Token;
+            
+            // 在后台线程处理旧令牌源，完全不阻塞
+            if (oldCts != null)
+            {
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        oldCts.Cancel();
+                        oldCts.Dispose();
+                    }
+                    catch
+                    {
+                        // 完全忽略
+                    }
+                });
+            }
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
@@ -1474,7 +1505,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine("[DEBUG] 版本数据加载已取消");
+                // 操作被取消，静默处理
                 IsLoading = false;
             }
             catch (Exception ex)
@@ -1550,7 +1581,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 }
                 catch (OperationCanceledException)
                 {
-                    System.Diagnostics.Debug.WriteLine("[DEBUG] 图标加载已取消");
+                    // 操作被取消，静默处理
                 }
                 catch (Exception ex)
                 {

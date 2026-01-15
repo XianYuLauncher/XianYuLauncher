@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -25,6 +26,10 @@ namespace XianYuLauncher.ViewModels
 
         [ObservableProperty]
         private string _crashReason = string.Empty;
+        
+        // 新增：用于ListView的日志行集合
+        [ObservableProperty]
+        private ObservableCollection<string> _logLines = new();
         
         // 构造函数
         public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService)
@@ -199,10 +204,6 @@ namespace XianYuLauncher.ViewModels
         private const int LogUpdateIntervalMs = 100; // 日志更新间隔，单位毫秒
         private bool _isUpdateScheduled = false;
         
-        // 日志限制相关字段
-        private const int MaxLogLines = 10000; // 最大日志行数限制，避免内存占用过大
-        private const int LogTrimAmount = 2000; // 超过限制时，每次删除的行数
-        
         // 用于存储当前AI分析的取消令牌
         private System.Threading.CancellationTokenSource _aiAnalysisCts = null;
 
@@ -222,7 +223,30 @@ namespace XianYuLauncher.ViewModels
         _gameOutput = new List<string>(gameOutput);
         _gameError = new List<string>(gameError);
         
-        // 生成完整日志
+        // 清空并重新填充UI集合
+        LogLines.Clear();
+        
+        // 添加头部信息
+        LogLines.Add("=== 实时游戏日志 ===");
+        LogLines.Add($"日志开始时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        LogLines.Add("");
+        
+        // 添加输出日志
+        LogLines.Add("=== 游戏输出日志 ===");
+        foreach (var line in gameOutput)
+        {
+            LogLines.Add(line);
+        }
+        LogLines.Add("");
+        
+        // 添加错误日志
+        LogLines.Add("=== 游戏错误日志 ===");
+        foreach (var line in gameError)
+        {
+            LogLines.Add(line);
+        }
+        
+        // 生成完整日志（用于导出）
         GenerateFullLog();
     }
     
@@ -370,6 +394,13 @@ namespace XianYuLauncher.ViewModels
         _gameOutput = new List<string>();
         _gameError = new List<string>();
         
+        // 清空UI集合
+        LogLines.Clear();
+        LogLines.Add("=== 实时游戏日志 ===");
+        LogLines.Add($"日志开始时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        LogLines.Add("");
+        LogLines.Add("等待游戏输出...");
+        
         // 生成完整日志
         GenerateFullLog();
     }
@@ -384,12 +415,10 @@ namespace XianYuLauncher.ViewModels
         lock (_gameOutput)
         {
             _gameOutput.Add(logLine);
-            // 限制日志行数，避免内存占用过大
-            if (_gameOutput.Count > MaxLogLines)
-            {
-                _gameOutput.RemoveRange(0, LogTrimAmount);
-            }
         }
+        
+        // 直接添加到UI集合，利用虚拟化提升性能
+        AddLogLineToUI(logLine);
         
         ScheduleLogUpdate();
     }
@@ -404,14 +433,33 @@ namespace XianYuLauncher.ViewModels
         lock (_gameError)
         {
             _gameError.Add(logLine);
-            // 限制日志行数，避免内存占用过大
-            if (_gameError.Count > MaxLogLines)
-            {
-                _gameError.RemoveRange(0, LogTrimAmount);
-            }
         }
         
+        // 直接添加到UI集合，利用虚拟化提升性能
+        AddLogLineToUI(logLine);
+        
         ScheduleLogUpdate();
+    }
+    
+    /// <summary>
+    /// 添加日志行到UI集合（在UI线程上执行）
+    /// </summary>
+    private void AddLogLineToUI(string line)
+    {
+        // 确保在UI线程上执行
+        var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null && App.MainWindow != null)
+        {
+            dispatcherQueue = App.MainWindow.DispatcherQueue;
+        }
+        
+        if (dispatcherQueue != null)
+        {
+            dispatcherQueue.TryEnqueue(() =>
+            {
+                LogLines.Add(line);
+            });
+        }
     }
     
     /// <summary>
@@ -767,6 +815,9 @@ namespace XianYuLauncher.ViewModels
         private void ClearLogs()
         {
             FullLog = string.Empty;
+            LogLines.Clear();
+            LogLines.Add("日志已清空");
+            
             // 同时重置AI分析结果为默认文字
             AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
             IsAiAnalysisAvailable = false;
