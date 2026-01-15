@@ -2487,7 +2487,7 @@ namespace XianYuLauncher.ViewModels
                         }, _installCancellationTokenSource.Token);
                     }
 
-                    // 10. 处理files字段中的文件
+                    // 10. 处理files字段中的文件（多线程下载）
                     if (indexData.files != null)
                     {
                         var files = indexData.files as Newtonsoft.Json.Linq.JArray;
@@ -2500,11 +2500,28 @@ namespace XianYuLauncher.ViewModels
                             int totalFiles = files.Count;
                             int downloadedFiles = 0;
                             
+                            // 读取下载线程数设置
+                            var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
+                            System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
+                            
+                            // 使用SemaphoreSlim限制并发数
+                            using var semaphore = new SemaphoreSlim(threadCount);
+                            var downloadTasks = new List<Task>();
+                            
+                            // 预先创建所有需要的目录
                             foreach (var fileItem in files)
                             {
-                                // 检查是否取消
-                                _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
-                                
+                                var path = fileItem["path"]?.ToString();
+                                if (!string.IsNullOrEmpty(path))
+                                {
+                                    string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
+                                    string targetDir = Path.GetDirectoryName(targetPath);
+                                    Directory.CreateDirectory(targetDir);
+                                }
+                            }
+                            
+                            foreach (var fileItem in files)
+                            {
                                 // 获取downloads数组和path字段
                                 var downloads = fileItem["downloads"] as Newtonsoft.Json.Linq.JArray;
                                 var path = fileItem["path"]?.ToString();
@@ -2517,48 +2534,61 @@ namespace XianYuLauncher.ViewModels
                                     {
                                         // 构建目标路径
                                         string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
-                                        string targetDir = Path.GetDirectoryName(targetPath);
-                                        Directory.CreateDirectory(targetDir);
-                                        
-                                        // 获取当前下载的文件名，用于显示进度
                                         string fileName = Path.GetFileName(path);
-                                        InstallStatus = $"正在下载整合包文件: {fileName}...";
                                         
-                                        // 下载文件 - 优化版本
-                                        using (HttpClient client = new HttpClient())
+                                        // 创建下载任务
+                                        var downloadTask = Task.Run(async () =>
                                         {
-                                            // 设置User-Agent
-                                            client.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.0");
-                                            
-                                            // 设置超时
-                                            client.Timeout = TimeSpan.FromMinutes(5);
-                                            
-                                            using (HttpResponseMessage response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                                            await semaphore.WaitAsync(_installCancellationTokenSource.Token);
+                                            try
                                             {
-                                                response.EnsureSuccessStatusCode();
+                                                _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
                                                 
-                                                using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
-                                                // 使用FileOptions.Asynchronous启用异步IO
-                                                using (FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, FileOptions.Asynchronous))
+                                                System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 开始下载: {fileName}");
+                                                
+                                                using (HttpClient client = new HttpClient())
                                                 {
-                                                    // 增大缓冲区大小
-                                                    byte[] buffer = new byte[65536]; // 64KB缓冲区
-                                                    int bytesRead;
+                                                    client.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.0");
+                                                    client.Timeout = TimeSpan.FromMinutes(5);
                                                     
-                                                    // 使用CopyToAsync，它内部有优化
-                                                    await contentStream.CopyToAsync(fileStream, buffer.Length, _installCancellationTokenSource.Token);
+                                                    using (HttpResponseMessage response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                                                    {
+                                                        response.EnsureSuccessStatusCode();
+                                                        
+                                                        using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
+                                                        using (FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, FileOptions.Asynchronous))
+                                                        {
+                                                            await contentStream.CopyToAsync(fileStream, 65536, _installCancellationTokenSource.Token);
+                                                        }
+                                                    }
                                                 }
+                                                
+                                                System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 下载完成: {fileName}");
+                                                
+                                                // 更新进度（线程安全，使用DispatcherQueue确保在UI线程上更新）
+                                                var completed = Interlocked.Increment(ref downloadedFiles);
+                                                double progress = 80 + ((double)completed / totalFiles) * 20;
+                                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                                                {
+                                                    InstallProgress = progress;
+                                                    InstallProgressText = $"{progress:F1}%";
+                                                    InstallStatus = $"正在下载整合包文件 ({completed}/{totalFiles})...";
+                                                });
                                             }
-                                        }
+                                            finally
+                                            {
+                                                semaphore.Release();
+                                            }
+                                        }, _installCancellationTokenSource.Token);
                                         
-                                        // 更新进度
-                                        downloadedFiles++;
-                                        double progress = 80 + ((double)downloadedFiles / totalFiles) * 20;
-                                        InstallProgress = progress;
-                                        InstallProgressText = $"{progress:F1}%";
+                                        downloadTasks.Add(downloadTask);
                                     }
                                 }
                             }
+                            
+                            // 等待所有下载任务完成
+                            await Task.WhenAll(downloadTasks);
+                            System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 所有文件下载完成，共 {downloadedFiles} 个");
                         }
                     }
 
@@ -2997,22 +3027,33 @@ namespace XianYuLauncher.ViewModels
                     string resourcePacksDir = Path.Combine(modpackVersionDir, "resourcepacks");
                     string shaderPacksDir = Path.Combine(modpackVersionDir, "shaderpacks");
                     string dataPacksDir = Path.Combine(modpackVersionDir, "datapacks");
+                    Directory.CreateDirectory(modsDir);
+                    Directory.CreateDirectory(resourcePacksDir);
+                    Directory.CreateDirectory(shaderPacksDir);
+                    Directory.CreateDirectory(dataPacksDir);
                     
                     int totalFiles = fileDetails.Count;
                     int downloadedFiles = 0;
+                    
+                    // 读取下载线程数设置
+                    var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
+                    
+                    // 使用SemaphoreSlim限制并发数
+                    using var semaphore = new SemaphoreSlim(threadCount);
+                    var downloadTasks = new List<Task>();
 
                     foreach (var file in fileDetails)
                     {
-                        _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
                         string fileName = file.FileName ?? $"file_{file.Id}";
-                        InstallStatus = $"正在下载: {fileName} ({downloadedFiles + 1}/{totalFiles})";
-
+                        
                         if (!string.IsNullOrEmpty(file.DownloadUrl))
                         {
                             // 根据classId确定目标目录
                             string targetDir = modsDir; // 默认放到mods
+                            int classId = 0;
                             
-                            if (projectClassIdMap.TryGetValue(file.ModId, out int classId))
+                            if (projectClassIdMap.TryGetValue(file.ModId, out classId))
                             {
                                 targetDir = classId switch
                                 {
@@ -3022,18 +3063,50 @@ namespace XianYuLauncher.ViewModels
                                     6945 => dataPacksDir,   // DataPacks
                                     _ => modsDir            // 未知类型默认放mods
                                 };
-                                System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] {fileName} classId={classId} -> {Path.GetFileName(targetDir)}");
                             }
                             
-                            Directory.CreateDirectory(targetDir);
                             string targetPath = Path.Combine(targetDir, fileName);
-                            await _curseForgeService.DownloadFileAsync(file.DownloadUrl, targetPath, null, _installCancellationTokenSource.Token);
+                            string downloadUrl = file.DownloadUrl;
+                            int fileClassId = classId;
+                            string fileNameCopy = fileName;
+                            
+                            // 创建下载任务
+                            var downloadTask = Task.Run(async () =>
+                            {
+                                await semaphore.WaitAsync(_installCancellationTokenSource.Token);
+                                try
+                                {
+                                    _installCancellationTokenSource.Token.ThrowIfCancellationRequested();
+                                    
+                                    System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 开始下载: {fileNameCopy} (classId={fileClassId})");
+                                    
+                                    await _curseForgeService.DownloadFileAsync(downloadUrl, targetPath, null, _installCancellationTokenSource.Token);
+                                    
+                                    System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 下载完成: {fileNameCopy}");
+                                    
+                                    // 更新进度（线程安全，使用DispatcherQueue确保在UI线程上更新）
+                                    var completed = Interlocked.Increment(ref downloadedFiles);
+                                    double progress = 70 + ((double)completed / totalFiles) * 30;
+                                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                                    {
+                                        InstallProgress = progress;
+                                        InstallProgressText = $"{progress:F1}%";
+                                        InstallStatus = $"正在下载整合包文件 ({completed}/{totalFiles})...";
+                                    });
+                                }
+                                finally
+                                {
+                                    semaphore.Release();
+                                }
+                            }, _installCancellationTokenSource.Token);
+                            
+                            downloadTasks.Add(downloadTask);
                         }
-
-                        downloadedFiles++;
-                        InstallProgress = 70 + ((double)downloadedFiles / totalFiles) * 30;
-                        InstallProgressText = $"{InstallProgress:F1}%";
                     }
+                    
+                    // 等待所有下载任务完成
+                    await Task.WhenAll(downloadTasks);
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 所有文件下载完成，共 {downloadedFiles} 个");
                 }
 
                 InstallStatus = "整合包安装完成！";
