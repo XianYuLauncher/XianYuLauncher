@@ -730,7 +730,56 @@ public partial class LaunchViewModel : ObservableRecipient
         
         public async Task<List<string>> GetJvmArgumentsAsync(string authServer)
         {
-            return await _authlibInjectorService.GetJvmArgumentsAsync(authServer);
+            var jvmArgs = await _authlibInjectorService.GetJvmArgumentsAsync(authServer);
+            
+            // 转换MSIX虚拟路径为真实物理路径
+            // 因为Java进程从沙盒外启动，需要使用真实路径
+            for (int i = 0; i < jvmArgs.Count; i++)
+            {
+                if (jvmArgs[i].StartsWith("-javaagent:"))
+                {
+                    string originalArg = jvmArgs[i];
+                    // 提取路径部分：-javaagent:路径=参数
+                    int equalIndex = originalArg.IndexOf('=', "-javaagent:".Length);
+                    string pathPart = equalIndex > 0 
+                        ? originalArg.Substring("-javaagent:".Length, equalIndex - "-javaagent:".Length)
+                        : originalArg.Substring("-javaagent:".Length);
+                    
+                    // 检查是否需要转换路径
+                    if (!pathPart.Contains("Packages"))
+                    {
+                        // 这是虚拟路径，转换为真实路径
+                        try
+                        {
+                            string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                            string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                            string realPath = pathPart.Replace(
+                                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XianYuLauncher"),
+                                Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher")
+                            );
+                            
+                            // 重建参数
+                            if (equalIndex > 0)
+                            {
+                                string paramPart = originalArg.Substring(equalIndex);
+                                jvmArgs[i] = $"-javaagent:{realPath}{paramPart}";
+                            }
+                            else
+                            {
+                                jvmArgs[i] = $"-javaagent:{realPath}";
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 路径转换: {pathPart} -> {realPath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 路径转换失败: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            
+            return jvmArgs;
         }
     }
     
