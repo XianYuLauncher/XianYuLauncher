@@ -1,3 +1,7 @@
+![XianYu Launcher Cover](/XianYuLauncher/Assets/cover_en.png)
+
+<div align="center">
+
 # XianYu Launcher
 
 A modern, feature-rich Minecraft Java Edition launcher with a polished user interface.
@@ -8,6 +12,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 [![GitHub Release](https://img.shields.io/github/v/release/XianYuLauncher/XianYuLauncher?style=flat-square%20Release&logo=github)](https://github.com/N123999/XianYuLauncher-Help/releases)
 [![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
 [![Bilibili](https://img.shields.io/badge/bilibili-@Spirit灵动工作室-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
+</div>
 
 ## Features
 
