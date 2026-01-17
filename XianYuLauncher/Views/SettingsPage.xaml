@@ -1106,7 +1106,6 @@
                                                 </TextBlock>
                                                 <TextBlock Text="Copyright (c) 2012-2025, Matvei &quot;fragmer&quot; Stefarov" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
                                                 <TextBlock Text="许可证：BSD 3-Clause License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                                <TextBlock Text="用于解析 Minecraft NBT 格式文件" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.6" FontStyle="Italic" />
                                             </StackPanel>
 
                                             <!-- 许可证说明 -->
