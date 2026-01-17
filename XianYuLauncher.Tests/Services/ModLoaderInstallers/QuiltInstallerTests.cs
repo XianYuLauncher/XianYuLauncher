@@ -7,7 +7,9 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
+using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
@@ -16,7 +18,9 @@ public class QuiltInstallerTests : IDisposable
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILibraryManager> _mockLibraryManager;
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
+    private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<ILogger<QuiltInstaller>> _mockLogger;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly QuiltInstaller _quiltInstaller;
     private readonly string _testDirectory;
 
@@ -25,12 +29,16 @@ public class QuiltInstallerTests : IDisposable
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLibraryManager = new Mock<ILibraryManager>();
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
+        _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockLogger = new Mock<ILogger<QuiltInstaller>>();
+        _downloadSourceFactory = new DownloadSourceFactory();
         
         _quiltInstaller = new QuiltInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
+            _downloadSourceFactory,
+            _mockLocalSettingsService.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"QuiltInstallerTests_{Guid.NewGuid()}");

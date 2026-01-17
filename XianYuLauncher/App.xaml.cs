@@ -108,6 +108,18 @@ public partial class App : Application
             services.AddSingleton<IFileService, FileService>();
             services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<IDownloadManager, DownloadManager>();
+            
+            // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）
+            services.AddSingleton<FallbackDownloadManager>(sp =>
+            {
+                var innerManager = sp.GetRequiredService<IDownloadManager>();
+                var sourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(FallbackDownloadManager));
+                var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<FallbackDownloadManager>>();
+                return new FallbackDownloadManager(innerManager, sourceFactory, httpClient, logger);
+            });
+            
             services.AddSingleton<ILibraryManager, LibraryManager>();
             services.AddSingleton<IAssetManager, AssetManager>();
             services.AddSingleton<IVersionInfoManager, VersionInfoManager>();

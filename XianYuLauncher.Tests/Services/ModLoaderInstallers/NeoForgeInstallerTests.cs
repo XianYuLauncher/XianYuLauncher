@@ -7,7 +7,9 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
+using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
@@ -17,7 +19,9 @@ public class NeoForgeInstallerTests : IDisposable
     private readonly Mock<ILibraryManager> _mockLibraryManager;
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
     private readonly Mock<IProcessorExecutor> _mockProcessorExecutor;
+    private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<ILogger<NeoForgeInstaller>> _mockLogger;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly NeoForgeInstaller _neoForgeInstaller;
     private readonly string _testDirectory;
 
@@ -27,13 +31,17 @@ public class NeoForgeInstallerTests : IDisposable
         _mockLibraryManager = new Mock<ILibraryManager>();
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
         _mockProcessorExecutor = new Mock<IProcessorExecutor>();
+        _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockLogger = new Mock<ILogger<NeoForgeInstaller>>();
+        _downloadSourceFactory = new DownloadSourceFactory();
         
         _neoForgeInstaller = new NeoForgeInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
             _mockProcessorExecutor.Object,
+            _downloadSourceFactory,
+            _mockLocalSettingsService.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"NeoForgeInstallerTests_{Guid.NewGuid()}");

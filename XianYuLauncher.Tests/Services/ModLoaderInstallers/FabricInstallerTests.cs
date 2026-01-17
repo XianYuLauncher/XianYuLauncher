@@ -10,7 +10,9 @@ using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
+using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
@@ -19,7 +21,9 @@ public class FabricInstallerTests : IDisposable
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILibraryManager> _mockLibraryManager;
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
+    private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<ILogger<FabricInstaller>> _mockLogger;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FabricInstaller _fabricInstaller;
     private readonly string _testDirectory;
 
@@ -28,12 +32,16 @@ public class FabricInstallerTests : IDisposable
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLibraryManager = new Mock<ILibraryManager>();
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
+        _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockLogger = new Mock<ILogger<FabricInstaller>>();
+        _downloadSourceFactory = new DownloadSourceFactory();
         
         _fabricInstaller = new FabricInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
+            _downloadSourceFactory,
+            _mockLocalSettingsService.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"FabricInstallerTests_{Guid.NewGuid()}");
