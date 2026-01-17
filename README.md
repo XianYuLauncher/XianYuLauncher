@@ -22,8 +22,8 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 - **Account Management**: Microsoft account integration, offline support (China-only)
 - **Real-time Logs**: Monitor game output with live log viewing
 - **Crash Analysis**: Intelligent error detection and diagnostic tools
-- **Resource Downloads**: Browse and install mods, resource packs, and shaders from Modrinth
-- **Customizable Settings**: Fine-tune your game experience with detailed options including memory allocation, resolution, and JVM arguments
+- **Resource Downloads**: Browse and install mods, resource packs, and shaders from Modrinth and CurseForge.
+- **Customizable Settings**: Fine-tune your game experience with detailed options including memory allocation
 - **Multi-language Support**: Available in English and Chinese
 
 ## Getting Started
@@ -34,7 +34,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 
 ### Installation
 
-1. **Download**: Get the latest release from the [Releases](https://github.com/N123999/XianYuLauncher/releases) page.
+1. **Download**: Get the latest release from the [Releases](https://github.com/XianYuLauncher/XianYuLauncher/releases) page.
 2. **Extract**: Unzip the downloaded package to your preferred location.
 3. **Install & Run**: Refer to the `安装教程.txt` file included in the package and follow the steps to complete the installation.
 
@@ -62,8 +62,8 @@ For the full license text, please refer to the [LICENSE](LICENSE) file.
 
 ## Contact
 
-- **GitHub**: [N123999/XianYuLauncher](https://github.com/N123999/XianYuLauncher)
-- **Issues**: [Report bugs or request features](https://github.com/N123999/XianYuLauncher/issues)
+- **GitHub**: [N123999/XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
+- **Issues**: [Report bugs or request features](https://github.com/XianYuLauncher/XianYuLauncher/issues)
 
 ---
 
