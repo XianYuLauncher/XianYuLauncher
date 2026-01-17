@@ -62,7 +62,7 @@ For the full license text, please refer to the [LICENSE](LICENSE) file.
 
 ## Contact
 
-- **GitHub**: [N123999/XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
+- **GitHub**: [XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
 - **Issues**: [Report bugs or request features](https://github.com/XianYuLauncher/XianYuLauncher/issues)
 
 ---
