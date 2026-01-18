@@ -393,31 +393,46 @@
                         
                         <ScrollViewer Grid.Row="0" Margin="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="16" Padding="0,0,0,24" HorizontalAlignment="Stretch">
-                            <!-- 当前加载器信息卡片 -->
+                            <!-- 当前加载器信息卡片 - 使用 Expander 样式保持一致 -->
                             <Border 
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16">
-                                <Grid>
+                                CornerRadius="4"
+                                Padding="16,12">
+                                <Grid HorizontalAlignment="Stretch">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     
-                                    <!-- 左侧图标 -->
+                                    <!-- 左侧图标 - 与下方 Expander 中的图标大小一致 -->
                                     <Border 
                                         Grid.Column="0"
-                                        Width="40" Height="40"
-                                        CornerRadius="8"
+                                        Width="32" Height="32"
+                                        CornerRadius="6"
                                         Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                                        Margin="0,0,16,0">
+                                        Margin="0,0,12,0">
+                                        <!-- 原版时显示默认图标 -->
                                         <FontIcon 
                                             FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                             Glyph="&#xE946;" 
-                                            FontSize="18"
-                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                            FontSize="16"
+                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                            Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                    </Border>
+                                    <!-- 非原版时显示加载器图标 -->
+                                    <Border 
+                                        Grid.Column="0"
+                                        Width="32" Height="32"
+                                        CornerRadius="6"
+                                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                        Margin="0,0,12,0"
+                                        Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <Image 
+                                            Source="{Binding CurrentLoaderIconUrl, Mode=OneWay}" 
+                                            Width="20" Height="20" 
+                                            Stretch="Uniform" />
                                     </Border>
                                     
                                     <!-- 右侧信息 -->
