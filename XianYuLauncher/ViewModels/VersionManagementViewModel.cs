@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.ViewModels;
@@ -158,6 +159,98 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 截图列表是否为空
     /// </summary>
     public bool IsScreenshotListEmpty => Screenshots.Count == 0;
+    
+    #region 概览Tab相关属性
+    
+    /// <summary>
+    /// 启动次数
+    /// </summary>
+    [ObservableProperty]
+    private int _launchCount = 0;
+    
+    /// <summary>
+    /// 总游戏时长（秒）
+    /// </summary>
+    [ObservableProperty]
+    private long _totalPlayTimeSeconds = 0;
+    
+    /// <summary>
+    /// 格式化的游戏时长显示
+    /// </summary>
+    public string FormattedPlayTime
+    {
+        get
+        {
+            if (TotalPlayTimeSeconds < 60)
+                return $"{TotalPlayTimeSeconds} 秒";
+            if (TotalPlayTimeSeconds < 3600)
+                return $"{TotalPlayTimeSeconds / 60} 分钟";
+            var hours = TotalPlayTimeSeconds / 3600.0;
+            return $"{hours:F1} 小时";
+        }
+    }
+    
+    /// <summary>
+    /// 最后启动时间
+    /// </summary>
+    [ObservableProperty]
+    private DateTime? _lastLaunchTime;
+    
+    /// <summary>
+    /// 格式化的最后启动时间
+    /// </summary>
+    public string FormattedLastLaunchTime
+    {
+        get
+        {
+            if (LastLaunchTime == null)
+                return "从未启动";
+            return LastLaunchTime.Value.ToString("yyyy-MM-dd HH:mm");
+        }
+    }
+    
+    /// <summary>
+    /// Mod数量
+    /// </summary>
+    public int ModCount => Mods.Count;
+    
+    /// <summary>
+    /// 光影数量
+    /// </summary>
+    public int ShaderCount => Shaders.Count;
+    
+    /// <summary>
+    /// 资源包数量
+    /// </summary>
+    public int ResourcePackCount => ResourcePacks.Count;
+    
+    /// <summary>
+    /// 截图数量
+    /// </summary>
+    public int ScreenshotCount => Screenshots.Count;
+    
+    /// <summary>
+    /// 存档列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<SaveInfo> _saves = new();
+    
+    /// <summary>
+    /// 存档列表是否为空
+    /// </summary>
+    public bool IsSaveListEmpty => Saves.Count == 0;
+    
+    partial void OnTotalPlayTimeSecondsChanged(long value)
+    {
+        OnPropertyChanged(nameof(FormattedPlayTime));
+    }
+    
+    partial void OnLastLaunchTimeChanged(DateTime? value)
+    {
+        OnPropertyChanged(nameof(FormattedLastLaunchTime));
+    }
+    
+    #endregion
     
     #region 扩展Tab相关属性
     
@@ -440,6 +533,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IDownloadManager _downloadManager;
     private readonly ModInfoService _modInfoService;
+    private readonly IGameHistoryService _gameHistoryService;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -480,7 +574,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IModLoaderInstallerFactory modLoaderInstallerFactory,
         IVersionInfoManager versionInfoManager,
         IDownloadManager downloadManager,
-        ModInfoService modInfoService)
+        ModInfoService modInfoService,
+        IGameHistoryService gameHistoryService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -498,6 +593,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionInfoManager = versionInfoManager;
         _downloadManager = downloadManager;
         _modInfoService = modInfoService;
+        _gameHistoryService = gameHistoryService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1511,13 +1607,19 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 cancellationToken.ThrowIfCancellationRequested();
                 
+                // 加载概览统计数据
+                await LoadOverviewDataAsync();
+                
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // 快速加载所有资源列表（不加载图标）
                 await Task.WhenAll(
                     LoadModsListOnlyAsync(),
                     LoadShadersListOnlyAsync(),
                     LoadResourcePacksListOnlyAsync(),
                     LoadMapsListOnlyAsync(),
-                    LoadScreenshotsAsync()
+                    LoadScreenshotsAsync(),
+                    LoadSavesAsync()
                 );
                 
                 // 加载完成后隐藏加载圈，显示页面
@@ -1645,5 +1747,226 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 semaphore.Release();
             }
         }
+        
+        #region 概览Tab相关方法
+        
+        /// <summary>
+        /// 加载概览统计数据
+        /// </summary>
+        private async Task LoadOverviewDataAsync()
+        {
+            if (SelectedVersion == null)
+                return;
+            
+            try
+            {
+                var history = await _gameHistoryService.GetVersionHistoryAsync(SelectedVersion.Name);
+                
+                if (history != null)
+                {
+                    LaunchCount = history.LaunchCount;
+                    TotalPlayTimeSeconds = history.TotalPlayTimeSeconds;
+                    LastLaunchTime = history.LastLaunchTime;
+                }
+                else
+                {
+                    LaunchCount = 0;
+                    TotalPlayTimeSeconds = 0;
+                    LastLaunchTime = null;
+                }
+                
+                // 通知资源数量属性更新
+                OnPropertyChanged(nameof(ModCount));
+                OnPropertyChanged(nameof(ShaderCount));
+                OnPropertyChanged(nameof(ResourcePackCount));
+                OnPropertyChanged(nameof(ScreenshotCount));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 加载概览数据失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 加载存档列表
+        /// </summary>
+        private async Task LoadSavesAsync()
+        {
+            if (SelectedVersion == null)
+                return;
+            
+            try
+            {
+                var savesPath = Path.Combine(SelectedVersion.Path, "saves");
+                
+                if (!Directory.Exists(savesPath))
+                {
+                    Saves.Clear();
+                    OnPropertyChanged(nameof(IsSaveListEmpty));
+                    return;
+                }
+                
+                var saveDirectories = Directory.GetDirectories(savesPath);
+                var saveInfos = new List<SaveInfo>();
+                
+                foreach (var saveDir in saveDirectories)
+                {
+                    var levelDatPath = Path.Combine(saveDir, "level.dat");
+                    if (!File.Exists(levelDatPath))
+                        continue;
+                    
+                    var saveInfo = new SaveInfo
+                    {
+                        Name = Path.GetFileName(saveDir),
+                        Path = saveDir,
+                        DisplayName = Path.GetFileName(saveDir),
+                        LastPlayed = Directory.GetLastWriteTime(saveDir)
+                    };
+                    
+                    // 尝试读取 level.dat 获取存档名称
+                    try
+                    {
+                        var levelData = await ReadLevelDatAsync(levelDatPath);
+                        if (levelData != null)
+                        {
+                            if (!string.IsNullOrEmpty(levelData.LevelName))
+                                saveInfo.DisplayName = levelData.LevelName;
+                            saveInfo.GameMode = levelData.GameType switch
+                            {
+                                0 => "生存",
+                                1 => "创造",
+                                2 => "冒险",
+                                3 => "旁观",
+                                _ => "未知"
+                            };
+                            if (levelData.LastPlayed > 0)
+                            {
+                                saveInfo.LastPlayed = DateTimeOffset.FromUnixTimeMilliseconds(levelData.LastPlayed).LocalDateTime;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略读取错误
+                    }
+                    
+                    saveInfos.Add(saveInfo);
+                }
+                
+                // 按最后游玩时间排序
+                saveInfos = saveInfos.OrderByDescending(s => s.LastPlayed).ToList();
+                
+                // 更新UI
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    Saves.Clear();
+                    foreach (var save in saveInfos)
+                    {
+                        Saves.Add(save);
+                    }
+                    OnPropertyChanged(nameof(IsSaveListEmpty));
+                });
+                
+                // 异步加载存档图标
+                _ = LoadSaveIconsAsync(saveInfos);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 加载存档列表失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 读取 level.dat 文件
+        /// </summary>
+        private async Task<LevelDatInfo?> ReadLevelDatAsync(string levelDatPath)
+        {
+            try
+            {
+                await using var fileStream = File.OpenRead(levelDatPath);
+                await using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
+                using var memoryStream = new MemoryStream();
+                await gzipStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+                
+                // 使用 fNbt 库解析 NBT 数据
+                var nbtFile = new fNbt.NbtFile();
+                nbtFile.LoadFromStream(memoryStream, fNbt.NbtCompression.None);
+                
+                var dataTag = nbtFile.RootTag["Data"] as fNbt.NbtCompound;
+                if (dataTag == null)
+                    return null;
+                
+                return new LevelDatInfo
+                {
+                    LevelName = dataTag["LevelName"]?.StringValue ?? string.Empty,
+                    GameType = dataTag["GameType"]?.IntValue ?? 0,
+                    LastPlayed = dataTag["LastPlayed"]?.LongValue ?? 0
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 异步加载存档图标
+        /// </summary>
+        private async Task LoadSaveIconsAsync(List<SaveInfo> saves)
+        {
+            foreach (var save in saves)
+            {
+                if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                    break;
+                
+                try
+                {
+                    var iconPath = Path.Combine(save.Path, "icon.png");
+                    if (File.Exists(iconPath))
+                    {
+                        var bitmap = new BitmapImage();
+                        await using var stream = File.OpenRead(iconPath);
+                        var randomAccessStream = stream.AsRandomAccessStream();
+                        
+                        App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+                        {
+                            try
+                            {
+                                await bitmap.SetSourceAsync(randomAccessStream);
+                                save.Icon = bitmap;
+                            }
+                            catch
+                            {
+                                // 忽略图标加载错误
+                            }
+                        });
+                    }
+                }
+                catch
+                {
+                    // 忽略图标加载错误
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 启动指定存档的命令
+        /// </summary>
+        [RelayCommand]
+        private void LaunchWithSave(SaveInfo? save)
+        {
+            if (save == null || SelectedVersion == null)
+                return;
+            
+            // 导航到启动页面并传递存档信息
+            _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchWithSaveParameter
+            {
+                VersionName = SelectedVersion.Name,
+                SaveName = save.Name
+            });
+        }
+        
+        #endregion
 
 }
