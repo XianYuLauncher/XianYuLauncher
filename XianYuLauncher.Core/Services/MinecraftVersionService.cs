@@ -675,8 +675,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             else
             {
-                // 原版Minecraft版本
-                minecraftVersion = versionName;
+                // 原版Minecraft版本 - 使用原始版本ID而不是自定义名称
+                minecraftVersion = versionId;
                 modLoaderType = "vanilla";
             }
             
