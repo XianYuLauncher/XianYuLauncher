@@ -168,13 +168,9 @@ namespace XianYuLauncher.Views
                 // 设置游戏崩溃状态为true，触发分析
                 ViewModel.SetGameCrashStatus(true);
             }
-            else
-            {
-                // 没有导航参数时，只重置日志数据，不清空启动命令
-                // 这是为了处理"启动游戏实时日志"功能自动导航到页面的情况
-                // 启动命令已经通过 SetLaunchCommand 方法设置
-                ViewModel.ClearLogsOnly();
-            }
+            // 如果没有导航参数，说明是从 InfoBar 点击"查看日志"按钮进来的
+            // 此时日志已经在 ViewModel 中了（因为是 Singleton），不需要清空
+            // 只需要确保页面正常显示即可
         }
 
         /// <summary>

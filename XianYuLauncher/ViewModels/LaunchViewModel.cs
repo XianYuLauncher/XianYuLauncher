@@ -155,8 +155,22 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="gameError">游戏错误日志副本</param>
     private async Task ShowErrorAnalysisDialog(int exitCode, string launchCommand, List<string> gameOutput, List<string> gameError)
     {
-        // 分析崩溃原因（异步执行，不阻塞）
-        string errorAnalysis = await AnalyzeCrash(gameOutput, gameError);
+        // 等待其他 ContentDialog 关闭
+        await _dialogSemaphore.WaitAsync();
+        
+        try
+        {
+            // 如果已经有 ContentDialog 打开，等待它关闭
+            while (_isContentDialogOpen)
+            {
+                System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 检测到其他 ContentDialog 正在显示，等待关闭...");
+                await Task.Delay(500);
+            }
+            
+            _isContentDialogOpen = true;
+            
+            // 分析崩溃原因（异步执行，不阻塞）
+            string errorAnalysis = await AnalyzeCrash(gameOutput, gameError);
         
         // 合并日志，移除输出日志字段
         List<string> allLogs = new List<string>();
@@ -168,49 +182,202 @@ public partial class LaunchViewModel : ObservableRecipient
         allLogs.Add("=== 游戏错误日志 ===");
         allLogs.AddRange(gameError);
         allLogs.Add("");
-        allLogs.Add("=== 提示 ===");
-        allLogs.Add("请不要将此页面截图,导出崩溃日志发给专业人员以解决问题");
         
         // 创建完整的日志文本
         string fullLog = string.Join(Environment.NewLine, allLogs);
         
-        // 创建错误分析弹窗（已经在 UI 线程上，不需要再次 TryEnqueue）
+        // 创建 Fluent Design 风格的崩溃提示内容
+        var warningPanel = new StackPanel
+        {
+            Spacing = 20,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 0)
+        };
+        
+        // 顶部警告卡片（Fluent Design 风格）
+        var warningCard = new Border
+        {
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(25, 232, 17, 35)), // 淡红色背景
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28)), // Fluent 红色边框
+            BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
+            CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
+            Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
+        };
+        
+        var warningCardContent = new StackPanel { Spacing = 12 };
+        
+        // 标题行（图标 + 文字）
+        var headerStack = new StackPanel
+        {
+            Orientation = Microsoft.UI.Xaml.Controls.Orientation.Horizontal,
+            Spacing = 12
+        };
+        
+        var warningIcon = new FontIcon
+        {
+            Glyph = "\uE7BA", // 警告图标
+            FontSize = 24,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28))
+        };
+        
+        var warningTitle = new TextBlock
+        {
+            Text = "游戏意外退出",
+            FontSize = 20,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28)),
+            VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center
+        };
+        
+        headerStack.Children.Add(warningIcon);
+        headerStack.Children.Add(warningTitle);
+        warningCardContent.Children.Add(headerStack);
+        
+        // 提示文字
+        var hintText = new TextBlock
+        {
+            Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
+            FontSize = 14,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(200, 0, 0, 0))
+        };
+        warningCardContent.Children.Add(hintText);
+        
+        warningCard.Child = warningCardContent;
+        warningPanel.Children.Add(warningCard);
+        
+        // 操作指引卡片（灰色）
+        var instructionCard = new Border
+        {
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(10, 0, 0, 0)), // 淡灰色背景
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(30, 0, 0, 0)), // 灰色边框
+            BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
+            CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
+            Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
+        };
+        
+        var instructionStack = new StackPanel { Spacing = 10 };
+        
+        var instructionTitle = new TextBlock
+        {
+            Text = "📋 正确的求助步骤",
+            FontSize = 16,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 4)
+        };
+        instructionStack.Children.Add(instructionTitle);
+        
+        var step1 = new TextBlock
+        {
+            Text = "1. 点击下方「导出崩溃日志」按钮",
+            FontSize = 14,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Opacity = 0.9
+        };
+        instructionStack.Children.Add(step1);
+        
+        var step2 = new TextBlock
+        {
+            Text = "2. 将导出的 ZIP 文件发送给技术支持",
+            FontSize = 14,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Opacity = 0.9
+        };
+        instructionStack.Children.Add(step2);
+        
+        var step3 = new TextBlock
+        {
+            Text = "💡 日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
+            FontSize = 13,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(200, 0, 0, 0)),
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 4, 0, 0)
+        };
+        instructionStack.Children.Add(step3);
+        
+        instructionCard.Child = instructionStack;
+        warningPanel.Children.Add(instructionCard);
+        
+        // 日志预览（可折叠）
+        var logExpander = new Microsoft.UI.Xaml.Controls.Expander
+        {
+            Header = "查看日志预览",
+            IsExpanded = false,
+            HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch
+        };
+        
+        var logScroller = new ScrollViewer
+        {
+            Content = new TextBlock
+            {
+                Text = fullLog,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                FontSize = 11,
+                TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 0, 0, 0))
+            },
+            MaxHeight = 200,
+            VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 8, 0, 0)
+        };
+        
+        logExpander.Content = logScroller;
+        warningPanel.Children.Add(logExpander);
+        
+        // 创建错误分析弹窗
         var dialog = new ContentDialog
         {
-            Title = "游戏错误分析",
-            Content = new ScrollViewer
-            {
-                Content = new TextBlock
-                {
-                    Text = fullLog,
-                    FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
-                    FontSize = 12,
-                    TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                    Margin = new Microsoft.UI.Xaml.Thickness(12)
-                },
-                MaxHeight = 400,
-                VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto
-            },
-            PrimaryButtonText = "确定",
-            SecondaryButtonText = "详细错误日志",
+            Title = "游戏崩溃",
+            Content = warningPanel,
+            PrimaryButtonText = "导出崩溃日志",
+            SecondaryButtonText = "查看详细日志",
+            CloseButtonText = "关闭",
+            DefaultButton = ContentDialogButton.Primary,
             XamlRoot = App.MainWindow.Content.XamlRoot
         };
         
         // 处理按钮点击事件
-        dialog.PrimaryButtonClick += (sender, args) =>
+        dialog.PrimaryButtonClick += async (sender, args) =>
         {
-            // 确定按钮，关闭弹窗
+            // 导出崩溃日志按钮
+            var navigationService = App.GetService<INavigationService>();
+            navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
+            
+            // 延迟一下，确保页面加载完成
+            await Task.Delay(500);
+            
+            // 自动触发导出
+            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+            await errorAnalysisViewModel.ExportErrorLogsCommand.ExecuteAsync(null);
         };
         
         dialog.SecondaryButtonClick += (sender, args) =>
         {
-            // 详细错误日志按钮，导航到错误分析系统页面
+            // 查看详细日志按钮
             var navigationService = App.GetService<INavigationService>();
             navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
         };
         
-        await dialog.ShowAsync();
+            await dialog.ShowAsync();
+        }
+        catch (COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+        {
+            // 捕获 "Only a single ContentDialog can be open at any time" 异常
+            System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] ContentDialog 冲突: {ex.Message}");
+            
+            // 直接导航到 ErrorAnalysisPage，不显示弹窗
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                var navigationService = App.GetService<INavigationService>();
+                navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
+            });
+        }
+        finally
+        {
+            _isContentDialogOpen = false;
+            _dialogSemaphore.Release();
+        }
     }
     
     /// <summary>
@@ -653,6 +820,16 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 是否正在下载/准备中
     /// </summary>
     private bool _isPreparingGame = false;
+    
+    /// <summary>
+    /// 当前是否有 ContentDialog 正在显示
+    /// </summary>
+    private bool _isContentDialogOpen = false;
+    
+    /// <summary>
+    /// ContentDialog 互斥锁
+    /// </summary>
+    private readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
     
     /// <summary>
     /// 当前版本路径，用于彩蛋显示
@@ -1258,9 +1435,12 @@ public partial class LaunchViewModel : ObservableRecipient
                         ? "正在进行外置登录续签" 
                         : "LaunchPage_MicrosoftAccountRenewingText".GetLocalized();
                     
-                    // 显示InfoBar消息（刷新开始前）
+                    // 显示 InfoBar 消息（刷新开始前）
                     IsLaunchSuccessInfoBarOpen = true;
                     LaunchSuccessMessage = $"{SelectedVersion} {renewingText}";
+                    
+                    // Token 刷新阶段不显示"查看日志"按钮
+                    IsViewLogsButtonVisible = false;
                 }
                 
                 var result = await _tokenRefreshService.CheckAndRefreshTokenAsync(SelectedProfile);
@@ -1349,6 +1529,9 @@ public partial class LaunchViewModel : ObservableRecipient
             IsLaunchSuccessInfoBarOpen = true;
             CurrentDownloadItem = "LaunchPage_PreparingGameFilesText".GetLocalized();
             LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_PreparingGameFilesText".GetLocalized()}";
+            
+            // 准备阶段不显示"查看日志"按钮
+            IsViewLogsButtonVisible = false;
             
             // 标记正在准备游戏
             _isPreparingGame = true;
@@ -1448,9 +1631,10 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] Game launched successfully");
                 
-                // 关闭准备阶段的InfoBar，切换到游戏运行状态
-                IsLaunchSuccessInfoBarOpen = false;
-                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] Set IsLaunchSuccessInfoBarOpen = false");
+                // 游戏启动成功，显示"查看日志"按钮
+                IsLaunchSuccessInfoBarOpen = true;
+                IsViewLogsButtonVisible = _isRealTimeLogsEnabled; // 只有开启实时日志时才显示按钮
+                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 游戏启动成功，IsViewLogsButtonVisible = {IsViewLogsButtonVisible}");
                 
                 IsGameRunning = true;
                 System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] Set IsGameRunning = true");
@@ -1480,6 +1664,11 @@ public partial class LaunchViewModel : ObservableRecipient
                 {
                     var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
                     errorAnalysisViewModel.SetLaunchCommand(_launchCommand);
+                    
+                    // 设置版本信息（用于导出日志时包含 version.json）
+                    string minecraftPath = _fileService.GetMinecraftDataPath();
+                    errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+                    
                     _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
                 }
                 
@@ -1496,20 +1685,45 @@ public partial class LaunchViewModel : ObservableRecipient
                     {
                         App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
                         {
-                            var offlineDialog = new ContentDialog
-                            {
-                                Title = "离线游玩提示",
-                                Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
-                                PrimaryButtonText = "知道了",
-                                SecondaryButtonText = "支持正版",
-                                XamlRoot = App.MainWindow.Content.XamlRoot
-                            };
+                            // 等待其他 ContentDialog 关闭
+                            await _dialogSemaphore.WaitAsync();
                             
-                            var dialogResult = await offlineDialog.ShowAsync();
-                            if (dialogResult == ContentDialogResult.Secondary)
+                            try
                             {
-                                var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
-                                await Windows.System.Launcher.LaunchUriAsync(uri);
+                                // 如果已经有 ContentDialog 打开，等待它关闭
+                                while (_isContentDialogOpen)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 离线登录弹窗等待其他 ContentDialog 关闭...");
+                                    await Task.Delay(500);
+                                }
+                                
+                                _isContentDialogOpen = true;
+                                
+                                var offlineDialog = new ContentDialog
+                                {
+                                    Title = "离线游玩提示",
+                                    Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
+                                    PrimaryButtonText = "知道了",
+                                    SecondaryButtonText = "支持正版",
+                                    XamlRoot = App.MainWindow.Content.XamlRoot
+                                };
+                                
+                                var dialogResult = await offlineDialog.ShowAsync();
+                                if (dialogResult == ContentDialogResult.Secondary)
+                                {
+                                    var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
+                                    await Windows.System.Launcher.LaunchUriAsync(uri);
+                                }
+                            }
+                            catch (COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+                            {
+                                // 捕获 "Only a single ContentDialog can be open at any time" 异常
+                                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 离线登录弹窗 ContentDialog 冲突: {ex.Message}");
+                            }
+                            finally
+                            {
+                                _isContentDialogOpen = false;
+                                _dialogSemaphore.Release();
                             }
                         });
                     }

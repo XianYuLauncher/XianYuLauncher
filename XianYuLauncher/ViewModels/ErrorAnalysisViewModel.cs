@@ -198,6 +198,8 @@ namespace XianYuLauncher.ViewModels
         private List<string> _gameOutput = new();
         private List<string> _gameError = new();
         private bool _isGameCrashed = false;
+        private string _versionId = string.Empty; // 当前启动的版本ID
+        private string _minecraftPath = string.Empty; // Minecraft 路径
         
         // 节流机制相关字段
         private DateTime _lastLogUpdateTime = DateTime.MinValue;
@@ -376,6 +378,18 @@ namespace XianYuLauncher.ViewModels
     {
         _launchCommand = launchCommand;
         System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置启动命令，长度: {launchCommand?.Length ?? 0}");
+    }
+    
+    /// <summary>
+    /// 设置版本信息（用于导出日志时包含 version.json）
+    /// </summary>
+    /// <param name="versionId">版本ID</param>
+    /// <param name="minecraftPath">Minecraft 路径</param>
+    public void SetVersionInfo(string versionId, string minecraftPath)
+    {
+        _versionId = versionId;
+        _minecraftPath = minecraftPath;
+        System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置版本信息，版本ID: {versionId}");
     }
     
     /// <summary>
@@ -743,15 +757,77 @@ namespace XianYuLauncher.ViewModels
                 string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempDir);
 
-                // 生成启动参数.bat文件
+                // 1. 生成启动参数.bat文件
                 string batFilePath = Path.Combine(tempDir, "启动参数.bat");
                 File.WriteAllText(batFilePath, _launchCommand);
 
-                // 生成崩溃日志文件名
+                // 2. 生成崩溃日志文件
                 string crashLogFile = Path.Combine(tempDir, string.Format("crash_report_{0}.txt", timestamp));
-
-                // 写入完整日志（不包含启动参数，已单独保存为.bat文件）
                 File.WriteAllText(crashLogFile, FullLog);
+
+                // 3. 复制启动器日志
+                try
+                {
+                    string launcherLogDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "XianYuLauncher",
+                        "logs");
+                    
+                    if (Directory.Exists(launcherLogDir))
+                    {
+                        // 创建日志子目录
+                        string logSubDir = Path.Combine(tempDir, "launcher_logs");
+                        Directory.CreateDirectory(logSubDir);
+                        
+                        // 复制最近的日志文件（最多3个）
+                        var logFiles = Directory.GetFiles(launcherLogDir, "log-*.txt")
+                            .OrderByDescending(f => File.GetLastWriteTime(f))
+                            .Take(3);
+                        
+                        foreach (var logFile in logFiles)
+                        {
+                            string fileName = Path.GetFileName(logFile);
+                            string destPath = Path.Combine(logSubDir, fileName);
+                            File.Copy(logFile, destPath);
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"已复制 {logFiles.Count()} 个启动器日志文件");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"复制启动器日志失败: {ex.Message}");
+                    // 不中断导出流程，继续执行
+                }
+
+                // 4. 复制 version.json
+                try
+                {
+                    if (!string.IsNullOrEmpty(_versionId) && !string.IsNullOrEmpty(_minecraftPath))
+                    {
+                        string versionJsonPath = Path.Combine(_minecraftPath, "versions", _versionId, $"{_versionId}.json");
+                        
+                        if (File.Exists(versionJsonPath))
+                        {
+                            string destPath = Path.Combine(tempDir, "version.json");
+                            File.Copy(versionJsonPath, destPath);
+                            System.Diagnostics.Debug.WriteLine($"已复制 version.json: {versionJsonPath}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"version.json 不存在: {versionJsonPath}");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("版本信息未设置，跳过 version.json 复制");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"复制 version.json 失败: {ex.Message}");
+                    // 不中断导出流程，继续执行
+                }
 
                 // 获取用户选择的zip文件路径
                 string zipFilePath = selectedFile.Path;
@@ -772,7 +848,7 @@ namespace XianYuLauncher.ViewModels
                 var successDialog = new ContentDialog
                 {
                     Title = "成功",
-                    Content = string.Format("崩溃日志已成功导出到：{0}", zipFilePath),
+                    Content = string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
                     PrimaryButtonText = "确定",
                     XamlRoot = App.MainWindow.Content.XamlRoot
                 };
