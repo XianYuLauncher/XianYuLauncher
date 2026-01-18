@@ -66,4 +66,46 @@ public interface IDownloadTaskManager
     /// 取消当前下载
     /// </summary>
     void CancelCurrentDownload();
+
+    /// <summary>
+    /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
+    /// </summary>
+    /// <param name="resourceName">资源名称（用于显示）</param>
+    /// <param name="resourceType">资源类型（mod, resourcepack, shader, datapack, world）</param>
+    /// <param name="downloadUrl">下载URL</param>
+    /// <param name="savePath">保存路径</param>
+    /// <param name="iconUrl">图标URL（可选，用于缓存图标）</param>
+    /// <param name="dependencies">依赖列表（可选）</param>
+    Task StartResourceDownloadAsync(
+        string resourceName,
+        string resourceType,
+        string downloadUrl,
+        string savePath,
+        string? iconUrl = null,
+        IEnumerable<ResourceDependency>? dependencies = null);
+
+    /// <summary>
+    /// 启动世界下载（下载zip并解压到saves目录）
+    /// </summary>
+    /// <param name="worldName">世界名称（用于显示）</param>
+    /// <param name="downloadUrl">下载URL</param>
+    /// <param name="savesDirectory">saves目录路径</param>
+    /// <param name="fileName">下载文件名</param>
+    /// <param name="iconUrl">图标URL（可选）</param>
+    Task StartWorldDownloadAsync(
+        string worldName,
+        string downloadUrl,
+        string savesDirectory,
+        string fileName,
+        string? iconUrl = null);
+
+    /// <summary>
+    /// 通知进度更新（用于非 DownloadTaskManager 管理的下载，如依赖下载）
+    /// 这会触发 TaskStateChanged 和 TaskProgressChanged 事件
+    /// </summary>
+    /// <param name="taskName">任务名称</param>
+    /// <param name="progress">进度（0-100）</param>
+    /// <param name="statusMessage">状态消息</param>
+    /// <param name="state">任务状态</param>
+    void NotifyProgress(string taskName, double progress, string statusMessage, DownloadTaskState state = DownloadTaskState.Downloading);
 }

@@ -26,6 +26,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IMinecraftVersionService _minecraftVersionService;
         private readonly IFileService _fileService;
         private readonly ITranslationService _translationService;
+        private readonly IDownloadTaskManager _downloadTaskManager;
 
         [ObservableProperty]
         private string _modId;
@@ -455,7 +456,8 @@ namespace XianYuLauncher.ViewModels
             ModrinthService modrinthService, 
             CurseForgeService curseForgeService,
             IMinecraftVersionService minecraftVersionService,
-            ITranslationService translationService)
+            ITranslationService translationService,
+            IDownloadTaskManager downloadTaskManager)
         {
             _modrinthService = modrinthService;
             _curseForgeService = curseForgeService;
@@ -463,6 +465,7 @@ namespace XianYuLauncher.ViewModels
             _fileService = App.GetService<IFileService>();
             _localSettingsService = App.GetService<ILocalSettingsService>();
             _translationService = translationService;
+            _downloadTaskManager = downloadTaskManager;
         }
         
         private readonly ILocalSettingsService _localSettingsService;
@@ -1664,107 +1667,85 @@ namespace XianYuLauncher.ViewModels
         // 执行实际下载操作
         private async Task PerformDownload(ModVersionViewModel modVersion, string savePath)
         {
-            // 创建取消令牌
-            _downloadCancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = _downloadCancellationTokenSource.Token;
+            // 设置待后台下载信息（用于用户点击"后台下载"按钮时只关闭弹窗）
+            SetPendingBackgroundDownload(modVersion, savePath);
             
             try
             {
-                // 打开下载进度弹窗
+                // 打开下载进度弹窗（如果还没打开的话）
                 IsDownloadProgressDialogOpen = true;
+                // 重置进度（依赖下载完成后，主Mod下载从0开始）
+                DownloadProgress = 0;
+                DownloadProgressText = "0.0%";
                 
-                // 使用HttpClient下载文件
-                using (HttpClient client = new HttpClient())
+                // 订阅下载任务管理器的事件
+                var tcs = new TaskCompletionSource<bool>();
+                
+                void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                    client.Timeout = TimeSpan.FromMinutes(30); // 30分钟超时
-                    
-                    // 获取文件大小
-                    using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+                    // 更新弹窗中的进度
+                    DownloadProgress = info.Progress;
+                    DownloadProgressText = $"{info.Progress:F1}%";
+                    DownloadStatus = info.StatusMessage;
+                }
+                
+                void OnStateChanged(object? sender, DownloadTaskInfo info)
+                {
+                    if (info.State == DownloadTaskState.Completed)
                     {
-                        response.EnsureSuccessStatusCode();
-                        long totalBytes = response.Content.Headers.ContentLength ?? 0;
-                        
-                        using (Stream contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                        using (Stream fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None))
-                        {
-                            long totalRead = 0;
-                            byte[] buffer = new byte[8192];
-                            int bytesRead;
-                            
-                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
-                            {
-                                cancellationToken.ThrowIfCancellationRequested();
-                                
-                                await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                                totalRead += bytesRead;
-                                
-                                // 更新下载进度
-                                if (totalBytes > 0)
-                                {
-                                    DownloadProgress = (double)totalRead / totalBytes * 100;
-                                    DownloadProgressText = $"{DownloadProgress:F1}%";
-                                    DownloadStatus = $"正在下载... {DownloadProgressText}";
-                                }
-                                else
-                                {
-                                    DownloadProgress = 0;
-                                    DownloadProgressText = "0.0%";
-                                    DownloadStatus = $"正在下载... {totalRead / 1024} KB";
-                                }
-                            }
-                        }
+                        tcs.TrySetResult(true);
+                    }
+                    else if (info.State == DownloadTaskState.Failed)
+                    {
+                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
+                    }
+                    else if (info.State == DownloadTaskState.Cancelled)
+                    {
+                        tcs.TrySetCanceled();
                     }
                 }
                 
-                // 下载图标到本地（带超时，失败不阻塞）
-                if (!string.IsNullOrEmpty(ModIconUrl) && !ModIconUrl.StartsWith("ms-appx:"))
-                {
-                    try
-                    {
-                        // 构建图标保存路径
-                        string cachePath = _fileService.GetLauncherCachePath();
-                        string iconDir = Path.Combine(cachePath, "icons", ProjectType);
-                        _fileService.CreateDirectory(iconDir);
-                        
-                        // 使用项目ID和文件名生成唯一图标文件名
-                        string iconFileName = $"{ModId}_{Path.GetFileNameWithoutExtension(modVersion.FileName)}_icon.png";
-                        string iconSavePath = Path.Combine(iconDir, iconFileName);
-                        
-                        // 下载图标（带 10 秒超时）
-                        DownloadStatus = "正在下载图标...";
-                        using (HttpClient client = new HttpClient())
-                        {
-                            client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                            client.Timeout = TimeSpan.FromSeconds(10); // 10秒超时
-                            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                            var iconBytes = await client.GetByteArrayAsync(ModIconUrl, cts.Token);
-                            await File.WriteAllBytesAsync(iconSavePath, iconBytes);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // 图标下载失败不影响主文件下载，记录错误即可
-                        System.Diagnostics.Debug.WriteLine($"[图标下载] 失败（已忽略）: {ex.Message}");
-                    }
-                }
+                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                _downloadTaskManager.TaskStateChanged += OnStateChanged;
                 
-                DownloadStatus = "下载完成！";
-            }
-            catch (OperationCanceledException)
-            {
-                // 用户取消下载，删除未完成的文件
                 try
                 {
-                    if (File.Exists(savePath))
+                    // 启动后台下载（依赖已经通过ProcessDependenciesAsync下载完成）
+                    await _downloadTaskManager.StartResourceDownloadAsync(
+                        ModName,
+                        ProjectType,
+                        modVersion.DownloadUrl,
+                        savePath,
+                        ModIconUrl);
+                    
+                    // 等待下载完成（或用户点击后台下载关闭弹窗）
+                    // 使用一个循环检查弹窗是否关闭
+                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
                     {
-                        File.Delete(savePath);
+                        await Task.Delay(100);
                     }
+                    
+                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
+                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    {
+                        // 下载继续在后台进行，不需要做任何事
+                        return;
+                    }
+                    
+                    // 等待下载完成
+                    await tcs.Task;
+                    DownloadStatus = "下载完成！";
                 }
-                catch { }
-                
+                finally
+                {
+                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
+                }
+            }
+            catch (TaskCanceledException)
+            {
                 DownloadStatus = "下载已取消";
-                throw; // 重新抛出以便上层处理
+                throw new OperationCanceledException();
             }
             catch (Exception ex)
             {
@@ -1774,13 +1755,63 @@ namespace XianYuLauncher.ViewModels
             {
                 // 关闭下载进度弹窗
                 IsDownloadProgressDialogOpen = false;
-                
-                // 清理取消令牌
-                _downloadCancellationTokenSource?.Dispose();
-                _downloadCancellationTokenSource = null;
             }
         }
 
+        // 当前正在下载的Mod版本和保存路径（用于后台下载）
+        private ModVersionViewModel _pendingBackgroundDownloadModVersion;
+        private string _pendingBackgroundDownloadSavePath;
+        private List<ResourceDependency> _pendingBackgroundDownloadDependencies;
+        // 世界下载专用字段
+        private string _pendingBackgroundDownloadSavesDirectory;
+        private string _pendingBackgroundDownloadFileName;
+        // 标识是否正在切换到后台下载（用于区分用户取消和切换后台）
+        private bool _isSwitchingToBackground = false;
+
+        /// <summary>
+        /// 启动后台下载（关闭弹窗，下载继续在后台进行，通过 TeachingTip 显示进度）
+        /// </summary>
+        public void StartBackgroundDownload()
+        {
+            // 下载已经在后台运行了，只需要关闭弹窗
+            // TeachingTip 会自动显示进度（由 ShellViewModel 订阅 DownloadTaskManager 事件）
+            IsDownloadProgressDialogOpen = false;
+            
+            System.Diagnostics.Debug.WriteLine($"[后台下载] 已切换到后台: {ModName}");
+            
+            // 清理待下载信息
+            _pendingBackgroundDownloadModVersion = null;
+            _pendingBackgroundDownloadSavePath = null;
+            _pendingBackgroundDownloadDependencies = null;
+            _pendingBackgroundDownloadSavesDirectory = null;
+            _pendingBackgroundDownloadFileName = null;
+        }
+
+        /// <summary>
+        /// 设置待后台下载的资源信息
+        /// </summary>
+        private void SetPendingBackgroundDownload(ModVersionViewModel modVersion, string savePath, List<ResourceDependency> dependencies = null)
+        {
+            _pendingBackgroundDownloadModVersion = modVersion;
+            _pendingBackgroundDownloadSavePath = savePath;
+            _pendingBackgroundDownloadDependencies = dependencies;
+            // 清空世界下载专用字段
+            _pendingBackgroundDownloadSavesDirectory = null;
+            _pendingBackgroundDownloadFileName = null;
+        }
+
+        /// <summary>
+        /// 设置待后台下载的世界信息
+        /// </summary>
+        private void SetPendingWorldBackgroundDownload(ModVersionViewModel modVersion, string savesDirectory, string fileName)
+        {
+            _pendingBackgroundDownloadModVersion = modVersion;
+            _pendingBackgroundDownloadSavesDirectory = savesDirectory;
+            _pendingBackgroundDownloadFileName = fileName;
+            // 清空普通资源下载字段
+            _pendingBackgroundDownloadSavePath = null;
+            _pendingBackgroundDownloadDependencies = null;
+        }
 
 
         // 加载已安装游戏版本
@@ -2203,7 +2234,8 @@ namespace XianYuLauncher.ViewModels
                     savePath = Path.Combine(targetDir, modVersion.FileName);
                 }
                 
-                // 处理Mod依赖（仅当是Mod且不是自定义路径时）
+                // 收集依赖信息（仅当是Mod且不是自定义路径时）
+                List<ResourceDependency> dependencies = null;
                 if (ProjectType == "mod" && !UseCustomDownloadPath)
                 {
                     // 检查设置中是否开启了下载前置Mod
@@ -2236,6 +2268,11 @@ namespace XianYuLauncher.ViewModels
                                         DownloadStatus = $"正在下载前置Mod: {fileName}";
                                         DownloadProgress = progress;
                                         DownloadProgressText = $"{progress:F1}%";
+                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
+                                        _downloadTaskManager.NotifyProgress(
+                                            $"前置: {fileName}",
+                                            progress,
+                                            $"正在下载前置Mod: {fileName}");
                                     });
                             }
                         }
@@ -2261,6 +2298,11 @@ namespace XianYuLauncher.ViewModels
                                         DownloadStatus = $"正在下载前置Mod: {fileName}";
                                         DownloadProgress = progress;
                                         DownloadProgressText = $"{progress:F1}%";
+                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
+                                        _downloadTaskManager.NotifyProgress(
+                                            $"前置: {fileName}",
+                                            progress,
+                                            $"正在下载前置Mod: {fileName}");
                                     });
                             }
                         }
@@ -2672,7 +2714,7 @@ namespace XianYuLauncher.ViewModels
         }
 
         /// <summary>
-        /// 安装世界存档
+        /// 安装世界存档（使用 DownloadTaskManager 支持后台下载）
         /// </summary>
         /// <param name="modVersion">世界版本信息</param>
         public async Task InstallWorldAsync(ModVersionViewModel modVersion)
@@ -2696,163 +2738,98 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("未选择要安装的游戏版本");
                 }
 
-                string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(tempDir);
-                string zipPath = Path.Combine(tempDir, modVersion.FileName);
+                // 确定目标 saves 目录
+                string savesDir;
+                if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
+                {
+                    savesDir = CustomDownloadPath;
+                }
+                else
+                {
+                    string minecraftPath = _fileService.GetMinecraftDataPath();
+                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    savesDir = Path.Combine(versionDir, "saves");
+                }
 
+                if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                {
+                    throw new Exception("下载链接为空，无法下载世界存档");
+                }
+
+                // 设置待后台下载信息（世界下载）
+                SetPendingWorldBackgroundDownload(modVersion, savesDir, modVersion.FileName);
+
+                // 订阅下载任务管理器的事件
+                var tcs = new TaskCompletionSource<bool>();
+                
+                void OnProgressChanged(object? sender, DownloadTaskInfo info)
+                {
+                    // 更新弹窗中的进度
+                    DownloadProgress = info.Progress;
+                    DownloadProgressText = $"{info.Progress:F1}%";
+                    DownloadStatus = info.StatusMessage;
+                }
+                
+                void OnStateChanged(object? sender, DownloadTaskInfo info)
+                {
+                    if (info.State == DownloadTaskState.Completed)
+                    {
+                        tcs.TrySetResult(true);
+                    }
+                    else if (info.State == DownloadTaskState.Failed)
+                    {
+                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
+                    }
+                    else if (info.State == DownloadTaskState.Cancelled)
+                    {
+                        tcs.TrySetCanceled();
+                    }
+                }
+                
+                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                _downloadTaskManager.TaskStateChanged += OnStateChanged;
+                
                 try
                 {
-                    // 1. 下载世界存档 .zip 文件
-                    DownloadStatus = "正在下载世界存档...";
+                    // 启动后台世界下载（包含下载和解压）
+                    await _downloadTaskManager.StartWorldDownloadAsync(
+                        ModName,
+                        modVersion.DownloadUrl,
+                        savesDir,
+                        modVersion.FileName,
+                        ModIconUrl);
                     
-                    if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                    // 等待下载完成（或用户点击后台下载关闭弹窗）
+                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
                     {
-                        throw new Exception("下载链接为空，无法下载世界存档");
+                        await Task.Delay(100);
                     }
-
-                    using (HttpClient client = new HttpClient())
-                    {
-                        client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                        using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
-                        {
-                            response.EnsureSuccessStatusCode();
-                            long totalBytes = response.Content.Headers.ContentLength ?? 0;
-                            long totalRead = 0;
-
-                            using (Stream contentStream = await response.Content.ReadAsStreamAsync())
-                            using (Stream fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                            {
-                                byte[] buffer = new byte[8192];
-                                int bytesRead;
-
-                                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                                {
-                                    await fileStream.WriteAsync(buffer, 0, bytesRead);
-                                    totalRead += bytesRead;
-
-                                    // 更新下载进度（0%-70%用于下载）
-                                    if (totalBytes > 0)
-                                    {
-                                        DownloadProgress = (double)totalRead / totalBytes * 70;
-                                        DownloadProgressText = $"{DownloadProgress:F1}%";
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    DownloadStatus = "下载完成，正在解压世界存档...";
-                    DownloadProgress = 70;
-                    DownloadProgressText = "70%";
-
-                    // 2. 确定目标 saves 目录
-                    string savesDir;
-                    if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
-                    {
-                        savesDir = CustomDownloadPath;
-                    }
-                    else
-                    {
-                        string minecraftPath = _fileService.GetMinecraftDataPath();
-                        string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
-                        savesDir = Path.Combine(versionDir, "saves");
-                    }
-
-                    // 确保 saves 目录存在
-                    _fileService.CreateDirectory(savesDir);
-
-                    // 3. 生成唯一的世界目录名称
-                    string worldBaseName = Path.GetFileNameWithoutExtension(modVersion.FileName);
-                    string worldDir = GetUniqueDirectoryPath(savesDir, worldBaseName);
-
-                    DownloadStatus = $"正在解压到: {Path.GetFileName(worldDir)}";
-                    DownloadProgress = 80;
-                    DownloadProgressText = "80%";
-
-                    // 4. 创建世界目录并解压
-                    Directory.CreateDirectory(worldDir);
                     
-                    await Task.Run(() =>
+                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
+                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
                     {
-                        using (ZipArchive archive = ZipFile.OpenRead(zipPath))
-                        {
-                            // 检查压缩包结构：是否有根目录
-                            var entries = archive.Entries.ToList();
-                            bool hasRootFolder = false;
-                            string rootFolderName = null;
-                            
-                            // 检查是否所有文件都在同一个根目录下
-                            if (entries.Count > 0)
-                            {
-                                var firstEntry = entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.FullName));
-                                if (firstEntry != null)
-                                {
-                                    var parts = firstEntry.FullName.Split('/');
-                                    if (parts.Length > 1)
-                                    {
-                                        rootFolderName = parts[0];
-                                        hasRootFolder = entries.All(e => 
-                                            string.IsNullOrEmpty(e.FullName) || 
-                                            e.FullName.StartsWith(rootFolderName + "/") ||
-                                            e.FullName == rootFolderName);
-                                    }
-                                }
-                            }
-
-                            if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
-                            {
-                                // 压缩包有根目录，解压时去掉根目录
-                                foreach (var entry in entries)
-                                {
-                                    if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
-                                        continue;
-
-                                    string relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
-                                    if (string.IsNullOrEmpty(relativePath))
-                                        continue;
-
-                                    string destPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
-
-                                    if (entry.FullName.EndsWith("/"))
-                                    {
-                                        Directory.CreateDirectory(destPath);
-                                    }
-                                    else
-                                    {
-                                        Directory.CreateDirectory(Path.GetDirectoryName(destPath));
-                                        entry.ExtractToFile(destPath, true);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // 压缩包没有根目录，直接解压到目标目录
-                                archive.ExtractToDirectory(worldDir);
-                            }
-                        }
-                    });
-
+                        // 下载继续在后台进行
+                        IsDownloading = false;
+                        return;
+                    }
+                    
+                    // 等待下载完成
+                    await tcs.Task;
+                    
                     DownloadStatus = "世界存档安装完成！";
-                    DownloadProgress = 100;
-                    DownloadProgressText = "100%";
-
                     await Task.Delay(1000);
                     IsDownloadProgressDialogOpen = false;
-                    
-                    await ShowMessageAsync($"世界存档已安装到: {Path.GetFileName(worldDir)}");
                 }
                 finally
                 {
-                    // 清理临时文件
-                    try
-                    {
-                        if (Directory.Exists(tempDir))
-                        {
-                            Directory.Delete(tempDir, true);
-                        }
-                    }
-                    catch { }
+                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                DownloadStatus = "下载已取消";
+                IsDownloadProgressDialogOpen = false;
             }
             catch (Exception ex)
             {
@@ -3654,7 +3631,7 @@ namespace XianYuLauncher.ViewModels
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
                 
-                // 处理Mod依赖（仅当是Mod时）
+                // 处理Mod依赖（仅当是Mod时）- 使用原有的ProcessDependenciesAsync确保完整功能
                 if (ProjectType == "mod")
                 {
                     var settingsService = App.GetService<ILocalSettingsService>();
@@ -3673,6 +3650,8 @@ namespace XianYuLauncher.ViewModels
                             if (requiredDependencies.Count > 0)
                             {
                                 DownloadStatus = "正在下载前置Mod...";
+                                
+                                // 使用ModrinthService处理依赖下载
                                 await _modrinthService.ProcessDependenciesAsync(
                                     requiredDependencies,
                                     targetDir,
@@ -3682,6 +3661,11 @@ namespace XianYuLauncher.ViewModels
                                         DownloadStatus = $"正在下载前置Mod: {fileName}";
                                         DownloadProgress = progress;
                                         DownloadProgressText = $"{progress:F1}%";
+                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
+                                        _downloadTaskManager.NotifyProgress(
+                                            $"前置: {fileName}",
+                                            progress,
+                                            $"正在下载前置Mod: {fileName}");
                                     });
                             }
                         }
@@ -3695,6 +3679,8 @@ namespace XianYuLauncher.ViewModels
                             if (requiredDependencies.Count > 0)
                             {
                                 DownloadStatus = "正在下载前置Mod...";
+                                
+                                // 使用CurseForgeService处理依赖下载
                                 await _curseForgeService.ProcessDependenciesAsync(
                                     requiredDependencies,
                                     targetDir,
@@ -3704,58 +3690,94 @@ namespace XianYuLauncher.ViewModels
                                         DownloadStatus = $"正在下载前置Mod: {fileName}";
                                         DownloadProgress = progress;
                                         DownloadProgressText = $"{progress:F1}%";
+                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
+                                        _downloadTaskManager.NotifyProgress(
+                                            $"前置: {fileName}",
+                                            progress,
+                                            $"正在下载前置Mod: {fileName}");
                                     });
                             }
                         }
                     }
                 }
                 
-                // 下载主Mod
-                DownloadStatus = $"正在下载 {modVersion.FileName}...";
+                // 设置待后台下载信息
+                SetPendingBackgroundDownload(modVersion, savePath);
+                
+                // 重置进度（依赖下载完成后，主Mod下载从0开始）
                 DownloadProgress = 0;
+                DownloadProgressText = "0.0%";
                 
-                _downloadCancellationTokenSource = new CancellationTokenSource();
+                // 订阅下载任务管理器的事件
+                var tcs = new TaskCompletionSource<bool>();
                 
-                using (var httpClient = new HttpClient())
+                void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                    httpClient.Timeout = TimeSpan.FromMinutes(30);
-                    
-                    using (var response = await httpClient.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationTokenSource.Token))
+                    // 更新弹窗中的进度
+                    DownloadProgress = info.Progress;
+                    DownloadProgressText = $"{info.Progress:F1}%";
+                    DownloadStatus = info.StatusMessage;
+                }
+                
+                void OnStateChanged(object? sender, DownloadTaskInfo info)
+                {
+                    if (info.State == DownloadTaskState.Completed)
                     {
-                        response.EnsureSuccessStatusCode();
-                        
-                        var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                        var downloadedBytes = 0L;
-                        
-                        using (var contentStream = await response.Content.ReadAsStreamAsync())
-                        using (var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-                        {
-                            var buffer = new byte[8192];
-                            int bytesRead;
-                            
-                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _downloadCancellationTokenSource.Token)) > 0)
-                            {
-                                await fileStream.WriteAsync(buffer, 0, bytesRead, _downloadCancellationTokenSource.Token);
-                                downloadedBytes += bytesRead;
-                                
-                                if (totalBytes > 0)
-                                {
-                                    DownloadProgress = (double)downloadedBytes / totalBytes * 100;
-                                    DownloadProgressText = $"{DownloadProgress:F1}%";
-                                }
-                            }
-                        }
+                        tcs.TrySetResult(true);
+                    }
+                    else if (info.State == DownloadTaskState.Failed)
+                    {
+                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
+                    }
+                    else if (info.State == DownloadTaskState.Cancelled)
+                    {
+                        tcs.TrySetCanceled();
                     }
                 }
                 
-                // 下载完成
-                IsDownloadProgressDialogOpen = false;
-                IsDownloading = false;
+                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                _downloadTaskManager.TaskStateChanged += OnStateChanged;
                 
-                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 安装完成: {savePath}");
+                try
+                {
+                    // 启动后台下载（依赖已经通过ProcessDependenciesAsync下载完成）
+                    await _downloadTaskManager.StartResourceDownloadAsync(
+                        ModName,
+                        ProjectType,
+                        modVersion.DownloadUrl,
+                        savePath,
+                        ModIconUrl);
+                    
+                    // 等待下载完成（或用户点击后台下载关闭弹窗）
+                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    {
+                        await Task.Delay(100);
+                    }
+                    
+                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
+                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    {
+                        // 下载继续在后台进行
+                        IsDownloading = false;
+                        return;
+                    }
+                    
+                    // 等待下载完成
+                    await tcs.Task;
+                    
+                    // 下载完成
+                    IsDownloadProgressDialogOpen = false;
+                    IsDownloading = false;
+                    
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 安装完成: {savePath}");
+                }
+                finally
+                {
+                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
+                }
             }
-            catch (OperationCanceledException)
+            catch (TaskCanceledException)
             {
                 IsDownloadProgressDialogOpen = false;
                 IsDownloading = false;
@@ -3768,11 +3790,6 @@ namespace XianYuLauncher.ViewModels
                 IsDownloadProgressDialogOpen = false;
                 IsDownloading = false;
                 await ShowMessageAsync($"安装失败: {ex.Message}");
-            }
-            finally
-            {
-                _downloadCancellationTokenSource?.Dispose();
-                _downloadCancellationTokenSource = null;
             }
         }
     }

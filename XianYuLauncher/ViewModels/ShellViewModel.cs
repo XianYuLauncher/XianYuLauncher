@@ -68,15 +68,11 @@ public partial class ShellViewModel : ObservableRecipient
             switch (taskInfo.State)
             {
                 case DownloadTaskState.Downloading:
-                    // 只有在后台下载模式时才显示 TeachingTip
-                    // 弹窗模式下不显示（由 ModLoaderSelectorViewModel 控制）
-                    if (!IsDownloadTeachingTipOpen)
-                    {
-                        // 不自动打开，等用户点击"后台下载"后才打开
-                    }
+                    // 后台下载开始时，打开 TeachingTip 显示进度
                     DownloadTaskName = taskInfo.TaskName;
                     DownloadStatusMessage = taskInfo.StatusMessage;
                     DownloadProgress = taskInfo.Progress;
+                    IsDownloadTeachingTipOpen = true;
                     break;
                 case DownloadTaskState.Completed:
                 case DownloadTaskState.Failed:

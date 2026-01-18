@@ -995,7 +995,7 @@ public class ModrinthService
                         originalUrl,
                         destinationPath,
                         "modrinth_cdn",
-                        progressCallback: progress => progressCallback?.Invoke(fileName, progress * 100),
+                        progressCallback: progress => progressCallback?.Invoke(fileName, progress),
                         cancellationToken: cancellationToken);
                     
                     if (result.Success)
