@@ -1773,9 +1773,19 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         public void StartBackgroundDownload()
         {
+            // 启用 TeachingTip 显示（这样 ShellViewModel 才会打开 TeachingTip）
+            _downloadTaskManager.IsTeachingTipEnabled = true;
+            
             // 下载已经在后台运行了，只需要关闭弹窗
             // TeachingTip 会自动显示进度（由 ShellViewModel 订阅 DownloadTaskManager 事件）
             IsDownloadProgressDialogOpen = false;
+            
+            // 立即打开 TeachingTip（不等待下一次状态变化）
+            var shellViewModel = App.GetService<ShellViewModel>();
+            shellViewModel.IsDownloadTeachingTipOpen = true;
+            shellViewModel.DownloadTaskName = ModName;
+            shellViewModel.DownloadProgress = DownloadProgress;
+            shellViewModel.DownloadStatusMessage = DownloadStatus;
             
             System.Diagnostics.Debug.WriteLine($"[后台下载] 已切换到后台: {ModName}");
             
@@ -3604,6 +3614,39 @@ namespace XianYuLauncher.ViewModels
                 if (gameVersion == null || modVersion == null)
                 {
                     throw new Exception("参数不能为 null");
+                }
+                
+                // 检查是否为数据包
+                bool isDatapack = ProjectType == "datapack" || 
+                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+                
+                // 数据包特殊处理：需要选择存档
+                if (isDatapack)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到数据包，需要选择存档");
+                    
+                    // 保存当前正在下载的Mod版本和游戏版本
+                    _currentDownloadingModVersion = modVersion;
+                    SelectedInstalledVersion = gameVersion;
+                    
+                    // 打开存档选择弹窗
+                    await ShowSaveSelectionDialog();
+                    
+                    // 存档选择后的下载逻辑在 CompleteDatapackDownloadAsync 方法中处理
+                    return;
+                }
+                
+                // 世界特殊处理：下载并解压到 saves 目录
+                if (ProjectType == "world")
+                {
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到世界，使用世界安装流程");
+                    
+                    // 设置 SelectedInstalledVersion 以便 InstallWorldAsync 使用
+                    SelectedInstalledVersion = gameVersion;
+                    
+                    // 使用现有的世界安装流程
+                    await InstallWorldAsync(modVersion);
+                    return;
                 }
                 
                 // 直接构建下载路径，不依赖 SelectedInstalledVersion

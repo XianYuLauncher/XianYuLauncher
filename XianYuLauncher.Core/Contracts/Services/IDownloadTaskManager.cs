@@ -108,4 +108,10 @@ public interface IDownloadTaskManager
     /// <param name="statusMessage">状态消息</param>
     /// <param name="state">任务状态</param>
     void NotifyProgress(string taskName, double progress, string statusMessage, DownloadTaskState state = DownloadTaskState.Downloading);
+
+    /// <summary>
+    /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
+    /// 当用户点击"后台下载"按钮时设置为 true，下载完成/取消/失败后自动重置为 false
+    /// </summary>
+    bool IsTeachingTipEnabled { get; set; }
 }

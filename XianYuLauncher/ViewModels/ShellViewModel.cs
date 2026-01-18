@@ -68,11 +68,16 @@ public partial class ShellViewModel : ObservableRecipient
             switch (taskInfo.State)
             {
                 case DownloadTaskState.Downloading:
-                    // 后台下载开始时，打开 TeachingTip 显示进度
-                    DownloadTaskName = taskInfo.TaskName;
-                    DownloadStatusMessage = taskInfo.StatusMessage;
-                    DownloadProgress = taskInfo.Progress;
-                    IsDownloadTeachingTipOpen = true;
+                    // 只有当 IsTeachingTipEnabled 为 true 时才打开 TeachingTip
+                    // 这样可以避免在下载弹窗打开时同时打开 TeachingTip
+                    // 用户点击"后台下载"按钮时会设置 IsTeachingTipEnabled = true
+                    if (_downloadTaskManager.IsTeachingTipEnabled)
+                    {
+                        DownloadTaskName = taskInfo.TaskName;
+                        DownloadStatusMessage = taskInfo.StatusMessage;
+                        DownloadProgress = taskInfo.Progress;
+                        IsDownloadTeachingTipOpen = true;
+                    }
                     break;
                 case DownloadTaskState.Completed:
                 case DownloadTaskState.Failed:

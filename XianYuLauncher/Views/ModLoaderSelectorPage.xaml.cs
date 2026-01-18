@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.ViewModels;
 using System.ComponentModel;
@@ -7,10 +8,12 @@ namespace XianYuLauncher.Views;
 public sealed partial class ModLoaderSelectorPage : Page
 {
     public ModLoaderSelectorViewModel ViewModel { get; }
+    private readonly DispatcherQueue _dispatcherQueue;
 
     public ModLoaderSelectorPage()
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         InitializeComponent();
         
         // 监听ViewModel的IsDownloadDialogOpen属性变化
@@ -37,7 +40,17 @@ public sealed partial class ModLoaderSelectorPage : Page
             }
             else
             {
-                DownloadProgressDialog.Hide();
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        DownloadProgressDialog.Hide();
+                    }
+                    catch (Exception)
+                    {
+                        // 弹窗可能已经关闭
+                    }
+                });
             }
         }
     }

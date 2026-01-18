@@ -240,7 +240,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _isBackgroundDownload = true;
         IsDownloadDialogOpen = false;
         
-        // 通知 ShellViewModel 打开 TeachingTip
+        // 启用 TeachingTip 显示，这样 ShellViewModel 会在收到下载状态时打开 TeachingTip
+        _downloadTaskManager.IsTeachingTipEnabled = true;
+        
+        // 通知 ShellViewModel 打开 TeachingTip（立即打开，不等待下一次状态变化）
         var shellViewModel = App.GetService<ShellViewModel>();
         shellViewModel.IsDownloadTeachingTipOpen = true;
     }

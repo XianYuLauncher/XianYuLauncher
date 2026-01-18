@@ -23,6 +23,12 @@ public class DownloadTaskManager : IDownloadTaskManager
     public DownloadTaskInfo? CurrentTask => _currentTask;
     public bool HasActiveDownload => _currentTask?.State == DownloadTaskState.Downloading;
 
+    /// <summary>
+    /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
+    /// 当用户点击"后台下载"按钮时设置为 true，下载完成/取消/失败后自动重置为 false
+    /// </summary>
+    public bool IsTeachingTipEnabled { get; set; } = false;
+
     public event EventHandler<DownloadTaskInfo>? TaskStateChanged;
     public event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
 
@@ -130,6 +136,9 @@ public class DownloadTaskManager : IDownloadTaskManager
             _currentTask.State = DownloadTaskState.Cancelled;
             _currentTask.StatusMessage = "下载已取消";
             OnTaskStateChanged(_currentTask);
+            
+            // 下载取消后重置 TeachingTip 启用状态
+            IsTeachingTipEnabled = false;
         }
     }
 
@@ -311,6 +320,9 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.StatusMessage = "下载完成";
             _logger.LogInformation("下载任务完成: {TaskName}", task.TaskName);
             OnTaskStateChanged(task);
+            
+            // 下载完成后重置 TeachingTip 启用状态
+            IsTeachingTipEnabled = false;
         }
     }
 
@@ -323,6 +335,9 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.StatusMessage = $"下载失败: {errorMessage}";
             _logger.LogError("下载任务失败: {TaskName}, 错误: {ErrorMessage}", task.TaskName, errorMessage);
             OnTaskStateChanged(task);
+            
+            // 下载失败后重置 TeachingTip 启用状态
+            IsTeachingTipEnabled = false;
         }
     }
 
