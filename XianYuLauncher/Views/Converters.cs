@@ -123,4 +123,48 @@ namespace XianYuLauncher.Views
             throw new NotImplementedException();
         }
     }
+    
+    // 布尔值到可见性转换器
+    public class BoolToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is bool boolValue)
+            {
+                return boolValue ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+            }
+            return Microsoft.UI.Xaml.Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            if (value is Microsoft.UI.Xaml.Visibility visibility)
+            {
+                return visibility == Microsoft.UI.Xaml.Visibility.Visible;
+            }
+            return false;
+        }
+    }
+    
+    // 布尔值到可见性转换器（反向）
+    public class BoolToVisibilityInverseConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is bool boolValue)
+            {
+                return boolValue ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+            }
+            return Microsoft.UI.Xaml.Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            if (value is Microsoft.UI.Xaml.Visibility visibility)
+            {
+                return visibility == Microsoft.UI.Xaml.Visibility.Collapsed;
+            }
+            return true;
+        }
+    }
 }

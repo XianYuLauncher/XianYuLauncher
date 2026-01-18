@@ -1,0 +1,65 @@
+<UserControl
+    x:Class="XianYuLauncher.Views.AnnouncementDialog"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:XianYuLauncher.Core.Models"
+    xmlns:converters="using:XianYuLauncher.Views"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:BoolToVisibilityInverseConverter x:Key="BoolToVisibilityInverseConverter"/>
+    </UserControl.Resources>
+
+    <Grid MinWidth="400" MaxWidth="600">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 公告类型指示器 -->
+        <Border Grid.Row="0" 
+                Height="4" 
+                CornerRadius="2,2,0,0"
+                Margin="0,0,0,12">
+            <Border.Background>
+                <SolidColorBrush x:Name="TypeIndicator" Color="{ThemeResource SystemAccentColor}"/>
+            </Border.Background>
+        </Border>
+
+        <!-- 公告内容区域 -->
+        <ScrollViewer Grid.Row="1" 
+                      MaxHeight="400"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="12">
+                <!-- 默认内容显示（当没有自定义 XAML 时） -->
+                <StackPanel x:Name="DefaultContent" 
+                            Spacing="8"
+                            Visibility="{x:Bind ViewModel.HasCustomXaml, Mode=OneWay, Converter={StaticResource BoolToVisibilityInverseConverter}}">
+                    
+                    <!-- 公告内容 -->
+                    <TextBlock Text="{x:Bind ViewModel.Announcement.content, Mode=OneWay}"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    
+                    <!-- 发布时间 -->
+                    <TextBlock FontSize="12"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Margin="0,8,0,0">
+                        <Run Text="发布时间: "/>
+                        <Run Text="{x:Bind ViewModel.Announcement.publish_time, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 自定义 XAML 内容容器 -->
+                <ContentPresenter x:Name="CustomXamlContent"
+                                  Visibility="{x:Bind ViewModel.HasCustomXaml, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -85,6 +85,9 @@ public class ActivationService : IActivationService
         // 显示保密协议弹窗
         await ShowPrivacyAgreementAsync();
         
+        // 显示云控公告
+        await ShowAnnouncementAsync();
+        
         // 检查更新
         await CheckForUpdatesAsync();
         
@@ -240,6 +243,71 @@ public class ActivationService : IActivationService
         }
         
         return string.Join(System.Environment.NewLine + "• ", changelog.Prepend(""));
+    }
+    
+    /// <summary>
+    /// 显示云控公告
+    /// </summary>
+    private async Task ShowAnnouncementAsync()
+    {
+        try
+        {
+            Serilog.Log.Information("开始检查云控公告");
+            
+            var announcementService = App.GetService<IAnnouncementService>();
+            var announcement = await announcementService.CheckForAnnouncementAsync();
+            
+            if (announcement != null)
+            {
+                Serilog.Log.Information("发现新公告，准备显示: {Title}", announcement.title);
+                
+                // 创建 ViewModel
+                var logger = App.GetService<ILogger<AnnouncementDialogViewModel>>();
+                var viewModel = new AnnouncementDialogViewModel(logger, announcementService, announcement);
+                
+                // 创建对话框
+                var dialog = new ContentDialog
+                {
+                    Title = announcement.title,
+                    Content = new AnnouncementDialog(viewModel),
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                
+                // 根据按钮配置设置对话框按钮
+                if (announcement.buttons != null && announcement.buttons.Count > 0)
+                {
+                    // 如果有自定义按钮，不显示默认按钮
+                    // 按钮将在 AnnouncementDialog 中渲染
+                }
+                else
+                {
+                    // 没有自定义按钮，显示默认关闭按钮
+                    dialog.CloseButtonText = "知道了";
+                }
+                
+                // 订阅关闭事件
+                viewModel.CloseDialog += (sender, args) =>
+                {
+                    dialog.Hide();
+                };
+                
+                // 显示对话框
+                await dialog.ShowAsync();
+                
+                // 标记为已读
+                await announcementService.MarkAnnouncementAsReadAsync(announcement.id);
+                
+                Serilog.Log.Information("公告已显示并标记为已读");
+            }
+            else
+            {
+                Serilog.Log.Information("没有新公告");
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "显示云控公告失败: {ErrorMessage}", ex.Message);
+        }
     }
     
     /// <summary>

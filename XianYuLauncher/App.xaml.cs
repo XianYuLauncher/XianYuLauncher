@@ -284,6 +284,10 @@ public partial class App : Application
             // AuthlibInjector Service
             services.AddHttpClient<AuthlibInjectorService>();
             services.AddSingleton<AuthlibInjectorService>();
+            
+            // Announcement Service
+            services.AddHttpClient<IAnnouncementService, AnnouncementService>();
+            services.AddSingleton<IAnnouncementService, AnnouncementService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();
@@ -322,6 +326,8 @@ public partial class App : Application
             services.AddSingleton<ShellViewModel>();
             services.AddTransient<UpdateDialogViewModel>();
             services.AddTransient<UpdateDialog>();
+            services.AddTransient<AnnouncementDialogViewModel>();
+            services.AddTransient<AnnouncementDialog>();
 
             // Configuration
             services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
