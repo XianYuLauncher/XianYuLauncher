@@ -244,20 +244,21 @@
         
         <!-- 下载进度弹窗 -->
         <ContentDialog
-            x:Uid="ModLoaderSelectionPage_DownloadProgressDialog"
             x:Name="DownloadProgressDialog"
-            IsPrimaryButtonEnabled="False"
+            Title="下载中"
+            IsPrimaryButtonEnabled="True"
             IsSecondaryButtonEnabled="False"
             DefaultButton="None"
-            CloseButtonClick="DownloadProgressDialog_CloseButtonClick">
+            PrimaryButtonText="后台下载"
+            PrimaryButtonCommand="{x:Bind ViewModel.SwitchToBackgroundDownloadCommand}">
             <StackPanel Spacing="16" Width="400">
-                <!-- 下载状态文本 -->
+                <!-- 下载状态文本（不含百分比） -->
                 <TextBlock FontSize="16" Text="{x:Bind ViewModel.DownloadStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />
                 
                 <!-- 进度条 -->
                 <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
                 
-                <!-- 进度百分比文本 -->
+                <!-- 进度百分比文本（灰色） -->
                 <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" HorizontalTextAlignment="Center" />
             </StackPanel>
         </ContentDialog>

@@ -204,4 +204,12 @@ public sealed partial class ShellPage : Page
 
         args.Handled = result;
     }
+
+    /// <summary>
+    /// 下载 TeachingTip 关闭按钮点击事件，取消下载
+    /// </summary>
+    private void DownloadTeachingTip_CloseButtonClick(TeachingTip sender, object args)
+    {
+        ViewModel.CancelDownloadCommand.Execute(null);
+    }
 }

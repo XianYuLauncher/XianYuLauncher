@@ -26,22 +26,20 @@ public sealed partial class ModLoaderSelectorPage : Page
         {
             if (ViewModel.IsDownloadDialogOpen)
             {
-                await DownloadProgressDialog.ShowAsync();
+                try
+                {
+                    await DownloadProgressDialog.ShowAsync();
+                }
+                catch (Exception)
+                {
+                    // 弹窗可能已经打开或被关闭
+                }
             }
             else
             {
                 DownloadProgressDialog.Hide();
             }
         }
-    }
-    
-    /// <summary>
-    /// 下载进度弹窗关闭按钮点击事件，取消下载
-    /// </summary>
-    private void DownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        // 取消下载任务
-        // ViewModel会在ConfirmSelectionAsync方法中处理取消逻辑
     }
     
     /// <summary>

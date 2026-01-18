@@ -121,6 +121,7 @@ public partial class App : Application
                 return new FallbackDownloadManager(innerManager, sourceFactory, httpClient, logger);
             });
             
+            services.AddSingleton<IDownloadTaskManager, DownloadTaskManager>();
             services.AddSingleton<ILibraryManager, LibraryManager>();
             services.AddSingleton<IAssetManager, AssetManager>();
             services.AddSingleton<IVersionInfoManager, VersionInfoManager>();
@@ -318,7 +319,7 @@ public partial class App : Application
             services.AddTransient<MultiplayerLobbyViewModel>();
             services.AddTransient<MultiplayerLobbyPage>();
             services.AddTransient<ShellPage>();
-            services.AddTransient<ShellViewModel>();
+            services.AddSingleton<ShellViewModel>();
             services.AddTransient<UpdateDialogViewModel>();
             services.AddTransient<UpdateDialog>();
 

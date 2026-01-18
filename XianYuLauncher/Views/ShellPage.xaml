@@ -103,5 +103,25 @@
                 <Frame x:Name="NavigationFrame" />
             </Grid>
         </NavigationView>
+        
+        <!-- 下载进度 TeachingTip -->
+        <TeachingTip x:Name="DownloadTeachingTip"
+                     Title="{x:Bind ViewModel.DownloadTaskName, Mode=OneWay}"
+                     IsOpen="{x:Bind ViewModel.IsDownloadTeachingTipOpen, Mode=OneWay}"
+                     PreferredPlacement="BottomRight"
+                     PlacementMargin="16"
+                     IsLightDismissEnabled="False"
+                     CloseButtonClick="DownloadTeachingTip_CloseButtonClick">
+            <TeachingTip.Content>
+                <StackPanel Spacing="8" MinWidth="280">
+                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                 Maximum="100"
+                                 Height="8" />
+                    <TextBlock Text="{x:Bind ViewModel.DownloadStatusMessage, Mode=OneWay}"
+                               TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </TeachingTip.Content>
+        </TeachingTip>
     </Grid>
 </Page>
