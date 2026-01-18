@@ -956,7 +956,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             {
                 // 更新下载进度
                 DownloadProgress = progress;
-                DownloadProgressText = $"{progress:F0}%";
+                DownloadProgressText = $"{progress:F1}%";
                 
                 // 更新下载状态文本
                 if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected)
@@ -1045,7 +1045,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                                 (progress) =>
                                 {
                                     DownloadProgress = progress;
-                                    DownloadProgressText = $"{progress:F0}%";
+                                    DownloadProgressText = $"{progress:F1}%";
                                     DownloadStatus = progress < 50 ? string.Format("{0} Optifine...", "ModLoaderSelectionPage_InstallingText".GetLocalized()) : string.Format("{0} Forge...", "ModLoaderSelectionPage_InstallingText".GetLocalized());
                                 },
                                 _downloadCts.Token,
@@ -1095,7 +1095,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                                     // Optifine安装占总进度的40%（主要ModLoader占60%）
                                     double adjustedProgress = 60 + (progress * 0.4);
                                     DownloadProgress = adjustedProgress;
-                                    DownloadProgressText = $"{adjustedProgress:F0}%";
+                                    DownloadProgressText = $"{adjustedProgress:F1}%";
                                     DownloadStatus = string.Format("{0} Optifine {1}_{2}...", "ModLoaderSelectionPage_InstallingText".GetLocalized(), optifineInfo.FullVersion.Type, optifineInfo.FullVersion.Patch);
                                 };
                                 
