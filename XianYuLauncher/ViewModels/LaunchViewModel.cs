@@ -188,29 +188,9 @@ public partial class LaunchViewModel : ObservableRecipient
         // 创建完整的日志文本
         string fullLog = string.Join(Environment.NewLine, allLogs);
         
-        // 检测当前主题
-        var currentTheme = App.MainWindow.Content is Microsoft.UI.Xaml.FrameworkElement fe 
-            ? fe.ActualTheme 
-            : Microsoft.UI.Xaml.ElementTheme.Default;
-        bool isDarkTheme = currentTheme == Microsoft.UI.Xaml.ElementTheme.Dark;
-        
-        // 根据主题选择颜色
+        // 使用系统错误色（自动适配主题）
         var errorRedColor = Windows.UI.Color.FromArgb(255, 196, 43, 28);
-        var errorBgColor = isDarkTheme 
-            ? Windows.UI.Color.FromArgb(40, 232, 17, 35)  // 深色模式：稍微亮一点的红色背景
-            : Windows.UI.Color.FromArgb(25, 232, 17, 35); // 浅色模式
-        var textPrimaryColor = isDarkTheme
-            ? Windows.UI.Color.FromArgb(230, 255, 255, 255) // 深色模式：白色文字
-            : Windows.UI.Color.FromArgb(200, 0, 0, 0);      // 浅色模式：黑色文字
-        var textSecondaryColor = isDarkTheme
-            ? Windows.UI.Color.FromArgb(180, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(180, 0, 0, 0);
-        var cardBgColor = isDarkTheme
-            ? Windows.UI.Color.FromArgb(20, 255, 255, 255)  // 深色模式：淡白色背景
-            : Windows.UI.Color.FromArgb(10, 0, 0, 0);       // 浅色模式：淡黑色背景
-        var cardBorderColor = isDarkTheme
-            ? Windows.UI.Color.FromArgb(40, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(30, 0, 0, 0);
+        var errorBgColor = Windows.UI.Color.FromArgb(30, 232, 17, 35);
         
         // 创建 Fluent Design 风格的崩溃提示内容
         var warningPanel = new StackPanel
@@ -264,28 +244,29 @@ public partial class LaunchViewModel : ObservableRecipient
         headerStack.Children.Add(warningTitle);
         warningCardContent.Children.Add(headerStack);
         
-        // 提示文字
+        // 提示文字（不设置 Foreground，使用系统默认文字色）
         var hintText = new TextBlock
         {
             Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
             FontSize = 14,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(textPrimaryColor)
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
         };
         warningCardContent.Children.Add(hintText);
         
         warningCard.Child = warningCardContent;
         warningPanel.Children.Add(warningCard);
         
-        // 操作指引卡片
+        // 操作指引卡片（使用 CardBackgroundFillColorDefaultBrush 自动适配主题）
         var instructionCard = new Border
         {
-            Background = new SolidColorBrush(cardBgColor),
-            BorderBrush = new SolidColorBrush(cardBorderColor),
-            BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
             CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
             Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
         };
+        instructionCard.SetValue(Border.BackgroundProperty, 
+            Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"]);
+        instructionCard.SetValue(Border.BorderBrushProperty,
+            Microsoft.UI.Xaml.Application.Current.Resources["CardStrokeColorDefaultBrush"]);
+        instructionCard.BorderThickness = new Microsoft.UI.Xaml.Thickness(1);
         
         var instructionStack = new StackPanel { Spacing = 10 };
         
@@ -321,7 +302,7 @@ public partial class LaunchViewModel : ObservableRecipient
             Text = "💡 日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
             FontSize = 13,
             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(textSecondaryColor),
+            Opacity = 0.7,
             Margin = new Microsoft.UI.Xaml.Thickness(0, 4, 0, 0)
         };
         instructionStack.Children.Add(step3);
@@ -338,16 +319,18 @@ public partial class LaunchViewModel : ObservableRecipient
             HorizontalContentAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch
         };
         
+        var logPreviewText = new TextBlock
+        {
+            Text = fullLog,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+            FontSize = 11,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Opacity = 0.7
+        };
+        
         var logScroller = new ScrollViewer
         {
-            Content = new TextBlock
-            {
-                Text = fullLog,
-                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
-                FontSize = 11,
-                TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                Foreground = new SolidColorBrush(textSecondaryColor)
-            },
+            Content = logPreviewText,
             MaxHeight = 200,
             VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
