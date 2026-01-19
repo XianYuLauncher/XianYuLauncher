@@ -130,11 +130,27 @@ public partial class VersionManagementViewModel
             
             // 替换整个Screenshots集合，只触发一次CollectionChanged事件
             Screenshots = sortedScreenshots;
+            
+            // 更新随机截图
+            if (Screenshots.Count > 0)
+            {
+                var random = new Random();
+                var index = random.Next(Screenshots.Count);
+                RandomScreenshotPath = Screenshots[index].FilePath;
+                HasRandomScreenshot = true;
+            }
+            else
+            {
+                RandomScreenshotPath = null;
+                HasRandomScreenshot = false;
+            }
         }
         else
         {
             // 清空截图列表
             Screenshots.Clear();
+            RandomScreenshotPath = null;
+            HasRandomScreenshot = false;
         }
     }
     

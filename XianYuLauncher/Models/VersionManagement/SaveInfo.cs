@@ -1,6 +1,5 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace XianYuLauncher.Models.VersionManagement;
 
@@ -28,10 +27,10 @@ public partial class SaveInfo : ObservableObject
     private string _path = string.Empty;
     
     /// <summary>
-    /// 存档图标
+    /// 存档图标路径
     /// </summary>
     [ObservableProperty]
-    private BitmapImage? _icon;
+    private string _icon;
     
     /// <summary>
     /// 最后游玩时间

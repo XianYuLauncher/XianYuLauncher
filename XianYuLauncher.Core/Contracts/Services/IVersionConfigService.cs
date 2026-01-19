@@ -27,4 +27,17 @@ public interface IVersionConfigService
     /// <param name="config">版本配置</param>
     /// <returns>验证结果</returns>
     ValidationResult ValidateConfig(VersionConfig config);
+    
+    /// <summary>
+    /// 记录游戏启动
+    /// </summary>
+    /// <param name="versionName">版本名称</param>
+    Task RecordLaunchAsync(string versionName);
+    
+    /// <summary>
+    /// 记录游戏退出并更新游戏时长
+    /// </summary>
+    /// <param name="versionName">版本名称</param>
+    /// <param name="playTimeSeconds">本次游戏时长（秒）</param>
+    Task RecordExitAsync(string versionName, long playTimeSeconds);
 }

@@ -555,7 +555,6 @@ namespace XianYuLauncher.Core.Services
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
                     OptifineVersion = config.OptifineVersion ?? string.Empty,
                     CreatedAt = DateTime.Now,
-                    // 保留原有配置的AutoMemoryAllocation等字段（如果存在）
                     AutoMemoryAllocation = true,
                     InitialHeapMemory = 6.0,
                     MaximumHeapMemory = 12.0,

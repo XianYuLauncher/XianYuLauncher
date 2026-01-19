@@ -66,4 +66,19 @@ public class VersionConfig
     /// 窗口高度
     /// </summary>
     public int WindowHeight { get; set; } = 720;
+    
+    /// <summary>
+    /// 启动次数
+    /// </summary>
+    public int LaunchCount { get; set; } = 0;
+    
+    /// <summary>
+    /// 总游戏时长（秒）
+    /// </summary>
+    public long TotalPlayTimeSeconds { get; set; } = 0;
+    
+    /// <summary>
+    /// 最后启动时间
+    /// </summary>
+    public DateTime? LastLaunchTime { get; set; }
 }

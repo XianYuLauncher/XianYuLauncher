@@ -170,6 +170,19 @@ public class VersionConfigService : IVersionConfigService
                     }
                 }
                 
+                // 处理统计字段
+                if (jObject["LaunchCount"] != null && jObject["LaunchCount"].Type == JTokenType.Integer)
+                    config.LaunchCount = jObject["LaunchCount"].Value<int>();
+                
+                if (jObject["TotalPlayTimeSeconds"] != null && jObject["TotalPlayTimeSeconds"].Type == JTokenType.Integer)
+                    config.TotalPlayTimeSeconds = jObject["TotalPlayTimeSeconds"].Value<long>();
+                
+                if (jObject["LastLaunchTime"] != null)
+                {
+                    if (DateTime.TryParse(jObject["LastLaunchTime"].ToString(), out var lastLaunch))
+                        config.LastLaunchTime = lastLaunch;
+                }
+                
                 System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 成功加载配置: {versionName}");
                 System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 窗口大小: {config.WindowWidth}x{config.WindowHeight}");
                 return config;
@@ -260,5 +273,50 @@ public class VersionConfigService : IVersionConfigService
         }
         
         return result;
+    }
+    
+    /// <summary>
+    /// 记录游戏启动
+    /// </summary>
+    public async Task RecordLaunchAsync(string versionName)
+    {
+        if (string.IsNullOrEmpty(versionName))
+            return;
+        
+        try
+        {
+            var config = await LoadConfigAsync(versionName);
+            config.LaunchCount++;
+            config.LastLaunchTime = DateTime.Now;
+            await SaveConfigAsync(versionName, config);
+            
+            System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 记录启动: {versionName}, 启动次数: {config.LaunchCount}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 记录启动失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 记录游戏退出并更新游戏时长
+    /// </summary>
+    public async Task RecordExitAsync(string versionName, long playTimeSeconds)
+    {
+        if (string.IsNullOrEmpty(versionName) || playTimeSeconds <= 0)
+            return;
+        
+        try
+        {
+            var config = await LoadConfigAsync(versionName);
+            config.TotalPlayTimeSeconds += playTimeSeconds;
+            await SaveConfigAsync(versionName, config);
+            
+            System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 记录退出: {versionName}, 本次时长: {playTimeSeconds}秒, 总时长: {config.TotalPlayTimeSeconds}秒");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 记录退出失败: {ex.Message}");
+        }
     }
 }

@@ -265,18 +265,14 @@ public sealed partial class LaunchPage : Page
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsGameRunning={ViewModel.IsGameRunning}");
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsLaunchSuccessInfoBarOpen={ViewModel.IsLaunchSuccessInfoBarOpen}");
         
-        // 用户手动关闭InfoBar
+        // 用户手动关闭InfoBar时，需要同时重置 IsLaunchSuccessInfoBarOpen
+        ViewModel.IsLaunchSuccessInfoBarOpen = false;
+        
+        // 如果游戏正在运行，关闭InfoBar意味着终止游戏
         if (ViewModel.IsGameRunning)
         {
             System.Diagnostics.Debug.WriteLine($"[LaunchPage] Closing InfoBar while game is running, will terminate game");
-            // 如果游戏正在运行，关闭InfoBar意味着终止游戏
             ViewModel.IsGameRunning = false;
-        }
-        else if (ViewModel.IsLaunchSuccessInfoBarOpen)
-        {
-            System.Diagnostics.Debug.WriteLine($"[LaunchPage] Closing InfoBar during preparation, will cancel download");
-            // 如果是准备阶段，关闭InfoBar意味着取消下载
-            ViewModel.IsLaunchSuccessInfoBarOpen = false;
         }
     }
 

@@ -181,10 +181,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         get
         {
+            if (TotalPlayTimeSeconds <= 0)
+                return "0 秒";
             if (TotalPlayTimeSeconds < 60)
                 return $"{TotalPlayTimeSeconds} 秒";
             if (TotalPlayTimeSeconds < 3600)
                 return $"{TotalPlayTimeSeconds / 60} 分钟";
+            
             var hours = TotalPlayTimeSeconds / 3600.0;
             return $"{hours:F1} 小时";
         }
@@ -229,6 +232,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public int ScreenshotCount => Screenshots.Count;
     
+    /// <summary>
+    /// 随机截图路径（用于概览页面展示）
+    /// </summary>
+    [ObservableProperty]
+    private string? _randomScreenshotPath;
+
+    /// <summary>
+    /// 是否有随机截图
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasRandomScreenshot;
+
     /// <summary>
     /// 存档列表
     /// </summary>
@@ -534,6 +549,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IDownloadManager _downloadManager;
     private readonly ModInfoService _modInfoService;
     private readonly IGameHistoryService _gameHistoryService;
+    private readonly IVersionConfigService _versionConfigService;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -575,7 +591,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionInfoManager versionInfoManager,
         IDownloadManager downloadManager,
         ModInfoService modInfoService,
-        IGameHistoryService gameHistoryService)
+        IGameHistoryService gameHistoryService,
+        IVersionConfigService versionConfigService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -594,6 +611,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _downloadManager = downloadManager;
         _modInfoService = modInfoService;
         _gameHistoryService = gameHistoryService;
+        _versionConfigService = versionConfigService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1760,20 +1778,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             try
             {
-                var history = await _gameHistoryService.GetVersionHistoryAsync(SelectedVersion.Name);
+                // 从版本配置文件读取统计数据
+                var config = await _versionConfigService.LoadConfigAsync(SelectedVersion.Name);
                 
-                if (history != null)
-                {
-                    LaunchCount = history.LaunchCount;
-                    TotalPlayTimeSeconds = history.TotalPlayTimeSeconds;
-                    LastLaunchTime = history.LastLaunchTime;
-                }
-                else
-                {
-                    LaunchCount = 0;
-                    TotalPlayTimeSeconds = 0;
-                    LastLaunchTime = null;
-                }
+                LaunchCount = config.LaunchCount;
+                TotalPlayTimeSeconds = config.TotalPlayTimeSeconds;
+                LastLaunchTime = config.LastLaunchTime;
                 
                 // 通知资源数量属性更新
                 OnPropertyChanged(nameof(ModCount));
@@ -1792,36 +1802,53 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadSavesAsync()
         {
+            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 开始加载存档列表 ===");
+            
             if (SelectedVersion == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[VersionManagement] SelectedVersion 为 null，跳过加载");
                 return;
+            }
             
             try
             {
                 var savesPath = Path.Combine(SelectedVersion.Path, "saves");
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档路径: {savesPath}");
                 
                 if (!Directory.Exists(savesPath))
                 {
+                    System.Diagnostics.Debug.WriteLine("[VersionManagement] 存档目录不存在");
                     Saves.Clear();
                     OnPropertyChanged(nameof(IsSaveListEmpty));
                     return;
                 }
                 
                 var saveDirectories = Directory.GetDirectories(savesPath);
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 找到 {saveDirectories.Length} 个存档目录");
+                
                 var saveInfos = new List<SaveInfo>();
                 
                 foreach (var saveDir in saveDirectories)
                 {
+                    var saveName = Path.GetFileName(saveDir);
+                    System.Diagnostics.Debug.WriteLine($"[VersionManagement] 处理存档: {saveName}");
+                    
                     var levelDatPath = Path.Combine(saveDir, "level.dat");
                     if (!File.Exists(levelDatPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} 没有 level.dat，跳过");
                         continue;
+                    }
                     
                     var saveInfo = new SaveInfo
                     {
-                        Name = Path.GetFileName(saveDir),
+                        Name = saveName,
                         Path = saveDir,
-                        DisplayName = Path.GetFileName(saveDir),
+                        DisplayName = saveName,
                         LastPlayed = Directory.GetLastWriteTime(saveDir)
                     };
+                    
+                    System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} 基本信息创建完成");
                     
                     // 尝试读取 level.dat 获取存档名称
                     try
@@ -1843,37 +1870,59 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             {
                                 saveInfo.LastPlayed = DateTimeOffset.FromUnixTimeMilliseconds(levelData.LastPlayed).LocalDateTime;
                             }
+                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} level.dat 读取成功: DisplayName={saveInfo.DisplayName}, GameMode={saveInfo.GameMode}");
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // 忽略读取错误
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} level.dat 读取失败: {ex.Message}");
                     }
                     
                     saveInfos.Add(saveInfo);
                 }
                 
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 共加载 {saveInfos.Count} 个有效存档");
+                
                 // 按最后游玩时间排序
                 saveInfos = saveInfos.OrderByDescending(s => s.LastPlayed).ToList();
                 
                 // 更新UI
+                System.Diagnostics.Debug.WriteLine("[VersionManagement] 准备更新 UI");
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
-                    Saves.Clear();
-                    foreach (var save in saveInfos)
+                    try
                     {
-                        Saves.Add(save);
+                        System.Diagnostics.Debug.WriteLine("[VersionManagement] 开始清空 Saves 集合");
+                        Saves.Clear();
+                        System.Diagnostics.Debug.WriteLine("[VersionManagement] Saves 集合已清空");
+                        
+                        foreach (var save in saveInfos)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 添加存档到 UI: {save.DisplayName}, Icon={save.Icon}");
+                            Saves.Add(save);
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] UI 更新完成，Saves.Count={Saves.Count}");
+                        OnPropertyChanged(nameof(IsSaveListEmpty));
                     }
-                    OnPropertyChanged(nameof(IsSaveListEmpty));
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] UI 更新失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 堆栈跟踪: {ex.StackTrace}");
+                    }
                 });
                 
                 // 异步加载存档图标
+                System.Diagnostics.Debug.WriteLine("[VersionManagement] 开始异步加载存档图标");
                 _ = LoadSaveIconsAsync(saveInfos);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionManagement] 加载存档列表失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 堆栈跟踪: {ex.StackTrace}");
             }
+            
+            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 存档列表加载流程结束 ===");
         }
         
         /// <summary>
@@ -1915,39 +1964,41 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadSaveIconsAsync(List<SaveInfo> saves)
         {
-            foreach (var save in saves)
+            System.Diagnostics.Debug.WriteLine($"[VersionManagement] === 开始加载 {saves.Count} 个存档的图标 ===");
+            
+            await Task.Run(() =>
             {
-                if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
-                    break;
-                
-                try
+                foreach (var save in saves)
                 {
-                    var iconPath = Path.Combine(save.Path, "icon.png");
-                    if (File.Exists(iconPath))
+                    if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
                     {
-                        var bitmap = new BitmapImage();
-                        await using var stream = File.OpenRead(iconPath);
-                        var randomAccessStream = stream.AsRandomAccessStream();
+                        System.Diagnostics.Debug.WriteLine("[VersionManagement] 图标加载被取消");
+                        break;
+                    }
+                    
+                    try
+                    {
+                        var iconPath = System.IO.Path.Combine(save.Path, "icon.png");
                         
-                        App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+                        if (File.Exists(iconPath))
                         {
-                            try
-                            {
-                                await bitmap.SetSourceAsync(randomAccessStream);
-                                save.Icon = bitmap;
-                            }
-                            catch
-                            {
-                                // 忽略图标加载错误
-                            }
-                        });
+                            // 直接设置图标路径，让 XAML 的转换器处理
+                            save.Icon = iconPath;
+                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 的图标路径已设置: {iconPath}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 没有图标文件");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 图标加载异常: {ex.Message}");
                     }
                 }
-                catch
-                {
-                    // 忽略图标加载错误
-                }
-            }
+            });
+            
+            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 存档图标加载流程结束 ===");
         }
         
         /// <summary>

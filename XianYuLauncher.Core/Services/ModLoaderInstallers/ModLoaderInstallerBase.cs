@@ -111,6 +111,8 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string modLoaderVersion,
         string? optifineVersion = null)
     {
+        var configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+        
         var config = new VersionConfig
         {
             ModLoaderType = ModLoaderType.ToLower(),
@@ -120,7 +122,6 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             CreatedAt = DateTime.Now
         };
 
-        var configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
         var jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
         await File.WriteAllTextAsync(configPath, jsonContent);
 

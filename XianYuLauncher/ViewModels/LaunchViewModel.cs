@@ -628,6 +628,10 @@ public partial class LaunchViewModel : ObservableRecipient
     private List<string> _gameError = new List<string>();
     private string _launchCommand = string.Empty;
     
+    // 游戏启动时间（用于计算游戏时长）
+    private DateTime _gameStartTime;
+    private string _currentLaunchedVersion = string.Empty;
+    
     // 实时日志开关状态
     private bool _isRealTimeLogsEnabled = false;
     private const string JavaPathKey = "JavaPath";
@@ -990,6 +994,18 @@ public partial class LaunchViewModel : ObservableRecipient
         
         // 更新游戏运行状态（这会自动关闭InfoBar）
         IsGameRunning = false;
+        
+        // 计算并记录游戏时长
+        if (!string.IsNullOrEmpty(_currentLaunchedVersion) && _gameStartTime != default)
+        {
+            var playTimeSeconds = (long)(DateTime.Now - _gameStartTime).TotalSeconds;
+            if (playTimeSeconds > 0)
+            {
+                _ = _versionConfigService.RecordExitAsync(_currentLaunchedVersion, playTimeSeconds);
+            }
+            _currentLaunchedVersion = string.Empty;
+            _gameStartTime = default;
+        }
         
         // 检查是否异常退出（排除用户主动终止的情况）
         if (e.ExitCode != 0 && !e.IsUserTerminated)
@@ -1674,6 +1690,11 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 // 使用 GameProcessMonitor 监控进程
                 _ = _gameProcessMonitor.MonitorProcessAsync(result.GameProcess, _launchCommand);
+                
+                // 记录游戏启动时间和版本（用于计算游戏时长）
+                _gameStartTime = DateTime.Now;
+                _currentLaunchedVersion = SelectedVersion;
+                _ = _versionConfigService.RecordLaunchAsync(SelectedVersion);
                 
                 // 检查是否为离线角色，处理离线启动计数
                 if (SelectedProfile.IsOffline)

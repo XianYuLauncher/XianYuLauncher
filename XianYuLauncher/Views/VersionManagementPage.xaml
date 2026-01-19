@@ -380,35 +380,41 @@
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="20">
-                                <StackPanel Spacing="16">
-                                    <TextBlock Text="启动信息" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                    <StackPanel Spacing="12">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="最后启动" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding FormattedLastLaunchTime}" FontWeight="SemiBold"/>
-                                        </Grid>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="光影" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding ShaderCount}" FontWeight="SemiBold"/>
-                                        </Grid>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="截图" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding ScreenshotCount}" FontWeight="SemiBold"/>
-                                        </Grid>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="启动信息" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,16"/>
+                                    
+                                    <StackPanel Grid.Row="1" Spacing="12">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="最后启动" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding FormattedLastLaunchTime}" FontWeight="SemiBold"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="光影" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding ShaderCount}" FontWeight="SemiBold"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="截图" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding ScreenshotCount}" FontWeight="SemiBold"/>
+                                            </Grid>
                                     </StackPanel>
-                                </StackPanel>
+                                </Grid>
                             </Border>
                             
                             <!-- 存档卡片 -->
@@ -430,60 +436,69 @@
                                                    FontSize="13"/>
                                     </Grid>
                                     
-                                    <!-- 存档列表 - 最多显示3个 -->
-                                    <ItemsRepeater ItemsSource="{Binding Saves}">
-                                        <ItemsRepeater.Layout>
-                                            <StackLayout Spacing="8" />
-                                        </ItemsRepeater.Layout>
-                                        <ItemsRepeater.ItemTemplate>
-                                            <DataTemplate x:DataType="models:SaveInfo">
-                                                <Button HorizontalAlignment="Stretch" 
-                                                        HorizontalContentAlignment="Stretch" 
-                                                        Padding="12,10"
-                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                                                        BorderThickness="0" 
-                                                        CornerRadius="6"
-                                                        Command="{Binding DataContext.LaunchWithSaveCommand, ElementName=ContentArea}"
-                                                        CommandParameter="{Binding}">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="Auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        
-                                                        <!-- 存档图标 -->
-                                                        <Border Grid.Column="0" Width="36" Height="36" CornerRadius="4" 
-                                                                Background="{ThemeResource LayerFillColorDefaultBrush}" 
-                                                                Margin="0,0,12,0">
-                                                            <Grid>
-                                                                <FontIcon Glyph="&#xE81E;" FontSize="16" 
-                                                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                                          Visibility="{x:Bind Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                                                                <Image Source="{x:Bind Icon, Mode=OneWay}" Stretch="UniformToFill" />
-                                                            </Grid>
-                                                        </Border>
-                                                        
-                                                        <!-- 存档信息 -->
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                            <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" 
-                                                                       FontWeight="SemiBold" 
-                                                                       FontSize="13"
-                                                                       TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{x:Bind GameMode, Mode=OneWay}" 
-                                                                       FontSize="12"
-                                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                        </StackPanel>
-                                                        
-                                                        <!-- 播放图标 -->
-                                                        <FontIcon Grid.Column="2" Glyph="&#xE768;" FontSize="14" 
-                                                                  Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
-                                                                  VerticalAlignment="Center" />
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsRepeater.ItemTemplate>
-                                    </ItemsRepeater>
+                                    <!-- 存档列表 - 限制最大高度，超出可滚动 -->
+                                    <ScrollViewer MaxHeight="200" 
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  Padding="0,0,12,0">
+                                        <ItemsRepeater ItemsSource="{Binding Saves}">
+                                            <ItemsRepeater.Layout>
+                                                <StackLayout Spacing="8" />
+                                            </ItemsRepeater.Layout>
+                                            <ItemsRepeater.ItemTemplate>
+                                                <DataTemplate x:DataType="models:SaveInfo">
+                                                    <Button HorizontalAlignment="Stretch" 
+                                                            HorizontalContentAlignment="Stretch" 
+                                                            Padding="12,10"
+                                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                            BorderThickness="0" 
+                                                            CornerRadius="6"
+                                                            Command="{Binding DataContext.LaunchWithSaveCommand, ElementName=ContentArea}"
+                                                            CommandParameter="{Binding}">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            
+                                                            <!-- 存档图标 -->
+                                                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="4" 
+                                                                    Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                                                                    Margin="0,0,12,0">
+                                                                <Grid>
+                                                                    <!-- 默认图标 - 当没有自定义图标时显示 -->
+                                                                    <FontIcon Glyph="&#xE81E;" FontSize="16" 
+                                                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                              Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
+                                                                    <!-- 自定义图标 - 当有图标时显示 -->
+                                                                    <Image Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
+                                                                           Stretch="UniformToFill"
+                                                                           Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
+                                                                </Grid>
+                                                            </Border>
+                                                            
+                                                            <!-- 存档信息 -->
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                                <TextBlock Text="{Binding DisplayName, Mode=OneWay}" 
+                                                                           FontWeight="SemiBold" 
+                                                                           FontSize="13"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding GameMode, Mode=OneWay}" 
+                                                                           FontSize="12"
+                                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                            </StackPanel>
+                                                            
+                                                            <!-- 播放图标 -->
+                                                            <FontIcon Grid.Column="2" Glyph="&#xE768;" FontSize="14" 
+                                                                      Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
+                                                                      VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsRepeater.ItemTemplate>
+                                        </ItemsRepeater>
+                                    </ScrollViewer>
                                     
                                     <!-- 空存档提示 -->
                                     <TextBlock Visibility="{Binding IsSaveListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -495,6 +510,27 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+                        
+                        <!-- 截图卡片 -->
+                        <Border Visibility="{Binding HasRandomScreenshot, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Background="{StaticResource OverviewCardBackgroundBrush}"
+                                BorderBrush="{StaticResource OverviewCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="20">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="截图" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,12"/>
+                                <Border Grid.Row="1" CornerRadius="6" Height="200">
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="{Binding RandomScreenshotPath}" Stretch="UniformToFill"/>
+                                    </Border.Background>
+                                </Border>
+                            </Grid>
+                        </Border>
                         
                     </StackPanel>
                 </ScrollViewer>
@@ -522,7 +558,7 @@
                             
                         </Grid.RowDefinitions>
                         
-                        <ScrollViewer Grid.Row="0" Margin="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer Grid.Row="0" Margin="0,16,0,0" Padding="0,0,12,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="16" Padding="0,0,0,24" HorizontalAlignment="Stretch">
                             <!-- 当前加载器信息卡片 - 使用 Expander 样式保持一致 -->
                             <Border 
