@@ -45,11 +45,14 @@ public static class VersionHelper
     }
 
     /// <summary>
-    /// 获取BMCLAPI User-Agent字符串
+    /// 获取统一的 User-Agent 字符串
     /// </summary>
     /// <returns>User-Agent字符串，格式为 "XianYuLauncher/{VERSION}"</returns>
-    public static string GetBmclapiUserAgent()
-    {
-        return $"XianYuLauncher/{GetVersion()}";
-    }
+    public static string GetUserAgent() => $"XianYuLauncher/{GetVersion()}";
+
+    /// <summary>
+    /// 获取BMCLAPI User-Agent字符串（兼容旧代码）
+    /// </summary>
+    [Obsolete("请使用 GetUserAgent() 方法")]
+    public static string GetBmclapiUserAgent() => GetUserAgent();
 }

@@ -273,10 +273,11 @@ namespace XianYuLauncher.Views
             ViewModel.CancelInstallCommand.Execute(null);
         }
         
-        // 下载进度弹窗 - 取消按钮点击事件
-        private void DownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        // 下载进度弹窗 - 后台下载按钮点击事件
+        private void DownloadProgressDialog_BackgroundButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
-            ViewModel.CancelDownloadCommand.Execute(null);
+            // 启动后台下载
+            ViewModel.StartBackgroundDownload();
         }
         
         // 一键安装 - 游戏版本选择弹窗 - 下一步按钮点击事件

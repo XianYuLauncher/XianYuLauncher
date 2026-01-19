@@ -20,6 +20,7 @@ public class CurseForgeService
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
     
     /// <summary>
     /// CurseForge官方API基础URL
@@ -61,10 +62,14 @@ public class CurseForgeService
     /// </summary>
     private const int DatapacksClassId = 6945;
 
-    public CurseForgeService(HttpClient httpClient, DownloadSourceFactory downloadSourceFactory)
+    public CurseForgeService(
+        HttpClient httpClient, 
+        DownloadSourceFactory downloadSourceFactory,
+        FallbackDownloadManager? fallbackDownloadManager = null)
     {
         _httpClient = httpClient;
         _downloadSourceFactory = downloadSourceFactory;
+        _fallbackDownloadManager = fallbackDownloadManager;
         _apiKey = SecretsService.Config.CurseForge.ApiKey;
         
         if (string.IsNullOrEmpty(_apiKey))

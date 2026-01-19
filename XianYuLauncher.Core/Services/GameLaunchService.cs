@@ -331,7 +331,7 @@ public class GameLaunchService : IGameLaunchService
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         progressCallback?.Invoke(progress);
-                        statusCallback?.Invoke($"正在准备游戏文件... {progress:F0}%");
+                        statusCallback?.Invoke($"正在准备游戏文件... {progress:F1}%");
                     },
                     currentHash =>
                     {

@@ -31,12 +31,18 @@ public class NeoForgeService
     private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
 
-    public NeoForgeService(HttpClient httpClient, DownloadSourceFactory downloadSourceFactory, ILocalSettingsService localSettingsService)
+    public NeoForgeService(
+        HttpClient httpClient, 
+        DownloadSourceFactory downloadSourceFactory, 
+        ILocalSettingsService localSettingsService,
+        FallbackDownloadManager? fallbackDownloadManager = null)
     {
         _httpClient = httpClient;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _fallbackDownloadManager = fallbackDownloadManager;
     }
 
     /// <summary>
@@ -48,66 +54,139 @@ public class NeoForgeService
     {
         try
         {
-            // 获取当前版本列表源设置（枚举类型，然后转为字符串）
-            var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
-            string versionListSource = versionListSourceEnum switch
+            // 如果有 FallbackDownloadManager，使用它来请求（支持自动回退）
+            if (_fallbackDownloadManager != null)
             {
-                0 => "official",
-                1 => "bmclapi",
-                2 => "mcim",
-                _ => "official"
-            };
-            
-            // 根据设置获取对应的下载源
-            var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
-            
-            // 获取NeoForge版本列表URL
-            string url = downloadSource.GetNeoForgeVersionsUrl(minecraftVersion);
-            
-            // 添加Debug输出，显示当前下载源和请求URL
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取{downloadSource.Name} NeoForge版本列表URL: {url}");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载NeoForge版本列表，下载源: {downloadSource.Name}，请求URL: {url}");
-            
-            // 创建请求消息，为BMCLAPI请求添加User-Agent
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (downloadSource.Name == "BMCLAPI")
-            {
-                request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 使用 FallbackDownloadManager 获取 NeoForge 版本列表");
+                
+                var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
+                    source => source.GetNeoForgeVersionsUrl(minecraftVersion),
+                    (request, source) =>
+                    {
+                        // 所有源都添加 User-Agent（maven.neoforged.net 会拒绝没有 UA 的请求）
+                        request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
+                    });
+                
+                if (result.Success && result.Response != null)
+                {
+                    result.Response.EnsureSuccessStatusCode();
+                    string content = await result.Response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 成功获取 NeoForge 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
+                    
+                    // 根据源类型解析响应
+                    if (result.UsedSourceKey == "bmclapi")
+                    {
+                        return ParseBmclapiNeoForgeResponse(content, minecraftVersion);
+                    }
+                    else
+                    {
+                        // 官方源返回 XML
+                        return ParseOfficialNeoForgeResponse(content, minecraftVersion);
+                    }
+                }
+                else
+                {
+                    throw new Exception($"获取NeoForge版本列表失败: {result.ErrorMessage}");
+                }
             }
             
-            // 发送HTTP请求
-            HttpResponseMessage response = await _httpClient.SendAsync(request);
-            
-            // 确保响应成功
-            response.EnsureSuccessStatusCode();
-            
-            // 根据下载源类型处理响应
-            if (downloadSource.Name == "BMCLAPI")
-            {
-                // BMCLAPI返回JSON格式
-                return await HandleBmclapiResponseAsync(response);
-            }
-            else
-            {
-                // 官方源返回XML格式
-                return await HandleOfficialResponseAsync(response, minecraftVersion);
-            }
+            // 回退到原有逻辑（兼容模式）
+            return await GetNeoForgeVersionsWithLegacyFallbackAsync(minecraftVersion);
         }
         catch (HttpRequestException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取NeoForge版本列表失败: {ex.Message}");
             throw new Exception($"获取NeoForge版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析NeoForge版本列表失败: {ex.Message}");
             throw new Exception($"解析NeoForge版本列表失败: {ex.Message}");
         }
         catch (System.Xml.XmlException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析NeoForge版本列表失败: {ex.Message}");
             throw new Exception($"解析NeoForge版本列表失败: {ex.Message}");
+        }
+        catch (Exception ex) when (ex.Message.StartsWith("获取NeoForge") || ex.Message.StartsWith("解析NeoForge"))
+        {
+            throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取NeoForge版本列表时发生错误: {ex.Message}");
             throw new Exception($"获取NeoForge版本列表时发生错误: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 解析 BMCLAPI NeoForge 响应（JSON格式）
+    /// </summary>
+    private List<string> ParseBmclapiNeoForgeResponse(string json, string minecraftVersion)
+    {
+        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json);
+        // 过滤出匹配 Minecraft 版本的 NeoForge 版本
+        var versionList = versions
+            .Where(v => v.mcversion == minecraftVersion)
+            .Select(v => v.version)
+            .ToList();
+        return SortNeoForgeVersions(versionList);
+    }
+    
+    /// <summary>
+    /// 解析官方源 NeoForge 响应（XML格式）
+    /// </summary>
+    private List<string> ParseOfficialNeoForgeResponse(string xml, string minecraftVersion)
+    {
+        List<string> allVersions = ParseNeoForgeVersionsFromXml(xml);
+        List<string> matchedVersions = MatchNeoForgeVersions(allVersions, minecraftVersion);
+        return SortNeoForgeVersions(matchedVersions);
+    }
+    
+    /// <summary>
+    /// 使用原有逻辑获取 NeoForge 版本列表（兼容模式）
+    /// </summary>
+    private async Task<List<string>> GetNeoForgeVersionsWithLegacyFallbackAsync(string minecraftVersion)
+    {
+        // 获取当前版本列表源设置（枚举类型，然后转为字符串）
+        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
+        string versionListSource = versionListSourceEnum switch
+        {
+            0 => "official",
+            1 => "bmclapi",
+            2 => "mcim",
+            _ => "official"
+        };
+        
+        // 根据设置获取对应的下载源
+        var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
+        
+        // 获取NeoForge版本列表URL
+        string url = downloadSource.GetNeoForgeVersionsUrl(minecraftVersion);
+        
+        System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
+        
+        // 创建请求消息，为BMCLAPI请求添加User-Agent
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (downloadSource.Name == "BMCLAPI")
+        {
+            request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
+        }
+        
+        // 发送HTTP请求
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+        
+        // 确保响应成功
+        response.EnsureSuccessStatusCode();
+        
+        // 根据下载源类型处理响应
+        if (downloadSource.Name == "BMCLAPI")
+        {
+            return await HandleBmclapiResponseAsync(response);
+        }
+        else
+        {
+            return await HandleOfficialResponseAsync(response, minecraftVersion);
         }
     }
     

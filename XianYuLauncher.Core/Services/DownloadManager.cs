@@ -39,6 +39,7 @@ public class DownloadManager : IDownloadManager
     public DownloadManager(ILogger<DownloadManager> logger)
     {
         _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
         _httpClient.Timeout = TimeSpan.FromMinutes(30); // 30分钟超时，适合大文件下载
         _logger = logger;
     }
@@ -124,7 +125,7 @@ public class DownloadManager : IDownloadManager
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 if (IsBmclapiUrl(url))
                 {
-                    request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                    request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                 }
 
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -169,7 +170,7 @@ public class DownloadManager : IDownloadManager
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 if (IsBmclapiUrl(url))
                 {
-                    request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                    request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                 }
 
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -207,12 +208,15 @@ public class DownloadManager : IDownloadManager
 
         if (totalCount == 0)
         {
+            _logger.LogInformation("[DownloadManager] 下载任务列表为空，无需下载");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][DownloadManager] 下载任务列表为空，无需下载，直接完成");
             progressCallback?.Invoke(100);
             return results;
         }
 
-        _logger.LogInformation("开始批量下载 {TotalCount} 个文件，最大并发数: {MaxConcurrency}", 
+        _logger.LogInformation("[DownloadManager] 开始批量下载 {TotalCount} 个文件，最大并发数: {MaxConcurrency}", 
             totalCount, maxConcurrency);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG][DownloadManager] 开始批量下载 {totalCount} 个文件，最大并发数: {maxConcurrency}");
 
         using var semaphore = new SemaphoreSlim(maxConcurrency);
         var downloadTasks = taskList.Select(async task =>
@@ -291,7 +295,7 @@ public class DownloadManager : IDownloadManager
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             if (IsBmclapiUrl(url))
             {
-                request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+                request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             }
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);

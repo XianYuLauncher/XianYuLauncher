@@ -68,7 +68,7 @@ public class McimDownloadSource : IDownloadSource
     /// 获取Modrinth请求的User-Agent
     /// MCIM镜像要求设置User-Agent，符合中国MC启动器社区规范
     /// </summary>
-    public string? GetModrinthUserAgent() => VersionHelper.GetBmclapiUserAgent();
+    public string? GetModrinthUserAgent() => VersionHelper.GetUserAgent();
     
     /// <summary>
     /// 是否需要为Modrinth请求设置特殊User-Agent（MCIM需要）
@@ -123,7 +123,7 @@ public class McimDownloadSource : IDownloadSource
     /// 获取CurseForge请求的User-Agent
     /// MCIM镜像要求设置User-Agent，符合中国MC启动器社区规范
     /// </summary>
-    public string? GetCurseForgeUserAgent() => VersionHelper.GetBmclapiUserAgent();
+    public string? GetCurseForgeUserAgent() => VersionHelper.GetUserAgent();
     
     /// <summary>
     /// 是否需要为CurseForge请求设置特殊User-Agent（MCIM需要）

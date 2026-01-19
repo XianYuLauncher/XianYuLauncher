@@ -1374,13 +1374,13 @@ public partial class LaunchViewModel : ObservableRecipient
                     
                     currentProgress = progress;
                     DownloadProgress = progress;
-                    LaunchStatus = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
-                    CurrentDownloadItem = string.Format("{0} {1:F0}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
+                    LaunchStatus = string.Format("{0} {1:F1}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
+                    CurrentDownloadItem = string.Format("{0} {1:F1}%", "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), progress);
                     
                     // 更新 InfoBar 消息：显示百分比和当前下载的 hash
                     if (!string.IsNullOrEmpty(currentDownloadHash))
                     {
-                        LaunchSuccessMessage = string.Format("{0} {1} {2:F0}% 正在下载:\n{3}", 
+                        LaunchSuccessMessage = string.Format("{0} {1} {2:F1}% 正在下载:\n{3}", 
                             SelectedVersion, 
                             "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), 
                             progress,
@@ -1388,7 +1388,7 @@ public partial class LaunchViewModel : ObservableRecipient
                     }
                     else
                     {
-                        LaunchSuccessMessage = string.Format("{0} {1} {2:F0}%", 
+                        LaunchSuccessMessage = string.Format("{0} {1} {2:F1}%", 
                             SelectedVersion, 
                             "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), 
                             progress);
@@ -1403,7 +1403,7 @@ public partial class LaunchViewModel : ObservableRecipient
                         currentDownloadHash = status.Replace("正在准备游戏文件... ", "").Trim();
                         
                         // 更新 InfoBar 消息：显示百分比和当前下载的 hash
-                        LaunchSuccessMessage = string.Format("{0} {1} {2:F0}% 正在下载:\n{3}", 
+                        LaunchSuccessMessage = string.Format("{0} {1} {2:F1}% 正在下载:\n{3}", 
                             SelectedVersion, 
                             "LaunchPage_PreparingGameFilesProgressText".GetLocalized(), 
                             currentProgress,

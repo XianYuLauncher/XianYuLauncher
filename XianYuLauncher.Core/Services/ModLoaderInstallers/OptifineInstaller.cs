@@ -34,6 +34,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
         _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -275,7 +276,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
             
             // 创建请求消息并添加BMCLAPI User-Agent
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             
             using var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -419,6 +420,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = optifine?.MainClass ?? original.MainClass,
             // 关键字段：从原版复制
             AssetIndex = original.AssetIndex,
@@ -517,6 +520,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = originalVersionInfo.ReleaseTime,
             Url = originalVersionInfo.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = originalVersionInfo.Id,
             MainClass = "net.minecraft.client.main.Main",
             AssetIndex = originalVersionInfo.AssetIndex,
             Assets = originalVersionInfo.Assets ?? originalVersionInfo.AssetIndex?.Id ?? originalVersionInfo.Id,

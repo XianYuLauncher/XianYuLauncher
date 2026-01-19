@@ -28,7 +28,7 @@ public class CurseForgeCacheService
     {
         _fileService = fileService;
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
     }
     
     /// <summary>

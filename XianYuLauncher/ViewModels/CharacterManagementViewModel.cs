@@ -72,6 +72,7 @@ namespace XianYuLauncher.ViewModels
 
                 // 下载皮肤纹理
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(skinUrl);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -239,6 +240,7 @@ namespace XianYuLauncher.ViewModels
             _fileService = fileService;
             _profileManager = profileManager;
             _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             _httpClient.BaseAddress = new Uri("https://api.minecraftservices.com/");
         }
 
@@ -402,6 +404,7 @@ namespace XianYuLauncher.ViewModels
                 {
                     // 2. 令牌无效，调用刷新接口
                     var httpClient = new HttpClient();
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                     
                     // 构建刷新请求，使用现有的clientToken或生成新的
                     var refreshRequest = new
@@ -458,6 +461,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 
                 // 构建验证请求，包含clientToken以提高安全性
                 var validateRequest = new
@@ -586,6 +590,7 @@ namespace XianYuLauncher.ViewModels
                 
                 // 下载披风纹理
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(capeUrl);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -806,6 +811,7 @@ namespace XianYuLauncher.ViewModels
 
                 // 2. 发送请求获取profile.properties
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -917,6 +923,7 @@ namespace XianYuLauncher.ViewModels
 
                 // 下载披风纹理
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(capeUrl);
                 if (!response.IsSuccessStatusCode)
                 {

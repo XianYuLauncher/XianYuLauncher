@@ -215,11 +215,11 @@
             x:Name="DownloadProgressDialog"
             x:Uid="ModDownloadDetailPage_DownloadProgressDialog"
             Title="下载中"
-            CloseButtonText="取消"
-            IsPrimaryButtonEnabled="False"
+            PrimaryButtonText="后台下载"
+            IsPrimaryButtonEnabled="True"
             IsSecondaryButtonEnabled="False"
             DefaultButton="None"
-            CloseButtonClick="DownloadProgressDialog_CloseButtonClick">
+            PrimaryButtonClick="DownloadProgressDialog_BackgroundButtonClick">
             <StackPanel Spacing="16" Width="400">
                 <!-- 下载状态文本 -->
                 <TextBlock FontSize="16" Text="{x:Bind ViewModel.DownloadStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />

@@ -24,6 +24,7 @@ namespace XianYuLauncher.Views
         {
             ViewModel = App.GetService<TutorialPageViewModel>();
             this.InitializeComponent();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
             // 监听CurrentPageIndex和ProfileName属性变化
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;

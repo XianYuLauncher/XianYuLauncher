@@ -201,7 +201,7 @@ public class ModInfoService
             // 获取版本信息
             var versionUrl = $"https://api.modrinth.com/v2/version_file/{sha1}?algorithm=sha1";
             using var versionRequest = new HttpRequestMessage(HttpMethod.Get, versionUrl);
-            versionRequest.Headers.Add("User-Agent", "XianYuLauncher/1.0");
+            versionRequest.Headers.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
             var versionResponse = await _httpClient.SendAsync(versionRequest, cancellationToken);
             if (!versionResponse.IsSuccessStatusCode)
@@ -221,7 +221,7 @@ public class ModInfoService
             // 获取项目详情
             var projectUrl = $"https://api.modrinth.com/v2/project/{projectId}";
             using var projectRequest = new HttpRequestMessage(HttpMethod.Get, projectUrl);
-            projectRequest.Headers.Add("User-Agent", "XianYuLauncher/1.0");
+            projectRequest.Headers.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
             var projectResponse = await _httpClient.SendAsync(projectRequest, cancellationToken);
             if (!projectResponse.IsSuccessStatusCode)

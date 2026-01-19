@@ -514,6 +514,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Time = cleanroom?.Time ?? original.Time,
             ReleaseTime = cleanroom?.ReleaseTime ?? original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = cleanroom?.MainClass ?? original.MainClass,
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,

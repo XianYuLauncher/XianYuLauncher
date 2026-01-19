@@ -21,6 +21,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly ForgeService _forgeService;
     private readonly OptifineService _optifineService;
     private readonly CleanroomService _cleanroomService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
@@ -149,7 +150,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
     }
     
-    // 下载进度相关属性
+    // 用于管理异步加载任务的CancellationTokenSource
+    private Dictionary<string, CancellationTokenSource> _ctsMap = new();
+
+    // 下载弹窗相关属性
     [ObservableProperty]
     private bool _isDownloadDialogOpen = false;
     
@@ -162,11 +166,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _downloadProgressText = "0%";
     
-    // 用于管理异步加载任务的CancellationTokenSource
-    private Dictionary<string, CancellationTokenSource> _ctsMap = new();
-    
-    // 用于管理下载任务的CancellationTokenSource
-    private CancellationTokenSource? _downloadCts;
+    // 是否已切换到后台下载
+    private bool _isBackgroundDownload = false;
 
     public ModLoaderSelectorViewModel()
     {
@@ -178,6 +179,83 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _forgeService = App.GetService<ForgeService>();
         _optifineService = App.GetService<OptifineService>();
         _cleanroomService = App.GetService<CleanroomService>();
+        _downloadTaskManager = App.GetService<IDownloadTaskManager>();
+        
+        // 订阅下载事件以更新弹窗进度
+        _downloadTaskManager.TaskProgressChanged += OnDownloadProgressChanged;
+        _downloadTaskManager.TaskStateChanged += OnDownloadStateChanged;
+    }
+    
+    private void OnDownloadProgressChanged(object? sender, DownloadTaskInfo taskInfo)
+    {
+        // 只有在弹窗打开时才更新
+        if (IsDownloadDialogOpen)
+        {
+            DownloadProgress = taskInfo.Progress;
+            DownloadProgressText = $"{taskInfo.Progress:F1}%";
+            // 移除 StatusMessage 末尾的百分比（如 "正在下载... 50%" -> "正在下载..."）
+            var status = taskInfo.StatusMessage;
+            var lastSpaceIndex = status.LastIndexOf(' ');
+            if (lastSpaceIndex > 0 && status.EndsWith("%"))
+            {
+                status = status.Substring(0, lastSpaceIndex);
+            }
+            DownloadStatus = status;
+        }
+    }
+    
+    private void OnDownloadStateChanged(object? sender, DownloadTaskInfo taskInfo)
+    {
+        // 只有在弹窗打开时才处理
+        if (IsDownloadDialogOpen && !_isBackgroundDownload)
+        {
+            switch (taskInfo.State)
+            {
+                case DownloadTaskState.Completed:
+                    DownloadStatus = "下载完成！";
+                    DownloadProgress = 100;
+                    // 延迟关闭弹窗
+                    _ = Task.Delay(1000).ContinueWith(_ =>
+                    {
+                        IsDownloadDialogOpen = false;
+                    });
+                    break;
+                case DownloadTaskState.Failed:
+                    DownloadStatus = $"下载失败: {taskInfo.ErrorMessage}";
+                    break;
+                case DownloadTaskState.Cancelled:
+                    DownloadStatus = "下载已取消";
+                    IsDownloadDialogOpen = false;
+                    break;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 切换到后台下载
+    /// </summary>
+    [RelayCommand]
+    private void SwitchToBackgroundDownload()
+    {
+        _isBackgroundDownload = true;
+        IsDownloadDialogOpen = false;
+        
+        // 启用 TeachingTip 显示，这样 ShellViewModel 会在收到下载状态时打开 TeachingTip
+        _downloadTaskManager.IsTeachingTipEnabled = true;
+        
+        // 通知 ShellViewModel 打开 TeachingTip（立即打开，不等待下一次状态变化）
+        var shellViewModel = App.GetService<ShellViewModel>();
+        shellViewModel.IsDownloadTeachingTipOpen = true;
+    }
+    
+    /// <summary>
+    /// 取消下载
+    /// </summary>
+    [RelayCommand]
+    private void CancelDownload()
+    {
+        _downloadTaskManager.CancelCurrentDownload();
+        IsDownloadDialogOpen = false;
     }
     
     /// <summary>
@@ -918,6 +996,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         try
         {
+            // 检查是否已有下载任务在进行
+            if (_downloadTaskManager.HasActiveDownload)
+            {
+                await ShowMessageAsync("ModLoaderSelectionPage_DownloadInProgressText".GetLocalized());
+                return;
+            }
+            
             // 如果选择了Cleanroom，显示警告弹窗
             if (SelectedModLoader == "Cleanroom")
             {
@@ -941,6 +1026,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             }
             
             // 初始化下载状态
+            _isBackgroundDownload = false;
             DownloadStatus = "ModLoaderSelectionPage_PreparingDownloadText".GetLocalized();
             DownloadProgress = 0;
             DownloadProgressText = "0%";
@@ -948,57 +1034,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 显示下载弹窗
             IsDownloadDialogOpen = true;
             
-            // 获取用户设置的Minecraft目录
-            string minecraftDirectory = _fileService.GetMinecraftDataPath();
-            
-            // 创建下载进度回调
-            Action<double> progressCallback = (progress) =>
-            {
-                // 更新下载进度
-                DownloadProgress = progress;
-                DownloadProgressText = $"{progress:F0}%";
-                
-                // 更新下载状态文本
-                if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected)
-                {
-                    DownloadStatus = string.Format("{0} {1}...", "ModLoaderSelectionPage_DownloadingVanillaMinecraftText".GetLocalized(), SelectedMinecraftVersion);
-                }
-                else if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
-                {
-                    // 单独选择Optifine的情况
-                    DownloadStatus = string.Format("{0} Optifine {1} {2}...", "ModLoaderSelectionPage_DownloadingText".GetLocalized(), SelectedOptifineVersion, "ModLoaderSelectionPage_VersionText".GetLocalized());
-                }
-                else
-                {
-                    // 选择了其他ModLoader的情况
-                    DownloadStatus = string.Format("{0} {1} {2} {3}...", "ModLoaderSelectionPage_DownloadingText".GetLocalized(), SelectedModLoader, SelectedModLoaderVersion, "ModLoaderSelectionPage_VersionText".GetLocalized());
-                }
-            };
-            
-            // 创建下载任务的CancellationTokenSource
-            _downloadCts = new CancellationTokenSource();
-            
-            // 调用下载服务
-            var minecraftVersionService = App.GetService<IMinecraftVersionService>();
-            string successMessage;
-            
-            // 下载逻辑
+            // 下载逻辑 - 使用 DownloadTaskManager
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected)
             {
                 // 下载原版Minecraft
-                // 创建版本目录：.minecraft/versions/{自定义版本名称}/
-                string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
-                string versionDirectory = Path.Combine(versionsDirectory, VersionName);
-                Directory.CreateDirectory(versionDirectory);
-                
-                // 传递进度回调函数，确保进度条更新
-                await minecraftVersionService.DownloadVersionAsync(SelectedMinecraftVersion, versionDirectory, progressCallback, VersionName);
-                successMessage = string.Format("{0} Minecraft {1} {2}！{3}: {4}", "ModLoaderSelectionPage_VanillaText".GetLocalized(), SelectedMinecraftVersion, "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), VersionName);
+                await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName);
             }
             else
             {
-                string modLoaderToDownload = SelectedModLoader;
-                string modLoaderVersionToDownload = SelectedModLoaderVersion;
+                string modLoaderToDownload = SelectedModLoader ?? string.Empty;
+                string modLoaderVersionToDownload = SelectedModLoaderVersion ?? string.Empty;
                 
                 // 处理Optifine单独选择的情况
                 if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
@@ -1016,7 +1061,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         }
                     }
                 }
-                // 下载带Mod Loader的版本
+                
+                // 检查版本是否已选择
                 if (string.IsNullOrEmpty(modLoaderVersionToDownload))
                 {
                     await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
@@ -1034,144 +1080,33 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         var optifineInfo = optifineItem.GetOptifineVersionInfo(SelectedOptifineVersion);
                         if (optifineInfo != null && optifineInfo.FullVersion != null)
                         {
-                            // 使用专门的Optifine+Forge下载方法，该方法已经实现了先Optifine后Forge的正确顺序
-                            await minecraftVersionService.DownloadOptifineForgeVersionAsync(
+                            // 使用专门的Optifine+Forge下载方法
+                            await _downloadTaskManager.StartOptifineForgeDownloadAsync(
                                 SelectedMinecraftVersion,
                                 modLoaderVersionToDownload,
                                 optifineInfo.FullVersion.Type,
                                 optifineInfo.FullVersion.Patch,
-                                Path.Combine(minecraftDirectory, "versions"),
-                                Path.Combine(minecraftDirectory, "libraries"),
-                                (progress) =>
-                                {
-                                    DownloadProgress = progress;
-                                    DownloadProgressText = $"{progress:F0}%";
-                                    DownloadStatus = progress < 50 ? string.Format("{0} Optifine...", "ModLoaderSelectionPage_InstallingText".GetLocalized()) : string.Format("{0} Forge...", "ModLoaderSelectionPage_InstallingText".GetLocalized());
-                                },
-                                _downloadCts.Token,
                                 VersionName);
                         }
                     }
                 }
-                // 处理Optifine单独选择的情况
-                else if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
+                else
                 {
-                    // 单独下载Optifine
-                    await minecraftVersionService.DownloadModLoaderVersionAsync(
+                    // 下载其他ModLoader（包括单独的Optifine）
+                    await _downloadTaskManager.StartModLoaderDownloadAsync(
                         SelectedMinecraftVersion,
                         modLoaderToDownload,
                         modLoaderVersionToDownload,
-                        minecraftDirectory,
-                        progressCallback,
-                        _downloadCts.Token,
-                        VersionName);
-                }
-                // 处理其他ModLoader（包括非Forge+Optifine组合）
-                else
-                {
-                    // 第一步：下载主要的Mod Loader（如Fabric、NeoForge等）
-                    await minecraftVersionService.DownloadModLoaderVersionAsync(
-                        SelectedMinecraftVersion,
-                        modLoaderToDownload,
-                        modLoaderVersionToDownload,
-                        minecraftDirectory,
-                        progressCallback,
-                        _downloadCts.Token,
-                        VersionName);
-                    
-                    // 第二步：如果同时选择了Optifine，在主要Mod Loader基础上安装Optifine
-                    if (IsOptifineSelected && !string.IsNullOrEmpty(SelectedModLoader))
-                    {
-                        // 查找当前选择的Optifine版本对应的完整信息
-                        var optifineItem = ModLoaderItems.FirstOrDefault(item => item.Name == "Optifine");
-                        if (optifineItem != null && !string.IsNullOrEmpty(SelectedOptifineVersion))
-                        {
-                            var optifineInfo = optifineItem.GetOptifineVersionInfo(SelectedOptifineVersion);
-                            if (optifineInfo != null && optifineInfo.FullVersion != null)
-                            {
-                                // 更新下载状态和进度回调，处理Optifine安装进度
-                                Action<double> optifineProgressCallback = (progress) =>
-                                {
-                                    // Optifine安装占总进度的40%（主要ModLoader占60%）
-                                    double adjustedProgress = 60 + (progress * 0.4);
-                                    DownloadProgress = adjustedProgress;
-                                    DownloadProgressText = $"{adjustedProgress:F0}%";
-                                    DownloadStatus = string.Format("{0} Optifine {1}_{2}...", "ModLoaderSelectionPage_InstallingText".GetLocalized(), optifineInfo.FullVersion.Type, optifineInfo.FullVersion.Patch);
-                                };
-                                
-                                // 使用特殊格式传递Optifine的type和patch值
-                                string optifineVersionToDownload = $"{optifineInfo.FullVersion.Type}:{optifineInfo.FullVersion.Patch}";
-                                
-                                // 下载Optifine
-                                await minecraftVersionService.DownloadModLoaderVersionAsync(
-                                    SelectedMinecraftVersion,
-                                    "Optifine",
-                                    optifineVersionToDownload,
-                                    minecraftDirectory,
-                                    optifineProgressCallback,
-                                    _downloadCts.Token,
-                                    VersionName);
-                            }
-                        }
-                    }
-                }
-                
-                // 构建成功消息
-                if (IsOptifineSelected && !string.IsNullOrEmpty(SelectedModLoader))
-                {
-                    successMessage = string.Format("{0} {1} + Optifine {2} {3}！\n\n{4}: {5}\n{6}: {1} + Optifine {2}\n{7}: {8}", 
-                        modLoaderToDownload, 
-                        modLoaderVersionToDownload, 
-                        SelectedOptifineVersion, 
-                        "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), 
-                        "ModLoaderSelectionPage_MinecraftVersionText".GetLocalized(), 
-                        SelectedMinecraftVersion, 
-                        "ModLoaderSelectionPage_ModLoaderText".GetLocalized(), 
-                        "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), 
-                        VersionName);
-                }
-                else
-                {
-                    successMessage = string.Format("{0} {1} {2}！\n\n{3}: {4}\n{5}: {0}\n{6}: {1}\n{7}: {8}", 
-                        modLoaderToDownload, 
-                        modLoaderVersionToDownload, 
-                        "ModLoaderSelectionPage_DownloadCompletedText".GetLocalized(), 
-                        "ModLoaderSelectionPage_MinecraftVersionText".GetLocalized(), 
-                        SelectedMinecraftVersion, 
-                        "ModLoaderSelectionPage_ModLoaderText".GetLocalized(), 
-                        "ModLoaderSelectionPage_ModLoaderVersionText".GetLocalized(), 
-                        "ModLoaderSelectionPage_CustomVersionNameText".GetLocalized(), 
                         VersionName);
                 }
             }
             
-            // 隐藏下载弹窗
-            IsDownloadDialogOpen = false;
-            
-            // 显示下载完成消息
-            await ShowMessageAsync(successMessage);
-            
-            // 返回上一页
-            _navigationService.GoBack();
-        }
-        catch (OperationCanceledException)
-        {
-            // 下载被取消
-            IsDownloadDialogOpen = false;
-            await ShowMessageAsync("ModLoaderSelectionPage_DownloadCanceledText".GetLocalized());
+            // 注意：不再立即返回，弹窗会保持打开直到下载完成或用户点击后台下载
         }
         catch (Exception ex)
         {
-            // 隐藏下载弹窗
             IsDownloadDialogOpen = false;
             await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
-        }
-        finally
-        {
-            // 释放CancellationTokenSource
-            _downloadCts?.Cancel();
-            _downloadCts?.Dispose();
-            _downloadCts = null;
         }
     }
     

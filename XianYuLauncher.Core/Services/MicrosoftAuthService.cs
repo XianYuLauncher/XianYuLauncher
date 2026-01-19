@@ -22,7 +22,7 @@ public class MicrosoftAuthService
     public MicrosoftAuthService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
     
     #region 数据模型

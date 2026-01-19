@@ -36,6 +36,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     private readonly IAssetManager _assetManager;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
 
     public MinecraftVersionService(
         ILogger<MinecraftVersionService> logger, 
@@ -47,10 +48,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         ILibraryManager libraryManager,
         IAssetManager assetManager,
         IVersionInfoManager versionInfoManager,
-        IModLoaderInstallerFactory modLoaderInstallerFactory)
+        IModLoaderInstallerFactory modLoaderInstallerFactory,
+        FallbackDownloadManager? fallbackDownloadManager = null)
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
         _logger = logger;
         _fileService = fileService;
         _localSettingsService = localSettingsService;
@@ -61,6 +63,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         _assetManager = assetManager;
         _versionInfoManager = versionInfoManager;
         _modLoaderInstallerFactory = modLoaderInstallerFactory;
+        _fallbackDownloadManager = fallbackDownloadManager;
     }
 
     /// <summary>
@@ -138,6 +141,38 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogInformation("正在获取Minecraft版本清单");
             
+            // 如果有 FallbackDownloadManager，使用它来请求（支持自动回退）
+            if (_fallbackDownloadManager != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 使用 FallbackDownloadManager 获取版本清单");
+                
+                var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
+                    source => source.GetVersionManifestUrl(),
+                    (request, source) =>
+                    {
+                        // 为 BMCLAPI 添加 User-Agent
+                        if (source.Name == "BMCLAPI")
+                        {
+                            request.Headers.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
+                        }
+                    });
+                
+                if (result.Success && result.Response != null)
+                {
+                    result.Response.EnsureSuccessStatusCode();
+                    string json = await result.Response.Content.ReadAsStringAsync();
+                    var manifest = JsonConvert.DeserializeObject<VersionManifest>(json);
+                    _logger.LogInformation("成功获取Minecraft版本清单 (使用源: {Source} -> {Domain})，共{VersionCount}个版本", 
+                        result.UsedSourceKey, result.UsedDomain, manifest.Versions.Count);
+                    return manifest;
+                }
+                else
+                {
+                    throw new Exception($"获取版本清单失败: {result.ErrorMessage}");
+                }
+            }
+            
+            // 回退到原有逻辑（兼容模式）
             // 获取当前版本列表源设置（字符串类型）
             var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
             _logger.LogInformation("当前版本列表源: {VersionListSource}", versionListSource);
@@ -1506,10 +1541,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             
             _logger.LogInformation("开始检查NeoForge版本依赖: {VersionId}", versionId);
-            currentDownloadCallback?.Invoke("正在执行NeoforgeProcessor");
             
             // 注释掉检查minecraft-client-patched JAR的逻辑，避免每次启动都执行处理器
-            // 由用户要求添加，解决特定版本下NeoForge每次启动都要patched导致的卡顿问题
+            // 解决特定版本下NeoForge每次启动都要patched导致的卡顿问题
             // string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
             // 
             // if (File.Exists(patchedJarPath))
@@ -1640,6 +1674,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 3. 下载缺失的依赖库 (5-45%)
             try
             {
+                currentDownloadCallback?.Invoke("正在下载依赖库...");
                 await DownloadLibrariesAsync(versionId, librariesDirectory, (progress) =>
                 {
                     double adjustedProgress = 5 + (progress * 0.4); // 0-100% 映射到 5-45%
@@ -1669,6 +1704,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 1.5 解压原生库到natives目录 (45-50%)
             try
             {
+                currentDownloadCallback?.Invoke("正在解压原生库...");
                 await ExtractNativeLibrariesAsync(versionId, librariesDirectory, nativesDirectory);
                 // 报告原生库解压完成
                 double nativeExtractProgress = 45 + (100 * 0.05); // 50%
@@ -1682,6 +1718,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 2. 确保资源索引文件可用 (50-55%)
             try
             {
+                currentDownloadCallback?.Invoke("正在处理资源索引...");
                 await EnsureAssetIndexAsync(versionId, minecraftDirectory, (progress) =>
                 {
                     double adjustedProgress = 50 + (progress * 0.05); // 0-100% 映射到 50-55%
@@ -1711,6 +1748,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 3. 下载所有资源对象 (55-100%)
             try
             {
+                _logger.LogInformation("[EnsureDeps] 开始下载资源对象阶段 (55-100%)");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 开始下载资源对象阶段 (55-100%)");
+                
                 // 使用传入的currentDownloadCallback参数，同时记录日志
                 Action<string> combinedCallback = null;
                 if (currentDownloadCallback != null)
@@ -1728,8 +1768,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 {
                     // 只调整整体进度，保留文件大小信息
                     double adjustedProgress = 55 + (progress * 0.45); // 0-100% 映射到 55-100%
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 资源下载进度: {progress:F1}% -> 整体进度: {adjustedProgress:F1}%");
                     progressCallback?.Invoke(adjustedProgress);
                 }, combinedCallback);
+                
+                _logger.LogInformation("[EnsureDeps] 资源对象下载阶段完成");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 资源对象下载阶段完成");
             }
             catch (Exception ex)
             {
@@ -1809,20 +1853,47 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 ?? throw new Exception("Failed to parse asset index file");
 
             // 4. 收集需要下载的资源
+            int totalObjectsInIndex = indexData.Objects?.Count ?? 0;
+            _logger.LogInformation("[Assets] 资源索引中共有 {TotalObjects} 个资源对象", totalObjectsInIndex);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源索引中共有 {totalObjectsInIndex} 个资源对象");
+            
+            // 如果资源索引为空，直接返回
+            if (totalObjectsInIndex == 0)
+            {
+                _logger.LogInformation("[Assets] 资源索引为空，无需下载任何资源");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源索引为空，无需下载任何资源，直接完成");
+                progressCallback?.Invoke(100);
+                return;
+            }
+            
             var assetsToDownload = new List<(string Name, AssetItemMeta Meta)>();
+            int skippedEmptyHash = 0;
+            int skippedExisting = 0;
+            
             foreach (var (assetName, assetMeta) in indexData.Objects)
             {
-                if (string.IsNullOrEmpty(assetMeta.Hash) || IsAssetObjectExists(assetMeta.Hash, objectsDirectory))
+                if (string.IsNullOrEmpty(assetMeta.Hash))
                 {
-                    continue; // 跳过空哈希或已存在的资源
+                    skippedEmptyHash++;
+                    continue; // 跳过空哈希
+                }
+                if (IsAssetObjectExists(assetMeta.Hash, objectsDirectory))
+                {
+                    skippedExisting++;
+                    continue; // 跳过已存在的资源
                 }
                 assetsToDownload.Add((assetName, assetMeta));
             }
 
             int totalCount = assetsToDownload.Count;
+            _logger.LogInformation("[Assets] 资源统计: 总计={Total}, 已存在={Existing}, 空哈希={EmptyHash}, 需下载={ToDownload}", 
+                totalObjectsInIndex, skippedExisting, skippedEmptyHash, totalCount);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源统计: 总计={totalObjectsInIndex}, 已存在={skippedExisting}, 空哈希={skippedEmptyHash}, 需下载={totalCount}");
+            
             if (totalCount == 0)
             {
-                _logger.LogInformation("所有资源文件已存在，无需下载");
+                _logger.LogInformation("[Assets] 所有资源文件已存在，无需下载");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 所有资源文件已存在，无需下载，直接完成");
                 progressCallback?.Invoke(100);
                 return;
             }
@@ -1838,8 +1909,16 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             progressCallback?.Invoke(0);
 
             using var semaphore = new SemaphoreSlim(maxConcurrency);
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(60); // 总超时 60 秒
+            
+            // 配置 HttpClient 以支持高并发下载
+            var handler = new HttpClientHandler
+            {
+                MaxConnectionsPerServer = maxConcurrency * 2, // 允许更多并发连接
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+            using var httpClient = new HttpClient(handler);
+            httpClient.Timeout = TimeSpan.FromSeconds(60); // HttpClient 总超时 60 秒
+            httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
 
             var downloadTasks = assetsToDownload.Select(async asset =>
             {
@@ -1873,10 +1952,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     // 报告当前下载的文件
                     currentDownloadCallback?.Invoke(hash);
 
-                    // 带重试的下载
+                    // 带重试的下载（快速失败，快速重试）
                     int retryCount = 0;
-                    const int maxRetries = 3;
+                    const int maxRetries = 3; // 减少重试次数，因为超时更短了
                     bool downloadSuccess = false;
+                    Exception? lastException = null;
 
                     while (retryCount < maxRetries && !downloadSuccess)
                     {
@@ -1896,14 +1976,27 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         }
                         catch (Exception ex)
                         {
+                            lastException = ex;
                             retryCount++;
                             if (retryCount < maxRetries)
                             {
-                                await Task.Delay(TimeSpan.FromSeconds(retryCount));
+                                // 短暂延迟后重试：1s, 2s（不需要太长，因为超时已经很短了）
+                                int delaySeconds = retryCount;
+                                // 重试时也显示当前文件，让用户知道还在工作
+                                currentDownloadCallback?.Invoke($"重试中: {hash.Substring(0, 8)}...");
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 下载失败，{delaySeconds}秒后重试 ({retryCount}/{maxRetries}): {hash}, 错误: {ex.Message}");
+                                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine($"[DEBUG] 资源下载失败 (已重试 {maxRetries} 次): {hash}, 错误: {ex.Message}");
+                                // 记录详细的失败信息
+                                _logger.LogWarning("[Assets] 资源下载失败 (已重试 {MaxRetries} 次): {Hash}, 错误: {Error}, 异常类型: {ExType}", 
+                                    maxRetries, hash, ex.Message, ex.GetType().Name);
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源下载彻底失败: {hash}, 错误: {ex.Message}, 类型: {ex.GetType().Name}");
+                                if (ex.InnerException != null)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets]   内部异常: {ex.InnerException.Message}");
+                                }
                                 lock (lockObj)
                                 {
                                     failedAssets.Add(hash);
@@ -1934,18 +2027,127 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
             }
 
+            _logger.LogInformation("[Assets] 开始并发下载 {Count} 个资源文件，最大并发数: {MaxConcurrency}", totalCount, maxConcurrency);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 开始并发下载 {totalCount} 个资源文件，最大并发数: {maxConcurrency}");
+            
             await Task.WhenAll(downloadTasks);
 
+            _logger.LogInformation("[Assets] 第一轮下载完成，检查失败文件");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 第一轮下载完成，失败: {failedAssets.Count}");
+            
+            // ========== 失败文件二次清扫机制 ==========
+            if (failedAssets.Count > 0)
+            {
+                _logger.LogInformation("[Assets] 开始二次清扫，处理 {Count} 个失败文件", failedAssets.Count);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 开始二次清扫，处理 {failedAssets.Count} 个失败文件");
+                
+                // 复制失败列表，准备重试
+                var retryList = new List<string>(failedAssets);
+                failedAssets.Clear();
+                
+                // 降低并发数，更稳定地重试
+                int retryMaxConcurrency = Math.Min(8, maxConcurrency / 2);
+                using var retrySemaphore = new SemaphoreSlim(retryMaxConcurrency);
+                
+                var retryTasks = retryList.Select(async hash =>
+                {
+                    await retrySemaphore.WaitAsync();
+                    try
+                    {
+                        string hashPrefix = hash.Substring(0, 2);
+                        string assetSubDir = Path.Combine(objectsDirectory, hashPrefix);
+                        string assetSavePath = Path.Combine(assetSubDir, hash);
+                        
+                        // 从原始列表找到对应的元数据
+                        var assetMeta = assetsToDownload.FirstOrDefault(a => a.Meta.Hash == hash).Meta;
+                        if (assetMeta == null)
+                        {
+                            _logger.LogWarning("[Assets] 二次清扫：找不到资源元数据: {Hash}", hash);
+                            return;
+                        }
+                        
+                        // 构建下载URL
+                        string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
+                        string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
+                        
+                        // 二次清扫：更长的超时 + 更多重试
+                        int retryCount = 0;
+                        const int maxRetries = 5;
+                        bool downloadSuccess = false;
+                        
+                        while (retryCount < maxRetries && !downloadSuccess)
+                        {
+                            try
+                            {
+                                // 显示当前正在重试的文件
+                                currentDownloadCallback?.Invoke($"二次清扫: {hash.Substring(0, 8)}...");
+                                
+                                // 使用更长的超时（60秒）
+                                await DownloadAssetFileWithTimeoutAsync(httpClient, downloadUrl, assetSavePath, 60);
+                                
+                                // 校验资源大小
+                                var fileInfo = new FileInfo(assetSavePath);
+                                if (fileInfo.Length != assetMeta.Size)
+                                {
+                                    File.Delete(assetSavePath);
+                                    throw new Exception($"资源大小不匹配: {hash}");
+                                }
+                                
+                                downloadSuccess = true;
+                                _logger.LogInformation("[Assets] 二次清扫成功: {Hash}", hash);
+                                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 二次清扫成功: {hash}");
+                            }
+                            catch (Exception ex)
+                            {
+                                retryCount++;
+                                if (retryCount < maxRetries)
+                                {
+                                    // 指数退避：2s, 4s, 8s, 16s
+                                    int delaySeconds = (int)Math.Pow(2, retryCount);
+                                    System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 二次清扫重试 ({retryCount}/{maxRetries}): {hash}, 等待{delaySeconds}秒");
+                                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                                }
+                                else
+                                {
+                                    _logger.LogError("[Assets] 二次清扫彻底失败: {Hash}, 错误: {Error}", hash, ex.Message);
+                                    System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 二次清扫彻底失败: {hash}");
+                                    lock (lockObj)
+                                    {
+                                        failedAssets.Add(hash);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        retrySemaphore.Release();
+                    }
+                });
+                
+                await Task.WhenAll(retryTasks);
+                
+                _logger.LogInformation("[Assets] 二次清扫完成，剩余失败: {Count}", failedAssets.Count);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 二次清扫完成，剩余失败: {failedAssets.Count}");
+            }
+            // ========== 二次清扫结束 ==========
+
+            _logger.LogInformation("[Assets] Task.WhenAll 完成，准备报告最终进度");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] Task.WhenAll 完成，准备报告最终进度");
+            
             // 确保最终报告100%进度
             progressCallback?.Invoke(100);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 已报告最终进度 100%");
 
             // 记录完成状态
             if (failedAssets.Count > 0)
             {
-                _logger.LogWarning("部分资源下载失败: {FailedCount}/{TotalCount}", failedAssets.Count, totalCount);
+                _logger.LogWarning("[Assets] 部分资源下载失败: {FailedCount}/{TotalCount}", failedAssets.Count, totalCount);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 部分资源下载失败: {failedAssets.Count}/{totalCount}");
             }
-            _logger.LogInformation("Asset objects download completed: {CompletedCount}/{TotalCount}", completedCount, totalCount);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Asset objects download completed: {completedCount}/{totalCount}, 失败: {failedAssets.Count}");
+            _logger.LogInformation("[Assets] 资源下载完成: 成功={CompletedCount}, 失败={FailedCount}, 总计={TotalCount}", 
+                completedCount - failedAssets.Count, failedAssets.Count, totalCount);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源下载完成: 成功={completedCount - failedAssets.Count}, 失败={failedAssets.Count}, 总计={totalCount}");
         }
         catch (Exception ex)
         {
@@ -1965,15 +2167,49 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// </summary>
     private async Task DownloadAssetFileAsync(HttpClient httpClient, string url, string savePath)
     {
-        // 单个文件下载超时 30 秒
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await DownloadAssetFileWithTimeoutAsync(httpClient, url, savePath, 30);
+    }
+    
+    /// <summary>
+    /// 异步下载单个资源文件（可配置超时）
+    /// </summary>
+    private async Task DownloadAssetFileWithTimeoutAsync(HttpClient httpClient, string url, string savePath, int timeoutSeconds)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         
-        using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-        response.EnsureSuccessStatusCode();
+        // 使用临时文件下载，避免部分下载的文件被误认为完整
+        string tempPath = savePath + ".tmp";
+        
+        try
+        {
+            using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-        using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, FileOptions.Asynchronous);
-        await stream.CopyToAsync(fileStream, cts.Token);
+            using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+            using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, FileOptions.Asynchronous);
+            await stream.CopyToAsync(fileStream, cts.Token);
+            
+            // 确保文件流关闭后再移动
+            fileStream.Close();
+            
+            // 如果目标文件已存在，先删除
+            if (File.Exists(savePath))
+            {
+                File.Delete(savePath);
+            }
+            
+            // 移动临时文件到目标位置
+            File.Move(tempPath, savePath);
+        }
+        catch
+        {
+            // 清理临时文件
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* 忽略删除失败 */ }
+            }
+            throw;
+        }
     }
     
     /// <summary>

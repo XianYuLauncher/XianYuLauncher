@@ -56,7 +56,7 @@ public class ModrinthRecommendationService
                 return ua;
             }
         }
-        return VersionHelper.GetBmclapiUserAgent();
+        return VersionHelper.GetUserAgent();
     }
     
     /// <summary>

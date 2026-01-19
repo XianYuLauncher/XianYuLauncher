@@ -40,7 +40,7 @@ public class OptifineService
             
             // 创建请求消息并添加BMCLAPI User-Agent
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", VersionHelper.GetBmclapiUserAgent());
+            request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             
             // 发送HTTP请求
             HttpResponseMessage response = await _httpClient.SendAsync(request);

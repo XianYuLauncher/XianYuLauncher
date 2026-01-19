@@ -15,7 +15,7 @@ namespace XianYuLauncher.Core.Services
         {
             _localSettingsService = localSettingsService;
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XianYuLauncher/1.2.5");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
             // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

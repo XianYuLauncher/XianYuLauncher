@@ -34,6 +34,7 @@ public sealed partial class LaunchPage : Page
         ViewModel = App.GetService<LaunchViewModel>();
         _navigationService = App.GetService<INavigationService>();
         InitializeComponent();
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
         
         // 预加载处理过的史蒂夫头像，确保加载过程中显示清晰的占位头像
         _ = PreloadProcessedSteveAvatarAsync();
@@ -610,6 +611,7 @@ public sealed partial class LaunchPage : Page
             {
                 // 下载网络图片
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(skinUrl);
                 if (!response.IsSuccessStatusCode)
                 {

@@ -45,6 +45,7 @@ namespace XianYuLauncher.Views
         {
             ViewModel = App.GetService<CharacterManagementViewModel>();
             InitializeComponent();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
             // 订阅CurrentProfile变化事件
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -301,6 +302,7 @@ namespace XianYuLauncher.Views
             {
                 using (var httpClient = new HttpClient())
                 {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                     // 下载图片
                     var response = await httpClient.GetAsync(imageUrl);
                     if (!response.IsSuccessStatusCode)
@@ -398,6 +400,7 @@ namespace XianYuLauncher.Views
 
                 // 2. 发送请求获取profile.properties
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 Debug.WriteLine($"[角色管理Page] 正在发送请求到: {sessionUrl}");
                 var response = await httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
@@ -913,6 +916,7 @@ namespace XianYuLauncher.Views
                 {
                     using (var httpClient = new HttpClient())
                     {
+                        httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                         var response = await httpClient.GetAsync(ViewModel.CurrentSkin.Url);
                         if (response.IsSuccessStatusCode)
                         {
@@ -1123,6 +1127,7 @@ namespace XianYuLauncher.Views
                 
                 // 6. 发送请求
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 Debug.WriteLine($"[CharacterManagementPage] 开始发送皮肤上传请求");
                 var response = await httpClient.SendAsync(request);
                 
@@ -1358,6 +1363,7 @@ namespace XianYuLauncher.Views
                 
                 // 5. 发送请求
                 var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 Debug.WriteLine($"[CharacterManagementPage] 开始发送披风上传请求");
                 var response = await httpClient.SendAsync(request);
                 

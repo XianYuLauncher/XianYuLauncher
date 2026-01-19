@@ -351,9 +351,10 @@ public partial class VersionManagementViewModel
                 string iconFileName = $"modrinth_{fileBaseName}_icon.png";
                 string iconFilePath = Path.Combine(iconDir, iconFileName);
                 
-                // 下载并保存图标
+                // 下载并保存图标（带超时）
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
+                    httpClient.Timeout = TimeSpan.FromSeconds(10); // 10秒超时
                     System.Diagnostics.Debug.WriteLine($"下载图标: {iconUrl}");
                     byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
                     await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
@@ -482,9 +483,10 @@ public partial class VersionManagementViewModel
                 string iconFileName = $"curseforge_{fileBaseName}_icon.png";
                 string iconFilePath = Path.Combine(iconDir, iconFileName);
                 
-                // 下载并保存图标
+                // 下载并保存图标（带超时）
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
+                    httpClient.Timeout = TimeSpan.FromSeconds(10); // 10秒超时
                     System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 下载图标: {iconUrl}");
                     byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
                     await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);

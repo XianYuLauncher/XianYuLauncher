@@ -24,6 +24,7 @@ namespace XianYuLauncher.Views
             ViewModel = App.GetService<CharacterViewModel>();
             _navigationService = App.GetService<INavigationService>();
             InitializeComponent();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
             // 订阅显示离线登录对话框的事件
             ViewModel.RequestShowOfflineLoginDialog += (sender, e) =>
@@ -527,6 +528,7 @@ namespace XianYuLauncher.Views
                     Debug.WriteLine($"[角色Page] 从网络下载皮肤: {skinUrl}");
                     // 下载网络图片
                     var httpClient = new HttpClient();
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                     var response = await httpClient.GetAsync(skinUrl);
                     if (!response.IsSuccessStatusCode)
                     {
@@ -1267,7 +1269,7 @@ namespace XianYuLauncher.Views
                 var httpClient = new HttpClient();
                 
                 // 设置User-Agent
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 
                 // 设置请求头，接受JSON格式
                 httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
@@ -1566,7 +1568,7 @@ namespace XianYuLauncher.Views
 
                 // 发送POST请求
                 var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
+                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var jsonContent = new StringContent(
                     Newtonsoft.Json.JsonConvert.SerializeObject(requestBody),
                     System.Text.Encoding.UTF8,

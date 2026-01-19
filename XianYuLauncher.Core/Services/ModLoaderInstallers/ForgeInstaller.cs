@@ -48,7 +48,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.2.5");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -622,6 +622,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Time = forge?.Time ?? original.Time,
             ReleaseTime = forge?.ReleaseTime ?? original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = forge?.MainClass ?? original.MainClass,
             // 关键字段：从原版复制资源索引信息
             AssetIndex = original.AssetIndex,

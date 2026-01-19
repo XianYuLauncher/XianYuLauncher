@@ -126,12 +126,24 @@ public class AssetManager : IAssetManager
 
         // 读取资源索引
         var assetIndex = await GetAssetIndexAsync(assetIndexId, minecraftDirectory);
-        if (assetIndex == null || assetIndex.Objects.Count == 0)
+        if (assetIndex == null)
         {
-            _logger.LogWarning("资源索引为空或不存在: {AssetIndexId}", assetIndexId);
+            _logger.LogWarning("[AssetManager] 资源索引不存在: {AssetIndexId}", assetIndexId);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][AssetManager] 资源索引不存在: {assetIndexId}，直接完成");
             progressCallback?.Invoke(100);
             return;
         }
+        
+        if (assetIndex.Objects.Count == 0)
+        {
+            _logger.LogWarning("[AssetManager] 资源索引为空: {AssetIndexId}", assetIndexId);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][AssetManager] 资源索引为空: {assetIndexId}，直接完成");
+            progressCallback?.Invoke(100);
+            return;
+        }
+        
+        _logger.LogInformation("[AssetManager] 资源索引 {AssetIndexId} 包含 {Count} 个资源对象", assetIndexId, assetIndex.Objects.Count);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG][AssetManager] 资源索引 {assetIndexId} 包含 {assetIndex.Objects.Count} 个资源对象");
 
         // 收集需要下载的资源
         var downloadTasks = new List<DownloadTask>();
@@ -169,12 +181,14 @@ public class AssetManager : IAssetManager
 
         if (downloadTasks.Count == 0)
         {
-            _logger.LogInformation("所有资源文件已存在，无需下载");
+            _logger.LogInformation("[AssetManager] 所有资源文件已存在，无需下载");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][AssetManager] 所有资源文件已存在，无需下载，直接完成");
             progressCallback?.Invoke(100);
             return;
         }
 
-        _logger.LogInformation("需要下载 {Count} 个资源文件", downloadTasks.Count);
+        _logger.LogInformation("[AssetManager] 需要下载 {Count} 个资源文件", downloadTasks.Count);
+        System.Diagnostics.Debug.WriteLine($"[DEBUG][AssetManager] 需要下载 {downloadTasks.Count} 个资源文件");
 
         // 使用 DownloadManager 批量下载
         var totalCount = downloadTasks.Count;

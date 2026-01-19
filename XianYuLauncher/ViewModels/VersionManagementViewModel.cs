@@ -59,7 +59,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 return ua;
             }
         }
-        return XianYuLauncher.Core.Helpers.VersionHelper.GetBmclapiUserAgent();
+        return XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent();
     }
     
     /// <summary>
@@ -172,6 +172,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string _currentLoaderVersion = string.Empty;
+    
+    /// <summary>
+    /// 当前加载器图标URL
+    /// </summary>
+    [ObservableProperty]
+    private string? _currentLoaderIconUrl;
+    
+    /// <summary>
+    /// 是否为原版（用于控制图标显示）
+    /// </summary>
+    [ObservableProperty]
+    private bool _isVanillaLoader = true;
     
     /// <summary>
     /// 可用的加载器列表
@@ -717,9 +729,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             CurrentLoaderDisplayName = "原版";
             CurrentLoaderVersion = settings?.MinecraftVersion ?? string.Empty;
+            CurrentLoaderIconUrl = null;
+            IsVanillaLoader = true;
             return;
         }
         
+        IsVanillaLoader = false;
         CurrentLoaderDisplayName = settings.ModLoaderType switch
         {
             "fabric" => "Fabric",
@@ -731,6 +746,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             _ => settings.ModLoaderType
         };
         CurrentLoaderVersion = settings.ModLoaderVersion ?? string.Empty;
+        
+        // 设置对应的图标URL
+        CurrentLoaderIconUrl = settings.ModLoaderType switch
+        {
+            "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+            "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
+            "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
+            "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
+            "cleanroom" => "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
+            "optifine" => "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+            _ => null
+        };
     }
     
     /// <summary>

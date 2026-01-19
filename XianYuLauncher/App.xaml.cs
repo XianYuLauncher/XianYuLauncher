@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Serilog;
 using Serilog.Settings.Configuration;
@@ -108,6 +109,19 @@ public partial class App : Application
             services.AddSingleton<IFileService, FileService>();
             services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<IDownloadManager, DownloadManager>();
+            
+            // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）
+            services.AddSingleton<FallbackDownloadManager>(sp =>
+            {
+                var innerManager = sp.GetRequiredService<IDownloadManager>();
+                var sourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(FallbackDownloadManager));
+                var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<FallbackDownloadManager>>();
+                return new FallbackDownloadManager(innerManager, sourceFactory, httpClient, logger);
+            });
+            
+            services.AddSingleton<IDownloadTaskManager, DownloadTaskManager>();
             services.AddSingleton<ILibraryManager, LibraryManager>();
             services.AddSingleton<IAssetManager, AssetManager>();
             services.AddSingleton<IVersionInfoManager, VersionInfoManager>();
@@ -123,7 +137,24 @@ public partial class App : Application
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.CleanroomInstaller>();
             services.AddSingleton<IModLoaderInstallerFactory, XianYuLauncher.Core.Services.ModLoaderInstallers.ModLoaderInstallerFactory>();
             
-            services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>();
+            services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<MinecraftVersionService>>();
+                var fileService = sp.GetRequiredService<IFileService>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var versionInfoService = sp.GetRequiredService<IVersionInfoService>();
+                var downloadManager = sp.GetRequiredService<IDownloadManager>();
+                var libraryManager = sp.GetRequiredService<ILibraryManager>();
+                var assetManager = sp.GetRequiredService<IAssetManager>();
+                var versionInfoManager = sp.GetRequiredService<IVersionInfoManager>();
+                var modLoaderInstallerFactory = sp.GetRequiredService<IModLoaderInstallerFactory>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new MinecraftVersionService(
+                    logger, fileService, localSettingsService, downloadSourceFactory,
+                    versionInfoService, downloadManager, libraryManager, assetManager,
+                    versionInfoManager, modLoaderInstallerFactory, fallbackDownloadManager);
+            });
             services.AddSingleton<IVersionInfoService, VersionInfoService>();
             services.AddSingleton<MaterialService>();
             services.AddSingleton<UpdateService>();
@@ -146,11 +177,27 @@ public partial class App : Application
             
             // Fabric Service
             services.AddHttpClient<FabricService>();
-            services.AddSingleton<FabricService>();
+            services.AddSingleton<FabricService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(FabricService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new FabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
             
             // Quilt Service
             services.AddHttpClient<QuiltService>();
-            services.AddSingleton<QuiltService>();
+            services.AddSingleton<QuiltService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(QuiltService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new QuiltService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
             
             // Modrinth Service
             services.AddHttpClient<ModrinthService>();
@@ -159,7 +206,8 @@ public partial class App : Application
                 var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var httpClient = httpClientFactory.CreateClient(nameof(ModrinthService));
                 var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
-                return new ModrinthService(httpClient, downloadSourceFactory);
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new ModrinthService(httpClient, downloadSourceFactory, fallbackDownloadManager);
             });
             
             // Modrinth Cache Service
@@ -172,7 +220,8 @@ public partial class App : Application
                 var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var httpClient = httpClientFactory.CreateClient(nameof(CurseForgeService));
                 var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
-                return new CurseForgeService(httpClient, downloadSourceFactory);
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new CurseForgeService(httpClient, downloadSourceFactory, fallbackDownloadManager);
             });
             
             // CurseForge Cache Service
@@ -192,11 +241,27 @@ public partial class App : Application
             
             // NeoForge Service
             services.AddHttpClient<NeoForgeService>();
-            services.AddSingleton<NeoForgeService>();
+            services.AddSingleton<NeoForgeService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(NeoForgeService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new NeoForgeService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
             
             // Forge Service
             services.AddHttpClient<ForgeService>();
-            services.AddSingleton<ForgeService>();
+            services.AddSingleton<ForgeService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(ForgeService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new ForgeService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
             
             // Cleanroom Service
             services.AddHttpClient<CleanroomService>();
@@ -254,7 +319,7 @@ public partial class App : Application
             services.AddTransient<MultiplayerLobbyViewModel>();
             services.AddTransient<MultiplayerLobbyPage>();
             services.AddTransient<ShellPage>();
-            services.AddTransient<ShellViewModel>();
+            services.AddSingleton<ShellViewModel>();
             services.AddTransient<UpdateDialogViewModel>();
             services.AddTransient<UpdateDialog>();
 
