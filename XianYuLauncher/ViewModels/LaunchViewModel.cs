@@ -170,7 +170,9 @@ public partial class LaunchViewModel : ObservableRecipient
             _isContentDialogOpen = true;
             
             // 分析崩溃原因（异步执行，不阻塞）
-            string errorAnalysis = await AnalyzeCrash(gameOutput, gameError);
+            var crashResult = await AnalyzeCrash(gameOutput, gameError);
+            string errorTitle = crashResult.Title;
+            string errorAnalysis = crashResult.Analysis;
         
         // 合并日志，移除输出日志字段
         List<string> allLogs = new List<string>();
@@ -186,6 +188,30 @@ public partial class LaunchViewModel : ObservableRecipient
         // 创建完整的日志文本
         string fullLog = string.Join(Environment.NewLine, allLogs);
         
+        // 检测当前主题
+        var currentTheme = App.MainWindow.Content is Microsoft.UI.Xaml.FrameworkElement fe 
+            ? fe.ActualTheme 
+            : Microsoft.UI.Xaml.ElementTheme.Default;
+        bool isDarkTheme = currentTheme == Microsoft.UI.Xaml.ElementTheme.Dark;
+        
+        // 根据主题选择颜色
+        var errorRedColor = Windows.UI.Color.FromArgb(255, 196, 43, 28);
+        var errorBgColor = isDarkTheme 
+            ? Windows.UI.Color.FromArgb(40, 232, 17, 35)  // 深色模式：稍微亮一点的红色背景
+            : Windows.UI.Color.FromArgb(25, 232, 17, 35); // 浅色模式
+        var textPrimaryColor = isDarkTheme
+            ? Windows.UI.Color.FromArgb(230, 255, 255, 255) // 深色模式：白色文字
+            : Windows.UI.Color.FromArgb(200, 0, 0, 0);      // 浅色模式：黑色文字
+        var textSecondaryColor = isDarkTheme
+            ? Windows.UI.Color.FromArgb(180, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(180, 0, 0, 0);
+        var cardBgColor = isDarkTheme
+            ? Windows.UI.Color.FromArgb(20, 255, 255, 255)  // 深色模式：淡白色背景
+            : Windows.UI.Color.FromArgb(10, 0, 0, 0);       // 浅色模式：淡黑色背景
+        var cardBorderColor = isDarkTheme
+            ? Windows.UI.Color.FromArgb(40, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(30, 0, 0, 0);
+        
         // 创建 Fluent Design 风格的崩溃提示内容
         var warningPanel = new StackPanel
         {
@@ -196,8 +222,8 @@ public partial class LaunchViewModel : ObservableRecipient
         // 顶部警告卡片（Fluent Design 风格）
         var warningCard = new Border
         {
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(25, 232, 17, 35)), // 淡红色背景
-            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28)), // Fluent 红色边框
+            Background = new SolidColorBrush(errorBgColor),
+            BorderBrush = new SolidColorBrush(errorRedColor),
             BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
             CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
             Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
@@ -216,16 +242,22 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             Glyph = "\uE7BA", // 警告图标
             FontSize = 24,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28))
+            Foreground = new SolidColorBrush(errorRedColor)
         };
+        
+        // 标题显示分析结果（如果有的话）
+        string titleText = string.IsNullOrWhiteSpace(errorTitle)
+            ? "游戏意外退出"
+            : $"游戏意外退出：{errorTitle}";
         
         var warningTitle = new TextBlock
         {
-            Text = "游戏意外退出",
-            FontSize = 20,
+            Text = titleText,
+            FontSize = 18,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 196, 43, 28)),
-            VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center
+            Foreground = new SolidColorBrush(errorRedColor),
+            VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
         };
         
         headerStack.Children.Add(warningIcon);
@@ -238,18 +270,18 @@ public partial class LaunchViewModel : ObservableRecipient
             Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
             FontSize = 14,
             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(200, 0, 0, 0))
+            Foreground = new SolidColorBrush(textPrimaryColor)
         };
         warningCardContent.Children.Add(hintText);
         
         warningCard.Child = warningCardContent;
         warningPanel.Children.Add(warningCard);
         
-        // 操作指引卡片（灰色）
+        // 操作指引卡片
         var instructionCard = new Border
         {
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(10, 0, 0, 0)), // 淡灰色背景
-            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(30, 0, 0, 0)), // 灰色边框
+            Background = new SolidColorBrush(cardBgColor),
+            BorderBrush = new SolidColorBrush(cardBorderColor),
             BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
             CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
             Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
@@ -289,7 +321,7 @@ public partial class LaunchViewModel : ObservableRecipient
             Text = "💡 日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
             FontSize = 13,
             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(200, 0, 0, 0)),
+            Foreground = new SolidColorBrush(textSecondaryColor),
             Margin = new Microsoft.UI.Xaml.Thickness(0, 4, 0, 0)
         };
         instructionStack.Children.Add(step3);
@@ -314,7 +346,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
                 FontSize = 11,
                 TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 0, 0, 0))
+                Foreground = new SolidColorBrush(textSecondaryColor)
             },
             MaxHeight = 200,
             VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
@@ -386,11 +418,10 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="gameOutput">游戏输出日志</param>
     /// <param name="gameError">游戏错误日志</param>
     /// <returns>崩溃分析结果</returns>
-    private async Task<string> AnalyzeCrash(List<string> gameOutput, List<string> gameError)
+    private async Task<CrashAnalysisResult> AnalyzeCrash(List<string> gameOutput, List<string> gameError)
     {
         // 使用 CrashAnalyzer 服务进行分析
-        var result = await _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError);
-        return result.Analysis;
+        return await _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError);
     }
     
     /// <summary>
@@ -1494,6 +1525,11 @@ public partial class LaunchViewModel : ObservableRecipient
         _logger.LogInformation("选中版本: {Version}", SelectedVersion);
         _logger.LogInformation("选中角色: {Profile}", SelectedProfile?.Name ?? "null");
         
+        // 清空上次的日志，避免新游戏显示旧日志
+        _gameOutput.Clear();
+        _gameError.Clear();
+        _launchCommand = string.Empty;
+        
         if (string.IsNullOrEmpty(SelectedVersion))
         {
             _logger.LogWarning("未选择版本，启动中止");
@@ -1679,6 +1715,10 @@ public partial class LaunchViewModel : ObservableRecipient
                 if (_isRealTimeLogsEnabled)
                 {
                     var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+                    
+                    // 清空上次的日志，避免显示旧版本的日志（只在启动新游戏时清理）
+                    errorAnalysisViewModel.ClearLogsOnly();
+                    
                     errorAnalysisViewModel.SetLaunchCommand(_launchCommand);
                     
                     // 设置版本信息（用于导出日志时包含 version.json）

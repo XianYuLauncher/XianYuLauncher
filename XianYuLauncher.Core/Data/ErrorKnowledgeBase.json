@@ -11,6 +11,7 @@
           "value": "Manually triggered debug crash"
         }
       ],
+      "title": "调试崩溃",
       "analysis": "这是手动触发的调试崩溃，用于测试崩溃处理功能。",
       "suggestions": [
         "这不是真正的游戏崩溃，无需担心。"
@@ -34,6 +35,7 @@
           "value": "unable to create new native thread"
         }
       ],
+      "title": "内存不足",
       "analysis": "游戏因内存不足而崩溃。Java 虚拟机无法分配足够的内存来运行游戏。",
       "suggestions": [
         "尝试增加游戏分配的内存（在版本管理中设置 JVM 参数）",
@@ -73,6 +75,7 @@
           "value": "\\[FATAL\\].*Mod file"
         }
       ],
+      "title": "Mod 冲突",
       "analysis": "检测到 Mod 冲突或不兼容。这通常是因为多个 Mod 修改了相同的游戏内容，或者 Mod 版本与游戏版本不匹配。",
       "suggestions": [
         "仔细查看崩溃日志中提到的具体 Mod 名称",
@@ -120,6 +123,7 @@
           "value": "\\[FATAL\\].*FileNotFoundException"
         }
       ],
+      "title": "缺少依赖",
       "analysis": "游戏缺少必要的依赖文件或类库。这可能是因为游戏文件不完整，或者某些 Mod 缺少前置依赖。",
       "suggestions": [
         "尝试重新下载并安装游戏版本",
@@ -155,6 +159,7 @@
           "value": "compiled by a more recent version"
         }
       ],
+      "title": "Java 版本不匹配",
       "analysis": "Java 版本不匹配。游戏或 Mod 需要更高版本的 Java 才能运行。当前使用的 Java 版本过低，无法加载较新版本编译的类文件。",
       "suggestions": [
         "检查游戏所需的 Java 版本（通常在游戏说明中）",
@@ -204,6 +209,7 @@
           "value": "\\[FATAL\\].*pixel format"
         }
       ],
+      "title": "显卡驱动问题",
       "analysis": "图形驱动程序问题。游戏无法正确初始化图形渲染系统。",
       "suggestions": [
         "更新显卡驱动程序到最新版本",
@@ -243,6 +249,7 @@
           "value": "\\[FATAL\\].*UnknownHostException"
         }
       ],
+      "title": "网络连接问题",
       "analysis": "网络连接问题。游戏无法连接到服务器或下载必要的资源。",
       "suggestions": [
         "检查网络连接是否正常",
@@ -282,6 +289,7 @@
           "value": "\\[FATAL\\].*region file"
         }
       ],
+      "title": "存档损坏",
       "analysis": "存档文件损坏。游戏世界的某些区块数据出现问题。",
       "suggestions": [
         "尝试使用备份恢复存档",

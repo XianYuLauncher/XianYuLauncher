@@ -52,6 +52,7 @@ public class CrashAnalyzer : ICrashAnalyzer
         {
             // 找到匹配的规则
             result.Type = ParseCrashType(matchedRule.Type);
+            result.Title = matchedRule.Title;
             result.Analysis = matchedRule.Analysis;
             result.Suggestions.AddRange(matchedRule.Suggestions);
             
@@ -61,6 +62,7 @@ public class CrashAnalyzer : ICrashAnalyzer
         {
             // 未找到匹配规则，返回默认分析
             result.Type = CrashType.Unknown;
+            result.Title = string.Empty;
             result.Analysis = $"游戏异常退出（退出代码: {exitCode}）。未能识别具体的崩溃原因。";
             result.Suggestions.Add("查看导出的崩溃日志以获取更多信息");
             result.Suggestions.Add("尝试重新启动游戏");

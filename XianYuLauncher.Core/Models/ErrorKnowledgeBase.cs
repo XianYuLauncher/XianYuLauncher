@@ -35,6 +35,11 @@ public class ErrorRule
     public List<ErrorPattern> Patterns { get; set; } = new();
     
     /// <summary>
+    /// 简短标题（用于弹窗显示）
+    /// </summary>
+    public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
     /// 分析结果
     /// </summary>
     public string Analysis { get; set; } = string.Empty;

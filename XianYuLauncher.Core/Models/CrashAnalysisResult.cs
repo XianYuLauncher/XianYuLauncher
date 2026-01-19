@@ -6,6 +6,11 @@ namespace XianYuLauncher.Core.Models;
 public class CrashAnalysisResult
 {
     /// <summary>
+    /// 简短标题（用于弹窗显示）
+    /// </summary>
+    public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
     /// 崩溃分析结果
     /// </summary>
     public string Analysis { get; set; } = "未知崩溃原因";

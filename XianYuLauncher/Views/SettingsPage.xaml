@@ -914,6 +914,10 @@
                                         Margin="{StaticResource XSmallTopMargin}"
                                         Style="{ThemeResource BodyTextBlockStyle}" />
                                     <HyperlinkButton x:Uid="SettingsPage_PrivacyTermsLink" Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
+                                    <HyperlinkButton 
+                                        Content="GitHub" 
+                                        NavigateUri="https://github.com/XianYuLauncher/XianYuLauncher"
+                                        Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
                                 </StackPanel>
                                 
                                 <!-- 更新设置 -->

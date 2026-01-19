@@ -399,6 +399,13 @@ namespace XianYuLauncher.ViewModels
     {
         System.Diagnostics.Debug.WriteLine("ErrorAnalysisViewModel: 仅清空日志数据，保留启动命令");
         
+        // 取消正在进行的流式分析
+        if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
+        {
+            System.Diagnostics.Debug.WriteLine("ErrorAnalysisViewModel: 取消正在进行的崩溃分析");
+            _aiAnalysisCts.Cancel();
+        }
+        
         // 重置崩溃分析结果
         IsAiAnalyzing = false;
         IsAiAnalysisAvailable = false;
