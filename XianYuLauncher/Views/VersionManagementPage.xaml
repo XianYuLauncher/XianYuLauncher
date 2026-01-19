@@ -260,7 +260,7 @@
                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <TextBlock Text="启动次数" 
+                                        <TextBlock x:Uid="VersionManagerPage_LaunchCountLabel" Text="启动次数" 
                                                    VerticalAlignment="Center"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    FontSize="13"/>
@@ -291,7 +291,7 @@
                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <TextBlock Text="游戏时长" 
+                                        <TextBlock x:Uid="VersionManagerPage_PlayTimeLabel" Text="游戏时长" 
                                                    VerticalAlignment="Center"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    FontSize="13"/>
@@ -322,7 +322,7 @@
                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <TextBlock Text="Mod" 
+                                        <TextBlock x:Uid="VersionManagerPage_ModLabel" Text="Mod" 
                                                    VerticalAlignment="Center"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    FontSize="13"/>
@@ -353,7 +353,7 @@
                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <TextBlock Text="资源包" 
+                                        <TextBlock x:Uid="VersionManagerPage_ResourcePackLabel" Text="资源包" 
                                                    VerticalAlignment="Center"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    FontSize="13"/>
@@ -386,7 +386,7 @@
                                         <RowDefinition Height="*"/>
                                     </Grid.RowDefinitions>
                                     
-                                    <TextBlock Text="启动信息" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,16"/>
+                                    <TextBlock x:Uid="VersionManagerPage_LaunchInfoTitle" Text="启动信息" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,16"/>
                                     
                                     <StackPanel Grid.Row="1" Spacing="12">
                                             <Grid>
@@ -394,7 +394,7 @@
                                                     <ColumnDefinition Width="80"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="最后启动" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock x:Uid="VersionManagerPage_LastLaunchLabel" Text="最后启动" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding FormattedLastLaunchTime}" FontWeight="SemiBold"/>
                                             </Grid>
                                             <Grid>
@@ -402,7 +402,7 @@
                                                     <ColumnDefinition Width="80"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="光影" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock x:Uid="VersionManagerPage_ShaderLabel" Text="光影" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding ShaderCount}" FontWeight="SemiBold"/>
                                             </Grid>
                                             <Grid>
@@ -410,7 +410,7 @@
                                                     <ColumnDefinition Width="80"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="截图" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                <TextBlock x:Uid="VersionManagerPage_ScreenshotLabel" Text="截图" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding ScreenshotCount}" FontWeight="SemiBold"/>
                                             </Grid>
                                     </StackPanel>
@@ -430,7 +430,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="存档" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                        <TextBlock x:Uid="VersionManagerPage_SavesTitle" Text="存档" Style="{StaticResource BodyStrongTextBlockStyle}"/>
                                         <TextBlock Grid.Column="1" Text="{Binding Saves.Count}" 
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    FontSize="13"/>
@@ -502,6 +502,7 @@
                                     
                                     <!-- 空存档提示 -->
                                     <TextBlock Visibility="{Binding IsSaveListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               x:Uid="VersionManagerPage_NoSavesText"
                                                Text="暂无存档" 
                                                FontSize="13"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
@@ -523,7 +524,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="截图" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,12"/>
+                                <TextBlock x:Uid="VersionManagerPage_ScreenshotsTitle" Text="截图" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,12"/>
                                 <Border Grid.Row="1" CornerRadius="6" Height="200">
                                     <Border.Background>
                                         <ImageBrush ImageSource="{Binding RandomScreenshotPath}" Stretch="UniformToFill"/>
@@ -541,7 +542,7 @@
                 <TabViewItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE74C;" FontSize="16" />
-                        <TextBlock x:Uid="VersionManagerPage_SettingsAndExtensionTab" Text="设置与扩展" VerticalAlignment="Center" />
+                        <TextBlock x:Uid="VersionManagerPage_VersionSettingsTab" Text="版本设置" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>

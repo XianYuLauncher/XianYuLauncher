@@ -1822,7 +1822,6 @@ Continue downloading?</value>
   <data name="Settings_AutoUpdateCheck.Text" xml:space="preserve">
     <value>Auto Update Check</value>
   </data>
-  ...
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>Show popup on every launch</value>
   </data>
@@ -1834,12 +1833,6 @@ Continue downloading?</value>
   </data>
   <data name="Settings_CheckForUpdates.Content" xml:space="preserve">
     <value>Check for Updates</value>
-  </data>
-  <data name="Settings_Personalization.Text" xml:space="preserve">
-    <value>Personalization</value>
-  </data>
-  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
-    <value>OK</value>
   </data>
   <data name="ResourceDownloadPage_ModSearchBox.PlaceholderText" xml:space="preserve">
     <value>Search mods...</value>
@@ -1877,8 +1870,6 @@ Continue downloading?</value>
   <data name="VersionManagerPage_RemoveLoaderButton.Content" xml:space="preserve">
     <value>Remove</value>
   </data>
-  
-  <!-- Category Localization -->
   <data name="Category_All" xml:space="preserve">
     <value>All Categories</value>
   </data>
@@ -2136,5 +2127,86 @@ Continue downloading?</value>
   </data>
   <data name="Category_VanillaPlus" xml:space="preserve">
     <value>Vanilla+</value>
+  </data>
+  <data name="Settings_Personalization.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="VersionManagerPage_VersionSettingsTab.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="VersionManagerPage_LaunchCountLabel.Text" xml:space="preserve">
+    <value>Launch Count</value>
+  </data>
+  <data name="VersionManagerPage_PlayTimeLabel.Text" xml:space="preserve">
+    <value>Play Time</value>
+  </data>
+  <data name="VersionManagerPage_ModLabel.Text" xml:space="preserve">
+    <value>Mod</value>
+  </data>
+  <data name="VersionManagerPage_ResourcePackLabel.Text" xml:space="preserve">
+    <value>Resource Packs</value>
+  </data>
+  <data name="VersionManagerPage_LaunchInfoTitle.Text" xml:space="preserve">
+    <value>Launch Info</value>
+  </data>
+  <data name="VersionManagerPage_LastLaunchLabel.Text" xml:space="preserve">
+    <value>Last Launch</value>
+  </data>
+  <data name="VersionManagerPage_ShaderLabel.Text" xml:space="preserve">
+    <value>Shaders</value>
+  </data>
+  <data name="VersionManagerPage_ScreenshotLabel.Text" xml:space="preserve">
+    <value>Screenshots</value>
+  </data>
+  <data name="VersionManagerPage_SavesTitle.Text" xml:space="preserve">
+    <value>Saves</value>
+  </data>
+  <data name="VersionManagerPage_NoSavesText.Text" xml:space="preserve">
+    <value>No saves</value>
+  </data>
+  <data name="VersionManagerPage_ScreenshotsTitle.Text" xml:space="preserve">
+    <value>Screenshots</value>
+  </data>
+  <data name="VersionManagerPage_OverviewTab.Text" xml:space="preserve">
+    <value>Overview</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Seconds" xml:space="preserve">
+    <value>s</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Minutes" xml:space="preserve">
+    <value>min</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Hours" xml:space="preserve">
+    <value>h</value>
+  </data>
+  <data name="VersionManagerPage_NeverLaunched" xml:space="preserve">
+    <value>Never launched</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedToday" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedYesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedDaysAgo" xml:space="preserve">
+    <value>{0} days ago</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Survival" xml:space="preserve">
+    <value>Survival</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Creative" xml:space="preserve">
+    <value>Creative</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Adventure" xml:space="preserve">
+    <value>Adventure</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Spectator" xml:space="preserve">
+    <value>Spectator</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Unknown" xml:space="preserve">
+    <value>Unknown</value>
   </data>
 </root>

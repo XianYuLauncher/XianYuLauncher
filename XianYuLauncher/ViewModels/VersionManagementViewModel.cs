@@ -182,14 +182,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         get
         {
             if (TotalPlayTimeSeconds <= 0)
-                return "0 秒";
+                return "0 " + "VersionManagerPage_TimeUnit_Seconds".GetLocalized();
             if (TotalPlayTimeSeconds < 60)
-                return $"{TotalPlayTimeSeconds} 秒";
+                return $"{TotalPlayTimeSeconds} " + "VersionManagerPage_TimeUnit_Seconds".GetLocalized();
             if (TotalPlayTimeSeconds < 3600)
-                return $"{TotalPlayTimeSeconds / 60} 分钟";
+                return $"{TotalPlayTimeSeconds / 60} " + "VersionManagerPage_TimeUnit_Minutes".GetLocalized();
             
             var hours = TotalPlayTimeSeconds / 3600.0;
-            return $"{hours:F1} 小时";
+            return $"{hours:F1} " + "VersionManagerPage_TimeUnit_Hours".GetLocalized();
         }
     }
     
@@ -200,15 +200,22 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private DateTime? _lastLaunchTime;
     
     /// <summary>
-    /// 格式化的最后启动时间
+    /// 格式化的最后启动时间（显示距今多少天）
     /// </summary>
     public string FormattedLastLaunchTime
     {
         get
         {
             if (LastLaunchTime == null)
-                return "从未启动";
-            return LastLaunchTime.Value.ToString("yyyy-MM-dd HH:mm");
+                return "VersionManagerPage_NeverLaunched".GetLocalized();
+            
+            var daysSinceLastLaunch = (DateTime.Now - LastLaunchTime.Value).Days;
+            if (daysSinceLastLaunch == 0)
+                return "VersionManagerPage_LaunchedToday".GetLocalized();
+            if (daysSinceLastLaunch == 1)
+                return "VersionManagerPage_LaunchedYesterday".GetLocalized();
+            
+            return string.Format("VersionManagerPage_LaunchedDaysAgo".GetLocalized(), daysSinceLastLaunch);
         }
     }
     
@@ -1860,11 +1867,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                                 saveInfo.DisplayName = levelData.LevelName;
                             saveInfo.GameMode = levelData.GameType switch
                             {
-                                0 => "生存",
-                                1 => "创造",
-                                2 => "冒险",
-                                3 => "旁观",
-                                _ => "未知"
+                                0 => "VersionManagerPage_GameMode_Survival".GetLocalized(),
+                                1 => "VersionManagerPage_GameMode_Creative".GetLocalized(),
+                                2 => "VersionManagerPage_GameMode_Adventure".GetLocalized(),
+                                3 => "VersionManagerPage_GameMode_Spectator".GetLocalized(),
+                                _ => "VersionManagerPage_GameMode_Unknown".GetLocalized()
                             };
                             if (levelData.LastPlayed > 0)
                             {

@@ -2148,4 +2148,79 @@
   <data name="Category_VanillaPlus" xml:space="preserve">
     <value>原版+</value>
   </data>
+  <data name="VersionManagerPage_VersionSettingsTab.Text" xml:space="preserve">
+    <value>版本设置</value>
+  </data>
+  <data name="VersionManagerPage_LaunchCountLabel.Text" xml:space="preserve">
+    <value>启动次数</value>
+  </data>
+  <data name="VersionManagerPage_PlayTimeLabel.Text" xml:space="preserve">
+    <value>游戏时长</value>
+  </data>
+  <data name="VersionManagerPage_ModLabel.Text" xml:space="preserve">
+    <value>Mod</value>
+  </data>
+  <data name="VersionManagerPage_ResourcePackLabel.Text" xml:space="preserve">
+    <value>资源包</value>
+  </data>
+  <data name="VersionManagerPage_LaunchInfoTitle.Text" xml:space="preserve">
+    <value>启动信息</value>
+  </data>
+  <data name="VersionManagerPage_LastLaunchLabel.Text" xml:space="preserve">
+    <value>最后启动</value>
+  </data>
+  <data name="VersionManagerPage_ShaderLabel.Text" xml:space="preserve">
+    <value>光影</value>
+  </data>
+  <data name="VersionManagerPage_ScreenshotLabel.Text" xml:space="preserve">
+    <value>截图</value>
+  </data>
+  <data name="VersionManagerPage_SavesTitle.Text" xml:space="preserve">
+    <value>存档</value>
+  </data>
+  <data name="VersionManagerPage_NoSavesText.Text" xml:space="preserve">
+    <value>暂无存档</value>
+  </data>
+  <data name="VersionManagerPage_ScreenshotsTitle.Text" xml:space="preserve">
+    <value>截图</value>
+  </data>
+  <data name="VersionManagerPage_OverviewTab.Text" xml:space="preserve">
+    <value>概览</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Seconds" xml:space="preserve">
+    <value>秒</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Minutes" xml:space="preserve">
+    <value>分钟</value>
+  </data>
+  <data name="VersionManagerPage_TimeUnit_Hours" xml:space="preserve">
+    <value>小时</value>
+  </data>
+  <data name="VersionManagerPage_NeverLaunched" xml:space="preserve">
+    <value>从未启动</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedToday" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedYesterday" xml:space="preserve">
+    <value>昨天</value>
+  </data>
+  <data name="VersionManagerPage_LaunchedDaysAgo" xml:space="preserve">
+    <value>{0} 天前</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Survival" xml:space="preserve">
+    <value>生存</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Creative" xml:space="preserve">
+    <value>创造</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Adventure" xml:space="preserve">
+    <value>冒险</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Spectator" xml:space="preserve">
+    <value>旁观</value>
+  </data>
+  <data name="VersionManagerPage_GameMode_Unknown" xml:space="preserve">
+    <value>未知</value>
+  </data>
 </root>

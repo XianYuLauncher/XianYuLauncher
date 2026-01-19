@@ -547,21 +547,40 @@ namespace XianYuLauncher.Core.Services
                     return;
                 }
                 
-                // 准备标准格式的配置内容
-                var standardConfig = new
+                // 如果文件已存在，读取现有配置以保留统计数据
+                VersionConfig? existingConfig = null;
+                if (File.Exists(configPath))
+                {
+                    try
+                    {
+                        var existingJson = File.ReadAllText(configPath);
+                        existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingJson);
+                    }
+                    catch
+                    {
+                        // 读取失败，忽略
+                    }
+                }
+                
+                // 准备标准格式的配置内容，保留现有统计数据
+                var standardConfig = new VersionConfig
                 {
                     ModLoaderType = config.ModLoaderType ?? "vanilla",
                     ModLoaderVersion = config.ModLoaderVersion ?? string.Empty,
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
                     OptifineVersion = config.OptifineVersion ?? string.Empty,
-                    CreatedAt = DateTime.Now,
-                    AutoMemoryAllocation = true,
-                    InitialHeapMemory = 6.0,
-                    MaximumHeapMemory = 12.0,
-                    JavaPath = string.Empty,
-                    UseGlobalJavaSetting = true,
-                    WindowWidth = 1280,
-                    WindowHeight = 720
+                    CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
+                    AutoMemoryAllocation = existingConfig?.AutoMemoryAllocation ?? true,
+                    InitialHeapMemory = existingConfig?.InitialHeapMemory ?? 6.0,
+                    MaximumHeapMemory = existingConfig?.MaximumHeapMemory ?? 12.0,
+                    JavaPath = existingConfig?.JavaPath ?? string.Empty,
+                    UseGlobalJavaSetting = existingConfig?.UseGlobalJavaSetting ?? true,
+                    WindowWidth = existingConfig?.WindowWidth ?? 1280,
+                    WindowHeight = existingConfig?.WindowHeight ?? 720,
+                    // 保留统计数据
+                    LaunchCount = existingConfig?.LaunchCount ?? 0,
+                    TotalPlayTimeSeconds = existingConfig?.TotalPlayTimeSeconds ?? 0,
+                    LastLaunchTime = existingConfig?.LastLaunchTime
                 };
                 
                 // 序列化配置为JSON格式
