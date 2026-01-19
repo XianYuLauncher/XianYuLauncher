@@ -251,6 +251,51 @@ public partial class LaunchViewModel : ObservableRecipient
             FontSize = 14,
             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
         };
+        
+        // 检查彩蛋模式
+        var localSettingsService = App.GetService<ILocalSettingsService>();
+        var isEasterEggMode = await localSettingsService.ReadSettingAsync<bool?>("EasterEggMode") ?? false;
+        
+        if (isEasterEggMode)
+        {
+            // 彩蛋模式：添加文字缩放动画
+            var scaleAnimation = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            var scaleXAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 5.15,
+                Duration = new Microsoft.UI.Xaml.Duration(TimeSpan.FromMilliseconds(500)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut }
+            };
+            
+            // 设置 RenderTransform
+            hintText.RenderTransform = new Microsoft.UI.Xaml.Media.ScaleTransform();
+            hintText.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+            
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleXAnimation, hintText);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleXAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
+            
+            var scaleYAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 5.15,
+                Duration = new Microsoft.UI.Xaml.Duration(TimeSpan.FromMilliseconds(500)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut }
+            };
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleYAnimation, hintText);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleYAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
+            
+            scaleAnimation.Children.Add(scaleXAnimation);
+            scaleAnimation.Children.Add(scaleYAnimation);
+            
+            // 在 hintText 加载后启动动画
+            hintText.Loaded += (s, e) => scaleAnimation.Begin();
+        }
+        
         warningCardContent.Children.Add(hintText);
         
         warningCard.Child = warningCardContent;
@@ -272,7 +317,7 @@ public partial class LaunchViewModel : ObservableRecipient
         
         var instructionTitle = new TextBlock
         {
-            Text = "📋 正确的求助步骤",
+            Text = "正确的求助步骤",
             FontSize = 16,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 4)
@@ -299,7 +344,7 @@ public partial class LaunchViewModel : ObservableRecipient
         
         var step3 = new TextBlock
         {
-            Text = "💡 日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
+            Text = "日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
             FontSize = 13,
             TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
             Opacity = 0.7,
@@ -372,6 +417,76 @@ public partial class LaunchViewModel : ObservableRecipient
             // 查看详细日志按钮
             var navigationService = App.GetService<INavigationService>();
             navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
+        };
+        
+        // 彩蛋模式：窗口摇晃效果
+        CancellationTokenSource? shakeTokenSource = null;
+        if (isEasterEggMode)
+        {
+            shakeTokenSource = new CancellationTokenSource();
+            var shakeToken = shakeTokenSource.Token;
+            
+            // 启动窗口摇晃
+            _ = Task.Run(async () =>
+            {
+                var random = new Random();
+                var originalPosition = new Windows.Graphics.PointInt32();
+                bool gotOriginalPosition = false;
+                
+                while (!shakeToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            try
+                            {
+                                var appWindow = App.MainWindow.AppWindow;
+                                if (!gotOriginalPosition)
+                                {
+                                    originalPosition = appWindow.Position;
+                                    gotOriginalPosition = true;
+                                }
+                                
+                                // 随机偏移
+                                int offsetX = random.Next(-15, 6);
+                                int offsetY = random.Next(-15, 6);
+                                
+                                appWindow.Move(new Windows.Graphics.PointInt32(
+                                    originalPosition.X + offsetX,
+                                    originalPosition.Y + offsetY
+                                ));
+                            }
+                            catch { }
+                        });
+                        
+                        await Task.Delay(50, shakeToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+                
+                // 恢复原始位置
+                if (gotOriginalPosition)
+                {
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            App.MainWindow.AppWindow.Move(originalPosition);
+                        }
+                        catch { }
+                    });
+                }
+            }, shakeToken);
+        }
+        
+        dialog.Closed += (s, e) =>
+        {
+            // 停止摇晃
+            shakeTokenSource?.Cancel();
         };
         
             await dialog.ShowAsync();
