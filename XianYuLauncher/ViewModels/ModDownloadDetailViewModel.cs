@@ -1545,43 +1545,12 @@ namespace XianYuLauncher.ViewModels
                         SaveNames.Add(saveName);
                     }
                 }
-                else
+                
+                if (SaveNames.Count == 0)
                 {
-                    // 如果saves目录不存在，尝试在versions目录下查找所有版本的saves目录
-                    string versionsPath = Path.Combine(minecraftPath, "versions");
-                    if (Directory.Exists(versionsPath))
-                    {
-                        // 获取所有版本目录
-                        string[] versionDirectories = Directory.GetDirectories(versionsPath);
-                        
-                        foreach (string versionDir in versionDirectories)
-                        {
-                            string versionSavesPath = Path.Combine(versionDir, "saves");
-                            if (Directory.Exists(versionSavesPath))
-                            {
-                                // 获取该版本下的所有存档目录名称
-                                string[] saveDirectories = Directory.GetDirectories(versionSavesPath);
-                                
-                                foreach (string saveDir in saveDirectories)
-                                {
-                                    string saveName = Path.GetFileName(saveDir);
-                                    // 确保存档名称唯一，避免重复
-                                    if (!SaveNames.Contains(saveName))
-                                    {
-                                        SaveNames.Add(saveName);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // 按名称排序
-                        var sortedSaveNames = SaveNames.OrderBy(s => s).ToList();
-                        SaveNames.Clear();
-                        foreach (string saveName in sortedSaveNames)
-                        {
-                            SaveNames.Add(saveName);
-                        }
-                    }
+                    await ShowMessageAsync("未找到存档，请先启动游戏创建一个世界。");
+                    IsSaveSelectionDialogOpen = false;
+                    return;
                 }
                 
                 // 清空之前的选择

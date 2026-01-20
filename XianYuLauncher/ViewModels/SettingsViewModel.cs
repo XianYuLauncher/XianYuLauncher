@@ -1723,7 +1723,6 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value != null)
         {
             // 移除了空格检查限制，允许用户使用带空格的路径
-            // TODO: 确保启动参数正确处理带空格的路径（使用引号包裹）
             
             // 保存当前路径作为之前的路径，用于下一次回退
             _previousMinecraftPath = value;

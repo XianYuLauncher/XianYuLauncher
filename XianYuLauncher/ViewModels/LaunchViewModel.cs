@@ -2125,21 +2125,6 @@ public partial class LaunchViewModel : ObservableRecipient
 
 
     /// <summary>
-    /// 构建启动参数（内部共享方法）
-    /// </summary>
-    /// <param name="versionName">版本名称</param>
-    /// <param name="profile">角色信息</param>
-    /// <returns>包含参数列表、Java路径和版本目录的元组，如果失败返回 null</returns>
-    private async Task<(List<string> Args, string JavaPath, string VersionDir)?> BuildLaunchArgumentsInternalAsync(
-        string versionName, 
-        MinecraftProfile profile)
-    {
-        // TODO: 这里将包含从 LaunchGameAsync 提取的所有参数构建逻辑
-        // 暂时返回 null，后续步骤会逐步填充
-        return null;
-    }
-
-    /// <summary>
     /// 生成启动命令字符串（供导出使用）
     /// </summary>
     /// <param name="versionName">版本名称</param>

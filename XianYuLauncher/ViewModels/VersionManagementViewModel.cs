@@ -1116,20 +1116,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 安装加载器命令
     /// </summary>
-    /// <summary>
-    /// 安装加载器命令
-    /// </summary>
-    [RelayCommand]
-    private async Task InstallLoaderAsync(LoaderItemViewModel loader)
-    {
-        if (loader == null || string.IsNullOrEmpty(loader.SelectedVersion))
-        {
-            return;
-        }
-        
-        // TODO: 实现加载器安装逻辑
-        StatusMessage = $"正在安装 {loader.Name} {loader.SelectedVersion}...";
-    }
+
     
     /// <summary>
     /// 移除加载器命令 - 只清除临时选择状态，不修改配置文件

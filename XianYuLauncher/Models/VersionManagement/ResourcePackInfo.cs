@@ -70,7 +70,6 @@ public partial class ResourcePackInfo : ObservableObject
     /// </summary>
     public List<string> PreviewTextures { get; set; } = new List<string>();
     
-    // TODO: 未来功能 - 资源包画廊
     // 点击资源包后打开一个专门的画廊页面，展示该资源包的所有纹理贴图
     // 整个页面都是贴图预览，提供更好的浏览体验
     // 可以考虑实现：

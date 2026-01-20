@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -11,6 +12,9 @@ public partial class WorldManagementViewModel : ObservableRecipient
 {
     private readonly IFileService _fileService;
     private readonly INavigationService _navigationService;
+    private readonly ITranslationService? _translationService;
+    private readonly CurseForgeService _curseForgeService;
+    private readonly ModInfoService _modInfoService;
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _dataPacksLoaded = false;
     
@@ -75,10 +79,25 @@ public partial class WorldManagementViewModel : ObservableRecipient
     
     public WorldManagementViewModel(
         IFileService fileService,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        CurseForgeService curseForgeService,
+        ModInfoService modInfoService)
     {
         _fileService = fileService;
         _navigationService = navigationService;
+        _curseForgeService = curseForgeService;
+        _modInfoService = modInfoService;
+        
+        // 尝试获取翻译服务（可选）
+        try
+        {
+            _translationService = App.GetService<ITranslationService>();
+        }
+        catch
+        {
+            _translationService = null;
+            System.Diagnostics.Debug.WriteLine("[WorldManagement] 翻译服务不可用");
+        }
     }
     
     public async Task InitializeAsync(string worldPath)
@@ -421,12 +440,19 @@ public partial class WorldManagementViewModel : ObservableRecipient
         {
             _dataPacksLoaded = true;
             
+            // 立即设置为加载中，防止显示空列表提示
+            IsLoadingDataPacks = true;
+            
             // 延迟 300ms 等待 Tab 切换动画完成
             await Task.Delay(300);
             
             if (_cancellationTokenSource != null && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 await LoadDataPacksAsync(_cancellationTokenSource.Token);
+            }
+            else
+            {
+                IsLoadingDataPacks = false;
             }
         }
     }

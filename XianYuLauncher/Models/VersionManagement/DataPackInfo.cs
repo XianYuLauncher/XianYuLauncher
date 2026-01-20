@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace XianYuLauncher.Models.VersionManagement;
 
@@ -20,10 +21,10 @@ public partial class DataPackInfo : ObservableObject
     private string _description = string.Empty;
     
     /// <summary>
-    /// 数据包图标路径
+    /// 数据包图标
     /// </summary>
     [ObservableProperty]
-    private string? _icon;
+    private BitmapImage? _icon;
     
     /// <summary>
     /// 数据包文件路径
@@ -41,6 +42,29 @@ public partial class DataPackInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private int _packFormat;
+    
+    /// <summary>
+    /// Modrinth 项目 ID（用于翻译）
+    /// </summary>
+    [ObservableProperty]
+    private string? _projectId;
+    
+    /// <summary>
+    /// CurseForge Mod ID（用于翻译）
+    /// </summary>
+    [ObservableProperty]
+    private int _curseForgeModId;
+    
+    /// <summary>
+    /// 数据包来源（Modrinth/CurseForge）
+    /// </summary>
+    [ObservableProperty]
+    private string? _source;
+    
+    /// <summary>
+    /// 临时存储原始描述（用于翻译失败时回退）
+    /// </summary>
+    public object? Tag { get; set; }
     
     public DataPackInfo(string filePath)
     {

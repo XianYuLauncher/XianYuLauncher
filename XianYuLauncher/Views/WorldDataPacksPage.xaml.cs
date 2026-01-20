@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.Views;
 
@@ -21,6 +22,14 @@ public sealed partial class WorldDataPacksPage : Page
         if (e.Parameter is WorldManagementViewModel viewModel)
         {
             ViewModel = viewModel;
+        }
+    }
+
+    private async void DeleteDataPackButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is DataPackInfo dataPack && ViewModel != null)
+        {
+            await ViewModel.DeleteDataPackCommand.ExecuteAsync(dataPack);
         }
     }
 }

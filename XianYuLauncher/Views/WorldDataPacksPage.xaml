@@ -11,108 +11,124 @@
 
     <Page.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <helpers:PathToUriConverter x:Key="PathToUriConverter"/>
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter"/>
     </Page.Resources>
 
     <Grid>
         <!-- 数据包列表 -->
-        <ScrollViewer 
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-            <ItemsRepeater ItemsSource="{x:Bind ViewModel.DataPacks, Mode=OneWay}"
-                           x:Name="DataPackListView">
-                <ItemsRepeater.Layout>
-                    <StackLayout Spacing="12"/>
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate x:DataType="models:DataPackInfo">
-                        <Grid MinHeight="80" 
-                              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                              CornerRadius="8" 
-                              Padding="20,16" 
-                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                              BorderThickness="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+        <ListView 
+            x:Name="DataPackListView"
+            ItemsSource="{x:Bind ViewModel.DataPacks, Mode=OneWay}"
+            SelectionMode="None"
+            IsItemClickEnabled="False"
+            Background="Transparent"
+            BorderThickness="0"
+            VerticalAlignment="Stretch">
+            <ListView.Resources>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                    <Setter Property="IsScrollInertiaEnabled" Value="True"/>
+                </Style>
+            </ListView.Resources>
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsStackPanel/>
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Margin" Value="0,0,0,12"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:DataPackInfo">
+                    <Grid MinHeight="80" 
+                          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                          CornerRadius="8" 
+                          Padding="20,16" 
+                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                          BorderThickness="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                            <!-- 数据包图标 -->
-                            <Border Grid.Column="0" 
-                                    Width="48" 
-                                    Height="48" 
-                                    CornerRadius="8"
-                                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        <!-- 数据包图标 -->
+                        <Border Grid.Column="0" 
+                                Width="48" 
+                                Height="48" 
+                                CornerRadius="8"
+                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                VerticalAlignment="Center" 
+                                Margin="0,0,16,0">
+                            <Grid>
+                                <FontIcon Glyph="&#xE8B7;" 
+                                          FontSize="24" 
+                                          VerticalAlignment="Center" 
+                                          HorizontalAlignment="Center"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <Image Source="{x:Bind Icon, Mode=OneWay}" 
+                                       Stretch="UniformToFill"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 数据包名称和描述 -->
+                        <StackPanel Grid.Column="1" 
                                     VerticalAlignment="Center" 
-                                    Margin="0,0,16,0">
-                                <Grid>
-                                    <FontIcon Glyph="&#xE8B7;" 
-                                              FontSize="24" 
-                                              VerticalAlignment="Center" 
-                                              HorizontalAlignment="Center"
-                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                              Visibility="{x:Bind Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
-                                    <Image Source="{x:Bind Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
-                                           Stretch="UniformToFill"
-                                           Visibility="{x:Bind Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
-                                </Grid>
-                            </Border>
+                                    Spacing="6">
+                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" 
+                                       FontSize="15" 
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
 
-                            <!-- 数据包名称和描述 -->
-                            <StackPanel Grid.Column="1" 
-                                        VerticalAlignment="Center" 
-                                        Spacing="6">
-                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" 
-                                           FontSize="15" 
-                                           FontWeight="SemiBold"
-                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                           TextTrimming="CharacterEllipsis"/>
-
-                                <!-- 描述区域 -->
-                                <Grid>
-                                    <!-- 加载中指示器 -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8" 
-                                               Visibility="{x:Bind IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <ProgressRing Width="14" Height="14" IsActive="True"/>
-                                        <TextBlock Text="加载描述中..." 
-                                                   FontSize="13" 
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    </StackPanel>
-
-                                    <!-- 描述文本 -->
-                                    <TextBlock Text="{x:Bind Description, Mode=OneWay}" 
+                            <!-- 描述区域 -->
+                            <Grid>
+                                <!-- 加载中指示器 -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" 
+                                           Visibility="{x:Bind IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ProgressRing Width="14" Height="14" IsActive="True"/>
+                                    <TextBlock Text="加载描述中..." 
                                                FontSize="13" 
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               TextWrapping="Wrap"
-                                               MaxLines="2"
-                                               TextTrimming="CharacterEllipsis"
-                                               Visibility="{x:Bind Description, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
-                                </Grid>
-                            </StackPanel>
-
-                            <!-- 删除按钮 -->
-                            <Button Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Command="{Binding DataContext.DeleteDataPackCommand, ElementName=DataPackListView}" 
-                                    CommandParameter="{x:Bind}" 
-                                    Style="{StaticResource SubtleButtonStyle}"
-                                    Height="32"
-                                    Padding="16,0">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE74D;" FontSize="14"/>
-                                    <TextBlock Text="删除" FontSize="13"/>
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
-                            </Button>
-                        </Grid>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
-        </ScrollViewer>
+
+                                <!-- 描述文本 -->
+                                <TextBlock Text="{x:Bind Description, Mode=OneWay}" 
+                                           FontSize="13" 
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxLines="2"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="{x:Bind Description, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 删除按钮 -->
+                        <Button Grid.Column="2"
+                                VerticalAlignment="Center"
+                                Click="DeleteDataPackButton_Click"
+                                Style="{StaticResource SubtleButtonStyle}"
+                                Height="32"
+                                Padding="16,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE74D;" FontSize="14"/>
+                                <TextBlock Text="删除" FontSize="13"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
 
         <!-- 空列表提示 -->
-        <StackPanel Visibility="{x:Bind ViewModel.IsDataPackListEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+        <StackPanel Visibility="{x:Bind ViewModel.ShowDataPackEmptyState, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center" 
                     Spacing="16">

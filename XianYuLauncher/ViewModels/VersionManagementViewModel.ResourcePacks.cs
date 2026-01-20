@@ -92,7 +92,6 @@ public partial class VersionManagementViewModel
         
         /// <summary>
         /// 加载资源包预览图
-        // TODO: 未来功能 - 资源包预览图加载
         // 当实现资源包画廊功能时，可以在这里添加预览图加载逻辑
         // 建议实现方式：
         // 1. 创建专门的 ResourcePackGalleryPage

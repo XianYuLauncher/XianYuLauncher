@@ -142,7 +142,6 @@ namespace XianYuLauncher.ViewModels
             if (CurrentPageIndex < 2) // 三个页面，索引0-2
             {
                 // 移除了空格检查限制，允许用户使用带空格的路径
-                // TODO: 确保启动参数正确处理带空格的路径（使用引号包裹）
                 
                 if (CurrentPageIndex == 0)
                 {
