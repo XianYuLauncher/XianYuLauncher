@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using fNbt;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -59,11 +60,11 @@ public class WorldDataService
             {
                 worldData.Difficulty = difficultyTag.Value switch
                 {
-                    0 => "和平",
-                    1 => "简单",
-                    2 => "普通",
-                    3 => "困难",
-                    _ => "未知"
+                    0 => DifficultyType.Peaceful,
+                    1 => DifficultyType.Easy,
+                    2 => DifficultyType.Normal,
+                    3 => DifficultyType.Hard,
+                    _ => DifficultyType.Unknown
                 };
             }
             
@@ -72,7 +73,7 @@ public class WorldDataService
             var hardcoreTag = dataTag.Get<NbtByte>("hardcore");
             if (hardcoreTag != null && hardcoreTag.Value != 0)
             {
-                worldData.GameMode = "极限模式";
+                worldData.GameMode = GameModeType.Hardcore;
             }
             else
             {
@@ -82,11 +83,11 @@ public class WorldDataService
                 {
                     worldData.GameMode = gameTypeTag.Value switch
                     {
-                        0 => "生存模式",
-                        1 => "创造模式",
-                        2 => "冒险模式",
-                        3 => "旁观模式",
-                        _ => "未知"
+                        0 => GameModeType.Survival,
+                        1 => GameModeType.Creative,
+                        2 => GameModeType.Adventure,
+                        3 => GameModeType.Spectator,
+                        _ => GameModeType.Unknown
                     };
                 }
             }
@@ -137,12 +138,12 @@ public class WorldData
     /// <summary>
     /// 难度
     /// </summary>
-    public string Difficulty { get; set; } = "未知";
+    public DifficultyType Difficulty { get; set; } = DifficultyType.Unknown;
     
     /// <summary>
     /// 游戏模式
     /// </summary>
-    public string GameMode { get; set; } = "未知";
+    public GameModeType GameMode { get; set; } = GameModeType.Unknown;
     
     /// <summary>
     /// 世界名称

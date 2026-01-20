@@ -95,6 +95,7 @@
                                            Visibility="{x:Bind IsLoadingDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <ProgressRing Width="14" Height="14" IsActive="True"/>
                                     <TextBlock Text="加载描述中..." 
+                                               x:Uid="WorldDataPacks_LoadingDescription"
                                                FontSize="13" 
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
@@ -119,7 +120,7 @@
                                 Padding="16,0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE74D;" FontSize="14"/>
-                                <TextBlock Text="删除" FontSize="13"/>
+                                <TextBlock Text="删除" x:Uid="WorldDataPacks_Delete" FontSize="13"/>
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -137,11 +138,13 @@
                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
                       HorizontalAlignment="Center"/>
             <TextBlock Text="暂无数据包" 
+                       x:Uid="WorldDataPacks_EmptyTitle"
                        FontSize="18" 
                        FontWeight="SemiBold"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                        TextAlignment="Center"/>
             <TextBlock Text="将数据包文件放入 datapacks 文件夹" 
+                       x:Uid="WorldDataPacks_EmptyDescription"
                        FontSize="14" 
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
                        TextAlignment="Center"/>
@@ -152,7 +155,7 @@
                     HorizontalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
-                    <TextBlock Text="打开文件夹"/>
+                    <TextBlock Text="打开文件夹" x:Uid="WorldDataPacks_OpenFolder"/>
                 </StackPanel>
             </Button>
         </StackPanel>

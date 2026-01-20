@@ -5,6 +5,8 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -18,6 +20,42 @@ public partial class WorldManagementViewModel : ObservableRecipient
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _dataPacksLoaded = false;
     
+    // 本地化字符串
+    private static string UnknownText => ResourceExtensions.GetLocalized("WorldManagement_Unknown");
+    private static string EnabledText => ResourceExtensions.GetLocalized("WorldManagement_Enabled");
+    private static string DisabledText => ResourceExtensions.GetLocalized("WorldManagement_Disabled");
+    
+    /// <summary>
+    /// 本地化游戏模式
+    /// </summary>
+    private static string LocalizeGameMode(GameModeType gameMode)
+    {
+        return gameMode switch
+        {
+            GameModeType.Survival => ResourceExtensions.GetLocalized("WorldManagement_GameMode_Survival"),
+            GameModeType.Creative => ResourceExtensions.GetLocalized("WorldManagement_GameMode_Creative"),
+            GameModeType.Adventure => ResourceExtensions.GetLocalized("WorldManagement_GameMode_Adventure"),
+            GameModeType.Spectator => ResourceExtensions.GetLocalized("WorldManagement_GameMode_Spectator"),
+            GameModeType.Hardcore => ResourceExtensions.GetLocalized("WorldManagement_GameMode_Hardcore"),
+            _ => UnknownText
+        };
+    }
+    
+    /// <summary>
+    /// 本地化难度
+    /// </summary>
+    private static string LocalizeDifficulty(DifficultyType difficulty)
+    {
+        return difficulty switch
+        {
+            DifficultyType.Peaceful => ResourceExtensions.GetLocalized("WorldManagement_Difficulty_Peaceful"),
+            DifficultyType.Easy => ResourceExtensions.GetLocalized("WorldManagement_Difficulty_Easy"),
+            DifficultyType.Normal => ResourceExtensions.GetLocalized("WorldManagement_Difficulty_Normal"),
+            DifficultyType.Hard => ResourceExtensions.GetLocalized("WorldManagement_Difficulty_Hard"),
+            _ => UnknownText
+        };
+    }
+    
     [ObservableProperty]
     private string _worldName = string.Empty;
     
@@ -28,13 +66,13 @@ public partial class WorldManagementViewModel : ObservableRecipient
     private BitmapImage? _worldIcon;
     
     [ObservableProperty]
-    private string _seed = "未知";
+    private string _seed = string.Empty;
     
     [ObservableProperty]
-    private string _difficulty = "未知";
+    private string _difficulty = string.Empty;
     
     [ObservableProperty]
-    private string _gameMode = "未知";
+    private string _gameMode = string.Empty;
     
     [ObservableProperty]
     private string _worldSize = "0 MB";
@@ -45,7 +83,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
     /// <summary>
     /// 格式化的创建时间
     /// </summary>
-    public string FormattedCreationTime => CreationTime == DateTime.MinValue ? "未知" : CreationTime.ToString("yyyy-MM-dd HH:mm:ss");
+    public string FormattedCreationTime => CreationTime == DateTime.MinValue ? UnknownText : CreationTime.ToString("yyyy-MM-dd HH:mm:ss");
     
     partial void OnCreationTimeChanged(DateTime value)
     {
@@ -58,7 +96,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
     /// <summary>
     /// 格式化的最后游玩时间
     /// </summary>
-    public string FormattedLastPlayedTime => LastPlayedTime == DateTime.MinValue ? "未知" : LastPlayedTime.ToString("yyyy-MM-dd HH:mm:ss");
+    public string FormattedLastPlayedTime => LastPlayedTime == DateTime.MinValue ? UnknownText : LastPlayedTime.ToString("yyyy-MM-dd HH:mm:ss");
     
     partial void OnLastPlayedTimeChanged(DateTime value)
     {
@@ -66,13 +104,13 @@ public partial class WorldManagementViewModel : ObservableRecipient
     }
     
     [ObservableProperty]
-    private string _playTime = "0 小时";
+    private string _playTime = string.Empty;
     
     [ObservableProperty]
-    private string _mcDays = "0 天";
+    private string _mcDays = string.Empty;
     
     [ObservableProperty]
-    private string _allowCommands = "未知";
+    private string _allowCommands = string.Empty;
     
     [ObservableProperty]
     private int _selectedTabIndex = 0;
@@ -161,15 +199,15 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     var result = new
                     {
                         IconPath = (string?)null,
-                        Seed = "未知",
-                        Difficulty = "未知",
-                        GameMode = "未知",
+                        Seed = UnknownText,
+                        Difficulty = UnknownText,
+                        GameMode = UnknownText,
                         WorldSize = "0 MB",
                         CreationTime = DateTime.MinValue,
                         LastPlayedTime = DateTime.MinValue,
-                        PlayTime = "0 小时",
-                        McDays = "0 天",
-                        AllowCommands = "未知"
+                        PlayTime = "0",
+                        McDays = "0",
+                        AllowCommands = UnknownText
                     };
                     
                     // 加载世界图标
@@ -213,9 +251,9 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     cancellationToken.ThrowIfCancellationRequested();
                     
                     // 计算游玩时长和 MC 天数
-                    string playTime = "0 小时";
-                    string mcDays = "0 天";
-                    string allowCommands = "未知";
+                    string playTime = "0";
+                    string mcDays = "0";
+                    string allowCommands = UnknownText;
                     
                     if (worldData != null)
                     {
@@ -227,24 +265,24 @@ public partial class WorldManagementViewModel : ObservableRecipient
                             
                             if (hours >= 1)
                             {
-                                playTime = $"{hours:F1} 小时";
+                                playTime = $"{hours:F1} {ResourceExtensions.GetLocalized("WorldManagement_Hours")}";
                             }
                             else
                             {
                                 // 小于 1 小时，显示分钟
                                 double minutes = worldData.Time / 1200.0; // 1 分钟 = 1200 游戏刻
-                                playTime = $"{minutes:F0} 分钟";
+                                playTime = $"{minutes:F0} {ResourceExtensions.GetLocalized("WorldManagement_Minutes")}";
                             }
                             
                             // 1 MC 天 = 24000 游戏刻
                             double days = worldData.Time / 24000.0;
-                            mcDays = $"{days:F1} 天";
+                            mcDays = $"{days:F1} {ResourceExtensions.GetLocalized("WorldManagement_Days")}";
                             
                             System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 游玩时长: {playTime}, MC天数: {mcDays}");
                         }
                         
                         // 设置允许命令状态
-                        allowCommands = worldData.AllowCommands ? "已开启" : "已关闭";
+                        allowCommands = worldData.AllowCommands ? EnabledText : DisabledText;
                     }
                     
                     // 获取文件夹信息
@@ -267,9 +305,9 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     return new
                     {
                         IconPath = hasIcon ? iconPath : null,
-                        Seed = worldData?.Seed.ToString() ?? "未知",
-                        Difficulty = worldData?.Difficulty ?? "未知",
-                        GameMode = worldData?.GameMode ?? "未知",
+                        Seed = worldData?.Seed.ToString() ?? UnknownText,
+                        Difficulty = LocalizeDifficulty(worldData?.Difficulty ?? DifficultyType.Unknown),
+                        GameMode = LocalizeGameMode(worldData?.GameMode ?? GameModeType.Unknown),
                         WorldSize = worldSize,
                         CreationTime = creationTime,
                         LastPlayedTime = lastPlayedTime,
@@ -290,15 +328,15 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     return new
                     {
                         IconPath = (string?)null,
-                        Seed = "未知",
-                        Difficulty = "未知",
-                        GameMode = "未知",
+                        Seed = UnknownText,
+                        Difficulty = UnknownText,
+                        GameMode = UnknownText,
                         WorldSize = "0 MB",
                         CreationTime = DateTime.MinValue,
                         LastPlayedTime = DateTime.MinValue,
-                        PlayTime = "0 小时",
-                        McDays = "0 天",
-                        AllowCommands = "未知"
+                        PlayTime = "0",
+                        McDays = "0",
+                        AllowCommands = UnknownText
                     };
                 }
             }, cancellationToken);
@@ -440,19 +478,12 @@ public partial class WorldManagementViewModel : ObservableRecipient
         {
             _dataPacksLoaded = true;
             
-            // 立即设置为加载中，防止显示空列表提示
-            IsLoadingDataPacks = true;
-            
             // 延迟 300ms 等待 Tab 切换动画完成
             await Task.Delay(300);
             
             if (_cancellationTokenSource != null && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 await LoadDataPacksAsync(_cancellationTokenSource.Token);
-            }
-            else
-            {
-                IsLoadingDataPacks = false;
             }
         }
     }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -2208,5 +2208,113 @@ Continue downloading?</value>
   </data>
   <data name="VersionManagerPage_GameMode_Unknown" xml:space="preserve">
     <value>Unknown</value>
+  </data>
+  <data name="WorldManagement_Back.Text" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="WorldManagement_GameMode.Text" xml:space="preserve">
+    <value>Game Mode</value>
+  </data>
+  <data name="WorldManagement_Difficulty.Text" xml:space="preserve">
+    <value>Difficulty</value>
+  </data>
+  <data name="WorldManagement_WorldSize.Text" xml:space="preserve">
+    <value>World Size</value>
+  </data>
+  <data name="WorldManagement_OpenFolder.Text" xml:space="preserve">
+    <value>Open Folder</value>
+  </data>
+  <data name="WorldManagement_Tab_Overview.Content" xml:space="preserve">
+    <value>Overview</value>
+  </data>
+  <data name="WorldManagement_Tab_DataPacks.Content" xml:space="preserve">
+    <value>Data Packs</value>
+  </data>
+  <data name="WorldOverview_BasicInfo.Text" xml:space="preserve">
+    <value>Basic Information</value>
+  </data>
+  <data name="WorldOverview_Seed.Text" xml:space="preserve">
+    <value>Seed</value>
+  </data>
+  <data name="WorldOverview_CreationTime.Text" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="WorldOverview_LastPlayed.Text" xml:space="preserve">
+    <value>Last Played</value>
+  </data>
+  <data name="WorldOverview_Statistics.Text" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="WorldOverview_PlayTime.Text" xml:space="preserve">
+    <value>Play Time</value>
+  </data>
+  <data name="WorldOverview_InGameDays.Text" xml:space="preserve">
+    <value>In-Game Days</value>
+  </data>
+  <data name="WorldOverview_AllowCommands.Text" xml:space="preserve">
+    <value>Allow Commands</value>
+  </data>
+  <data name="WorldOverview_CopySeedTooltip.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Click to copy seed</value>
+  </data>
+  <data name="WorldDataPacks_LoadingDescription.Text" xml:space="preserve">
+    <value>Loading description...</value>
+  </data>
+  <data name="WorldDataPacks_Delete.Text" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="WorldDataPacks_EmptyTitle.Text" xml:space="preserve">
+    <value>No Data Packs</value>
+  </data>
+  <data name="WorldDataPacks_EmptyDescription.Text" xml:space="preserve">
+    <value>Place data pack files in the datapacks folder</value>
+  </data>
+  <data name="WorldDataPacks_OpenFolder.Text" xml:space="preserve">
+    <value>Open Folder</value>
+  </data>
+  <data name="WorldManagement_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="WorldManagement_Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="WorldManagement_Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="WorldManagement_Hours" xml:space="preserve">
+    <value>hours</value>
+  </data>
+  <data name="WorldManagement_Minutes" xml:space="preserve">
+    <value>minutes</value>
+  </data>
+  <data name="WorldManagement_Days" xml:space="preserve">
+    <value>days</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Peaceful" xml:space="preserve">
+    <value>Peaceful</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Easy" xml:space="preserve">
+    <value>Easy</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Normal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Hard" xml:space="preserve">
+    <value>Hard</value>
+  </data>
+  <data name="WorldManagement_GameMode_Survival" xml:space="preserve">
+    <value>Survival</value>
+  </data>
+  <data name="WorldManagement_GameMode_Creative" xml:space="preserve">
+    <value>Creative</value>
+  </data>
+  <data name="WorldManagement_GameMode_Adventure" xml:space="preserve">
+    <value>Adventure</value>
+  </data>
+  <data name="WorldManagement_GameMode_Spectator" xml:space="preserve">
+    <value>Spectator</value>
+  </data>
+  <data name="WorldManagement_GameMode_Hardcore" xml:space="preserve">
+    <value>Hardcore</value>
   </data>
 </root>

@@ -40,7 +40,7 @@
                             Margin="0,0,16,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE72B;" FontSize="16"/>
-                            <TextBlock Text="返回" VerticalAlignment="Center"/>
+                            <TextBlock Text="返回" x:Uid="WorldManagement_Back" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -85,6 +85,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="24">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="游戏模式" 
+                                           x:Uid="WorldManagement_GameMode"
                                            FontSize="12" 
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="{x:Bind ViewModel.GameMode, Mode=OneWay}" 
@@ -94,6 +95,7 @@
 
                             <StackPanel Spacing="4">
                                 <TextBlock Text="难度" 
+                                           x:Uid="WorldManagement_Difficulty"
                                            FontSize="12" 
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="{x:Bind ViewModel.Difficulty, Mode=OneWay}" 
@@ -103,6 +105,7 @@
 
                             <StackPanel Spacing="4">
                                 <TextBlock Text="世界大小" 
+                                           x:Uid="WorldManagement_WorldSize"
                                            FontSize="12" 
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="{x:Bind ViewModel.WorldSize, Mode=OneWay}" 
@@ -116,7 +119,7 @@
                                     Style="{StaticResource AccentButtonStyle}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
-                                    <TextBlock Text="打开文件夹"/>
+                                    <TextBlock Text="打开文件夹" x:Uid="WorldManagement_OpenFolder"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -135,12 +138,12 @@
                         <!-- 不要覆盖边框颜色，让系统使用默认的分割线颜色 -->
                     </NavigationView.Resources>
                     <NavigationView.MenuItems>
-                        <NavigationViewItem Content="概览" Tag="overview" IsSelected="True">
+                        <NavigationViewItem Content="概览" x:Uid="WorldManagement_Tab_Overview" Tag="overview" IsSelected="True">
                             <NavigationViewItem.Icon>
                                 <FontIcon Glyph="&#xE80F;"/>
                             </NavigationViewItem.Icon>
                         </NavigationViewItem>
-                        <NavigationViewItem Content="数据包" Tag="datapacks">
+                        <NavigationViewItem Content="数据包" x:Uid="WorldManagement_Tab_DataPacks" Tag="datapacks">
                             <NavigationViewItem.Icon>
                                 <FontIcon Glyph="&#xE8B7;"/>
                             </NavigationViewItem.Icon>

@@ -22,6 +22,7 @@
                     Padding="20"
                     Spacing="16">
             <TextBlock Text="基本信息" 
+                       x:Uid="WorldOverview_BasicInfo"
                        Style="{StaticResource BodyStrongTextBlockStyle}"/>
             
             <StackPanel Spacing="12">
@@ -31,6 +32,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="种子" 
+                               x:Uid="WorldOverview_Seed"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                VerticalAlignment="Center"/>
                     
@@ -45,7 +47,8 @@
                             VerticalAlignment="Center"
                             CornerRadius="4"
                             Click="CopySeedButton_Click"
-                            ToolTipService.ToolTip="点击复制种子">
+                            ToolTipService.ToolTip="点击复制种子"
+                            x:Uid="WorldOverview_CopySeedTooltip">
                         <Button.Resources>
                             <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SubtleFillColorSecondary}"/>
                             <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SubtleFillColorTertiary}"/>
@@ -74,7 +77,7 @@
                         <ColumnDefinition Width="100"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="创建时间" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="创建时间" x:Uid="WorldOverview_CreationTime" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FormattedCreationTime, Mode=OneWay}"/>
                 </Grid>
 
@@ -83,7 +86,7 @@
                         <ColumnDefinition Width="100"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="最后游玩" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="最后游玩" x:Uid="WorldOverview_LastPlayed" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FormattedLastPlayedTime, Mode=OneWay}"/>
                 </Grid>
             </StackPanel>
@@ -98,6 +101,7 @@
                     Padding="20"
                     Spacing="16">
             <TextBlock Text="游玩统计" 
+                       x:Uid="WorldOverview_Statistics"
                        Style="{StaticResource BodyStrongTextBlockStyle}"/>
             
             <StackPanel Spacing="12">
@@ -106,7 +110,7 @@
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="游玩时长" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="游玩时长" x:Uid="WorldOverview_PlayTime" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE121;" FontSize="16"/>
                         <TextBlock Text="{x:Bind ViewModel.PlayTime, Mode=OneWay}" 
@@ -119,7 +123,7 @@
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="游戏内天数" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="游戏内天数" x:Uid="WorldOverview_InGameDays" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE787;" FontSize="16"/>
                         <TextBlock Text="{x:Bind ViewModel.McDays, Mode=OneWay}" 
@@ -132,7 +136,7 @@
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="允许命令" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="允许命令" x:Uid="WorldOverview_AllowCommands" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE756;" FontSize="16"/>
                         <TextBlock Text="{x:Bind ViewModel.AllowCommands, Mode=OneWay}" 

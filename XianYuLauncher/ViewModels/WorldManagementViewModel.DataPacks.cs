@@ -22,7 +22,7 @@ public partial class WorldManagementViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDataPackEmptyState))]
-    private bool _isLoadingDataPacks = false;
+    private bool _isLoadingDataPacks = true; // 默认为 true，防止闪烁
 
     /// <summary>
     /// 是否显示空列表状态（仅当列表为空且不在加载时显示）

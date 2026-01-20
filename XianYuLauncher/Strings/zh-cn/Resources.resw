@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -2222,5 +2222,113 @@
   </data>
   <data name="VersionManagerPage_GameMode_Unknown" xml:space="preserve">
     <value>未知</value>
+  </data>
+  <data name="WorldManagement_Back.Text" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="WorldManagement_GameMode.Text" xml:space="preserve">
+    <value>游戏模式</value>
+  </data>
+  <data name="WorldManagement_Difficulty.Text" xml:space="preserve">
+    <value>难度</value>
+  </data>
+  <data name="WorldManagement_WorldSize.Text" xml:space="preserve">
+    <value>世界大小</value>
+  </data>
+  <data name="WorldManagement_OpenFolder.Text" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+  <data name="WorldManagement_Tab_Overview.Content" xml:space="preserve">
+    <value>概览</value>
+  </data>
+  <data name="WorldManagement_Tab_DataPacks.Content" xml:space="preserve">
+    <value>数据包</value>
+  </data>
+  <data name="WorldOverview_BasicInfo.Text" xml:space="preserve">
+    <value>基本信息</value>
+  </data>
+  <data name="WorldOverview_Seed.Text" xml:space="preserve">
+    <value>种子</value>
+  </data>
+  <data name="WorldOverview_CreationTime.Text" xml:space="preserve">
+    <value>创建时间</value>
+  </data>
+  <data name="WorldOverview_LastPlayed.Text" xml:space="preserve">
+    <value>最后游玩</value>
+  </data>
+  <data name="WorldOverview_Statistics.Text" xml:space="preserve">
+    <value>游玩统计</value>
+  </data>
+  <data name="WorldOverview_PlayTime.Text" xml:space="preserve">
+    <value>游玩时长</value>
+  </data>
+  <data name="WorldOverview_InGameDays.Text" xml:space="preserve">
+    <value>游戏内天数</value>
+  </data>
+  <data name="WorldOverview_AllowCommands.Text" xml:space="preserve">
+    <value>允许命令</value>
+  </data>
+  <data name="WorldOverview_CopySeedTooltip.ToolTipService.ToolTip" xml:space="preserve">
+    <value>点击复制种子</value>
+  </data>
+  <data name="WorldDataPacks_LoadingDescription.Text" xml:space="preserve">
+    <value>加载描述中...</value>
+  </data>
+  <data name="WorldDataPacks_Delete.Text" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="WorldDataPacks_EmptyTitle.Text" xml:space="preserve">
+    <value>暂无数据包</value>
+  </data>
+  <data name="WorldDataPacks_EmptyDescription.Text" xml:space="preserve">
+    <value>将数据包文件放入 datapacks 文件夹</value>
+  </data>
+  <data name="WorldDataPacks_OpenFolder.Text" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+  <data name="WorldManagement_Unknown" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="WorldManagement_Enabled" xml:space="preserve">
+    <value>已开启</value>
+  </data>
+  <data name="WorldManagement_Disabled" xml:space="preserve">
+    <value>已关闭</value>
+  </data>
+  <data name="WorldManagement_Hours" xml:space="preserve">
+    <value>小时</value>
+  </data>
+  <data name="WorldManagement_Minutes" xml:space="preserve">
+    <value>分钟</value>
+  </data>
+  <data name="WorldManagement_Days" xml:space="preserve">
+    <value>天</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Peaceful" xml:space="preserve">
+    <value>和平</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Easy" xml:space="preserve">
+    <value>简单</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Normal" xml:space="preserve">
+    <value>普通</value>
+  </data>
+  <data name="WorldManagement_Difficulty_Hard" xml:space="preserve">
+    <value>困难</value>
+  </data>
+  <data name="WorldManagement_GameMode_Survival" xml:space="preserve">
+    <value>生存模式</value>
+  </data>
+  <data name="WorldManagement_GameMode_Creative" xml:space="preserve">
+    <value>创造模式</value>
+  </data>
+  <data name="WorldManagement_GameMode_Adventure" xml:space="preserve">
+    <value>冒险模式</value>
+  </data>
+  <data name="WorldManagement_GameMode_Spectator" xml:space="preserve">
+    <value>旁观模式</value>
+  </data>
+  <data name="WorldManagement_GameMode_Hardcore" xml:space="preserve">
+    <value>极限模式</value>
   </data>
 </root>
