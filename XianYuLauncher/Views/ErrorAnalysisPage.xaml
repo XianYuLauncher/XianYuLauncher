@@ -28,7 +28,7 @@
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,10,16,10" Spacing="8" VerticalAlignment="Center">
             <Button x:Uid="ErrorAnalysis_ExportLogButton" Content="导出日志" Command="{x:Bind ViewModel.ExportErrorLogsCommand}" Width="120" Height="36" />
             <Button x:Uid="ErrorAnalysis_CopyLogButton" Content="复制日志" Command="{x:Bind ViewModel.CopyLogsCommand}" Width="120" Height="36" />
-            <Button x:Uid="ErrorAnalysis_ClearLogButton" Content="清空日志" Command="{x:Bind ViewModel.ClearLogsCommand}" Width="120" Height="36" />
+            <Button x:Uid="ErrorAnalysis_ContactAuthorButton" Content="联系作者" Command="{x:Bind ViewModel.JoinQQGroupCommand}" Width="120" Height="36" />
         </StackPanel>
         
         <!-- 日志显示区 -->

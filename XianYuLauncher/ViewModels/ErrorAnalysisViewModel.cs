@@ -30,6 +30,15 @@ namespace XianYuLauncher.ViewModels
         // 新增：用于ListView的日志行集合
         [ObservableProperty]
         private ObservableCollection<string> _logLines = new();
+
+        /// <summary>
+        /// 加入QQ群进行反馈
+        /// </summary>
+        [RelayCommand]
+        private async Task JoinQQGroup()
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri("https://qm.qq.com/q/Vj1SWx7EkO"));
+        }
         
         // 构造函数
         public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService)

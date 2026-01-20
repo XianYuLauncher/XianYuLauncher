@@ -2338,4 +2338,7 @@ Continue downloading?</value>
   <data name="LaunchPage_GoToLoginText" xml:space="preserve">
     <value>Go to Login</value>
   </data>
+  <data name="ErrorAnalysis_ContactAuthorButton.Content" xml:space="preserve">
+    <value>Contact Author</value>
+  </data>
 </root>
