@@ -90,20 +90,19 @@ public class DialogService : IDialogService
         return result == ContentDialogResult.Primary;
     }
 
-    public async Task ShowJavaNotFoundDialogAsync(string requiredVersion, Action onDownloadAction)
+    public async Task ShowJavaNotFoundDialogAsync(string requiredVersion, Action onManualDownload, Action onAutoDownload)
     {
         var dialog = new ContentDialog
         {
             Title = "Java运行时环境未找到",
-            Content = $"未找到适用于当前游戏版本的Java运行时环境，请先安装相应版本的Java。\n\n游戏版本需要Java {requiredVersion}\n\n在下载完Java后,将Java.exe文件加入到设置-Java设置中!",
-            PrimaryButtonText = "下载",
-            CloseButtonText = "确定"
+            Content = $"未找到适用于当前游戏版本的Java运行时环境。\n\n游戏版本需要: Java {requiredVersion}\n\n推荐使用自动下载功能，启动器将自动安装并配置环境。",
+            PrimaryButtonText = "自动下载(推荐)",
+            SecondaryButtonText = "手动下载",
+            CloseButtonText = "取消"
         };
 
-        dialog.PrimaryButtonClick += (s, e) =>
-        {
-            onDownloadAction?.Invoke();
-        };
+        dialog.PrimaryButtonClick += (s, e) => onAutoDownload?.Invoke();
+        dialog.SecondaryButtonClick += (s, e) => onManualDownload?.Invoke();
 
         await ShowSafeAsync(dialog);
     }
@@ -181,5 +180,66 @@ public class DialogService : IDialogService
     public async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
         return await ShowSafeAsync(dialog);
+    }
+
+    public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
+    {
+        var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), IsIndeterminate = true };
+        var statusText = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
+        
+        var contentPanel = new StackPanel();
+        contentPanel.Children.Add(statusText);
+        contentPanel.Children.Add(progressBar);
+        
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = contentPanel,
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.None
+        };
+
+        var cts = new CancellationTokenSource();
+        
+        dialog.CloseButtonClick += (s, e) => 
+        {
+            if (!cts.IsCancellationRequested)
+                cts.Cancel();
+        };
+
+        var progress = new Progress<double>(p => 
+        {
+            progressBar.IsIndeterminate = false;
+            progressBar.Value = p;
+        });
+        
+        IProgress<string> statusProgress = new Progress<string>(s => statusText.Text = s);
+
+        dialog.Opened += (s, e) =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await workCallback(progress, statusProgress, cts.Token);
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    statusProgress.Report($"操作失败: {ex.Message}");
+                    await Task.Delay(2000);
+                }
+                finally
+                {
+                    // 确保在 UI 线程上关闭
+                    dialog.DispatcherQueue.TryEnqueue(() => 
+                    {
+                        try { dialog.Hide(); } catch { }
+                    });
+                }
+            });
+        };
+
+        await ShowSafeAsync(dialog);
     }
 }

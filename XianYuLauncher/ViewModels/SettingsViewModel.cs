@@ -1402,6 +1402,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 智能合并：先添加扫描到的系统Java
             foreach (var jv in scannedJavaVersions)
             {
+                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 添加 Java: Version='{jv.FullVersion}' Path='{jv.Path}'");
                 JavaVersions.Add(new JavaVersionInfo
                 {
                     Version = jv.FullVersion,
@@ -1473,46 +1474,49 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             Console.WriteLine("加载保存的Java版本列表...");
-            var savedVersions = await _localSettingsService.ReadSettingAsync<List<JavaVersionInfo>>(JavaVersionsKey);
-            if (savedVersions != null && savedVersions.Count > 0)
+            // 注意：存储在磁盘上的是 Core.Models.JavaVersion 对象 (属性为 FullVersion)，
+            // 而我们 ViewModel 使用的是 JavaVersionInfo (属性为 Version)。
+            // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
+            // 修复方案：先读取为 JavaVersion，再映射到 JavaVersionInfo。
+            
+            var savedCoreVersions = await _localSettingsService.ReadSettingAsync<List<XianYuLauncher.Core.Models.JavaVersion>>(JavaVersionsKey);
+            
+            if (savedCoreVersions != null && savedCoreVersions.Count > 0)
             {
-                Console.WriteLine($"加载到{savedVersions.Count}个Java版本");
+                Console.WriteLine($"加载到{savedCoreVersions.Count}个Java版本");
                 
-                // 过滤掉无效的Java版本（例如，文件不存在的情况）
                 int validCount = 0;
-                foreach (var version in savedVersions)
+                foreach (var coreVer in savedCoreVersions)
                 {
-                    if (File.Exists(version.Path))
+                    if (File.Exists(coreVer.Path))
                     {
-                        JavaVersions.Add(version);
+                        JavaVersions.Add(new JavaVersionInfo
+                        {
+                            Version = coreVer.FullVersion, // 关键：手动映射 FullVersion -> Version
+                            MajorVersion = coreVer.MajorVersion,
+                            Path = coreVer.Path,
+                            IsJDK = coreVer.IsJDK
+                        });
                         validCount++;
                     }
                     else
                     {
-                        Console.WriteLine($"跳过无效的Java版本（文件不存在）: {version.Path}");
+                        Console.WriteLine($"跳过无效的Java版本（文件不存在）: {coreVer.Path}");
                     }
                 }
                 
                 Console.WriteLine($"有效Java版本数量: {validCount}");
                 
                 // 如果过滤掉了一些版本，需要重新保存
-                if (validCount < savedVersions.Count)
+                if (validCount < savedCoreVersions.Count)
                 {
                     await SaveJavaVersionsAsync();
                 }
-                
-                // 加载完成后恢复选中的Java版本
-                await LoadSelectedJavaVersionAsync();
-            }
-            else
-            {
-                Console.WriteLine("没有保存的Java版本");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"加载Java版本列表失败: {ex.Message}");
-            Console.WriteLine($"异常堆栈: {ex.StackTrace}");
         }
         finally
         {

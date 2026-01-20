@@ -228,16 +228,35 @@ public class JavaRuntimeService : IJavaRuntimeService
             await process.WaitForExitAsync();
 
             // 解析版本信息
-            var lines = output.Split('\n');
-            if (lines.Length > 0)
+            if (!string.IsNullOrEmpty(output)) 
             {
-                var versionLine = lines[0];
-                // 示例: java version "1.8.0_301" 或 openjdk version "17.0.1"
-                var match = System.Text.RegularExpressions.Regex.Match(versionLine, "\"(.+?)\"");
-                if (match.Success)
+                var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length > 0)
                 {
-                    var fullVersion = match.Groups[1].Value;
-                    TryParseJavaVersion(fullVersion, out int majorVersion);
+                    // 尝试从第一行或前几行提取版本信息
+                    // 常见格式:
+                    // openjdk version "17.0.1" 2021-10-19
+                    // java version "1.8.0_311"
+                    
+                    string fullVersion = "Unknown";
+                    int majorVersion = 0;
+                    
+                    foreach (var line in lines)
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(line, "version \"(.+?)\"");
+                        if (match.Success)
+                        {
+                            fullVersion = match.Groups[1].Value;
+                            TryParseJavaVersion(fullVersion, out majorVersion);
+                            break;
+                        }
+                    }
+                    
+                    // 如果没抓取到 version "..." 格式，尝试直接解析
+                    if (majorVersion == 0 && lines.Length > 0)
+                    {
+                         // 兜底逻辑，有时候输出可能不标准
+                    }
 
                     var javaHome = Path.GetDirectoryName(Path.GetDirectoryName(javaPath));
                     var isJDK = javaHome != null && Directory.Exists(Path.Combine(javaHome, "lib"));
@@ -246,7 +265,7 @@ public class JavaRuntimeService : IJavaRuntimeService
                     return new JavaVersion
                     {
                         Path = javaPath,
-                        FullVersion = fullVersion,
+                        FullVersion = fullVersion, // 如果提取失败，可能是 Unknown，ViewModel需要处理
                         MajorVersion = majorVersion,
                         IsJDK = isJDK,
                         Is64Bit = is64Bit

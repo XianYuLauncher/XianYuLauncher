@@ -82,19 +82,6 @@ public class VersionInfo
 }
 
 /// <summary>
-/// <summary>
-/// Minecraft 版本所需的 Java 版本信息（来自 version.json）
-/// </summary>
-public class MinecraftJavaVersion
-{
-    [JsonProperty("majorVersion")]
-    public int MajorVersion { get; set; }
-    
-    [JsonProperty("component")]
-    public string? Component { get; set; }
-}
-
-/// <summary>
 /// 资源索引信息
 /// </summary>
 public class AssetIndex
@@ -267,4 +254,16 @@ public class DownloadFile
     
     [JsonProperty("url")]
     public string? Url { get; set; }
+}
+
+/// <summary>
+/// Minecraft Java版本需求
+/// </summary>
+public class MinecraftJavaVersion
+{
+    [JsonProperty("component")]
+    public string Component { get; set; } = string.Empty;
+
+    [JsonProperty("majorVersion")]
+    public int MajorVersion { get; set; }
 }

@@ -44,47 +44,78 @@ public partial class LaunchViewModel : ObservableRecipient
     private int _windowHeight = 720;
     private async Task ShowJavaNotFoundMessageAsync()
     {
-        await _dialogService.ShowJavaNotFoundDialogAsync(GetRequiredJavaVersionText(), async () => 
-        {
-            await InstallJavaWithProgressAsync(GetRequiredJavaVersionText());
-        });
+        var versionText = GetRequiredJavaVersionText();
+        await _dialogService.ShowJavaNotFoundDialogAsync(
+            versionText,
+            onManualDownload: async () => await OpenJavaDownloadUrlAsync(versionText),
+            onAutoDownload: async () => await AutoInstallJavaAsync(versionText)
+        );
     }
 
     /// <summary>
-    /// 下载并安装Java，带下载进度弹窗
+    /// 打开 Java 官网下载页面
     /// </summary>
-    private async Task InstallJavaWithProgressAsync(string requiredVersion)
+    private async Task OpenJavaDownloadUrlAsync(string requiredVersion)
     {
-        string downloadUrl = string.Empty;
-        string versionDesc = "Java";
-            
-        // 根据Java版本选择下载链接（这里后续可以替换为真实的下载URL，或者调用DownloadManager）
-        // 目前暂时还是跳转官网，但为"自动下载"预留了结构
-        if (requiredVersion.Contains("8"))
-        {
-            downloadUrl = "https://www.java.com/zh-CN/download/";
-            versionDesc = "Java 8";
-        }
-        else if (requiredVersion.Contains("17"))
+        string downloadUrl = "https://www.java.com/zh-CN/download/";
+        
+        if (requiredVersion.Contains("17"))
         {
             downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java17";
-            versionDesc = "Java 17";
         }
         else if (requiredVersion.Contains("21"))
         {
             downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java21";
-            versionDesc = "Java 21";
         }
             
-        if (!string.IsNullOrEmpty(downloadUrl))
+        try
         {
-             // TODO: 这里是你的"自动下载"逻辑接入点
-             // 你可以在 DialogService 里加一个 ShowDownloadProgressDialog
-             // 然后调用 DownloadManager 下载 JDK 安装包
-             
-             // 目前保持原有逻辑：跳转浏览器
-             await Windows.System.Launcher.LaunchUriAsync(new Uri(downloadUrl));
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(downloadUrl));
         }
+        catch { }
+    }
+
+    /// <summary>
+    /// 自动下载并配置 Java 环境
+    /// </summary>
+    private async Task AutoInstallJavaAsync(string versionId)
+    {
+        string component = "java-runtime-gamma"; // 默认值
+        
+        try 
+        {
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            var versionInfo = await _versionInfoManager.GetVersionInfoAsync(SelectedVersion, minecraftPath);
+            
+            if (versionInfo?.JavaVersion != null && !string.IsNullOrEmpty(versionInfo.JavaVersion.Component))
+            {
+                component = versionInfo.JavaVersion.Component;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 读取版本 JSON 失败，使用默认 Java 组件。Error: {ex.Message}");
+        }
+
+        await _dialogService.ShowProgressDialogAsync("自动配置 Java 环境", $"正在获取 Java 组件: {component}...", async (progress, status, token) => 
+        {
+            try
+            {
+                await _javaDownloadService.DownloadAndInstallJavaAsync(
+                    component, 
+                    p => progress.Report(p), 
+                    s => status.Report(s), 
+                    token);
+                
+                status.Report("安装完成，正在刷新环境...");
+                await _javaRuntimeService.DetectJavaVersionsAsync(true);
+                await Task.Delay(1000);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"下载流程异常: {ex.Message}", ex);
+            }
+        });
     }
     
     /// <summary>
@@ -703,6 +734,7 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly ILogger<LaunchViewModel> _logger;
     private readonly AuthlibInjectorService _authlibInjectorService;
     private readonly IJavaRuntimeService _javaRuntimeService;
+    private readonly IJavaDownloadService _javaDownloadService;
     private readonly IDialogService _dialogService;
     
     // 新增：Phase 5 重构服务
@@ -944,6 +976,8 @@ public partial class LaunchViewModel : ObservableRecipient
     /// </summary>
     public string MicrosoftLoginTest => "微软登录功能已实现，可以通过启动页的测试按钮进行测试";
 
+    private readonly IVersionInfoManager _versionInfoManager; // Add this field
+
     public LaunchViewModel()
     {
         _minecraftVersionService = App.GetService<IMinecraftVersionService>();
@@ -955,6 +989,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _authlibInjectorService = App.GetService<AuthlibInjectorService>();
         _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
         _javaRuntimeService = App.GetService<IJavaRuntimeService>();
+        _javaDownloadService = App.GetService<IJavaDownloadService>();
         _dialogService = App.GetService<IDialogService>();
         
         // 新增：Phase 5 重构服务
@@ -964,6 +999,9 @@ public partial class LaunchViewModel : ObservableRecipient
         _regionValidator = App.GetService<IRegionValidator>();
         _tokenRefreshService = App.GetService<ITokenRefreshService>();
         _versionConfigService = App.GetService<IVersionConfigService>();
+        _versionInfoManager = App.GetService<IVersionInfoManager>(); // Inject this service
+
+        // ... existing code ...
         
         // 设置 authlib-injector 回调
         _gameLaunchService.SetAuthlibInjectorCallback(new AuthlibInjectorCallbackImpl(_authlibInjectorService));

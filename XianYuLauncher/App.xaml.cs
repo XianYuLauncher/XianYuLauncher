@@ -129,6 +129,7 @@ public partial class App : Application
             services.AddSingleton<IAssetManager, AssetManager>();
             services.AddSingleton<IVersionInfoManager, VersionInfoManager>();
             services.AddSingleton<IJavaRuntimeService, JavaRuntimeService>();
+            services.AddSingleton<IJavaDownloadService, JavaDownloadService>();
             
             // ModLoader Installers
             services.AddSingleton<IProcessorExecutor, XianYuLauncher.Core.Services.ModLoaderInstallers.ProcessorExecutor>();
