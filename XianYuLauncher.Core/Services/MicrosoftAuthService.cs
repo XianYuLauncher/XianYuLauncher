@@ -989,4 +989,65 @@ public class MicrosoftAuthService
             return (null, null);
         }
     }
+    
+    /// <summary>
+    /// 验证 Minecraft 访问令牌是否有效
+    /// 通过调用 /minecraft/profile API 来验证
+    /// </summary>
+    /// <param name="accessToken">Minecraft 访问令牌</param>
+    /// <returns>令牌是否有效</returns>
+    public async Task<bool> ValidateMinecraftTokenAsync(string accessToken)
+    {
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            Log.Warning("[MicrosoftAuth] 验证令牌失败：令牌为空");
+            return false;
+        }
+        
+        try
+        {
+            Log.Information("[MicrosoftAuth] 开始验证 Minecraft 令牌...");
+            
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+            
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            
+            Log.Information("[MicrosoftAuth] 令牌验证响应状态码: {StatusCode}", response.StatusCode);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("[MicrosoftAuth] ✅ Minecraft 令牌验证通过");
+                return true;
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Log.Warning("[MicrosoftAuth] ❌ Minecraft 令牌已失效 (401 Unauthorized)");
+                return false;
+            }
+            else
+            {
+                // 其他错误（如网络问题），假设令牌有效，避免误判
+                Log.Warning("[MicrosoftAuth] ⚠️ 令牌验证返回非预期状态码: {StatusCode}，假设令牌有效", response.StatusCode);
+                return true;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            Log.Warning("[MicrosoftAuth] ⚠️ 令牌验证超时，假设令牌有效");
+            return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Warning(ex, "[MicrosoftAuth] ⚠️ 令牌验证网络错误，假设令牌有效");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MicrosoftAuth] 令牌验证发生异常");
+            return true; // 出错时假设有效，避免阻止用户启动游戏
+        }
+    }
 }

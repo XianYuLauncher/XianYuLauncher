@@ -1123,6 +1123,199 @@ namespace XianYuLauncher.Views
         }
         
         /// <summary>
+        /// 角色卡片右键事件
+        /// </summary>
+        private void ProfileCard_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            // 右键菜单会自动显示，无需额外处理
+        }
+        
+        /// <summary>
+        /// 续签令牌菜单项点击事件
+        /// </summary>
+        private async void RenewTokenMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.Tag is MinecraftProfile profile)
+            {
+                // 检查是否为离线账户
+                if (profile.IsOffline)
+                {
+                    // 离线账户无需续签
+                    var offlineDialog = new ContentDialog
+                    {
+                        Title = "提示",
+                        Content = "离线账户无需续签令牌",
+                        CloseButtonText = "确定",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await offlineDialog.ShowAsync();
+                    return;
+                }
+                
+                await ShowRenewTokenDialogAsync(profile);
+            }
+        }
+        
+        /// <summary>
+        /// 显示续签令牌对话框
+        /// </summary>
+        private async Task ShowRenewTokenDialogAsync(MinecraftProfile profile)
+        {
+            // 创建续签进度对话框
+            var dialog = new ContentDialog
+            {
+                Title = "续签令牌",
+                CloseButtonText = null, // 初始不显示关闭按钮
+                XamlRoot = this.XamlRoot
+            };
+            
+            // 创建对话框内容
+            var contentStack = new StackPanel
+            {
+                Spacing = 16,
+                MinWidth = 300,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            // 进度环 - 始终显示，只控制旋转状态
+            var progressRing = new ProgressRing
+            {
+                IsActive = true,
+                Width = 40,
+                Height = 40,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Visibility = Visibility.Visible // 始终可见
+            };
+            
+            var statusText = new TextBlock
+            {
+                Text = "正在验证令牌...",
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            
+            contentStack.Children.Add(progressRing);
+            contentStack.Children.Add(statusText);
+            
+            dialog.Content = contentStack;
+            
+            // 异步显示对话框并执行续签
+            var dialogTask = dialog.ShowAsync();
+            
+            try
+            {
+                // 获取 TokenRefreshService
+                var tokenRefreshService = App.GetService<XianYuLauncher.Core.Contracts.Services.ITokenRefreshService>();
+                
+                // 使用 ValidateAndRefreshTokenAsync 联网验证并刷新
+                statusText.Text = "正在验证令牌...";
+                var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
+                
+                if (result.Success && result.WasRefreshed && result.UpdatedProfile != null)
+                {
+                    // 续签成功 - 保持旋转
+                    
+                    // 计算过期时间
+                    var expiryTime = result.UpdatedProfile.IssueInstant.AddSeconds(result.UpdatedProfile.ExpiresIn);
+                    var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                    
+                    string expiryText;
+                    if (timeUntilExpiry.TotalDays >= 1)
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalDays:F0} 天";
+                    }
+                    else if (timeUntilExpiry.TotalHours >= 1)
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalHours:F0} 小时";
+                    }
+                    else
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+                    }
+                    
+                    statusText.Text = $"续签完成！\n过期时间: {expiryText}";
+                    
+                    // 更新 ViewModel 中的角色信息
+                    var profileIndex = ViewModel.Profiles.IndexOf(profile);
+                    if (profileIndex >= 0)
+                    {
+                        ViewModel.Profiles[profileIndex] = result.UpdatedProfile;
+                    }
+                    
+                    // 1秒后自动关闭
+                    await Task.Delay(1000);
+                    dialog.Hide();
+                }
+                else if (result.Success && !result.WasRefreshed)
+                {
+                    // 令牌仍然有效，无需刷新 - 保持旋转
+                    
+                    // 计算过期时间
+                    var expiryTime = profile.IssueInstant.AddSeconds(profile.ExpiresIn);
+                    var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                    
+                    string expiryText;
+                    if (timeUntilExpiry.TotalDays >= 1)
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalDays:F0} 天";
+                    }
+                    else if (timeUntilExpiry.TotalHours >= 1)
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalHours:F0} 小时";
+                    }
+                    else
+                    {
+                        expiryText = $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+                    }
+                    
+                    statusText.Text = $"令牌仍然有效！\n剩余时间: {expiryText}";
+                    
+                    // 1秒后自动关闭
+                    await Task.Delay(1000);
+                    dialog.Hide();
+                }
+                else
+                {
+                    // 续签失败 - 保持旋转
+                    
+                    // 根据账户类型提供不同的错误提示
+                    string errorMessage;
+                    if (profile.TokenType == "external")
+                    {
+                        errorMessage = "令牌已完全过期，无法续签\n请删除此账户并重新登录";
+                    }
+                    else
+                    {
+                        errorMessage = result.ErrorMessage ?? "续签失败，请重新登录";
+                    }
+                    
+                    statusText.Text = errorMessage;
+                    dialog.CloseButtonText = "确定";
+                }
+            }
+            catch (Exception ex)
+            {
+                // 续签异常 - 保持旋转
+                
+                // 根据账户类型提供不同的错误提示
+                string errorMessage;
+                if (profile.TokenType == "external")
+                {
+                    errorMessage = "令牌已完全过期，无法续签\n请删除此账户并重新登录";
+                }
+                else
+                {
+                    errorMessage = $"续签失败\n{ex.Message}";
+                }
+                
+                statusText.Text = errorMessage;
+                dialog.CloseButtonText = "确定";
+            }
+        }
+        
+        /// <summary>
         /// 检测当前地区是否为中国大陆
         /// </summary>
         /// <returns>如果是中国大陆地区返回true，否则返回false</returns>

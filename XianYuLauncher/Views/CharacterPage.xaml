@@ -178,7 +178,22 @@
                                         Style="{StaticResource ProfileCardStyle}"
                                         Tapped="ProfileCard_Tapped" 
                                         Tag="{Binding}"
-                                        HorizontalAlignment="Stretch">
+                                        HorizontalAlignment="Stretch"
+                                        RightTapped="ProfileCard_RightTapped">
+                                        <!-- 右键菜单 -->
+                                        <Border.ContextFlyout>
+                                            <MenuFlyout>
+                                                <MenuFlyoutItem 
+                                                    x:Uid="ProfilePage_RenewTokenMenuItem"
+                                                    Text="续签令牌" 
+                                                    Click="RenewTokenMenuItem_Click"
+                                                    Tag="{Binding}">
+                                                    <MenuFlyoutItem.Icon>
+                                                        <FontIcon Glyph="&#xE72C;" />
+                                                    </MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                            </MenuFlyout>
+                                        </Border.ContextFlyout>
                                         <!-- 角色信息 -->
                                         <Grid>
                                             <Grid.ColumnDefinitions>

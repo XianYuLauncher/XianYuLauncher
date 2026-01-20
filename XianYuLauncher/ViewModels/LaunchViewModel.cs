@@ -1042,8 +1042,9 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             var jvmArgs = await _authlibInjectorService.GetJvmArgumentsAsync(authServer);
             
-            // 转换MSIX虚拟路径为真实物理路径
-            // 因为Java进程从沙盒外启动，需要使用真实路径
+            // 智能路径转换：检测文件实际存在位置，兼容不同环境
+            // 真实路径: C:\Users\pc\AppData\Local\XianYuLauncher\...
+            // 沙盒路径: C:\Users\pc\AppData\Local\Packages\...\LocalCache\Local\XianYuLauncher\...
             for (int i = 0; i < jvmArgs.Count; i++)
             {
                 if (jvmArgs[i].StartsWith("-javaagent:"))
@@ -1055,35 +1056,73 @@ public partial class LaunchViewModel : ObservableRecipient
                         ? originalArg.Substring("-javaagent:".Length, equalIndex - "-javaagent:".Length)
                         : originalArg.Substring("-javaagent:".Length);
                     
-                    // 检查是否需要转换路径
-                    if (!pathPart.Contains("Packages"))
+                    string finalPath = pathPart;
+                    
+                    // 如果原路径文件不存在，尝试转换
+                    if (!File.Exists(pathPart))
                     {
-                        // 这是虚拟路径，转换为真实路径
-                        try
+                        System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 原路径文件不存在: {pathPart}");
+                        
+                        if (pathPart.Contains("Packages"))
                         {
-                            string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                            string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
-                            string realPath = pathPart.Replace(
-                                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XianYuLauncher"),
-                                Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher")
-                            );
-                            
-                            // 重建参数
-                            if (equalIndex > 0)
+                            // 沙盒路径 -> 真实路径
+                            int localCacheIndex = pathPart.IndexOf("LocalCache\\Local\\");
+                            if (localCacheIndex > 0)
                             {
-                                string paramPart = originalArg.Substring(equalIndex);
-                                jvmArgs[i] = $"-javaagent:{realPath}{paramPart}";
+                                string relativePath = pathPart.Substring(localCacheIndex + "LocalCache\\Local\\".Length);
+                                string realPath = Path.Combine(
+                                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                                    "AppData", "Local", relativePath);
+                                if (File.Exists(realPath))
+                                {
+                                    finalPath = realPath;
+                                    System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 沙盒->真实路径: {realPath}");
+                                }
                             }
-                            else
-                            {
-                                jvmArgs[i] = $"-javaagent:{realPath}";
-                            }
-                            
-                            System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 路径转换: {pathPart} -> {realPath}");
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 路径转换失败: {ex.Message}");
+                            // 真实路径 -> 沙盒路径
+                            try
+                            {
+                                string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                                string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                                
+                                // 从真实路径提取相对部分
+                                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                                if (pathPart.StartsWith(localAppData, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    string relativePath = pathPart.Substring(localAppData.Length).TrimStart('\\');
+                                    string sandboxPath = Path.Combine(packagesRoot, "LocalCache", "Local", relativePath);
+                                    if (File.Exists(sandboxPath))
+                                    {
+                                        finalPath = sandboxPath;
+                                        System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 真实->沙盒路径: {sandboxPath}");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 路径转换异常: {ex.Message}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[AuthlibCallback] 原路径文件存在，无需转换: {pathPart}");
+                    }
+                    
+                    // 重建参数
+                    if (finalPath != pathPart)
+                    {
+                        if (equalIndex > 0)
+                        {
+                            string paramPart = originalArg.Substring(equalIndex);
+                            jvmArgs[i] = $"-javaagent:{finalPath}{paramPart}";
+                        }
+                        else
+                        {
+                            jvmArgs[i] = $"-javaagent:{finalPath}";
                         }
                     }
                 }
@@ -1558,6 +1597,7 @@ public partial class LaunchViewModel : ObservableRecipient
 
     /// <summary>
     /// 检查并刷新令牌（如果需要）
+    /// 使用主动验证方式，确保令牌在启动前有效
     /// </summary>
     private async Task CheckAndRefreshTokenIfNeededAsync()
     {
@@ -1566,52 +1606,59 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             try
             {
-                // 计算令牌剩余有效期，判断是否需要刷新
-                var issueTime = SelectedProfile.IssueInstant;
-                var expiresIn = SelectedProfile.ExpiresIn;
-                var expiryTime = issueTime.AddSeconds(expiresIn);
-                var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                // 显示验证中的 InfoBar 消息
+                string validatingText = SelectedProfile.TokenType == "external" 
+                    ? "正在验证外置登录令牌..." 
+                    : "正在验证微软账户令牌...";
                 
-                // 如果剩余有效期小于1小时，显示续签提示
-                if (timeUntilExpiry < TimeSpan.FromHours(1))
+                IsLaunchSuccessInfoBarOpen = true;
+                LaunchSuccessMessage = $"{SelectedVersion} {validatingText}";
+                IsViewLogsButtonVisible = false;
+                
+                _logger.LogInformation("开始验证令牌有效性...");
+                
+                // 使用新的验证并刷新方法
+                var result = await _tokenRefreshService.ValidateAndRefreshTokenAsync(SelectedProfile);
+                
+                if (!result.Success)
                 {
-                    // 根据角色类型显示不同的续签消息
-                    string renewingText = SelectedProfile.TokenType == "external" 
-                        ? "正在进行外置登录续签" 
-                        : "LaunchPage_MicrosoftAccountRenewingText".GetLocalized();
+                    // 验证和刷新都失败了
+                    _logger.LogError("令牌验证失败: {Error}", result.ErrorMessage);
                     
-                    // 显示 InfoBar 消息（刷新开始前）
-                    IsLaunchSuccessInfoBarOpen = true;
-                    LaunchSuccessMessage = $"{SelectedVersion} {renewingText}";
+                    // 显示错误提示
+                    LaunchSuccessMessage = $"{SelectedVersion} {result.StatusMessage ?? "令牌验证失败"}";
                     
-                    // Token 刷新阶段不显示"查看日志"按钮
-                    IsViewLogsButtonVisible = false;
+                    // 抛出异常阻止启动
+                    throw new InvalidOperationException(result.ErrorMessage ?? "令牌验证失败，请重新登录");
                 }
-                
-                var result = await _tokenRefreshService.CheckAndRefreshTokenAsync(SelectedProfile);
                 
                 if (result.WasRefreshed && result.UpdatedProfile != null)
                 {
-                    // 根据角色类型显示不同的完成消息
+                    // 令牌已刷新
                     string renewedText = SelectedProfile.TokenType == "external" 
-                        ? "外置登录续签成功" 
+                        ? "外置登录令牌刷新成功" 
                         : "LaunchPage_MicrosoftAccountRenewedText".GetLocalized();
                     
-                    // 更新InfoBar消息（刷新完成后）
                     LaunchSuccessMessage = $"{SelectedVersion} {renewedText}";
-                    
-                    // 刷新成功，更新当前角色信息
                     SelectedProfile = result.UpdatedProfile;
+                    
+                    _logger.LogInformation("令牌已刷新");
                 }
-                else if (!string.IsNullOrEmpty(result.StatusMessage))
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[TokenRefresh] {result.StatusMessage}");
+                    // 令牌验证通过，无需刷新
+                    _logger.LogInformation("令牌验证通过");
                 }
+            }
+            catch (InvalidOperationException)
+            {
+                // 重新抛出，让上层处理
+                throw;
             }
             catch (Exception ex)
             {
-                // 刷新失败，继续启动，但记录错误
-                Console.WriteLine($"令牌刷新失败: {ex.Message}");
+                // 其他异常，记录但不阻止启动
+                _logger.LogWarning(ex, "令牌验证过程中发生异常，将继续启动");
             }
         }
     }
@@ -1894,6 +1941,48 @@ public partial class LaunchViewModel : ObservableRecipient
             _logger.LogWarning(ex, "用户取消了下载操作");
             LaunchStatus = "已取消下载";
             _isPreparingGame = false;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("令牌") || ex.Message.Contains("登录") || ex.Message.Contains("token") || ex.Message.Contains("login"))
+        {
+            // 令牌验证失败，需要重新登录
+            _logger.LogWarning(ex, "令牌验证失败: {Message}", ex.Message);
+            LaunchStatus = ex.Message;
+            _isPreparingGame = false;
+            
+            // 显示重新登录提示
+            App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+            {
+                await _dialogSemaphore.WaitAsync();
+                try
+                {
+                    _isContentDialogOpen = true;
+                    
+                    var dialog = new ContentDialog
+                    {
+                        Title = "LaunchPage_TokenExpiredTitle".GetLocalized(),
+                        Content = "LaunchPage_TokenExpiredContent".GetLocalized(),
+                        PrimaryButtonText = "LaunchPage_GoToLoginText".GetLocalized(),
+                        CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    var result = await dialog.ShowAsync();
+                    if (result == ContentDialogResult.Primary)
+                    {
+                        _navigationService.NavigateTo("角色");
+                    }
+                }
+                catch (COMException comEx) when (comEx.HResult == unchecked((int)0x80000019))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 令牌过期弹窗 ContentDialog 冲突: {comEx.Message}");
+                }
+                finally
+                {
+                    _isContentDialogOpen = false;
+                    _dialogSemaphore.Release();
+                }
+            });
         }
         catch (Exception ex)
         {

@@ -1723,6 +1723,9 @@
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>微软账户</value>
   </data>
+  <data name="ProfilePage_RenewTokenMenuItem.Text" xml:space="preserve">
+    <value>续签令牌</value>
+  </data>
   <data name="Settings_CacheManagement.Text" xml:space="preserve">
     <value>缓存管理</value>
   </data>
@@ -2330,5 +2333,23 @@
   </data>
   <data name="WorldManagement_GameMode_Hardcore" xml:space="preserve">
     <value>极限模式</value>
+  </data>
+  <data name="LaunchPage_ValidatingMicrosoftTokenText" xml:space="preserve">
+    <value>正在验证微软账户令牌...</value>
+  </data>
+  <data name="LaunchPage_ValidatingExternalTokenText" xml:space="preserve">
+    <value>正在验证外置登录令牌...</value>
+  </data>
+  <data name="LaunchPage_TokenValidationPassedText" xml:space="preserve">
+    <value>令牌验证通过</value>
+  </data>
+  <data name="LaunchPage_TokenExpiredTitle" xml:space="preserve">
+    <value>登录已过期</value>
+  </data>
+  <data name="LaunchPage_TokenExpiredContent" xml:space="preserve">
+    <value>您的登录令牌已失效，请重新登录后再启动游戏。</value>
+  </data>
+  <data name="LaunchPage_GoToLoginText" xml:space="preserve">
+    <value>前往登录</value>
   </data>
 </root>

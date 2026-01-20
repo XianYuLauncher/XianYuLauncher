@@ -160,22 +160,64 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 string terracottaDir = Path.GetDirectoryName(terracottaPath);
                 
                 // 在MSIX环境下，需要转换为真实物理路径
+                // 智能检测：如果原路径目录不存在，尝试转换
                 string realTerracottaDir = terracottaDir;
                 string realTempDir;
                 
-                if (!terracottaDir.Contains("Packages"))
+                // 检查原路径是否存在
+                bool originalExists = Directory.Exists(terracottaDir);
+                
+                if (!originalExists)
                 {
-                    // 这是虚拟化路径，需要转换为真实路径
-                    string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                    // packagePath 类似: C:\Users\...\Packages\...\LocalState
-                    string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
-                    realTerracottaDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
-                    realTempDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "temp");
+                    // 原路径不存在，尝试转换
+                    if (!terracottaDir.Contains("Packages"))
+                    {
+                        // 真实路径 -> 沙盒路径
+                        try
+                        {
+                            string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                            string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                            string sandboxPath = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
+                            if (Directory.Exists(sandboxPath) || File.Exists(Path.Combine(sandboxPath, Path.GetFileName(terracottaPath))))
+                            {
+                                realTerracottaDir = sandboxPath;
+                                realTempDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "temp");
+                                System.Diagnostics.Debug.WriteLine($"[Multiplayer] 真实->沙盒路径: {sandboxPath}");
+                            }
+                            else
+                            {
+                                realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                            }
+                        }
+                        catch
+                        {
+                            realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                        }
+                    }
+                    else
+                    {
+                        // 沙盒路径 -> 真实路径
+                        int localCacheIndex = terracottaDir.IndexOf("LocalCache\\Local\\");
+                        if (localCacheIndex > 0)
+                        {
+                            string relativePath = terracottaDir.Substring(localCacheIndex + "LocalCache\\Local\\".Length);
+                            string realPath = Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                                "AppData", "Local", relativePath);
+                            if (Directory.Exists(realPath))
+                            {
+                                realTerracottaDir = realPath;
+                                System.Diagnostics.Debug.WriteLine($"[Multiplayer] 沙盒->真实路径: {realPath}");
+                            }
+                        }
+                        realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                    }
                 }
                 else
                 {
-                    // 已经是真实路径
+                    // 原路径存在，直接使用
                     realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                    System.Diagnostics.Debug.WriteLine($"[Multiplayer] 原路径存在，无需转换: {terracottaDir}");
                 }
                 
                 // 确保目录存在
@@ -734,12 +776,52 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     string realTerracottaDir = terracottaDir;
                     string realTempDir;
                     
-                    if (!terracottaDir.Contains("Packages"))
+                    // 检查原路径是否存在
+                    bool originalExists = Directory.Exists(terracottaDir);
+                    
+                    if (!originalExists)
                     {
-                        string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                        string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
-                        realTerracottaDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
-                        realTempDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "temp");
+                        // 原路径不存在，尝试转换
+                        if (!terracottaDir.Contains("Packages"))
+                        {
+                            // 真实路径 -> 沙盒路径
+                            try
+                            {
+                                string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                                string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                                string sandboxPath = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
+                                if (Directory.Exists(sandboxPath) || File.Exists(Path.Combine(sandboxPath, Path.GetFileName(terracottaPath))))
+                                {
+                                    realTerracottaDir = sandboxPath;
+                                    realTempDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "temp");
+                                }
+                                else
+                                {
+                                    realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                                }
+                            }
+                            catch
+                            {
+                                realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                            }
+                        }
+                        else
+                        {
+                            // 沙盒路径 -> 真实路径
+                            int localCacheIndex = terracottaDir.IndexOf("LocalCache\\Local\\");
+                            if (localCacheIndex > 0)
+                            {
+                                string relativePath = terracottaDir.Substring(localCacheIndex + "LocalCache\\Local\\".Length);
+                                string realPath = Path.Combine(
+                                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                                    "AppData", "Local", relativePath);
+                                if (Directory.Exists(realPath))
+                                {
+                                    realTerracottaDir = realPath;
+                                }
+                            }
+                            realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                        }
                     }
                     else
                     {

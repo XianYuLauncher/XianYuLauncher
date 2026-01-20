@@ -29,12 +29,11 @@ namespace XianYuLauncher.Core.Services
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
-            // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
+            // 获取应用缓存目录 - 使用 LocalApplicationData
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "authlib-injector");
             
             _logger.LogInformation("[AuthlibInjector] 初始化服务，缓存目录: {CacheDirectory}", _cacheDirectory);
-            _logger.LogDebug("[AuthlibInjector] LocalApplicationData 路径: {LocalAppData}", localAppData);
             
             try
             {
@@ -467,6 +466,308 @@ namespace XianYuLauncher.Core.Services
             _logger.LogDebug("[AuthlibInjector] 启动参数处理完成，结果参数数量: {Count}", processedArgs.Count);
             return processedArgs;
         }
+        
+        /// <summary>
+        /// 验证外置登录令牌是否有效
+        /// 调用 POST /authserver/validate 接口
+        /// </summary>
+        /// <param name="authServerUrl">认证服务器 URL</param>
+        /// <param name="accessToken">访问令牌</param>
+        /// <param name="clientToken">客户端令牌（可选）</param>
+        /// <returns>令牌是否有效</returns>
+        public async Task<bool> ValidateExternalTokenAsync(string authServerUrl, string accessToken, string? clientToken = null)
+        {
+            if (string.IsNullOrEmpty(authServerUrl) || string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("[AuthlibInjector] 验证令牌失败：参数为空");
+                _logger.LogWarning("[AuthlibInjector]   - authServerUrl: {IsEmpty}", string.IsNullOrEmpty(authServerUrl) ? "空" : "有值");
+                _logger.LogWarning("[AuthlibInjector]   - accessToken: {IsEmpty}", string.IsNullOrEmpty(accessToken) ? "空" : "有值");
+                return false;
+            }
+            
+            try
+            {
+                _logger.LogInformation("[AuthlibInjector] ========== 开始验证外置登录令牌 ==========");
+                _logger.LogInformation("[AuthlibInjector] 认证服务器: {AuthServer}", authServerUrl);
+                
+                // 构建验证 URL
+                var validateUrl = authServerUrl.TrimEnd('/') + "/authserver/validate";
+                _logger.LogInformation("[AuthlibInjector] 请求 URL: {Url}", validateUrl);
+                
+                // 构建请求体
+                var requestBody = new Dictionary<string, string>
+                {
+                    { "accessToken", accessToken }
+                };
+                
+                if (!string.IsNullOrEmpty(clientToken))
+                {
+                    requestBody["clientToken"] = clientToken;
+                    _logger.LogDebug("[AuthlibInjector] 包含 clientToken");
+                }
+                else
+                {
+                    _logger.LogDebug("[AuthlibInjector] 不包含 clientToken");
+                }
+                
+                var jsonContent = JsonConvert.SerializeObject(requestBody, Formatting.Indented);
+                _logger.LogInformation("[AuthlibInjector] 请求体 (JSON):");
+                _logger.LogInformation("[AuthlibInjector] {RequestBody}", jsonContent);
+                
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+                
+                _logger.LogDebug("[AuthlibInjector] 发送 POST 请求...");
+                var response = await _httpClient.PostAsync(validateUrl, content, cts.Token);
+                
+                _logger.LogInformation("[AuthlibInjector] 响应状态码: {StatusCode} ({StatusCodeInt})", response.StatusCode, (int)response.StatusCode);
+                
+                // 尝试读取响应内容（即使是204也尝试读取）
+                string responseContent = "";
+                try
+                {
+                    responseContent = await response.Content.ReadAsStringAsync();
+                    if (!string.IsNullOrEmpty(responseContent))
+                    {
+                        _logger.LogInformation("[AuthlibInjector] 响应内容: {ResponseContent}", responseContent);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("[AuthlibInjector] 响应内容为空");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "[AuthlibInjector] 读取响应内容失败");
+                }
+                
+                // 204 No Content 表示令牌有效
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    _logger.LogInformation("[AuthlibInjector] ✅ 外置登录令牌验证通过 (204 No Content)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                    return true;
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 外置登录令牌已失效 (403 Forbidden)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                    return false;
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 外置登录令牌已失效 (401 Unauthorized)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                    return false;
+                }
+                else
+                {
+                    // 其他错误，假设令牌有效
+                    _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌验证返回非预期状态码: {StatusCode}，假设令牌有效", response.StatusCode);
+                    _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                    return true;
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌验证超时（10秒），假设令牌有效");
+                _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                return true;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "[AuthlibInjector] ⚠️ 令牌验证网络错误，假设令牌有效");
+                _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 令牌验证发生异常");
+                _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
+                return true; // 出错时假设有效
+            }
+        }
+        
+        /// <summary>
+        /// 刷新外置登录令牌
+        /// 调用 POST /authserver/refresh 接口
+        /// </summary>
+        /// <param name="authServerUrl">认证服务器 URL</param>
+        /// <param name="accessToken">访问令牌</param>
+        /// <param name="clientToken">客户端令牌（可选）</param>
+        /// <param name="selectedProfile">要选择的角色（可选）</param>
+        /// <returns>刷新结果，包含新的令牌信息</returns>
+        public async Task<ExternalRefreshResult?> RefreshExternalTokenAsync(
+            string authServerUrl, 
+            string accessToken, 
+            string? clientToken = null,
+            ExternalProfile? selectedProfile = null)
+        {
+            if (string.IsNullOrEmpty(authServerUrl) || string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("[AuthlibInjector] 刷新令牌失败：参数为空");
+                _logger.LogWarning("[AuthlibInjector]   - authServerUrl: {IsEmpty}", string.IsNullOrEmpty(authServerUrl) ? "空" : "有值");
+                _logger.LogWarning("[AuthlibInjector]   - accessToken: {IsEmpty}", string.IsNullOrEmpty(accessToken) ? "空" : "有值");
+                return null;
+            }
+            
+            try
+            {
+                _logger.LogInformation("[AuthlibInjector] ========== 开始刷新外置登录令牌 ==========");
+                _logger.LogInformation("[AuthlibInjector] 认证服务器: {AuthServer}", authServerUrl);
+                
+                // 构建刷新 URL
+                var refreshUrl = authServerUrl.TrimEnd('/') + "/authserver/refresh";
+                _logger.LogInformation("[AuthlibInjector] 请求 URL: {Url}", refreshUrl);
+                
+                // 构建请求体
+                var requestBody = new Dictionary<string, object>
+                {
+                    { "accessToken", accessToken }
+                };
+                
+                if (!string.IsNullOrEmpty(clientToken))
+                {
+                    requestBody["clientToken"] = clientToken;
+                    _logger.LogDebug("[AuthlibInjector] 包含 clientToken");
+                }
+                else
+                {
+                    _logger.LogDebug("[AuthlibInjector] 不包含 clientToken");
+                }
+                
+                // 如果提供了 selectedProfile，添加到请求体
+                if (selectedProfile != null)
+                {
+                    requestBody["selectedProfile"] = selectedProfile;
+                    _logger.LogInformation("[AuthlibInjector] 包含 selectedProfile: ID={Id}, Name={Name}", selectedProfile.Id, selectedProfile.Name);
+                }
+                else
+                {
+                    _logger.LogDebug("[AuthlibInjector] 不包含 selectedProfile");
+                }
+                
+                var jsonContent = JsonConvert.SerializeObject(requestBody, Formatting.Indented);
+                _logger.LogInformation("[AuthlibInjector] 请求体 (JSON):");
+                _logger.LogInformation("[AuthlibInjector] {RequestBody}", jsonContent);
+                
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+                
+                _logger.LogDebug("[AuthlibInjector] 发送 POST 请求...");
+                var response = await _httpClient.PostAsync(refreshUrl, content, cts.Token);
+                
+                _logger.LogInformation("[AuthlibInjector] 响应状态码: {StatusCode} ({StatusCodeInt})", response.StatusCode, (int)response.StatusCode);
+                
+                // 读取响应内容
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
+                if (!string.IsNullOrEmpty(responseContent))
+                {
+                    _logger.LogInformation("[AuthlibInjector] 响应内容: {ResponseContent}", responseContent);
+                }
+                else
+                {
+                    _logger.LogWarning("[AuthlibInjector] 响应内容为空");
+                }
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    if (string.IsNullOrEmpty(responseContent))
+                    {
+                        _logger.LogWarning("[AuthlibInjector] ❌ 刷新成功但响应内容为空");
+                        _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                        return null;
+                    }
+                    
+                    var result = JsonConvert.DeserializeObject<ExternalRefreshResult>(responseContent);
+                    
+                    if (result != null && !string.IsNullOrEmpty(result.AccessToken))
+                    {
+                        _logger.LogInformation("[AuthlibInjector] ✅ 外置登录令牌刷新成功");
+                        _logger.LogDebug("[AuthlibInjector] 新 AccessToken 长度: {Length}", result.AccessToken.Length);
+                        _logger.LogDebug("[AuthlibInjector] 新 ClientToken: {HasValue}", string.IsNullOrEmpty(result.ClientToken) ? "无" : "有");
+                        if (result.SelectedProfile != null)
+                        {
+                            _logger.LogDebug("[AuthlibInjector] 角色信息: ID={Id}, Name={Name}", result.SelectedProfile.Id, result.SelectedProfile.Name);
+                        }
+                        _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                        return result;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[AuthlibInjector] ❌ 刷新响应解析失败或 AccessToken 为空");
+                        _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                        return null;
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 外置登录令牌刷新失败，状态码: {StatusCode}", response.StatusCode);
+                    _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                    return null;
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌刷新超时（15秒）");
+                _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                return null;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 令牌刷新网络错误");
+                _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 令牌刷新响应 JSON 解析失败");
+                _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 令牌刷新发生异常");
+                _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
+                return null;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 外置登录令牌刷新结果
+    /// </summary>
+    public class ExternalRefreshResult
+    {
+        [JsonProperty("accessToken")]
+        public string AccessToken { get; set; } = string.Empty;
+        
+        [JsonProperty("clientToken")]
+        public string? ClientToken { get; set; }
+        
+        [JsonProperty("selectedProfile")]
+        public ExternalProfile? SelectedProfile { get; set; }
+        
+        [JsonProperty("user")]
+        public ExternalUser? User { get; set; }
+    }
+    
+    public class ExternalProfile
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+        
+        [JsonProperty("name")]
+        public string Name { get; set; } = string.Empty;
+    }
+    
+    public class ExternalUser
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
     }
     
     // 内部类：authlib-injector最新版本信息

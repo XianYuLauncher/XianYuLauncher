@@ -166,7 +166,12 @@ public partial class App : Application
             services.AddSingleton<IProfileManager, ProfileManager>();
             services.AddSingleton<IVersionConfigService, VersionConfigService>();
             services.AddSingleton<IRegionValidator, RegionValidator>();
-            services.AddSingleton<ITokenRefreshService, TokenRefreshService>();
+            services.AddSingleton<ITokenRefreshService>(sp =>
+            {
+                var microsoftAuthService = sp.GetRequiredService<MicrosoftAuthService>();
+                var authlibInjectorService = sp.GetRequiredService<AuthlibInjectorService>();
+                return new TokenRefreshService(microsoftAuthService, authlibInjectorService);
+            });
             services.AddTransient<IGameProcessMonitor, GameProcessMonitor>(); // 瞬态：每个进程独立监控器
             
             // HTTP Client

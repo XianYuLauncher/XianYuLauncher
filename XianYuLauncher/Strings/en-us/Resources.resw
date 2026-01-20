@@ -1705,6 +1705,9 @@ Continue downloading?</value>
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>Microsoft Account</value>
   </data>
+  <data name="ProfilePage_RenewTokenMenuItem.Text" xml:space="preserve">
+    <value>Renew Token</value>
+  </data>
   <data name="Settings_CacheManagement.Text" xml:space="preserve">
     <value>Cache Management</value>
   </data>
@@ -2316,5 +2319,23 @@ Continue downloading?</value>
   </data>
   <data name="WorldManagement_GameMode_Hardcore" xml:space="preserve">
     <value>Hardcore</value>
+  </data>
+  <data name="LaunchPage_ValidatingMicrosoftTokenText" xml:space="preserve">
+    <value>Validating Microsoft account token...</value>
+  </data>
+  <data name="LaunchPage_ValidatingExternalTokenText" xml:space="preserve">
+    <value>Validating external login token...</value>
+  </data>
+  <data name="LaunchPage_TokenValidationPassedText" xml:space="preserve">
+    <value>Token validation passed</value>
+  </data>
+  <data name="LaunchPage_TokenExpiredTitle" xml:space="preserve">
+    <value>Login Expired</value>
+  </data>
+  <data name="LaunchPage_TokenExpiredContent" xml:space="preserve">
+    <value>Your login token has expired. Please log in again before launching the game.</value>
+  </data>
+  <data name="LaunchPage_GoToLoginText" xml:space="preserve">
+    <value>Go to Login</value>
   </data>
 </root>
