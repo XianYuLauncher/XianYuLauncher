@@ -44,44 +44,47 @@ public partial class LaunchViewModel : ObservableRecipient
     private int _windowHeight = 720;
     private async Task ShowJavaNotFoundMessageAsync()
     {
-        // 创建并显示消息对话框
-        var dialog = new ContentDialog
+        await _dialogService.ShowJavaNotFoundDialogAsync(GetRequiredJavaVersionText(), async () => 
         {
-            Title = "Java运行时环境未找到",
-            Content = "未找到适用于当前游戏版本的Java运行时环境，请先安装相应版本的Java。\n\n游戏版本需要Java " + GetRequiredJavaVersionText() + "\n\n在下载完Java后,将Java.exe文件加入到设置-Java设置中!",
-            PrimaryButtonText = "下载",
-            CloseButtonText = "确定",
-            XamlRoot = App.MainWindow.Content.XamlRoot
-        };
-        
-        // 处理下载按钮点击事件
-        dialog.PrimaryButtonClick += async (sender, args) =>
+            await InstallJavaWithProgressAsync(GetRequiredJavaVersionText());
+        });
+    }
+
+    /// <summary>
+    /// 下载并安装Java，带下载进度弹窗
+    /// </summary>
+    private async Task InstallJavaWithProgressAsync(string requiredVersion)
+    {
+        string downloadUrl = string.Empty;
+        string versionDesc = "Java";
+            
+        // 根据Java版本选择下载链接（这里后续可以替换为真实的下载URL，或者调用DownloadManager）
+        // 目前暂时还是跳转官网，但为"自动下载"预留了结构
+        if (requiredVersion.Contains("8"))
         {
-            string javaVersion = GetRequiredJavaVersionText();
-            string downloadUrl = string.Empty;
+            downloadUrl = "https://www.java.com/zh-CN/download/";
+            versionDesc = "Java 8";
+        }
+        else if (requiredVersion.Contains("17"))
+        {
+            downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java17";
+            versionDesc = "Java 17";
+        }
+        else if (requiredVersion.Contains("21"))
+        {
+            downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java21";
+            versionDesc = "Java 21";
+        }
             
-            // 根据Java版本选择下载链接
-            if (javaVersion.Contains("8"))
-            {
-                downloadUrl = "https://www.java.com/zh-CN/download/";
-            }
-            else if (javaVersion.Contains("17"))
-            {
-                downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java17";
-            }
-            else if (javaVersion.Contains("21"))
-            {
-                downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java21";
-            }
-            
-            // 启动浏览器打开下载页面
-            if (!string.IsNullOrEmpty(downloadUrl))
-            {
-                await Windows.System.Launcher.LaunchUriAsync(new Uri(downloadUrl));
-            }
-        };
-        
-        await dialog.ShowAsync();
+        if (!string.IsNullOrEmpty(downloadUrl))
+        {
+             // TODO: 这里是你的"自动下载"逻辑接入点
+             // 你可以在 DialogService 里加一个 ShowDownloadProgressDialog
+             // 然后调用 DownloadManager 下载 JDK 安装包
+             
+             // 目前保持原有逻辑：跳转浏览器
+             await Windows.System.Launcher.LaunchUriAsync(new Uri(downloadUrl));
+        }
     }
     
     /// <summary>
@@ -155,19 +158,8 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="gameError">游戏错误日志副本</param>
     private async Task ShowErrorAnalysisDialog(int exitCode, string launchCommand, List<string> gameOutput, List<string> gameError)
     {
-        // 等待其他 ContentDialog 关闭
-        await _dialogSemaphore.WaitAsync();
-        
-        try
+        // DialogService 管理弹窗生命周期
         {
-            // 如果已经有 ContentDialog 打开，等待它关闭
-            while (_isContentDialogOpen)
-            {
-                System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 检测到其他 ContentDialog 正在显示，等待关闭...");
-                await Task.Delay(500);
-            }
-            
-            _isContentDialogOpen = true;
             
             // 分析崩溃原因（异步执行，不阻塞）
             var crashResult = await AnalyzeCrash(gameOutput, gameError);
@@ -393,8 +385,7 @@ public partial class LaunchViewModel : ObservableRecipient
             PrimaryButtonText = "导出崩溃日志",
             SecondaryButtonText = "查看详细日志",
             CloseButtonText = "关闭",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = App.MainWindow.Content.XamlRoot
+            DefaultButton = ContentDialogButton.Primary
         };
         
         // 处理按钮点击事件
@@ -489,37 +480,20 @@ public partial class LaunchViewModel : ObservableRecipient
             shakeTokenSource?.Cancel();
         };
         
-            await dialog.ShowAsync();
-        }
-        catch (COMException ex) when (ex.HResult == unchecked((int)0x80000019))
-        {
-            // 捕获 "Only a single ContentDialog can be open at any time" 异常
-            System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] ContentDialog 冲突: {ex.Message}");
-            
-            // 直接导航到 ErrorAnalysisPage，不显示弹窗
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                var navigationService = App.GetService<INavigationService>();
-                navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
-            });
-        }
-        finally
-        {
-            _isContentDialogOpen = false;
-            _dialogSemaphore.Release();
-        }
+        await _dialogService.ShowDialogAsync(dialog);
     }
-    
+}
+
     /// <summary>
     /// 分析崩溃原因
     /// </summary>
     /// <param name="gameOutput">游戏输出日志</param>
     /// <param name="gameError">游戏错误日志</param>
-    /// <returns>崩溃分析结果</returns>
-    private async Task<CrashAnalysisResult> AnalyzeCrash(List<string> gameOutput, List<string> gameError)
+    private async Task<(string Title, string Analysis)> AnalyzeCrash(List<string> gameOutput, List<string> gameError)
     {
         // 使用 CrashAnalyzer 服务进行分析
-        return await _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError);
+        var result = await _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError);
+        return (result.Title, result.Analysis);
     }
     
     /// <summary>
@@ -573,14 +547,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 // 显示导出成功提示
                 App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    var successDialog = new ContentDialog
-                    {
-                        Title = "导出成功",
-                        Content = $"崩溃日志已成功导出到桌面：{zipFileName}",
-                        PrimaryButtonText = "确定",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
-                    };
-                    await successDialog.ShowAsync();
+                    await _dialogService.ShowMessageDialogAsync("导出成功", $"崩溃日志已成功导出到桌面：{zipFileName}");
                 });
             }
             finally
@@ -599,14 +566,7 @@ public partial class LaunchViewModel : ObservableRecipient
             // 显示导出失败提示
             App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
             {
-                var errorDialog = new ContentDialog
-                {
-                    Title = "导出失败",
-                    Content = $"导出崩溃日志失败：{ex.Message}",
-                    PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
-                };
-                await errorDialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync("导出失败", $"导出崩溃日志失败：{ex.Message}");
             });
         }
     }
@@ -743,6 +703,7 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly ILogger<LaunchViewModel> _logger;
     private readonly AuthlibInjectorService _authlibInjectorService;
     private readonly IJavaRuntimeService _javaRuntimeService;
+    private readonly IDialogService _dialogService;
     
     // 新增：Phase 5 重构服务
     private readonly IGameLaunchService _gameLaunchService;
@@ -950,19 +911,13 @@ public partial class LaunchViewModel : ObservableRecipient
     private CancellationTokenSource? _downloadCancellationTokenSource = null;
     
     /// <summary>
-    /// 是否正在下载/准备中
+    /// 当前是否正在下载/准备中
     /// </summary>
     private bool _isPreparingGame = false;
     
-    /// <summary>
-    /// 当前是否有 ContentDialog 正在显示
-    /// </summary>
-    private bool _isContentDialogOpen = false;
-    
-    /// <summary>
-    /// ContentDialog 互斥锁
-    /// </summary>
-    private readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
+    // 移除手动 ContentDialog 状态管理，已移交 DialogService 托管
+    // private bool _isContentDialogOpen = false;
+    // private readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
     
     /// <summary>
     /// 当前版本路径，用于彩蛋显示
@@ -1000,6 +955,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _authlibInjectorService = App.GetService<AuthlibInjectorService>();
         _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
         _javaRuntimeService = App.GetService<IJavaRuntimeService>();
+        _dialogService = App.GetService<IDialogService>();
         
         // 新增：Phase 5 重构服务
         _gameLaunchService = App.GetService<IGameLaunchService>();
@@ -1690,22 +1646,13 @@ public partial class LaunchViewModel : ObservableRecipient
             _logger.LogWarning("地区限制检查失败: {Errors}", string.Join(", ", regionValidation.Errors));
             
             // 显示地区限制弹窗
-            var dialog = new ContentDialog
-            {
-                Title = "地区限制",
-                Content = regionValidation.Errors.FirstOrDefault() ?? "当前地区无法使用此登录方式",
-                PrimaryButtonText = "前往",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
-            };
+            var errorMessage = regionValidation.Errors.FirstOrDefault() ?? "当前地区无法使用此登录方式";
+            var shouldNavigate = await _dialogService.ShowRegionRestrictedDialogAsync(errorMessage);
 
-            dialog.PrimaryButtonClick += (sender, args) =>
+            if (shouldNavigate)
             {
-                _navigationService.NavigateTo("角色");
-            };
-
-            await dialog.ShowAsync();
+                _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
+            }
             return;
         }
         _logger.LogInformation("地区限制检查通过");
@@ -1892,45 +1839,11 @@ public partial class LaunchViewModel : ObservableRecipient
                         App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
                         {
                             // 等待其他 ContentDialog 关闭
-                            await _dialogSemaphore.WaitAsync();
-                            
-                            try
+                            await _dialogService.ShowOfflineLaunchTipDialogAsync(offlineLaunchCount, async () => 
                             {
-                                // 如果已经有 ContentDialog 打开，等待它关闭
-                                while (_isContentDialogOpen)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 离线登录弹窗等待其他 ContentDialog 关闭...");
-                                    await Task.Delay(500);
-                                }
-                                
-                                _isContentDialogOpen = true;
-                                
-                                var offlineDialog = new ContentDialog
-                                {
-                                    Title = "离线游玩提示",
-                                    Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
-                                    PrimaryButtonText = "知道了",
-                                    SecondaryButtonText = "支持正版",
-                                    XamlRoot = App.MainWindow.Content.XamlRoot
-                                };
-                                
-                                var dialogResult = await offlineDialog.ShowAsync();
-                                if (dialogResult == ContentDialogResult.Secondary)
-                                {
-                                    var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
-                                    await Windows.System.Launcher.LaunchUriAsync(uri);
-                                }
-                            }
-                            catch (COMException ex) when (ex.HResult == unchecked((int)0x80000019))
-                            {
-                                // 捕获 "Only a single ContentDialog can be open at any time" 异常
-                                System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 离线登录弹窗 ContentDialog 冲突: {ex.Message}");
-                            }
-                            finally
-                            {
-                                _isContentDialogOpen = false;
-                                _dialogSemaphore.Release();
-                            }
+                                var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
+                                await Windows.System.Launcher.LaunchUriAsync(uri);
+                            });
                         });
                     }
                 }
@@ -1952,35 +1865,10 @@ public partial class LaunchViewModel : ObservableRecipient
             // 显示重新登录提示
             App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
             {
-                await _dialogSemaphore.WaitAsync();
-                try
+                var shouldLogin = await _dialogService.ShowTokenExpiredDialogAsync();
+                if (shouldLogin)
                 {
-                    _isContentDialogOpen = true;
-                    
-                    var dialog = new ContentDialog
-                    {
-                        Title = "LaunchPage_TokenExpiredTitle".GetLocalized(),
-                        Content = "LaunchPage_TokenExpiredContent".GetLocalized(),
-                        PrimaryButtonText = "LaunchPage_GoToLoginText".GetLocalized(),
-                        CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-                        DefaultButton = ContentDialogButton.Primary,
-                        XamlRoot = App.MainWindow.Content.XamlRoot
-                    };
-                    
-                    var result = await dialog.ShowAsync();
-                    if (result == ContentDialogResult.Primary)
-                    {
-                        _navigationService.NavigateTo("角色");
-                    }
-                }
-                catch (COMException comEx) when (comEx.HResult == unchecked((int)0x80000019))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 令牌过期弹窗 ContentDialog 冲突: {comEx.Message}");
-                }
-                finally
-                {
-                    _isContentDialogOpen = false;
-                    _dialogSemaphore.Release();
+                    _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
                 }
             });
         }
@@ -2126,16 +2014,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="title">对话框标题</param>
     private async Task ShowMessageAsync(string message, string title = "提示")
     {
-        // 创建并显示消息对话框
-        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            Title = title,
-            Content = message,
-            CloseButtonText = "确定",
-            XamlRoot = App.MainWindow.Content.XamlRoot
-        };
-        
-        await dialog.ShowAsync();
+        await _dialogService.ShowMessageDialogAsync(title, message);
     }
     
     // 微软正版登录测试命令
@@ -2326,22 +2205,10 @@ public partial class LaunchViewModel : ObservableRecipient
             LaunchStatus = $"启动参数已导出到桌面: {fileName}";
             
             // 显示成功消息
-            var dialog = new ContentDialog
+            App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
             {
-                Title = "导出成功",
-                Content = $"启动参数已成功导出到桌面:\n{fileName}\n\n您可以双击该文件来启动游戏。",
-                PrimaryButtonText = "打开文件位置",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot
-            };
-            
-            dialog.PrimaryButtonClick += async (sender, args) =>
-            {
-                // 打开文件所在文件夹并选中文件
-                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-            };
-            
-            await dialog.ShowAsync();
+                await _dialogService.ShowExportSuccessDialogAsync(filePath);
+            });
         }
         catch (Exception ex)
         {

@@ -744,20 +744,15 @@ public class MicrosoftAuthService
     {
         try
         {
-            var requestBody = JsonConvert.SerializeObject(new
+            var requestBody = new
             {
                 identityToken = $"XBL3.0 x={uhs};{xstsToken}"
-            });
+            };
             
-            
-            if (response.IsSuccessStatusCode)
-            {
-                Log.Information("LoginWithXbox成功，已获取Minecraft访问令牌 (响应内容已隐藏)");
-            }
-            else
-            {
-                Log.Information($"LoginWithXbox原始响应: {rawResponse}");
-            }.UTF8, "application/json");
+            var content = new StringContent(
+                JsonConvert.SerializeObject(requestBody), 
+                Encoding.UTF8, 
+                "application/json");
             
             var response = await _httpClient.PostAsync(
                 "https://api.minecraftservices.com/authentication/login_with_xbox",
@@ -765,32 +760,29 @@ public class MicrosoftAuthService
             
             // 保存原始响应内容，无论状态码如何
             string rawResponse = await response.Content.ReadAsStringAsync();
-            Log.Information($"LoginWithXbox原始响应: {rawResponse}");
-            
-            // 不使用EnsureSuccessStatusCode，避免丢失响应内容
-            if (!response.IsSuccessStatusCode)
+
+            if (response.IsSuccessStatusCode)
             {
-                Log.Error($"获取Minecraft访问令牌失败，状态码: {response.StatusCode}");
-                // 尝试解析响应，即使状态码不是2xx
-                try
-                {
-                    var authResponse = JsonConvert.DeserializeObject<MinecraftAuthResponse>(rawResponse);
-                    return (authResponse, rawResponse);
-                }
-                catch
-                {
-                    // 如果解析失败，返回null，但保留原始响应
-                    return (null, rawResponse);
-                }
+                Log.Information("LoginWithXbox成功，已获取Minecraft访问令牌 (响应内容已隐藏)");
+            }
+            else
+            {
+                Log.Information($"LoginWithXbox原始响应: {rawResponse}");
             }
             
-            var responseObj = JsonConvert.DeserializeObject<MinecraftAuthResponse>(rawResponse);
-            return (responseObj, rawResponse);
+            // 抛出异常由上层处理
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"LoginWithXbox failed with status {response.StatusCode}: {rawResponse}");
+            }
+
+            var authResponse = JsonConvert.DeserializeObject<MinecraftAuthResponse>(rawResponse);
+            return (authResponse, rawResponse);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "获取Minecraft访问令牌失败");
-            return (null, null);
+            Log.Error(ex, "LoginWithXbox异常");
+            throw;
         }
     }
     
