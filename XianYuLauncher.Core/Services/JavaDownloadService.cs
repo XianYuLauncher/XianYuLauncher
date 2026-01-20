@@ -35,6 +35,69 @@ public class JavaDownloadService : IJavaDownloadService
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
 
+    public async Task<List<JavaVersionDownloadOption>> GetAvailableJavaVersionsAsync(CancellationToken cancellationToken = default)
+    {
+        string platformKey = GetPlatformKey();
+        if (string.IsNullOrEmpty(platformKey))
+        {
+            throw new PlatformNotSupportedException("当前操作系统不受支持");
+        }
+
+        var mainManifest = await FetchMainManifestAsync(cancellationToken);
+        var options = new List<JavaVersionDownloadOption>();
+
+        // 获取对应平台的字典
+        Dictionary<string, List<JavaRuntimeVariant>> platformDict = GetPlatformDictionary(mainManifest, platformKey);
+
+        if (platformDict != null)
+        {
+            foreach (var kvp in platformDict)
+            {
+                string component = kvp.Key;
+                var variants = kvp.Value;
+
+                // 通常取第一个（最新）作为推荐，或者添加所有
+                // 这里的 variants 可能包含多个历史版本，用户希望"选择"，我们可以把它们都列出来
+                // 为了避免列表过长且通常只需要最新的，我们这里只取列表中的第一个（最新版）
+                // 如果用户需要历史版本，逻辑可以调整
+                
+                if (variants != null && variants.Count > 0)
+                {
+                    var variant = variants[0];
+                    if (variant.Version != null && !string.IsNullOrEmpty(variant.Version.Name))
+                    {
+                        options.Add(new JavaVersionDownloadOption
+                        {
+                            Name = variant.Version.Name,
+                            Component = component
+                        });
+                    }
+                }
+            }
+        }
+        
+        // 排序：版本号倒序 (简单字符串排序可能不够精确，但作为展示通常够用，或者按Component排序)
+        // 比如 25.0.0 > 17.0.8 > 8.0.xxx
+        // 简单按 Name 降序
+        return options.OrderByDescending(o => o.Name).ToList();
+    }
+
+    private Dictionary<string, List<JavaRuntimeVariant>> GetPlatformDictionary(JavaRuntimeManifest manifest, string platform)
+    {
+        return platform switch
+        {
+            "windows-x64" => manifest.WindowsX64,
+            "windows-x86" => manifest.WindowsX86,
+            "windows-arm64" => manifest.WindowsArm64,
+            "linux" => manifest.Linux,
+            "linux-i386" => manifest.LinuxI386,
+            "mac-os" => manifest.MacOs,
+            "mac-os-arm64" => manifest.MacOsArm64,
+            "gamecore" => manifest.Gamecore,
+            _ => null
+        };
+    }
+
     public async Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string> statusCallback, CancellationToken cancellationToken = default)
     {
         // 1. 确定运行平台
@@ -145,20 +208,7 @@ public class JavaDownloadService : IJavaDownloadService
 
     private JavaRuntimeVariant FindBestVariant(JavaRuntimeManifest manifest, string platform, string component)
     {
-        // 反射获取属性或者直接判断
-        Dictionary<string, List<JavaRuntimeVariant>> platformDict = null;
-
-        switch (platform)
-        {
-            case "windows-x64": platformDict = manifest.WindowsX64; break;
-            case "windows-x86": platformDict = manifest.WindowsX86; break;
-            case "windows-arm64": platformDict = manifest.WindowsArm64; break;
-            case "linux": platformDict = manifest.Linux; break;
-            case "linux-i386": platformDict = manifest.LinuxI386; break;
-            case "mac-os": platformDict = manifest.MacOs; break;
-            case "mac-os-arm64": platformDict = manifest.MacOsArm64; break;
-            case "gamecore": platformDict = manifest.Gamecore; break;
-        }
+        var platformDict = GetPlatformDictionary(manifest, platform);
 
         if (platformDict != null && platformDict.TryGetValue(component, out var list) && list.Count > 0)
         {

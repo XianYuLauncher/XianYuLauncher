@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
+using Microsoft.UI.Xaml.Markup;
 using Windows.ApplicationModel;
 using Microsoft.Win32;
 using System.IO;
@@ -87,6 +88,8 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly ModInfoService _modInfoService;
         private readonly IJavaRuntimeService _javaRuntimeService;
+        private readonly IJavaDownloadService _javaDownloadService;
+        private readonly IDialogService _dialogService;
         private const string JavaPathKey = "JavaPath";
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
@@ -503,7 +506,9 @@ public partial class SettingsViewModel : ObservableRecipient
         ModrinthCacheService modrinthCacheService, 
         CurseForgeCacheService curseForgeCacheService, 
         ModInfoService modInfoService,
-        IJavaRuntimeService javaRuntimeService)
+        IJavaRuntimeService javaRuntimeService,
+        IJavaDownloadService javaDownloadService,
+        IDialogService dialogService)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -515,6 +520,8 @@ public partial class SettingsViewModel : ObservableRecipient
         _curseForgeCacheService = curseForgeCacheService;
         _modInfoService = modInfoService;
         _javaRuntimeService = javaRuntimeService;
+        _javaDownloadService = javaDownloadService;
+        _dialogService = dialogService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -1462,6 +1469,120 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     
+    /// <summary>
+    /// 从官方源下载 Java
+    /// </summary>
+    [RelayCommand]
+    private async Task DownloadJavaAsync()
+    {
+        try
+        {
+            // 1. 获取可用版本
+            // 为了防止界面冻结，显示一个简单的加载状态（这里暂略，直接请求）
+            var availableVersions = await _javaDownloadService.GetAvailableJavaVersionsAsync();
+            if (availableVersions.Count == 0)
+            {
+                await _dialogService.ShowMessageDialogAsync("获取失败", "未能获取到可用的 Java 版本列表，请检查网络连接");
+                return;
+            }
+
+            // 2. 构建选择对话框
+            var dialog = new ContentDialog
+            {
+                Title = "下载 Java 运行时",
+                PrimaryButtonText = "下载",
+                CloseButtonText = "取消",
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                DefaultButton = ContentDialogButton.Primary
+            };
+
+            var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
+            stackPanel.Children.Add(new TextBlock { Text = "请选择要安装的 Java 版本:", TextWrapping = TextWrapping.Wrap });
+
+            var listView = new ListView
+            {
+                ItemsSource = availableVersions,
+                SelectionMode = ListViewSelectionMode.Single,
+                MaxHeight = 300,
+                SelectedIndex = 0,
+                BorderThickness = new Thickness(1),
+                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                CornerRadius = new CornerRadius(4)
+            };
+
+            // 创建 DataTemplate
+            var templateXaml = @"
+                <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+                    <Grid Padding='12,8'>
+                        <TextBlock Text='{Binding DisplayName}' VerticalAlignment='Center' Style='{ThemeResource BodyTextBlockStyle}' />
+                    </Grid>
+                </DataTemplate>";
+            
+            listView.ItemTemplate = (DataTemplate)XamlReader.Load(templateXaml);
+
+            stackPanel.Children.Add(listView);
+            
+            stackPanel.Children.Add(new TextBlock 
+            { 
+               Text = "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
+               FontSize = 12, 
+               Opacity = 0.7,
+               TextWrapping = TextWrapping.Wrap
+            });
+
+            dialog.Content = stackPanel;
+
+            // 3. 显示并处理结果
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                 var selectedOption = listView.SelectedItem as JavaVersionDownloadOption;
+                 if (selectedOption != null)
+                 {
+                      await InstallJavaFromSettingsAsync(selectedOption);
+                 }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+        }
+    }
+
+    private async Task InstallJavaFromSettingsAsync(JavaVersionDownloadOption option)
+    {
+        await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+        {
+            try
+            {
+                // 下载并安装
+                await _javaDownloadService.DownloadAndInstallJavaAsync(
+                    option.Component, 
+                    p => progress.Report(p), 
+                    s => status.Report(s), 
+                    token);
+                
+                status.Report("安装完成，正在刷新环境...");
+                
+                // 刷新全系统 Java 检测（这会自动更新列表并保存到 Settings）
+                await _javaRuntimeService.DetectJavaVersionsAsync(true);
+                
+                // 重新加载 ViewModel 的列表
+                App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                {
+                     JavaVersions.Clear();
+                     await LoadJavaVersionsAsync();
+                });
+                
+                await Task.Delay(1000);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"安装失败: {ex.Message}", ex);
+            }
+        });
+    }
+
     // 注意：以下Java扫描方法已被JavaRuntimeService替代
     // 所有Java检测逻辑现在统一在XianYuLauncher.Core/Services/JavaRuntimeService.cs中
     
@@ -1532,10 +1653,20 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             // 复制当前列表以避免在保存过程中被修改
-            var versionsToSave = JavaVersions.ToList();
-            Console.WriteLine($"保存{versionsToSave.Count}个Java版本");
+            var infoVersions = JavaVersions.ToList();
+            Console.WriteLine($"保存{infoVersions.Count}个Java版本");
             
-            await _localSettingsService.SaveSettingAsync(JavaVersionsKey, versionsToSave);
+            // 关键：必须映射回 Core.Models.JavaVersion，否则属性名不匹配 (Version -> FullVersion)
+            // 会导致下次读取时 FullVersion 为空
+            var coreVersions = infoVersions.Select(info => new XianYuLauncher.Core.Models.JavaVersion
+            {
+                 Path = info.Path,
+                 FullVersion = info.Version,
+                 MajorVersion = info.MajorVersion,
+                 IsJDK = info.IsJDK
+            }).ToList();
+            
+            await _localSettingsService.SaveSettingAsync(JavaVersionsKey, coreVersions);
             Console.WriteLine("Java版本列表保存成功");
         }
         catch (Exception ex)

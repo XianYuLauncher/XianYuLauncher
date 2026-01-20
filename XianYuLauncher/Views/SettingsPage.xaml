@@ -418,6 +418,12 @@
                                             <TextBlock x:Uid="Settings_InstalledJavaVersions" Text="已安装的Java版本" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right" Grid.Column="1">
                                                 <Button
+                                            x:Uid="Settings_DownloadJava"
+                                            Content="下载"
+                                            Command="{x:Bind ViewModel.DownloadJavaCommand}"
+                                            IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
+                                            Margin="0,0,8,0" ToolTipService.ToolTip="在线下载并安装 Java 运行时" />
+                                                <Button
                                             x:Uid="Settings_Add"
                                             Content="添加"
                                             Command="{x:Bind ViewModel.AddJavaVersionCommand}"
