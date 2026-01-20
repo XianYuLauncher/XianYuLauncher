@@ -107,6 +107,7 @@ public partial class App : Application
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();
+            services.AddSingleton<ILogSanitizerService, LogSanitizerService>();
             services.AddSingleton<IGameHistoryService, GameHistoryService>();
             services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<IDownloadManager, DownloadManager>();

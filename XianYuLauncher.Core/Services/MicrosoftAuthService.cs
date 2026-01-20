@@ -634,7 +634,15 @@ public class MicrosoftAuthService
             
             // 保存原始响应内容
             string rawResponse = await response.Content.ReadAsStringAsync();
-            Log.Information($"Xbox Live身份验证原始响应: {rawResponse}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("Xbox Live身份验证成功 (响应内容已隐藏)");
+            }
+            else
+            {
+                Log.Information($"Xbox Live身份验证原始响应: {rawResponse}");
+            }
             
             // 不使用EnsureSuccessStatusCode，避免丢失响应内容
             if (!response.IsSuccessStatusCode)
@@ -690,7 +698,15 @@ public class MicrosoftAuthService
             
             // 保存原始响应内容
             string rawResponse = await response.Content.ReadAsStringAsync();
-            Log.Information($"XSTS身份验证原始响应: {rawResponse}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("XSTS身份验证成功 (响应内容已隐藏)");
+            }
+            else
+            {
+                Log.Information($"XSTS身份验证原始响应: {rawResponse}");
+            }
             
             // 不使用EnsureSuccessStatusCode，避免丢失响应内容
             if (!response.IsSuccessStatusCode)
@@ -733,7 +749,15 @@ public class MicrosoftAuthService
                 identityToken = $"XBL3.0 x={uhs};{xstsToken}"
             });
             
-            var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("LoginWithXbox成功，已获取Minecraft访问令牌 (响应内容已隐藏)");
+            }
+            else
+            {
+                Log.Information($"LoginWithXbox原始响应: {rawResponse}");
+            }.UTF8, "application/json");
             
             var response = await _httpClient.PostAsync(
                 "https://api.minecraftservices.com/authentication/login_with_xbox",

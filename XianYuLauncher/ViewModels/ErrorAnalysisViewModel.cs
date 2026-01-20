@@ -12,12 +12,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.ViewModels
 {
     public partial class ErrorAnalysisViewModel : ObservableObject
     {
         private readonly ILanguageSelectorService _languageSelectorService;
+        private readonly ILogSanitizerService _logSanitizerService;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
@@ -41,9 +43,10 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 构造函数
-        public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService)
+        public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService, ILogSanitizerService logSanitizerService)
         {
             _languageSelectorService = languageSelectorService;
+            _logSanitizerService = logSanitizerService;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
         }
@@ -773,13 +776,15 @@ namespace XianYuLauncher.ViewModels
                 string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempDir);
 
-                // 1. 生成启动参数.bat文件
+                // 1. 生成启动参数.bat文件 (已脱敏)
                 string batFilePath = Path.Combine(tempDir, "启动参数.bat");
-                File.WriteAllText(batFilePath, _launchCommand);
+                string sanitizedLaunchCommand = await _logSanitizerService.SanitizeAsync(_launchCommand);
+                await File.WriteAllTextAsync(batFilePath, sanitizedLaunchCommand);
 
-                // 2. 生成崩溃日志文件
+                // 2. 生成崩溃日志文件 (已脱敏)
                 string crashLogFile = Path.Combine(tempDir, string.Format("crash_report_{0}.txt", timestamp));
-                File.WriteAllText(crashLogFile, FullLog);
+                string sanitizedCrashLog = await _logSanitizerService.SanitizeAsync(FullLog);
+                await File.WriteAllTextAsync(crashLogFile, sanitizedCrashLog);
 
                 // 3. 复制启动器日志
                 try
@@ -802,9 +807,27 @@ namespace XianYuLauncher.ViewModels
                         
                         foreach (var logFile in logFiles)
                         {
-                            string fileName = Path.GetFileName(logFile);
-                            string destPath = Path.Combine(logSubDir, fileName);
-                            File.Copy(logFile, destPath);
+                            try 
+                            {
+                                string fileName = Path.GetFileName(logFile);
+                                string destPath = Path.Combine(logSubDir, fileName);
+                                
+                                // 读取并脱敏后再保存
+                                // 使用 FileStream 以 FileShare.ReadWrite 方式打开，避免被日志记录器锁住无法读取
+                                using (var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                                using (var streamReader = new StreamReader(fileStream))
+                                {
+                                    string content = await streamReader.ReadToEndAsync();
+                                    string sanitizedContent = await _logSanitizerService.SanitizeAsync(content);
+                                    await File.WriteAllTextAsync(destPath, sanitizedContent);
+                                }
+                            }
+                            catch (IOException)
+                            {
+                                // 如果无法读取（被完全锁住），尝试直接复制作为后备方案
+                                // 虽然不会脱敏，但至少能保住日志（或者选择跳过以保护隐私，这里选择跳过比较安全）
+                                System.Diagnostics.Debug.WriteLine($"无法读取日志文件进行脱敏: {logFile}");
+                            }
                         }
                         
                         System.Diagnostics.Debug.WriteLine($"已复制 {logFiles.Count()} 个启动器日志文件");
