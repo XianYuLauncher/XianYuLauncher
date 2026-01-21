@@ -380,6 +380,7 @@ public partial class App : Application
             {
                 var telemetryService = App.GetService<TelemetryService>();
                 await telemetryService.SendLaunchEventAsync();
+                await telemetryService.CheckAndSendFirstLaunchAsync();
             }
             catch (Exception ex)
             {
