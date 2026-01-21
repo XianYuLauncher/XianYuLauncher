@@ -185,6 +185,12 @@ namespace XianYuLauncher.Views
         /// </summary>
         private void ViewModel_CurrentSkinChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            // 当CurrentSkin变化时，强制刷新头像
+            if (e.PropertyName == nameof(ViewModel.CurrentSkin))
+            {
+                LoadProfileAvatar(true);
+            }
+
             // 当CurrentSkin、SelectedCape或CurrentProfile变化时，更新WebView中的皮肤
             if (e.PropertyName == nameof(ViewModel.CurrentSkin) || 
                 e.PropertyName == nameof(ViewModel.SelectedCape) ||
@@ -561,7 +567,8 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 加载角色头像
         /// </summary>
-        private void LoadProfileAvatar()
+        /// <param name="forceRefresh">是否强制刷新（忽略缓存）</param>
+        private void LoadProfileAvatar(bool forceRefresh = false)
         {
             if (ViewModel.CurrentProfile == null)
             {
@@ -569,16 +576,16 @@ namespace XianYuLauncher.Views
                 return;
             }
             
-            Debug.WriteLine($"[角色管理Page] 开始加载角色 {ViewModel.CurrentProfile.Name} 的头像，离线状态: {ViewModel.CurrentProfile.IsOffline}");
+            Debug.WriteLine($"[角色管理Page] 开始加载角色 {ViewModel.CurrentProfile.Name} 的头像，离线状态: {ViewModel.CurrentProfile.IsOffline}，强制刷新: {forceRefresh}");
             
             // 异步加载头像
-            _ = LoadAvatarAsync();
+            _ = LoadAvatarAsync(forceRefresh);
         }
         
         /// <summary>
         /// 异步加载头像
         /// </summary>
-        private async Task LoadAvatarAsync()
+        private async Task LoadAvatarAsync(bool forceRefresh)
         {
             if (ViewModel.CurrentProfile == null)
                 return;
@@ -602,8 +609,15 @@ namespace XianYuLauncher.Views
                 else
                 {
                     // 2. 正版玩家处理逻辑
-                    Debug.WriteLine($"[角色管理Page] 尝试从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
-                    var cachedAvatar = await LoadAvatarFromCacheAsync(ViewModel.CurrentProfile.Id);
+                    BitmapImage cachedAvatar = null;
+                    
+                    // 只有在不强制刷新时才尝试从缓存加载
+                    if (!forceRefresh)
+                    {
+                        Debug.WriteLine($"[角色管理Page] 尝试从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
+                        cachedAvatar = await LoadAvatarFromCacheAsync(ViewModel.CurrentProfile.Id);
+                    }
+                    
                     if (cachedAvatar != null)
                     {
                         Debug.WriteLine($"[角色管理Page] 成功从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
@@ -611,15 +625,38 @@ namespace XianYuLauncher.Views
                     }
                     else
                     {
-                        Debug.WriteLine($"[角色管理Page] 缓存中不存在角色 {ViewModel.CurrentProfile.Name} 的头像，从网络加载");
-                        var networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile.Id);
+                        Debug.WriteLine($"[角色管理Page] {(forceRefresh ? "强制刷新" : "缓存中不存在")}角色 {ViewModel.CurrentProfile.Name} 的头像，从网络加载");
+                        
+                        // 尝试优先使用 ViewModel 中已有的 URL（如果有），因为这通常是最新的，且可能已经包含在 CurrentSkin 中
+                        // 如果 ViewModel.CurrentSkin 尚未更新（例如上传后尚未触发刷新），这可能会拿到旧的。
+                        // 但是，如果 UpdateSkinInWebViewAsync 已经拿到新的（通过 ViewModel.CurrentSkin），那么我们这里也可以拿。
+                        // 如果 ViewModel.CurrentSkin 是 null 或 url 为空，才去 Fetch Profile。
+                        
+                        string currentSkinUrl = ViewModel.CurrentSkin?.Url;
+                        BitmapImage networkAvatar = null;
+
+                        if (!string.IsNullOrEmpty(currentSkinUrl))
+                        {
+                             Debug.WriteLine($"[角色管理Page] 使用 ViewModel.CurrentSkin.Url 加载头像: {currentSkinUrl}");
+                             networkAvatar = await CropAvatarFromSkinAsync(currentSkinUrl, ViewModel.CurrentProfile.Id);
+                        }
+                        
+                        // 如果从 CurrentSkin 获取失败（例如 CurrentSkin 为空），则回退到从网络 Profile 获取
+                        if (networkAvatar == null)
+                        {
+                             Debug.WriteLine($"[角色管理Page] ViewModel.CurrentSkin.Url 为空或加载失败，尝试从 Mojang Session API 获取...");
+                             networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile.Id);
+                        }
+
                         if (networkAvatar != null)
                         {
                             ProfileAvatar.Source = networkAvatar;
                         }
                         else
                         {
-                            ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                            // 如果网络加载失败且我们是强制刷新，尝试回退到旧缓存（如果存在），或者默认头像
+                            // 这里简单处理为默认头像，因为如果网络失败，可能也没法验证缓存有效性
+                             ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
                         }
                     }
                 }
@@ -846,15 +883,7 @@ namespace XianYuLauncher.Views
             }
         }
 
-        /// <summary>
-        /// 点击皮肤纹理图片时，显示TeachingTip
-        /// </summary>
-        /// <param name="sender">触发事件的控件</param>
-        /// <param name="e">指针事件参数</param>
-        private void SkinTextureImage_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            SkinTeachingTip.IsOpen = true;
-        }
+
 
         /// <summary>
         /// 保存皮肤纹理按钮点击事件

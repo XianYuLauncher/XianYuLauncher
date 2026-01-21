@@ -2355,4 +2355,16 @@
   <data name="ErrorAnalysis_ContactAuthorButton.Content" xml:space="preserve">
     <value>联系作者</value>
   </data>
+  <data name="ProfileManagementPage_Skin3DPreviewTitle.Text" xml:space="preserve">
+    <value>皮肤3D预览</value>
+  </data>
+  <data name="ProfileManagementPage_Skin3DPreviewNote.Text" xml:space="preserve">
+    <value>3D皮肤模型预览，支持旋转和缩放</value>
+  </data>
+  <data name="ProfileManagementPage_DefaultSkinTitle.Text" xml:space="preserve">
+    <value>默认皮肤</value>
+  </data>
+  <data name="ProfileManagementPage_SaveButton.Text" xml:space="preserve">
+    <value>保存</value>
+  </data>
 </root>

@@ -2341,4 +2341,16 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_ContactAuthorButton.Content" xml:space="preserve">
     <value>Contact Author</value>
   </data>
+  <data name="ProfileManagementPage_Skin3DPreviewTitle.Text" xml:space="preserve">
+    <value>Skin 3D Preview</value>
+  </data>
+  <data name="ProfileManagementPage_Skin3DPreviewNote.Text" xml:space="preserve">
+    <value>3D skin model preview, supports rotation and zoom</value>
+  </data>
+  <data name="ProfileManagementPage_DefaultSkinTitle.Text" xml:space="preserve">
+    <value>Default Skins</value>
+  </data>
+  <data name="ProfileManagementPage_SaveButton.Text" xml:space="preserve">
+    <value>Save</value>
+  </data>
 </root>

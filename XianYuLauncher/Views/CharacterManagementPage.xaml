@@ -13,7 +13,7 @@
             <helpers:StringEqualsConverter x:Key="StringEqualsConverter" />
         </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="20">
+    <Grid x:Name="ContentArea" Padding="20" DataContext="{x:Bind ViewModel}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -85,19 +85,45 @@
                     CornerRadius="8"
                     Padding="20">
                     <StackPanel Spacing="16">
-                        <StackPanel Spacing="8">
-                            <TextBlock
-                                x:Uid="ProfileManagementPage_Skin3DPreviewTitle"
-                                Text="皮肤3D预览"
-                                Style="{StaticResource TitleTextBlockStyle}"
-                                FontSize="18"
-                                FontWeight="SemiBold" />
-                            <TextBlock
-                                x:Uid="ProfileManagementPage_Skin3DPreviewNote"
-                                Text="3D皮肤模型预览，支持旋转和缩放"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondary}" />
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="8">
+                                <TextBlock
+                                    x:Uid="ProfileManagementPage_Skin3DPreviewTitle"
+                                    Text="皮肤3D预览"
+                                    Style="{StaticResource TitleTextBlockStyle}"
+                                    FontSize="18"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    x:Uid="ProfileManagementPage_Skin3DPreviewNote"
+                                    Text="3D皮肤模型预览，支持旋转和缩放"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondary}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE74E;" FontSize="16" />
+                                    <TextBlock x:Uid="ProfileManagementPage_SaveButton" Text="保存" />
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <Flyout>
+                                        <StackPanel Spacing="8" MinWidth="150" Padding="8">
+                                            <TextBlock x:Uid="ProfileManagementPage_SkinModelLabel" Text="适用的模型:" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}"/>
+                                            <TextBlock Text="{x:Bind ViewModel.CurrentSkinModel, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" />
+                                            <MenuFlyoutSeparator />
+                                            <Button
+                                                x:Uid="ProfileManagementPage_SaveSkinButton"
+                                                Content="保存皮肤纹理"
+                                                HorizontalAlignment="Stretch"
+                                                Click="SaveSkinTextureButton_Click" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Grid>
                         
                         <!-- 3D预览区域 -->
                         <Border
@@ -227,39 +253,49 @@
                             FontSize="18"
                             FontWeight="SemiBold" />
                         
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                            </Grid.ColumnDefinitions>
+                        <!-- 皮肤设置区域 -->
+                        <StackPanel Spacing="12">
+                            <TextBlock
+                                x:Uid="ProfileManagementPage_SkinUploadNote"
+                                Text="上传或选择新皮肤"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondary}" />
                             
-                            <!-- 左侧：皮肤上传区域，保持居左 -->
-                            <StackPanel Grid.Column="0" Spacing="12">
-                                <TextBlock
-                                    x:Uid="ProfileManagementPage_SkinUploadNote"
-                                    Text="上传或选择新皮肤"
-                                    Style="{StaticResource BodyTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondary}" />
-                                
-                                <Button
-                                    x:Uid="ProfileManagementPage_BrowseSkinButton"
-                                    Content="浏览皮肤文件"
-                                    Click="BrowseSkinFileButton_Click"
-                                    IsEnabled="{x:Bind ViewModel.CurrentProfile.IsOffline, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                            <Button
+                                x:Uid="ProfileManagementPage_BrowseSkinButton"
+                                Content="浏览皮肤文件"
+                                Click="BrowseSkinFileButton_Click"
+                                IsEnabled="{x:Bind ViewModel.CurrentProfile.IsOffline, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+
+                            <!-- 官方默认皮肤选择 -->
+                            <StackPanel Visibility="{x:Bind ViewModel.CurrentProfile.TokenType, Mode=OneWay, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Bearer}" Spacing="8" Margin="0,12,0,0">
+                                <TextBlock x:Uid="ProfileManagementPage_DefaultSkinTitle" Text="默认皮肤" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.BuiltInSkins}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="viewModels:BuiltInSkin">
+                                            <Button 
+                                                Command="{Binding ElementName=ContentArea, Path=DataContext.ApplyBuiltInSkinCommand}" 
+                                                CommandParameter="{Binding}" 
+                                                Padding="4" 
+                                                CornerRadius="4" 
+                                                Background="Transparent" 
+                                                BorderThickness="1"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                                <ToolTipService.ToolTip>
+                                                    <ToolTip Content="{x:Bind Name}" />
+                                                </ToolTipService.ToolTip>
+                                                <Image Source="{x:Bind Icon}" Width="32" Height="32" Stretch="Uniform" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
-                            
-                            <!-- 右侧：皮肤预览区域，在按钮文字右边一点 -->
-                            <Image
-                                x:Name="SkinTextureImage"
-                                Grid.Column="1"
-                                Source="{x:Bind ViewModel.CurrentSkinTexture, Mode=OneWay}"
-                                Width="128"
-                                Height="128"
-                                Stretch="Uniform"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                PointerPressed="SkinTextureImage_PointerPressed" />
-                        </Grid>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -376,21 +412,5 @@
             </StackPanel>
         </ScrollViewer>
         
-        <!-- 皮肤信息TeachingTip - 移到ScrollViewer之外，避免Content多次设置错误 -->
-        <TeachingTip
-            x:Uid="ProfileManagementPage_SkinTeachingTip"
-            x:Name="SkinTeachingTip"
-            Title="皮肤信息"
-            Subtitle="当前皮肤的详细信息"
-            Target="{x:Bind SkinTextureImage}">
-            <StackPanel Spacing="8">
-                <TextBlock x:Uid="ProfileManagementPage_SkinModelLabel" Text="适用的模型:" />
-                <TextBlock Text="{x:Bind ViewModel.CurrentSkinModel, Mode=OneWay}" />
-                <Button
-                    x:Uid="ProfileManagementPage_SaveSkinButton"
-                    Content="保存皮肤纹理"
-                    Click="SaveSkinTextureButton_Click" />
-            </StackPanel>
-        </TeachingTip>
     </Grid>
 </Page>

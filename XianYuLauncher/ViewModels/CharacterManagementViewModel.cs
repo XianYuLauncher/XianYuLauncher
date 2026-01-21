@@ -16,8 +16,24 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 
+using System.Collections.ObjectModel;
+using System.Linq;
+using Windows.ApplicationModel;
+using Windows.Storage;
+
 namespace XianYuLauncher.ViewModels
 {
+    /// <summary>
+    /// 内置皮肤信息
+    /// </summary>
+    public class BuiltInSkin
+    {
+        public string Name { get; set; }
+        public string Variant { get; set; }
+        public ImageSource Icon { get; set; }
+        public string TextureUri { get; set; }
+    }
+
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
@@ -26,6 +42,165 @@ namespace XianYuLauncher.ViewModels
         private readonly IFileService _fileService;
         private readonly IProfileManager _profileManager;
         private readonly HttpClient _httpClient;
+
+        /// <summary>
+        /// 内置皮肤列表
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<BuiltInSkin> _builtInSkins = new ObservableCollection<BuiltInSkin>();
+
+        /// <summary>
+        /// 应用内置皮肤命令
+        /// </summary>
+        [RelayCommand]
+        private async Task ApplyBuiltInSkin(BuiltInSkin skin)
+        {
+            if (CurrentProfile.IsOffline) return;
+            // 仅允许微软账户
+            if (CurrentProfile.TokenType == "external") 
+            {
+               // TODO: Handle external if needed (User said only Microsoft)
+               return; 
+            }
+
+            try 
+            {
+                 // 获取文件
+                 var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(skin.TextureUri));
+                 // 上传
+                 await UploadSkinAsync(file, skin.Variant);
+                 
+                 // 刷新
+                 await ShowMessageAsync("成功", $"已将皮肤更改为 {skin.Name}");
+                 await LoadCapesAsync(); // This reloads skin info
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageAsync("失败", $"应用皮肤失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 显示消息提示 (Helper)
+        /// </summary>
+        private async Task ShowMessageAsync(string title, string content)
+        {
+             var dialog = App.GetService<IDialogService>();
+             if (dialog != null)
+             {
+                 await dialog.ShowMessageDialogAsync(title, content);
+             }
+        }
+
+        /// <summary>
+        /// 处理皮肤头部纹理 (Win2D Crop & Resize)
+        /// </summary>
+        private async Task<ImageSource> ProcessHeadTextureAsync(string textureUri)
+        {
+            try
+            {
+                var device = CanvasDevice.GetSharedDevice();
+                CanvasBitmap canvasBitmap;
+                
+                // 从 URI 加载
+                var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(textureUri));
+                using (var stream = await file.OpenReadAsync())
+                {
+                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
+                }
+
+                // 创建 RenderTarget (32x32 显示)
+                var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
+
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    // 头部区域通常是 (8, 8, 8, 8)
+                    ds.DrawImage(
+                        canvasBitmap,
+                        new Windows.Foundation.Rect(0, 0, 32, 32), // 目标：放大到32x32
+                        new Windows.Foundation.Rect(8, 8, 8, 8),   // 源：头部区域
+                        1.0f,
+                        CanvasImageInterpolation.NearestNeighbor
+                    );
+                    
+                    // 绘制头部外层 (Hat) - 如果有
+                    // 外层通常在 (40, 8, 8, 8)
+                     ds.DrawImage(
+                        canvasBitmap,
+                        new Windows.Foundation.Rect(0, 0, 32, 32),
+                        new Windows.Foundation.Rect(40, 8, 8, 8),
+                        1.0f,
+                        CanvasImageInterpolation.NearestNeighbor
+                    );
+                }
+
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+                    var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
+                    await bitmap.SetSourceAsync(outputStream);
+                    return bitmap;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"头像处理失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        private bool _isBuiltInSkinsLoading;
+
+        private async Task LoadBuiltInSkinsAsync()
+        {
+            if (BuiltInSkins.Count > 0 || _isBuiltInSkinsLoading) return;
+            _isBuiltInSkinsLoading = true;
+
+            try 
+            {
+                var skins = new List<(string Name, string FileName, string Variant)>
+                {
+                    ("Alex", "alex.png", "slim"),
+                    ("Ari", "ari.png", "slim"),
+                    ("Efe", "efe.png", "slim"),
+                    ("Kai", "kai.png", "slim"),
+                    ("Makena", "makena.png", "slim"),
+                    ("Noor", "noor.png", "slim"),
+                    ("Steve", "steve.png", "slim"),
+                    ("Sunny", "sunny.png", "slim"),
+                    ("Zuri", "zuri.png", "slim")
+                };
+
+                foreach (var skin in skins)
+                {
+                    // Double check in case another thread added items while we were setting up (rare but possible)
+                    // But effectively _isBuiltInSkinsLoading protects us.
+                    
+                    var uri = $"ms-appx:///Assets/Icons/Textures/{skin.FileName}";
+                    var headIcon = await ProcessHeadTextureAsync(uri);
+                    
+                    if (headIcon != null)
+                    {
+                         BuiltInSkins.Add(new BuiltInSkin 
+                         { 
+                             Name = skin.Name, 
+                             Variant = skin.Variant, 
+                             Icon = headIcon, 
+                             TextureUri = uri 
+                         });
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载内置皮肤失败: {ex.Message}");
+            }
+            finally
+            {
+                _isBuiltInSkinsLoading = false;
+            }
+        }
 
         /// <summary>
         /// 当前角色信息
@@ -257,6 +432,9 @@ namespace XianYuLauncher.ViewModels
                 
                 // 加载披风列表
                 await LoadCapesAsync();
+                
+                // 加载内置皮肤列表
+                await LoadBuiltInSkinsAsync();
             }
         }
 
