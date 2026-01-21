@@ -127,10 +127,9 @@ public class JavaDownloadService : IJavaDownloadService
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string minecraftPath = Path.Combine(appData, ".minecraft");
 
-        // 简化目录结构: runtime/<component>
-        // 例如: .minecraft/runtime/java-runtime-gamma
-        // 这样 bin 目录就在 runtime/java-runtime-gamma/bin，符合 PCL2 等启动器的习惯，且层级更浅
-        string installDir = Path.Combine(minecraftPath, "runtime", component);
+        // 规范目录结构: runtime/<component>/<os>
+        // 例如: .minecraft/runtime/java-runtime-gamma/windows-x64
+        string installDir = Path.Combine(minecraftPath, "runtime", component, platformKey);
         
         statusCallback?.Invoke("正在准备下载文件...");
         

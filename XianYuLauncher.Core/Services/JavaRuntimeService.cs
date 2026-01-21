@@ -447,8 +447,8 @@ public class JavaRuntimeService : IJavaRuntimeService
             
             try
             {
-                // 递归搜索，最多3层深度
-                await ScanDirectoryForJavaAsync(javaVersions, basePath, maxDepth: 3, currentDepth: 0);
+                // 递归搜索，最多4层深度 (适应 runtime/component/os/bin/java.exe 的结构)
+                await ScanDirectoryForJavaAsync(javaVersions, basePath, maxDepth: 4, currentDepth: 0);
             }
             catch (Exception ex)
             {
