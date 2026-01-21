@@ -57,4 +57,12 @@ public interface IDialogService
     /// <param name="message">提示信息</param>
     /// <param name="workCallback">执行的异步任务，参数为(progress, status, token)</param>
     Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback);
+
+    /// <summary>
+    /// 显示外置登录角色选择弹窗
+    /// </summary>
+    /// <param name="profiles">可选的角色列表</param>
+    /// <param name="authServer">认证服务器地址（用于加载皮肤）</param>
+    /// <returns>用户选择的角色，若取消则返回 null</returns>
+    Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer);
 }

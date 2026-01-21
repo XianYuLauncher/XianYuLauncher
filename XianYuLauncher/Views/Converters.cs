@@ -167,4 +167,22 @@ namespace XianYuLauncher.Views
             return true;
         }
     }
+
+    // 外置登录按钮文字转换器
+    public class ExternalLoginButtonTextConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is bool isLoggedIn && isLoggedIn)
+            {
+                return "已登录";
+            }
+            return "登录外置账号";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

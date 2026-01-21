@@ -26,6 +26,8 @@ namespace XianYuLauncher.ViewModels
         private readonly INavigationService _navigationService;
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IProfileManager _profileManager;
+        private readonly AuthlibInjectorService _authlibInjectorService;
+        private readonly IDialogService _dialogService;
 
         // 页面导航相关属性
         [ObservableProperty]
@@ -48,6 +50,14 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private JavaVersionInfo? _selectedJavaVersion;
 
+        partial void OnSelectedJavaVersionChanged(JavaVersionInfo? value)
+        {
+            if (value != null)
+            {
+                JavaPath = value.Path;
+            }
+        }
+
         [ObservableProperty]
         private bool _isLoadingJavaVersions = false;
 
@@ -67,15 +77,39 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private bool _isOfflineLogin = false;
 
+        [ObservableProperty]
+        private bool _isExternalLogin = false;
+
+        // 外置登录相关属性
+        [ObservableProperty]
+        private string _externalAuthServer = string.Empty;
+
+        [ObservableProperty]
+        private string _externalUsername = string.Empty;
+
+        [ObservableProperty]
+        private string _externalPassword = string.Empty;
+
+        [ObservableProperty]
+        private bool _isExternalLoggedIn = false;
+
         // 登录状态相关属性
         [ObservableProperty]
         private bool _isLoggingIn = false;
+
+        // 计算属性：外置登录表单是否可见
+        public bool IsExternalFormVisible => IsExternalLogin && !IsExternalLoggedIn;
+
+        // 计算属性：未在登录中且处于表单显示状态
+        public bool IsExternalLoginButtonEnabled => IsNotLoggingIn && !IsExternalLoggedIn;
 
         [ObservableProperty]
         private string _loginStatus = string.Empty;
         
         // 保存微软登录结果
         private MinecraftProfile _pendingMicrosoftProfile = null;
+        
+        public string PendingProfileId => _pendingMicrosoftProfile?.Id;
         
         // 计算属性：是否未在登录中（用于x:Bind绑定）
         public bool IsNotLoggingIn => !IsLoggingIn;
@@ -179,6 +213,13 @@ namespace XianYuLauncher.ViewModels
                 await ShowLoginRequiredDialogAsync();
                 return;
             }
+            if (IsExternalLogin && _pendingMicrosoftProfile == null)
+            {
+                 // Reusing ShowLoginRequiredDialogAsync or new one?
+                 // The message "Please login first" is generic enough.
+                 await ShowLoginRequiredDialogAsync();
+                 return;
+            }
             
             // 保存设置
             SaveSettings();
@@ -216,12 +257,29 @@ namespace XianYuLauncher.ViewModels
                 characterViewModel.Profiles.Add(profile);
             }
             
-            if (IsMicrosoftLogin && _pendingMicrosoftProfile != null)
+            if ((IsMicrosoftLogin || IsExternalLogin) && _pendingMicrosoftProfile != null)
             {
-                // 添加微软账户
+                // 如果是外置登录，检查地区限制
+                if (IsExternalLogin && !IsChinaMainland())
+                {
+                    System.Diagnostics.Debug.WriteLine("[地区检测] 非中国大陆地区，不允许使用外置登录");
+                    return;
+                }
+
+                // Ensure other profiles are inactive
+                foreach (var p in characterViewModel.Profiles)
+                {
+                    p.IsActive = false;
+                }
+
+                // Set new profile as active
+                _pendingMicrosoftProfile.IsActive = true;
+
+                // 添加微软账户或外置登录账户
                 characterViewModel.Profiles.Add(_pendingMicrosoftProfile);
                 characterViewModel.ActiveProfile = _pendingMicrosoftProfile;
-                System.Diagnostics.Debug.WriteLine($"[角色保存] 添加微软账户: {_pendingMicrosoftProfile.Name}");
+                
+                System.Diagnostics.Debug.WriteLine($"[角色保存] 添加账户: {_pendingMicrosoftProfile.Name} (Type: {_pendingMicrosoftProfile.TokenType})");
             }
             else if (IsOfflineLogin && !string.IsNullOrEmpty(OfflineProfileName))
             {
@@ -233,6 +291,12 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
+                // Ensure other profiles are inactive
+                foreach (var p in characterViewModel.Profiles)
+                {
+                    p.IsActive = false;
+                }
+
                 // 添加离线账户
                 var offlineProfile = new MinecraftProfile
                 {
@@ -244,7 +308,8 @@ namespace XianYuLauncher.ViewModels
                     IssueInstant = DateTime.Now,
                     NotAfter = DateTime.MaxValue,
                     Roles = new string[] { "offline" },
-                    IsOffline = true
+                    IsOffline = true,
+                    IsActive = true
                 };
                 characterViewModel.Profiles.Add(offlineProfile);
                 characterViewModel.ActiveProfile = offlineProfile;
@@ -442,19 +507,134 @@ namespace XianYuLauncher.ViewModels
             {
                 IsMicrosoftLogin = true;
                 IsOfflineLogin = false;
+                IsExternalLogin = false;
                 // 切换到微软登录时，不影响微软登录的名称
             }
             else if (loginType == "Offline")
             {
                 IsMicrosoftLogin = false;
                 IsOfflineLogin = true;
+                IsExternalLogin = false;
                 // 切换到离线登录时，初始化离线名称为当前默认值
                 if (string.IsNullOrEmpty(OfflineProfileName) || OfflineProfileName == "Steve")
                 {
-                    OfflineProfileName = "Steve";
+                    OfflineProfileName = ProfileName;
                 }
             }
+            else if (loginType == "External")
+            {
+                IsMicrosoftLogin = false;
+                IsOfflineLogin = false;
+                IsExternalLogin = true;
+                // 注意：这里不重置 IsExternalLoggedIn 状态，
+                // 以便用户在微软和外置之间切换查看时保留外置登录状态。
+                // 如果需要重置，可以取消下面这行的注释：
+                // IsExternalLoggedIn = false;
+            }
+            // 确保更新导航状态
+            UpdateNavigationState();
+            
+            // 更新UI可见性
+            OnPropertyChanged(nameof(IsExternalFormVisible));
         }
+
+        [RelayCommand]
+        private async Task ExternalLogin()
+        {
+            if (string.IsNullOrEmpty(ExternalAuthServer) || string.IsNullOrEmpty(ExternalUsername) || string.IsNullOrEmpty(ExternalPassword))
+            {
+                await ShowLoginErrorDialogAsync("请填写所有字段");
+                return;
+            }
+
+            try
+            {
+                IsLoggingIn = true;
+                LoginStatus = "正在验证外置登录账号...";
+
+                var result = await _authlibInjectorService.AuthenticateAsync(ExternalAuthServer, ExternalUsername, ExternalPassword);
+
+                if (result != null)
+                {
+                    // 处理角色选择
+                    ExternalProfile selectedProfile = result.SelectedProfile;
+
+                    if (selectedProfile == null && result.AvailableProfiles != null && result.AvailableProfiles.Count > 0)
+                    {
+                        if (result.AvailableProfiles.Count == 1)
+                        {
+                            selectedProfile = result.AvailableProfiles[0];
+                        }
+                        else
+                        {
+                            // 多个角色，弹出选择对话框
+                            selectedProfile = await _dialogService.ShowProfileSelectionDialogAsync(result.AvailableProfiles, ExternalAuthServer);
+                        }
+                    }
+
+                    // 如果仍然没有选中的角色（例如AvailableProfiles为空，或者用户取消了选择），则使用User信息（如果有）作为后备
+                    if (selectedProfile == null)
+                    {
+                        if (result.User != null)
+                        {
+                            // 如果只有User信息，使用User ID作为ID，Name暂时使用用户名（邮箱）
+                            // 某些非标准实现可能会这样
+                            selectedProfile = new ExternalProfile { Id = result.User.Id, Name = ExternalUsername };
+                        }
+                        else
+                        {
+                             // 极其罕见的情况
+                             selectedProfile = new ExternalProfile { Id = Guid.NewGuid().ToString("N"), Name = ExternalUsername };
+                        }
+                    }
+                    
+                    if (selectedProfile == null) // 用户在多选对话框点了取消
+                    {
+                         LoginStatus = "已取消登录";
+                         return; // 退出登录流程
+                    }
+
+                    // 创建外置登录角色
+                    var externalProfile = new MinecraftProfile
+                    {
+                        Id = selectedProfile.Id,
+                        Name = selectedProfile.Name,
+                        AccessToken = result.AccessToken,
+                        ClientToken = result.ClientToken,
+                        TokenType = "external",
+                        AuthServer = ExternalAuthServer,
+                        IsOffline = false,
+                        IsActive = true
+                    };
+
+                    _pendingMicrosoftProfile = externalProfile; // 复用此字段
+                    ProfileName = externalProfile.Name;
+                    
+                     // 设置登录成功状态，切换UI
+                    IsExternalLoggedIn = true; 
+                    OnPropertyChanged(nameof(IsExternalFormVisible)); 
+                    OnPropertyChanged(nameof(IsExternalLoginButtonEnabled));
+
+                    // 加载头像逻辑由 View 的 PropertyChanged 触发
+                    
+                    LoginStatus = $"欢迎回来，{externalProfile.Name}！";
+                    UpdateNavigationState();
+                }
+                else
+                {
+                    await ShowLoginErrorDialogAsync("验证失败，请检查账号密码或服务器地址");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowLoginErrorDialogAsync($"登录出错: {ex.Message}");
+            }
+            finally
+            {
+                IsLoggingIn = false;
+            }
+        }
+
 
         [RelayCommand]
         private async Task MicrosoftLogin()
@@ -675,7 +855,9 @@ namespace XianYuLauncher.ViewModels
             MicrosoftAuthService microsoftAuthService, 
             INavigationService navigationService,
             IJavaRuntimeService javaRuntimeService,
-            IProfileManager profileManager)
+            IProfileManager profileManager,
+            AuthlibInjectorService authlibInjectorService,
+            IDialogService dialogService)
         {
             _localSettingsService = localSettingsService;
             _minecraftVersionService = minecraftVersionService;
@@ -684,6 +866,8 @@ namespace XianYuLauncher.ViewModels
             _navigationService = navigationService;
             _javaRuntimeService = javaRuntimeService;
             _profileManager = profileManager;
+            _authlibInjectorService = authlibInjectorService;
+            _dialogService = dialogService;
             
             // 异步加载现有设置，避免阻塞UI线程
             _ = LoadSettingsAsync();

@@ -466,6 +466,65 @@ namespace XianYuLauncher.Core.Services
             _logger.LogDebug("[AuthlibInjector] 启动参数处理完成，结果参数数量: {Count}", processedArgs.Count);
             return processedArgs;
         }
+
+        /// <summary>
+        /// 使用账号密码进行外置登录验证
+        /// 调用 POST /authserver/authenticate 接口
+        /// </summary>
+        /// <param name="authServerUrl">认证服务器 URL</param>
+        /// <param name="username">用户名/邮箱</param>
+        /// <param name="password">密码</param>
+        /// <returns>验证结果</returns>
+        public async Task<ExternalRefreshResult?> AuthenticateAsync(string authServerUrl, string username, string password)
+        {
+            if (string.IsNullOrEmpty(authServerUrl) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                _logger.LogWarning("[AuthlibInjector] 登录失败：参数为空");
+                return null;
+            }
+
+            try
+            {
+                _logger.LogInformation("[AuthlibInjector] ========== 开始外置登录认证 ==========");
+                _logger.LogInformation("[AuthlibInjector] 认证服务器: {AuthServer}", authServerUrl);
+
+                var authUrl = authServerUrl.TrimEnd('/') + "/authserver/authenticate";
+                
+                var requestBody = new Dictionary<string, object>
+                {
+                    { "agent", new { name = "Minecraft", version = 1 } },
+                    { "username", username },
+                    { "password", password },
+                    { "requestUser", true }
+                };
+
+                var jsonContent = JsonConvert.SerializeObject(requestBody, Formatting.Indented);
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var response = await _httpClient.PostAsync(authUrl, content, cts.Token);
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = JsonConvert.DeserializeObject<ExternalRefreshResult>(responseContent);
+                    _logger.LogInformation("[AuthlibInjector] ✅ 登录成功");
+                    return result;
+                }
+                else
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 登录失败，状态码: {StatusCode}", response.StatusCode);
+                    _logger.LogWarning("[AuthlibInjector] 错误信息: {Response}", responseContent);
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 登录过程发生异常");
+                return null;
+            }
+        }
         
         /// <summary>
         /// 验证外置登录令牌是否有效
@@ -750,6 +809,9 @@ namespace XianYuLauncher.Core.Services
         
         [JsonProperty("selectedProfile")]
         public ExternalProfile? SelectedProfile { get; set; }
+
+        [JsonProperty("availableProfiles")]
+        public List<ExternalProfile>? AvailableProfiles { get; set; }
         
         [JsonProperty("user")]
         public ExternalUser? User { get; set; }

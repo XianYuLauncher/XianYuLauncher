@@ -1,6 +1,15 @@
+using System.IO;
+using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
+using System.Net.Http;
+using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.UI.Xaml;
+using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
 
@@ -11,6 +20,12 @@ public class DialogService : IDialogService
     private XamlRoot _xamlRoot;
     // 使用信号量确保同一时间只有一个弹窗显示，防止 WinUI 崩溃 (COM 0x80000019)
     private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
+    private readonly HttpClient _httpClient = new HttpClient();
+
+    public DialogService()
+    {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
+    }
 
     public void SetXamlRoot(XamlRoot xamlRoot)
     {
@@ -241,5 +256,236 @@ public class DialogService : IDialogService
         };
 
         await ShowSafeAsync(dialog);
+    }
+
+    public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
+    {
+        // 1. 映射为 ViewModel 列表
+        var items = new System.Collections.ObjectModel.ObservableCollection<ProfileSelectionItem>();
+        
+        // 预加载并处理默认史蒂夫头像 (Win2D 处理以确保像素清晰)
+        BitmapImage defaultAvatar;
+        try
+        {
+            defaultAvatar = await ProcessLocalSteveAvatarAsync();
+        }
+        catch
+        {
+            // 兜底回退
+            defaultAvatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+        }
+
+        foreach (var p in profiles)
+        {
+            var item = new ProfileSelectionItem 
+            { 
+                Id = p.Id, 
+                Name = p.Name, 
+                OriginalProfile = p,
+                Avatar = defaultAvatar 
+            };
+            items.Add(item);
+        }
+
+        // 2. 启动异步加载头像任务
+        _ = Task.Run(async () => 
+        {
+            foreach (var item in items)
+            {
+                try
+                {
+                    // 构建 Session Server URL
+                    var server = authServer;
+                    if (!server.EndsWith("/")) server += "/";
+                    var sessionUrl = $"{server}sessionserver/session/minecraft/profile/{item.Id}";
+                    
+                    // 获取皮肤数据
+                    var response = await _httpClient.GetStringAsync(sessionUrl);
+                    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
+                    
+                    string textureProperty = null;
+                    if (data.properties != null)
+                    {
+                        foreach(var prop in data.properties)
+                        {
+                           if (prop.name == "textures")
+                           {
+                               textureProperty = prop.value;
+                               break;
+                           }
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(textureProperty))
+                    {
+                        var jsonBytes = Convert.FromBase64String(textureProperty);
+                        var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+                        dynamic textureData = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+
+                        string skinUrl = null;
+                        if (textureData.textures != null && textureData.textures.SKIN != null)
+                        {
+                           skinUrl = textureData.textures.SKIN.url;
+                        }
+
+                        if (!string.IsNullOrEmpty(skinUrl))
+                        {
+                            // 下载并在 UI 线程使用 Win2D 处理
+                            var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
+                            
+                            App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                            {
+                                try 
+                                {
+                                    var processedAvatar = await ProcessAvatarBytesAsync(skinBytes);
+                                    if (processedAvatar != null)
+                                    {
+                                        item.Avatar = processedAvatar;
+                                    }
+                                }
+                                catch {}
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DialogService] 加载头像失败 {item.Name}: {ex.Message}");
+                }
+            }
+        });
+
+        // 创建数据模板
+        string xaml = @"
+<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+    <StackPanel Orientation='Horizontal' Padding='10'>
+        <Border CornerRadius='4' Width='40' Height='40' Margin='0,0,12,0' Background='#E5E7EB'>
+             <Image Source='{Binding Avatar}' Stretch='Fill'/>
+        </Border>
+        <StackPanel VerticalAlignment='Center'>
+            <TextBlock Text='{Binding Name}' FontWeight='SemiBold'/>
+            <TextBlock Text='{Binding Id}' FontSize='12' Opacity='0.6'/>
+        </StackPanel>
+    </StackPanel>
+</DataTemplate>";
+
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = items,
+            SelectedIndex = 0,
+            MaxHeight = 300,
+            ItemTemplate = (DataTemplate)XamlReader.Load(xaml)
+        };
+
+        // 如果列表为空，SelectedIndex设为-1
+        if (profiles.Count == 0) listView.SelectedIndex = -1;
+
+        var dialog = new ContentDialog
+        {
+            Title = "ProfilePage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
+            PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+            CloseButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+            DefaultButton = ContentDialogButton.Primary,
+            Content = listView
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result == ContentDialogResult.Primary)
+        {
+            var selectedItem = listView.SelectedItem as ProfileSelectionItem;
+            return selectedItem?.OriginalProfile;
+        }
+        return null;
+    }
+
+    private async Task<BitmapImage> ProcessLocalSteveAvatarAsync()
+    {
+        try
+        {
+            var device = CanvasDevice.GetSharedDevice();
+            var uri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
+            var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
+            
+            using (var stream = await file.OpenReadAsync())
+            {
+                var originalBitmap = await CanvasBitmap.LoadAsync(device, stream);
+                
+                // 32x32 足够弹窗列表使用
+                var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
+                    
+                    // 假设 steve.png 是已经提取好的头部或者需要整体显示的图片
+                    // 我们对其进行整体缩放
+                    ds.DrawImage(originalBitmap, 
+                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
+                                 originalBitmap.Bounds,
+                                 1.0f,
+                                 CanvasImageInterpolation.NearestNeighbor);
+                }
+
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+                    
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(outputStream);
+                    return bitmapImage;
+                }
+            }
+        }
+        catch
+        {
+            throw; // Let caller handle fallback
+        }
+    }
+
+    private async Task<BitmapImage> ProcessAvatarBytesAsync(byte[] skinBytes)
+    {
+        try
+        {
+            var device = CanvasDevice.GetSharedDevice();
+            using (var stream = new MemoryStream(skinBytes))
+            {
+                var originalBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
+                
+                var renderTarget = new CanvasRenderTarget(device, 32, 32, 96); // 弹窗使用32x32即可
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
+                    
+                    // 绘制头部 (Source: 8,8, 8,8) -> Target: 0,0, 32,32 (放大4倍)
+                    ds.DrawImage(originalBitmap, 
+                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
+                                 new Windows.Foundation.Rect(8, 8, 8, 8),
+                                 1.0f,
+                                 CanvasImageInterpolation.NearestNeighbor);
+                                 
+                    // 绘制第二层头部 (Source: 40,8, 8,8) if exists
+                     ds.DrawImage(originalBitmap, 
+                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
+                                 new Windows.Foundation.Rect(40, 8, 8, 8),
+                                 1.0f,
+                                 CanvasImageInterpolation.NearestNeighbor);
+                }
+
+                using (var outputStream = new InMemoryRandomAccessStream())
+                {
+                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+                    outputStream.Seek(0);
+                    
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(outputStream);
+                    return bitmapImage;
+                }
+            }
+        }
+        catch (Exception) // 移除了未使用的 ex
+        {
+            return null;
+        }
     }
 }

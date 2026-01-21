@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -1700,7 +1700,27 @@ namespace XianYuLauncher.Views
                 }
 
                 // 4. 多个角色，显示选择对话框
-                await ShowProfileSelectionDialogAsync(availableProfiles);
+                var dialogService = App.GetService<IDialogService>();
+                var coreProfiles = new System.Collections.Generic.List<XianYuLauncher.Core.Services.ExternalProfile>();
+                foreach (var p in availableProfiles)
+                {
+                    coreProfiles.Add(new XianYuLauncher.Core.Services.ExternalProfile 
+                    { 
+                        Id = p.Id, 
+                        Name = p.Name 
+                    });
+                }
+                
+                var selectedCoreProfile = await dialogService.ShowProfileSelectionDialogAsync(coreProfiles, authServer);
+                
+                if (selectedCoreProfile != null)
+                {
+                    var selectedProfile = availableProfiles.FirstOrDefault(p => p.Id == selectedCoreProfile.Id);
+                    if (selectedProfile != null)
+                    {
+                        await AddExternalProfileAsync(selectedProfile);
+                    }
+                }
             }
             catch (Exception ex)
             {

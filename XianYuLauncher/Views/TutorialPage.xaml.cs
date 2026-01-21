@@ -42,9 +42,9 @@ namespace XianYuLauncher.Views
             else if (e.PropertyName == nameof(ViewModel.ProfileName))
             {
                 // 当角色名称变化时，检查是否需要更新头像
-                if (ViewModel.ProfileName != "Steve" && ViewModel.IsMicrosoftLogin)
+                // 只要不是离线登录，且有角色名，就尝试加载（不依赖"Steve"判断）
+                if (!ViewModel.IsOfflineLogin && !string.IsNullOrEmpty(ViewModel.ProfileName))
                 {
-                    // 非默认名称且为微软登录，尝试加载用户皮肤头像
                     _ = LoadUserAvatarAsync();
                 }
             }
@@ -139,6 +139,13 @@ namespace XianYuLauncher.Views
                     // 更新两个页面的头像显示
                     ProfileAvatar.Source = bitmapImage;
                     MicrosoftProfileAvatar.Source = bitmapImage;
+                    
+                    // 同样初始化外置登录的头像，防止加载前显示模糊的原始图
+                    var externalAvatar = FindName("ExternalProfileAvatar") as Image;
+                    if (externalAvatar != null)
+                    {
+                        externalAvatar.Source = bitmapImage;
+                    }
                 }
             }
             catch (Exception ex)
@@ -148,28 +155,44 @@ namespace XianYuLauncher.Views
             }
         }
 
-        /// <summary>
-        /// 从Mojang API加载用户皮肤头像
-        /// </summary>
         private async Task LoadUserAvatarAsync()
         {
             try
             {
-                // 获取当前选中的角色
-                var characterViewModel = App.GetService<CharacterViewModel>();
-                var selectedProfile = characterViewModel.ActiveProfile;
-                
-                if (selectedProfile == null || selectedProfile.IsOffline)
-                {
-                    return;
-                }
+                // 如果是离线登录，直接跳过网络请求
+                if (ViewModel.IsOfflineLogin) return;
 
-                // 从Mojang API获取头像
-                var bitmap = await GetAvatarFromMojangApiAsync(selectedProfile.Id);
-                if (bitmap != null)
+                if (string.IsNullOrEmpty(ViewModel.ProfileName)) return;
+                
+                string uuid = null;
+                string authServer = null;
+
+                if (ViewModel.IsExternalLogin)
                 {
-                    // 更新头像显示
-                    MicrosoftProfileAvatar.Source = bitmap;
+                    // 先临时设置为清晰的Steve头像作为占位符（虽然Init时已经设置过，但防止被重置）
+                    await ProcessAvatarAsync(); 
+                    
+                    // 外置登录：使用 ViewModel 暴露的 ID 和 AuthServer
+                    uuid = ViewModel.PendingProfileId;
+                    authServer = ViewModel.ExternalAuthServer;
+                }
+                else if (ViewModel.IsMicrosoftLogin)
+                {
+                    // 微软登录：尝试获取 ID (如果已登录) 或通过 API 反查
+                    uuid = ViewModel.PendingProfileId;
+                    if (string.IsNullOrEmpty(uuid))
+                    {
+                        uuid = await GetUuidFromMojangApiAsync(ViewModel.ProfileName);
+                    }
+                }
+                
+                if (!string.IsNullOrEmpty(uuid))
+                {
+                     await LoadAvatarFromNetworkAsync(authServer, uuid);
+                }
+                else
+                {
+                    // 获取UUID失败，或无网络，保持Steve头像（已在ProcessAvatarAsync中初始化为清晰版）
                 }
             }
             catch (Exception ex)
@@ -178,120 +201,129 @@ namespace XianYuLauncher.Views
             }
         }
 
-        /// <summary>
-        /// 从Mojang API获取头像
-        /// </summary>
-        private async Task<BitmapImage> GetAvatarFromMojangApiAsync(string uuid)
+        private async Task<string> GetUuidFromMojangApiAsync(string name)
         {
-            try
-            {
-                // 1. 请求Mojang API获取profile信息
-                var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
-                var response = await _httpClient.GetAsync(mojangUri);
-                if (!response.IsSuccessStatusCode)
+             try 
+             {
+                var uri = new Uri($"https://api.mojang.com/users/profiles/minecraft/{name}");
+                var response = await _httpClient.GetAsync(uri);
+                if (response.IsSuccessStatusCode)
                 {
-                    throw new Exception($"Mojang API请求失败，状态码: {response.StatusCode}");
+                    var json = await response.Content.ReadAsStringAsync();
+                    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                    return data.id;
                 }
-
-                // 2. 解析JSON响应
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
-                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
-                {
-                    throw new Exception("Mojang API返回数据格式错误");
-                }
-
-                // 3. 提取base64编码的textures数据
-                string texturesBase64 = null;
-                foreach (var property in profileData.properties)
-                {
-                    if (property.name == "textures")
-                    {
-                        texturesBase64 = property.value;
-                        break;
-                    }
-                }
-
-                if (string.IsNullOrEmpty(texturesBase64))
-                {
-                    throw new Exception("未找到textures属性");
-                }
-
-                // 4. 解码base64数据
-                byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
-                string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
-
-                // 5. 提取皮肤URL
-                string skinUrl = null;
-                if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
-                {
-                    skinUrl = texturesData.textures.SKIN.url;
-                }
-
-                if (string.IsNullOrEmpty(skinUrl))
-                {
-                    throw new Exception("未找到皮肤URL");
-                }
-
-                // 6. 使用Win2D裁剪头像区域
-                var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl);
-                return avatarBitmap;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"从Mojang API获取头像失败: {ex.Message}");
-            }
-            return null;
+             }
+             catch {}
+             return null;
         }
 
-        /// <summary>
-        /// 从皮肤纹理中裁剪头像区域
-        /// </summary>
-        /// <param name="skinUrl">皮肤URL</param>
-        /// <returns>裁剪后的头像</returns>
+        private async Task LoadAvatarFromNetworkAsync(string authServer, string uuid)
+        { 
+            try
+            {
+                Uri sessionServerUri;
+                if (!string.IsNullOrEmpty(authServer))
+                {
+                    // 外置登录
+                    if (!authServer.EndsWith("/")) authServer += "/";
+                    sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{uuid}");
+                }
+                else
+                {
+                    // 微软正版 (Mojang API)
+                    sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
+                }
+                
+                var bitmap = await GetAvatarFromApiAsync(sessionServerUri);
+                if (bitmap != null)
+                {
+                     if (ViewModel.IsMicrosoftLogin)
+                     {
+                        var imageControl = FindName("MicrosoftProfileAvatar") as Image;
+                        if (imageControl != null) imageControl.Source = bitmap;
+                     }
+                     else if (ViewModel.IsExternalLogin)
+                     {
+                        var imageControl = FindName("ExternalProfileAvatar") as Image;
+                        if (imageControl != null) imageControl.Source = bitmap;
+                     }
+                }
+            }
+            catch {}
+        }
+
+        private async Task<BitmapImage> GetAvatarFromApiAsync(Uri sessionServerUri)
+        {
+             try
+             {
+                var response = await _httpClient.GetStringAsync(sessionServerUri);
+                dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
+                
+                string textureProperty = null;
+                if (data.properties != null)
+                {
+                    foreach(var prop in data.properties)
+                    {
+                        if (prop.name == "textures")
+                        {
+                            textureProperty = prop.value;
+                            break;
+                        }
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(textureProperty)) return null;
+                
+                var jsonBytes = Convert.FromBase64String(textureProperty);
+                var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+                dynamic textureData = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                
+                string skinUrl = null;
+                if (textureData.textures != null && textureData.textures.SKIN != null)
+                {
+                    skinUrl = textureData.textures.SKIN.url;
+                }
+                
+                if (string.IsNullOrEmpty(skinUrl)) return null;
+                
+                return await CropAvatarFromSkinAsync(skinUrl);
+             }
+             catch 
+             {
+                 return null;
+             }
+        }
+
         private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl)
         {
             try
             {
-                // 1. 创建CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
                 
-                // 2. 加载皮肤图片
                 var response = await _httpClient.GetAsync(skinUrl);
-                if (!response.IsSuccessStatusCode)
-                {
-                    return null;
-                }
+                if (!response.IsSuccessStatusCode) return null;
                 
                 using (var stream = await response.Content.ReadAsStreamAsync())
                 {
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 }
 
-                // 3. 创建CanvasRenderTarget用于裁剪
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    48, // 显示宽度
-                    48, // 显示高度
-                    96 // DPI
-                );
+                var renderTarget = new CanvasRenderTarget(device, 48, 48, 96);
 
-                // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
+                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
                     ds.DrawImage(
                         canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                        new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
+                        new Windows.Foundation.Rect(0, 0, 48, 48), 
+                        new Windows.Foundation.Rect(8, 8, 8, 8),
+                        1.0f,
+                        CanvasImageInterpolation.NearestNeighbor
                     );
                 }
 
-                // 5. 转换为BitmapImage
                 using (var outputStream = new InMemoryRandomAccessStream())
                 {
                     await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
@@ -302,11 +334,10 @@ namespace XianYuLauncher.Views
                     return bitmapImage;
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"裁剪头像失败: {ex.Message}");
+                return null;
             }
-            return null;
         }
     }
 }
