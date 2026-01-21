@@ -7,7 +7,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 using Microsoft.Win32;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -28,6 +30,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IProfileManager _profileManager;
         private readonly AuthlibInjectorService _authlibInjectorService;
         private readonly IDialogService _dialogService;
+        private readonly IJavaDownloadService _javaDownloadService;
 
         // 页面导航相关属性
         [ObservableProperty]
@@ -468,6 +471,120 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
+        /// <summary>
+        /// 从官方源下载 Java
+        /// </summary>
+        [RelayCommand]
+        private async Task DownloadJavaAsync()
+        {
+            try
+            {
+                // 1. 获取可用版本
+                // 为了防止界面冻结，显示一个简单的加载状态（这里暂略，直接请求）
+                var availableVersions = await _javaDownloadService.GetAvailableJavaVersionsAsync();
+                if (availableVersions.Count == 0)
+                {
+                    await _dialogService.ShowMessageDialogAsync("获取失败", "未能获取到可用的 Java 版本列表，请检查网络连接");
+                    return;
+                }
+
+                // 2. 构建选择对话框
+                var dialog = new ContentDialog
+                {
+                    Title = "下载 Java 运行时",
+                    PrimaryButtonText = "下载",
+                    CloseButtonText = "取消",
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    DefaultButton = ContentDialogButton.Primary
+                };
+
+                var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
+                stackPanel.Children.Add(new TextBlock { Text = "请选择要安装的 Java 版本:", TextWrapping = TextWrapping.Wrap });
+
+                var listView = new ListView
+                {
+                    ItemsSource = availableVersions,
+                    SelectionMode = ListViewSelectionMode.Single,
+                    MaxHeight = 300,
+                    SelectedIndex = 0,
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                    CornerRadius = new CornerRadius(4)
+                };
+
+                // 创建 DataTemplate
+                var templateXaml = @"
+                    <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+                        <Grid Padding='12,8'>
+                            <TextBlock Text='{Binding DisplayName}' VerticalAlignment='Center' Style='{ThemeResource BodyTextBlockStyle}' />
+                        </Grid>
+                    </DataTemplate>";
+                
+                listView.ItemTemplate = (DataTemplate)XamlReader.Load(templateXaml);
+
+                stackPanel.Children.Add(listView);
+                
+                stackPanel.Children.Add(new TextBlock 
+                { 
+                   Text = "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
+                   FontSize = 12, 
+                   Opacity = 0.7,
+                   TextWrapping = TextWrapping.Wrap
+                });
+
+                dialog.Content = stackPanel;
+
+                // 3. 显示并处理结果
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                     var selectedOption = listView.SelectedItem as JavaVersionDownloadOption;
+                     if (selectedOption != null)
+                     {
+                          await InstallJavaAsync(selectedOption);
+                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+            }
+        }
+
+        private async Task InstallJavaAsync(JavaVersionDownloadOption option)
+        {
+            await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+            {
+                try
+                {
+                    // 下载并安装
+                    await _javaDownloadService.DownloadAndInstallJavaAsync(
+                        option.Component, 
+                        p => progress.Report(p), 
+                        s => status.Report(s), 
+                        token);
+                    
+                    status.Report("安装完成，正在刷新环境...");
+                    
+                    // 刷新全系统 Java 检测（这会自动更新列表并 保存到 Settings）
+                    // 教程页的列表是独立的 ObservableCollection，需要单独刷新
+                    await _javaRuntimeService.DetectJavaVersionsAsync(true);
+                    
+                    // 重新加载 ViewModel 的列表
+                    App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                    {
+                         await RefreshJavaVersionsCommand.ExecuteAsync(null);
+                    });
+                    
+                    await Task.Delay(1000);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"安装失败: {ex.Message}", ex);
+                }
+            });
+        }
+
         [RelayCommand]
         private async Task BrowseJavaPath()
         {
@@ -543,14 +660,14 @@ namespace XianYuLauncher.ViewModels
         {
             if (string.IsNullOrEmpty(ExternalAuthServer) || string.IsNullOrEmpty(ExternalUsername) || string.IsNullOrEmpty(ExternalPassword))
             {
-                await ShowLoginErrorDialogAsync("请填写所有字段");
+                await ShowLoginErrorDialogAsync("TutorialPage_FormIncomplete_Message".GetLocalized());
                 return;
             }
 
             try
             {
                 IsLoggingIn = true;
-                LoginStatus = "正在验证外置登录账号...";
+                LoginStatus = "TutorialPage_LoginStatus_VerifyingExternal".GetLocalized();
 
                 var result = await _authlibInjectorService.AuthenticateAsync(ExternalAuthServer, ExternalUsername, ExternalPassword);
 
@@ -590,7 +707,7 @@ namespace XianYuLauncher.ViewModels
                     
                     if (selectedProfile == null) // 用户在多选对话框点了取消
                     {
-                         LoginStatus = "已取消登录";
+                         LoginStatus = "TutorialPage_LoginStatus_Cancelled".GetLocalized();
                          return; // 退出登录流程
                     }
 
@@ -617,17 +734,17 @@ namespace XianYuLauncher.ViewModels
 
                     // 加载头像逻辑由 View 的 PropertyChanged 触发
                     
-                    LoginStatus = $"欢迎回来，{externalProfile.Name}！";
+                    LoginStatus = string.Format("TutorialPage_LoginSuccess_Welcome".GetLocalized(), externalProfile.Name);
                     UpdateNavigationState();
                 }
                 else
                 {
-                    await ShowLoginErrorDialogAsync("验证失败，请检查账号密码或服务器地址");
+                    await ShowLoginErrorDialogAsync("TutorialPage_ExternalLogin_FailedMessage".GetLocalized());
                 }
             }
             catch (Exception ex)
             {
-                await ShowLoginErrorDialogAsync($"登录出错: {ex.Message}");
+                await ShowLoginErrorDialogAsync($"{"TutorialPage_LoginError_Prefix".GetLocalized()} {ex.Message}");
             }
             finally
             {
@@ -857,7 +974,8 @@ namespace XianYuLauncher.ViewModels
             IJavaRuntimeService javaRuntimeService,
             IProfileManager profileManager,
             AuthlibInjectorService authlibInjectorService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IJavaDownloadService javaDownloadService)
         {
             _localSettingsService = localSettingsService;
             _minecraftVersionService = minecraftVersionService;
@@ -868,6 +986,7 @@ namespace XianYuLauncher.ViewModels
             _profileManager = profileManager;
             _authlibInjectorService = authlibInjectorService;
             _dialogService = dialogService;
+            _javaDownloadService = javaDownloadService;
             
             // 异步加载现有设置，避免阻塞UI线程
             _ = LoadSettingsAsync();

@@ -315,23 +315,11 @@
   <data name="TutorialPage_MinecraftPathTextBox.PlaceholderText" xml:space="preserve">
     <value>请选择Minecraft游戏目录</value>
   </data>
-  <data name="TutorialPage_BrowseButton.Content" xml:space="preserve">
-    <value>浏览...</value>
-  </data>
   <data name="TutorialPage_MinecraftPathDescription.Text" xml:space="preserve">
     <value>Minecraft游戏目录，包含versions、saves等文件夹</value>
   </data>
   <data name="TutorialPage_JavaSettingsTitle.Text" xml:space="preserve">
     <value>Java路径设置</value>
-  </data>
-  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve">
-    <value>已安装的Java版本</value>
-  </data>
-  <data name="TutorialPage_AddJavaButton.Content" xml:space="preserve">
-    <value>添加</value>
-  </data>
-  <data name="TutorialPage_RefreshJavaButton.Content" xml:space="preserve">
-    <value>刷新</value>
   </data>
   <data name="TutorialPage_JavaSelectionMode.Text" xml:space="preserve">
     <value>Java选择方式</value>
@@ -380,15 +368,6 @@
   </data>
   <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
     <value>请输入角色名称</value>
-  </data>
-  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve">
-    <value>上一步</value>
-  </data>
-  <data name="TutorialPage_NextButton.Content" xml:space="preserve">
-    <value>下一步</value>
-  </data>
-  <data name="TutorialPage_FinishButton.Content" xml:space="preserve">
-    <value>完成</value>
   </data>
   <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
     <value>登录要求</value>
@@ -2367,4 +2346,46 @@
   <data name="ProfileManagementPage_SaveButton.Text" xml:space="preserve">
     <value>保存</value>
   </data>
+  <data name="TutorialPage_BasicSettings_Title.Text" xml:space="preserve"><value>基础设置</value></data>
+  <data name="TutorialPage_BrowseButton_Text.Text" xml:space="preserve"><value>浏览</value></data>
+  <data name="TutorialPage_JavaEnvironment_Title.Text" xml:space="preserve"><value>Java 环境</value></data>
+  <data name="TutorialPage_JavaNotFound_Hint.Text" xml:space="preserve"><value>如果您看不到 Java，请尝试下载、手动添加或刷新。</value></data>
+  <data name="TutorialPage_AdvancedOptions_Title.Text" xml:space="preserve"><value>高级选项</value></data>
+  <data name="TutorialPage_JavaSelectionMode_Title.Text" xml:space="preserve"><value>Java 选择模式</value></data>
+  <data name="TutorialPage_JavaSelectionMode_Auto.Content" xml:space="preserve"><value>自动选择</value></data>
+  <data name="TutorialPage_JavaSelectionMode_Manual.Content" xml:space="preserve"><value>手动指定</value></data>
+  <data name="TutorialPage_AccountLogin_Title.Text" xml:space="preserve"><value>账户登录</value></data>
+  <data name="TutorialPage_LoginType_Microsoft.Content" xml:space="preserve"><value>微软账号</value></data>
+  <data name="TutorialPage_LoginType_Offline.Content" xml:space="preserve"><value>离线模式</value></data>
+  <data name="TutorialPage_LoginType_External.Content" xml:space="preserve"><value>外置登录</value></data>
+  <data name="TutorialPage_MicrosoftAccount_Label.Text" xml:space="preserve"><value>微软账户</value></data>
+  <data name="TutorialPage_BeforeLogin_Button.Text" xml:space="preserve"><value>开始登录</value></data>
+  <data name="TutorialPage_ExternalAccount_Label.Text" xml:space="preserve"><value>外置账户</value></data>
+  <data name="TutorialPage_ExternalAuthServer.Header" xml:space="preserve"><value>认证服务器 URL</value></data>
+  <data name="TutorialPage_ExternalAuthServer.PlaceholderText" xml:space="preserve"><value>https://example.com/api/yggdrasil</value></data>
+  <data name="TutorialPage_ExternalUsername.Header" xml:space="preserve"><value>账号/邮箱</value></data>
+  <data name="TutorialPage_ExternalUsername.PlaceholderText" xml:space="preserve"><value>请输入注册邮箱</value></data>
+  <data name="TutorialPage_ExternalPassword.Header" xml:space="preserve"><value>密码</value></data>
+  <data name="TutorialPage_ExternalPassword.PlaceholderText" xml:space="preserve"><value>请输入密码</value></data>
+  <data name="TutorialPage_OfflineGameID.Header" xml:space="preserve"><value>游戏 ID</value></data>
+  <data name="TutorialPage_OfflineGameID.PlaceholderText" xml:space="preserve"><value>请输入您的昵称...</value></data>
+  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve"><value>上一步</value></data>
+  <data name="TutorialPage_JavaPath.Header" xml:space="preserve"><value>Java 路径</value></data>
+  <data name="TutorialPage_JavaPath.PlaceholderText" xml:space="preserve"><value>可执行文件路径...</value></data>
+  <data name="TutorialPage_NextButton.Content" xml:space="preserve"><value>下一步</value></data>
+  <data name="TutorialPage_FinishButton.Content" xml:space="preserve"><value>开始使用</value></data>
+  <data name="TutorialPage_LoginStatus_VerifyingExternal" xml:space="preserve"><value>正在验证外置登录账号...</value></data>
+  <data name="TutorialPage_LoginStatus_Cancelled" xml:space="preserve"><value>已取消登录</value></data>
+  <data name="TutorialPage_ExternalLogin_FailedMessage" xml:space="preserve"><value>验证失败，请检查账号密码或服务器地址</value></data>
+  <data name="TutorialPage_LoginError_Prefix" xml:space="preserve"><value>登录出错:</value></data>
+  <data name="TutorialPage_LoginSuccess_Welcome" xml:space="preserve"><value>欢迎回来，{0}！</value></data>
+  <data name="TutorialPage_FormIncomplete_Message" xml:space="preserve"><value>请填写所有字段</value></data>
+  <data name="TutorialPage_GetCodeFailed" xml:space="preserve"><value>获取登录代码失败</value></data>
+  <data name="TutorialPage_ExternalLoginButton_LoggedIn" xml:space="preserve"><value>已登录</value></data>
+  <data name="TutorialPage_ExternalLoginButton_Login" xml:space="preserve"><value>登录外置账号</value></data>
+  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve"><value>已安装的 Java 版本</value></data>
+  <data name="TutorialPage_DownloadJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>下载 Java</value></data>
+  <data name="TutorialPage_AddJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>手动添加</value></data>
+  <data name="TutorialPage_RefreshJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>刷新列表</value></data>
+  <data name="TutorialPage_BrowseButton_Content.Content" xml:space="preserve"><value>浏览</value></data>
 </root>

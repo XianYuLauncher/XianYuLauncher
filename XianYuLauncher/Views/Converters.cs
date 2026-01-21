@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using System;
 using Windows.UI;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Views
 {
@@ -175,9 +176,9 @@ namespace XianYuLauncher.Views
         {
             if (value is bool isLoggedIn && isLoggedIn)
             {
-                return "已登录";
+                return "TutorialPage_ExternalLoginButton_LoggedIn".GetLocalized();
             }
-            return "登录外置账号";
+            return "TutorialPage_ExternalLoginButton_Login".GetLocalized();
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)

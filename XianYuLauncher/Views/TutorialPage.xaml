@@ -62,7 +62,7 @@
             <Grid>
                 <!-- Page 1: Game Path -->
                 <StackPanel x:Name="PathSettingsPanel">
-                    <TextBlock Text="基础设置" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock x:Uid="TutorialPage_BasicSettings_Title" Text="基础设置" Style="{StaticResource SectionTitleStyle}"/>
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel Spacing="12">
                             <TextBlock x:Uid="TutorialPage_MinecraftPathTitle" Text="Minecraft 游戏目录" Style="{ThemeResource BodyStrongTextBlockStyle}" />
@@ -88,7 +88,7 @@
                                     Command="{x:Bind ViewModel.BrowseMinecraftPathCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
-                                        <TextBlock Text="浏览" />
+                                        <TextBlock x:Uid="TutorialPage_BrowseButton_Text" Text="浏览" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -98,7 +98,7 @@
 
                 <!-- Page 2: Java Settings -->
                 <StackPanel x:Name="JavaSettingsPanel" Visibility="Collapsed">
-                    <TextBlock Text="Java 环境" Style="{StaticResource SectionTitleStyle}"/>
+                    <TextBlock x:Uid="TutorialPage_JavaEnvironment_Title" Text="Java 环境" Style="{StaticResource SectionTitleStyle}"/>
                     
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel Spacing="16">
@@ -109,11 +109,14 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Uid="TutorialPage_InstalledJavaVersions" Text="已安装的 Java 版本" Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
                                 <StackPanel Orientation="Horizontal" Grid.Column="1" Spacing="8">
-                                    <Button Command="{x:Bind ViewModel.AddJavaVersionCommand}" IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}" ToolTipService.ToolTip="手动添加">
-                                        <FontIcon Glyph="&#xE710;" />
+                                    <Button x:Uid="TutorialPage_DownloadJavaButton" Command="{x:Bind ViewModel.DownloadJavaCommand}" IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}">
+                                        <FontIcon Glyph="&#xE896;" FontSize="14" />
                                     </Button>
-                                    <Button Command="{x:Bind ViewModel.RefreshJavaVersionsCommand}" IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}" ToolTipService.ToolTip="刷新列表">
-                                        <FontIcon Glyph="&#xE72C;" />
+                                    <Button x:Uid="TutorialPage_AddJavaButton" Command="{x:Bind ViewModel.AddJavaVersionCommand}" IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}">
+                                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    </Button>
+                                    <Button x:Uid="TutorialPage_RefreshJavaButton" Command="{x:Bind ViewModel.RefreshJavaVersionsCommand}" IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}">
+                                        <FontIcon Glyph="&#xE72C;" FontSize="14" />
                                     </Button>
                                 </StackPanel>
                             </Grid>
@@ -195,22 +198,24 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <TextBlock Text="如果您看不到 Java，请尝试手动添加或刷新。" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock x:Uid="TutorialPage_JavaNotFound_Hint" Text="如果您看不到 Java，请尝试手动添加或刷新。" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="高级选项" Style="{StaticResource SectionTitleStyle}" Margin="0,12,0,12"/>
+                    <TextBlock x:Uid="TutorialPage_AdvancedOptions_Title" Text="高级选项" Style="{StaticResource SectionTitleStyle}" Margin="0,12,0,12"/>
                     <Border Style="{StaticResource CardBorderStyle}">
                          <StackPanel Spacing="12">
                              <StackPanel Spacing="8">
-                                <TextBlock Text="Java 选择模式" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Uid="TutorialPage_JavaSelectionMode_Title" Text="Java 选择模式" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                                 <RadioButton
+                                    x:Uid="TutorialPage_JavaSelectionMode_Auto"
                                     GroupName="JavaMode"
                                     Content="自动选择"
                                     IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}"
                                     CommandParameter="Auto"/>
                                 <RadioButton
+                                    x:Uid="TutorialPage_JavaSelectionMode_Manual"
                                     GroupName="JavaMode"
                                     Content="手动指定"
                                     IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
@@ -230,12 +235,13 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox 
-                                    Header="Java 路径"
+                                    x:Uid="TutorialPage_JavaPath"
+                                    x:Name="JavaPathTextBox"
                                     Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" 
-                                    PlaceholderText="可执行文件路径..." 
                                     HorizontalAlignment="Stretch"/>
                                 <Button 
                                     Grid.Column="1"
+                                    x:Uid="TutorialPage_BrowseButton_Content"
                                     Content="浏览"
                                     VerticalAlignment="Bottom"
                                     Command="{x:Bind ViewModel.BrowseJavaPathCommand}"/>
@@ -247,7 +253,7 @@
                 <!-- Page 3: Profile Settings -->
                 <StackPanel x:Name="ProfileSettingsPanel" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
-                        <TextBlock Text="账户登录" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
+                        <TextBlock x:Uid="TutorialPage_AccountLogin_Title" Text="账户登录" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
                         <StackPanel 
                             Visibility="{x:Bind ViewModel.IsLoggingIn, Mode=OneWay}" 
                             Orientation="Horizontal" 
@@ -262,12 +268,14 @@
                         <StackPanel Spacing="16">
                             <StackPanel Orientation="Horizontal" Spacing="24">
                                 <RadioButton
+                                    x:Uid="TutorialPage_LoginType_Microsoft"
                                     Content="微软账号"
                                     GroupName="LoginType"
                                     IsChecked="{x:Bind ViewModel.IsMicrosoftLogin, Mode=TwoWay}"
                                     Command="{x:Bind ViewModel.SwitchLoginTypeCommand}"
                                     CommandParameter="Microsoft"/>
                                 <RadioButton
+                                    x:Uid="TutorialPage_LoginType_Offline"
                                     Content="离线模式"
                                     GroupName="LoginType"
                                     IsChecked="{x:Bind ViewModel.IsOfflineLogin, Mode=TwoWay}"
@@ -275,6 +283,7 @@
                                     Command="{x:Bind ViewModel.SwitchLoginTypeCommand}"
                                     CommandParameter="Offline"/>
                                 <RadioButton
+                                    x:Uid="TutorialPage_LoginType_External"
                                     Content="外置登录"
                                     GroupName="LoginType"
                                     IsChecked="{x:Bind ViewModel.IsExternalLogin, Mode=TwoWay}"
@@ -295,7 +304,7 @@
                                             <Image x:Name="MicrosoftProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="微软账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                            <TextBlock x:Uid="TutorialPage_MicrosoftAccount_Label" Text="微软账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
                                             <TextBlock Text="{x:Bind ViewModel.ProfileName, Mode=OneWay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
                                         </StackPanel>
                                     </Grid>
@@ -306,7 +315,7 @@
                                         HorizontalAlignment="Stretch" Style="{ThemeResource AccentButtonStyle}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="&#xE77B;"/>
-                                            <TextBlock Text="开始登录"/>
+                                            <TextBlock x:Uid="TutorialPage_BeforeLogin_Button" Text="开始登录"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -333,7 +342,7 @@
                                             <Image x:Name="ExternalProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="外置账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                            <TextBlock x:Uid="TutorialPage_ExternalAccount_Label" Text="外置账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
                                             <TextBlock Text="{x:Bind ViewModel.ProfileName, Mode=OneWay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
                                         </StackPanel>
                                      </Grid>
@@ -341,18 +350,15 @@
                                      <!-- 登录表单，仅在未登录时显示 -->
                                      <StackPanel Visibility="{x:Bind ViewModel.IsExternalFormVisible, Mode=OneWay}" Spacing="12">
                                          <TextBox 
-                                             Header="认证服务器 URL" 
-                                             PlaceholderText="https://example.com/api/yggdrasil"
+                                             x:Uid="TutorialPage_ExternalAuthServer"
                                              Text="{x:Bind ViewModel.ExternalAuthServer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                          
                                          <TextBox 
-                                             Header="账号/邮箱" 
-                                             PlaceholderText="请输入注册邮箱"
+                                             x:Uid="TutorialPage_ExternalUsername"
                                              Text="{x:Bind ViewModel.ExternalUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                          
                                          <PasswordBox 
-                                             Header="密码"
-                                             PlaceholderText="请输入密码"
+                                             x:Uid="TutorialPage_ExternalPassword"
                                              Password="{x:Bind ViewModel.ExternalPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                      </StackPanel>
 
@@ -381,9 +387,8 @@
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBox 
-                                                Header="游戏 ID"
+                                                x:Uid="TutorialPage_OfflineGameID"
                                                 Text="{x:Bind ViewModel.OfflineProfileName, Mode=TwoWay}" 
-                                                PlaceholderText="请输入您的昵称..." 
                                                 HorizontalAlignment="Stretch"/>
                                         </StackPanel>
                                     </Grid>
@@ -393,18 +398,21 @@
                     </Border>
                 </StackPanel>
             </Grid>
+
         </ScrollViewer>
 
         <!-- 4. Footer Buttons -->
         <Grid Grid.Row="3" Margin="0,12,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button 
+                    x:Uid="TutorialPage_PreviousButton"
                     x:Name="PreviousButton" 
                     Content="上一步" 
                     Command="{x:Bind ViewModel.PreviousCommand}" 
                     IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}" 
                     Width="100" />
                 <Button 
+                    x:Uid="TutorialPage_NextButton"
                     x:Name="NextButton" 
                     Content="下一步" 
                     Command="{x:Bind ViewModel.NextCommand}" 
@@ -412,6 +420,7 @@
                     Style="{ThemeResource AccentButtonStyle}"
                     Width="100" />
                 <Button 
+                    x:Uid="TutorialPage_FinishButton"
                     x:Name="FinishButton" 
                     Content="开始使用" 
                     Command="{x:Bind ViewModel.FinishCommand}" 

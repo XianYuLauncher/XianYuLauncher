@@ -47,10 +47,6 @@ public class ActivationService : IActivationService
         // Activate the MainWindow.
         App.MainWindow.Activate();
 
-        // [DEBUG] Force navigate to Tutorial Page
-        var navigationService = App.GetService<INavigationService>();
-        navigationService.NavigateTo(typeof(TutorialPageViewModel).FullName!);
-
         // Execute tasks after activation.
         await StartupAsync();
     }
