@@ -645,14 +645,23 @@ public class GameLaunchService : IGameLaunchService
         // 处理 Arguments.Game（NeoForge 等 ModLoader）
         else if (versionInfo.Arguments?.Game != null)
         {
-            foreach (var gameArg in versionInfo.Arguments.Game)
+            var gameArgs = versionInfo.Arguments.Game;
+            for (int i = 0; i < gameArgs.Count; i++)
             {
+                var gameArg = gameArgs[i];
                 if (gameArg is string argStr)
                 {
-                    // 跳过已手动添加的基本参数
+                    // 检查是否为已手动添加的基本参数
                     if (IsBasicGameArgument(argStr))
                     {
-                        continue;
+                        // 如果是基本参数的Key，且下一个元素也是字符串且不是参数Key，则认为是Value，一并跳过
+                        // 注意：IsBasicGameArgument 中列出的所有参数(--version, --username等)实际上都是必须带值的
+                        // 所以这里跳过下一个元素是安全的逻辑
+                        if (i + 1 < gameArgs.Count && gameArgs[i + 1] is string nextArg && !nextArg.StartsWith("--"))
+                        {
+                            i++; // 跳过下一个元素（Value）
+                        }
+                        continue; // 跳过当前元素（Key）
                     }
                     
                     string processedArg = argStr
