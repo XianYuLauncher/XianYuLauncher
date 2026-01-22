@@ -487,7 +487,10 @@
     <value>Started successfully!</value>
   </data>
   <data name="Settings_ThanksToTeam.Text" xml:space="preserve">
-    <value>Thanks to all studio members who participated in the project development</value>
+    <value>Thanks to all the members who contributed</value>
+  </data>
+  <data name="Settings_XianYuSupportText" xml:space="preserve">
+    <value>Developer</value>
   </data>
   <data name="Settings_BmclapiSupportText" xml:space="preserve">
     <value>Provided BMCLAPI</value>
@@ -2110,12 +2113,6 @@ Continue downloading?</value>
   <data name="Category_VanillaPlus" xml:space="preserve">
     <value>Vanilla+</value>
   </data>
-  <data name="Settings_Personalization.Text" xml:space="preserve">
-    <value>Personalization</value>
-  </data>
-  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
-    <value>OK</value>
-  </data>
   <data name="VersionManagerPage_VersionSettingsTab.Text" xml:space="preserve">
     <value>Settings</value>
   </data>
@@ -2332,46 +2329,136 @@ Continue downloading?</value>
   <data name="ProfileManagementPage_SaveButton.Text" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="TutorialPage_BasicSettings_Title.Text" xml:space="preserve"><value>Basic Settings</value></data>
-  <data name="TutorialPage_BrowseButton_Text.Text" xml:space="preserve"><value>Browse</value></data>
-  <data name="TutorialPage_JavaEnvironment_Title.Text" xml:space="preserve"><value>Java Environment</value></data>
-  <data name="TutorialPage_JavaNotFound_Hint.Text" xml:space="preserve"><value>If you don't see Java, try downloading, adding manually, or refreshing.</value></data>
-  <data name="TutorialPage_AdvancedOptions_Title.Text" xml:space="preserve"><value>Advanced Options</value></data>
-  <data name="TutorialPage_JavaSelectionMode_Title.Text" xml:space="preserve"><value>Java Selection Mode</value></data>
-  <data name="TutorialPage_JavaSelectionMode_Auto.Content" xml:space="preserve"><value>Auto Select</value></data>
-  <data name="TutorialPage_JavaSelectionMode_Manual.Content" xml:space="preserve"><value>Manual Specify</value></data>
-  <data name="TutorialPage_AccountLogin_Title.Text" xml:space="preserve"><value>Account Login</value></data>
-  <data name="TutorialPage_LoginType_Microsoft.Content" xml:space="preserve"><value>Microsoft Account</value></data>
-  <data name="TutorialPage_LoginType_Offline.Content" xml:space="preserve"><value>Offline Mode</value></data>
-  <data name="TutorialPage_LoginType_External.Content" xml:space="preserve"><value>External Login</value></data>
-  <data name="TutorialPage_MicrosoftAccount_Label.Text" xml:space="preserve"><value>Microsoft Account</value></data>
-  <data name="TutorialPage_BeforeLogin_Button.Text" xml:space="preserve"><value>Start Login</value></data>
-  <data name="TutorialPage_ExternalAccount_Label.Text" xml:space="preserve"><value>External Account</value></data>
-  <data name="TutorialPage_ExternalAuthServer.Header" xml:space="preserve"><value>Auth Server URL</value></data>
-  <data name="TutorialPage_ExternalAuthServer.PlaceholderText" xml:space="preserve"><value>https://example.com/api/yggdrasil</value></data>
-  <data name="TutorialPage_ExternalUsername.Header" xml:space="preserve"><value>Account/Email</value></data>
-  <data name="TutorialPage_ExternalUsername.PlaceholderText" xml:space="preserve"><value>Enter registered email</value></data>
-  <data name="TutorialPage_ExternalPassword.Header" xml:space="preserve"><value>Password</value></data>
-  <data name="TutorialPage_ExternalPassword.PlaceholderText" xml:space="preserve"><value>Enter password</value></data>
-  <data name="TutorialPage_OfflineGameID.Header" xml:space="preserve"><value>Game ID</value></data>
-  <data name="TutorialPage_OfflineGameID.PlaceholderText" xml:space="preserve"><value>Enter your nickname...</value></data>
-  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve"><value>Previous</value></data>
-  <data name="TutorialPage_JavaPath.Header" xml:space="preserve"><value>Java Path</value></data>
-  <data name="TutorialPage_JavaPath.PlaceholderText" xml:space="preserve"><value>Executable path...</value></data>
-  <data name="TutorialPage_NextButton.Content" xml:space="preserve"><value>Next</value></data>
-  <data name="TutorialPage_FinishButton.Content" xml:space="preserve"><value>Get Started</value></data>
-  <data name="TutorialPage_LoginStatus_VerifyingExternal" xml:space="preserve"><value>Verifying external account...</value></data>
-  <data name="TutorialPage_LoginStatus_Cancelled" xml:space="preserve"><value>Login cancelled</value></data>
-  <data name="TutorialPage_ExternalLogin_FailedMessage" xml:space="preserve"><value>Verification failed, check credentials or server URL</value></data>
-  <data name="TutorialPage_LoginError_Prefix" xml:space="preserve"><value>Login Error:</value></data>
-  <data name="TutorialPage_LoginSuccess_Welcome" xml:space="preserve"><value>Welcome back, {0}!</value></data>
-  <data name="TutorialPage_FormIncomplete_Message" xml:space="preserve"><value>Please fill in all fields</value></data>
-  <data name="TutorialPage_GetCodeFailed" xml:space="preserve"><value>Failed to get login code</value></data>
-  <data name="TutorialPage_ExternalLoginButton_LoggedIn" xml:space="preserve"><value>Logged In</value></data>
-  <data name="TutorialPage_ExternalLoginButton_Login" xml:space="preserve"><value>Login External Account</value></data>
-  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve"><value>Installed Java Versions</value></data>
-  <data name="TutorialPage_DownloadJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>Download Java</value></data>
-  <data name="TutorialPage_AddJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>Add Manually</value></data>
-  <data name="TutorialPage_RefreshJavaButton.ToolTipService.ToolTip" xml:space="preserve"><value>Refresh List</value></data>
-  <data name="TutorialPage_BrowseButton_Content.Content" xml:space="preserve"><value>Browse</value></data>
+  <data name="TutorialPage_BasicSettings_Title.Text" xml:space="preserve">
+    <value>Basic Settings</value>
+  </data>
+  <data name="TutorialPage_BrowseButton_Text.Text" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="TutorialPage_JavaEnvironment_Title.Text" xml:space="preserve">
+    <value>Java Environment</value>
+  </data>
+  <data name="TutorialPage_JavaNotFound_Hint.Text" xml:space="preserve">
+    <value>If you don't see Java, try downloading, adding manually, or refreshing.</value>
+  </data>
+  <data name="TutorialPage_AdvancedOptions_Title.Text" xml:space="preserve">
+    <value>Advanced Options</value>
+  </data>
+  <data name="TutorialPage_JavaSelectionMode_Title.Text" xml:space="preserve">
+    <value>Java Selection Mode</value>
+  </data>
+  <data name="TutorialPage_JavaSelectionMode_Auto.Content" xml:space="preserve">
+    <value>Auto Select</value>
+  </data>
+  <data name="TutorialPage_JavaSelectionMode_Manual.Content" xml:space="preserve">
+    <value>Manual Specify</value>
+  </data>
+  <data name="TutorialPage_AccountLogin_Title.Text" xml:space="preserve">
+    <value>Account Login</value>
+  </data>
+  <data name="TutorialPage_LoginType_Microsoft.Content" xml:space="preserve">
+    <value>Microsoft Account</value>
+  </data>
+  <data name="TutorialPage_LoginType_Offline.Content" xml:space="preserve">
+    <value>Offline Mode</value>
+  </data>
+  <data name="TutorialPage_LoginType_External.Content" xml:space="preserve">
+    <value>External Login</value>
+  </data>
+  <data name="TutorialPage_MicrosoftAccount_Label.Text" xml:space="preserve">
+    <value>Microsoft Account</value>
+  </data>
+  <data name="TutorialPage_BeforeLogin_Button.Text" xml:space="preserve">
+    <value>Start Login</value>
+  </data>
+  <data name="TutorialPage_ExternalAccount_Label.Text" xml:space="preserve">
+    <value>External Account</value>
+  </data>
+  <data name="TutorialPage_ExternalAuthServer.Header" xml:space="preserve">
+    <value>Auth Server URL</value>
+  </data>
+  <data name="TutorialPage_ExternalAuthServer.PlaceholderText" xml:space="preserve">
+    <value>https://example.com/api/yggdrasil</value>
+  </data>
+  <data name="TutorialPage_ExternalUsername.Header" xml:space="preserve">
+    <value>Account/Email</value>
+  </data>
+  <data name="TutorialPage_ExternalUsername.PlaceholderText" xml:space="preserve">
+    <value>Enter registered email</value>
+  </data>
+  <data name="TutorialPage_ExternalPassword.Header" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="TutorialPage_ExternalPassword.PlaceholderText" xml:space="preserve">
+    <value>Enter password</value>
+  </data>
+  <data name="TutorialPage_OfflineGameID.Header" xml:space="preserve">
+    <value>Game ID</value>
+  </data>
+  <data name="TutorialPage_OfflineGameID.PlaceholderText" xml:space="preserve">
+    <value>Enter your nickname...</value>
+  </data>
+  <data name="TutorialPage_PreviousButton.Content" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="TutorialPage_JavaPath.Header" xml:space="preserve">
+    <value>Java Path</value>
+  </data>
+  <data name="TutorialPage_JavaPath.PlaceholderText" xml:space="preserve">
+    <value>Executable path...</value>
+  </data>
+  <data name="TutorialPage_NextButton.Content" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="TutorialPage_FinishButton.Content" xml:space="preserve">
+    <value>Get Started</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_VerifyingExternal" xml:space="preserve">
+    <value>Verifying external account...</value>
+  </data>
+  <data name="TutorialPage_LoginStatus_Cancelled" xml:space="preserve">
+    <value>Login cancelled</value>
+  </data>
+  <data name="TutorialPage_ExternalLogin_FailedMessage" xml:space="preserve">
+    <value>Verification failed, check credentials or server URL</value>
+  </data>
+  <data name="TutorialPage_LoginError_Prefix" xml:space="preserve">
+    <value>Login Error:</value>
+  </data>
+  <data name="TutorialPage_LoginSuccess_Welcome" xml:space="preserve">
+    <value>Welcome back, {0}!</value>
+  </data>
+  <data name="TutorialPage_FormIncomplete_Message" xml:space="preserve">
+    <value>Please fill in all fields</value>
+  </data>
+  <data name="TutorialPage_GetCodeFailed" xml:space="preserve">
+    <value>Failed to get login code</value>
+  </data>
+  <data name="TutorialPage_ExternalLoginButton_LoggedIn" xml:space="preserve">
+    <value>Logged In</value>
+  </data>
+  <data name="TutorialPage_ExternalLoginButton_Login" xml:space="preserve">
+    <value>Login External Account</value>
+  </data>
+  <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve">
+    <value>Installed Java Versions</value>
+  </data>
+  <data name="TutorialPage_DownloadJavaButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Download Java</value>
+  </data>
+  <data name="TutorialPage_AddJavaButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add Manually</value>
+  </data>
+  <data name="TutorialPage_RefreshJavaButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Refresh List</value>
+  </data>
+  <data name="TutorialPage_BrowseButton_Content.Content" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="Settings_Personalization.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
 </root>

@@ -19,9 +19,16 @@ public partial class AcknowledgmentPerson : ObservableObject
     [ObservableProperty]
     private string _supportInfo;
 
-    public AcknowledgmentPerson(string name, string supportInfo)
+    /// <summary>
+    /// 头像路径
+    /// </summary>
+    [ObservableProperty]
+    private string _avatar;
+
+    public AcknowledgmentPerson(string name, string supportInfo, string avatar = "ms-appx:///Assets/Icons/Avatars/Steve.png")
     {
         _name = name;
         _supportInfo = supportInfo;
+        _avatar = avatar;
     }
 }

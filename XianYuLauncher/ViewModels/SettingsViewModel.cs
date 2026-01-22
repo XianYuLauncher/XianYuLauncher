@@ -607,7 +607,8 @@ public partial class SettingsViewModel : ObservableRecipient
         // 初始化鸣谢人员列表
         AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>
         {
-            new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized())
+            new AcknowledgmentPerson("XianYu", "Settings_XianYuSupportText".GetLocalized(), "ms-appx:///Assets/WindowIcon.ico"),
+            new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg")
         };
         
         // 初始化Java版本列表变化事件

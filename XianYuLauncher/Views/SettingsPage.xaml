@@ -870,7 +870,7 @@
                                     <!-- 作者名称占位符 -->
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="SpiritStudio" Style="{ThemeResource TitleTextBlockStyle}" FontSize="20" />
-                                        <TextBlock x:Uid="Settings_ThanksToTeam" Text="感谢所有参与项目开发的工作室成员" Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.7" />
+                                        <TextBlock x:Uid="Settings_ThanksToTeam" Text="感谢所有作出贡献的成员" Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.7" />
                                     </StackPanel>
                                 </StackPanel>
 
@@ -896,7 +896,7 @@
                                                     <!-- 圆形头像 -->
                                                     <Ellipse Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,8">
                                                         <Ellipse.Fill>
-                                                            <ImageBrush ImageSource="ms-appx:///Assets/Icons/Contributors/bangbang93.jpg" Stretch="Uniform" />
+                                                            <ImageBrush ImageSource="{x:Bind Avatar, Mode=OneWay}" Stretch="Uniform" />
                                                         </Ellipse.Fill>
                                                     </Ellipse>
                                                     <!-- 姓名 -->
