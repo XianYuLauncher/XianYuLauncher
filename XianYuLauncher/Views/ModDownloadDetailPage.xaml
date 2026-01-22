@@ -645,17 +645,6 @@
                     </ListView>
                 </StackPanel>
 
-                <!-- 下载状态 -->
-                <Border Background="{ThemeResource SolidBackgroundFillColorSecondary}" 
-                        Padding="12" 
-                        CornerRadius="4"
-                        Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel Spacing="8">
-                        <TextBlock x:Uid="ModDownloadDetailPage_DownloadStatusTitle" Text="下载状态" FontSize="16" FontWeight="Bold" />
-                        <TextBlock Text="{x:Bind ViewModel.DownloadStatus}" FontSize="14" />
-                        <ProgressBar Value="{x:Bind ViewModel.DownloadProgress}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
-                    </StackPanel>
-                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>
