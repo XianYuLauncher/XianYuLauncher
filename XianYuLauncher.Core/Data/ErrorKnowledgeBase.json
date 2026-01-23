@@ -107,7 +107,7 @@
         "parameters": {
           "query": "{target}",
           "projectType": "mod",
-          "loader": "fabric",
+          "loader": "auto",
           "versionRange": "{version}"
         }
       }
@@ -119,7 +119,11 @@
       "patterns": [
         {
           "type": "regex",
-          "value": "Mod ID: '\\s*(?<target>[\\w\\-_]+)\\s*', Requested by: '\\s*(?<source>[\\w\\-_]+)\\s*', Expected range: '\\s*(?<version>\\[[^\\]]+\\])\\s*', Actual version: '\\s*\\[MISSING\\]\\s*'"
+          "value": "Mod ID:\\s*(?:['\"‘’])?(?<target>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Requested by:\\s*(?:['\"‘’])?(?<source>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Expected range:\\s*(?:['\"‘’])?(?<version>\\[[^\\]]+\\])(?:['\"‘’])?\\s*,\\s*Actual version:\\s*(?:['\"‘’])?\\[MISSING\\](?:['\"‘’])?"
+        },
+        {
+          "type": "regex",
+          "value": "Mod\\s+(?<source>[^\\s]+)\\s+requires\\s+(?<target>[^\\s]+)\\s+(?<version>[0-9][^\\s]*)\\s+or\\s+(?<range>above|below)"
         }
       ],
       "title": "缺少前置依赖",
@@ -134,7 +138,7 @@
         "parameters": {
           "query": "{target}",
           "projectType": "mod",
-          "loader": "neoforge",
+          "loader": "auto",
           "versionRange": "{version}"
         }
       }

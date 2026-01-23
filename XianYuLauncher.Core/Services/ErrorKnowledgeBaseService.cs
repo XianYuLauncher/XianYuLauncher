@@ -172,16 +172,17 @@ public class ErrorKnowledgeBaseService
     /// </summary>
     private ErrorRule ResolveRule(ErrorRule rule, Dictionary<string, string> captures)
     {
+        var normalizedCaptures = NormalizeCaptures(captures);
         var resolved = new ErrorRule
         {
             Id = rule.Id,
             Type = rule.Type,
             Priority = rule.Priority,
-            Title = ReplacePlaceholders(rule.Title, captures),
-            Analysis = ReplacePlaceholders(rule.Analysis, captures),
-            Suggestions = rule.Suggestions.Select(s => ReplacePlaceholders(s, captures)).ToList(),
+            Title = ReplacePlaceholders(rule.Title, normalizedCaptures),
+            Analysis = ReplacePlaceholders(rule.Analysis, normalizedCaptures),
+            Suggestions = rule.Suggestions.Select(s => ReplacePlaceholders(s, normalizedCaptures)).ToList(),
             Patterns = rule.Patterns,
-            Action = ResolveAction(rule.Action, captures)
+            Action = ResolveAction(rule.Action, normalizedCaptures)
         };
 
         return resolved;
@@ -220,6 +221,30 @@ public class ErrorKnowledgeBaseService
             var key = match.Groups["key"].Value;
             return captures.TryGetValue(key, out var value) ? value : match.Value;
         });
+    }
+
+    private Dictionary<string, string> NormalizeCaptures(Dictionary<string, string> captures)
+    {
+        if (captures.Count == 0)
+        {
+            return captures;
+        }
+
+        var normalized = new Dictionary<string, string>(captures, StringComparer.OrdinalIgnoreCase);
+        if (normalized.TryGetValue("version", out var version) &&
+            normalized.TryGetValue("range", out var range))
+        {
+            if (range.Equals("above", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized["version"] = $"{version} 或更高";
+            }
+            else if (range.Equals("below", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized["version"] = $"{version} 或更低";
+            }
+        }
+
+        return normalized;
     }
     
     /// <summary>

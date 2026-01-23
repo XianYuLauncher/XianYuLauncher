@@ -184,6 +184,17 @@ namespace XianYuLauncher.ViewModels
 
             try
             {
+                var currentLoader = GetCurrentLoaderType();
+                if (!string.IsNullOrWhiteSpace(currentLoader) && !string.Equals(currentLoader, "vanilla", StringComparison.OrdinalIgnoreCase))
+                {
+                    _currentFixAction.Parameters["loader"] = currentLoader;
+                }
+                else if (_currentFixAction.Parameters.TryGetValue("loader", out var loaderValue) &&
+                         string.Equals(loaderValue, "auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    _currentFixAction.Parameters["loader"] = string.Empty;
+                }
+
                 switch (_currentFixAction.Type?.Trim().ToLowerInvariant())
                 {
                     case "searchmodrinthproject":
@@ -311,6 +322,27 @@ namespace XianYuLauncher.ViewModels
             var normalized = new string(value.Where(char.IsLetterOrDigit).ToArray());
             return normalized.ToLowerInvariant();
         }
+
+        private string GetCurrentLoaderType()
+        {
+            if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var versionDirectory = Path.Combine(_minecraftPath, "versions", _versionId);
+                var versionInfoService = App.GetService<XianYuLauncher.Core.Services.IVersionInfoService>();
+                var config = versionInfoService?.GetFullVersionInfo(_versionId, versionDirectory);
+                return config?.ModLoaderType?.Trim().ToLowerInvariant() ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取版本加载器失败: {ex.Message}");
+                return string.Empty;
+            }
+        }
         
         private bool _isAiAnalyzing = false;
         public bool IsAiAnalyzing
@@ -420,6 +452,9 @@ namespace XianYuLauncher.ViewModels
         // 重置崩溃分析结果
         IsAiAnalyzing = false;
         IsAiAnalysisAvailable = false;
+        HasFixAction = false;
+        FixButtonText = string.Empty;
+        _currentFixAction = null;
         
         // 设置默认文字
         AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
