@@ -236,6 +236,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private ObservableCollection<string> _availableVersions = new();
+
+    private bool _isAvailableVersionsLoading = false;
     
     // 为了与ModPage.xaml兼容，添加ModList属性，指向Mods集合
     public ObservableCollection<ModrinthProject> ModList => Mods;
@@ -1479,6 +1481,27 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 确保可用版本列表已加载
+    /// </summary>
+    public async Task EnsureAvailableVersionsAsync()
+    {
+        if (AvailableVersions.Count > 0 || _isAvailableVersionsLoading)
+        {
+            return;
+        }
+
+        _isAvailableVersionsLoading = true;
+        try
+        {
+            await LoadAvailableVersionsAsync();
+        }
+        finally
+        {
+            _isAvailableVersionsLoading = false;
         }
     }
 

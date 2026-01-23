@@ -68,6 +68,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 ResourceTabView.SelectedIndex = 1;
             }
         });
+
+        // 确保资源筛选版本列表可用
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (ResourceTabView.SelectedIndex > 0)
+            {
+                _ = ViewModel.EnsureAvailableVersionsAsync();
+            }
+        });
     }
     
     /// <summary>
@@ -83,6 +92,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     private async void ResourceTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // 非“版本下载”标签页需要版本筛选列表
+        if (ResourceTabView.SelectedIndex > 0)
+        {
+            _ = ViewModel.EnsureAvailableVersionsAsync();
+        }
+
         // 根据SelectedIndex执行不同的延迟加载逻辑，不再依赖标签标题文本
         switch (ResourceTabView.SelectedIndex)
         {
