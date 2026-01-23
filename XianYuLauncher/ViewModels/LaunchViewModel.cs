@@ -1333,8 +1333,16 @@ public partial class LaunchViewModel : ObservableRecipient
     {
         if (_recommendedMod != null)
         {
-            // 导航到 ModDownloadDetailPage，传递项目 ID
-            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, _recommendedMod.Id);
+            // 导航到 ModDownloadDetailPage，传递完整元组以确保 ProjectType 被正确识别
+             var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string>(
+                 new XianYuLauncher.Core.Models.ModrinthProject { 
+                     ProjectId = _recommendedMod.Id, 
+                     Slug = _recommendedMod.Slug,
+                     ProjectType = _recommendedMod.ProjectType
+                 }, 
+                 _recommendedMod.ProjectType // 明确传递 ProjectType
+             );
+            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
         }
     }
 

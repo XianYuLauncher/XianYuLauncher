@@ -882,12 +882,24 @@ namespace XianYuLauncher.ViewModels
             ModSlug = modDetail.Slug;
             PlatformName = "CurseForge";
             
-            // 设置项目类型
-            ProjectType = _sourceType ?? "mod";
-            
-            // 生成平台 URL
-            PlatformUrl = GenerateCurseForgeUrl(ProjectType, modDetail.Slug);
-            
+              // 设置项目类型：优先通过ClassId判断，其次使用传递进来的_sourceType，最后默认为mod
+              if (modDetail.ClassId.HasValue)
+              {
+                  ProjectType = modDetail.ClassId.Value switch
+                  {
+                      6 => "mod",
+                      12 => "resourcepack",
+                      4471 => "modpack",
+                      6552 => "shader",
+                      6945 => "datapack",
+                      _ => "mod"
+                  };
+                  System.Diagnostics.Debug.WriteLine($"[CurseForge] 根据ClassId ({modDetail.ClassId}) 设置项目类型为: {ProjectType}");
+              }
+              else
+              {
+                  ProjectType = _sourceType ?? "mod";
+              }
             // 更新支持的加载器
             SupportedLoaders.Clear();
             if (modDetail.LatestFilesIndexes != null)
