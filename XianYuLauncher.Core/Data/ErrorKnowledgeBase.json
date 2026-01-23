@@ -86,6 +86,33 @@
       ]
     },
     {
+      "id": "fabric_hard_dependency",
+      "type": "MissingDependency",
+      "priority": 96,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "Reason: \\[HARD_DEP\\s+(?<source>[\\w\\-_]+)\\s+[\\w\\.-]+\\s+\\{depends\\s+(?<target>[\\w\\-_]+)\\s+@\\s+(?<version>\\[[^\\]]+\\])\\}\\]"
+        }
+      ],
+      "title": "缺少前置依赖",
+      "analysis": "检测到模组 {source} 需要前置 {target}，版本要求 {version}。",
+      "suggestions": [
+        "点击下方按钮尝试自动搜索并打开 {target}。",
+        "如果自动搜索失败，请手动下载 {target} 对应版本。"
+      ],
+      "action": {
+        "type": "SearchModrinthProject",
+        "buttonText": "搜索并打开 {target}",
+        "parameters": {
+          "query": "{target}",
+          "projectType": "mod",
+          "loader": "fabric",
+          "versionRange": "{version}"
+        }
+      }
+    },
+    {
       "id": "missing_dependency",
       "type": "MissingDependency",
       "priority": 80,

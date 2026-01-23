@@ -24,6 +24,32 @@ public class CrashAnalysisResult
     /// 崩溃类型
     /// </summary>
     public CrashType Type { get; set; } = CrashType.Unknown;
+
+    /// <summary>
+    /// 可选的修复操作
+    /// </summary>
+    public CrashFixAction? FixAction { get; set; }
+}
+
+/// <summary>
+/// 崩溃修复操作
+/// </summary>
+public class CrashFixAction
+{
+    /// <summary>
+    /// 操作类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 按钮显示文本
+    /// </summary>
+    public string ButtonText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 操作参数
+    /// </summary>
+    public Dictionary<string, string> Parameters { get; set; } = new();
 }
 
 /// <summary>

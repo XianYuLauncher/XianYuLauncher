@@ -92,7 +92,13 @@
                     Background="{ThemeResource LayerFillColorDefaultBrush}">
                 
                 <Grid Padding="20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
                     <ScrollViewer 
+                              Grid.Row="0"
                               VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Disabled" 
                               MaxHeight="300"
@@ -106,6 +112,34 @@
                                x:Name="KnowledgeBaseTextBlock" 
                                IsTextSelectionEnabled="True" />
                     </ScrollViewer>
+
+                    <!-- 智能修复即操作区域 -->
+                    <Button
+                        Grid.Row="1"
+                        x:Uid="ErrorAnalysis_FixButton"
+                        Command="{x:Bind ViewModel.FixErrorCommand}"
+                        Visibility="{x:Bind ViewModel.HasFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,16,0,0"
+                        Padding="12,8"
+                        CornerRadius="4"
+                        Style="{StaticResource AccentButtonStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
+                            <TextBlock 
+                                Grid.Column="1" 
+                                Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
+                                Foreground="White" 
+                                FontWeight="SemiBold"
+                                TextTrimming="CharacterEllipsis"/>
+                            <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
+                        </Grid>
+                    </Button>
                 </Grid>
             </Border>
         </Grid>

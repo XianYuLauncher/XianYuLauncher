@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels
 {
@@ -98,27 +99,217 @@ namespace XianYuLauncher.ViewModels
                 if (_aiAnalysisResult != value)
                 {
                     _aiAnalysisResult = value;
-                    // 确保在UI线程上触发PropertyChanged事件
-                    var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-                    if (dispatcherQueue == null && App.MainWindow != null)
-                    {
-                        dispatcherQueue = App.MainWindow.DispatcherQueue;
-                    }
-                    
-                    if (dispatcherQueue != null)
-                    {
-                        dispatcherQueue.TryEnqueue(() =>
-                        {
-                            OnPropertyChanged(nameof(AiAnalysisResult));
-                        });
-                    }
-                    else
-                    {
-                        // 如果无法获取DispatcherQueue，直接触发事件（可能会在非UI线程上执行）
-                        OnPropertyChanged(nameof(AiAnalysisResult));
-                    }
+                    OnPropertyChanged(nameof(AiAnalysisResult));
                 }
             }
+        }
+
+        // 新增：智能修复相关属性
+        [ObservableProperty]
+        private bool _hasFixAction;
+
+        [ObservableProperty]
+        private string _fixButtonText = string.Empty;
+
+        private CrashFixAction? _currentFixAction;
+
+        private Microsoft.UI.Dispatching.DispatcherQueue? GetUiDispatcherQueue()
+        {
+            var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+            if (dispatcherQueue == null && App.MainWindow != null)
+            {
+                dispatcherQueue = App.MainWindow.DispatcherQueue;
+            }
+
+            return dispatcherQueue;
+        }
+
+        private Task EnqueueOnUiAsync(Action action)
+        {
+            var dispatcherQueue = GetUiDispatcherQueue();
+            if (dispatcherQueue == null)
+            {
+                action();
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource();
+            dispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.SetResult();
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            return tcs.Task;
+        }
+
+        private Task EnqueueOnUiAsync(Func<Task> action)
+        {
+            var dispatcherQueue = GetUiDispatcherQueue();
+            if (dispatcherQueue == null)
+            {
+                return action();
+            }
+
+            var tcs = new TaskCompletionSource();
+            dispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    await action();
+                    tcs.SetResult();
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            return tcs.Task;
+        }
+
+        // 占位命令，后续实现逻辑
+        [RelayCommand]
+        private async Task FixError()
+        {
+            if (_currentFixAction == null)
+            {
+                return;
+            }
+
+            try
+            {
+                switch (_currentFixAction.Type?.Trim().ToLowerInvariant())
+                {
+                    case "searchmodrinthproject":
+                        await ExecuteSearchModrinthProjectAsync(_currentFixAction.Parameters);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
+                });
+            }
+        }
+
+        private async Task ExecuteSearchModrinthProjectAsync(Dictionary<string, string> parameters)
+        {
+            if (!parameters.TryGetValue("query", out var query) || string.IsNullOrWhiteSpace(query))
+            {
+                return;
+            }
+
+            var projectType = parameters.TryGetValue("projectType", out var projectTypeValue)
+                ? projectTypeValue
+                : "mod";
+
+            var loader = parameters.TryGetValue("loader", out var loaderValue)
+                ? loaderValue
+                : string.Empty;
+
+            var modrinthService = App.GetService<XianYuLauncher.Core.Services.ModrinthService>();
+            List<List<string>> facets = null;
+            if (!string.IsNullOrWhiteSpace(loader))
+            {
+                facets = new List<List<string>>
+                {
+                    new List<string> { $"categories:{loader}" }
+                };
+            }
+
+            var result = await modrinthService.SearchModsAsync(query, facets, "relevance", 0, 5, projectType);
+            if (result?.Hits == null || result.Hits.Count == 0)
+            {
+                var cfFound = await TrySearchCurseForgeAsync(query, loader);
+                if (!cfFound)
+                {
+                    await ShowNotFoundDialogAsync(query);
+                }
+                return;
+            }
+
+            var normalizedQuery = NormalizeSlug(query);
+            var bestMatch = result.Hits.FirstOrDefault(h => NormalizeSlug(h.Slug) == normalizedQuery)
+                            ?? result.Hits.FirstOrDefault(h => NormalizeSlug(h.Title) == normalizedQuery)
+                            ?? result.Hits.First();
+
+            var navigationService = App.GetService<INavigationService>();
+            navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(bestMatch, "Modrinth"));
+        }
+
+        private async Task<bool> TrySearchCurseForgeAsync(string query, string loader)
+        {
+            try
+            {
+                var curseForgeService = App.GetService<XianYuLauncher.Core.Services.CurseForgeService>();
+                int? modLoaderType = loader?.Trim().ToLowerInvariant() switch
+                {
+                    "forge" => 1,
+                    "fabric" => 4,
+                    "quilt" => 5,
+                    "neoforge" => 6,
+                    _ => null
+                };
+
+                var cfResult = await curseForgeService.SearchModsAsync(query, null, modLoaderType, null, 0, 5);
+                if (cfResult?.Data == null || cfResult.Data.Count == 0)
+                {
+                    return false;
+                }
+
+                var normalizedQuery = NormalizeSlug(query);
+                var best = cfResult.Data.FirstOrDefault(h => NormalizeSlug(h.Slug) == normalizedQuery)
+                           ?? cfResult.Data.FirstOrDefault(h => NormalizeSlug(h.Name) == normalizedQuery)
+                           ?? cfResult.Data.First();
+
+                var navigationService = App.GetService<INavigationService>();
+                navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, $"curseforge-{best.Id}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\nCurseForge 搜索失败: {ex.Message}";
+                });
+                return false;
+            }
+        }
+
+        private async Task ShowNotFoundDialogAsync(string query)
+        {
+            await EnqueueOnUiAsync(async () =>
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "未找到",
+                    Content = $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
+                    PrimaryButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await dialog.ShowAsync();
+            });
+        }
+
+        private static string NormalizeSlug(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = new string(value.Where(char.IsLetterOrDigit).ToArray());
+            return normalized.ToLowerInvariant();
         }
         
         private bool _isAiAnalyzing = false;
@@ -310,7 +501,13 @@ namespace XianYuLauncher.ViewModels
             
             // 重置分析结果和状态
             IsAiAnalyzing = true;
-            AiAnalysisResult = "正在分析崩溃原因...\n\n";
+            await EnqueueOnUiAsync(() =>
+            {
+                AiAnalysisResult = "正在分析崩溃原因...\n\n";
+                HasFixAction = false;
+                FixButtonText = string.Empty;
+                _currentFixAction = null;
+            });
             
             // 创建取消令牌
             _aiAnalysisCts = new System.Threading.CancellationTokenSource();
@@ -327,10 +524,25 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 逐字追加到结果
-                AiAnalysisResult += chunk;
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += chunk;
+                });
                 
                 // 添加小延迟，让用户看到流式效果
                 await Task.Delay(5);
+            }
+
+            // 获取结构化结果用于修复按钮
+            var analysisResult = await crashAnalyzer.AnalyzeCrashAsync(0, _gameOutput, _gameError);
+            if (analysisResult.FixAction != null)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    _currentFixAction = analysisResult.FixAction;
+                    FixButtonText = analysisResult.FixAction.ButtonText;
+                    HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
+                });
             }
             
             System.Diagnostics.Debug.WriteLine("崩溃分析: 分析完成");
@@ -342,7 +554,10 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("===============================================");
             
             // 用户取消了分析
-            AiAnalysisResult += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+            await EnqueueOnUiAsync(() =>
+            {
+                AiAnalysisResult += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+            });
         }
         catch (Exception ex)
         {
@@ -351,7 +566,10 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("堆栈跟踪: " + ex.StackTrace);
             System.Diagnostics.Debug.WriteLine("===============================================");
             
-            AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message)}";
+            await EnqueueOnUiAsync(() =>
+            {
+                AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message)}";
+            });
         }
         finally
         {

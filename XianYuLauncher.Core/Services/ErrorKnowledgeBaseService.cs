@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Linq;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -52,67 +53,108 @@ public class ErrorKnowledgeBaseService
     }
     
     /// <summary>
-    /// 查询匹配的错误规则
+    /// 查询匹配的错误规则（兼容旧接口）
     /// </summary>
     public async Task<ErrorRule?> QueryErrorAsync(List<string> logs)
     {
+        var match = await QueryErrorMatchAsync(logs);
+        return match?.Rule;
+    }
+
+    /// <summary>
+    /// 查询匹配的错误规则（带捕获组）
+    /// </summary>
+    public async Task<ErrorRuleMatch?> QueryErrorMatchAsync(List<string> logs)
+    {
         await LoadKnowledgeBaseAsync();
-        
+
         if (_knowledgeBase == null || _knowledgeBase.Errors.Count == 0)
         {
             return null;
         }
-        
+
         // 按优先级排序
         var sortedRules = _knowledgeBase.Errors.OrderByDescending(r => r.Priority);
-        
+
         foreach (var rule in sortedRules)
         {
-            if (IsRuleMatched(rule, logs))
+            if (TryMatchRule(rule, logs, out var captures))
             {
                 System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 匹配到规则: {rule.Id} ({rule.Type})");
-                return rule;
+                var resolvedRule = ResolveRule(rule, captures);
+                return new ErrorRuleMatch
+                {
+                    Rule = resolvedRule,
+                    Captures = captures
+                };
             }
         }
-        
+
         return null;
     }
     
     /// <summary>
-    /// 检查规则是否匹配
+    /// 检查规则是否匹配，并返回捕获组
     /// </summary>
-    private bool IsRuleMatched(ErrorRule rule, List<string> logs)
+    private bool TryMatchRule(ErrorRule rule, List<string> logs, out Dictionary<string, string> captures)
     {
+        captures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         // 任意一个模式匹配即可
         foreach (var pattern in rule.Patterns)
         {
             foreach (var log in logs)
             {
-                if (IsPatternMatched(pattern, log))
+                if (TryMatchPattern(pattern, log, out var patternCaptures))
                 {
+                    foreach (var kv in patternCaptures)
+                    {
+                        captures[kv.Key] = kv.Value;
+                    }
                     return true;
                 }
             }
         }
-        
+
         return false;
     }
-    
+
     /// <summary>
-    /// 检查单个模式是否匹配
+    /// 检查单个模式是否匹配，并返回捕获组
     /// </summary>
-    private bool IsPatternMatched(ErrorPattern pattern, string log)
+    private bool TryMatchPattern(ErrorPattern pattern, string log, out Dictionary<string, string> captures)
     {
+        captures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             switch (pattern.Type.ToLower())
             {
                 case "contains":
                     return log.Contains(pattern.Value, StringComparison.OrdinalIgnoreCase);
-                
+
                 case "regex":
-                    return Regex.IsMatch(log, pattern.Value, RegexOptions.IgnoreCase);
-                
+                    var regex = new Regex(pattern.Value, RegexOptions.IgnoreCase);
+                    var match = regex.Match(log);
+                    if (!match.Success)
+                    {
+                        return false;
+                    }
+
+                    foreach (var groupName in regex.GetGroupNames())
+                    {
+                        if (string.Equals(groupName, "0", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var groupValue = match.Groups[groupName].Value;
+                        if (!string.IsNullOrEmpty(groupValue))
+                        {
+                            captures[groupName] = groupValue;
+                        }
+                    }
+                    return true;
+
                 default:
                     System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 未知的模式类型: {pattern.Type}");
                     return false;
@@ -123,6 +165,61 @@ public class ErrorKnowledgeBaseService
             System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 模式匹配失败: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// 使用捕获组替换占位符
+    /// </summary>
+    private ErrorRule ResolveRule(ErrorRule rule, Dictionary<string, string> captures)
+    {
+        var resolved = new ErrorRule
+        {
+            Id = rule.Id,
+            Type = rule.Type,
+            Priority = rule.Priority,
+            Title = ReplacePlaceholders(rule.Title, captures),
+            Analysis = ReplacePlaceholders(rule.Analysis, captures),
+            Suggestions = rule.Suggestions.Select(s => ReplacePlaceholders(s, captures)).ToList(),
+            Patterns = rule.Patterns,
+            Action = ResolveAction(rule.Action, captures)
+        };
+
+        return resolved;
+    }
+
+    private ErrorAction? ResolveAction(ErrorAction? action, Dictionary<string, string> captures)
+    {
+        if (action == null)
+        {
+            return null;
+        }
+
+        var resolved = new ErrorAction
+        {
+            Type = action.Type,
+            ButtonText = ReplacePlaceholders(action.ButtonText, captures)
+        };
+
+        foreach (var kv in action.Parameters)
+        {
+            resolved.Parameters[kv.Key] = ReplacePlaceholders(kv.Value, captures);
+        }
+
+        return resolved;
+    }
+
+    private string ReplacePlaceholders(string? text, Dictionary<string, string> captures)
+    {
+        if (string.IsNullOrEmpty(text) || captures.Count == 0)
+        {
+            return text ?? string.Empty;
+        }
+
+        return Regex.Replace(text, "\\{(?<key>[^{}]+)\\}", match =>
+        {
+            var key = match.Groups["key"].Value;
+            return captures.TryGetValue(key, out var value) ? value : match.Value;
+        });
     }
     
     /// <summary>

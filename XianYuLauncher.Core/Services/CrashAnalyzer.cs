@@ -46,17 +46,26 @@ public class CrashAnalyzer : ICrashAnalyzer
         }
         
         // 使用知识库查询匹配的错误规则
-        var matchedRule = await _knowledgeBaseService.QueryErrorAsync(allLogs);
+        var matchedRule = await _knowledgeBaseService.QueryErrorMatchAsync(allLogs);
         
         if (matchedRule != null)
         {
             // 找到匹配的规则
-            result.Type = ParseCrashType(matchedRule.Type);
-            result.Title = matchedRule.Title;
-            result.Analysis = matchedRule.Analysis;
-            result.Suggestions.AddRange(matchedRule.Suggestions);
+            result.Type = ParseCrashType(matchedRule.Rule.Type);
+            result.Title = matchedRule.Rule.Title;
+            result.Analysis = matchedRule.Rule.Analysis;
+            result.Suggestions.AddRange(matchedRule.Rule.Suggestions);
+            if (matchedRule.Rule.Action != null)
+            {
+                result.FixAction = new CrashFixAction
+                {
+                    Type = matchedRule.Rule.Action.Type,
+                    ButtonText = matchedRule.Rule.Action.ButtonText,
+                    Parameters = new Dictionary<string, string>(matchedRule.Rule.Action.Parameters)
+                };
+            }
             
-            System.Diagnostics.Debug.WriteLine($"[CrashAnalyzer] 使用知识库规则: {matchedRule.Id}");
+            System.Diagnostics.Debug.WriteLine($"[CrashAnalyzer] 使用知识库规则: {matchedRule.Rule.Id}");
         }
         else
         {
@@ -126,12 +135,12 @@ public class CrashAnalyzer : ICrashAnalyzer
         allLogs.AddRange(errorLogs);
         
         // 查询匹配的规则
-        var matchedRule = await _knowledgeBaseService.QueryErrorAsync(allLogs);
+        var matchedRule = await _knowledgeBaseService.QueryErrorMatchAsync(allLogs);
         
         if (matchedRule != null)
         {
             // 使用知识库的流式输出
-            await foreach (var chunk in _knowledgeBaseService.StreamAnalysisAsync(matchedRule))
+            await foreach (var chunk in _knowledgeBaseService.StreamAnalysisAsync(matchedRule.Rule))
             {
                 yield return chunk;
             }

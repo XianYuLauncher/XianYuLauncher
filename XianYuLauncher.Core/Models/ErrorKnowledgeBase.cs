@@ -48,6 +48,11 @@ public class ErrorRule
     /// 建议列表
     /// </summary>
     public List<string> Suggestions { get; set; } = new();
+
+    /// <summary>
+    /// 可选的修复操作
+    /// </summary>
+    public ErrorAction? Action { get; set; }
 }
 
 /// <summary>
@@ -64,4 +69,34 @@ public class ErrorPattern
     /// 匹配值
     /// </summary>
     public string Value { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 错误修复操作定义
+/// </summary>
+public class ErrorAction
+{
+    /// <summary>
+    /// 操作类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 按钮显示文本
+    /// </summary>
+    public string ButtonText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 操作参数（支持占位符）
+    /// </summary>
+    public Dictionary<string, string> Parameters { get; set; } = new();
+}
+
+/// <summary>
+/// 匹配结果（包含捕获组）
+/// </summary>
+public class ErrorRuleMatch
+{
+    public ErrorRule Rule { get; set; } = new();
+    public Dictionary<string, string> Captures { get; set; } = new();
 }
