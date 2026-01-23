@@ -1971,15 +1971,17 @@ public partial class VersionManagementViewModel
                 }
                 
                 // 立即显示mod列表，不等待图标加载完成
-                Mods = newMods;
+                _allMods = newMods.ToList();
+                FilterMods();
                 
                 // 异步加载每个 Mod 的描述（不阻塞 UI）
-                _ = LoadAllModDescriptionsAsync(newMods);
+                _ = LoadAllModDescriptionsAsync(new ObservableCollection<ModInfo>(_allMods));
             }
             else
             {
                 // 清空mod列表
-                Mods.Clear();
+                _allMods.Clear();
+                FilterMods();
             }
         }
         

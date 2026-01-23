@@ -72,12 +72,14 @@ public partial class VersionManagementViewModel
                 }
                 
                 // 立即显示资源包列表，不等待图标加载完成
-                ResourcePacks = newResourcePacks;
+                _allResourcePacks = newResourcePacks.ToList();
+                FilterResourcePacks();
             }
             else
             {
                 // 清空资源包列表
-                ResourcePacks.Clear();
+                _allResourcePacks.Clear();
+                FilterResourcePacks();
             }
         }
         

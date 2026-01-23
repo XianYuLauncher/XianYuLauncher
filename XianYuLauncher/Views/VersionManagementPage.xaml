@@ -925,7 +925,14 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     
-
+                    <!-- 搜索栏 -->
+                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                        <AutoSuggestBox 
+                            x:Uid="VersionManagerPage_SearchModPlaceholder"
+                            Text="{Binding ModSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            QueryIcon="Find"
+                            HorizontalAlignment="Stretch" />
+                    </Grid>
                     
                     <!-- Mod列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">
@@ -1157,7 +1164,14 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     
-
+                    <!-- 搜索栏 -->
+                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                        <AutoSuggestBox 
+                            x:Uid="VersionManagerPage_SearchShaderPlaceholder"
+                            Text="{Binding ShaderSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            QueryIcon="Find"
+                            HorizontalAlignment="Stretch" />
+                    </Grid>
                     
                     <!-- 光影列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">
@@ -1337,7 +1351,14 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     
-
+                    <!-- 搜索栏 -->
+                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                        <AutoSuggestBox 
+                            x:Uid="VersionManagerPage_SearchResourcePackPlaceholder"
+                            Text="{Binding ResourcePackSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            QueryIcon="Find"
+                            HorizontalAlignment="Stretch" />
+                    </Grid>
                     
                     <!-- 资源包列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">
@@ -1750,7 +1771,14 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     
-
+                    <!-- 搜索栏 -->
+                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                        <AutoSuggestBox 
+                            x:Uid="VersionManagerPage_SearchMapPlaceholder"
+                            Text="{Binding MapSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            QueryIcon="Find"
+                            HorizontalAlignment="Stretch" />
+                    </Grid>
                     
                     <!-- 地图列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">

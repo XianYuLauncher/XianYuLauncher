@@ -124,12 +124,10 @@ public partial class VersionManagementViewModel
             }
             
             // 按创建时间倒序排序
-            var sortedScreenshots = new ObservableCollection<ScreenshotInfo>(
-                newScreenshots.OrderByDescending(s => s.OriginalCreationTime)
-            );
+            _allScreenshots = newScreenshots.OrderByDescending(s => s.OriginalCreationTime).ToList();
             
-            // 替换整个Screenshots集合，只触发一次CollectionChanged事件
-            Screenshots = sortedScreenshots;
+            // 应用过滤
+            FilterScreenshots();
             
             // 更新随机截图
             if (Screenshots.Count > 0)
@@ -148,7 +146,8 @@ public partial class VersionManagementViewModel
         else
         {
             // 清空截图列表
-            Screenshots.Clear();
+            _allScreenshots.Clear();
+            FilterScreenshots();
             RandomScreenshotPath = null;
             HasRandomScreenshot = false;
         }

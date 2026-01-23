@@ -178,13 +178,15 @@ public partial class VersionManagementViewModel
                 
                 System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 设置 Maps 集合，共 {newMaps.Count} 个");
                 // 立即显示地图列表，不等待图标加载完成
-                Maps = newMaps;
+                _allMaps = newMaps.ToList();
+                FilterMaps();
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine("[LoadMapsList] 清空地图列表");
                 // 清空地图列表
-                Maps.Clear();
+                _allMaps.Clear();
+                FilterMaps();
             }
             
             System.Diagnostics.Debug.WriteLine("[LoadMapsList] 完成加载地图列表");

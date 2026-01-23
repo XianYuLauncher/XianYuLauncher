@@ -2473,4 +2473,16 @@
   <data name="TutorialPage_BrowseButton_Content.Content" xml:space="preserve">
     <value>浏览</value>
   </data>
+  <data name="VersionManagerPage_SearchModPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>搜索 Mod...</value>
+  </data>
+  <data name="VersionManagerPage_SearchShaderPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>搜索光影...</value>
+  </data>
+  <data name="VersionManagerPage_SearchResourcePackPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>搜索资源包...</value>
+  </data>
+  <data name="VersionManagerPage_SearchMapPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>搜索地图...</value>
+  </data>
 </root>

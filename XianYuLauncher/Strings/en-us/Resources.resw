@@ -2461,4 +2461,16 @@ Continue downloading?</value>
   <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="VersionManagerPage_SearchModPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Search Mod...</value>
+  </data>
+  <data name="VersionManagerPage_SearchShaderPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Search Shaders...</value>
+  </data>
+  <data name="VersionManagerPage_SearchResourcePackPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Search Resource Packs...</value>
+  </data>
+  <data name="VersionManagerPage_SearchMapPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Search Maps...</value>
+  </data>
 </root>

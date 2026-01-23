@@ -72,12 +72,14 @@ public partial class VersionManagementViewModel
                 }
                 
                 // 立即显示光影列表，不等待图标加载完成
-                Shaders = newShaders;
+                _allShaders = newShaders.ToList();
+                FilterShaders();
             }
             else
             {
                 // 清空光影列表
-                Shaders.Clear();
+                _allShaders.Clear();
+                FilterShaders();
             }
         }
         

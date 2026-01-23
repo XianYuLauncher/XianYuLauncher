@@ -160,6 +160,123 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public bool IsScreenshotListEmpty => Screenshots.Count == 0;
     
+    #region 搜索功能相关属性和列表源
+    
+    // 源列表 (Source Lists)
+    private List<ModInfo> _allMods = new();
+    private List<ShaderInfo> _allShaders = new();
+    private List<ResourcePackInfo> _allResourcePacks = new();
+    private List<MapInfo> _allMaps = new();
+    private List<ScreenshotInfo> _allScreenshots = new();
+
+    // 搜索文本属性
+    [ObservableProperty]
+    private string _modSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string _shaderSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string _resourcePackSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string _mapSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string _screenshotSearchText = string.Empty;
+
+    // 搜索文本变更监听
+    partial void OnModSearchTextChanged(string value) => FilterMods();
+    partial void OnShaderSearchTextChanged(string value) => FilterShaders();
+    partial void OnResourcePackSearchTextChanged(string value) => FilterResourcePacks();
+    partial void OnMapSearchTextChanged(string value) => FilterMaps();
+    partial void OnScreenshotSearchTextChanged(string value) => FilterScreenshots();
+
+    // 过滤方法
+    private void FilterMods()
+    {
+        if (_allMods.Count == 0 && Mods.Count > 0 && string.IsNullOrEmpty(ModSearchText))
+        {
+             // 首次初始化可能直接赋值了 Mods，这里同步一下
+             _allMods = Mods.ToList();
+        }
+
+        if (string.IsNullOrWhiteSpace(ModSearchText))
+        {
+             if (Mods.Count != _allMods.Count)
+                Mods = new ObservableCollection<ModInfo>(_allMods);
+        }
+        else
+        {
+             var filtered = _allMods.Where(x => x.Name.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) || (x.Description?.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+             Mods = new ObservableCollection<ModInfo>(filtered);
+        }
+        OnPropertyChanged(nameof(IsModListEmpty));
+    }
+
+    private void FilterShaders()
+    {
+        if (string.IsNullOrWhiteSpace(ShaderSearchText))
+        {
+            if (Shaders.Count != _allShaders.Count)
+                Shaders = new ObservableCollection<ShaderInfo>(_allShaders);
+        }
+        else
+        {
+             var filtered = _allShaders.Where(x => x.Name.Contains(ShaderSearchText, StringComparison.OrdinalIgnoreCase));
+             Shaders = new ObservableCollection<ShaderInfo>(filtered);
+        }
+        OnPropertyChanged(nameof(IsShaderListEmpty));
+    }
+
+    private void FilterResourcePacks()
+    {
+        if (string.IsNullOrWhiteSpace(ResourcePackSearchText))
+        {
+            if (ResourcePacks.Count != _allResourcePacks.Count)
+                ResourcePacks = new ObservableCollection<ResourcePackInfo>(_allResourcePacks);
+        }
+        else
+        {
+             var filtered = _allResourcePacks.Where(x => x.Name.Contains(ResourcePackSearchText, StringComparison.OrdinalIgnoreCase) || (x.Description?.Contains(ResourcePackSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+             ResourcePacks = new ObservableCollection<ResourcePackInfo>(filtered);
+        }
+        OnPropertyChanged(nameof(IsResourcePackListEmpty));
+    }
+
+    private void FilterMaps()
+    {
+        if (string.IsNullOrWhiteSpace(MapSearchText))
+        {
+            if (Maps.Count != _allMaps.Count)
+                Maps = new ObservableCollection<MapInfo>(_allMaps);
+        }
+        else
+        {
+             var filtered = _allMaps.Where(x => x.Name.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) || (x.FileName?.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+             Maps = new ObservableCollection<MapInfo>(filtered);
+        }
+        OnPropertyChanged(nameof(IsMapListEmpty));
+    }
+
+    private void FilterScreenshots()
+    {
+        if (string.IsNullOrWhiteSpace(ScreenshotSearchText))
+        {
+            if (Screenshots.Count != _allScreenshots.Count)
+                Screenshots = new ObservableCollection<ScreenshotInfo>(_allScreenshots);
+        }
+        else
+        {
+             var filtered = _allScreenshots.Where(x => x.FileName.Contains(ScreenshotSearchText, StringComparison.OrdinalIgnoreCase));
+             Screenshots = new ObservableCollection<ScreenshotInfo>(filtered);
+        }
+        OnPropertyChanged(nameof(IsScreenshotListEmpty));
+        OnPropertyChanged(nameof(ScreenshotCount));
+    }
+    
+    #endregion
+    
     #region 概览Tab相关属性
     
     /// <summary>
