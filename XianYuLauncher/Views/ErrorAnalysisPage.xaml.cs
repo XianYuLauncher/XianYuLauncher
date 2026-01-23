@@ -161,6 +161,9 @@ namespace XianYuLauncher.Views
         {
             base.OnNavigatedTo(e);
 
+            // 每次进入页面先清理修复按钮状态，避免残留
+            ViewModel.ResetFixActionState();
+
             // 接收导航参数（如果有）
             if (e.Parameter is Tuple<string, List<string>, List<string>> logData)
             {

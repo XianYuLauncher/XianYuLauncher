@@ -200,6 +200,9 @@ namespace XianYuLauncher.ViewModels
                     case "searchmodrinthproject":
                         await ExecuteSearchModrinthProjectAsync(_currentFixAction.Parameters);
                         break;
+                    case "switchjavaforversion":
+                        await ExecuteSwitchJavaForVersionAsync();
+                        break;
                     default:
                         break;
                 }
@@ -256,6 +259,86 @@ namespace XianYuLauncher.ViewModels
 
             var navigationService = App.GetService<INavigationService>();
             navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(bestMatch, "Modrinth"));
+        }
+
+        private async Task ExecuteSwitchJavaForVersionAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += "\n\n未找到当前版本信息，无法自动切换 Java。";
+                });
+                return;
+            }
+
+            var versionInfoManager = App.GetService<IVersionInfoManager>();
+            VersionInfo? versionInfo = null;
+            try
+            {
+                versionInfo = await versionInfoManager.GetVersionInfoAsync(_versionId, _minecraftPath, allowNetwork: false);
+            }
+            catch
+            {
+                try
+                {
+                    versionInfo = await versionInfoManager.GetVersionInfoAsync(_versionId, _minecraftPath, allowNetwork: true);
+                }
+                catch (Exception ex)
+                {
+                    await EnqueueOnUiAsync(() =>
+                    {
+                        AiAnalysisResult += $"\n\n读取版本信息失败：{ex.Message}";
+                    });
+                    return;
+                }
+            }
+
+            int requiredMajorVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
+
+            var javaRuntimeService = App.GetService<IJavaRuntimeService>();
+            var javaVersions = await javaRuntimeService.DetectJavaVersionsAsync(true);
+            var bestJava = SelectBestJava(javaVersions, requiredMajorVersion);
+
+            if (bestJava == null || string.IsNullOrWhiteSpace(bestJava.Path))
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n未找到可用的 Java {requiredMajorVersion} 版本，请先安装对应版本后再重试。";
+                });
+                return;
+            }
+
+            await EnqueueOnUiAsync(() =>
+            {
+                var launchViewModel = App.GetService<LaunchViewModel>();
+                if (!string.Equals(launchViewModel.SelectedVersion, _versionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    launchViewModel.SelectedVersion = _versionId;
+                }
+
+                launchViewModel.SetTemporaryJavaOverride(bestJava.Path);
+
+                var navigationService = App.GetService<INavigationService>();
+                navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
+
+                launchViewModel.LaunchGameCommand.Execute(null);
+            });
+        }
+
+        private static JavaVersion? SelectBestJava(IReadOnlyCollection<JavaVersion> javaVersions, int requiredMajorVersion)
+        {
+            if (javaVersions == null || javaVersions.Count == 0)
+            {
+                return null;
+            }
+
+            return javaVersions
+                .Where(j => !string.IsNullOrWhiteSpace(j.Path) && File.Exists(j.Path) && j.MajorVersion > 0)
+                .OrderByDescending(j => j.MajorVersion == requiredMajorVersion)
+                .ThenByDescending(j => j.IsJDK)
+                .ThenBy(j => Math.Abs(j.MajorVersion - requiredMajorVersion))
+                .FirstOrDefault();
         }
 
         private async Task<bool> TrySearchCurseForgeAsync(string query, string loader)
@@ -551,21 +634,41 @@ namespace XianYuLauncher.ViewModels
             var crashAnalyzer = App.GetService<XianYuLauncher.Core.Contracts.Services.ICrashAnalyzer>();
             
             // 获取流式分析结果
+            var buffered = new StringBuilder();
+            var lastFlush = DateTime.UtcNow;
+            const int flushIntervalMs = 30;
+
             await foreach (var chunk in crashAnalyzer.GetStreamingAnalysisAsync(0, _gameOutput, _gameError))
             {
                 if (_aiAnalysisCts.Token.IsCancellationRequested)
                 {
                     break;
                 }
-                
-                // 逐字追加到结果
+
+                buffered.Append(chunk);
+
+                var now = DateTime.UtcNow;
+                if ((now - lastFlush).TotalMilliseconds >= flushIntervalMs)
+                {
+                    var text = buffered.ToString();
+                    buffered.Clear();
+                    lastFlush = now;
+
+                    await EnqueueOnUiAsync(() =>
+                    {
+                        AiAnalysisResult += text;
+                    });
+                }
+            }
+
+            if (buffered.Length > 0)
+            {
+                var remaining = buffered.ToString();
+                buffered.Clear();
                 await EnqueueOnUiAsync(() =>
                 {
-                    AiAnalysisResult += chunk;
+                    AiAnalysisResult += remaining;
                 });
-                
-                // 添加小延迟，让用户看到流式效果
-                await Task.Delay(5);
             }
 
             // 获取结构化结果用于修复按钮
@@ -675,6 +778,7 @@ namespace XianYuLauncher.ViewModels
         IsAiAnalyzing = false;
         IsAiAnalysisAvailable = false;
         AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
+        ResetFixActionState();
         
         // 清空日志但保留启动命令
         _gameOutput = new List<string>();
@@ -689,6 +793,16 @@ namespace XianYuLauncher.ViewModels
         
         // 生成完整日志
         GenerateFullLog();
+    }
+
+    /// <summary>
+    /// 重置智能修复按钮状态
+    /// </summary>
+    public void ResetFixActionState()
+    {
+        HasFixAction = false;
+        FixButtonText = string.Empty;
+        _currentFixAction = null;
     }
     
     /// <summary>

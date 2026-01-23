@@ -749,6 +749,7 @@ public partial class LaunchViewModel : ObservableRecipient
     private List<string> _gameOutput = new List<string>();
     private List<string> _gameError = new List<string>();
     private string _launchCommand = string.Empty;
+    private string? _temporaryJavaOverridePath;
     
     // 游戏启动时间（用于计算游戏时长）
     private DateTime _gameStartTime;
@@ -1734,6 +1735,9 @@ public partial class LaunchViewModel : ObservableRecipient
             string currentDownloadHash = string.Empty;
             double currentProgress = 0;
             
+            var javaOverridePath = _temporaryJavaOverridePath;
+            _temporaryJavaOverridePath = null;
+
             var result = await _gameLaunchService.LaunchGameAsync(
                 SelectedVersion,
                 SelectedProfile,
@@ -1788,7 +1792,8 @@ public partial class LaunchViewModel : ObservableRecipient
                         LaunchStatus = status;
                     }
                 },
-                _downloadCancellationTokenSource.Token);
+                _downloadCancellationTokenSource.Token,
+                javaOverridePath);
             
             _downloadCancellationTokenSource?.Dispose();
             _downloadCancellationTokenSource = null;
@@ -1943,6 +1948,15 @@ public partial class LaunchViewModel : ObservableRecipient
         }
         
         _logger.LogInformation("=== 启动游戏流程结束 ===");
+    }
+
+    /// <summary>
+    /// 设置一次性的 Java 覆盖路径（仅用于下一次启动）
+    /// </summary>
+    /// <param name="javaPath">Java 可执行文件路径</param>
+    public void SetTemporaryJavaOverride(string? javaPath)
+    {
+        _temporaryJavaOverridePath = javaPath;
     }
     
     /// <summary>

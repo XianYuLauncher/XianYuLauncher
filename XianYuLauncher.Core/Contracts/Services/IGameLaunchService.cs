@@ -29,7 +29,8 @@ public interface IGameLaunchService
         MinecraftProfile profile,
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? overrideJavaPath = null);
     
     /// <summary>
     /// 设置外置登录回调

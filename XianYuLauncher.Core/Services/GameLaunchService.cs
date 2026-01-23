@@ -174,7 +174,8 @@ public class GameLaunchService : IGameLaunchService
         MinecraftProfile profile,
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? overrideJavaPath = null)
     {
         _logger.LogInformation("=== GameLaunchService.LaunchGameAsync 开始 ===");
         _logger.LogInformation("版本名称: {VersionName}", versionName);
@@ -300,7 +301,12 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("需要 Java 版本: {RequiredVersion}", requiredJavaVersion);
             
             string? javaPath;
-            if (!config.UseGlobalJavaSetting && !string.IsNullOrEmpty(config.JavaPath))
+            if (!string.IsNullOrEmpty(overrideJavaPath) && File.Exists(overrideJavaPath))
+            {
+                _logger.LogInformation("使用临时 Java 覆盖路径: {JavaPath}", overrideJavaPath);
+                javaPath = overrideJavaPath;
+            }
+            else if (!config.UseGlobalJavaSetting && !string.IsNullOrEmpty(config.JavaPath))
             {
                 _logger.LogInformation("使用版本专用 Java: {JavaPath}", config.JavaPath);
                 javaPath = config.JavaPath;
@@ -441,8 +447,7 @@ public class GameLaunchService : IGameLaunchService
         string minecraftPath)
     {
         var args = new List<string>();
-        
-        // 获取 Java 版本信息
+
         int currentJavaMajorVersion = 8;
         var javaVersionInfo = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath);
         if (javaVersionInfo != null)

@@ -218,16 +218,21 @@
         }
       ],
       "title": "Java 版本不匹配",
-      "analysis": "Java 版本不匹配。游戏或 Mod 需要更高版本的 Java 才能运行。当前使用的 Java 版本过低，无法加载较新版本编译的类文件。",
+      "analysis": "Java 版本不匹配。游戏需要更高版本的 Java 才能运行。当前使用的 Java 版本过低，无法加载较新版本编译的类文件。",
       "suggestions": [
         "检查游戏所需的 Java 版本（通常在游戏说明中）",
         "在启动器设置中选择正确的 Java 版本",
-        "Minecraft 1.17+ 需要 Java 16 或更高版本",
-        "Minecraft 1.18+ 建议使用 Java 17",
+        "Minecraft 1.17+ 建议使用 Java 17",
         "Minecraft 1.20.5+ 需要 Java 21",
-        "如果当前 Java 版本过低（如 Java 8），请下载并安装更高版本的 Java",
-        "class file version 65.0 对应 Java 21，52.0 对应 Java 8"
-      ]
+        "如果当前 Java 版本过低（如 Java 8），请下载并安装更高版本的 Java"
+      ],
+      "action": {
+        "type": "SwitchJavaForVersion",
+        "buttonText": "自动切换 Java 并重新启动",
+        "parameters": {
+          "source": "version.json"
+        }
+      }
     },
     {
       "id": "graphics_driver",
