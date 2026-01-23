@@ -2732,8 +2732,18 @@ namespace XianYuLauncher.ViewModels
 
                 if (string.IsNullOrEmpty(modVersion.DownloadUrl))
                 {
+                    System.Diagnostics.Debug.WriteLine($"[Error] 世界存档下载链接为空。FileName: {modVersion.FileName}");
                     throw new Exception("下载链接为空，无法下载世界存档");
                 }
+
+                // 检查 URL 有效性并输出日志
+                if (!Uri.TryCreate(modVersion.DownloadUrl, UriKind.Absolute, out Uri? uriResult))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Error] 世界存档下载链接无效: '{modVersion.DownloadUrl}'");
+                    throw new Exception($"无效的下载链接: {modVersion.DownloadUrl}");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Info] 准备下载世界存档: {ModName}, URL: {modVersion.DownloadUrl}");
 
                 // 设置待后台下载信息（世界下载）
                 SetPendingWorldBackgroundDownload(modVersion, savesDir, modVersion.FileName);
@@ -3635,6 +3645,36 @@ namespace XianYuLauncher.ViewModels
                 string savePath = Path.Combine(targetDir, modVersion.FileName);
                 
                 System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载路径: {savePath}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载URL: {modVersion.DownloadUrl}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] Mod Version JSON: {System.Text.Json.JsonSerializer.Serialize(modVersion)}");
+
+                // 如果URL缺失且是CurseForge资源，尝试手动构造
+                if (string.IsNullOrEmpty(modVersion.DownloadUrl) && modVersion.IsCurseForge && modVersion.OriginalCurseForgeFile != null)
+                {
+                    try 
+                    {
+                        modVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
+                            modVersion.OriginalCurseForgeFile.Id,
+                            modVersion.OriginalCurseForgeFile.FileName ?? modVersion.FileName);
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] 手动构造下载URL: {modVersion.DownloadUrl}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[QuickInstall] 构造URL失败: {ex.Message}");
+                    }
+                }
+
+                if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                {
+                    IsDownloading = false;
+                    IsDownloadProgressDialogOpen = false;
+                    var dialogService = App.GetService<IDialogService>();
+                    if (dialogService != null)
+                    {
+                         await dialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
+                    }
+                    return;
+                }
                 
                 // 显示下载进度弹窗
                 IsDownloadProgressDialogOpen = true;

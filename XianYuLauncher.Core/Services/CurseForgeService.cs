@@ -102,6 +102,25 @@ public class CurseForgeService
     }
     
     /// <summary>
+    /// 构造下载URL（针对API返回空URL的情况）
+    /// 会自动应用当前的镜像源设置
+    /// </summary>
+    public string ConstructDownloadUrl(long fileId, string fileName)
+    {
+        // 构造官方Edge URL: https://edge.forgecdn.net/files/{id/1000}/{id%1000}/{fileName}
+        // 注意：CurseForge的FileID可能会比较大，分段逻辑适用于多数情况
+        // 7203070 -> 7203/070
+        
+        long part1 = fileId / 1000;
+        long part2 = fileId % 1000;
+        
+        string officialUrl = $"https://edge.forgecdn.net/files/{part1}/{part2}/{fileName}";
+        
+        // 转换镜像（如果有配置）
+        return TransformCdnUrl(officialUrl);
+    }
+
+    /// <summary>
     /// 转换CDN下载URL（根据当前下载源）
     /// </summary>
     private string TransformCdnUrl(string originalUrl)

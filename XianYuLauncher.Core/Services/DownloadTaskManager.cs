@@ -517,6 +517,19 @@ public class DownloadTaskManager : IDownloadTaskManager
         Action<double> progressCallback,
         CancellationToken cancellationToken)
     {
+        // 验证 URL
+        if (string.IsNullOrEmpty(url))
+        {
+            throw new ArgumentNullException(nameof(url), "下载 URL 不能为空");
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uriResult))
+        {
+             // 尝试打印出问题的 URL 信息
+             _logger.LogError("无效的下载 URL: '{Url}'", url);
+             throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
+        }
+
         // 确保目录存在
         var directory = Path.GetDirectoryName(savePath);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -524,11 +537,12 @@ public class DownloadTaskManager : IDownloadTaskManager
             Directory.CreateDirectory(directory);
         }
 
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await _httpClient.GetAsync(uriResult, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
         var downloadedBytes = 0L;
+
 
         await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
         await using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
