@@ -110,12 +110,38 @@ public class CurseForgeCacheService
             var remainingTime = CacheExpiration - timeSinceCache;
             System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 项");
             
+            // 应用本地图片缓存
+            ApplyLocalImageCache(cacheData.Items);
+
             return cacheData;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 读取缓存失败: {ex.Message}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 应用本地图片缓存到项目列表
+    /// </summary>
+    private void ApplyLocalImageCache(List<ModrinthProject> items)
+    {
+        if (items == null) return;
+        
+        foreach (var item in items)
+        {
+            if (item.IconUrl == null) continue;
+            
+            // 注意：这里我们使用原始 URL 来查找缓存文件
+            if (item.IconUrl.Scheme == "file") continue;
+
+            var localPath = GetCachedImagePath(item.IconUrl.ToString());
+            if (File.Exists(localPath))
+            {
+                // 将 IconUrl 替换为本地文件 URI
+                item.IconUrl = new Uri($"file:///{localPath.Replace('\\', '/')}");
+            }
         }
     }
     
