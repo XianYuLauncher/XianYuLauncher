@@ -2473,4 +2473,13 @@ Continue downloading?</value>
   <data name="VersionManagerPage_SearchMapPlaceholder.PlaceholderText" xml:space="preserve">
     <value>Search Maps...</value>
   </data>
+  <data name="ModLoaderSelector_VersionNameDescription_Default" xml:space="preserve">
+    <value>Custom version name. A version folder, jar file, and json file will be created with this name upon download.</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_Empty" xml:space="preserve">
+    <value>Version name cannot be empty</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
+    <value>Version '{0}' already exists, please use a different name</value>
+  </data>
 </root>

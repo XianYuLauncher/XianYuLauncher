@@ -2485,4 +2485,13 @@
   <data name="VersionManagerPage_SearchMapPlaceholder.PlaceholderText" xml:space="preserve">
     <value>搜索地图...</value>
   </data>
+  <data name="ModLoaderSelector_VersionNameDescription_Default" xml:space="preserve">
+    <value>自定义版本名称，下载时将使用此名称创建版本文件夹、jar文件和json文件。</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_Empty" xml:space="preserve">
+    <value>版本名称不能为空</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
+    <value>版本 '{0}' 已存在，请使用其他名称</value>
+  </data>
 </root>

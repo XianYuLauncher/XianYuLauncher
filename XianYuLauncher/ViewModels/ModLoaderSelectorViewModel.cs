@@ -103,7 +103,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     /// 版本名称描述文本（根据验证状态动态变化）
     /// </summary>
     public string VersionNameDescription => IsVersionNameValid 
-        ? "自定义版本名称，下载时将使用此名称创建版本文件夹、jar文件和json文件。" 
+        ? "ModLoaderSelector_VersionNameDescription_Default".GetLocalized() 
         : VersionNameErrorMessage;
     
     partial void OnVersionNameChanged(string value)
@@ -129,7 +129,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         if (string.IsNullOrWhiteSpace(VersionName))
         {
             IsVersionNameValid = false;
-            VersionNameErrorMessage = "版本名称不能为空";
+            VersionNameErrorMessage = "ModLoaderSelector_VersionNameError_Empty".GetLocalized();
             return;
         }
         
@@ -141,7 +141,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         if (Directory.Exists(versionDirectory))
         {
             IsVersionNameValid = false;
-            VersionNameErrorMessage = $"版本 '{VersionName}' 已存在，请使用其他名称";
+            VersionNameErrorMessage = string.Format("ModLoaderSelector_VersionNameError_Exists".GetLocalized(), VersionName);
         }
         else
         {
