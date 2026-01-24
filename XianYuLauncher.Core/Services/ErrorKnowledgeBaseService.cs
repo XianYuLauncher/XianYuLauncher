@@ -185,7 +185,8 @@ public class ErrorKnowledgeBaseService
             Analysis = ReplacePlaceholders(rule.Analysis, normalizedCaptures),
             Suggestions = rule.Suggestions.Select(s => ReplacePlaceholders(s, normalizedCaptures)).ToList(),
             Patterns = rule.Patterns,
-            Action = ResolveAction(rule.Action, normalizedCaptures)
+            Action = ResolveAction(rule.Action, normalizedCaptures),
+            Actions = rule.Actions.Select(a => ResolveAction(a, normalizedCaptures)!).Where(a => a != null).ToList()
         };
 
         return resolved;

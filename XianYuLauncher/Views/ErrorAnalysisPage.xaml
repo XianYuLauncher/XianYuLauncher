@@ -114,32 +114,54 @@
                     </ScrollViewer>
 
                     <!-- 智能修复即操作区域 -->
-                    <Button
-                        Grid.Row="1"
-                        x:Uid="ErrorAnalysis_FixButton"
-                        Command="{x:Bind ViewModel.FixErrorCommand}"
-                        Visibility="{x:Bind ViewModel.HasFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        HorizontalAlignment="Stretch"
-                        Margin="0,16,0,0"
-                        Padding="12,8"
-                        CornerRadius="4"
-                        Style="{StaticResource AccentButtonStyle}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
-                            <TextBlock 
-                                Grid.Column="1" 
-                                Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
-                                Foreground="White" 
-                                FontWeight="SemiBold"
-                                TextTrimming="CharacterEllipsis"/>
-                            <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
-                        </Grid>
-                    </Button>
+                    <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="8">
+                        <Button
+                            x:Uid="ErrorAnalysis_FixButton"
+                            Command="{x:Bind ViewModel.FixErrorCommand}"
+                            Visibility="{x:Bind ViewModel.HasFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Stretch"
+                            Padding="12,8"
+                            CornerRadius="4"
+                            Style="{StaticResource AccentButtonStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
+                                <TextBlock 
+                                    Grid.Column="1" 
+                                    Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
+                                    Foreground="White" 
+                                    FontWeight="SemiBold"
+                                    TextTrimming="CharacterEllipsis"/>
+                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
+                            </Grid>
+                        </Button>
+                        <Button
+                            x:Uid="ErrorAnalysis_FixSecondaryButton"
+                            Command="{x:Bind ViewModel.FixErrorSecondaryCommand}"
+                            Visibility="{x:Bind ViewModel.HasSecondaryFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Stretch"
+                            Padding="12,8"
+                            CornerRadius="4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE74D;" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock 
+                                    Grid.Column="1" 
+                                    Text="{x:Bind ViewModel.SecondaryFixButtonText, Mode=OneWay}" 
+                                    FontWeight="SemiBold"
+                                    TextTrimming="CharacterEllipsis"/>
+                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Opacity="0.8" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

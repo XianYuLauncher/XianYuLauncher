@@ -10,6 +10,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -111,7 +112,14 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _fixButtonText = string.Empty;
 
+        [ObservableProperty]
+        private bool _hasSecondaryFixAction;
+
+        [ObservableProperty]
+        private string _secondaryFixButtonText = string.Empty;
+
         private CrashFixAction? _currentFixAction;
+        private CrashFixAction? _secondaryFixAction;
 
         private Microsoft.UI.Dispatching.DispatcherQueue? GetUiDispatcherQueue()
         {
@@ -202,6 +210,43 @@ namespace XianYuLauncher.ViewModels
                         break;
                     case "switchjavaforversion":
                         await ExecuteSwitchJavaForVersionAsync();
+                        break;
+                    case "deletemod":
+                        await ExecuteDeleteModAsync(_currentFixAction.Parameters);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
+                });
+            }
+        }
+
+        [RelayCommand]
+        private async Task FixErrorSecondary()
+        {
+            if (_secondaryFixAction == null)
+            {
+                return;
+            }
+
+            try
+            {
+                switch (_secondaryFixAction.Type?.Trim().ToLowerInvariant())
+                {
+                    case "searchmodrinthproject":
+                        await ExecuteSearchModrinthProjectAsync(_secondaryFixAction.Parameters);
+                        break;
+                    case "switchjavaforversion":
+                        await ExecuteSwitchJavaForVersionAsync();
+                        break;
+                    case "deletemod":
+                        await ExecuteDeleteModAsync(_secondaryFixAction.Parameters);
                         break;
                     default:
                         break;
@@ -324,6 +369,129 @@ namespace XianYuLauncher.ViewModels
 
                 launchViewModel.LaunchGameCommand.Execute(null);
             });
+        }
+
+        private async Task ExecuteDeleteModAsync(Dictionary<string, string> parameters)
+        {
+            if (!parameters.TryGetValue("modId", out var modId) || string.IsNullOrWhiteSpace(modId))
+            {
+                return;
+            }
+
+            var modFilePath = await FindModFileByIdAsync(modId);
+            if (string.IsNullOrWhiteSpace(modFilePath))
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n未找到 Mod 文件：{modId}";
+                });
+                return;
+            }
+
+            bool shouldDelete = false;
+            await EnqueueOnUiAsync(async () =>
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "删除 Mod",
+                    Content = $"确定要删除该 Mod 吗？\n\n{Path.GetFileName(modFilePath)}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
+                    PrimaryButtonText = "删除",
+                    CloseButtonText = "取消",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                shouldDelete = result == ContentDialogResult.Primary;
+            });
+
+            if (!shouldDelete)
+            {
+                return;
+            }
+
+            try
+            {
+                File.Delete(modFilePath);
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n已删除 Mod：{Path.GetFileName(modFilePath)}";
+                });
+            }
+            catch (Exception ex)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n删除 Mod 失败：{ex.Message}";
+                });
+            }
+        }
+
+        private async Task<string?> FindModFileByIdAsync(string modId)
+        {
+            if (string.IsNullOrWhiteSpace(_minecraftPath))
+            {
+                return null;
+            }
+
+            var candidateFiles = new List<string>();
+            var globalModsPath = Path.Combine(_minecraftPath, "mods");
+            if (Directory.Exists(globalModsPath))
+            {
+                candidateFiles.AddRange(Directory.GetFiles(globalModsPath, "*.jar*"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(_versionId))
+            {
+                var versionModsPath = Path.Combine(_minecraftPath, "versions", _versionId, "mods");
+                if (Directory.Exists(versionModsPath))
+                {
+                    candidateFiles.AddRange(Directory.GetFiles(versionModsPath, "*.jar*"));
+                }
+            }
+
+            var normalizedModId = modId.Trim();
+            foreach (var file in candidateFiles)
+            {
+                var fileName = Path.GetFileName(file);
+                if (!string.IsNullOrWhiteSpace(fileName) &&
+                    fileName.Contains(normalizedModId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return file;
+                }
+
+                var fabricId = await TryGetFabricModIdAsync(file);
+                if (!string.IsNullOrWhiteSpace(fabricId) &&
+                    string.Equals(fabricId, normalizedModId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return file;
+                }
+            }
+
+            return null;
+        }
+
+        private static async Task<string?> TryGetFabricModIdAsync(string jarPath)
+        {
+            try
+            {
+                using var archive = ZipFile.OpenRead(jarPath);
+                var entry = archive.GetEntry("fabric.mod.json");
+                if (entry == null)
+                {
+                    return null;
+                }
+
+                using var stream = entry.Open();
+                using var reader = new StreamReader(stream);
+                var json = await reader.ReadToEndAsync();
+                var obj = JObject.Parse(json);
+                var idToken = obj["id"];
+                return idToken?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static JavaVersion? SelectBestJava(IReadOnlyCollection<JavaVersion> javaVersions, int requiredMajorVersion)
@@ -674,15 +842,30 @@ namespace XianYuLauncher.ViewModels
 
             // 获取结构化结果用于修复按钮
             var analysisResult = await crashAnalyzer.AnalyzeCrashAsync(0, _gameOutput, _gameError);
-            if (analysisResult.FixAction != null)
+            await EnqueueOnUiAsync(() =>
             {
-                await EnqueueOnUiAsync(() =>
+                ResetFixActionState();
+
+                var actions = analysisResult.FixActions ?? new List<CrashFixAction>();
+                if (actions.Count == 0 && analysisResult.FixAction != null)
                 {
-                    _currentFixAction = analysisResult.FixAction;
-                    FixButtonText = analysisResult.FixAction.ButtonText;
+                    actions.Add(analysisResult.FixAction);
+                }
+
+                if (actions.Count > 0)
+                {
+                    _currentFixAction = actions[0];
+                    FixButtonText = actions[0].ButtonText;
                     HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
-                });
-            }
+                }
+
+                if (actions.Count > 1)
+                {
+                    _secondaryFixAction = actions[1];
+                    SecondaryFixButtonText = actions[1].ButtonText;
+                    HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
+                }
+            });
             
             System.Diagnostics.Debug.WriteLine("崩溃分析: 分析完成");
             System.Diagnostics.Debug.WriteLine("===============================================");
@@ -804,6 +987,9 @@ namespace XianYuLauncher.ViewModels
         HasFixAction = false;
         FixButtonText = string.Empty;
         _currentFixAction = null;
+        HasSecondaryFixAction = false;
+        SecondaryFixButtonText = string.Empty;
+        _secondaryFixAction = null;
     }
     
     /// <summary>

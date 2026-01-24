@@ -29,6 +29,11 @@ public class CrashAnalysisResult
     /// 可选的修复操作
     /// </summary>
     public CrashFixAction? FixAction { get; set; }
+
+    /// <summary>
+    /// 可选的修复操作列表（支持多按钮）
+    /// </summary>
+    public List<CrashFixAction> FixActions { get; set; } = new();
 }
 
 /// <summary>

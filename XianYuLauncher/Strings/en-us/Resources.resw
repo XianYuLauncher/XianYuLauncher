@@ -1325,7 +1325,7 @@ Continue downloading?</value>
     <value>Real-time Log Details</value>
   </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>Crash Analysis</value>
+    <value>XianYu Fixer</value>
   </data>
   <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
     <value>No analysis content because Minecraft hasn't crashed yet...</value>

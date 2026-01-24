@@ -55,7 +55,19 @@ public class CrashAnalyzer : ICrashAnalyzer
             result.Title = matchedRule.Rule.Title;
             result.Analysis = matchedRule.Rule.Analysis;
             result.Suggestions.AddRange(matchedRule.Rule.Suggestions);
-            if (matchedRule.Rule.Action != null)
+            if (matchedRule.Rule.Actions != null && matchedRule.Rule.Actions.Count > 0)
+            {
+                foreach (var action in matchedRule.Rule.Actions)
+                {
+                    result.FixActions.Add(new CrashFixAction
+                    {
+                        Type = action.Type,
+                        ButtonText = action.ButtonText,
+                        Parameters = new Dictionary<string, string>(action.Parameters)
+                    });
+                }
+            }
+            else if (matchedRule.Rule.Action != null)
             {
                 result.FixAction = new CrashFixAction
                 {

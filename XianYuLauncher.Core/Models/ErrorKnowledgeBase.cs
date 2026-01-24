@@ -53,6 +53,11 @@ public class ErrorRule
     /// 可选的修复操作
     /// </summary>
     public ErrorAction? Action { get; set; }
+
+    /// <summary>
+    /// 可选的修复操作列表（支持多按钮）
+    /// </summary>
+    public List<ErrorAction> Actions { get; set; } = new();
 }
 
 /// <summary>

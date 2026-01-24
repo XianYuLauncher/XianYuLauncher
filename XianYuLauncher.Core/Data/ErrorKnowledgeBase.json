@@ -92,7 +92,7 @@
       "patterns": [
         {
           "type": "regex",
-          "value": "Reason: \\[HARD_DEP\\s+(?<source>[\\w\\-_]+)\\s+[\\w\\.-]+\\s+\\{depends\\s+(?<target>[\\w\\-_]+)\\s+@\\s+(?<version>\\[[^\\]]+\\])\\}\\]"
+          "value": "(?i)(Immediate reason|Reason): \\[(HARD_DEP_NO_CANDIDATE|HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+(?<target>(?!java\\b)[\\w\\-_]+)\\s+@\\s+(?<version>\\[[^\\]]+\\])\\}\\]"
         }
       ],
       "title": "缺少前置依赖",
@@ -111,6 +111,51 @@
           "versionRange": "{version}"
         }
       }
+    },
+    {
+      "id": "fabric_incompatible_mod_version",
+      "type": "ModConflict",
+      "priority": 97,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)Immediate reason: \\[(HARD_DEP_INCOMPATIBLE_PRESELECTED)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)Reason: \\[(HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "Fix:.*\\[\\[minecraft\\s+(?<mc_version>[^\\]\\s]+)\\]\\s*->\\s*add:minecraft\\s+(?<required_mc>[^\\s]+)"
+        }
+      ],
+      "title": "Mod 版本不兼容",
+      "analysis": "检测到模组 {source}（{mod_version}）与当前 Minecraft 版本 {mc_version} 不兼容。该模组要求的 MC 版本范围为 {mc_range}。",
+      "suggestions": [
+        "请下载与当前 Minecraft 版本兼容的 {source} 模组版本",
+        "若希望保留该模组版本，请改用 {required_mc} 范围内的 Minecraft 版本",
+        "点击下方按钮搜索并打开 {source}"
+      ],
+      "actions": [
+        {
+          "type": "SearchModrinthProject",
+          "buttonText": "搜索并打开 {source}",
+          "parameters": {
+            "query": "{source}",
+            "projectType": "mod",
+            "loader": "auto",
+            "versionRange": "{mc_range}"
+          }
+        },
+        {
+          "type": "DeleteMod",
+          "buttonText": "删除该 Mod",
+          "parameters": {
+            "modId": "{source}"
+          }
+        }
+      ]
     },
     {
       "id": "neoforge_missing_dependency",
@@ -399,7 +444,6 @@
       "analysis": "存档文件损坏。游戏世界的某些区块数据出现问题。",
       "suggestions": [
         "尝试使用备份恢复存档",
-        "使用 MCEdit 等工具修复损坏的区块",
         "如果只是部分区块损坏，可以删除对应的 region 文件（会重新生成地形）",
         "定期备份重要存档以防数据丢失",
         "检查硬盘是否有坏道或空间不足"

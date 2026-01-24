@@ -1328,7 +1328,7 @@
     <value>实时日志详情</value>
   </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>崩溃分析</value>
+    <value>XianYu Fixer</value>
   </data>
   <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
     <value>没有分析内容,因为Minecraft还没崩溃...</value>
