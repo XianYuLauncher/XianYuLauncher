@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;
 
 namespace XianYuLauncher.Views;
 
@@ -38,6 +38,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
         DataContext = ViewModel;
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         InitializeComponent();
         
         // 在页面加载完成后检查是否需要切换标签页
@@ -85,6 +86,75 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     public void OnNavigatedFrom()
     {
         // 清理资源
+    }
+
+    private async void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.IsFavoritesVersionDialogOpen))
+        {
+            if (ViewModel.IsFavoritesVersionDialogOpen)
+            {
+                await FavoritesVersionDialog.ShowAsync();
+            }
+            else
+            {
+                FavoritesVersionDialog.Hide();
+            }
+        }
+        else if (e.PropertyName == nameof(ViewModel.IsFavoritesDownloadProgressDialogOpen))
+        {
+            if (ViewModel.IsFavoritesDownloadProgressDialogOpen)
+            {
+                await FavoritesDownloadProgressDialog.ShowAsync();
+            }
+            else
+            {
+                FavoritesDownloadProgressDialog.Hide();
+            }
+        }
+        else if (e.PropertyName == nameof(ViewModel.IsFavoritesImportResultDialogOpen))
+        {
+            if (ViewModel.IsFavoritesImportResultDialogOpen)
+            {
+                await FavoritesImportResultDialog.ShowAsync();
+            }
+            else
+            {
+                FavoritesImportResultDialog.Hide();
+            }
+        }
+    }
+
+    private async void FavoritesVersionDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        if (ViewModel.SelectedFavoritesInstallVersion == null)
+        {
+            args.Cancel = true;
+            var dialogService = App.GetService<IDialogService>();
+            if (dialogService != null)
+            {
+                await dialogService.ShowMessageDialogAsync("提示", "请选择一个游戏版本。");
+            }
+            return;
+        }
+
+        ViewModel.IsFavoritesVersionDialogOpen = false;
+        await ViewModel.ImportFavoritesToSelectedVersionAsync();
+    }
+
+    private void FavoritesVersionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        ViewModel.IsFavoritesVersionDialogOpen = false;
+    }
+
+    private void FavoritesDownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        ViewModel.StartFavoritesBackgroundDownload();
+    }
+
+    private void FavoritesImportResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        ViewModel.IsFavoritesImportResultDialogOpen = false;
     }
     
     /// <summary>

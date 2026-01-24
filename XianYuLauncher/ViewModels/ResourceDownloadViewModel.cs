@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
@@ -51,6 +52,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private void UpdateFavoritesState()
     {
         IsFavoritesEmpty = !FavoriteItems.Any();
+        IsImportFavoritesEnabled = FavoriteItems.Any();
         ShowFavoriteOverflow = FavoriteItems.Count > 3;
         
         TopFavoriteItems.Clear();
@@ -473,7 +475,37 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private bool _isFavoritesSelectionMode = false;
 
     [ObservableProperty]
-    private bool _isImportFavoritesEnabled = false; // 暂时不做，设为 False
+    private bool _isImportFavoritesEnabled = false;
+
+    [ObservableProperty]
+    private ObservableCollection<InstalledGameVersionViewModel> _favoritesInstallVersions = new();
+
+    [ObservableProperty]
+    private InstalledGameVersionViewModel _selectedFavoritesInstallVersion;
+
+    [ObservableProperty]
+    private bool _isFavoritesVersionDialogOpen;
+
+    [ObservableProperty]
+    private bool _isFavoritesDownloadProgressDialogOpen;
+
+    [ObservableProperty]
+    private bool _isFavoritesDownloading;
+
+    [ObservableProperty]
+    private double _favoritesDownloadProgress;
+
+    [ObservableProperty]
+    private string _favoritesDownloadProgressText = "0.0%";
+
+    [ObservableProperty]
+    private string _favoritesDownloadStatus = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<FavoriteImportResult> _favoriteImportResults = new();
+
+    [ObservableProperty]
+    private bool _isFavoritesImportResultDialogOpen;
 
     public List<ModrinthProject> SelectedFavorites { get; set; } = new List<ModrinthProject>();
 
@@ -514,6 +546,477 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
         await Task.CompletedTask;
     }
+
+    [RelayCommand]
+    public async Task OpenFavoritesImportAsync()
+    {
+        if (IsFavoritesDownloading)
+        {
+            await ShowMessageAsync("当前有下载任务正在进行，请等待完成后再试。");
+            return;
+        }
+        
+        await LoadFavoritesInstallVersionsAsync();
+        if (FavoritesInstallVersions.Count == 0)
+        {
+            await ShowMessageAsync("未找到已安装的游戏版本，请先安装游戏版本。");
+            return;
+        }
+
+        IsFavoritesVersionDialogOpen = true;
+    }
+
+    public async Task ImportFavoritesToSelectedVersionAsync()
+    {
+        if (SelectedFavoritesInstallVersion == null)
+        {
+            await ShowMessageAsync("请选择一个游戏版本。");
+            return;
+        }
+        
+        if (IsFavoritesDownloading)
+        {
+            await ShowMessageAsync("当前有下载任务正在进行，请等待完成后再试。");
+            return;
+        }
+
+        var targets = IsFavoritesSelectionMode && SelectedFavorites.Any()
+            ? SelectedFavorites.ToList()
+            : FavoriteItems.ToList();
+
+        if (targets.Count == 0)
+        {
+            await ShowMessageAsync("收藏夹为空，无法导入。");
+            return;
+        }
+
+        IsFavoritesVersionDialogOpen = false;
+        IsFavoritesDownloadProgressDialogOpen = true;
+        IsFavoritesDownloading = true;
+        FavoritesDownloadProgress = 0;
+        FavoritesDownloadProgressText = "0.0%";
+        FavoritesDownloadStatus = "正在准备下载...";
+
+        int completed = 0;
+        int total = targets.Count;
+        var failed = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var unsupported = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+        var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
+        using var semaphore = new SemaphoreSlim(threadCount);
+
+        var tasks = targets.Select(async project =>
+        {
+            await semaphore.WaitAsync();
+            try
+            {
+                var result = await DownloadFavoriteAsync(project, SelectedFavoritesInstallVersion);
+                if (!result.Success)
+                {
+                    if (result.SkippedReason == "未找到兼容版本")
+                    {
+                        unsupported.Add(project.Title ?? project.ProjectId ?? "Unknown");
+                    }
+                    else
+                    {
+                        failed.Add(project.Title ?? project.ProjectId ?? "Unknown");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                failed.Add(project.Title ?? project.ProjectId ?? "Unknown");
+                System.Diagnostics.Debug.WriteLine($"[FavoritesImport] 下载失败: {project?.Title}, {ex.Message}");
+            }
+            finally
+            {
+                semaphore.Release();
+                var done = Interlocked.Increment(ref completed);
+                UpdateFavoritesProgress(done, total);
+            }
+        }).ToList();
+
+        await Task.WhenAll(tasks);
+
+            FavoritesDownloadStatus = "下载完成";
+        FavoritesDownloadProgress = 100;
+        FavoritesDownloadProgressText = "100%";
+            App.GetService<IDownloadTaskManager>()?.NotifyProgress(
+                "收藏夹导入",
+                100,
+                "下载完成",
+                DownloadTaskState.Completed);
+        IsFavoritesDownloading = false;
+        IsFavoritesDownloadProgressDialogOpen = false;
+
+        if (unsupported.Any())
+        {
+            FavoriteImportResults = new ObservableCollection<FavoriteImportResult>(
+                unsupported.Select(name => new FavoriteImportResult
+                {
+                    ItemName = name,
+                    StatusText = "不支持此版本",
+                    IsGrayedOut = true
+                }));
+            IsFavoritesImportResultDialogOpen = true;
+        }
+    }
+
+    private async Task LoadFavoritesInstallVersionsAsync()
+    {
+        FavoritesInstallVersions.Clear();
+        SelectedFavoritesInstallVersion = null;
+        try
+        {
+            var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+            string minecraftDirectory = _fileService.GetMinecraftDataPath();
+
+            foreach (var version in installedVersions)
+            {
+                string gameVersion = version;
+                string loaderType = "vanilla";
+                string loaderVersion = "";
+
+                var versionConfig = await _minecraftVersionService.GetVersionConfigAsync(version, minecraftDirectory);
+                if (versionConfig != null)
+                {
+                    gameVersion = string.IsNullOrEmpty(versionConfig.MinecraftVersion) ? version : versionConfig.MinecraftVersion;
+                    loaderType = versionConfig.ModLoaderType?.ToLower() ?? "vanilla";
+                    loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                }
+                else
+                {
+                    var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(version, minecraftDirectory, allowNetwork: false);
+                    if (versionInfo != null)
+                    {
+                        gameVersion = versionInfo.InheritsFrom ?? versionInfo.Id ?? version;
+                        var id = versionInfo.Id ?? version;
+                        if (id.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "neoforge";
+                        }
+                        else if (id.Contains("forge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "forge";
+                        }
+                        else if (id.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "fabric";
+                        }
+                        else if (id.Contains("quilt", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "quilt";
+                        }
+                    }
+                }
+
+                FavoritesInstallVersions.Add(new InstalledGameVersionViewModel
+                {
+                    GameVersion = gameVersion,
+                    LoaderType = loaderType,
+                    LoaderVersion = loaderVersion,
+                    IsCompatible = true,
+                    OriginalVersionName = version
+                });
+            }
+
+            SelectedFavoritesInstallVersion = FavoritesInstallVersions.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载收藏夹安装版本失败: {ex.Message}");
+        }
+    }
+
+    private void UpdateFavoritesProgress(int completed, int total)
+    {
+        double progress = total == 0 ? 0 : (double)completed / total * 100;
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            FavoritesDownloadProgress = progress;
+            FavoritesDownloadProgressText = $"{progress:F1}%";
+            FavoritesDownloadStatus = $"已完成 {completed}/{total}";
+        });
+
+        var downloadTaskManager = App.GetService<IDownloadTaskManager>();
+        downloadTaskManager?.NotifyProgress(
+            "收藏夹导入",
+            progress,
+            FavoritesDownloadStatus);
+    }
+
+    public void StartFavoritesBackgroundDownload()
+    {
+        var downloadTaskManager = App.GetService<IDownloadTaskManager>();
+        if (downloadTaskManager != null)
+        {
+            downloadTaskManager.IsTeachingTipEnabled = true;
+            downloadTaskManager.NotifyProgress(
+                "收藏夹导入",
+                FavoritesDownloadProgress,
+                string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus);
+        }
+
+        IsFavoritesDownloadProgressDialogOpen = false;
+
+        var shellViewModel = App.GetService<ShellViewModel>();
+        if (shellViewModel != null)
+        {
+            shellViewModel.IsDownloadTeachingTipOpen = true;
+        }
+    }
+
+    private async Task<(bool Success, string? SkippedReason)> DownloadFavoriteAsync(ModrinthProject project, InstalledGameVersionViewModel gameVersion)
+    {
+        if (project == null)
+        {
+            return (false, "资源为空");
+        }
+
+        string projectType = NormalizeProjectType(project.ProjectType);
+        if (projectType is "modpack" or "world")
+        {
+            return (false, "暂不支持该类型一键导入");
+        }
+
+        string targetDir = GetTargetDirectory(projectType, gameVersion);
+        _fileService.CreateDirectory(targetDir);
+
+        if (IsCurseForgeProject(project.ProjectId))
+        {
+            return await DownloadCurseForgeFavoriteAsync(project, projectType, gameVersion, targetDir);
+        }
+
+        return await DownloadModrinthFavoriteAsync(project, projectType, gameVersion, targetDir);
+    }
+
+    private async Task<(bool Success, string? SkippedReason)> DownloadModrinthFavoriteAsync(
+        ModrinthProject project,
+        string projectType,
+        InstalledGameVersionViewModel gameVersion,
+        string targetDir)
+    {
+        var loaders = new List<string>();
+        string loaderType = gameVersion.LoaderType?.ToLower() ?? "";
+        if (!string.IsNullOrEmpty(loaderType) && loaderType != "vanilla")
+        {
+            loaders.Add(loaderType);
+        }
+
+        var gameVersions = new List<string> { gameVersion.GameVersion };
+        List<ModrinthVersion> versions = await _modrinthService.GetProjectVersionsAsync(project.ProjectId, loaders, gameVersions);
+        if (versions.Count == 0 && loaders.Count > 0)
+        {
+            versions = await _modrinthService.GetProjectVersionsAsync(project.ProjectId, null, gameVersions);
+        }
+        if (versions.Count == 0)
+        {
+            return (false, "未找到兼容版本");
+        }
+
+        var latest = versions
+            .OrderByDescending(v => DateTime.TryParse(v.DatePublished, out var dt) ? dt : DateTime.MinValue)
+            .FirstOrDefault();
+        if (latest == null)
+        {
+            return (false, "未找到兼容版本");
+        }
+
+        var file = latest.Files?.OrderByDescending(f => f.Primary).FirstOrDefault();
+        if (file == null || file.Url == null)
+        {
+            return (false, "未找到可下载文件");
+        }
+
+        if (projectType == "mod" && latest.Dependencies != null && latest.Dependencies.Count > 0)
+        {
+            var requiredDependencies = latest.Dependencies
+                .Where(d => d.DependencyType == "required")
+                .ToList();
+
+            if (requiredDependencies.Count > 0)
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    FavoritesDownloadStatus = $"正在下载前置Mod: {project.Title}";
+                });
+
+                await _modrinthService.ProcessDependenciesAsync(
+                    requiredDependencies,
+                    targetDir,
+                    latest,
+                    (fileName, progress) =>
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            FavoritesDownloadStatus = $"前置: {fileName}";
+                        });
+                    });
+            }
+        }
+
+        string savePath = Path.Combine(targetDir, file.Filename);
+        bool success = await _modrinthService.DownloadVersionFileAsync(
+            file,
+            savePath,
+            (fileName, progress) =>
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    FavoritesDownloadStatus = $"正在下载: {fileName}";
+                });
+            });
+
+        return (success, success ? null : "下载失败");
+    }
+
+    private async Task<(bool Success, string? SkippedReason)> DownloadCurseForgeFavoriteAsync(
+        ModrinthProject project,
+        string projectType,
+        InstalledGameVersionViewModel gameVersion,
+        string targetDir)
+    {
+        if (!TryGetCurseForgeId(project.ProjectId, out int modId))
+        {
+            return (false, "无法解析CurseForge ID");
+        }
+
+        int? modLoaderType = gameVersion.LoaderType?.ToLower() switch
+        {
+            "forge" => 1,
+            "fabric" => 4,
+            "quilt" => 5,
+            "neoforge" => 6,
+            _ => null
+        };
+
+        var files = await _curseForgeService.GetModFilesAsync(
+            modId,
+            gameVersion.GameVersion,
+            modLoaderType,
+            0,
+            1000);
+
+        if (files.Count == 0 && modLoaderType.HasValue)
+        {
+            files = await _curseForgeService.GetModFilesAsync(
+                modId,
+                gameVersion.GameVersion,
+                null,
+                0,
+                1000);
+        }
+
+        if (files.Count == 0)
+        {
+            return (false, "未找到兼容版本");
+        }
+
+        var latest = files.OrderByDescending(f => f.FileDate).FirstOrDefault();
+        if (latest == null)
+        {
+            return (false, "未找到兼容版本");
+        }
+
+        if (projectType == "mod" && latest.Dependencies != null && latest.Dependencies.Count > 0)
+        {
+            var requiredDependencies = latest.Dependencies
+                .Where(d => d.RelationType == 3)
+                .ToList();
+
+            if (requiredDependencies.Count > 0)
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    FavoritesDownloadStatus = $"正在下载前置Mod: {project.Title}";
+                });
+
+                await _curseForgeService.ProcessDependenciesAsync(
+                    requiredDependencies,
+                    targetDir,
+                    latest,
+                    (fileName, progress) =>
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            FavoritesDownloadStatus = $"前置: {fileName}";
+                        });
+                    });
+            }
+        }
+
+        string downloadUrl = latest.DownloadUrl;
+        if (string.IsNullOrEmpty(downloadUrl))
+        {
+            downloadUrl = _curseForgeService.ConstructDownloadUrl(latest.Id, latest.FileName);
+        }
+
+        string savePath = Path.Combine(targetDir, latest.FileName);
+        bool success = await _curseForgeService.DownloadFileAsync(
+            downloadUrl,
+            savePath,
+            (fileName, progress) =>
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    FavoritesDownloadStatus = $"正在下载: {fileName}";
+                });
+            });
+
+        return (success, success ? null : "下载失败");
+    }
+
+    private string GetTargetDirectory(string projectType, InstalledGameVersionViewModel gameVersion)
+    {
+        string minecraftPath = _fileService.GetMinecraftDataPath();
+        string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
+
+        string targetFolder = projectType switch
+        {
+            "resourcepack" => "resourcepacks",
+            "shader" => "shaderpacks",
+            "datapack" => "datapacks",
+            _ => "mods"
+        };
+
+        return Path.Combine(versionDir, targetFolder);
+    }
+
+    private static bool IsCurseForgeProject(string projectId)
+    {
+        return !string.IsNullOrEmpty(projectId) && projectId.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryGetCurseForgeId(string projectId, out int modId)
+    {
+        modId = 0;
+        if (string.IsNullOrEmpty(projectId)) return false;
+        if (!projectId.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var idText = projectId.Substring("curseforge-".Length);
+        return int.TryParse(idText, out modId);
+    }
+
+    private static string NormalizeProjectType(string projectType)
+    {
+        if (string.IsNullOrEmpty(projectType)) return "mod";
+
+        return projectType.ToLower() switch
+        {
+            "shaderpack" => "shader",
+            _ => projectType.ToLower()
+        };
+    }
+
+    private async Task ShowMessageAsync(string message)
+    {
+        var dialogService = App.GetService<IDialogService>();
+        if (dialogService != null)
+        {
+            await dialogService.ShowMessageDialogAsync("提示", message);
+        }
+    }
+
 
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
@@ -1387,7 +1890,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var project = new ModrinthProject
         {
             ProjectId = $"curseforge-{curseForgeMod.Id}",
-            ProjectType = "mod",
+            ProjectType = GetProjectTypeByClassId(curseForgeMod.ClassId),
             Slug = curseForgeMod.Slug,
             Author = curseForgeMod.Authors?.FirstOrDefault()?.Name ?? "Unknown",
             Title = curseForgeMod.Name,
@@ -1439,6 +1942,20 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
         
         return project;
+    }
+
+    private string GetProjectTypeByClassId(int? classId)
+    {
+        return classId switch
+        {
+            6 => "mod",
+            12 => "resourcepack",
+            4471 => "modpack",
+            6552 => "shader",
+            6945 => "datapack",
+            17 => "world",
+            _ => "mod"
+        };
     }
     
     [RelayCommand(CanExecute = nameof(CanLoadMoreMods))]

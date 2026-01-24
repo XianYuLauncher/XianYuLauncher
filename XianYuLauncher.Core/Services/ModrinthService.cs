@@ -948,6 +948,29 @@ public class ModrinthService
                 return null;
             }
         }
+
+        /// <summary>
+        /// 下载Modrinth版本文件（对CDN URL自动应用镜像与回退）
+        /// </summary>
+        /// <param name="file">版本文件信息</param>
+        /// <param name="destinationPath">保存路径</param>
+        /// <param name="progressCallback">进度回调</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>是否下载成功</returns>
+        public async Task<bool> DownloadVersionFileAsync(
+            ModrinthVersionFile file,
+            string destinationPath,
+            Action<string, double>? progressCallback = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (file == null || file.Url == null)
+            {
+                return false;
+            }
+
+            string downloadUrl = TransformCdnUrl(file.Url.AbsoluteUri);
+            return await DownloadFileAsync(downloadUrl, destinationPath, progressCallback, cancellationToken);
+        }
         
         /// <summary>
         /// 下载文件
