@@ -123,6 +123,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 FavoritesImportResultDialog.Hide();
             }
         }
+        else if (e.PropertyName == nameof(ViewModel.IsShareCodeImportDialogOpen))
+        {
+            if (ViewModel.IsShareCodeImportDialogOpen)
+            {
+                await ShareCodeImportDialog.ShowAsync();
+            }
+            else
+            {
+                ShareCodeImportDialog.Hide();
+            }
+        }
     }
 
     private async void FavoritesVersionDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -155,6 +166,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private void FavoritesImportResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         ViewModel.IsFavoritesImportResultDialogOpen = false;
+    }
+
+    private async void ShareCodeImportDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        ViewModel.IsShareCodeImportDialogOpen = false;
+        await ViewModel.ImportShareCodeToFavoritesAsync();
+    }
+
+    private void ShareCodeImportDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        ViewModel.IsShareCodeImportDialogOpen = false;
     }
     
     /// <summary>
@@ -944,6 +966,41 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                         ViewModel.SelectedFavorites.Add(project);
                     }
                 }
+            }
+        }
+    }
+
+    private async void FavoritesListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (ViewModel == null || ViewModel.IsFavoritesSelectionMode)
+        {
+            return;
+        }
+
+        if (e.ClickedItem is ModrinthProject project)
+        {
+            string type = project.ProjectType?.ToLower() ?? "mod";
+            switch (type)
+            {
+                case "resourcepack":
+                    await ViewModel.DownloadResourcePackCommand.ExecuteAsync(project);
+                    break;
+                case "shader":
+                case "shaderpack":
+                    await ViewModel.DownloadShaderPackCommand.ExecuteAsync(project);
+                    break;
+                case "modpack":
+                    await ViewModel.DownloadModpackCommand.ExecuteAsync(project);
+                    break;
+                case "datapack":
+                    await ViewModel.DownloadDatapackCommand.ExecuteAsync(project);
+                    break;
+                case "world":
+                    await ViewModel.NavigateToWorldDetailCommand.ExecuteAsync(project);
+                    break;
+                default:
+                    await ViewModel.DownloadModCommand.ExecuteAsync(project);
+                    break;
             }
         }
     }

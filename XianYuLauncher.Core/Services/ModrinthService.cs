@@ -303,6 +303,54 @@ public class ModrinthService
     }
 
     /// <summary>
+    /// 通过搜索API按项目ID获取项目（用于显示作者信息）
+    /// </summary>
+    /// <param name="projectId">项目ID</param>
+    /// <returns>项目详情（搜索结果格式）</returns>
+    public async Task<ModrinthProject> GetProjectByIdFromSearchAsync(string projectId)
+    {
+        if (string.IsNullOrWhiteSpace(projectId)) return null;
+
+        string url = string.Empty;
+        try
+        {
+            var facets = new List<List<string>>
+            {
+                new List<string> { $"project_id:{projectId}" }
+            };
+
+            string facetsJson = JsonSerializer.Serialize(facets);
+            url = $"{OfficialApiBaseUrl}/v2/search?query=";
+            url += $"&facets={Uri.EscapeDataString(facetsJson)}";
+            url += "&limit=1";
+
+            HttpResponseMessage response = await SendWithFallbackAsync(url);
+            string json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+
+            var result = JsonSerializer.Deserialize<ModrinthSearchResult>(json);
+            return result?.Hits?.FirstOrDefault();
+        }
+        catch (HttpRequestException ex)
+        {
+            string errorMsg = $"获取项目失败: {ex.Message}";
+            if (ex.StatusCode.HasValue)
+            {
+                errorMsg += $" (状态码: {ex.StatusCode})";
+            }
+            throw new Exception(errorMsg);
+        }
+        catch (JsonException ex)
+        {
+            throw new Exception($"解析项目失败: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"获取项目时发生错误: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 获取项目详情
     /// </summary>
     /// <param name="projectIdOrSlug">项目ID或Slug</param>
@@ -348,6 +396,7 @@ public class ModrinthService
             throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
         }
     }
+
 
     /// <summary>
     /// 获取项目版本列表

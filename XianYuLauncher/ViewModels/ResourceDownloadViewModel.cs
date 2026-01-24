@@ -107,10 +107,44 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     public void AddToFavorites(ModrinthProject project)
     {
         if (project == null) return;
-        if (!IsFavorite(project))
+        if (TryAddFavoriteInternal(project))
         {
-            FavoriteItems.Insert(0, project); 
+            UpdateFavoritesState();
+            SaveFavorites();
         }
+    }
+
+    [RelayCommand]
+    public void RemoveFromFavorites(ModrinthProject project)
+    {
+        if (project == null) return;
+        
+        var itemToRemove = FavoriteItems.FirstOrDefault(p => p.ProjectId == project.ProjectId);
+        if (itemToRemove != null)
+        {
+            FavoriteItems.Remove(itemToRemove);
+            UpdateFavoritesState();
+            SaveFavorites();
+        }
+    }
+
+    [RelayCommand]
+    public void RemoveSelectedFavorites()
+    {
+        if (SelectedFavorites == null || !SelectedFavorites.Any()) return;
+
+        var itemsToRemove = SelectedFavorites.ToList();
+        foreach (var item in itemsToRemove)
+        {
+            if (FavoriteItems.Contains(item))
+            {
+                FavoriteItems.Remove(item);
+            }
+        }
+        
+        SelectedFavorites.Clear();
+        UpdateFavoritesState();
+        SaveFavorites();
     }
 
     private const string VersionTypeFilterKey = "VersionTypeFilter";
@@ -513,6 +547,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _isFavoritesImportResultDialogOpen;
 
+    [ObservableProperty]
+    private bool _isShareCodeImportDialogOpen;
+
+    [ObservableProperty]
+    private string _shareCodeInput = string.Empty;
+
     public List<ModrinthProject> SelectedFavorites { get; set; } = new List<ModrinthProject>();
 
     [RelayCommand]
@@ -537,7 +577,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             
             if (!targets.Any()) return;
 
-            var ids = targets.Select(x => x.ProjectId).Where(id => !string.IsNullOrEmpty(id)).ToList();
+            var ids = targets
+                .Select(x => NormalizeShareCodeId(x.ProjectId))
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToList();
             var json = System.Text.Json.JsonSerializer.Serialize(ids);
 
             var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
@@ -570,6 +613,87 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
 
         IsFavoritesVersionDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public async Task OpenShareCodeImportAsync()
+    {
+        ShareCodeInput = string.Empty;
+        IsShareCodeImportDialogOpen = true;
+        await Task.CompletedTask;
+    }
+
+    public async Task ImportShareCodeToFavoritesAsync()
+    {
+        var rawIds = ParseShareCodeInput(ShareCodeInput);
+        if (rawIds.Count == 0)
+        {
+            await ShowMessageAsync("分享码内容为空或格式不正确。");
+            return;
+        }
+
+        int added = 0;
+        int failed = 0;
+
+        foreach (var rawId in rawIds)
+        {
+            var normalized = NormalizeImportId(rawId);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (TryParseCurseForgeId(normalized, out int modId))
+                {
+                    var detail = await _curseForgeService.GetModDetailAsync(modId);
+                    if (detail != null)
+                    {
+                        var project = ConvertCurseForgeToModrinth(detail);
+                        if (TryAddFavoriteInternal(project))
+                        {
+                            added++;
+                        }
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+                else
+                {
+                    var project = await _modrinthService.GetProjectByIdFromSearchAsync(normalized);
+                    if (project != null)
+                    {
+                        if (TryAddFavoriteInternal(project))
+                        {
+                            added++;
+                        }
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                System.Diagnostics.Debug.WriteLine($"[ShareCodeImport] 导入失败: {rawId}, {ex.Message}");
+            }
+        }
+
+        if (added > 0)
+        {
+            UpdateFavoritesState();
+            SaveFavorites();
+        }
+
+        if (failed > 0)
+        {
+            await ShowMessageAsync($"已导入 {added} 个，失败 {failed} 个。");
+        }
     }
 
     public async Task ImportFavoritesToSelectedVersionAsync()
@@ -1392,6 +1516,115 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             _ => projectType.ToLower()
         };
     }
+
+    private static string NormalizeShareCodeId(string projectId)
+    {
+        if (string.IsNullOrWhiteSpace(projectId)) return projectId;
+
+        if (projectId.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase))
+        {
+            return projectId.Substring("curseforge-".Length);
+        }
+
+        return projectId;
+    }
+
+    private static List<string> ParseShareCodeInput(string input)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrWhiteSpace(input)) return result;
+
+        var trimmed = input.Trim();
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(trimmed);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    if (element.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var value = element.GetString();
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            result.Add(value.Trim());
+                        }
+                    }
+                    else if (element.ValueKind == System.Text.Json.JsonValueKind.Number)
+                    {
+                        result.Add(element.GetRawText());
+                    }
+                }
+
+                return result;
+            }
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var value = doc.RootElement.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    result.Add(value.Trim());
+                }
+
+                return result;
+            }
+        }
+        catch
+        {
+            // ignore and fallback to split parsing
+        }
+
+        var parts = trimmed.Split(new[] { '\r', '\n', '\t', ' ', ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            var value = part.Trim().Trim('"');
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                result.Add(value);
+            }
+        }
+
+        return result;
+    }
+
+    private static string NormalizeImportId(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return string.Empty;
+
+        var trimmed = id.Trim().Trim('"');
+        if (trimmed.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        return int.TryParse(trimmed, out _) ? $"curseforge-{trimmed}" : trimmed;
+    }
+
+    private static bool TryParseCurseForgeId(string normalizedId, out int modId)
+    {
+        modId = 0;
+        if (string.IsNullOrWhiteSpace(normalizedId)) return false;
+
+        if (normalizedId.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase))
+        {
+            var idText = normalizedId.Substring("curseforge-".Length);
+            return int.TryParse(idText, out modId);
+        }
+
+        return int.TryParse(normalizedId, out modId);
+    }
+
+
+    private bool TryAddFavoriteInternal(ModrinthProject project)
+    {
+        if (project == null) return false;
+        if (string.IsNullOrWhiteSpace(project.ProjectId)) return false;
+        if (FavoriteItems.Any(p => p.ProjectId == project.ProjectId)) return false;
+
+        FavoriteItems.Insert(0, project);
+        return true;
+    }
+
 
     private async Task ShowMessageAsync(string message)
     {
