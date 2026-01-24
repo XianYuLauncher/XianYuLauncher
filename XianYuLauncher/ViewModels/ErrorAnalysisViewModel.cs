@@ -636,7 +636,8 @@ namespace XianYuLauncher.ViewModels
             // 获取流式分析结果
             var buffered = new StringBuilder();
             var lastFlush = DateTime.UtcNow;
-            const int flushIntervalMs = 30;
+            const int flushIntervalMs = 10;
+            const int flushSize = 80;
 
             await foreach (var chunk in crashAnalyzer.GetStreamingAnalysisAsync(0, _gameOutput, _gameError))
             {
@@ -648,7 +649,7 @@ namespace XianYuLauncher.ViewModels
                 buffered.Append(chunk);
 
                 var now = DateTime.UtcNow;
-                if ((now - lastFlush).TotalMilliseconds >= flushIntervalMs)
+                if (buffered.Length >= flushSize || (now - lastFlush).TotalMilliseconds >= flushIntervalMs)
                 {
                     var text = buffered.ToString();
                     buffered.Clear();

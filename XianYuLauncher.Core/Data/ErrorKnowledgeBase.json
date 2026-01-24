@@ -192,6 +192,45 @@
       ]
     },
     {
+      "id": "entity_tick_crash",
+      "type": "Unknown",
+      "priority": 93,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)(ReportedException:\\s*Ticking entity|Description:\\s*Ticking entity)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Type:\\s*(?<entity_type>[^\\s]+)(?:\\s*\\((?<entity_class>[^\\)]+)\\))?"
+        },
+        {
+          "type": "regex",
+          "value": "Entity ID:\\s*(?<entity_id>\\d+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Name:\\s*(?<entity_name>.+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity's Exact location:\\s*(?<entity_pos>-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*)"
+        },
+        {
+          "type": "regex",
+          "value": "Level dimension:\\s*(?<dimension>[^\\s]+)"
+        }
+      ],
+      "title": "实体 Tick 崩溃",
+      "analysis": "检测到实体 {entity_type}（{entity_name}，ID {entity_id}）在 {dimension} 坐标 {entity_pos} 发生崩溃（实体 Tick）。通常是实体逻辑异常或相关 Mod 注入导致。",
+      "suggestions": [
+        "如果这是自定义实体或 Mod 实体，请检查其 Tick 逻辑是否抛出异常",
+        "尝试移除或更新与该实体相关的 Mod",
+        "若无法进入世界，可回档或在存档中移除该实体",
+        "如果是渲染线程崩溃，检查客户端侧渲染相关 Mod"
+      ]
+    },
+    {
       "id": "java_version_mismatch",
       "type": "JavaVersionMismatch",
       "priority": 95,
@@ -215,6 +254,10 @@
         {
           "type": "regex",
           "value": "compiled by a more recent version"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)\\bFix:\\s*add.*replace.*\\bjava\\s*\\d+"
         }
       ],
       "title": "Java 版本不匹配",

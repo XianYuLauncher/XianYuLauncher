@@ -100,23 +100,26 @@ public class ErrorKnowledgeBaseService
     {
         captures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // 任意一个模式匹配即可
+        var matchedAny = false;
+
+        // 任意一个模式匹配即可，但继续扫描以收集更多捕获组
         foreach (var pattern in rule.Patterns)
         {
             foreach (var log in logs)
             {
                 if (TryMatchPattern(pattern, log, out var patternCaptures))
                 {
+                    matchedAny = true;
                     foreach (var kv in patternCaptures)
                     {
                         captures[kv.Key] = kv.Value;
                     }
-                    return true;
+                    break;
                 }
             }
         }
 
-        return false;
+        return matchedAny;
     }
 
     /// <summary>
