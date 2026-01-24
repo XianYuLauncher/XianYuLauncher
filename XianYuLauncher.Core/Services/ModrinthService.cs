@@ -646,7 +646,8 @@ public class ModrinthService
             ModrinthVersion? currentModVersion = null,
             Action<string, double>? progressCallback = null,
             CancellationToken cancellationToken = default,
-            bool checkProjectId = true)
+            bool checkProjectId = true,
+            Func<string, Task<string>>? resolveDestinationPathAsync = null)
         {
             int processedCount = 0;
             
@@ -675,11 +676,11 @@ public class ModrinthService
             // 跟踪已处理的依赖，避免循环依赖
             var processedDependencies = new HashSet<string>();
             
-            // 获取现有mod的项目ID映射
-            Dictionary<string, string>? existingProjectIds = null;
+            // 获取现有mod的项目ID映射（按目标路径缓存）
+            Dictionary<string, Dictionary<string, string>?>? existingProjectIdsByPath = null;
             if (checkProjectId)
             {
-                existingProjectIds = await GetExistingModProjectIdsAsync(destinationPath, cancellationToken);
+                existingProjectIdsByPath = new Dictionary<string, Dictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
             }
             
             for (int i = 0; i < dependencies.Count; i++)
@@ -781,6 +782,24 @@ public class ModrinthService
                         System.Diagnostics.Debug.WriteLine($"  - 跳过：版本没有文件");
                         continue;
                     }
+
+                    // 解析依赖的目标目录（按依赖项目类型）
+                    string dependencyDestinationPath = destinationPath;
+                    if (resolveDestinationPathAsync != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
+                    {
+                        dependencyDestinationPath = await resolveDestinationPathAsync(depVersionInfo.ProjectId);
+                    }
+
+                    // 获取目标目录下已存在的项目ID映射
+                    Dictionary<string, string>? existingProjectIds = null;
+                    if (checkProjectId)
+                    {
+                        if (existingProjectIdsByPath != null && !existingProjectIdsByPath.TryGetValue(dependencyDestinationPath, out existingProjectIds))
+                        {
+                            existingProjectIds = await GetExistingModProjectIdsAsync(dependencyDestinationPath, cancellationToken);
+                            existingProjectIdsByPath[dependencyDestinationPath] = existingProjectIds;
+                        }
+                    }
                     
                     // 新增：检查项目ID是否已存在
                     if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
@@ -811,7 +830,7 @@ public class ModrinthService
                     
                     // 检查是否已存在相同SHA1的Mod
                     bool alreadyExists = false;
-                    string filePath = Path.Combine(destinationPath, primaryFile.Filename);
+                    string filePath = Path.Combine(dependencyDestinationPath, primaryFile.Filename);
                     System.Diagnostics.Debug.WriteLine($"  - 目标路径：{filePath}");
                     
                     if (File.Exists(filePath))
@@ -867,11 +886,12 @@ public class ModrinthService
                             System.Diagnostics.Debug.WriteLine($"  - 开始处理子依赖（{depVersionInfo.Dependencies.Count}个）");
                             int subDependenciesCount = await ProcessDependenciesAsync(
                                 depVersionInfo.Dependencies, 
-                                destinationPath, 
+                                dependencyDestinationPath, 
                                 depVersionInfo, // 传递当前依赖的版本信息作为子依赖的参考
                                 progressCallback,
                                 cancellationToken,
-                                checkProjectId);
+                                checkProjectId,
+                                resolveDestinationPathAsync);
                             System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
                         }
                         

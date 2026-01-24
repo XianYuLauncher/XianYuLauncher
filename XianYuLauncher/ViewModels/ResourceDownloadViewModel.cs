@@ -4,8 +4,10 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.Concurrent;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
@@ -501,6 +503,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _favoritesDownloadStatus = string.Empty;
 
+    private readonly ConcurrentDictionary<string, double> _favoritesItemProgress = new(StringComparer.OrdinalIgnoreCase);
+    private int _favoritesTotalItems;
+    private int _favoritesCompletedItems;
+
     [ObservableProperty]
     private ObservableCollection<FavoriteImportResult> _favoriteImportResults = new();
 
@@ -599,6 +605,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         int completed = 0;
         int total = targets.Count;
+        _favoritesTotalItems = total;
+        _favoritesCompletedItems = 0;
+        _favoritesItemProgress.Clear();
         var failed = new System.Collections.Concurrent.ConcurrentBag<string>();
         var unsupported = new System.Collections.Concurrent.ConcurrentBag<string>();
 
@@ -608,8 +617,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var tasks = targets.Select(async project =>
         {
             await semaphore.WaitAsync();
+            var progressKey = GetFavoritesProgressKey(project) ?? Guid.NewGuid().ToString("N");
             try
             {
+                _favoritesItemProgress.TryAdd(progressKey, 0);
                 var result = await DownloadFavoriteAsync(project, SelectedFavoritesInstallVersion);
                 if (!result.Success)
                 {
@@ -632,6 +643,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 semaphore.Release();
                 var done = Interlocked.Increment(ref completed);
+                _favoritesCompletedItems = done;
+                _favoritesItemProgress.TryRemove(progressKey, out _);
                 UpdateFavoritesProgress(done, total);
             }
         }).ToList();
@@ -730,18 +743,46 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     private void UpdateFavoritesProgress(int completed, int total)
     {
-        double progress = total == 0 ? 0 : (double)completed / total * 100;
+        UpdateFavoritesOverallProgress();
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            FavoritesDownloadProgress = progress;
-            FavoritesDownloadProgressText = $"{progress:F1}%";
             FavoritesDownloadStatus = $"已完成 {completed}/{total}";
+        });
+    }
+
+    private void UpdateFavoritesTaskProgress(string? progressKey, double progress)
+    {
+        if (string.IsNullOrEmpty(progressKey))
+        {
+            return;
+        }
+
+        _favoritesItemProgress[progressKey] = Math.Clamp(progress, 0, 100);
+        UpdateFavoritesOverallProgress();
+    }
+
+    private void UpdateFavoritesOverallProgress()
+    {
+        int total = _favoritesTotalItems;
+        if (total <= 0)
+        {
+            return;
+        }
+
+        double inFlightSum = _favoritesItemProgress.Values.Sum();
+        double overall = ((_favoritesCompletedItems * 100.0) + inFlightSum) / total;
+        overall = Math.Clamp(overall, 0, 100);
+
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            FavoritesDownloadProgress = overall;
+            FavoritesDownloadProgressText = $"{overall:F1}%";
         });
 
         var downloadTaskManager = App.GetService<IDownloadTaskManager>();
         downloadTaskManager?.NotifyProgress(
             "收藏夹导入",
-            progress,
+            overall,
             FavoritesDownloadStatus);
     }
 
@@ -774,9 +815,18 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
 
         string projectType = NormalizeProjectType(project.ProjectType);
-        if (projectType is "modpack" or "world")
+        if (IsCurseForgeProject(project.ProjectId) && (string.IsNullOrEmpty(project.ProjectType) || projectType == "mod"))
+        {
+            projectType = await ResolveCurseForgeProjectTypeAsync(project, projectType);
+        }
+        if (projectType is "modpack" or "datapack")
         {
             return (false, "暂不支持该类型一键导入");
+        }
+
+        if (projectType == "world")
+        {
+            return await DownloadWorldFavoriteAsync(project, gameVersion);
         }
 
         string targetDir = GetTargetDirectory(projectType, gameVersion);
@@ -851,7 +901,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         {
                             FavoritesDownloadStatus = $"前置: {fileName}";
                         });
-                    });
+                        UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                    },
+                    resolveDestinationPathAsync: projectId => ResolveModrinthDependencyTargetDirAsync(projectId, gameVersion));
             }
         }
 
@@ -865,6 +917,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     FavoritesDownloadStatus = $"正在下载: {fileName}";
                 });
+                UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
             });
 
         return (success, success ? null : "下载失败");
@@ -941,7 +994,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         {
                             FavoritesDownloadStatus = $"前置: {fileName}";
                         });
-                    });
+                        UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                    },
+                    resolveDestinationPathAsync: mod => ResolveCurseForgeDependencyTargetDirAsync(mod, gameVersion));
             }
         }
 
@@ -961,9 +1016,268 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     FavoritesDownloadStatus = $"正在下载: {fileName}";
                 });
+                UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
             });
 
         return (success, success ? null : "下载失败");
+    }
+
+    private async Task<(bool Success, string? SkippedReason)> DownloadWorldFavoriteAsync(
+        ModrinthProject project,
+        InstalledGameVersionViewModel gameVersion)
+    {
+        try
+        {
+            string minecraftPath = _fileService.GetMinecraftDataPath();
+            string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
+            string savesDir = Path.Combine(versionDir, "saves");
+            _fileService.CreateDirectory(savesDir);
+
+            string fileName;
+            string downloadUrl;
+            string dependencyDir = GetTargetDirectory("world", gameVersion);
+            _fileService.CreateDirectory(dependencyDir);
+
+            if (IsCurseForgeProject(project.ProjectId))
+            {
+                if (!TryGetCurseForgeId(project.ProjectId, out int modId))
+                {
+                    return (false, "无法解析CurseForge ID");
+                }
+
+                var files = await _curseForgeService.GetModFilesAsync(
+                    modId,
+                    gameVersion.GameVersion,
+                    null,
+                    0,
+                    1000);
+
+                if (files.Count == 0)
+                {
+                    return (false, "未找到兼容版本");
+                }
+
+                var latest = files.OrderByDescending(f => f.FileDate).FirstOrDefault();
+                if (latest == null)
+                {
+                    return (false, "未找到兼容版本");
+                }
+
+                if (latest.Dependencies != null && latest.Dependencies.Count > 0)
+                {
+                    var requiredDependencies = latest.Dependencies
+                        .Where(d => d.RelationType == 3)
+                        .ToList();
+
+                    if (requiredDependencies.Count > 0)
+                    {
+                        await _curseForgeService.ProcessDependenciesAsync(
+                            requiredDependencies,
+                            dependencyDir,
+                            latest,
+                            (depFile, progress) =>
+                            {
+                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    FavoritesDownloadStatus = $"前置: {depFile}";
+                                });
+                                UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                            },
+                            resolveDestinationPathAsync: mod => ResolveCurseForgeDependencyTargetDirAsync(mod, gameVersion));
+                    }
+                }
+
+                fileName = latest.FileName;
+                downloadUrl = string.IsNullOrEmpty(latest.DownloadUrl)
+                    ? _curseForgeService.ConstructDownloadUrl(latest.Id, latest.FileName)
+                    : latest.DownloadUrl;
+            }
+            else
+            {
+                var versions = await _modrinthService.GetProjectVersionsAsync(
+                    project.ProjectId,
+                    null,
+                    new List<string> { gameVersion.GameVersion });
+
+                if (versions.Count == 0)
+                {
+                    return (false, "未找到兼容版本");
+                }
+
+                var latest = versions
+                    .OrderByDescending(v => DateTime.TryParse(v.DatePublished, out var dt) ? dt : DateTime.MinValue)
+                    .FirstOrDefault();
+                if (latest == null)
+                {
+                    return (false, "未找到兼容版本");
+                }
+
+                if (latest.Dependencies != null && latest.Dependencies.Count > 0)
+                {
+                    var requiredDependencies = latest.Dependencies
+                        .Where(d => d.DependencyType == "required")
+                        .ToList();
+
+                    if (requiredDependencies.Count > 0)
+                    {
+                        await _modrinthService.ProcessDependenciesAsync(
+                            requiredDependencies,
+                            dependencyDir,
+                            latest,
+                            (depFile, progress) =>
+                            {
+                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    FavoritesDownloadStatus = $"前置: {depFile}";
+                                });
+                                UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                            },
+                            resolveDestinationPathAsync: projectId => ResolveModrinthDependencyTargetDirAsync(projectId, gameVersion));
+                    }
+                }
+
+                var file = latest.Files?.OrderByDescending(f => f.Primary).FirstOrDefault();
+                if (file == null || file.Url == null)
+                {
+                    return (false, "未找到可下载文件");
+                }
+
+                fileName = file.Filename;
+                downloadUrl = file.Url.AbsoluteUri;
+            }
+
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+            var zipPath = Path.Combine(tempDir, fileName);
+
+            if (IsCurseForgeProject(project.ProjectId))
+            {
+                bool ok = await _curseForgeService.DownloadFileAsync(
+                    downloadUrl,
+                    zipPath,
+                    (file, progress) =>
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            FavoritesDownloadStatus = $"正在下载: {file}";
+                        });
+                        UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                    });
+
+                if (!ok) return (false, "下载失败");
+            }
+            else
+            {
+                var fileObj = new ModrinthVersionFile { Filename = fileName, Url = new Uri(downloadUrl) };
+                bool ok = await _modrinthService.DownloadVersionFileAsync(
+                    fileObj,
+                    zipPath,
+                    (file, progress) =>
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            FavoritesDownloadStatus = $"正在下载: {file}";
+                        });
+                        UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
+                    });
+
+                if (!ok) return (false, "下载失败");
+            }
+
+            await ExtractWorldZipAsync(zipPath, savesDir);
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FavoritesWorld] 下载失败: {ex.Message}");
+            return (false, "下载失败");
+        }
+    }
+
+    private async Task ExtractWorldZipAsync(string zipPath, string savesDirectory)
+    {
+        // 确保saves目录存在
+        if (!Directory.Exists(savesDirectory))
+        {
+            Directory.CreateDirectory(savesDirectory);
+        }
+
+        var worldBaseName = Path.GetFileNameWithoutExtension(zipPath);
+        var worldDir = GetUniqueDirectoryPath(savesDirectory, worldBaseName);
+
+        Directory.CreateDirectory(worldDir);
+
+        await Task.Run(() =>
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            var entries = archive.Entries.ToList();
+            var hasRootFolder = false;
+            string? rootFolderName = null;
+
+            if (entries.Count > 0)
+            {
+                var firstEntry = entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.FullName));
+                if (firstEntry != null)
+                {
+                    var parts = firstEntry.FullName.Split('/');
+                    if (parts.Length > 1)
+                    {
+                        rootFolderName = parts[0];
+                        hasRootFolder = entries.All(e =>
+                            string.IsNullOrEmpty(e.FullName) ||
+                            e.FullName.StartsWith(rootFolderName + "/") ||
+                            e.FullName == rootFolderName);
+                    }
+                }
+            }
+
+            if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
+            {
+                foreach (var entry in entries)
+                {
+                    if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
+                        continue;
+
+                    var relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
+                    if (string.IsNullOrEmpty(relativePath))
+                        continue;
+
+                    var destPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+                    if (entry.FullName.EndsWith("/"))
+                    {
+                        Directory.CreateDirectory(destPath);
+                    }
+                    else
+                    {
+                        var destDir = Path.GetDirectoryName(destPath);
+                        if (!string.IsNullOrEmpty(destDir))
+                        {
+                            Directory.CreateDirectory(destDir);
+                        }
+                        entry.ExtractToFile(destPath, true);
+                    }
+                }
+            }
+            else
+            {
+                archive.ExtractToDirectory(worldDir);
+            }
+        });
+    }
+
+    private string GetUniqueDirectoryPath(string baseDir, string folderName)
+    {
+        string candidate = Path.Combine(baseDir, folderName);
+        if (!Directory.Exists(candidate)) return candidate;
+
+        int index = 1;
+        while (true)
+        {
+            string newCandidate = Path.Combine(baseDir, $"{folderName}_{index}");
+            if (!Directory.Exists(newCandidate)) return newCandidate;
+            index++;
+        }
     }
 
     private string GetTargetDirectory(string projectType, InstalledGameVersionViewModel gameVersion)
@@ -982,6 +1296,65 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         return Path.Combine(versionDir, targetFolder);
     }
 
+    private async Task<string> ResolveModrinthDependencyTargetDirAsync(string projectId, InstalledGameVersionViewModel gameVersion)
+    {
+        try
+        {
+            var detail = await _modrinthService.GetProjectDetailAsync(projectId);
+            string projectType = NormalizeProjectType(detail?.ProjectType);
+            return GetTargetDirectory(projectType, gameVersion);
+        }
+        catch
+        {
+            return GetTargetDirectory("mod", gameVersion);
+        }
+    }
+
+    private Task<string> ResolveCurseForgeDependencyTargetDirAsync(CurseForgeModDetail modDetail, InstalledGameVersionViewModel gameVersion)
+    {
+        string projectType = MapCurseForgeClassIdToProjectType(modDetail?.ClassId);
+        return Task.FromResult(GetTargetDirectory(projectType, gameVersion));
+    }
+
+    private static string? GetFavoritesProgressKey(ModrinthProject project)
+    {
+        if (project == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(project.ProjectId))
+        {
+            return project.ProjectId;
+        }
+
+        if (!string.IsNullOrEmpty(project.Title))
+        {
+            return project.Title;
+        }
+
+        return null;
+    }
+
+    private async Task<string> ResolveCurseForgeProjectTypeAsync(ModrinthProject project, string fallbackType)
+    {
+        if (!TryGetCurseForgeId(project.ProjectId, out int modId))
+        {
+            return fallbackType;
+        }
+
+        try
+        {
+            var detail = await _curseForgeService.GetModDetailAsync(modId);
+            string mappedType = MapCurseForgeClassIdToProjectType(detail?.ClassId);
+            return NormalizeProjectType(mappedType);
+        }
+        catch
+        {
+            return fallbackType;
+        }
+    }
+
     private static bool IsCurseForgeProject(string projectId)
     {
         return !string.IsNullOrEmpty(projectId) && projectId.StartsWith("curseforge-", StringComparison.OrdinalIgnoreCase);
@@ -995,6 +1368,18 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         var idText = projectId.Substring("curseforge-".Length);
         return int.TryParse(idText, out modId);
+    }
+
+    private static string MapCurseForgeClassIdToProjectType(int? classId)
+    {
+        return classId switch
+        {
+            12 => "resourcepack",
+            4471 => "modpack",
+            6552 => "shader",
+            6945 => "datapack",
+            _ => "mod"
+        };
     }
 
     private static string NormalizeProjectType(string projectType)

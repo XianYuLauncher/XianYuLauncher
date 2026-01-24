@@ -738,7 +738,8 @@ public class CurseForgeService
         CurseForgeFile currentFile = null,
         Action<string, double> progressCallback = null,
         CancellationToken cancellationToken = default,
-        bool checkModId = true)
+        bool checkModId = true,
+        Func<CurseForgeModDetail, Task<string>>? resolveDestinationPathAsync = null)
     {
         int processedCount = 0;
         
@@ -766,11 +767,11 @@ public class CurseForgeService
         // 跟踪已处理的依赖，避免循环依赖
         var processedDependencies = new HashSet<int>();
         
-        // 获取现有mod的Mod ID映射
-        Dictionary<int, string> existingModIds = null;
+        // 获取现有mod的Mod ID映射（按目标路径缓存）
+        Dictionary<string, Dictionary<int, string>>? existingModIdsByPath = null;
         if (checkModId)
         {
-            existingModIds = await GetExistingModIdsAsync(destinationPath, cancellationToken);
+            existingModIdsByPath = new Dictionary<string, Dictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
         }
         
         for (int i = 0; i < dependencies.Count; i++)
@@ -797,14 +798,6 @@ public class CurseForgeService
             
             try
             {
-                // 检查Mod ID是否已存在
-                if (existingModIds != null && existingModIds.ContainsKey(dependency.ModId))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  - 跳过：Mod {dependency.ModId} 已存在 ({existingModIds[dependency.ModId]})");
-                    processedCount++;
-                    continue;
-                }
-                
                 // 获取依赖Mod的详情
                 System.Diagnostics.Debug.WriteLine($"  - 正在获取Mod详情：{dependency.ModId}");
                 var depMod = await GetModDetailAsync(dependency.ModId);
@@ -816,6 +809,32 @@ public class CurseForgeService
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"  - 成功获取Mod详情：{depMod.Name}");
+
+                // 解析依赖的目标目录（按依赖项目类型）
+                string dependencyDestinationPath = destinationPath;
+                if (resolveDestinationPathAsync != null)
+                {
+                    dependencyDestinationPath = await resolveDestinationPathAsync(depMod);
+                }
+
+                // 获取目标目录下已存在的Mod ID映射
+                Dictionary<int, string>? existingModIds = null;
+                if (checkModId)
+                {
+                    if (existingModIdsByPath != null && !existingModIdsByPath.TryGetValue(dependencyDestinationPath, out existingModIds))
+                    {
+                        existingModIds = await GetExistingModIdsAsync(dependencyDestinationPath, cancellationToken);
+                        existingModIdsByPath[dependencyDestinationPath] = existingModIds;
+                    }
+                }
+
+                // 检查Mod ID是否已存在
+                if (existingModIds != null && existingModIds.ContainsKey(dependency.ModId))
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - 跳过：Mod {dependency.ModId} 已存在 ({existingModIds[dependency.ModId]})");
+                    processedCount++;
+                    continue;
+                }
                 
                 // 选择合适的文件版本
                 CurseForgeFile depFile = null;
@@ -888,7 +907,7 @@ public class CurseForgeService
                 
                 // 检查是否已存在相同SHA1的文件
                 bool alreadyExists = false;
-                string filePath = Path.Combine(destinationPath, depFile.FileName);
+                string filePath = Path.Combine(dependencyDestinationPath, depFile.FileName);
                 System.Diagnostics.Debug.WriteLine($"  - 目标路径：{filePath}");
                 
                 if (File.Exists(filePath))
@@ -943,11 +962,12 @@ public class CurseForgeService
                         System.Diagnostics.Debug.WriteLine($"  - 开始处理子依赖（{depFile.Dependencies.Count}个）");
                         int subDependenciesCount = await ProcessDependenciesAsync(
                             depFile.Dependencies,
-                            destinationPath,
+                            dependencyDestinationPath,
                             depFile, // 传递当前依赖的文件信息作为子依赖的参考
                             progressCallback,
                             cancellationToken,
-                            checkModId);
+                            checkModId,
+                            resolveDestinationPathAsync);
                         System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
                     }
                     

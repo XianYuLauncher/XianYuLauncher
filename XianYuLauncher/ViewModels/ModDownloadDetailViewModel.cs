@@ -1629,6 +1629,9 @@ namespace XianYuLauncher.ViewModels
                 
                 // 构建完整的文件保存路径
                 string savePath = Path.Combine(targetDir, _currentDownloadingModVersion.FileName);
+
+                // 处理依赖（根据资源类型决定目录）
+                await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, SelectedInstalledVersion);
                 
                 // 执行下载
                 await PerformDownload(_currentDownloadingModVersion, savePath);
@@ -1737,6 +1740,170 @@ namespace XianYuLauncher.ViewModels
                 // 关闭下载进度弹窗
                 IsDownloadProgressDialogOpen = false;
             }
+        }
+
+        private async Task ProcessDependenciesForResourceAsync(
+            ModVersionViewModel modVersion,
+            string targetDir,
+            InstalledGameVersionViewModel? gameVersion)
+        {
+            var settingsService = App.GetService<ILocalSettingsService>();
+            bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool?>("DownloadDependencies");
+            bool downloadDependencies = downloadDependenciesSetting ?? true;
+
+            if (!downloadDependencies || modVersion == null)
+            {
+                return;
+            }
+
+            // 非Mod资源：仅在有加载器时才处理依赖
+            var projectType = NormalizeProjectType(ProjectType);
+            if (projectType != "mod")
+            {
+                var loaderType = gameVersion?.LoaderType?.ToLower();
+                var gameVersionId = gameVersion?.GameVersion;
+                if (string.IsNullOrEmpty(loaderType) || loaderType == "vanilla" || loaderType == "minecraft")
+                {
+                    // 无加载器则静默跳过
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(gameVersionId))
+                {
+                    return;
+                }
+
+                // 构造一个最小的 ModrinthVersion 作为筛选条件
+                modVersion.OriginalVersion = modVersion.OriginalVersion ?? new ModrinthVersion();
+                modVersion.OriginalVersion.Loaders = new List<string> { loaderType };
+                modVersion.OriginalVersion.GameVersions = new List<string> { gameVersionId };
+
+            }
+
+            Func<string, Task<string>> resolveModrinthDependencyTargetAsync = async projectId =>
+            {
+                try
+                {
+                    var detail = await _modrinthService.GetProjectDetailAsync(projectId);
+                    string dependencyProjectType = NormalizeProjectType(detail?.ProjectType);
+                    return GetDependencyTargetDir(gameVersion, dependencyProjectType);
+                }
+                catch
+                {
+                    return GetDependencyTargetDir(gameVersion, "mod");
+                }
+            };
+
+            Func<CurseForgeModDetail, Task<string>> resolveCurseForgeDependencyTargetAsync = depMod =>
+            {
+                string dependencyProjectType = MapCurseForgeClassIdToProjectType(depMod?.ClassId);
+                return Task.FromResult(GetDependencyTargetDir(gameVersion, dependencyProjectType));
+            };
+
+            // Modrinth依赖处理
+            if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
+            {
+                var requiredDependencies = modVersion.OriginalVersion.Dependencies
+                    .Where(d => d.DependencyType == "required")
+                    .ToList();
+
+                if (requiredDependencies.Count > 0)
+                {
+                    DownloadStatus = "正在下载前置资源...";
+
+                    await _modrinthService.ProcessDependenciesAsync(
+                        requiredDependencies,
+                        targetDir,
+                        modVersion.OriginalVersion,
+                        (fileName, progress) =>
+                        {
+                            DownloadStatus = $"正在下载前置资源: {fileName}";
+                            DownloadProgress = progress;
+                            DownloadProgressText = $"{progress:F1}%";
+                            _downloadTaskManager.NotifyProgress(
+                                $"前置: {fileName}",
+                                progress,
+                                $"正在下载前置资源: {fileName}");
+                        },
+                        resolveDestinationPathAsync: resolveModrinthDependencyTargetAsync);
+                }
+            }
+            // CurseForge依赖处理
+            else if (modVersion.OriginalCurseForgeFile?.Dependencies != null && modVersion.OriginalCurseForgeFile.Dependencies.Count > 0)
+            {
+                var requiredDependencies = modVersion.OriginalCurseForgeFile.Dependencies
+                    .Where(d => d.RelationType == 3)
+                    .ToList();
+
+                if (requiredDependencies.Count > 0)
+                {
+                    DownloadStatus = "正在下载前置资源...";
+
+                    await _curseForgeService.ProcessDependenciesAsync(
+                        requiredDependencies,
+                        targetDir,
+                        modVersion.OriginalCurseForgeFile,
+                        (fileName, progress) =>
+                        {
+                            DownloadStatus = $"正在下载前置资源: {fileName}";
+                            DownloadProgress = progress;
+                            DownloadProgressText = $"{progress:F1}%";
+                            _downloadTaskManager.NotifyProgress(
+                                $"前置: {fileName}",
+                                progress,
+                                $"正在下载前置资源: {fileName}");
+                        },
+                        resolveDestinationPathAsync: resolveCurseForgeDependencyTargetAsync);
+                }
+            }
+        }
+
+        private string GetDependencyTargetDir(InstalledGameVersionViewModel? gameVersion, string projectType)
+        {
+            string minecraftPath = _fileService.GetMinecraftDataPath();
+            string versionName = gameVersion?.OriginalVersionName;
+
+            string baseDir = string.IsNullOrEmpty(versionName)
+                ? minecraftPath
+                : Path.Combine(minecraftPath, "versions", versionName);
+
+            string targetFolder = projectType switch
+            {
+                "resourcepack" => "resourcepacks",
+                "shader" => "shaderpacks",
+                "shaderpack" => "shaderpacks",
+                "datapack" => "datapacks",
+                "world" => "mods",
+                _ => "mods"
+            };
+
+            return Path.Combine(baseDir, targetFolder);
+        }
+
+        private static string NormalizeProjectType(string? projectType)
+        {
+            if (string.IsNullOrEmpty(projectType))
+            {
+                return "mod";
+            }
+
+            return projectType.ToLower() switch
+            {
+                "shaderpack" => "shader",
+                _ => projectType.ToLower()
+            };
+        }
+
+        private static string MapCurseForgeClassIdToProjectType(int? classId)
+        {
+            return classId switch
+            {
+                12 => "resourcepack",
+                4471 => "modpack",
+                6552 => "shader",
+                6945 => "datapack",
+                _ => "mod"
+            };
         }
 
         // 当前正在下载的Mod版本和保存路径（用于后台下载）
@@ -2225,79 +2392,10 @@ namespace XianYuLauncher.ViewModels
                     savePath = Path.Combine(targetDir, modVersion.FileName);
                 }
                 
-                // 收集依赖信息（仅当是Mod且不是自定义路径时）
-                List<ResourceDependency> dependencies = null;
-                if (ProjectType == "mod" && !UseCustomDownloadPath)
+                var dependenciesTargetDir = Path.GetDirectoryName(savePath);
+                if (!string.IsNullOrEmpty(dependenciesTargetDir))
                 {
-                    // 检查设置中是否开启了下载前置Mod
-                    var settingsService = App.GetService<ILocalSettingsService>();
-                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool?>("DownloadDependencies");
-                    // 默认值为true，只有当用户明确设置为false时才为false
-                    bool downloadDependencies = downloadDependenciesSetting ?? true;
-                    
-                    if (downloadDependencies)
-                    {
-                        // Modrinth依赖处理
-                        if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
-                        {
-                            // 筛选出必填的依赖项
-                            var requiredDependencies = modVersion.OriginalVersion.Dependencies
-                                .Where(d => d.DependencyType == "required")
-                                .ToList();
-                            
-                            if (requiredDependencies.Count > 0)
-                            {
-                                DownloadStatus = "正在下载前置Mod...";
-                                
-                                // 使用ModrinthService处理依赖下载，传递当前Mod的版本信息
-                                await _modrinthService.ProcessDependenciesAsync(
-                                    requiredDependencies,
-                                    Path.GetDirectoryName(savePath),
-                                    modVersion.OriginalVersion, // 传递当前Mod的版本信息用于筛选兼容依赖
-                                    (fileName, progress) =>
-                                    {
-                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
-                                        DownloadProgress = progress;
-                                        DownloadProgressText = $"{progress:F1}%";
-                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
-                                        _downloadTaskManager.NotifyProgress(
-                                            $"前置: {fileName}",
-                                            progress,
-                                            $"正在下载前置Mod: {fileName}");
-                                    });
-                            }
-                        }
-                        // CurseForge依赖处理
-                        else if (modVersion.OriginalCurseForgeFile?.Dependencies != null && modVersion.OriginalCurseForgeFile.Dependencies.Count > 0)
-                        {
-                            // 筛选出必填的依赖项 (relationType: 3 = RequiredDependency)
-                            var requiredDependencies = modVersion.OriginalCurseForgeFile.Dependencies
-                                .Where(d => d.RelationType == 3)
-                                .ToList();
-                            
-                            if (requiredDependencies.Count > 0)
-                            {
-                                DownloadStatus = "正在下载前置Mod...";
-                                
-                                // 使用CurseForgeService处理依赖下载，传递当前文件信息
-                                await _curseForgeService.ProcessDependenciesAsync(
-                                    requiredDependencies,
-                                    Path.GetDirectoryName(savePath),
-                                    modVersion.OriginalCurseForgeFile, // 传递当前文件信息用于筛选兼容依赖
-                                    (fileName, progress) =>
-                                    {
-                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
-                                        DownloadProgress = progress;
-                                        DownloadProgressText = $"{progress:F1}%";
-                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
-                                        _downloadTaskManager.NotifyProgress(
-                                            $"前置: {fileName}",
-                                            progress,
-                                            $"正在下载前置Mod: {fileName}");
-                                    });
-                            }
-                        }
-                    }
+                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, SelectedInstalledVersion);
                 }
                 
                 // 执行主Mod下载
@@ -2756,6 +2854,14 @@ namespace XianYuLauncher.ViewModels
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[Info] 准备下载世界存档: {ModName}, URL: {modVersion.DownloadUrl}");
+
+                // 处理依赖（世界类型依赖按资源类型放到版本目录）
+                var worldDependencyDir = GetDependencyTargetDir(SelectedInstalledVersion, "world");
+                if (!string.IsNullOrEmpty(worldDependencyDir))
+                {
+                    _fileService.CreateDirectory(worldDependencyDir);
+                    await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, SelectedInstalledVersion);
+                }
 
                 // 设置待后台下载信息（世界下载）
                 SetPendingWorldBackgroundDownload(modVersion, savesDir, modVersion.FileName);
@@ -3695,75 +3801,7 @@ namespace XianYuLauncher.ViewModels
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
                 
-                // 处理Mod依赖（仅当是Mod时）- 使用原有的ProcessDependenciesAsync确保完整功能
-                if (ProjectType == "mod")
-                {
-                    var settingsService = App.GetService<ILocalSettingsService>();
-                    bool? downloadDependenciesSetting = await settingsService.ReadSettingAsync<bool?>("DownloadDependencies");
-                    bool downloadDependencies = downloadDependenciesSetting ?? true;
-                    
-                    if (downloadDependencies)
-                    {
-                        // Modrinth依赖处理
-                        if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)
-                        {
-                            var requiredDependencies = modVersion.OriginalVersion.Dependencies
-                                .Where(d => d.DependencyType == "required")
-                                .ToList();
-                            
-                            if (requiredDependencies.Count > 0)
-                            {
-                                DownloadStatus = "正在下载前置Mod...";
-                                
-                                // 使用ModrinthService处理依赖下载
-                                await _modrinthService.ProcessDependenciesAsync(
-                                    requiredDependencies,
-                                    targetDir,
-                                    modVersion.OriginalVersion,
-                                    (fileName, progress) =>
-                                    {
-                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
-                                        DownloadProgress = progress;
-                                        DownloadProgressText = $"{progress:F1}%";
-                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
-                                        _downloadTaskManager.NotifyProgress(
-                                            $"前置: {fileName}",
-                                            progress,
-                                            $"正在下载前置Mod: {fileName}");
-                                    });
-                            }
-                        }
-                        // CurseForge依赖处理
-                        else if (modVersion.OriginalCurseForgeFile?.Dependencies != null && modVersion.OriginalCurseForgeFile.Dependencies.Count > 0)
-                        {
-                            var requiredDependencies = modVersion.OriginalCurseForgeFile.Dependencies
-                                .Where(d => d.RelationType == 3)
-                                .ToList();
-                            
-                            if (requiredDependencies.Count > 0)
-                            {
-                                DownloadStatus = "正在下载前置Mod...";
-                                
-                                // 使用CurseForgeService处理依赖下载
-                                await _curseForgeService.ProcessDependenciesAsync(
-                                    requiredDependencies,
-                                    targetDir,
-                                    modVersion.OriginalCurseForgeFile,
-                                    (fileName, progress) =>
-                                    {
-                                        DownloadStatus = $"正在下载前置Mod: {fileName}";
-                                        DownloadProgress = progress;
-                                        DownloadProgressText = $"{progress:F1}%";
-                                        // 同时通知 TeachingTip（用于后台下载时显示进度）
-                                        _downloadTaskManager.NotifyProgress(
-                                            $"前置: {fileName}",
-                                            progress,
-                                            $"正在下载前置Mod: {fileName}");
-                                    });
-                            }
-                        }
-                    }
-                }
+                await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
                 
                 // 设置待后台下载信息
                 SetPendingBackgroundDownload(modVersion, savePath);
