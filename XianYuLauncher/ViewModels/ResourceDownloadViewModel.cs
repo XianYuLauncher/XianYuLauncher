@@ -35,6 +35,80 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedVersionType = "release";
     
+    // 收藏夹相关
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _favoriteItems = new();
+
+    [ObservableProperty]
+    private ObservableCollection<ModrinthProject> _topFavoriteItems = new();
+
+    [ObservableProperty]
+    private bool _showFavoriteOverflow;
+
+    [ObservableProperty]
+    private bool _isFavoritesEmpty = true;
+
+    private void UpdateFavoritesState()
+    {
+        IsFavoritesEmpty = !FavoriteItems.Any();
+        ShowFavoriteOverflow = FavoriteItems.Count > 3;
+        
+        TopFavoriteItems.Clear();
+        foreach (var item in FavoriteItems.Take(3))
+        {
+            TopFavoriteItems.Add(item);
+        }
+    }
+
+    private void LoadFavorites()
+    {
+        try
+        {
+            var folder = _fileService.GetAppDataPath();
+            var data = _fileService.Read<ObservableCollection<ModrinthProject>>(folder, FavoritesFileName);
+            if (data != null)
+            {
+                FavoriteItems.Clear();
+                foreach (var item in data)
+                {
+                    FavoriteItems.Add(item);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading favorites: {ex.Message}");
+        }
+    }
+
+    private void SaveFavorites()
+    {
+        try
+        {
+            var folder = _fileService.GetAppDataPath();
+            _fileService.Save(folder, FavoritesFileName, FavoriteItems);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error saving favorites: {ex.Message}");
+        }
+    }
+
+    public bool IsFavorite(ModrinthProject project)
+    {
+        return FavoriteItems.Any(p => p.ProjectId == project.ProjectId);
+    }
+
+    [RelayCommand]
+    public void AddToFavorites(ModrinthProject project)
+    {
+        if (project == null) return;
+        if (!IsFavorite(project))
+        {
+            FavoriteItems.Insert(0, project); 
+        }
+    }
+
     private const string VersionTypeFilterKey = "VersionTypeFilter";
 
     [ObservableProperty]
@@ -391,6 +465,55 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private const string VersionCacheFileName = "version_cache.json";
     private const string VersionCacheTimeKey = "VersionListCacheTime";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
+    
+    // 收藏夹缓存文件
+    private const string FavoritesFileName = "favorites.json";
+
+    [ObservableProperty]
+    private bool _isFavoritesSelectionMode = false;
+
+    [ObservableProperty]
+    private bool _isImportFavoritesEnabled = false; // 暂时不做，设为 False
+
+    public List<ModrinthProject> SelectedFavorites { get; set; } = new List<ModrinthProject>();
+
+    [RelayCommand]
+    public void ToggleFavoritesSelectionMode()
+    {
+        IsFavoritesSelectionMode = !IsFavoritesSelectionMode;
+        if (!IsFavoritesSelectionMode)
+        {
+            SelectedFavorites.Clear();
+        }
+    }
+
+    [RelayCommand]
+    public async Task CopyShareCode()
+    {
+        try 
+        {
+            // 如果处于多选模式，复制选中的项目；否则复制所有收藏项目
+            var targets = IsFavoritesSelectionMode && SelectedFavorites.Any() 
+                ? SelectedFavorites 
+                : FavoriteItems.ToList();
+            
+            if (!targets.Any()) return;
+
+            var ids = targets.Select(x => x.ProjectId).Where(id => !string.IsNullOrEmpty(id)).ToList();
+            var json = System.Text.Json.JsonSerializer.Serialize(ids);
+
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(json);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+
+            // TODO: 可以添加一个提示通知 Toast
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+        await Task.CompletedTask;
+    }
 
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
@@ -414,6 +537,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _modrinthCacheService = modrinthCacheService;
         _curseForgeCacheService = curseForgeCacheService;
         _translationService = translationService;
+
+        // Load saved favorites
+        LoadFavorites();
+
+        FavoriteItems.CollectionChanged += (s, e) => 
+        {
+            UpdateFavoritesState();
+            SaveFavorites();
+        };
+        UpdateFavoritesState();
         
         // 加载保存的版本类型筛选
         LoadVersionTypeFilter();

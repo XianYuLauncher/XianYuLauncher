@@ -814,4 +814,72 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
     }
+
+    // ==================== 收藏夹拖放相关 ====================
+
+    private void FavoritesDropArea_DragOver(object sender, DragEventArgs e)
+    {
+        e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+        
+        if (sender is Control control)
+        {
+             control.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        }
+    }
+
+    private void FavoritesDropArea_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Control control)
+        {
+             control.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        }
+    }
+
+    private void FavoritesDropArea_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Control control)
+        {
+             control.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        }
+
+        if (e.DataView.Properties.TryGetValue("DraggedItem", out var item))
+        {
+            if (item is ModrinthProject project)
+            {
+                ViewModel.AddToFavoritesCommand.Execute(project);
+            }
+        }
+    }
+
+    private void CommunityListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        if (e.Items.Count > 0)
+        {
+            e.Data.Properties.Add("DraggedItem", e.Items[0]);
+            e.Data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+        }
+    }
+
+    private void FavoritesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel != null)
+        {
+            ViewModel.SelectedFavorites.Clear();
+            if (sender is ListView listView)
+            {
+                foreach (var item in listView.SelectedItems)
+                {
+                    if (item is Core.Models.ModrinthProject project)
+                    {
+                        ViewModel.SelectedFavorites.Add(project);
+                    }
+                }
+            }
+        }
+    }
+
+    public ListViewSelectionMode GetSelectionMode(bool isSelectionMode)
+    {
+        return isSelectionMode ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
+    }
 }
