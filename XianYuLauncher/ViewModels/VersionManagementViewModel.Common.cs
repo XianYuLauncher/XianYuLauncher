@@ -179,12 +179,6 @@ public partial class VersionManagementViewModel
     {
         switch (SelectedTabIndex)
         {
-            case 0: // 设置
-                // 设置tab没有对应的文件夹，跳过
-                break;
-            case 1: // 扩展
-                // 扩展tab没有对应的文件夹，跳过
-                break;
             case 2: // Mod管理
                 await OpenFolderByTypeAsync("mods");
                 break;
@@ -199,6 +193,15 @@ public partial class VersionManagementViewModel
                 break;
             case 6: // 地图管理
                 await OpenMapsFolderAsync();
+                break;
+            case 0: // 概览
+            case 1: // 版本设置
+            default:
+                // 其他情况默认打开版本根目录
+                if (SelectedVersion != null)
+                {
+                    await OpenFolderAsync(SelectedVersion.Path);
+                }
                 break;
         }
     }
