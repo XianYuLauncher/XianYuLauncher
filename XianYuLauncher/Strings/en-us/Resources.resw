@@ -2488,4 +2488,52 @@ Continue downloading?</value>
   <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
     <value>Version '{0}' already exists, please use a different name</value>
   </data>
+  <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
+    <value>XianYuFixer AI Analysis</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysis.Text" xml:space="preserve">
+    <value>AI Crash Analysis</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
+    <value>Enable to use third-party AI service for crash log analysis.</value>
+  </data>
+  <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
+    <value>XianYuFixer only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
+  </data>
+  <data name="Settings_AI_ConfigDetails.Header" xml:space="preserve">
+    <value>AI Configuration Details</value>
+  </data>
+  <data name="Settings_AI_ConfigDescription.Text" xml:space="preserve">
+    <value>Configure API endpoint, key and model</value>
+  </data>
+  <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
+    <value>API Endpoint (Base URL)</value>
+  </data>
+  <data name="Settings_AI_ApiKey.Header" xml:space="preserve">
+    <value>API Key</value>
+  </data>
+  <data name="Settings_AI_ModelName.Header" xml:space="preserve">
+    <value>Model Name</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Drag resources here to bookmark</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesText.Text" xml:space="preserve">
+    <value>Favorites</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesFlyoutTitle.Text" xml:space="preserve">
+    <value>Favorite Resources</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesEmpty.Text" xml:space="preserve">
+    <value>No favorites yet</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesDragHint.Text" xml:space="preserve">
+    <value>Drag items to the Favorites button</value>
+  </data>
+  <data name="ResourceDownloadPage_ImportFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Import favorites to version</value>
+  </data>
+  <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove selected items</value>
+  </data>
 </root>

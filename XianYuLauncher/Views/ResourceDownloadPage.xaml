@@ -163,6 +163,7 @@
             <!-- 收藏夹拖放区域 -->
             <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="0,0,20,0">
                 <Button x:Name="FavoritesDropArea"
+                        x:Uid="ResourceDownloadPage_FavoritesButton"
                         AllowDrop="True"
                         DragOver="FavoritesDropArea_DragOver"
                         DragLeave="FavoritesDropArea_DragLeave"
@@ -176,7 +177,7 @@
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE734;" FontSize="16" />
-                        <TextBlock Text="收藏夹" />
+                        <TextBlock x:Uid="ResourceDownloadPage_FavoritesText" Text="收藏夹" />
                     </StackPanel>
 
                     <Button.Flyout>
@@ -187,7 +188,7 @@
                                     <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="收藏的资源" Style="{StaticResource SubtitleTextBlockStyle}" Margin="12,12,12,6"/>
+                                <TextBlock x:Uid="ResourceDownloadPage_FavoritesFlyoutTitle" Text="收藏的资源" Style="{StaticResource SubtitleTextBlockStyle}" Margin="12,12,12,6"/>
 
                                 <ListView Grid.Row="1" 
                                           ItemsSource="{x:Bind ViewModel.FavoriteItems, Mode=OneWay}" 
@@ -223,8 +224,8 @@
                                 <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" 
                                             Visibility="{x:Bind ViewModel.IsFavoritesEmpty, Mode=OneWay}" Spacing="8">
                                     <FontIcon Glyph="&#xE734;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="暂无收藏" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ResourceDownloadPage_FavoritesEmpty" Text="暂无收藏" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ResourceDownloadPage_FavoritesDragHint" Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 
                                 <!-- Function Bar -->
@@ -237,7 +238,7 @@
                                     
                                     <!-- Left: Actions -->
                                     <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button ToolTipService.ToolTip="导入收藏到版本"
+                                        <Button x:Uid="ResourceDownloadPage_ImportFavoritesButton" ToolTipService.ToolTip="导入收藏到版本"
                                                 IsEnabled="{x:Bind ViewModel.IsImportFavoritesEnabled, Mode=OneWay}"
                                                 Command="{x:Bind ViewModel.OpenFavoritesImportCommand}" 
                                                 Padding="8,4" Background="Transparent" BorderThickness="0">
@@ -247,7 +248,7 @@
                                     
                                     <!-- Right: Tools -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                                        <Button ToolTipService.ToolTip="删除选中项" Command="{x:Bind ViewModel.RemoveSelectedFavoritesCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
+                                        <Button x:Uid="ResourceDownloadPage_RemoveFavoritesButton" ToolTipService.ToolTip="删除选中项" Command="{x:Bind ViewModel.RemoveSelectedFavoritesCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
                                             <FontIcon Glyph="&#xE74D;" FontSize="14" />
                                         </Button>
                                         <Button ToolTipService.ToolTip="导入分享码" Command="{x:Bind ViewModel.OpenShareCodeImportCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">

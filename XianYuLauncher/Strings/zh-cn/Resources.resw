@@ -2500,4 +2500,52 @@
   <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
     <value>版本 '{0}' 已存在，请使用其他名称</value>
   </data>
+  <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
+    <value>XianYuFixer AI 分析</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysis.Text" xml:space="preserve">
+    <value>AI 崩溃分析</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
+    <value>启用后可使用第三方 AI 服务分析崩溃日志。</value>
+  </data>
+  <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
+    <value>XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
+  </data>
+  <data name="Settings_AI_ConfigDetails.Header" xml:space="preserve">
+    <value>AI 配置详情</value>
+  </data>
+  <data name="Settings_AI_ConfigDescription.Text" xml:space="preserve">
+    <value>配置 API 端点、密钥与模型</value>
+  </data>
+  <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
+    <value>API 端点 (Base URL)</value>
+  </data>
+  <data name="Settings_AI_ApiKey.Header" xml:space="preserve">
+    <value>API 密钥 (Key)</value>
+  </data>
+  <data name="Settings_AI_ModelName.Header" xml:space="preserve">
+    <value>模型名称 (Model)</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>拖拽资源到此处以收藏</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesText.Text" xml:space="preserve">
+    <value>收藏夹</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesFlyoutTitle.Text" xml:space="preserve">
+    <value>收藏的资源</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesEmpty.Text" xml:space="preserve">
+    <value>暂无收藏</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesDragHint.Text" xml:space="preserve">
+    <value>拖拽列表项到收藏夹按钮</value>
+  </data>
+  <data name="ResourceDownloadPage_ImportFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>导入收藏到版本</value>
+  </data>
+  <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>删除选中项</value>
+  </data>
 </root>

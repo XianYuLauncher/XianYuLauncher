@@ -22,12 +22,12 @@ namespace XianYuLauncher.Core.Services
             _httpClient.Timeout = TimeSpan.FromSeconds(60); // AI calls can be slow
         }
 
-        public async Task<string> AnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model)
+        public async Task<string> AnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model, string language = "Chinese")
         {
             try
             {
                 var sb = new StringBuilder();
-                await foreach (var chunk in StreamAnalyzeLogAsync(logContent, apiKey, endpoint, model))
+                await foreach (var chunk in StreamAnalyzeLogAsync(logContent, apiKey, endpoint, model, language))
                 {
                     sb.Append(chunk);
                 }
@@ -48,7 +48,7 @@ namespace XianYuLauncher.Core.Services
             }
         }
 
-        public async IAsyncEnumerable<string> StreamAnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model)
+        public async IAsyncEnumerable<string> StreamAnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model, string language = "Chinese")
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -85,7 +85,7 @@ namespace XianYuLauncher.Core.Services
 
             var systemPrompt =
                 "You are an expert Minecraft technical support agent. " +
-                "Analyze the following Minecraft crash log and explain in simple localized language (Chinese) what caused the crash and how to fix it. " +
+                $"Analyze the following Minecraft crash log and explain in simple localized language ({language}) what caused the crash and how to fix it. " +
                 "Be concise and reference specific mods or config files if they are responsible. " +
                 "\n\n" +
                 "If you need to suggest actionable fixes, output a JSON array inside <TOOL_CALLS>...</TOOL_CALLS> at the END of your reply. " +

@@ -857,7 +857,11 @@ namespace XianYuLauncher.ViewModels
                     _toolTagCarry = string.Empty;
                     _toolBlockBuffer.Clear();
 
-                    await foreach (var chunk in _aiAnalysisService.StreamAnalyzeLogAsync(sanitizedLog, key, endpoint, model))
+                    // Get current language from service
+                    var langCode = _languageSelectorService.Language;
+                    var languageForAi = (langCode == "zh-CN") ? "Simplified Chinese" : "English";
+                    
+                    await foreach (var chunk in _aiAnalysisService.StreamAnalyzeLogAsync(sanitizedLog, key, endpoint, model, languageForAi))
                     {
                         if (_aiAnalysisCts.Token.IsCancellationRequested)
                         {

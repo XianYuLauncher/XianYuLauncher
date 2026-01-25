@@ -760,12 +760,12 @@
                                 </StackPanel>
 
                                 <!-- AI 分析设置 -->
-                                <TextBlock Text="XianYuFixer AI 分析" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
+                                <TextBlock x:Uid="Settings_AI_Analysis_Title" Text="XianYuFixer AI 分析" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
                                 <StackPanel x:Name="AiAnalysisSection" Margin="{StaticResource SmallTopBottomMargin}" Spacing="10">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="AI 崩溃分析" />
-                                            <TextBlock Text="启用后可使用第三方 AI 服务分析崩溃日志。"
+                                            <TextBlock x:Uid="Settings_AI_CrashAnalysis" Text="AI 崩溃分析" />
+                                            <TextBlock x:Uid="Settings_AI_CrashAnalysisDescription" Text="启用后可使用第三方 AI 服务分析崩溃日志。"
                                                        Style="{ThemeResource CaptionTextBlockStyle}"
                                                        Margin="0,4,0,0"
                                                        Opacity="0.7" />
@@ -774,27 +774,28 @@
                                                       VerticalAlignment="Center" />
                                     </StackPanel>
 
-                                    <TextBlock Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。"
+                                    <TextBlock x:Uid="Settings_AI_Disclaimer" Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。"
                                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                               TextWrapping="Wrap"
                                                Opacity="0.7" />
 
-                                    <Expander Header="AI 配置详情"
+                                    <Expander x:Uid="Settings_AI_ConfigDetails" Header="AI 配置详情"
                                               IsEnabled="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}"
                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                               Width="{Binding ActualWidth, ElementName=AiAnalysisSection}"
                                               HorizontalAlignment="Stretch"
                                               HorizontalContentAlignment="Stretch">
                                         <StackPanel Spacing="12" Padding="0,12,0,0">
-                                            <TextBlock Text="配置 API 端点、密钥与模型"
+                                            <TextBlock x:Uid="Settings_AI_ConfigDescription" Text="配置 API 端点、密钥与模型"
                                                        Style="{ThemeResource CaptionTextBlockStyle}"
                                                        Opacity="0.7" />
-                                            <TextBox Header="API 端点 (Base URL)"
+                                            <TextBox x:Uid="Settings_AI_ApiEndpoint" Header="API 端点 (Base URL)"
                                                      PlaceholderText="https://api.openai.com"
                                                      Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            <PasswordBox Header="API 密钥 (Key)"
+                                            <PasswordBox x:Uid="Settings_AI_ApiKey" Header="API 密钥 (Key)"
                                                          PlaceholderText="sk-..."
                                                          Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBox Header="模型名称 (Model)"
+                                            <TextBox x:Uid="Settings_AI_ModelName" Header="模型名称 (Model)"
                                                      PlaceholderText="gpt-3.5-turbo"
                                                      Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
