@@ -428,11 +428,17 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private bool _enableRealTimeLogs = false;
-    
+
     /// <summary>
-    /// 实时日志设置键
+    /// 允许发送匿名遥测数据
     /// </summary>
-    // 已经在上方定义：private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
+    [ObservableProperty]
+    private bool _enableTelemetry = true;
+
+    /// <summary>
+    /// 允许发送匿名遥测数据设置键
+    /// </summary>
+    private const string EnableTelemetryKey = "EnableTelemetry";
     
     private readonly ModrinthCacheService _modrinthCacheService;
     private readonly CurseForgeCacheService _curseForgeCacheService;
@@ -636,6 +642,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadBackgroundImagePathAsync().ConfigureAwait(false);
         // 加载下载前置Mod设置
         LoadDownloadDependenciesAsync().ConfigureAwait(false);
+        // 加载遥测设置
+        LoadEnableTelemetryAsync().ConfigureAwait(false);
         // 加载隐藏快照版本设置
         LoadHideSnapshotVersionsAsync().ConfigureAwait(false);
         // 加载下载线程数设置
@@ -1054,6 +1062,24 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 保存实时日志设置，值为: {value}");
         _localSettingsService.SaveSettingAsync(EnableRealTimeLogsKey, value).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 加载遥测设置
+    /// </summary>
+    private async Task LoadEnableTelemetryAsync()
+    {
+        // 读取遥测设置，如果不存在则使用默认值true
+        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey);
+        EnableTelemetry = value ?? true;
+    }
+
+    /// <summary>
+    /// 当遥测设置变化时保存
+    /// </summary>
+    partial void OnEnableTelemetryChanged(bool value)
+    {
+        _localSettingsService.SaveSettingAsync(EnableTelemetryKey, value).ConfigureAwait(false);
     }
     
     /// <summary>

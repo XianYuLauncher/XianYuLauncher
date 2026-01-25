@@ -1161,11 +1161,51 @@ public partial class LaunchViewModel : ObservableRecipient
         // 计算并记录游戏时长
         if (!string.IsNullOrEmpty(_currentLaunchedVersion) && _gameStartTime != default)
         {
-            var playTimeSeconds = (long)(DateTime.Now - _gameStartTime).TotalSeconds;
+            var durationSeconds = (DateTime.Now - _gameStartTime).TotalSeconds;
+            var playTimeSeconds = (long)durationSeconds;
             if (playTimeSeconds > 0)
             {
                 _ = _versionConfigService.RecordExitAsync(_currentLaunchedVersion, playTimeSeconds);
             }
+
+            // 发送遥测（排除用户主动终止）
+            if (!e.IsUserTerminated)
+            {
+                try
+                {
+                    var versionConfig = await _versionConfigService.LoadConfigAsync(_currentLaunchedVersion);
+
+                    var javaPath = versionConfig.UseGlobalJavaSetting
+                        ? await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey)
+                        : versionConfig.JavaPath;
+
+                    if (string.IsNullOrEmpty(javaPath))
+                    {
+                        javaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+                    }
+
+                    var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath ?? string.Empty);
+                    var javaVersionMajor = javaVersion?.MajorVersion ?? 0;
+                    var memoryAllocatedMb = (int)Math.Round(versionConfig.MaximumHeapMemory * 1024);
+                    var isSuccess = e.ExitCode == 0;
+
+                    var telemetryService = App.GetService<TelemetryService>();
+                    await telemetryService.TrackGameSessionAsync(
+                        isSuccess: isSuccess,
+                        mcVersion: versionConfig.MinecraftVersion,
+                        loaderType: versionConfig.ModLoaderType,
+                        loaderVersion: versionConfig.ModLoaderVersion,
+                        exitCode: e.ExitCode,
+                        durationSeconds: durationSeconds,
+                        javaVersionMajor: javaVersionMajor,
+                        memoryAllocatedMb: memoryAllocatedMb);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 发送游戏会话失败: {ex.Message}");
+                }
+            }
+
             _currentLaunchedVersion = string.Empty;
             _gameStartTime = default;
         }

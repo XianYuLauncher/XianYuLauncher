@@ -2,6 +2,8 @@ using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
@@ -21,8 +23,8 @@ public class TelemetryService
     private static string TelemetryEndpoint => SecretsService.Config.Telemetry.Endpoint;
     private static string ApiKey => SecretsService.Config.Telemetry.ApiKey;
     
-    // 是否启用遥测（可以通过配置控制）
-    private bool _isEnabled = true;
+    // 是否启用遥测
+    private const string EnableTelemetryKey = "EnableTelemetry";
 
     public TelemetryService(HttpClient httpClient, ILogger<TelemetryService> logger, ILocalSettingsService localSettingsService)
     {
@@ -46,7 +48,9 @@ public class TelemetryService
     /// </summary>
     public async Task CheckAndSendFirstLaunchAsync()
     {
-        if (!_isEnabled) return;
+        var isEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey) ?? true;
+        if (!isEnabled) return;
+        
         if (string.IsNullOrEmpty(TelemetryEndpoint)) return;
 
         try
@@ -61,7 +65,7 @@ public class TelemetryService
                 Timestamp = DateTime.UtcNow
             };
 
-            await SendTelemetryDataAsync(firstLaunchData, async () => 
+            await SendTelemetryDataAsync(firstLaunchData, onSuccess: async () =>
             {
                 // 发送成功后标记为已发送
                 await _localSettingsService.SaveSettingAsync("IsFirstLaunchTelemetrySent", true);
@@ -73,9 +77,9 @@ public class TelemetryService
         }
     }
 
-    private async Task SendTelemetryDataAsync<T>(T data, Func<Task> onSuccess = null)
+    private async Task SendTelemetryDataAsync<T>(T data, JsonSerializerOptions? options = null, Func<Task> onSuccess = null)
     {
-        var json = JsonSerializer.Serialize(data);
+        var json = options == null ? JsonSerializer.Serialize(data) : JsonSerializer.Serialize(data, options);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // 异步发送，不等待
@@ -87,11 +91,21 @@ public class TelemetryService
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogInformation($"遥测数据 ({typeof(T).Name}) 发送成功");
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据 ({typeof(T).Name}) 发送成功");
                     if (onSuccess != null) await onSuccess();
                 }
                 else
                 {
-                    _logger.LogWarning($"遥测数据发送失败: {response.StatusCode}");
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("遥测数据发送失败: {StatusCode} {Body}", response.StatusCode, responseBody);
+                    if (string.IsNullOrWhiteSpace(responseBody))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode} | {responseBody}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -106,7 +120,9 @@ public class TelemetryService
     /// </summary>
     public async Task SendLaunchEventAsync()
     {
-        if (!_isEnabled) return;
+        var isEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey) ?? true;
+        if (!isEnabled) return;
+        
         if (string.IsNullOrEmpty(TelemetryEndpoint)) return;
 
         try
@@ -126,10 +142,68 @@ public class TelemetryService
     }
 
     /// <summary>
-    /// 设置是否启用遥测
+    /// 记录游戏启动会话
     /// </summary>
-    public void SetEnabled(bool enabled)
+    public async Task TrackGameSessionAsync(bool isSuccess, string mcVersion, string loaderType, string loaderVersion, int exitCode, double durationSeconds, int javaVersionMajor, int memoryAllocatedMb)
     {
-        _isEnabled = enabled;
+        var isEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey) ?? true;
+        if (!isEnabled) return;
+        
+        if (string.IsNullOrEmpty(TelemetryEndpoint)) return;
+
+        try
+        {
+            var sanitizedMcVersion = isSuccess ? null : SanitizeString(mcVersion);
+            var sanitizedLoaderType = isSuccess ? null : SanitizeString(loaderType);
+            var sanitizedLoaderVersion = isSuccess ? null : SanitizeString(loaderVersion);
+
+            var data = new
+            {
+                EventType = "GameSession",
+                Timestamp = DateTime.UtcNow,
+                Properties = new 
+                {
+                    IsSuccess = isSuccess,
+                    MinecraftVersion = sanitizedMcVersion,
+                    LoaderType = sanitizedLoaderType,
+                    LoaderVersion = sanitizedLoaderVersion,
+                    JavaVersionMajor = javaVersionMajor,
+                    ExitCode = exitCode,
+                    DurationSeconds = durationSeconds,
+                    MemoryAllocatedMb = memoryAllocatedMb
+                }
+            };
+
+            var options = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            await SendTelemetryDataAsync(data, options);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Telemetry] 游戏会话统计发送失败: {ex.Message}");
+        }
     }
+
+    /// <summary>
+    /// 清洗字符串，防止恶意Payload（仅允许字母数字和.-_）
+    /// </summary>
+    private string SanitizeString(string input, int maxLength = 32)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        
+        // 1. 长度截断
+        if (input.Length > maxLength)
+        {
+            input = input.Substring(0, maxLength);
+        }
+        
+        // 2. 白名单过滤 (只允许字母、数字、点、横杠、下划线)
+        // 任何不在此列表中的字符都会被移除
+        return Regex.Replace(input, @"[^a-zA-Z0-9\.\-_]", ""); 
+    }
+
+
 }

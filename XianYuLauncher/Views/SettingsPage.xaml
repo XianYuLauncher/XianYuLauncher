@@ -927,6 +927,14 @@
                                         Content="GitHub" 
                                         NavigateUri="https://github.com/XianYuLauncher/XianYuLauncher"
                                         Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
+                                    
+                                    <CheckBox Content="允许发送匿名诊断数据以帮助改进启动器"
+                                              IsChecked="{x:Bind ViewModel.EnableTelemetry, Mode=TwoWay}"
+                                              Margin="-4,4,0,0">
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip Content="放心，我们仅收集游戏版本、运行性能及启动结果类数据，用于修复问题、优化兼容性，绝不包含您的账号、存档或任何个人隐私！详情可点击「隐私政策」查看，本说明不具法律效应。" />
+                                        </ToolTipService.ToolTip>
+                                    </CheckBox>
                                 </StackPanel>
                                 
                                 <!-- 更新设置 -->
