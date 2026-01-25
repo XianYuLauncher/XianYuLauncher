@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -15,10 +16,10 @@ public class AnnouncementService : IAnnouncementService
     private readonly ILogger<AnnouncementService> _logger;
     private readonly ILocalSettingsService _localSettingsService;
     
-    // 公告配置 URL 列表（优先使用 Gitee，备选 GitHub）
+    // 公告配置 URL 列表（仅 v2 公告，新版本专用）
     private readonly string[] _announcementUrls = {
-        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/announcement.json",
-        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/announcement.json"
+        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/announcement_v2.json",
+        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/announcement_v2.json"
     };
     
     private const string LastAnnouncementIdKey = "LastAnnouncementId";
@@ -57,6 +58,13 @@ public class AnnouncementService : IAnnouncementService
                 if (announcement != null)
                 {
                     _logger.LogInformation("成功解析公告，ID: {Id}, 标题: {Title}", announcement.id, announcement.title);
+
+                    // 版本范围检查
+                    if (!IsWithinVersionRange(announcement))
+                    {
+                        _logger.LogInformation("公告不符合版本范围要求，已忽略: {Id}", announcement.id);
+                        return null;
+                    }
                     
                     // 检查公告是否过期
                     if (!string.IsNullOrEmpty(announcement.expire_time))
@@ -74,16 +82,21 @@ public class AnnouncementService : IAnnouncementService
                     // 检查是否为新公告
                     var lastAnnouncementId = await _localSettingsService.ReadSettingAsync<string>(LastAnnouncementIdKey);
                     
-                    if (announcement.important || string.IsNullOrEmpty(lastAnnouncementId) || lastAnnouncementId != announcement.id)
+                    if (string.IsNullOrEmpty(lastAnnouncementId) || lastAnnouncementId != announcement.id)
                     {
-                        _logger.LogInformation("发现新公告或重要公告，ID: {Id}", announcement.id);
+                        _logger.LogInformation("发现新公告，ID: {Id}", announcement.id);
                         return announcement;
+                    }
+
+                    if (announcement.important)
+                    {
+                        _logger.LogInformation("重要公告已读过，ID: {Id}", announcement.id);
                     }
                     else
                     {
                         _logger.LogInformation("公告已读过，ID: {Id}", announcement.id);
-                        return null;
                     }
+                    return null;
                 }
             }
             catch (HttpRequestException ex)
@@ -102,6 +115,39 @@ public class AnnouncementService : IAnnouncementService
         
         _logger.LogWarning("所有公告 URL 都失败，无法检查公告");
         return null;
+    }
+
+    private bool IsWithinVersionRange(AnnouncementInfo announcement)
+    {
+        var currentVersion = ParseVersionSafe(VersionHelper.GetVersion());
+        if (currentVersion == null)
+        {
+            return true;
+        }
+
+        var minVersion = ParseVersionSafe(announcement.min_version);
+        if (minVersion != null && currentVersion < minVersion)
+        {
+            return false;
+        }
+
+        var maxVersion = ParseVersionSafe(announcement.max_version);
+        if (maxVersion != null && currentVersion > maxVersion)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static Version? ParseVersionSafe(string? versionText)
+    {
+        if (string.IsNullOrWhiteSpace(versionText))
+        {
+            return null;
+        }
+
+        return Version.TryParse(versionText.Trim(), out var version) ? version : null;
     }
     
     /// <summary>

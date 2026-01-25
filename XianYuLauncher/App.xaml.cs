@@ -298,6 +298,8 @@ public partial class App : Application
             services.AddHttpClient<IAnnouncementService, AnnouncementService>();
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
 
+            services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
+
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<SettingsPage>();

@@ -39,6 +39,16 @@ public class AnnouncementInfo
     /// 公告过期时间（ISO 8601 格式，可选）
     /// </summary>
     public string? expire_time { get; set; }
+
+    /// <summary>
+    /// 最低可见版本（如 1.3.0，可选）
+    /// </summary>
+    public string? min_version { get; set; }
+
+    /// <summary>
+    /// 最高可见版本（如 1.4.0，可选）
+    /// </summary>
+    public string? max_version { get; set; }
     
     /// <summary>
     /// 自定义 XAML 内容（可选，如果提供则优先使用）

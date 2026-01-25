@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -18,6 +19,8 @@ public partial class AnnouncementDialogViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _hasCustomXaml;
+
+    public bool HasButtons => Announcement.buttons != null && Announcement.buttons.Count > 0;
     
     /// <summary>
     /// 关闭对话框事件
@@ -42,5 +45,29 @@ public partial class AnnouncementDialogViewModel : ObservableObject
     {
         await _announcementService.MarkAnnouncementAsReadAsync(Announcement.id);
         CloseDialog?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task ExecuteButtonAsync(AnnouncementButton button)
+    {
+        var action = button.action?.Trim().ToLowerInvariant() ?? "close";
+
+        switch (action)
+        {
+            case "open_url":
+                if (!string.IsNullOrWhiteSpace(button.action_param))
+                {
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(button.action_param));
+                }
+                break;
+            case "exit_app":
+                CloseDialog?.Invoke(this, EventArgs.Empty);
+                App.MainWindow.Close();
+                Application.Current.Exit();
+                break;
+            case "close":
+            default:
+                await CloseAndMarkAsReadAsync();
+                break;
+        }
     }
 }

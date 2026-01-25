@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels
@@ -22,6 +23,8 @@ namespace XianYuLauncher.ViewModels
     {
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly ILogSanitizerService _logSanitizerService;
+        private readonly IAIAnalysisService _aiAnalysisService; // New Service
+        private readonly ILocalSettingsService _localSettingsService; // To read settings
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
@@ -45,13 +48,28 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 构造函数
-        public ErrorAnalysisViewModel(ILanguageSelectorService languageSelectorService, ILogSanitizerService logSanitizerService)
+        public ErrorAnalysisViewModel(
+            ILanguageSelectorService languageSelectorService, 
+            ILogSanitizerService logSanitizerService,
+            IAIAnalysisService aiAnalysisService,
+            ILocalSettingsService localSettingsService)
         {
             _languageSelectorService = languageSelectorService;
             _logSanitizerService = logSanitizerService;
+            _aiAnalysisService = aiAnalysisService;
+            _localSettingsService = localSettingsService;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
         }
+
+        /// <summary>
+        /// 分析日志
+        /// </summary>
+        public async Task AnalyzeLogAsync()
+        {
+            await AnalyzeWithAiAsync();
+        }
+
 
         /// <summary>
         /// 获取本地化字符串
@@ -375,8 +393,18 @@ namespace XianYuLauncher.ViewModels
         {
             if (!parameters.TryGetValue("modId", out var modId) || string.IsNullOrWhiteSpace(modId))
             {
-                return;
+                if (!parameters.TryGetValue("modFile", out modId) || string.IsNullOrWhiteSpace(modId))
+                {
+                    if (!parameters.TryGetValue("fileName", out modId) || string.IsNullOrWhiteSpace(modId))
+                    {
+                        return;
+                    }
+                }
             }
+
+            // 规范化为文件名（避免直接用路径执行删除）
+            modId = Path.GetFileName(modId);
+            System.Diagnostics.Debug.WriteLine($"[AI] 删除Mod参数: {modId}");
 
             var modFilePath = await FindModFileByIdAsync(modId);
             if (string.IsNullOrWhiteSpace(modFilePath))
@@ -394,7 +422,7 @@ namespace XianYuLauncher.ViewModels
                 var dialog = new ContentDialog
                 {
                     Title = "删除 Mod",
-                    Content = $"确定要删除该 Mod 吗？\n\n{Path.GetFileName(modFilePath)}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
+                    Content = $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
                     PrimaryButtonText = "删除",
                     CloseButtonText = "取消",
                     XamlRoot = App.MainWindow.Content.XamlRoot
@@ -762,6 +790,12 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("AI分析: 游戏正常退出，不触发AI分析");
         }
     }
+
+    private const string ToolStartTag = "<TOOL_CALLS>";
+    private const string ToolEndTag = "</TOOL_CALLS>";
+    private bool _isToolBlockActive;
+    private string _toolTagCarry = string.Empty;
+    private readonly StringBuilder _toolBlockBuffer = new();
     
     /// <summary>
     /// 使用本地知识库进行错误分析（流式输出）
@@ -797,6 +831,85 @@ namespace XianYuLauncher.ViewModels
             
             // 创建取消令牌
             _aiAnalysisCts = new System.Threading.CancellationTokenSource();
+
+            var isAiEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableAIAnalysis") ?? false;
+
+            if (isAiEnabled)
+            {
+                // 仅使用外部 AI 分析（不执行知识库分析）
+                var endpoint = await _localSettingsService.ReadSettingAsync<string>("AIApiEndpoint") ?? string.Empty;
+                var storedKey = await _localSettingsService.ReadSettingAsync<string>("AIApiKey") ?? string.Empty;
+                var key = TokenEncryption.IsEncrypted(storedKey) ? TokenEncryption.Decrypt(storedKey) : storedKey;
+                var model = await _localSettingsService.ReadSettingAsync<string>("AIModel") ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    await EnqueueOnUiAsync(() =>
+                    {
+                        AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
+                        ResetFixActionState();
+                    });
+
+                    var sanitizedLog = await _logSanitizerService.SanitizeAsync(FullLog);
+                    var fullTextBuilder = new StringBuilder();
+
+                    _isToolBlockActive = false;
+                    _toolTagCarry = string.Empty;
+                    _toolBlockBuffer.Clear();
+
+                    await foreach (var chunk in _aiAnalysisService.StreamAnalyzeLogAsync(sanitizedLog, key, endpoint, model))
+                    {
+                        if (_aiAnalysisCts.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        var visibleChunk = ConsumeToolBlockAndGetVisibleText(chunk);
+                        if (!string.IsNullOrEmpty(visibleChunk))
+                        {
+                            fullTextBuilder.Append(visibleChunk);
+                            var textChunk = visibleChunk;
+                            await EnqueueOnUiAsync(() =>
+                            {
+                                AiAnalysisResult += textChunk;
+                            });
+                        }
+                    }
+
+                    if (!_isToolBlockActive && !string.IsNullOrEmpty(_toolTagCarry))
+                    {
+                        fullTextBuilder.Append(_toolTagCarry);
+                        var carry = _toolTagCarry;
+                        _toolTagCarry = string.Empty;
+                        await EnqueueOnUiAsync(() =>
+                        {
+                            AiAnalysisResult += carry;
+                        });
+                    }
+                    else if (_isToolBlockActive && !string.IsNullOrEmpty(_toolTagCarry))
+                    {
+                        _toolBlockBuffer.Append(_toolTagCarry);
+                        _toolTagCarry = string.Empty;
+                    }
+
+                    var fullText = fullTextBuilder.ToString();
+                    if (_toolBlockBuffer.Length > 0)
+                    {
+                        TryApplyToolCallsFromAiResponse($"{ToolStartTag}{_toolBlockBuffer}{ToolEndTag}");
+                    }
+                }
+                else
+                {
+                    await EnqueueOnUiAsync(() =>
+                    {
+                        AiAnalysisResult = "未配置 API Key，无法进行 AI 分析。";
+                    });
+                }
+
+                System.Diagnostics.Debug.WriteLine("崩溃分析: AI 分析完成");
+                System.Diagnostics.Debug.WriteLine("===============================================");
+                return;
+            }
             
             // 使用知识库服务进行分析
             var crashAnalyzer = App.GetService<XianYuLauncher.Core.Contracts.Services.ICrashAnalyzer>();
@@ -920,6 +1033,213 @@ namespace XianYuLauncher.ViewModels
         {
             System.Diagnostics.Debug.WriteLine("崩溃分析: 无法取消，当前没有正在进行的分析");
         }
+    }
+
+    private string TryApplyToolCallsFromAiResponse(string fullText)
+    {
+        var startIndex = fullText.IndexOf(ToolStartTag, StringComparison.OrdinalIgnoreCase);
+        var endIndex = fullText.IndexOf(ToolEndTag, StringComparison.OrdinalIgnoreCase);
+        if (startIndex < 0 || endIndex < 0 || endIndex <= startIndex)
+        {
+            return fullText;
+        }
+
+        var jsonStart = startIndex + ToolStartTag.Length;
+        var jsonText = fullText.Substring(jsonStart, endIndex - jsonStart).Trim();
+        if (jsonText.Contains("```") )
+        {
+            var fenceStart = jsonText.IndexOf("```", StringComparison.OrdinalIgnoreCase);
+            var fenceEnd = jsonText.LastIndexOf("```", StringComparison.OrdinalIgnoreCase);
+            if (fenceStart >= 0 && fenceEnd > fenceStart)
+            {
+                var innerStart = jsonText.IndexOf('\n', fenceStart + 3);
+                if (innerStart < 0)
+                {
+                    innerStart = fenceStart + 3;
+                }
+                var inner = jsonText.Substring(innerStart, fenceEnd - innerStart).Trim();
+                jsonText = inner;
+            }
+            else
+            {
+                jsonText = jsonText.Replace("```", string.Empty).Trim();
+            }
+        }
+        if (string.IsNullOrWhiteSpace(jsonText))
+        {
+            return fullText;
+        }
+
+        try
+        {
+            var array = JArray.Parse(jsonText);
+            var actions = new List<CrashFixAction>();
+
+            foreach (var item in array)
+            {
+                var type = item["type"]?.ToString() ?? string.Empty;
+                var buttonText = item["buttonText"]?.ToString() ?? string.Empty;
+                var parameters = new Dictionary<string, string>();
+
+                var paramObj = item["parameters"] as JObject;
+                if (paramObj != null)
+                {
+                    foreach (var prop in paramObj.Properties())
+                    {
+                        parameters[prop.Name] = prop.Value?.ToString() ?? string.Empty;
+                    }
+                }
+
+                if (type.Trim().Equals("deleteMod", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!parameters.ContainsKey("modId") && parameters.TryGetValue("modFile", out var modFile))
+                    {
+                        parameters["modId"] = modFile;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(type) && !string.IsNullOrWhiteSpace(buttonText))
+                {
+                    actions.Add(new CrashFixAction
+                    {
+                        Type = type,
+                        ButtonText = buttonText,
+                        Parameters = parameters
+                    });
+                }
+            }
+
+            if (actions.Count > 0)
+            {
+                var prettyToolJson = array.ToString(Newtonsoft.Json.Formatting.Indented);
+                System.Diagnostics.Debug.WriteLine($"[AI] ToolCalls:\n{prettyToolJson}");
+
+                _ = EnqueueOnUiAsync(() =>
+                {
+                    ResetFixActionState();
+
+                    _currentFixAction = actions[0];
+                    FixButtonText = actions[0].ButtonText;
+                    HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
+
+                    if (actions.Count > 1)
+                    {
+                        _secondaryFixAction = actions[1];
+                        SecondaryFixButtonText = actions[1].ButtonText;
+                        HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
+                    }
+                });
+
+                var codeBlockStart = fullText.LastIndexOf("```", startIndex, StringComparison.OrdinalIgnoreCase);
+                var codeBlockEnd = fullText.IndexOf("```", endIndex + ToolEndTag.Length, StringComparison.OrdinalIgnoreCase);
+
+                string cleaned;
+                if (codeBlockStart >= 0 && codeBlockEnd > endIndex)
+                {
+                    var beforeBlock = fullText.Substring(0, codeBlockStart).TrimEnd();
+                    var afterBlock = fullText.Substring(codeBlockEnd + 3).TrimStart();
+                    cleaned = string.IsNullOrEmpty(beforeBlock)
+                        ? afterBlock
+                        : string.IsNullOrEmpty(afterBlock)
+                            ? beforeBlock
+                            : beforeBlock + "\n\n" + afterBlock;
+                }
+                else
+                {
+                    var before = fullText.Substring(0, startIndex).TrimEnd();
+                    var after = fullText.Substring(endIndex + ToolEndTag.Length).TrimStart();
+                    cleaned = string.IsNullOrEmpty(before)
+                        ? after
+                        : string.IsNullOrEmpty(after)
+                            ? before
+                            : before + "\n\n" + after;
+                }
+
+                return cleaned;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AI ToolCall 解析失败: {ex.Message}");
+            return fullText;
+        }
+
+        var fallbackBefore = fullText.Substring(0, startIndex).TrimEnd();
+        var fallbackAfter = fullText.Substring(endIndex + ToolEndTag.Length).TrimStart();
+        if (string.IsNullOrEmpty(fallbackBefore))
+        {
+            return fallbackAfter;
+        }
+
+        if (string.IsNullOrEmpty(fallbackAfter))
+        {
+            return fallbackBefore;
+        }
+
+        return fallbackBefore + "\n\n" + fallbackAfter;
+    }
+
+    private string ConsumeToolBlockAndGetVisibleText(string chunk)
+    {
+        var data = _toolTagCarry + chunk;
+        _toolTagCarry = string.Empty;
+
+        var output = new StringBuilder();
+        var index = 0;
+        var startTagLen = ToolStartTag.Length;
+        var endTagLen = ToolEndTag.Length;
+
+        while (index < data.Length)
+        {
+            if (!_isToolBlockActive)
+            {
+                var start = data.IndexOf(ToolStartTag, index, StringComparison.OrdinalIgnoreCase);
+                if (start < 0)
+                {
+                    var remaining = data.Substring(index);
+                    if (remaining.Length >= startTagLen)
+                    {
+                        var safeLen = remaining.Length - (startTagLen - 1);
+                        output.Append(remaining.Substring(0, safeLen));
+                        _toolTagCarry = remaining.Substring(safeLen);
+                    }
+                    else
+                    {
+                        _toolTagCarry = remaining;
+                    }
+                    break;
+                }
+
+                output.Append(data.Substring(index, start - index));
+                _isToolBlockActive = true;
+                index = start + startTagLen;
+            }
+            else
+            {
+                var end = data.IndexOf(ToolEndTag, index, StringComparison.OrdinalIgnoreCase);
+                if (end < 0)
+                {
+                    var remaining = data.Substring(index);
+                    if (remaining.Length >= endTagLen)
+                    {
+                        var safeLen = remaining.Length - (endTagLen - 1);
+                        _toolBlockBuffer.Append(remaining.Substring(0, safeLen));
+                        _toolTagCarry = remaining.Substring(safeLen);
+                    }
+                    else
+                    {
+                        _toolTagCarry = remaining;
+                    }
+                    break;
+                }
+
+                _toolBlockBuffer.Append(data.Substring(index, end - index));
+                _isToolBlockActive = false;
+                index = end + endTagLen;
+            }
+        }
+
+        return output.ToString();
     }
     
     /// <summary>

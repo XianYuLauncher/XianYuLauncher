@@ -67,4 +67,12 @@ public sealed partial class AnnouncementDialog : UserControl
             ViewModel.HasCustomXaml = false;
         }
     }
+
+    private async void AnnouncementButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is XianYuLauncher.Core.Models.AnnouncementButton announcementButton)
+        {
+            await ViewModel.ExecuteButtonAsync(announcementButton);
+        }
+    }
 }

@@ -294,10 +294,8 @@ public class ActivationService : IActivationService
                 // 显示对话框
                 await dialog.ShowAsync();
                 
-                // 标记为已读
-                await announcementService.MarkAnnouncementAsReadAsync(announcement.id);
-                
-                Serilog.Log.Information("公告已显示并标记为已读");
+                // 标记为已读交由按钮处理（例如“同意/关闭”）
+                Serilog.Log.Information("公告已显示，等待用户操作");
             }
             else
             {

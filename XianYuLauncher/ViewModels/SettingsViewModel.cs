@@ -18,6 +18,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
 using XianYuLauncher.Views;
@@ -98,6 +99,24 @@ public partial class SettingsViewModel : ObservableRecipient
         private const string JavaSelectionModeKey = "JavaSelectionMode";
         private const string LanguageKey = "Language";
     private const string MinecraftPathKey = "MinecraftPath";
+    
+    // AI Analysis Settings keys
+    private const string EnableAIAnalysisKey = "EnableAIAnalysis";
+    private const string AIApiEndpointKey = "AIApiEndpoint";
+    private const string AIApiKeyKey = "AIApiKey";
+    private const string AIModelKey = "AIModel";
+
+    [ObservableProperty]
+    private bool _isAIAnalysisEnabled;
+
+    [ObservableProperty]
+    private string _aiApiEndpoint = "https://api.openai.com";
+
+    [ObservableProperty]
+    private string _aiApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _aiModel = "gpt-3.5-turbo";
     private const string DownloadSourceKey = "DownloadSource";
     private const string VersionListSourceKey = "VersionListSource";
     private const string ModrinthDownloadSourceKey = "ModrinthDownloadSource";
@@ -630,6 +649,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadJavaSelectionModeAsync().ConfigureAwait(false);
         // 加载Minecraft路径
         LoadMinecraftPathsAsync().ConfigureAwait(false);
+        // Load AI Settings
+        LoadAISettingsAsync().ConfigureAwait(false);
         // 加载下载源设置
         LoadDownloadSourceAsync().ConfigureAwait(false);
         // 加载Modrinth下载源设置
@@ -872,6 +893,30 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value < 1) value = 1;
         if (value > 128) value = 128;
         _localSettingsService.SaveSettingAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 当 AI 分析设置变化时保存
+    /// </summary>
+    partial void OnIsAIAnalysisEnabledChanged(bool value)
+    {
+        _localSettingsService.SaveSettingAsync(EnableAIAnalysisKey, value).ConfigureAwait(false);
+    }
+
+    partial void OnAiApiEndpointChanged(string value)
+    {
+        _localSettingsService.SaveSettingAsync(AIApiEndpointKey, value).ConfigureAwait(false);
+    }
+
+    partial void OnAiApiKeyChanged(string value)
+    {
+        var encrypted = TokenEncryption.Encrypt(value);
+        _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted).ConfigureAwait(false);
+    }
+
+    partial void OnAiModelChanged(string value)
+    {
+        _localSettingsService.SaveSettingAsync(AIModelKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1855,6 +1900,31 @@ public partial class SettingsViewModel : ObservableRecipient
         await _localSettingsService.SaveSettingAsync(JavaPathKey, string.Empty);
         await _localSettingsService.SaveSettingAsync(SelectedJavaVersionKey, string.Empty);
 
+    }
+
+    private async Task LoadAISettingsAsync()
+    {
+        IsAIAnalysisEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableAIAnalysisKey) ?? false;
+        AiApiEndpoint = await _localSettingsService.ReadSettingAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
+        var storedKey = await _localSettingsService.ReadSettingAsync<string>(AIApiKeyKey) ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(storedKey))
+        {
+            if (!TokenEncryption.IsEncrypted(storedKey))
+            {
+                var encrypted = TokenEncryption.Encrypt(storedKey);
+                await _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted);
+                AiApiKey = storedKey;
+            }
+            else
+            {
+                AiApiKey = TokenEncryption.Decrypt(storedKey);
+            }
+        }
+        else
+        {
+            AiApiKey = string.Empty;
+        }
+        AiModel = await _localSettingsService.ReadSettingAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
     }
 
     private async Task LoadJavaPathAsync()
