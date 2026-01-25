@@ -16,15 +16,16 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 
 ## Features
 
-- **Sleek, Modern UI**: Built with WinUI 3 for a native Windows experience
-- **Version Management**: Easy installation and switching between Minecraft versions
-- **ModLoader Support**: Full support for Forge, Fabric, NeoForge, Quilt, Optifine, and Cleanroom (experimental)
-- **Account Management**: Microsoft account integration, offline support (Only zh-CN)
-- **Real-time Logs**: Monitor game output with live log viewing
-- **Crash Analysis**: Intelligent error detection and diagnostic tools
-- **Resource Downloads**: Browse and install mods, resource packs, and shaders from Modrinth and CurseForge.
-- **Customizable Settings**: Fine-tune your game experience with detailed options including memory allocation
-- **Multi-language Support**: Available in English and Chinese
+- **Sleek, Modern UI**: Built with WinUI 3 for a native and fluent Windows experience.
+- **Built-in Multiplayer Support**: Integrated P2P networking lobby powered by **Terracotta** (based on EasyTier), allowing you to easily play with friends as if you were on the same LAN (Virtual LAN).
+- **AI-Powered Crash Analysis**: Provides the capability to connect to OpenAI-compatible LLM services for analyzing game crashes. *Note: No built-in AI model is included; users must configure their own API Endpoint and Key.*
+- **Comprehensive Resource Center**: Search and one-click install **Modpacks**, Mods, Resource Packs, and Shaders from Modrinth and CurseForge.
+- **Smart Environment Management**: Automated downloading and matching of appropriate Java runtimes (JRE/JDK).
+- **Skin Management**: Built-in 3D skin viewer and local skin manager.
+- **Loader Support**: One-click installation for Forge, Fabric, NeoForge, Quilt, Optifine, and Cleanroom (experimental).
+- **Version Management**: Easy installation and independent directories to keep your versions and mods organized.
+- **Real-time Logs**: Monitor game output with live log viewing.
+- **Multi-language Support**: Available in English and Chinese.
 
 ## Getting Started
 
