@@ -564,7 +564,7 @@
   <data name="Settings_AboutDescription.Text" xml:space="preserve">
     <value>TODO:None</value>
   </data>
-  <data name="SettingsPage_PrivacyTermsLink.Content" xml:space="preserve">
+  <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
     <value>最终用户协议(EULA)</value>
   </data>
   <data name="联机Page_Title.Text" xml:space="preserve">
@@ -678,8 +678,14 @@
   <data name="联机Page_PollingResultLabel.Text" xml:space="preserve">
     <value>轮询结果:</value>
   </data>
-  <data name="SettingsPage_PrivacyTermsLink.NavigateUri" xml:space="preserve">
+  <data name="SettingsPage_EulaLink.NavigateUri" xml:space="preserve">
     <value>https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV</value>
+  </data>
+  <data name="SettingsPage_PrivacyPolicyLink.Content" xml:space="preserve">
+    <value>隐私协议</value>
+  </data>
+  <data name="SettingsPage_PrivacyPolicyLink.NavigateUri" xml:space="preserve">
+    <value>https://cdn.storeedgefd.dsx.mp.microsoft.com/wus2/privacy-policy-storage/93064860/00014170299094211257/1152921505700382432/privacy_policy_bf89162d-d8e2-4700-888d-91844fc44ffc.txt</value>
   </data>
   <data name="ResourceDownloadPage_PageTitle.Text" xml:space="preserve">
     <value>资源下载</value>
