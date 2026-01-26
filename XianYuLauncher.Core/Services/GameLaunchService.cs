@@ -407,7 +407,8 @@ public class GameLaunchService : IGameLaunchService
             {
                 Success = true,
                 GameProcess = gameProcess,
-                LaunchCommand = fullCommand
+                LaunchCommand = fullCommand,
+                UsedJavaPath = javaPath
             };
         }
         catch (OperationCanceledException ex)

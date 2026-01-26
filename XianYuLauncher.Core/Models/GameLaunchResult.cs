@@ -26,4 +26,9 @@ public class GameLaunchResult
     /// 启动命令（用于调试和导出）
     /// </summary>
     public string LaunchCommand { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 实际使用的 Java 路径
+    /// </summary>
+    public string UsedJavaPath { get; set; } = string.Empty;
 }

@@ -937,6 +937,11 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 当前游戏进程
     /// </summary>
     private Process? _currentGameProcess = null;
+
+    /// <summary>
+    /// 当前使用的 Java 路径（用于遥测）
+    /// </summary>
+    private string _currentUsedJavaPath = string.Empty;
     
     /// <summary>
     /// 下载取消令牌源
@@ -1175,13 +1180,18 @@ public partial class LaunchViewModel : ObservableRecipient
                 {
                     var versionConfig = await _versionConfigService.LoadConfigAsync(_currentLaunchedVersion);
 
-                    var javaPath = versionConfig.UseGlobalJavaSetting
-                        ? await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey)
-                        : versionConfig.JavaPath;
-
+                    // 使用实际启动时的 Java 路径，确保遥测准确
+                    var javaPath = _currentUsedJavaPath;
                     if (string.IsNullOrEmpty(javaPath))
                     {
-                        javaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+                        javaPath = versionConfig.UseGlobalJavaSetting
+                            ? await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey)
+                            : versionConfig.JavaPath;
+
+                        if (string.IsNullOrEmpty(javaPath))
+                        {
+                            javaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+                        }
                     }
 
                     var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath ?? string.Empty);
@@ -1834,6 +1844,8 @@ public partial class LaunchViewModel : ObservableRecipient
                 },
                 _downloadCancellationTokenSource.Token,
                 javaOverridePath);
+
+            _currentUsedJavaPath = result.Success ? result.UsedJavaPath : string.Empty;
             
             _downloadCancellationTokenSource?.Dispose();
             _downloadCancellationTokenSource = null;
