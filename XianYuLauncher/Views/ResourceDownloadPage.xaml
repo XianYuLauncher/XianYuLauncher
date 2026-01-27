@@ -199,7 +199,7 @@
                                           ItemClick="FavoritesListView_ItemClick">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="models:ModrinthProject">
-                                            <Grid Margin="0,8" AutomationProperties.Name="{x:Bind Title}">
+                                            <Grid Margin="0,8" AutomationProperties.Name="{x:Bind DisplayTitle}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="32"/>
                                                     <ColumnDefinition Width="*"/>
@@ -213,7 +213,7 @@
                                                     </Image>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="{x:Bind Title}" MaxLines="1" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{x:Bind DisplayTitle}" MaxLines="1" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
                                                     <TextBlock Text="{x:Bind Author}" MaxLines="1" TextTrimming="CharacterEllipsis" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                                 </StackPanel>
                                             </Grid>
@@ -662,7 +662,7 @@
                                                     </Border>
 
                                                     <!-- Mod Name -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- Mod Description -->
@@ -893,7 +893,7 @@
                                                     </Border>
 
                                                     <!-- 光影名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- 光影描述 -->
@@ -1124,7 +1124,7 @@
                                                     </Border>
 
                                                     <!-- 资源包名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- 资源包描述 -->
@@ -1356,7 +1356,7 @@
                                                     </Border>
 
                                                     <!-- 数据包名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- 数据包描述 -->
@@ -1588,7 +1588,7 @@
                                                     </Border>
 
                                                     <!-- 整合包名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- 整合包描述 -->
@@ -1822,7 +1822,7 @@
                                                     </Border>
 
                                                     <!-- 世界名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title, Mode=OneWay}"
+                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
                                                                FontSize="16" FontWeight="SemiBold"/>
 
                                                     <!-- 世界描述 -->

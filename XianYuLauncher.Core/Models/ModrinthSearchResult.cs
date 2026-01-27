@@ -117,6 +117,22 @@ public class ModrinthSearchResult
         public string Title { get; set; }
 
         /// <summary>
+        /// 显示的标题（自动应用名称翻译）
+        /// </summary>
+        [JsonIgnore]
+        public string DisplayTitle
+        {
+            get
+            {
+                if (XianYuLauncher.Core.Services.TranslationService.Instance != null)
+                {
+                    return XianYuLauncher.Core.Services.TranslationService.Instance.GetTranslatedName(Slug, Title);
+                }
+                return Title;
+            }
+        }
+
+        /// <summary>
         /// 描述
         /// </summary>
         [JsonPropertyName("description")]

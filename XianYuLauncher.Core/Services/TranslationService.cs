@@ -17,9 +17,16 @@ public class TranslationService : ITranslationService
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, McimTranslationResponse> _translationCache;
+    private readonly Dictionary<string, string> _nameTranslationMap = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isNameTranslationInitialized = false;
     private const string ModrinthTranslationApiUrl = "https://mod.mcimirror.top/translate/modrinth";
     private const string CurseForgeTranslationApiUrl = "https://mod.mcimirror.top/translate/curseforge";
     
+    /// <summary>
+    /// 翻译服务单例实例（用于Models中访问）
+    /// </summary>
+    public static TranslationService Instance { get; private set; }
+
     // 添加一个静态属性来存储当前语言设置
     private static string _currentLanguage = "zh-CN";
     
@@ -44,6 +51,7 @@ public class TranslationService : ITranslationService
     {
         _httpClient = httpClient;
         _translationCache = new Dictionary<string, McimTranslationResponse>();
+        Instance = this;
     }
     
     /// <summary>
@@ -166,5 +174,69 @@ public class TranslationService : ITranslationService
             System.Diagnostics.Debug.WriteLine($"[翻译服务] 获取CurseForge翻译失败: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 初始化Mod名称翻译数据
+    /// </summary>
+    public async Task InitializeNameTranslationAsync(string dataFilePath)
+    {
+        if (_isNameTranslationInitialized || !System.IO.File.Exists(dataFilePath)) return;
+
+        try 
+        {
+            var lines = await System.IO.File.ReadAllLinesAsync(dataFilePath);
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var parts = line.Split('|');
+                // Format: ModrinthSlug|CurseForgeSlug|ChineseName|EnglishName|Abbreviation
+                if (parts.Length < 3) continue;
+
+                var modrinthSlug = parts[0].Trim();
+                var curseforgeSlug = parts[1].Trim();
+                var chineseName = parts[2].Trim();
+                
+                if (string.IsNullOrEmpty(chineseName)) continue;
+
+                if (!string.IsNullOrEmpty(modrinthSlug) && !_nameTranslationMap.ContainsKey(modrinthSlug))
+                {
+                    _nameTranslationMap[modrinthSlug] = chineseName;
+                }
+                
+                if (!string.IsNullOrEmpty(curseforgeSlug) && !_nameTranslationMap.ContainsKey(curseforgeSlug))
+                {
+                    _nameTranslationMap[curseforgeSlug] = chineseName;
+                }
+            }
+            _isNameTranslationInitialized = true;
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 名称数据加载完成，共 {_nameTranslationMap.Count} 条记录");
+        }
+        catch (Exception ex)
+        {
+             System.Diagnostics.Debug.WriteLine($"[翻译服务] 加载名称数据失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取Mod翻译名称
+    /// </summary>
+    public string GetTranslatedName(string slug, string originalName)
+    {
+        if (string.IsNullOrWhiteSpace(slug) || !ShouldUseTranslation()) return originalName;
+
+        if (_nameTranslationMap.TryGetValue(slug, out var chineseName))
+        {
+            // 如果中文名为空，或与原名相同（不区分大小写），则直接返回原名，避免出现 "Name | Name" 的情况
+            if (string.IsNullOrWhiteSpace(chineseName) || 
+                chineseName.Equals(originalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return originalName;
+            }
+
+            return $"{chineseName} | {originalName}";
+        }
+        
+        return originalName;
     }
 }

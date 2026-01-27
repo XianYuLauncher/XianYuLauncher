@@ -579,7 +579,7 @@ namespace XianYuLauncher.ViewModels
                 var projectDetail = await _modrinthService.GetProjectDetailAsync(modId);
                 
                 // 更新ViewModel属性
-                ModName = projectDetail.Title;
+                ModName = _translationService.GetTranslatedName(projectDetail.Slug, projectDetail.Title);
                 ModDescriptionOriginal = projectDetail.Description;
                 ModDescriptionTranslated = string.Empty; // 先清空翻译
                 
@@ -848,7 +848,7 @@ namespace XianYuLauncher.ViewModels
             var modDetail = await _curseForgeService.GetModDetailAsync(curseForgeModId);
             
             // 更新ViewModel属性
-            ModName = modDetail.Name;
+            ModName = _translationService.GetTranslatedName(modDetail.Slug, modDetail.Name);
             ModDescriptionOriginal = modDetail.Summary;
             ModDescriptionTranslated = string.Empty; // 先清空翻译
             

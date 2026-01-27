@@ -633,7 +633,8 @@ public partial class SettingsViewModel : ObservableRecipient
         AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>
         {
             new AcknowledgmentPerson("XianYu", "Settings_XianYuSupportText".GetLocalized(), "ms-appx:///Assets/WindowIcon.ico"),
-            new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg")
+            new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg"),
+            new AcknowledgmentPerson("Settings_McModName".GetLocalized(), "Settings_McModSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/mcmod.ico")
         };
         
         // 初始化Java版本列表变化事件

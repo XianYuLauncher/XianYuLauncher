@@ -380,6 +380,22 @@ public partial class App : Application
         {
             try
             {
+                // 初始化Mod名称翻译服务
+                var translationService = App.GetService<ITranslationService>();
+                var modDataPath = Path.Combine(AppContext.BaseDirectory, "Assets", "mod_data.txt");
+                await translationService.InitializeNameTranslationAsync(modDataPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"Mod名称翻译服务初始化失败: {ex.Message}");
+            }
+        });
+        
+        // 发送启动统计（异步，不阻塞启动）
+        _ = Task.Run(async () =>
+        {
+            try
+            {
                 var telemetryService = App.GetService<TelemetryService>();
                 await telemetryService.SendLaunchEventAsync();
                 await telemetryService.CheckAndSendFirstLaunchAsync();

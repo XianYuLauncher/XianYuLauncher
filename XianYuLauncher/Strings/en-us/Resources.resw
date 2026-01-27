@@ -2536,4 +2536,10 @@ Continue downloading?</value>
   <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Remove selected items</value>
   </data>
+  <data name="Settings_McModName" xml:space="preserve">
+    <value>MCMOD</value>
+  </data>
+  <data name="Settings_McModSupportText" xml:space="preserve">
+    <value>Provides Mod Data Translation</value>
+  </data>
 </root>

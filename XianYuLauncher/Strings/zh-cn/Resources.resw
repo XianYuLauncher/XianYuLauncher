@@ -2548,4 +2548,10 @@
   <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>删除选中项</value>
   </data>
+  <data name="Settings_McModName" xml:space="preserve">
+    <value>MC百科</value>
+  </data>
+  <data name="Settings_McModSupportText" xml:space="preserve">
+    <value>提供 Mod 数据翻译</value>
+  </data>
 </root>
