@@ -163,4 +163,10 @@
 > LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 > OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+## Data Sources | 数据来源
+
+During the development process, reference data derived from [MCMOD.cn](https://www.mcmod.cn/) may have been utilized.
+MCMOD content is licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/).
+**Note**: This data file is used for local development/generation and is not distributed with the source code repository under the MIT license.
+
 本项目遵循所有使用的开源库的许可证要求,尊重开源社区的贡献。
