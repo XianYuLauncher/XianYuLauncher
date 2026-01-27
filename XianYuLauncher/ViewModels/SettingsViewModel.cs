@@ -1482,7 +1482,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 智能合并：先添加扫描到的系统Java
             foreach (var jv in scannedJavaVersions)
             {
-                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 添加 Java: Version='{jv.FullVersion}' Path='{jv.Path}'");
+                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 添加 Java: Version='{jv.FullVersion}'");
                 JavaVersions.Add(new JavaVersionInfo
                 {
                     Version = jv.FullVersion,
@@ -1499,7 +1499,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 if (!scannedJavaVersions.Any(s => string.Equals(s.Path, existing.Path, StringComparison.OrdinalIgnoreCase)))
                 {
                     JavaVersions.Add(existing);
-                    Console.WriteLine($"保留用户手动添加的Java: {existing.Path}");
+                    Console.WriteLine("保留用户手动添加的Java");
                 }
             }
             

@@ -113,7 +113,7 @@ public class WorldDataService
                 worldData.AllowCommands = allowCommandsTag.Value != 0;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[WorldDataService] 成功读取世界数据: {worldData.LevelName}, 种子: {worldData.Seed}, 难度: {worldData.Difficulty}, 模式: {worldData.GameMode}, 时间: {worldData.Time} 刻, 允许命令: {worldData.AllowCommands}");
+            System.Diagnostics.Debug.WriteLine("[WorldDataService] 成功读取世界数据");
             
             return worldData;
         }

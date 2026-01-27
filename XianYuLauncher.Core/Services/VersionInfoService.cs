@@ -33,11 +33,11 @@ namespace XianYuLauncher.Core.Services
             
             if (!Directory.Exists(versionDirectory))
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 版本目录不存在: {versionDirectory}");
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService] 版本目录不存在");
                 return null;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 开始获取版本配置，目录: {versionDirectory}");
+            System.Diagnostics.Debug.WriteLine("[VersionInfoService] 开始获取版本配置");
             
             VersionConfig config = null;
             bool isFromThirdParty = false;
@@ -123,7 +123,7 @@ namespace XianYuLauncher.Core.Services
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 🔍 配置来自{configSource}，无需更新XianYuL.cfg");
             }
             
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 所有配置文件读取完成，返回配置: {config?.ModLoaderType}");
+            System.Diagnostics.Debug.WriteLine("[VersionInfoService] 所有配置文件读取完成");
             return config;
         }
         
@@ -277,7 +277,7 @@ namespace XianYuLauncher.Core.Services
             try
             {
                 string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检查XianYuL.cfg配置文件路径: {configPath}");
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检查XianYuL.cfg配置文件");
                 
                 if (File.Exists(configPath))
                 {
@@ -290,10 +290,6 @@ namespace XianYuLauncher.Core.Services
                     if (config != null)
                     {
                         System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析XianYuL.cfg配置文件成功");
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderType: {config.ModLoaderType}");
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderVersion: {config.ModLoaderVersion}");
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     MinecraftVersion: {config.MinecraftVersion}");
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     OptifineVersion: {config.OptifineVersion}");
                         return config;
                     }
                     else
@@ -309,17 +305,17 @@ namespace XianYuLauncher.Core.Services
             catch (IOException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取XianYuL.cfg文件IO错误: {ex.Message}");
-                _logger.LogWarning(ex, "读取XianYuL.cfg文件IO错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, "读取XianYuL.cfg文件IO错误");
             }
             catch (JsonException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析XianYuL.cfg文件JSON错误: {ex.Message}");
-                _logger.LogWarning(ex, "解析XianYuL.cfg文件JSON错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, "解析XianYuL.cfg文件JSON错误");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取XianYuL.cfg文件未知错误: {ex.Message}");
-                _logger.LogWarning(ex, "读取XianYuL.cfg文件未知错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, "读取XianYuL.cfg文件未知错误");
             }
             
             return null;
@@ -390,7 +386,7 @@ namespace XianYuLauncher.Core.Services
             {
                 // PCL2配置文件位于版本目录\PCL\Setup.ini
                 string configPath = Path.Combine(versionDirectory, "PCL", "Setup.ini");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检查PCL2配置文件路径: {configPath}");
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检查PCL2配置文件");
                 
                 if (!File.Exists(configPath))
                 {
@@ -408,12 +404,6 @@ namespace XianYuLauncher.Core.Services
                 Dictionary<string, string> pclConfig = ParseIniConfig(configContent);
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共{ pclConfig.Count}个键值对");
                 
-                // 输出所有解析到的键值对，便于调试
-                foreach (var kvp in pclConfig)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     {kvp.Key}: {kvp.Value}");
-                }
-                
                 // 从VersionOriginal获取MC版本号
                 string minecraftVersion = pclConfig.ContainsKey("VersionOriginal") ? pclConfig["VersionOriginal"] : string.Empty;
                 if (string.IsNullOrEmpty(minecraftVersion))
@@ -422,7 +412,7 @@ namespace XianYuLauncher.Core.Services
                     return null;
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   从VersionOriginal获取MC版本号: {minecraftVersion}");
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService]   从VersionOriginal获取MC版本号");
                 
                 // 确定加载器类型和版本
                 string modLoaderType = "vanilla";
@@ -433,21 +423,21 @@ namespace XianYuLauncher.Core.Services
                 {
                     modLoaderType = "fabric";
                     modLoaderVersion = pclConfig["VersionFabric"];
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检测到Fabric版本: {modLoaderVersion}");
+                    System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Fabric版本");
                 }
                 // 检查Forge
                 else if (pclConfig.ContainsKey("VersionForge") && !string.IsNullOrEmpty(pclConfig["VersionForge"]))
                 {
                     modLoaderType = "forge";
                     modLoaderVersion = pclConfig["VersionForge"];
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检测到Forge版本: {modLoaderVersion}");
+                    System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Forge版本");
                 }
                 // 检查NeoForge
                 else if (pclConfig.ContainsKey("VersionNeoForge") && !string.IsNullOrEmpty(pclConfig["VersionNeoForge"]))
                 {
                     modLoaderType = "neoforge";
                     modLoaderVersion = pclConfig["VersionNeoForge"];
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检测到NeoForge版本: {modLoaderVersion}");
+                    System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到NeoForge版本");
                 }
                 else
                 {
@@ -458,7 +448,7 @@ namespace XianYuLauncher.Core.Services
                 string optifineVersion = pclConfig.ContainsKey("VersionOptiFine") ? pclConfig["VersionOptiFine"] : string.Empty;
                 if (!string.IsNullOrEmpty(optifineVersion))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   检测到Optifine版本: {optifineVersion}");
+                    System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Optifine版本");
                 }
                 
                 // 创建并返回VersionConfig对象
@@ -471,19 +461,19 @@ namespace XianYuLauncher.Core.Services
                     CreatedAt = DateTime.Now
                 };
                 
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   成功创建VersionConfig对象: ModLoaderType={result.ModLoaderType}, ModLoaderVersion={result.ModLoaderVersion}, MinecraftVersion={result.MinecraftVersion}");
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService]   成功创建VersionConfig对象");
                 
                 return result;
             }
             catch (IOException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取PCL2配置文件IO错误: {ex.Message}");
-                _logger.LogWarning(ex, "读取PCL2配置文件IO错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, "读取PCL2配置文件IO错误");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取PCL2配置文件未知错误: {ex.Message}");
-                _logger.LogWarning(ex, "读取PCL2配置文件未知错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, "读取PCL2配置文件未知错误");
             }
             
             return null;

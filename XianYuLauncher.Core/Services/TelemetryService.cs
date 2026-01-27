@@ -73,7 +73,7 @@ public class TelemetryService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Telemetry] 首次启动遥测检查失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 首次启动遥测检查失败");
         }
     }
 
@@ -96,21 +96,13 @@ public class TelemetryService
                 }
                 else
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("遥测数据发送失败: {StatusCode} {Body}", response.StatusCode, responseBody);
-                    if (string.IsNullOrWhiteSpace(responseBody))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode} | {responseBody}");
-                    }
+                    _logger.LogWarning("遥测数据发送失败: {StatusCode}", response.StatusCode);
+                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Telemetry] 发送异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[Telemetry] 发送异常");
             }
         });
     }
@@ -137,7 +129,7 @@ public class TelemetryService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Telemetry] 启动统计发送失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 启动统计发送失败");
         }
     }
 
@@ -183,7 +175,7 @@ public class TelemetryService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Telemetry] 游戏会话统计发送失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine("[Telemetry] 游戏会话统计发送失败");
         }
     }
 

@@ -1115,8 +1115,7 @@ namespace XianYuLauncher.ViewModels
 
             if (actions.Count > 0)
             {
-                var prettyToolJson = array.ToString(Newtonsoft.Json.Formatting.Indented);
-                System.Diagnostics.Debug.WriteLine($"[AI] ToolCalls:\n{prettyToolJson}");
+                System.Diagnostics.Debug.WriteLine($"[AI] ToolCalls received: {actions.Count}");
 
                 _ = EnqueueOnUiAsync(() =>
                 {
@@ -1704,7 +1703,7 @@ namespace XianYuLauncher.ViewModels
                             {
                                 // 如果无法读取（被完全锁住），尝试直接复制作为后备方案
                                 // 虽然不会脱敏，但至少能保住日志（或者选择跳过以保护隐私，这里选择跳过比较安全）
-                                System.Diagnostics.Debug.WriteLine($"无法读取日志文件进行脱敏: {logFile}");
+                                System.Diagnostics.Debug.WriteLine("无法读取日志文件进行脱敏");
                             }
                         }
                         
@@ -1728,11 +1727,11 @@ namespace XianYuLauncher.ViewModels
                         {
                             string destPath = Path.Combine(tempDir, "version.json");
                             File.Copy(versionJsonPath, destPath);
-                            System.Diagnostics.Debug.WriteLine($"已复制 version.json: {versionJsonPath}");
+                            System.Diagnostics.Debug.WriteLine("已复制 version.json");
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"version.json 不存在: {versionJsonPath}");
+                            System.Diagnostics.Debug.WriteLine("version.json 不存在");
                         }
                     }
                     else
