@@ -43,6 +43,12 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="CardGridViewItemStyle" TargetType="GridViewItem">
+            <Setter Property="Margin" Value="6" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
     </Page.Resources>
 
@@ -859,13 +865,13 @@
                                         ItemHeight="280"
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
+                                        ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
                                         Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
-                                                <Grid Margin="6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                      CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                      BorderThickness="1" Tapped="ShaderPackItem_Tapped"
-                                                      ToolTipService.ToolTip="{Binding DisplayTitle}">
+                                                <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                    CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" Tapped="ShaderPackItem_Tapped">
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="140"/>
                                                         <RowDefinition Height="*"/>
@@ -909,8 +915,13 @@
                                                             <Border CornerRadius="4" Width="24" Height="24">
                                                                 <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
                                                             </Border>
-                                                            <TextBlock Grid.Column="1" Text="{Binding DisplayTitle, Mode=OneWay}"
-                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            <TextBlock x:Name="ShaderTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                                                                <ToolTipService.ToolTip>
+                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                             IsEnabled="{x:Bind ShaderTitleText.IsTextTrimmed, Mode=OneWay}" />
+                                                                </ToolTipService.ToolTip>
+                                                            </TextBlock>
                                                         </Grid>
 
                                                         <!-- Description -->
@@ -1107,13 +1118,13 @@
                                         ItemHeight="280"
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
+                                        ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
                                         Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
-                                                <Grid Margin="6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                      CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                      BorderThickness="1" Tapped="ResourcePackItem_Tapped"
-                                                      ToolTipService.ToolTip="{Binding DisplayTitle}">
+                                                <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                    CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" Tapped="ResourcePackItem_Tapped">
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="140"/>
                                                         <RowDefinition Height="*"/>
@@ -1157,8 +1168,13 @@
                                                             <Border CornerRadius="4" Width="24" Height="24">
                                                                 <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
                                                             </Border>
-                                                            <TextBlock Grid.Column="1" Text="{Binding DisplayTitle, Mode=OneWay}"
-                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            <TextBlock x:Name="ResourcePackTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                                                                <ToolTipService.ToolTip>
+                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                             IsEnabled="{x:Bind ResourcePackTitleText.IsTextTrimmed, Mode=OneWay}" />
+                                                                </ToolTipService.ToolTip>
+                                                            </TextBlock>
                                                         </Grid>
 
                                                         <!-- Description -->
