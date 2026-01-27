@@ -29,6 +29,11 @@
 - **许可证**：MIT License
 - **项目地址**：https://aka.ms/CommunityToolkit
 
+## CommunityToolkit.WinUI.Animations
+- **版权声明**：Copyright (c) .NET Foundation and Contributors
+- **许可证**：MIT License
+- **项目地址**：https://aka.ms/CommunityToolkit
+
 ## Microsoft.Extensions.Hosting
 - **版权声明**：Copyright (c) .NET Foundation and Contributors
 - **许可证**：MIT License

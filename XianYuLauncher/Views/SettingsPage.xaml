@@ -7,6 +7,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:xaml="using:Microsoft.UI.Xaml"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     mc:Ignorable="d">
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
@@ -58,6 +59,11 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+                                    <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+                                </animations:Implicit.ShowAnimations>
+
                                 <!-- Minecraft 路径设置 -->
                                 <TextBlock x:Uid="Settings_MinecraftPath" Text="Minecraft 游戏目录" Style="{ThemeResource SubtitleTextBlockStyle}" />
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
@@ -249,6 +255,11 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+                                    <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+                                </animations:Implicit.ShowAnimations>
+
                                 <!-- 主题设置 -->
                                 <TextBlock x:Uid="Settings_Theme" Text="主题" Style="{ThemeResource SubtitleTextBlockStyle}" />
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
@@ -403,6 +414,11 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+                                    <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+                                </animations:Implicit.ShowAnimations>
+
                                 <!-- Java路径设置 -->
                                 <TextBlock x:Uid="Settings_JavaPath" Text="Java路径设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
@@ -584,6 +600,11 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+                                    <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+                                </animations:Implicit.ShowAnimations>
+
                                 <!-- 下载源设置 -->
                                 <TextBlock x:Uid="Settings_DownloadSource" Text="下载源设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
                                 <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
@@ -902,6 +923,10 @@
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="12,10,12,0">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" />
+                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
+                                </animations:Implicit.ShowAnimations>
                                 <!-- 开发人员区域 -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20" Spacing="20" VerticalAlignment="Center">
                                     <!-- 圆形头像区域 -->
@@ -1076,6 +1101,16 @@
                                                 <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
                                                     <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
                                                         <Run Text="CommunityToolkit.Mvvm" />
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
+                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <StackPanel Margin="0,0,0,16">
+                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
+                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
+                                                        <Run Text="CommunityToolkit.WinUI.Animations" />
                                                     </Hyperlink>
                                                 </TextBlock>
                                                 <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
