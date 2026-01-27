@@ -16,6 +16,11 @@ public class VersionSettings
     public string ModLoaderVersion { get; set; }
     
     /// <summary>
+    /// Optifine版本号
+    /// </summary>
+    public string? OptifineVersion { get; set; }
+
+    /// <summary>
     /// Minecraft版本号
     /// </summary>
     public string MinecraftVersion { get; set; }

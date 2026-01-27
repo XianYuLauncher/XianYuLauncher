@@ -1001,7 +1001,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 初始化可用加载器列表
     /// </summary>
-    private void InitializeAvailableLoaders()
+    private async void InitializeAvailableLoaders()
     {
         AvailableLoaders.Clear();
         
@@ -1059,6 +1059,74 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 IconUrl = "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
                 IsInstalled = IsLoaderInstalled("cleanroom")
             });
+        }
+
+        // 尝试读取设置以恢复选中状态
+        VersionSettings? settings = null;
+        try
+        {
+            string settingsFilePath = GetSettingsFilePath();
+            if (File.Exists(settingsFilePath))
+            {
+                string json = await File.ReadAllTextAsync(settingsFilePath);
+                settings = JsonSerializer.Deserialize<VersionSettings>(json);
+            }
+        }
+        catch { /* 忽略读取错误 */ }
+
+        // 根据设置或安装状态，加载并预选版本
+        foreach (var loader in AvailableLoaders)
+        {
+            // 判断此加载器是否需要预加载和选中
+            bool shouldSetup = false;
+            string? targetVersion = null;
+
+            if (settings != null)
+            {
+                // 如果配置文件中有记录，使用配置文件的版本
+                if (string.Equals(settings.ModLoaderType, loader.LoaderType, StringComparison.OrdinalIgnoreCase))
+                {
+                    shouldSetup = true;
+                    targetVersion = settings.ModLoaderVersion;
+                }
+                // Optifine特殊检查
+                else if (loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(settings.OptifineVersion))
+                {
+                    shouldSetup = true;
+                    targetVersion = settings.OptifineVersion;
+                }
+            }
+            else if (loader.IsInstalled)
+            {
+                // 首次导入（无配置文件），但文件夹特征显示已安装 -> 需要加载并尝试猜测版本
+                shouldSetup = true;
+            }
+
+            if (shouldSetup)
+            {
+                // 关键更改：仅加载数据并选中，不展开界面，且不阻塞整体流程
+                loader.IsExpanded = false;
+                
+                // 启动加载任务
+                await LoadLoaderVersionsAsync(loader);
+                
+                if (!string.IsNullOrEmpty(targetVersion))
+                {
+                    // 精确恢复之前选中的版本
+                    loader.SelectedVersion = targetVersion;
+                }
+                else if (loader.Versions != null && loader.Versions.Any())
+                {
+                    // 尝试从当前版本名(Version Folder Name)中模糊匹配版本号
+                    // 例如从 "1.20.1-Fabric-0.14.22" 中匹配 "0.14.22"
+                    var currentId = SelectedVersion?.Name ?? "";
+                    var match = loader.Versions.FirstOrDefault(v => currentId.Contains(v, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        loader.SelectedVersion = match;
+                    }
+                }
+            }
         }
     }
     
@@ -1463,7 +1531,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             
             StatusMessage = selectedLoaders.Count > 0 
-                ? $"加载器安装完成：{string.Join(", ", selectedLoaders.Select(l => l.Name))}"
+                ? $"配置已保存，已安装：{string.Join(", ", selectedLoaders.Select(l => l.Name))}"
                 : "已重置为原版";
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 扩展配置保存成功");
         }
