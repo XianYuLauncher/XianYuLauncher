@@ -1,4 +1,5 @@
 <Solution>
+  <!-- Solution Configurations -->
   <Configurations>
     <Platform Name="arm64" />
     <Platform Name="x64" />
