@@ -374,3 +374,5 @@ FodyWeavers.xsd
 
 # Tools
 Tools/
+# mod_data
+XianYuLauncher/Assets/mod_data.txt
