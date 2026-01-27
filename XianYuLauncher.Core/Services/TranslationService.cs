@@ -18,6 +18,8 @@ public class TranslationService : ITranslationService
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, McimTranslationResponse> _translationCache;
     private readonly Dictionary<string, string> _nameTranslationMap = new(StringComparer.OrdinalIgnoreCase);
+    // Reverse Map: Key=ChineseName (LowerCased), Value=EnglishName or Slug
+    private readonly Dictionary<string, string> _chineseToEnglishMap = new(StringComparer.OrdinalIgnoreCase);
     private bool _isNameTranslationInitialized = false;
     private const string ModrinthTranslationApiUrl = "https://mod.mcimirror.top/translate/modrinth";
     private const string CurseForgeTranslationApiUrl = "https://mod.mcimirror.top/translate/curseforge";
@@ -208,9 +210,33 @@ public class TranslationService : ITranslationService
                 {
                     _nameTranslationMap[curseforgeSlug] = chineseName;
                 }
+
+                // Populate Reverse Map for Search (Chinese -> English)
+                if (!_chineseToEnglishMap.ContainsKey(chineseName))
+                {
+                    // Prefer English Name if available, otherwise use Slug
+                    string englishKey = "";
+                    if (parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3]))
+                    {
+                         englishKey = parts[3].Trim();
+                    }
+                    else if (!string.IsNullOrEmpty(modrinthSlug))
+                    {
+                        englishKey = modrinthSlug;
+                    } 
+                    else if (!string.IsNullOrEmpty(curseforgeSlug))
+                    {
+                        englishKey = curseforgeSlug;
+                    }
+
+                    if (!string.IsNullOrEmpty(englishKey))
+                    {
+                        _chineseToEnglishMap[chineseName] = englishKey;
+                    }
+                }
             }
             _isNameTranslationInitialized = true;
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 名称数据加载完成，共 {_nameTranslationMap.Count} 条记录");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 名称数据加载完成，共 {_nameTranslationMap.Count} 条记录，反向索引 {_chineseToEnglishMap.Count} 条");
         }
         catch (Exception ex)
         {
@@ -238,5 +264,53 @@ public class TranslationService : ITranslationService
         }
         
         return originalName;
+    }
+
+    /// <summary>
+    /// 获取用于搜索的英文关键词
+    /// </summary>
+    public string GetEnglishKeywordForSearch(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword)) return keyword;
+
+        // 1. 精确匹配 (最快，O(1))
+        if (_chineseToEnglishMap.TryGetValue(keyword, out var englishName))
+        {
+            return englishName;
+        }
+
+        // 2. 如果包含中文，尝试模糊匹配 (O(N))
+        // 只有当找不到精确匹配时才遍历，1.5万条数据遍历很快 (<5ms)，不会造成卡顿
+        if (HasChinese(keyword))
+        {
+            // 优先匹配以关键词开头的
+            foreach (var kvp in _chineseToEnglishMap)
+            {
+                if (kvp.Key.StartsWith(keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+
+            // 其次匹配包含关键词的
+            foreach (var kvp in _chineseToEnglishMap)
+            {
+                if (kvp.Key.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+        }
+
+        return keyword;
+    }
+
+    private bool HasChinese(string str)
+    {
+        foreach (char c in str)
+        {
+            if (c >= 0x4E00 && c <= 0x9FA5) return true;
+        }
+        return false;
     }
 }

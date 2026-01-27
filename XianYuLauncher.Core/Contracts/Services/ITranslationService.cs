@@ -35,7 +35,14 @@ public interface ITranslationService
     /// <param name="originalName">原始英文名</param>
     /// <returns>格式化后的名称（如：中文名 | 英文名）</returns>
     string GetTranslatedName(string slug, string originalName);
-    
+
+    /// <summary>
+    /// 尝试根据中文名称获取对应的英文搜索关键词
+    /// </summary>
+    /// <param name="chineseInput">中文输入</param>
+    /// <returns>英文关键词，如果未找到则返回原输入</returns>
+    string GetEnglishKeywordForSearch(string chineseInput);
+
     /// <summary>
     /// 检查是否应该使用翻译（当前语言是否为中文）
     /// </summary>

@@ -2272,6 +2272,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记Mod标签页已加载过数据
             _modsLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
+            
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -2288,7 +2291,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory);
+                    "mod", searchKeyword, SelectedLoader, SelectedVersion, SelectedModCategory);
                 
                 if (cachedData != null)
                 {
@@ -2318,7 +2321,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
 
                     var modrinthResult = await _modrinthService.SearchModsAsync(
-                        query: SearchQuery,
+                        query: searchKeyword,
                         facets: facets,
                         index: "relevance",
                         offset: 0,
@@ -2332,7 +2335,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                        "mod", searchKeyword, SelectedLoader, SelectedVersion, SelectedModCategory,
                         modrinthMods, modrinthTotalHits);
                 }
             }
@@ -2341,7 +2344,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory);
+                    "mod", searchKeyword, SelectedLoader, SelectedVersion, SelectedModCategory);
                 
                 if (cachedData != null)
                 {
@@ -2372,7 +2375,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                         
                         var curseForgeResult = await _curseForgeService.SearchModsAsync(
-                            searchFilter: SearchQuery,
+                            searchFilter: searchKeyword,
                             gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
                             modLoaderType: modLoaderType,
                             categoryId: categoryId,
@@ -2591,6 +2594,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -2625,7 +2631,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 }
                 
                 var result = await _modrinthService.SearchModsAsync(
-                    query: SearchQuery,
+                    query: searchKeyword,
                     facets: facets,
                     index: "relevance",
                     offset: _modrinthModOffset,
@@ -2641,7 +2647,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 if (modrinthMods.Count > 0)
                 {
                     await _modrinthCacheService.AppendToSearchResultAsync(
-                        "mod", SearchQuery, SelectedLoader, SelectedVersion, SelectedModCategory,
+                        "mod", searchKeyword, SelectedLoader, SelectedVersion, SelectedModCategory,
                         modrinthMods, modrinthTotalHits);
                 }
             }
@@ -2662,7 +2668,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     };
                     
                     var curseForgeResult = await _curseForgeService.SearchModsAsync(
-                        searchFilter: SearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
                         modLoaderType: modLoaderType,
                         index: _curseForgeModOffset,
@@ -2798,6 +2804,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记资源包标签页已加载过数据
             _resourcePacksLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ResourcePackSearchQuery);
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -2814,7 +2823,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
+                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
                 
                 if (cachedData != null)
                 {
@@ -2838,7 +2847,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
                     
                     var result = await _modrinthService.SearchModsAsync(
-                        query: ResourcePackSearchQuery,
+                        query: searchKeyword,
                         facets: facets,
                         index: "relevance",
                         offset: 0,
@@ -2852,7 +2861,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                        "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
                         modrinthResourcePacks, modrinthTotalHits);
                 }
             }
@@ -2861,7 +2870,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
+                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
                 
                 if (cachedData != null)
                 {
@@ -2875,7 +2884,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     {
                         var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                             classId: 12, // ResourcePacks classId
-                            searchFilter: ResourcePackSearchQuery,
+                            searchFilter: searchKeyword,
                             gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
                             index: 0,
                             pageSize: _modPageSize
@@ -2892,7 +2901,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                            "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
                             curseForgeResourcePacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -2942,6 +2951,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var newResourcePacks = new List<ModrinthProject>();
             int totalHits = 0;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ResourcePackSearchQuery);
+
             if (IsModrinthEnabled)
             {
                 var facets = new List<List<string>>();
@@ -2955,7 +2967,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 }
                 
                 var result = await _modrinthService.SearchModsAsync(
-                    query: ResourcePackSearchQuery,
+                    query: searchKeyword,
                     facets: facets,
                     index: "relevance",
                     offset: ResourcePackOffset,
@@ -2967,7 +2979,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
                 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -2976,7 +2988,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 12,
-                        searchFilter: ResourcePackSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
                         index: ResourcePackOffset,
                         pageSize: _modPageSize
@@ -2989,7 +3001,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = ResourcePackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
                     
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "resourcepack", ResourcePackSearchQuery, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                        "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
                         newResourcePacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3049,6 +3061,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记光影标签页已加载过数据
             _shaderPacksLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ShaderPackSearchQuery);
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -3065,7 +3080,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory);
+                    "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3089,7 +3104,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
                     
                     var result = await _modrinthService.SearchModsAsync(
-                        query: ShaderPackSearchQuery,
+                        query: searchKeyword,
                         facets: facets,
                         index: "relevance",
                         offset: 0,
@@ -3103,7 +3118,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                        "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
                         modrinthShaderPacks, modrinthTotalHits);
                 }
             }
@@ -3112,7 +3127,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory);
+                    "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3126,7 +3141,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     {
                         var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                             classId: 6552, // Shaders classId
-                            searchFilter: ShaderPackSearchQuery,
+                            searchFilter: searchKeyword,
                             gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
                             index: 0,
                             pageSize: _modPageSize
@@ -3143,7 +3158,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                            "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
                             curseForgeShaderPacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -3193,6 +3208,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var newShaderPacks = new List<ModrinthProject>();
             int totalHits = 0;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ShaderPackSearchQuery);
+
             // 根据启用的平台加载更多
             if (IsModrinthEnabled)
             {
@@ -3207,7 +3225,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 }
                 
                 var result = await _modrinthService.SearchModsAsync(
-                    query: ShaderPackSearchQuery,
+                    query: searchKeyword,
                     facets: facets,
                     index: "relevance",
                     offset: ShaderPackOffset,
@@ -3219,7 +3237,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
                 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                    "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -3228,7 +3246,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 6552,
-                        searchFilter: ShaderPackSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
                         index: ShaderPackOffset,
                         pageSize: _modPageSize
@@ -3241,7 +3259,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = ShaderPackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
                     
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "shader", ShaderPackSearchQuery, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
+                        "shader", searchKeyword, "all", SelectedShaderPackVersion, SelectedShaderPackCategory,
                         newShaderPacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3301,6 +3319,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记整合包标签页已加载过数据
             _modpacksLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ModpackSearchQuery);
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -3317,7 +3338,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory);
+                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3341,7 +3362,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
                     
                     var result = await _modrinthService.SearchModsAsync(
-                        query: ModpackSearchQuery,
+                        query: searchKeyword,
                         facets: facets,
                         index: "relevance",
                         offset: 0,
@@ -3355,7 +3376,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                        "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
                         modrinthModpacks, modrinthTotalHits);
                 }
             }
@@ -3364,7 +3385,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory);
+                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3378,7 +3399,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     {
                         var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                             classId: 4471, // Modpacks classId
-                            searchFilter: ModpackSearchQuery,
+                            searchFilter: searchKeyword,
                             gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
                             index: 0,
                             pageSize: _modPageSize
@@ -3395,7 +3416,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                            "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
                             curseForgeModpacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -3445,6 +3466,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var newModpacks = new List<ModrinthProject>();
             int totalHits = 0;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(ModpackSearchQuery);
+            
             // 根据启用的平台加载更多
             if (IsModrinthEnabled)
             {
@@ -3459,7 +3483,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 }
                 
                 var result = await _modrinthService.SearchModsAsync(
-                    query: ModpackSearchQuery,
+                    query: searchKeyword,
                     facets: facets,
                     index: "relevance",
                     offset: ModpackOffset,
@@ -3472,7 +3496,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 
                 // 追加到Modrinth缓存
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -3481,7 +3505,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 4471,
-                        searchFilter: ModpackSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
                         index: ModpackOffset,
                         pageSize: _modPageSize
@@ -3495,7 +3519,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 追加到CurseForge缓存
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "modpack", ModpackSearchQuery, "all", SelectedModpackVersion, SelectedModpackCategory,
+                        "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
                         newModpacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3556,6 +3580,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记数据包标签页已加载过数据
             _datapacksLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(DatapackSearchQuery);
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
@@ -3572,7 +3599,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory);
+                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3596,7 +3623,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
                     
                     var result = await _modrinthService.SearchModsAsync(
-                        query: DatapackSearchQuery,
+                        query: searchKeyword,
                         facets: facets,
                         index: "relevance",
                         offset: 0,
@@ -3610,7 +3637,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                        "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
                         modrinthDatapacks, modrinthTotalHits);
                 }
             }
@@ -3619,7 +3646,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory);
+                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory);
                 
                 if (cachedData != null)
                 {
@@ -3633,7 +3660,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     {
                         var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                             classId: 6945, // Datapacks classId
-                            searchFilter: DatapackSearchQuery,
+                            searchFilter: searchKeyword,
                             gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
                             index: 0,
                             pageSize: _modPageSize
@@ -3700,6 +3727,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var newDatapacks = new List<ModrinthProject>();
             int totalHits = 0;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(DatapackSearchQuery);
+
             if (IsModrinthEnabled)
             {
                 var facets = new List<List<string>>();
@@ -3713,7 +3743,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 }
                 
                 var result = await _modrinthService.SearchModsAsync(
-                    query: DatapackSearchQuery,
+                    query: searchKeyword,
                     facets: facets,
                     index: "relevance",
                     offset: DatapackOffset,
@@ -3725,7 +3755,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
                 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -3734,7 +3764,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 6945,
-                        searchFilter: DatapackSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
                         index: DatapackOffset,
                         pageSize: _modPageSize
@@ -3747,7 +3777,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = DatapackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
                     
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                        "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
                         newDatapacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3807,6 +3837,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 标记世界标签页已加载过数据
             _worldsLoadedOnce = true;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(WorldSearchQuery);
+
             // 世界只支持 CurseForge 平台，Modrinth 不支持
             if (!IsCurseForgeEnabled)
             {
@@ -3819,7 +3852,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             
             // 从CurseForge搜索或缓存加载
             var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory);
+                "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory);
             
             if (cachedData != null)
             {
@@ -3833,7 +3866,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 17, // Worlds classId
-                        searchFilter: WorldSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedWorldVersion) ? null : SelectedWorldVersion,
                         index: 0,
                         pageSize: _modPageSize
@@ -3850,7 +3883,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _curseForgeCacheService.SaveSearchResultAsync(
-                        "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory,
                         curseForgeWorlds, curseForgeTotalHits);
                 }
                 catch (Exception ex)
@@ -3896,6 +3929,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var newWorlds = new List<ModrinthProject>();
             int totalHits = 0;
             
+            // 获取搜索关键词（支持中文转英文）
+            var searchKeyword = _translationService.GetEnglishKeywordForSearch(WorldSearchQuery);
+
             // 世界只支持 CurseForge 平台
             if (IsCurseForgeEnabled)
             {
@@ -3903,7 +3939,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 17, // Worlds classId
-                        searchFilter: WorldSearchQuery,
+                        searchFilter: searchKeyword,
                         gameVersion: string.IsNullOrEmpty(SelectedWorldVersion) ? null : SelectedWorldVersion,
                         index: WorldOffset,
                         pageSize: _modPageSize
@@ -3916,7 +3952,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = WorldOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
                     
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "world", WorldSearchQuery, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory,
                         newWorlds, totalHits);
                 }
                 catch (Exception ex)
