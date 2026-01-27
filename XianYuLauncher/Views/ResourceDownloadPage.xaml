@@ -9,6 +9,8 @@
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:models="using:XianYuLauncher.Core.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:media="using:CommunityToolkit.WinUI.Media"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -843,7 +845,7 @@
                                 VerticalScrollBarVisibility="Auto"
                                 ViewChanged="ShaderPackListScrollViewer_ScrollChanged">
                                     <!-- 光影列表 -->
-                                    <ListView 
+                                    <controls:AdaptiveGridView 
                                         x:Name="ShaderPackListView"
                                         SelectionMode="Single"
                                         ItemsSource="{Binding ShaderPacks, Mode=OneWay}"
@@ -853,72 +855,89 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ShaderPackListView_ItemClick"
+                                        DesiredWidth="260"
+                                        ItemHeight="280"
+                                        StretchContentForSingleRow="False"
+                                        OneRowModeEnabled="False"
                                         Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
-                                        <ListView.Resources>
-                                            <Style TargetType="ScrollViewer">
-                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                                            </Style>
-                                        </ListView.Resources>
-                                        <ListView.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
-                                            </ItemsPanelTemplate>
-                                        </ListView.ItemsPanel>
-                                        <ListView.ItemContainerStyle>
-                                            <StaticResource ResourceKey="CommunityResourceListViewItemStyle" />
-                                        </ListView.ItemContainerStyle>
-                                        <ListView.ItemTemplate>
+                                        <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
-                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                      BorderThickness="1" Tapped="ShaderPackItem_Tapped">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
+                                                <Grid Margin="6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="ShaderPackItem_Tapped"
+                                                      ToolTipService.ToolTip="{Binding DisplayTitle}">
                                                     <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="140"/>
                                                         <RowDefinition Height="*"/>
-                                                        <RowDefinition Height="Auto"/>
                                                     </Grid.RowDefinitions>
 
-                                                    <!-- 光影图标 -->
-                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
-                                                            CornerRadius="32" Background="Transparent">
-                                                        <Image Stretch="UniformToFill">
-                                                            <Image.Source>
-                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
-                                                            </Image.Source>
-                                                        </Image>
+                                                    <!-- Large Image -->
+                                                    <Border Grid.Row="0" CornerRadius="8,8,0,0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                                                        <Grid>
+                                                            <!-- Fallback/Background: Icon -->
+                                                            <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
+                                                            
+                                                            <!-- Blur Layer (Blurs the icon behind it) -->
+                                                            <Border>
+                                                                <Border.Background>
+                                                                    <media:BackdropBlurBrush Amount="10" />
+                                                                </Border.Background>
+                                                            </Border>
+
+                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
+                                                            
+                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
+                                                        </Grid>
                                                     </Border>
 
-                                                    <!-- 光影名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
-                                                               FontSize="16" FontWeight="SemiBold"/>
+                                                    <!-- Content -->
+                                                    <Grid Grid.Row="1" Padding="12">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="*"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
 
-                                                    <!-- 光影描述 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
-                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
-                                                               MaxLines="2" VerticalAlignment="Center"/>
+                                                        <!-- Title -->
+                                                        <Grid Grid.Row="0" ColumnSpacing="8" Margin="0,0,0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="24"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border CornerRadius="4" Width="24" Height="24">
+                                                                <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="1" Text="{Binding DisplayTitle, Mode=OneWay}"
+                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                        </Grid>
 
-                                                    <!-- 光影信息 -->
-                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                    </StackPanel>
+                                                        <!-- Description -->
+                                                        <TextBlock Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" 
+                                                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Top"/>
+
+                                                        <!-- Footer -->
+                                                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                            <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6" TextTrimming="CharacterEllipsis" MaxWidth="100"/>
+                                                            <TextBlock Text="·" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                                            <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                                        </StackPanel>
+                                                    </Grid>
                                                 </Grid>
                                             </DataTemplate>
-                                        </ListView.ItemTemplate>
+                                        </controls:AdaptiveGridView.ItemTemplate>
                                         <!-- Loading More Indicator -->
-                                        <ListView.Footer>
+                                        <controls:AdaptiveGridView.Footer>
                                             <ProgressRing 
                                                 IsActive="{Binding IsShaderPackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
                                                 HorizontalAlignment="Center"/>
-                                        </ListView.Footer>
-                                    </ListView>
+                                        </controls:AdaptiveGridView.Footer>
+                                    </controls:AdaptiveGridView>
                             </ScrollViewer>
                         </Grid>
                     </TabViewItem>
@@ -1074,7 +1093,7 @@
                                 VerticalScrollBarVisibility="Auto"
                                 ViewChanged="ResourcePackListScrollViewer_ScrollChanged">
                                     <!-- 资源包列表 -->
-                                    <ListView 
+                                    <controls:AdaptiveGridView 
                                         x:Name="ResourcePackListView"
                                         SelectionMode="Single"
                                         ItemsSource="{Binding ResourcePacks, Mode=OneWay}"
@@ -1084,72 +1103,89 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ResourcePackListView_ItemClick"
+                                        DesiredWidth="260"
+                                        ItemHeight="280"
+                                        StretchContentForSingleRow="False"
+                                        OneRowModeEnabled="False"
                                         Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
-                                        <ListView.Resources>
-                                            <Style TargetType="ScrollViewer">
-                                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                                            </Style>
-                                        </ListView.Resources>
-                                        <ListView.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel VirtualizationMode="Recycling"/>
-                                            </ItemsPanelTemplate>
-                                        </ListView.ItemsPanel>
-                                        <ListView.ItemContainerStyle>
-                                            <StaticResource ResourceKey="CommunityResourceListViewItemStyle" />
-                                        </ListView.ItemContainerStyle>
-                                        <ListView.ItemTemplate>
+                                        <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
-                                                <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                      CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                      BorderThickness="1" Tapped="ResourcePackItem_Tapped">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
+                                                <Grid Margin="6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                      CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                      BorderThickness="1" Tapped="ResourcePackItem_Tapped"
+                                                      ToolTipService.ToolTip="{Binding DisplayTitle}">
                                                     <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="140"/>
                                                         <RowDefinition Height="*"/>
-                                                        <RowDefinition Height="Auto"/>
                                                     </Grid.RowDefinitions>
 
-                                                    <!-- 资源包图标 -->
-                                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
-                                                            CornerRadius="32" Background="Transparent">
-                                                        <Image Stretch="UniformToFill">
-                                                            <Image.Source>
-                                                                <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64"/>
-                                                            </Image.Source>
-                                                        </Image>
+                                                    <!-- Large Image -->
+                                                    <Border Grid.Row="0" CornerRadius="8,8,0,0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                                                        <Grid>
+                                                            <!-- Fallback/Background: Icon -->
+                                                            <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
+                                                            
+                                                            <!-- Blur Layer (Blurs the icon behind it) -->
+                                                            <Border>
+                                                                <Border.Background>
+                                                                    <media:BackdropBlurBrush Amount="10" />
+                                                                </Border.Background>
+                                                            </Border>
+
+                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
+                                                            
+                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
+                                                        </Grid>
                                                     </Border>
 
-                                                    <!-- 资源包名称 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
-                                                               FontSize="16" FontWeight="SemiBold"/>
+                                                    <!-- Content -->
+                                                    <Grid Grid.Row="1" Padding="12">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="*"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
 
-                                                    <!-- 资源包描述 -->
-                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
-                                                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
-                                                               MaxLines="2" VerticalAlignment="Center"/>
+                                                        <!-- Title -->
+                                                        <Grid Grid.Row="0" ColumnSpacing="8" Margin="0,0,0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="24"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border CornerRadius="4" Width="24" Height="24">
+                                                                <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="1" Text="{Binding DisplayTitle, Mode=OneWay}"
+                                                                       FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                        </Grid>
 
-                                                    <!-- 资源包信息 -->
-                                                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-                                                        <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                        <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                                                    </StackPanel>
+                                                        <!-- Description -->
+                                                        <TextBlock Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" 
+                                                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Top"/>
+
+                                                        <!-- Footer -->
+                                                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                                            <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6" TextTrimming="CharacterEllipsis" MaxWidth="100"/>
+                                                            <TextBlock Text="·" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                                            <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                                        </StackPanel>
+                                                    </Grid>
                                                 </Grid>
                                             </DataTemplate>
-                                        </ListView.ItemTemplate>
+                                        </controls:AdaptiveGridView.ItemTemplate>
                                         <!-- Loading More Indicator -->
-                                        <ListView.Footer>
+                                        <controls:AdaptiveGridView.Footer>
                                             <ProgressRing 
                                                 IsActive="{Binding IsResourcePackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
                                                 HorizontalAlignment="Center"/>
-                                        </ListView.Footer>
-                                    </ListView>
+                                        </controls:AdaptiveGridView.Footer>
+                                    </controls:AdaptiveGridView>
                             </ScrollViewer>
                         </Grid>
                     </TabViewItem>
