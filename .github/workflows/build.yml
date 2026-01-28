@@ -98,6 +98,7 @@ jobs:
           /p:PackageCertificateKeyFile="${{ env.CERT_PATH }}" `
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
+          /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=true `
           /p:AppInstallerUri="https://github.com/XianYuLauncher/XianYuLauncher/releases/latest/download/"
 
@@ -112,12 +113,10 @@ jobs:
       with:
         name: XianYuLauncher-Build
         path: |
-            AppPackages/**/*.msix
-            AppPackages/**/*.cer
-            AppPackages/**/*.appinstaller
-            **/AppPackages/**/*.msix
-            **/AppPackages/**/*.cer
-            **/AppPackages/**/*.appinstaller
+            ${{ github.workspace }}\AppPackages\**\*
+            **\*.msix
+            **\*.cer
+            **\*.appinstaller
 
     # 8. 发布 (仅Tag)
     - name: Release
