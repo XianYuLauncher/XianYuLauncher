@@ -3921,25 +3921,25 @@ namespace XianYuLauncher.ViewModels
     public partial class ModVersionViewModel : ObservableObject
     {
         [ObservableProperty]
-        private string _versionNumber;
+        private string _versionNumber = string.Empty;
 
         [ObservableProperty]
-        private string _releaseDate;
+        private string _releaseDate = string.Empty;
 
         [ObservableProperty]
-        private string _changelog;
+        private string _changelog = string.Empty;
 
         [ObservableProperty]
-        private string _downloadUrl;
+        private string _downloadUrl = string.Empty;
 
         [ObservableProperty]
-        private string _fileName;
+        private string _fileName = string.Empty;
 
         [ObservableProperty]
-        private List<string> _loaders;
+        private List<string> _loaders = new();
 
         [ObservableProperty]
-        private string _versionType;
+        private string _versionType = string.Empty;
         
         // 添加游戏版本属性，用于记录该Mod版本支持的游戏版本
         [ObservableProperty]

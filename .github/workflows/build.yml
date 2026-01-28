@@ -85,7 +85,7 @@ jobs:
     - name: Restore
       run: nuget restore ${{ env.Solution_Name }}
 
-    # 6. 打包
+    # 6. 构建并打包 (使用 MSBuild)
     - name: Build
       shell: powershell
       run: |
@@ -97,16 +97,27 @@ jobs:
           /p:AppxPackageSigningEnabled=true `
           /p:PackageCertificateKeyFile="${{ env.CERT_PATH }}" `
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
-          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages" `
+          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=true `
           /p:AppInstallerUri="https://github.com/XianYuLauncher/XianYuLauncher/releases/latest/download/"
-          
-    # 7. 上传
+
+    # Debug: 列出文件以查找生成位置
+    - name: List files
+      if: always()
+      run: Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter *.msix* | Select-Object FullName
+
+    # 7. 上传构建产物
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: XianYuLauncher-Build
-        path: AppPackages/**/*.msix*
+        path: |
+            AppPackages/**/*.msix
+            AppPackages/**/*.cer
+            AppPackages/**/*.appinstaller
+            **/AppPackages/**/*.msix
+            **/AppPackages/**/*.cer
+            **/AppPackages/**/*.appinstaller
 
     # 8. 发布 (仅Tag)
     - name: Release
