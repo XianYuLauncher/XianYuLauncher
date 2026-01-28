@@ -105,33 +105,39 @@ jobs:
           /p:PackageCertificateThumbprint="${{ env.PFX_THUMBPRINT }}" `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
-          /p:GenerateAppInstallerFile=true `
-          /p:AppInstallerUri="https://github.com/XianYuLauncher/XianYuLauncher/releases/latest/download/"
+          /p:GenerateAppInstallerFile=false
 
-    # Debug: 列出文件以查找生成位置
-    - name: List files
-      if: always()
-      run: Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter *.msix* | Select-Object FullName
+    # 7. 重命名并打包 Zip (去除 _Test 后缀)
+    - name: Rename and Zip
+      shell: powershell
+      run: |
+        $sourceDir = "${{ github.workspace }}\AppPackages"
+        $dirs = Get-ChildItem -Path $sourceDir -Directory -Filter "*_Test"
+        
+        foreach ($dir in $dirs) {
+            # 新名称：去掉 _Test 后缀
+            $newName = $dir.Name -replace "_Test$", ""
+            $zipPath = Join-Path $sourceDir "$newName.zip"
+            
+            Write-Host "Zipping $($dir.FullName) to $zipPath"
+            
+            # 使用 Compress-Archive 打包目录内容
+            Compress-Archive -Path "$($dir.FullName)\*" -DestinationPath $zipPath -Force
+        }
 
-    # 7. 上传构建产物
+    # 8. 上传 Artifact (Zip文件)
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: XianYuLauncher-Build
-        path: |
-            ${{ github.workspace }}\AppPackages\**\*
-            **\*.msix
-            **\*.cer
-            **\*.appinstaller
+        name: XianYuLauncher-Package
+        path: ${{ github.workspace }}\AppPackages\*.zip
 
-    # 8. 发布 (仅Tag)
+    # 9. 发布 (仅Tag)
     - name: Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          AppPackages/**/*.msix
-          AppPackages/**/*.cer
-          AppPackages/**/*.appinstaller
+          AppPackages/*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') }}
