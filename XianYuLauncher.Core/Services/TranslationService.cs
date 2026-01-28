@@ -183,10 +183,17 @@ public class TranslationService : ITranslationService
     /// </summary>
     public async Task InitializeNameTranslationAsync(string dataFilePath)
     {
-        if (_isNameTranslationInitialized || !System.IO.File.Exists(dataFilePath)) return;
+        if (!System.IO.File.Exists(dataFilePath)) return;
 
         try 
         {
+            // 如果是重新加载，先清空现有数据
+            if (_isNameTranslationInitialized)
+            {
+                _nameTranslationMap.Clear();
+                _chineseToEnglishMap.Clear();
+            }
+
             var lines = await System.IO.File.ReadAllLinesAsync(dataFilePath);
             foreach (var line in lines)
             {

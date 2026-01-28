@@ -1,0 +1,128 @@
+name: Build and Release XianYuLauncher
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: XianYuLauncher.slnx
+      Project_Path: XianYuLauncher/XianYuLauncher.csproj
+      Configuration: Release
+      Platform: x64
+      # 用于签名的临时文件名
+      Certificate_Path: GitHubActionsWorkflow.pfx
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # 1. 安装 .NET 10 (WinUI3 需要)
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    # 2. 还原 secrets.json
+    - name: Restore secrets.json
+      shell: powershell
+      run: |
+        $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
+        if ([string]::IsNullOrWhiteSpace($secretJson)) {
+            Write-Warning "APP_SECRETS_JSON is possibly empty or not set."
+        }
+        # 确保目录存在
+        New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
+        $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
+        Write-Host "secrets.json restored."
+
+    # 3. 解码并导入 PFX 证书
+    - name: Decode and Import PFX Certificate
+      shell: powershell
+      run: |
+        $pfxBase64 = '${{ secrets.PFX_BASE64 }}'
+        if ([string]::IsNullOrWhiteSpace($pfxBase64)) {
+            Write-Error "PFX_BASE64 secret is missing! Cannot sign the package."
+            exit 1
+        }
+        $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
+        [System.IO.File]::WriteAllBytes("$env:Certificate_Path", $pfxBytes)
+        
+        # 导入证书到当前用户的个人存储区 (CertStore) 以供 Signtool 使用
+        # 注意: 某些情况可能不需要显式导入，只要由 MSBuild 指向文件路径即可。
+        # 但为了稳妥，我们既保留文件也尝试导入（如果需要密码）
+        
+        # 如果你有证书密码，请添加 PFX_PASSWORD secret，并在下面使用
+        # $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
+        # Import-PfxCertificate -FilePath "$env:Certificate_Path" -CertStoreLocation Cert:\CurrentUser\My -Password $password
+        
+        Write-Host "Certificate decoded to $env:Certificate_Path"
+
+    # 4. 自动修改版本号 (仅针对 Release/Tag 构建)
+    # 如果是 Tag 推送 (v1.2.3)，我们将修改 Package.appxmanifest 的版本号以匹配 Tag
+    - name: Update Manifest Version
+      if: startsWith(github.ref, 'refs/tags/v')
+      shell: powershell
+      run: |
+        $tag = "${{ github.ref_name }}".Substring(1) # 去掉 'v'
+        # 确保版本号是 4 段式 (x.x.x.x)
+        if ($tag -match '^\d+\.\d+\.\d+$') { $tag = "$tag.0" }
+        
+        Write-Host "Updating manifest version to: $tag"
+        
+        # 修改 appxmanifest
+        $manifestPath = "XianYuLauncher/Package.appxmanifest"
+        [xml]$xml = Get-Content $manifestPath
+        $xml.Package.Identity.Version = $tag
+        $xml.Save($manifestPath)
+
+    # 5. 还原 NuGet 包
+    - name: Restore Dependencies
+      run: dotnet restore ${{ env.Solution_Name }}
+
+    # 6. 构建并打包 (发布 MSIX)
+    # 注意: /p:AppxPackageSigningEnabled=true 开启签名
+    # /p:PackageCertificateKeyFile 指向我们刚才解码出来的 pfx
+    # /p:PackageCertificatePassword 如果有密码也需要传
+    - name: Build and Package MSIX
+      shell: powershell
+      run: |
+        dotnet publish ${{ env.Project_Path }} `
+          -c ${{ env.Configuration }} `
+          -r win-${{ env.Platform }} `
+          --self-contained true `
+          /p:PublishSingleFile=false `
+          /p:PublishReadyToRun=false `
+          /p:AppxPackageSigningEnabled=true `
+          /p:PackageCertificateKeyFile="$env:Certificate_Path" `
+          /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
+          /p:AppxPackageDir="AppPackages" `
+          /p:GenerateAppInstallerFile=true
+
+    # 7. 上传构建产物 (Upload Artifacts) - 用于调试或 Dev 通道
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: XianYuLauncher-Build
+        path: AppPackages/**/*.msix*
+
+    # 8. 发布 Release (针对 Tag)
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          AppPackages/**/*.msix
+          AppPackages/**/*.cer
+          AppPackages/**/*.appinstaller
+        draft: false
+        prerelease: ${{ contains(github.ref, 'beta') }}
+        generate_release_notes: true
