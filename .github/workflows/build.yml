@@ -73,19 +73,61 @@ jobs:
         echo "PFX_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
         Write-Host "Imported certificate with Thumbprint: $($cert.Thumbprint)"
 
-    # 4. 更新版本号 (仅Tag)
-    - name: Update Version
-      if: startsWith(github.ref, 'refs/tags/v')
+    # 4. 根据 Tag 判断通道并修改 Manifest (Dev/Stable)
+    - name: Configure Channel
       shell: powershell
       run: |
-        $tag = "${{ github.ref_name }}".Substring(1)
-        if ($tag -match '^\d+\.\d+\.\d+$') { $tag = "$tag.0" }
-        Write-Host "Version: $tag"
+        $refName = "${{ github.ref_name }}"
+        $manifestPath = "XianYuLauncher/Package.appxmanifest"
+        [xml]$xml = Get-Content $manifestPath
         
-        $manifest = "XianYuLauncher/Package.appxmanifest"
-        [xml]$xml = Get-Content $manifest
-        $xml.Package.Identity.Version = $tag
-        $xml.Save($manifest)
+        # 默认先把版本号提取出来 (去掉 v)
+        $version = $refName
+        if ($version.StartsWith("v")) { $version = $version.Substring(1) }
+        # 简单处理版本号格式，确保是 x.x.x.x
+        if ($version -match '^(\d+\.\d+\.\d+)(.*)$') { 
+            # 提取纯数字部分用于 Version 属性
+            $cleanVer = $matches[1] + ".0"
+            $xml.Package.Identity.Version = $cleanVer
+            Write-Host "Set Package Version: $cleanVer"
+        }
+
+        # 判断是否为 Dev/Beta 通道 (包含 -dev, -beta 或非 Tag 触发)
+        # 这里逻辑：只要 Tag 里带 '-' (如 v1.4.0-dev)，或者干脆不是 v开头的 Tag，都算 Dev
+        if ($refName -match '-' -or -not ($refName -match '^v\d')) {
+            Write-Host "Channel: DEV/BETA"
+            
+            # 1. 修改包名 (Identity Name)
+            $oldName = $xml.Package.Identity.Name
+            $xml.Package.Identity.Name = "$oldName.Dev"
+            Write-Host "Updated Identity Name: $oldName -> $($xml.Package.Identity.Name)"
+            
+            # 2. 修改显示名称 (DisplayName)
+            $xml.Package.Properties.DisplayName = "$($xml.Package.Properties.DisplayName) (Dev)"
+            # 同时修改 VisualElements 里的名称（开始菜单显示）
+            if ($xml.Package.Applications.Application.VisualElements) {
+                $xml.Package.Applications.Application.VisualElements.DisplayName = "$($xml.Package.Applications.Application.VisualElements.DisplayName) (Dev)"
+            }
+            
+            # 3. 替换图标
+            $devIconPath = "XianYuLauncher/Assets/Dev/WindowIcon.ico"
+            $targetIconPath = "XianYuLauncher/Assets/WindowIcon.ico"
+            if (Test-Path $devIconPath) {
+                Copy-Item $devIconPath $targetIconPath -Force
+                Write-Host "Replaced WindowIcon with Dev version."
+            } else {
+                Write-Warning "Dev icon not found at $devIconPath"
+            }
+            
+            # 4. 设置编译宏 (供 C# 代码使用)
+            echo "Build_Constants=DEV_CHANNEL" >> $env:GITHUB_ENV
+        } else {
+            Write-Host "Channel: STABLE"
+            # Stable 不需要改 Manifest，保持原样
+            echo "Build_Constants=RELEASE_CHANNEL" >> $env:GITHUB_ENV
+        }
+        
+        $xml.Save($manifestPath)
 
     # 5. 还原包
     - name: Restore
@@ -98,6 +140,7 @@ jobs:
         msbuild ${{ env.Project_Path }} `
           /p:Configuration=${{ env.Configuration }} `
           /p:Platform=${{ env.Platform }} `
+          /p:DefineConstants="${{ env.Build_Constants }}" `
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
