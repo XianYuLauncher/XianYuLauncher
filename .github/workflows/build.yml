@@ -40,7 +40,6 @@ jobs:
 
     # 2. 还原 secrets.json
     - name: Restore secrets.json
-    - name: Restore secrets.json
       shell: powershell
       run: |
         $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
