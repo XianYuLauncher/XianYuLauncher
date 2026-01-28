@@ -266,15 +266,15 @@ jobs:
           # 清理旧文件
           rm -f XianYuLauncher-*.zip
           
-          # 使用 ghproxy 加速下载固定名称的包
+          # 使用官方链接下载 (直接从 GitHub 拉取)
           echo "Downloading x64..."
-          wget -O XianYuLauncher-x64.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x64.zip"
+          wget -O XianYuLauncher-x64.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x64.zip"
           
           echo "Downloading x86..."
-          wget -O XianYuLauncher-x86.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x86.zip"
+          wget -O XianYuLauncher-x86.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x86.zip"
           
           echo "Downloading arm64..."
-          wget -O XianYuLauncher-arm64.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-arm64.zip"
+          wget -O XianYuLauncher-arm64.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-arm64.zip"
           
           # 验证下载完成
           ls -lh
