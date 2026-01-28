@@ -158,27 +158,28 @@ public class UpdateService
                     foreach (var asset in release.assets)
                     {
                         string name = asset.name;
-                        string url = asset.browser_download_url;
+                        // url 变量名冲突，改为 assetUrl
+                        string assetUrl = asset.browser_download_url;
                         
                         if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
                             if (name.Contains("x64", StringComparison.OrdinalIgnoreCase))
                             {
-                                archUrls["x64"] = url;
-                                if (downloadUrl == null) downloadUrl = url; // 默认回退
+                                archUrls["x64"] = assetUrl;
+                                if (downloadUrl == null) downloadUrl = assetUrl; // 默认回退
                             }
                             else if (name.Contains("arm64", StringComparison.OrdinalIgnoreCase))
                             {
-                                archUrls["arm64"] = url;
+                                archUrls["arm64"] = assetUrl;
                             }
                             else if (name.Contains("x86", StringComparison.OrdinalIgnoreCase))
                             {
-                                archUrls["x86"] = url;
+                                archUrls["x86"] = assetUrl;
                             }
                             // 如果文件名没写架构，可能是默认包
                             else if (downloadUrl == null)
                             {
-                                downloadUrl = url;
+                                downloadUrl = assetUrl;
                             }
                         }
                     }
