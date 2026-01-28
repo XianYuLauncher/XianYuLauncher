@@ -12,16 +12,18 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 [![GitHub Release](https://img.shields.io/github/v/release/XianYuLauncher/XianYuLauncher?style=flat-square%20Release&logo=github)](https://github.com/XianYuLauncher/XianYuLauncher/releases)
 [![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
 [![Bilibili](https://img.shields.io/badge/bilibili-@Spirit灵动工作室-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
+
+[English](README.md) | [简体中文](README_zh-CN.md) | [繁體中文](README_zh-TW.md)
 </div>
 
 ## Features
 
 - **Sleek, Modern UI**: Built with WinUI 3 for a native and fluent Windows experience.
-- **Built-in Multiplayer Support**: Integrated P2P networking lobby powered by **Terracotta** (based on EasyTier), allowing you to easily play with friends as if you were on the same LAN (Virtual LAN).
-- **AI-Powered Crash Analysis**: Provides the capability to connect to OpenAI-compatible LLM services for analyzing game crashes. *Note: No built-in AI model is included; users must configure their own API Endpoint and Key.*
-- **Comprehensive Resource Center**: Search and one-click install **Modpacks**, Mods, Resource Packs, and Shaders from Modrinth and CurseForge.
+- **Built-in Multiplayer Support**: Integrated P2P networking lobby powered by **Terracotta**, allowing you to easily play with friends as if you were on the same LAN (Virtual LAN).
+- **AI-Powered Crash Analysis**: Provides the capability to connect to OpenAI API-compatible services for analyzing game crashes. *Note: No built-in AI model is included; users must configure their own API Endpoint and Key.*
+- **Comprehensive Resource Center**: Search and one-click install Modpacks, Mods, Resource Packs, and Shaders from Modrinth and CurseForge.
 - **Smart Environment Management**: Automated downloading and matching of appropriate Java runtimes (JRE/JDK).
-- **Skin Management**: Built-in 3D skin viewer and local skin manager.
+- **Skin Management**: Built-in 3D skin viewer and skin manager.
 - **Loader Support**: One-click installation for Forge, Fabric, NeoForge, Quilt, Optifine, and Cleanroom (experimental).
 - **Version Management**: Easy installation and independent directories to keep your versions and mods organized.
 - **Real-time Logs**: Monitor game output with live log viewing.
@@ -34,6 +36,10 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 - .NET 10.0 SDK
 
 ### Installation
+
+[![Get it from Microsoft Store](https://get.microsoft.com/images/en-us%20dark.svg)](https://apps.microsoft.com/detail/9pcnpgl7j6ks?mode=direct)
+
+**Or manual installation:**
 
 1. **Download**: Get the latest release from the [Releases](https://github.com/XianYuLauncher/XianYuLauncher/releases) page.
 2. **Extract**: Unzip the downloaded package to your preferred location.
@@ -49,6 +55,8 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 ## Open Source License
 
 This project is released under a **MIT License** as open source.
+
+For third-party libraries and data sources, please refer to [NOTICE.md](NOTICE.md).
 
 ### Open Source Statement
 - The project is open-sourced under the MIT License.
