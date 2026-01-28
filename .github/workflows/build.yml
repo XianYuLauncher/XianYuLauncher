@@ -25,13 +25,21 @@ jobs:
       with:
         fetch-depth: 0
 
-    # 1. 安装 .NET 10 (WinUI3 需要)
+    # 1. 配置 MSBuild
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    # 1.5. 安装 .NET 10 (WinUI3 需要)
     - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
 
     # 2. 还原 secrets.json
+    - name: Restore secrets.json
     - name: Restore secrets.json
       shell: powershell
       run: |
@@ -86,27 +94,24 @@ jobs:
 
     # 5. 还原 NuGet 包
     - name: Restore Dependencies
-      run: dotnet restore ${{ env.Solution_Name }}
+      run: nuget restore ${{ env.Solution_Name }}
 
-    # 6. 构建并打包 (发布 MSIX)
-    # 注意: /p:AppxPackageSigningEnabled=true 开启签名
-    # /p:PackageCertificateKeyFile 指向我们刚才解码出来的 pfx
-    # /p:PackageCertificatePassword 如果有密码也需要传
+    # 6. 构建并打包 (使用 MSBuild)
     - name: Build and Package MSIX
       shell: powershell
       run: |
-        dotnet publish ${{ env.Project_Path }} `
-          -c ${{ env.Configuration }} `
-          -r win-${{ env.Platform }} `
-          --self-contained true `
-          /p:PublishSingleFile=false `
-          /p:PublishReadyToRun=false `
+        msbuild ${{ env.Project_Path }} `
+          /p:Configuration=${{ env.Configuration }} `
+          /p:Platform=${{ env.Platform }} `
+          /p:UapAppxPackageBuildMode=SideloadOnly `
+          /p:AppxBundle=Never `
           /p:AppxPackageSigningEnabled=true `
           /p:PackageCertificateKeyFile="$env:Certificate_Path" `
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
           /p:AppxPackageDir="AppPackages" `
-          /p:GenerateAppInstallerFile=true
-
+          /p:GenerateAppInstallerFile=true `
+          /p:AppInstallerUri="https://github.com/XianYuLauncher/XianYuLauncher/releases/latest/download/"
+          
     # 7. 上传构建产物 (Upload Artifacts) - 用于调试或 Dev 通道
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4

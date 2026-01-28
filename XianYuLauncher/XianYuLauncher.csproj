@@ -8,7 +8,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>Properties\PublishProfiles\win10-$(Platform).pubxml</PublishProfile>
+    
 	<ImplicitUsings>enable</ImplicitUsings>
 	<Nullable>enable</Nullable>
 	<UseWinUI>true</UseWinUI>
@@ -21,13 +21,11 @@
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundle>Never</AppxBundle>
-    <AppInstallerUri>C:\Users\pc\Pictures\debug\</AppInstallerUri>
 	<!--注:下面的选项打包Store版时记得关闭,且注释那一长串证书-->
     <GenerateTemporaryStoreCertificate>False</GenerateTemporaryStoreCertificate>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <!--<PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>-->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <AppxPackageDir>C:\Users\pc\Pictures\XuWorld_res\microsoft_store_build\1.4.0_store\</AppxPackageDir>
   </PropertyGroup>
 
   <ItemGroup>
