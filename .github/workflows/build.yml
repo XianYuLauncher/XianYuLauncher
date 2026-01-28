@@ -227,33 +227,55 @@ jobs:
         cp artifacts/Package-arm64/*.zip deploy_packet/XianYuLauncher-arm64.zip
         ls -l deploy_packet/
 
-    # 2. 上传到服务器 (仅限正式版)
-    - name: Deploy to Server
-      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SERVER_KEY }}
-        port: ${{ secrets.SERVER_PORT }} # 新增端口配置
-        source: "deploy_packet/*"
-        target: "/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
-        strip_components: 1 # 去掉 deploy_packet 这一层目录
-        rm: true # 在上传前删除远端目标目录下的所有文件！
-
-    # 生成更新日志
+    # 2. 生成更新日志 (提前到部署前)
     - name: Build Changelog
       id: build_changelog
       uses: mikepenz/release-changelog-builder-action@v4
       with:
         configuration: ".github/changelog-configuration.json"
-        # 关键配置：如果是正式版 Tag (不含 dev/beta)，则忽略之前的 Pre-release Tag，直接对比上一个正式版
         ignorePreReleases: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
 
+    # 3. 发布 Release (包含固定名称的包)
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         body: ${{ steps.build_changelog.outputs.changelog }}
-        files: artifacts/**/*.zip
+        # 同时上传原始带版本号的包，和固定名称的包(供服务器拉取)
+        files: |
+          artifacts/**/*.zip
+          deploy_packet/*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'dev') }}
+
+    # 4. 触发服务器下载 (仅限正式版，替代 SCP)
+    - name: Trigger Server Pull
+      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script_stop: true
+        script: |
+          # 定义目标目录
+          TARGET_DIR="/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
+          mkdir -p $TARGET_DIR
+          cd $TARGET_DIR
+          
+          # 清理旧文件
+          rm -f XianYuLauncher-*.zip
+          
+          # 使用 ghproxy 加速下载固定名称的包
+          echo "Downloading x64..."
+          wget -O XianYuLauncher-x64.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x64.zip"
+          
+          echo "Downloading x86..."
+          wget -O XianYuLauncher-x86.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x86.zip"
+          
+          echo "Downloading arm64..."
+          wget -O XianYuLauncher-arm64.zip "https://mirror.ghproxy.com/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-arm64.zip"
+          
+          # 验证下载完成
+          ls -lh
+
