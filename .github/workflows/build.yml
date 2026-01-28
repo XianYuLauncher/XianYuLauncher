@@ -205,4 +205,4 @@ jobs:
         files: |
           AppPackages/*.zip
         draft: false
-        prerelease: ${{ contains(github.ref, 'beta') }}
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'dev') }}

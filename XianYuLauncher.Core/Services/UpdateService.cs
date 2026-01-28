@@ -142,10 +142,13 @@ public class UpdateService
 
             foreach (var release in releases)
             {
-                // 寻找最新的 Pre-release (即 Dev/Beta)
-                if ((bool)release.prerelease == true)
+                string tagName = release.tag_name;
+                
+                // 寻找最新的 Pre-release (即 Dev/Beta)，或者Tag包含 dev/beta 的版本（防止CI未正确标记Prerelease）
+                if ((bool)release.prerelease == true || 
+                    tagName.Contains("dev", StringComparison.OrdinalIgnoreCase) || 
+                    tagName.Contains("beta", StringComparison.OrdinalIgnoreCase))
                 {
-                    string tagName = release.tag_name;
                     string body = release.body ?? "No changelog provided.";
                     string publishedAt = release.published_at;
                     
