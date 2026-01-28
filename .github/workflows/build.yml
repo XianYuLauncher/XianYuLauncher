@@ -215,19 +215,7 @@ jobs:
     - name: Display structure of downloaded files
       run: ls -R artifacts
 
-    # 1. 整理文件为固定名称 (仅限正式版)
-    # 结果: deploy_packet/XianYuLauncher-x64.zip 等
-    - name: Prepare Fixed Filenames for Server
-      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
-      run: |
-        mkdir deploy_packet
-        # 寻找并重命名复制，假设 artifacts 结构是 artifacts/Package-x64/xxx.zip
-        cp artifacts/Package-x64/*.zip deploy_packet/XianYuLauncher-x64.zip
-        cp artifacts/Package-x86/*.zip deploy_packet/XianYuLauncher-x86.zip
-        cp artifacts/Package-arm64/*.zip deploy_packet/XianYuLauncher-arm64.zip
-        ls -l deploy_packet/
-
-    # 2. 生成更新日志 (提前到部署前)
+    # 1. 生成更新日志 (提前到部署前)
     - name: Build Changelog
       id: build_changelog
       uses: mikepenz/release-changelog-builder-action@v4
@@ -235,19 +223,16 @@ jobs:
         configuration: ".github/changelog-configuration.json"
         ignorePreReleases: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
 
-    # 3. 发布 Release (包含固定名称的包)
+    # 2. 发布 Release (只上传标准带版本号的文件，保持干净)
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         body: ${{ steps.build_changelog.outputs.changelog }}
-        # 同时上传原始带版本号的包，和固定名称的包(供服务器拉取)
-        files: |
-          artifacts/**/*.zip
-          deploy_packet/*.zip
+        files: artifacts/**/*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'dev') }}
 
-    # 4. 触发服务器下载 (仅限正式版，替代 SCP)
+    # 3. 触发服务器下载 (仅限正式版)
     - name: Trigger Server Pull
       if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
       uses: appleboy/ssh-action@master
@@ -257,25 +242,33 @@ jobs:
         key: ${{ secrets.SERVER_KEY }}
         port: ${{ secrets.SERVER_PORT }}
         script_stop: true
+        timeout: 120s
+        command_timeout: 180m
         script: |
           # 定义目标目录
           TARGET_DIR="/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
           mkdir -p $TARGET_DIR
           cd $TARGET_DIR
           
-          # 清理旧文件
-          rm -f XianYuLauncher-*.zip
+          # 计算版本号: v1.4.2 -> 1.4.2 -> 1.4.2.0
+          VER_TAG="${{ github.ref_name }}"
+          VER_NUM="${VER_TAG#v}"
+          FULL_VER="${VER_NUM}.0"
           
-          # 使用官方链接下载 (直接从 GitHub 拉取)
-          echo "Downloading x64..."
-          wget -O XianYuLauncher-x64.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x64.zip"
+          echo "Processing version: $FULL_VER"
           
-          echo "Downloading x86..."
-          wget -O XianYuLauncher-x86.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-x86.zip"
+          # 构造下载链接 (GitHub 官方源)
+          URL_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
           
-          echo "Downloading arm64..."
-          wget -O XianYuLauncher-arm64.zip "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XianYuLauncher-arm64.zip"
+          # 下载并重命名为固定文件名 (覆盖旧文件)
+          echo "Pulling x64..."
+          wget -O XianYuLauncher-x64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x64.zip"
           
-          # 验证下载完成
+          echo "Pulling x86..."
+          wget -O XianYuLauncher-x86.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x86.zip"
+          
+          echo "Pulling arm64..."
+          wget -O XianYuLauncher-arm64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_arm64.zip"
+          
           ls -lh
 
