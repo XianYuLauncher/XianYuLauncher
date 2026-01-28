@@ -127,14 +127,18 @@ jobs:
                 $xml.Package.Applications.Application.VisualElements.DisplayName = "XianYu Launcher (Dev)"
             }
             
-            # 3. 替换图标
-            $devIconPath = "XianYuLauncher/Assets/Dev/WindowIcon.ico"
-            $targetIconPath = "XianYuLauncher/Assets/WindowIcon.ico"
-            if (Test-Path $devIconPath) {
-                Copy-Item $devIconPath $targetIconPath -Force
-                Write-Host "Replaced WindowIcon with Dev version."
+            # 3. 替换图标 (Assets/Dev 下的所有文件覆盖到 Assets)
+            $devAssetsPath = "XianYuLauncher/Assets/Dev"
+            $targetAssetsPath = "XianYuLauncher/Assets"
+            
+            if (Test-Path $devAssetsPath) {
+                Get-ChildItem -Path $devAssetsPath -File | ForEach-Object {
+                    $dest = Join-Path $targetAssetsPath $_.Name
+                    Copy-Item $_.FullName $dest -Force
+                    Write-Host "Replaced Asset: $($_.Name)"
+                }
             } else {
-                Write-Warning "Dev icon not found at $devIconPath"
+                Write-Warning "Dev assets directory not found at $devAssetsPath"
             }
             
             # 4. 设置编译宏 (供 C# 代码使用)

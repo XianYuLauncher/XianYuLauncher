@@ -1042,6 +1042,12 @@
                                             Content="检查更新"
                                             Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
                                             IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                        
+                                        <Button 
+                                            Content="安装 Dev 通道版本"
+                                            Command="{x:Bind ViewModel.InstallDevChannelCommand}"
+                                            IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                            
                                         <ProgressRing 
                                             IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" 
                                             Width="20" 

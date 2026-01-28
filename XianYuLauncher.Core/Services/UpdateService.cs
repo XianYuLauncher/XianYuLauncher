@@ -125,6 +125,80 @@ public class UpdateService
         Debug.WriteLine("[DEBUG] 所有版本检查URL都失败，无法检查更新");
         return null;
     }
+
+    /// <summary>
+    /// 检查 Dev 通道更新 (GitHub)
+    /// </summary>
+    /// <returns>更新信息</returns>
+    public async Task<UpdateInfo> CheckForDevUpdateAsync()
+    {
+        try
+        {
+            string url = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases";
+            _logger.LogInformation("检查 Dev 更新: {Url}", url);
+
+            var response = await _httpClient.GetStringAsync(url);
+            dynamic releases = JsonConvert.DeserializeObject(response);
+
+            foreach (var release in releases)
+            {
+                // 寻找最新的 Pre-release (即 Dev/Beta)
+                if ((bool)release.prerelease == true)
+                {
+                    string tagName = release.tag_name;
+                    string body = release.body ?? "No changelog provided.";
+                    string publishedAt = release.published_at;
+                    
+                    // 寻找 zip 资产
+                    string downloadUrl = null;
+                    foreach (var asset in release.assets)
+                    {
+                        string name = asset.name;
+                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = asset.browser_download_url;
+                            break;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(downloadUrl))
+                    {
+                        // 构造 UpdateInfo
+                        var info = new UpdateInfo
+                        {
+                            version = tagName.StartsWith("v") ? tagName.Substring(1) : tagName,
+                            release_time = DateTime.Parse(publishedAt),
+                            changelog = new List<string>(body.Split('\n')),
+                            download_mirrors = new List<DownloadMirror>
+                            {
+                                new DownloadMirror
+                                {
+                                    name = "GitHub (Dev)",
+                                    url = downloadUrl,
+                                    // 我们可以假设 GitHub zip 包里包含了正确的 x64/arm64 结构，或者简单起见，Dev 只发 x64
+                                    // 这里简单处理，所有架构都指向同一个 zip，由 Install.ps1 处理或者是用户自己看
+                                    arch_urls = new Dictionary<string, string>
+                                    {
+                                        { "x64", downloadUrl },
+                                        { "arm64", downloadUrl },
+                                        { "x86", downloadUrl } 
+                                    }
+                                }
+                            }
+                        };
+                        
+                        return info;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "检查 Dev 更新失败");
+        }
+
+        return null;
+    }
     
     /// <summary>
     /// 获取当前系统架构

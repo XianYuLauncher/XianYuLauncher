@@ -2099,42 +2099,17 @@ public partial class SettingsViewModel : ObservableRecipient
                 {
                     Title = string.Format("Version {0} 更新", updateInfo.version),
                     Content = new Views.UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "更新",
-                    CloseButtonText = !updateInfo.important_update ? "取消" : null,
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.None,
                     XamlRoot = App.MainWindow.Content.XamlRoot
                 };
-                
-                var updateResult = await updateDialog.ShowAsync();
-                
-                if (updateResult == ContentDialogResult.Primary)
+
+                updateDialogViewModel.CloseDialog += (s, result) =>
                 {
-                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意更新");
-                    
-                    // 创建并显示下载进度弹窗
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = string.Format("Version {0} 更新", updateInfo.version),
-                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
-                    };
-                    
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    bool dialogResult = false;
-                    updateDialogViewModel.CloseDialog += (sender, result) =>
-                    {
-                        dialogResult = result;
-                        downloadDialog.Hide();
-                    };
-                    
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    await downloadDialog.ShowAsync();
-                }
+                    updateDialog.Hide();
+                };
+
+                await updateDialog.ShowAsync();
             }
             else
             {
@@ -2163,6 +2138,75 @@ public partial class SettingsViewModel : ObservableRecipient
                 XamlRoot = App.MainWindow.Content.XamlRoot
             };
             await dialog.ShowAsync();
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    /// <summary>
+    /// 安装/更新 Dev 通道版本
+    /// </summary>
+    [RelayCommand]
+    private async Task InstallDevChannelAsync()
+    {
+        if (IsCheckingForUpdates) return;
+        
+        IsCheckingForUpdates = true;
+        System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 开始检查 Dev 通道更新");
+
+        try
+        {
+            var updateService = App.GetService<UpdateService>();
+            var updateInfo = await updateService.CheckForDevUpdateAsync();
+
+            if (updateInfo != null)
+            {
+                 System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现 Dev 版本: {updateInfo.version}");
+
+                 var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
+                 var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
+                 
+                 var devDialog = new ContentDialog
+                 {
+                    Title = $"安装 Dev 通道版本 ({updateInfo.version})",
+                    Content = new Views.UpdateDialog(updateDialogViewModel),
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.None,
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                 };
+                 
+                 updateDialogViewModel.CloseDialog += (s, result) => 
+                 {
+                    devDialog.Hide();
+                 };
+                 
+                 await devDialog.ShowAsync();
+            }
+            else
+            {
+                var noDevDialog = new ContentDialog
+                {
+                    Title = "Dev 通道",
+                    Content = "当前没有可用的 Dev 版本。",
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await noDevDialog.ShowAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查 Dev 更新失败: {ex.Message}");
+            var errorDialog = new ContentDialog
+            {
+                Title = "Dev 通道检查失败",
+                Content = $"无法获取 Dev 版本: {ex.Message}",
+                CloseButtonText = "确定",
+                XamlRoot = App.MainWindow.Content.XamlRoot
+            };
+            await errorDialog.ShowAsync();
         }
         finally
         {
