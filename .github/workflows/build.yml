@@ -51,7 +51,7 @@ jobs:
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
         Write-Host "secrets.json restored."
 
-    # 3. 准备证书
+    # 3. 准备证书 (Base64 -> PFX)
     - name: Prepare Certificate
       shell: powershell
       run: |
@@ -64,8 +64,12 @@ jobs:
         $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
         [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
         
-        echo "CERT_PATH=$pfxPath" >> $env:GITHUB_ENV
         Write-Host "Cert saved to $pfxPath"
+        
+        # 显式导入证书到当前用户的个人存储区 (LocalMachine 需要其他权限)
+        # 这有助于解决 SignTool 无法直接使用带密码的文件参数的问题
+        $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
+        Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
 
     # 4. 更新版本号 (仅Tag)
     - name: Update Version
@@ -96,7 +100,8 @@ jobs:
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
           /p:AppxPackageSigningEnabled=true `
-          /p:PackageCertificateKeyFile="${{ env.CERT_PATH }}" `
+          /p:PackageCertificateThumbprint="" `
+          /p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\sign.pfx" `
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
