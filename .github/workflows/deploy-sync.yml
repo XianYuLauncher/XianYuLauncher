@@ -1,0 +1,114 @@
+name: Deploy Server & Sync Gitee
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to deploy (e.g. v1.4.2)'
+        required: true
+        default: 'v1.4.2'
+      full_version:
+        description: 'Full version (e.g. 1.4.2.0). Leave empty to auto-append .0'
+        required: false
+        default: ''
+
+jobs:
+  deploy_and_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute Version
+        id: vars
+        shell: bash
+        run: |
+          TAG_NAME="${{ inputs.tag_name }}"
+          VER_NUM="${TAG_NAME#v}"
+          FULL_VER_INPUT="${{ inputs.full_version }}"
+          if [ -z "$FULL_VER_INPUT" ]; then
+            FULL_VER="${VER_NUM}.0"
+          else
+            FULL_VER="$FULL_VER_INPUT"
+          fi
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "full_ver=$FULL_VER" >> $GITHUB_OUTPUT
+
+      - name: Fetch Release Notes
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=$(gh release view "${{ inputs.tag_name }}" --json body -q .body)
+          BODY="${BODY//'%'/'%25'}"
+          BODY="${BODY//$'\n'/'\n'}"
+          BODY="${BODY//$'\r'/''}"
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Trigger Server Pull
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script_stop: true
+          timeout: 120s
+          command_timeout: 180m
+          script: |
+            TARGET_DIR="/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
+            mkdir -p $TARGET_DIR
+            cd $TARGET_DIR
+
+            # DEBUG 阶段暂不清空旧文件，需要清空时取消注释
+            # rm -f XianYuLauncher-*.zip
+
+            FULL_VER="${{ steps.vars.outputs.full_ver }}"
+            URL_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ steps.vars.outputs.tag }}"
+
+            echo "Pulling x64..."
+            wget -O XianYuLauncher-x64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x64.zip"
+
+            echo "Pulling x86..."
+            wget -O XianYuLauncher-x86.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x86.zip"
+
+            echo "Pulling arm64..."
+            wget -O XianYuLauncher-arm64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_arm64.zip"
+
+            ls -lh
+
+      - name: Sync Gitee latest_version.json
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          FULL_VER: ${{ steps.vars.outputs.full_ver }}
+          CHANGELOG: ${{ steps.release.outputs.body }}
+        run: |
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "GITEE_TOKEN is missing. Add it in repo secrets." >&2
+            exit 1
+          fi
+
+          REPO="spiritos/XianYuLauncher-Resource"
+          git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
+          cd gitee-repo
+
+          python - << 'PY'
+import json
+import os
+
+path = "latest_version.json"
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+data["version"] = os.environ.get("FULL_VER", data.get("version"))
+data["changelog"] = os.environ.get("CHANGELOG", data.get("changelog", ""))
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+PY
+
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+          git add latest_version.json
+          git commit -m "chore: update version to $FULL_VER" || echo "No changes to commit"
+          git push

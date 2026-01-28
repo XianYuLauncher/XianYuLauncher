@@ -1,0 +1,51 @@
+name: Update Gitee Version Info
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New Version (e.g. 1.4.2.0)'
+        required: true
+        default: '1.4.2.0'
+      changelog:
+        description: 'Changelog Content'
+        required: false
+        default: 'Update via GitHub Actions'
+
+jobs:
+  update-gitee:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Gitee Resource Repo
+        uses: actions/checkout@v4
+        with:
+          repository: spiritos/XianYuLauncher-Resource # 请确认您的资源仓库名
+          token: ${{ secrets.GITEE_TOKEN }} # 需要去 Gitee 申请这个 Token
+          ref: main
+
+      - name: Update latest_version.json
+        shell: bash
+        run: |
+          # 使用 jq 修改 JSON (如果仓库里没有 jq 会自动把内容覆盖)
+          # 这里假设必须保留 arch_urls 不变，只改 version 和 changelog
+          
+          # 读取原有内容临时存一下 (为了读取 arch_urls，如果需要的话)
+          # 但更简单的方式是直接用 jq 更新字段
+          
+          tmp=$(mktemp)
+          jq --arg v "${{ github.event.inputs.version }}" \
+             --arg c "${{ github.event.inputs.changelog }}" \
+             '.version = $v | .changelog = $c' \
+             latest_version.json > "$tmp" && mv "$tmp" latest_version.json
+          
+          echo "Updated content:"
+          cat latest_version.json
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          git add latest_version.json
+          git commit -m "chore: update version to ${{ github.event.inputs.version }}" || echo "No changes to commit"
+          git push

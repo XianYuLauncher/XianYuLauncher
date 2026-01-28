@@ -2,7 +2,7 @@ name: Build and Release XianYuLauncher
 
 on:
   push:
-    branches: [ "main" ]
+    # branches: [ "main" ] # 暂时屏蔽分支触发，仅通过 Tag 触发构建和发布，避免 Push 时重复运行
     tags:
       - "v*"
   workflow_dispatch:
@@ -231,44 +231,4 @@ jobs:
         files: artifacts/**/*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'dev') }}
-
-    # 3. 触发服务器下载 (仅限正式版)
-    - name: Trigger Server Pull
-      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SERVER_KEY }}
-        port: ${{ secrets.SERVER_PORT }}
-        script_stop: true
-        timeout: 120s
-        command_timeout: 180m
-        script: |
-          # 定义目标目录
-          TARGET_DIR="/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
-          mkdir -p $TARGET_DIR
-          cd $TARGET_DIR
-          
-          # 计算版本号: v1.4.2 -> 1.4.2 -> 1.4.2.0
-          VER_TAG="${{ github.ref_name }}"
-          VER_NUM="${VER_TAG#v}"
-          FULL_VER="${VER_NUM}.0"
-          
-          echo "Processing version: $FULL_VER"
-          
-          # 构造下载链接 (GitHub 官方源)
-          URL_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
-          
-          # 下载并重命名为固定文件名 (覆盖旧文件)
-          echo "Pulling x64..."
-          wget -O XianYuLauncher-x64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x64.zip"
-          
-          echo "Pulling x86..."
-          wget -O XianYuLauncher-x86.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_x86.zip"
-          
-          echo "Pulling arm64..."
-          wget -O XianYuLauncher-arm64.zip "$URL_PREFIX/XianYuLauncher_${FULL_VER}_arm64.zip"
-          
-          ls -lh
 
