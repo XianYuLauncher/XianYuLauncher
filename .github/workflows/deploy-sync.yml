@@ -11,6 +11,11 @@ on:
         description: 'Full version (e.g. 1.4.2.0). Leave empty to auto-append .0'
         required: false
         default: ''
+      skip_deployment:
+        description: 'Skip Server Deployment (Only Sync Gitee)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   deploy_and_sync:
@@ -45,6 +50,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Trigger Server Pull
+        if: ${{ !inputs.skip_deployment }}
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -92,19 +98,19 @@ jobs:
           cd gitee-repo
 
           python - << 'PY'
-import json
-import os
+          import json
+          import os
 
-path = "latest_version.json"
-with open(path, "r", encoding="utf-8") as f:
-    data = json.load(f)
+          path = "latest_version.json"
+          with open(path, "r", encoding="utf-8") as f:
+              data = json.load(f)
 
-data["version"] = os.environ.get("FULL_VER", data.get("version"))
-data["changelog"] = os.environ.get("CHANGELOG", data.get("changelog", ""))
+          data["version"] = os.environ.get("FULL_VER", data.get("version"))
+          data["changelog"] = os.environ.get("CHANGELOG", data.get("changelog", ""))
 
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
-PY
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          PY
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
