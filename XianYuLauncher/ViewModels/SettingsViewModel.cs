@@ -504,7 +504,20 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否正在检查更新
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInstallDevChannel))]
     private bool _isCheckingForUpdates = false;
+
+    /// <summary>
+    /// 是否为 Dev 通道
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInstallDevChannel))]
+    private bool _isDevChannel;
+
+    /// <summary>
+    /// 是否可以安装 Dev 通道版本
+    /// </summary>
+    public bool CanInstallDevChannel => !IsCheckingForUpdates && !IsDevChannel;
 
     /// <summary>
     /// 添加鸣谢人员命令
@@ -550,6 +563,14 @@ public partial class SettingsViewModel : ObservableRecipient
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
+        // 初始化 Dev 通道状态
+        try
+        {
+            var updateService = App.GetService<UpdateService>();
+            IsDevChannel = updateService.IsDevChannel();
+        }
+        catch { }
+
         // 初始化语言设置
         _language = _languageSelectorService.Language;
         
@@ -2085,6 +2106,13 @@ public partial class SettingsViewModel : ObservableRecipient
             updateService.SetCurrentVersion(currentVersion);
             
             var updateInfo = await updateService.CheckForUpdatesAsync();
+
+            // 如果未发现正式版更新，且当前为 Dev 通道，则检查 Dev 更新
+            if (updateInfo == null && IsDevChannel)
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] Dev 通道：未发现正式版更新，尝试检查 Dev 更新...");
+                updateInfo = await updateService.CheckForDevUpdateAsync();
+            }
             
             if (updateInfo != null)
             {
@@ -2099,17 +2127,43 @@ public partial class SettingsViewModel : ObservableRecipient
                 {
                     Title = string.Format("Version {0} 更新", updateInfo.version),
                     Content = new Views.UpdateDialog(updateDialogViewModel),
+                    PrimaryButtonText = "更新",
                     CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.None,
+                    DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = App.MainWindow.Content.XamlRoot
                 };
-
-                updateDialogViewModel.CloseDialog += (s, result) =>
+                
+                var result = await updateDialog.ShowAsync();
+                
+                if (result == ContentDialogResult.Primary)
                 {
-                    updateDialog.Hide();
-                };
-
-                await updateDialog.ShowAsync();
+                    // 用户点击更新，显示下载进度弹窗
+                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意更新");
+                    
+                    var downloadDialog = new ContentDialog
+                    {
+                        Title = string.Format("Version {0} 更新", updateInfo.version),
+                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
+                        IsPrimaryButtonEnabled = false,
+                        CloseButtonText = "取消",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    downloadDialog.CloseButtonClick += (sender, args) =>
+                    {
+                        updateDialogViewModel.CancelCommand.Execute(null);
+                    };
+                    
+                    bool dialogResult = false;
+                    updateDialogViewModel.CloseDialog += (sender, res) =>
+                    {
+                        dialogResult = res;
+                        downloadDialog.Hide();
+                    };
+                    
+                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
+                    await downloadDialog.ShowAsync();
+                }
             }
             else
             {
@@ -2172,17 +2226,41 @@ public partial class SettingsViewModel : ObservableRecipient
                  {
                     Title = $"安装 Dev 通道版本 ({updateInfo.version})",
                     Content = new Views.UpdateDialog(updateDialogViewModel),
+                    PrimaryButtonText = "安装",
                     CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.None,
+                    DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = App.MainWindow.Content.XamlRoot
                  };
                  
-                 updateDialogViewModel.CloseDialog += (s, result) => 
-                 {
-                    devDialog.Hide();
-                 };
+                 var result = await devDialog.ShowAsync();
                  
-                 await devDialog.ShowAsync();
+                 if (result == ContentDialogResult.Primary)
+                 {
+                    // 用户点击安装，显示下载进度弹窗
+                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意安装 Dev 版本");
+                    
+                    var downloadDialog = new ContentDialog
+                    {
+                        Title = $"安装 Dev 通道版本 ({updateInfo.version})",
+                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
+                        IsPrimaryButtonEnabled = false,
+                        CloseButtonText = "取消",
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+                    
+                    downloadDialog.CloseButtonClick += (sender, args) =>
+                    {
+                        updateDialogViewModel.CancelCommand.Execute(null);
+                    };
+                    
+                    updateDialogViewModel.CloseDialog += (sender, res) =>
+                    {
+                        downloadDialog.Hide();
+                    };
+                    
+                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
+                    await downloadDialog.ShowAsync();
+                 }
             }
             else
             {

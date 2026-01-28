@@ -9,13 +9,17 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        platform: [x86, x64, arm64]
+    
     runs-on: windows-latest
 
     env:
       Solution_Name: XianYuLauncher.slnx
       Project_Path: XianYuLauncher/XianYuLauncher.csproj
       Configuration: Release
-      Platform: x64
+      Platform: ${{ matrix.platform }}
       # 用于签名的临时文件名
       Certificate_Path: GitHubActionsWorkflow.pfx
 
@@ -194,15 +198,61 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: XianYuLauncher-Package
+        name: Package-${{ matrix.platform }}
         path: ${{ github.workspace }}\AppPackages\*.zip
 
-    # 9. 发布 (仅Tag)
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+
+    # 1. 整理文件为固定名称 (仅限正式版)
+    # 结果: deploy_packet/XianYuLauncher-x64.zip 等
+    - name: Prepare Fixed Filenames for Server
+      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
+      run: |
+        mkdir deploy_packet
+        # 寻找并重命名复制，假设 artifacts 结构是 artifacts/Package-x64/xxx.zip
+        cp artifacts/Package-x64/*.zip deploy_packet/XianYuLauncher-x64.zip
+        cp artifacts/Package-x86/*.zip deploy_packet/XianYuLauncher-x86.zip
+        cp artifacts/Package-arm64/*.zip deploy_packet/XianYuLauncher-arm64.zip
+        ls -l deploy_packet/
+
+    # 2. 上传到服务器 (仅限正式版)
+    - name: Deploy to Server
+      if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
+      uses: appleboy/scp-action@target-cleanning
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_KEY }}
+        source: "deploy_packet/*"
+        target: "/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
+        strip_components: 1 # 去掉 deploy_packet 这一层目录
+        rm: true # 在上传前删除远端目标目录下的所有文件！
+
+    # 生成更新日志
+    - name: Build Changelog
+      id: build_changelog
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        configuration: ".github/changelog-configuration.json"
+        # 关键配置：如果是正式版 Tag (不含 dev/beta)，则忽略之前的 Pre-release Tag，直接对比上一个正式版
+        ignorePreReleases: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
+
     - name: Release
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          AppPackages/*.zip
+        body: ${{ steps.build_changelog.outputs.changelog }}
+        files: artifacts/**/*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'dev') }}

@@ -152,19 +152,38 @@ public class UpdateService
                     string body = release.body ?? "No changelog provided.";
                     string publishedAt = release.published_at;
                     
-                    // 寻找 zip 资产
                     string downloadUrl = null;
+                    var archUrls = new Dictionary<string, string>();
+                    
                     foreach (var asset in release.assets)
                     {
                         string name = asset.name;
+                        string url = asset.browser_download_url;
+                        
                         if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
-                            downloadUrl = asset.browser_download_url;
-                            break;
+                            if (name.Contains("x64", StringComparison.OrdinalIgnoreCase))
+                            {
+                                archUrls["x64"] = url;
+                                if (downloadUrl == null) downloadUrl = url; // 默认回退
+                            }
+                            else if (name.Contains("arm64", StringComparison.OrdinalIgnoreCase))
+                            {
+                                archUrls["arm64"] = url;
+                            }
+                            else if (name.Contains("x86", StringComparison.OrdinalIgnoreCase))
+                            {
+                                archUrls["x86"] = url;
+                            }
+                            // 如果文件名没写架构，可能是默认包
+                            else if (downloadUrl == null)
+                            {
+                                downloadUrl = url;
+                            }
                         }
                     }
 
-                    if (!string.IsNullOrEmpty(downloadUrl))
+                    if (archUrls.Count > 0 || !string.IsNullOrEmpty(downloadUrl))
                     {
                         // 构造 UpdateInfo
                         var info = new UpdateInfo
@@ -177,20 +196,17 @@ public class UpdateService
                                 new DownloadMirror
                                 {
                                     name = "GitHub (Dev)",
-                                    url = downloadUrl,
-                                    // 我们可以假设 GitHub zip 包里包含了正确的 x64/arm64 结构，或者简单起见，Dev 只发 x64
-                                    // 这里简单处理，所有架构都指向同一个 zip，由 Install.ps1 处理或者是用户自己看
-                                    arch_urls = new Dictionary<string, string>
-                                    {
-                                        { "x64", downloadUrl },
-                                        { "arm64", downloadUrl },
-                                        { "x86", downloadUrl } 
-                                    }
+                                    url = downloadUrl ?? archUrls.Values.FirstOrDefault(),
+                                    arch_urls = archUrls
                                 }
                             }
                         };
                         
-                        return info;
+                        // 检查版本是否比当前版本新
+                        if (IsNewVersionAvailable(info.version))
+                        {
+                            return info;
+                        }
                     }
                 }
             }
@@ -201,6 +217,25 @@ public class UpdateService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 判断当前是否为 Dev 通道
+    /// </summary>
+    /// <returns>如果是 Dev 通道返回 true，否则返回 false</returns>
+    public bool IsDevChannel()
+    {
+        try
+        {
+            // 通过包名判断，Dev 包名通常以 .Dev 结尾
+            var packageName = Windows.ApplicationModel.Package.Current.Id.Name;
+            return packageName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            // 非打包环境或其他异常情况
+            return false;
+        }
     }
     
     /// <summary>

@@ -27,9 +27,9 @@
                  HorizontalAlignment="Stretch" />
         
         <!-- 下载区域 -->
-        <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
+        <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IsDownloading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <!-- 下载进度条 -->
-            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress}" 
+            <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" 
                          Minimum="0" 
                          Maximum="100" 
                          Height="8" 
@@ -39,9 +39,9 @@
             
             <!-- 下载状态信息 -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
-                <TextBlock Text="{x:Bind ViewModel.DownloadStatusText}" FontSize="12" />
-                <TextBlock Text="{x:Bind ViewModel.DownloadSpeedText}" FontSize="12" />
-                <TextBlock Text="{x:Bind ViewModel.EstimatedTimeText}" FontSize="12" />
+                <TextBlock Text="{x:Bind ViewModel.DownloadStatusText, Mode=OneWay}" FontSize="12" />
+                <TextBlock Text="{x:Bind ViewModel.DownloadSpeedText, Mode=OneWay}" FontSize="12" />
+                <TextBlock Text="{x:Bind ViewModel.EstimatedTimeText, Mode=OneWay}" FontSize="12" />
             </StackPanel>
         </StackPanel>
     </StackPanel>

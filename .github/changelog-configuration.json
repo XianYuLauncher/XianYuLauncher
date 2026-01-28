@@ -1,0 +1,32 @@
+{
+  "categories": [
+    {
+      "title": "## ✨ 功能",
+      "labels": ["feat", "feature"]
+    },
+    {
+      "title": "## 🛠️ 修复",
+      "labels": ["fix", "bug"]
+    },
+    {
+      "title": "## ⚡ 性能",
+      "labels": ["perf"]
+    },
+    {
+      "title": "## 🧹 代码重构与维护",
+      "labels": ["chore", "refactor", "style", "docs", "CI"]
+    }
+  ],
+  "ignore_labels": [
+    "ignore"
+  ],
+  "template": "# ${{RELEASE_TAG}}\n\n${{CHANGELOG}}",
+  "pr_template": "- ${{TITLE}}",
+  "empty_template": "- 本次更新包含了杂项改进。",
+  "label_extractor": [
+    {
+      "pattern": "^(feat|fix|perf|chore|refactor|style|docs|CI):(.*)",
+      "target": "$1"
+    }
+  ]
+}

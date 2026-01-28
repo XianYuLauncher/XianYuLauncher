@@ -1046,7 +1046,7 @@
                                         <Button 
                                             Content="安装 Dev 通道版本"
                                             Command="{x:Bind ViewModel.InstallDevChannelCommand}"
-                                            IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                                            IsEnabled="{x:Bind ViewModel.CanInstallDevChannel, Mode=OneWay}" />
                                             
                                         <ProgressRing 
                                             IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" 
