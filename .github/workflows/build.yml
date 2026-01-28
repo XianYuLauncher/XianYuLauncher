@@ -51,52 +51,42 @@ jobs:
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
         Write-Host "secrets.json restored."
 
-    # 3. 解码并导入 PFX 证书
-    - name: Decode and Import PFX Certificate
+    # 3. 准备证书
+    - name: Prepare Certificate
       shell: powershell
       run: |
         $pfxBase64 = '${{ secrets.PFX_BASE64 }}'
         if ([string]::IsNullOrWhiteSpace($pfxBase64)) {
-            Write-Error "PFX_BASE64 secret is missing! Cannot sign the package."
+            Write-Error "Secret PFX_BASE64 missing"
             exit 1
         }
+        $pfxPath = "$env:GITHUB_WORKSPACE\sign.pfx"
         $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
-        [System.IO.File]::WriteAllBytes("$env:Certificate_Path", $pfxBytes)
+        [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
         
-        # 导入证书到当前用户的个人存储区 (CertStore) 以供 Signtool 使用
-        # 注意: 某些情况可能不需要显式导入，只要由 MSBuild 指向文件路径即可。
-        # 但为了稳妥，我们既保留文件也尝试导入（如果需要密码）
-        
-        # 如果你有证书密码，请添加 PFX_PASSWORD secret，并在下面使用
-        # $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
-        # Import-PfxCertificate -FilePath "$env:Certificate_Path" -CertStoreLocation Cert:\CurrentUser\My -Password $password
-        
-        Write-Host "Certificate decoded to $env:Certificate_Path"
+        echo "CERT_PATH=$pfxPath" >> $env:GITHUB_ENV
+        Write-Host "Cert saved to $pfxPath"
 
-    # 4. 自动修改版本号 (仅针对 Release/Tag 构建)
-    # 如果是 Tag 推送 (v1.2.3)，我们将修改 Package.appxmanifest 的版本号以匹配 Tag
-    - name: Update Manifest Version
+    # 4. 更新版本号 (仅Tag)
+    - name: Update Version
       if: startsWith(github.ref, 'refs/tags/v')
       shell: powershell
       run: |
-        $tag = "${{ github.ref_name }}".Substring(1) # 去掉 'v'
-        # 确保版本号是 4 段式 (x.x.x.x)
+        $tag = "${{ github.ref_name }}".Substring(1)
         if ($tag -match '^\d+\.\d+\.\d+$') { $tag = "$tag.0" }
+        Write-Host "Version: $tag"
         
-        Write-Host "Updating manifest version to: $tag"
-        
-        # 修改 appxmanifest
-        $manifestPath = "XianYuLauncher/Package.appxmanifest"
-        [xml]$xml = Get-Content $manifestPath
+        $manifest = "XianYuLauncher/Package.appxmanifest"
+        [xml]$xml = Get-Content $manifest
         $xml.Package.Identity.Version = $tag
-        $xml.Save($manifestPath)
+        $xml.Save($manifest)
 
-    # 5. 还原 NuGet 包
-    - name: Restore Dependencies
+    # 5. 还原包
+    - name: Restore
       run: nuget restore ${{ env.Solution_Name }}
 
-    # 6. 构建并打包 (使用 MSBuild)
-    - name: Build and Package MSIX
+    # 6. 打包
+    - name: Build
       shell: powershell
       run: |
         msbuild ${{ env.Project_Path }} `
@@ -105,21 +95,21 @@ jobs:
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
           /p:AppxPackageSigningEnabled=true `
-          /p:PackageCertificateKeyFile="$env:Certificate_Path" `
+          /p:PackageCertificateKeyFile="${{ env.CERT_PATH }}" `
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
-          /p:AppxPackageDir="AppPackages" `
+          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages" `
           /p:GenerateAppInstallerFile=true `
           /p:AppInstallerUri="https://github.com/XianYuLauncher/XianYuLauncher/releases/latest/download/"
           
-    # 7. 上传构建产物 (Upload Artifacts) - 用于调试或 Dev 通道
-    - name: Upload Build Artifacts
+    # 7. 上传
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: XianYuLauncher-Build
         path: AppPackages/**/*.msix*
 
-    # 8. 发布 Release (针对 Tag)
-    - name: Create GitHub Release
+    # 8. 发布 (仅Tag)
+    - name: Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
@@ -129,4 +119,3 @@ jobs:
           AppPackages/**/*.appinstaller
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') }}
-        generate_release_notes: true
