@@ -84,12 +84,25 @@ jobs:
         # 默认先把版本号提取出来 (去掉 v)
         $version = $refName
         if ($version.StartsWith("v")) { $version = $version.Substring(1) }
-        # 简单处理版本号格式，确保是 x.x.x.x
+        # 提取基础版本号 (例如 1.4.0)
         if ($version -match '^(\d+\.\d+\.\d+)(.*)$') { 
-            # 提取纯数字部分用于 Version 属性
-            $cleanVer = $matches[1] + ".0"
+            $baseVer = $matches[1]
+            $suffix = $matches[2]
+            
+            # 默认 Revision 为 0
+            $revision = 0
+            
+            # 尝试从后缀中提取数字作为 Revision
+            # 例如: -dev1 -> 1, -beta05 -> 5
+            if ($suffix -match '(\d+)$') {
+                $revision = [int]$matches[1]
+            }
+            
+            # 组合成 MSIX 需要的四段式 (Major.Minor.Build.Revision)
+            $cleanVer = "$baseVer.$revision"
+            
             $xml.Package.Identity.Version = $cleanVer
-            Write-Host "Set Package Version: $cleanVer"
+            Write-Host "Set Package Version: $cleanVer (Base: $baseVer, Rev: $revision)"
         }
 
         # 判断是否为 Dev/Beta 通道 (包含 -dev, -beta 或非 Tag 触发)
@@ -103,10 +116,15 @@ jobs:
             Write-Host "Updated Identity Name: $oldName -> $($xml.Package.Identity.Name)"
             
             # 2. 修改显示名称 (DisplayName)
-            $xml.Package.Properties.DisplayName = "$($xml.Package.Properties.DisplayName) (Dev)"
-            # 同时修改 VisualElements 里的名称（开始菜单显示）
+            # 注意: ms-resource: 是资源引用，不支持直接加后缀，需要直接改原始 manifest 里的字符串值
+            # 如果原始值是 ms-resource:AppDisplayName，必须保留，但这里我们无法轻易修改 PRI 资源表
+            # 临时方案: 直接硬编码显示名称，绕过资源引用 (仅用于 Dev)
+            $xml.Package.Properties.DisplayName = "XianYu Launcher (Dev)"
+            
+            # 同时修改 VisualElements 里的名称
             if ($xml.Package.Applications.Application.VisualElements) {
-                $xml.Package.Applications.Application.VisualElements.DisplayName = "$($xml.Package.Applications.Application.VisualElements.DisplayName) (Dev)"
+                # 同理，硬编码名称
+                $xml.Package.Applications.Application.VisualElements.DisplayName = "XianYu Launcher (Dev)"
             }
             
             # 3. 替换图标
