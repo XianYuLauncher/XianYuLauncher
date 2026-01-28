@@ -41,7 +41,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BODY=$(gh release view "${{ inputs.tag_name }}" --json body -q .body)
+          # gh cli needs a repo context or explicitly specified repo
+          BODY=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json body -q .body)
           BODY="${BODY//'%'/'%25'}"
           BODY="${BODY//$'\n'/'\n'}"
           BODY="${BODY//$'\r'/''}"
