@@ -92,6 +92,7 @@ jobs:
         msbuild ${{ env.Project_Path }} `
           /p:Configuration=${{ env.Configuration }} `
           /p:Platform=${{ env.Platform }} `
+          /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
           /p:AppxPackageSigningEnabled=true `
