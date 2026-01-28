@@ -235,6 +235,7 @@ jobs:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USERNAME }}
         key: ${{ secrets.SERVER_KEY }}
+        port: ${{ secrets.SERVER_PORT }} # 新增端口配置
         source: "deploy_packet/*"
         target: "/www/wwwroot/spiritstudio.com.cn/files/XianYuLauncher"
         strip_components: 1 # 去掉 deploy_packet 这一层目录
