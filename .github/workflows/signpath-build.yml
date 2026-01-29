@@ -49,6 +49,26 @@ jobs:
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
         Write-Host "secrets.json restored."
 
+    - name: Prepare Certificate (Local PFX)
+      shell: powershell
+      run: |
+        $pfxBase64 = '${{ secrets.PFX_BASE64 }}'
+        if ([string]::IsNullOrWhiteSpace($pfxBase64)) {
+            Write-Error "Secret PFX_BASE64 missing"
+            exit 1
+        }
+        $pfxPath = "$env:GITHUB_WORKSPACE\sign.pfx"
+        $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
+        [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+        
+        Write-Host "Cert saved to $pfxPath"
+        
+        $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
+        $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+        
+        echo "PFX_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+        Write-Host "Imported certificate with Thumbprint: $($cert.Thumbprint)"
+
     - name: Configure Channel
       shell: powershell
       run: |
@@ -113,7 +133,8 @@ jobs:
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
-          /p:AppxPackageSigningEnabled=false `
+          /p:AppxPackageSigningEnabled=true `
+          /p:PackageCertificateThumbprint="${{ env.PFX_THUMBPRINT }}" `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
