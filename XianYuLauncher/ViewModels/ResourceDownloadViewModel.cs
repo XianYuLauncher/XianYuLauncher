@@ -587,7 +587,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             dataPackage.SetText(json);
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
-            // TODO: 可以添加一个提示通知 Toast
         }
         catch (Exception ex)
         {

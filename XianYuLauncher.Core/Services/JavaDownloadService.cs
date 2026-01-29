@@ -296,7 +296,6 @@ public class JavaDownloadService : IJavaDownloadService
                 
                 if (fileInfo.Executable && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    // TODO: 给非Windows系统设置执行权限 (chmod +x)
                     // 由于环境是Windows，这里暂不需要处理
                 }
 
