@@ -49,26 +49,6 @@ jobs:
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
         Write-Host "secrets.json restored."
 
-    - name: Prepare Certificate (Local PFX)
-      shell: powershell
-      run: |
-        $pfxBase64 = '${{ secrets.PFX_BASE64 }}'
-        if ([string]::IsNullOrWhiteSpace($pfxBase64)) {
-            Write-Error "Secret PFX_BASE64 missing"
-            exit 1
-        }
-        $pfxPath = "$env:GITHUB_WORKSPACE\sign.pfx"
-        $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
-        [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-        
-        Write-Host "Cert saved to $pfxPath"
-        
-        $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
-        $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
-        
-        echo "PFX_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
-        Write-Host "Imported certificate with Thumbprint: $($cert.Thumbprint)"
-
     - name: Configure Channel
       shell: powershell
       run: |
@@ -133,8 +113,7 @@ jobs:
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
-          /p:AppxPackageSigningEnabled=true `
-          /p:PackageCertificateThumbprint="${{ env.PFX_THUMBPRINT }}" `
+          /p:AppxPackageSigningEnabled=false `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
@@ -177,16 +156,6 @@ jobs:
         $signedDir = "$env:GITHUB_WORKSPACE\SignedArtifacts"
         New-Item -ItemType Directory -Force -Path $signedDir | Out-Null
         echo "SIGNED_DIR=$signedDir" >> $env:GITHUB_ENV
-
-    # 2. 上传 MSIX 到 GitHub Artifacts 以便 SignPath 读取
-    - name: Upload Unsigned MSIX
-      id: upload_unsigned
-      uses: actions/upload-artifact@v4
-      with:
-        name: Unsigned-${{ matrix.platform }}
-        path: ${{ env.MSIX_PATH }}
-        if-no-files-found: error
-        retention-days: 1
 
     # 3. 提交给 SignPath 进行签名 (使用 API 直接调用，绕过 Trusted Build System 限制)
     - name: Sign with SignPath (Direct API)
