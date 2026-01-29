@@ -71,6 +71,17 @@ For the full license text, please refer to the [LICENSE](LICENSE) file.
 - **GitHub**: [XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
 - **Issues**: [Report bugs or request features](https://github.com/XianYuLauncher/XianYuLauncher/issues)
 
+## Code Signing Policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+This project uses SignPath to ensure the integrity and authenticity of our releases.
+
+- **Process**: All standalone releases (excluding Microsoft Store builds) are built using GitHub Actions and automatically signed by SignPath.
+- **Privacy & Terms**: 
+  - [Terms of Use](https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV)
+  - [Privacy Policy](https://docs.qq.com/doc/DVnFIaUVhb2NXRXRz)
+
 ---
 
 **XianYu Launcher** - Elevate your Minecraft experience!
