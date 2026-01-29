@@ -188,18 +188,78 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
-    # 3. 提交给 SignPath 进行签名
-    - name: Sign with SignPath
-      uses: signpath/github-action-submit-signing-request@v2
-      with:
-        api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-        organization-id: '50751291-6d7b-4d37-bba2-bcd3fa936266'
-        project-slug: 'xianyulauncher'
-        signing-policy-slug: 'release-signing'
-        github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
-        output-artifact-directory: ${{ env.SIGNED_DIR }}
-        wait-for-completion: true
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    # 3. 提交给 SignPath 进行签名 (使用 API 直接调用，绕过 Trusted Build System 限制)
+    - name: Sign with SignPath (Direct API)
+      shell: pwsh
+      env:
+        SP_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        SP_ORG_ID: '50751291-6d7b-4d37-bba2-bcd3fa936266'
+        SP_PROJECT_SLUG: 'xianyulauncher'
+        SP_POLICY_SLUG: 'release-signing'
+        ARTIFACT_PATH: ${{ env.MSIX_PATH }}
+        DOWNLOAD_DIR: ${{ env.SIGNED_DIR }}
+      run: |
+        $apiUrl = "https://app.signpath.io/API/v1/$env:SP_ORG_ID"
+        
+        Write-Host "Submitting signing request for $($env:ARTIFACT_PATH)..."
+        
+        # 使用 PowerShell 7 (pwsh) 的 -Form 自动处理 multipart/form-data
+        $form = @{
+            projectSlug = $env:SP_PROJECT_SLUG
+            signingPolicySlug = $env:SP_POLICY_SLUG
+            artifact = Get-Item -Path $env:ARTIFACT_PATH
+        }
+        
+        try {
+            $response = Invoke-RestMethod -Uri "$apiUrl/SigningRequests/SubmitWithArtifact" `
+                -Method Post `
+                -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" } `
+                -Form $form
+        } catch {
+            Write-Error "Submission failed: $_"
+            if ($_.Exception.Response) {
+                $reader = New-Object System.IO.StreamReader $_.Exception.Response.GetResponseStream()
+                Write-Error $reader.ReadToEnd()
+            }
+            exit 1
+        }
+            
+        $requestId = $response.signingRequestId
+        Write-Host "Signing Request ID: $requestId"
+        
+        # 轮询等待签名完成
+        $status = "InProgress"
+        while ($status -in "InProgress", "QueuedForProcessing", "Processing", "RetrievingArtifact", "Submitted") {
+            Start-Sleep -Seconds 5
+            try {
+                $check = Invoke-RestMethod -Uri "$apiUrl/SigningRequests/$requestId" `
+                    -Method Get `
+                    -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" }
+                $status = $check.status
+                Write-Host "Current Status: $status"
+            } catch {
+                Write-Warning "Status check returned error, retrying..."
+            }
+        }
+        
+        if ($status -ne "Completed") {
+            Write-Error "Signing failed with final status: $status"
+            exit 1
+        }
+        
+        # 下载签名后的文件
+        $signedArtifactLink = $check.signedArtifactLink
+        $fileName = Split-Path $env:ARTIFACT_PATH -Leaf
+        $outputFile = Join-Path $env:DOWNLOAD_DIR $fileName
+        
+        Write-Host "Downloading signed artifact to $outputFile..."
+        
+        Invoke-RestMethod -Uri $signedArtifactLink `
+            -Method Get `
+            -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" } `
+            -OutFile $outputFile
+            
+        Write-Host "Signed artifact downloaded successfully."
 
     # 3. 用签名后的文件替换掉本地文件，以便后续打包 Zip
     - name: Replace with Signed Artifact
