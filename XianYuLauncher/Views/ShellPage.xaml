@@ -15,23 +15,16 @@
                Stretch="UniformToFill"
                Visibility="Collapsed"
                Canvas.ZIndex="-1" />
-        <Grid x:Name="AppTitleBar"
-              Canvas.ZIndex="1"
-              Height="48"
-              IsHitTestVisible="True"
-              VerticalAlignment="Top">
-            <Image Source="/Assets/WindowIcon.ico"
-                   HorizontalAlignment="Left"
-                   VerticalAlignment="Center"
-                   Width="16"
-                   Height="16"
-                   Margin="16,0,0,0" />
-            <TextBlock x:Name="AppTitleBarText"
-                       VerticalAlignment="Center"
-                       TextWrapping="NoWrap"
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Margin="40,0,0,0"/>
-        </Grid>
+        <TitleBar x:Name="AppTitleBar"
+                  Canvas.ZIndex="1"
+                  Height="48"
+                  IsHitTestVisible="True"
+                  VerticalAlignment="Top"
+                  Title="XianYu Launcher">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="/Assets/WindowIcon.ico" />
+            </TitleBar.IconSource>
+        </TitleBar>
         <NavigationView
             x:Name="NavigationViewControl"
             Canvas.ZIndex="0"
