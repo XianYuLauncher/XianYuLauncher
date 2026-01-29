@@ -176,6 +176,139 @@ jobs:
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
 
+    # === NEW: SignPath Integration Logic ===
+    
+    # 6.1. 查找生成的 MSIX 文件
+    - name: Locate MSIX for Signing
+      id: locate_msix
+      shell: powershell
+      run: |
+        $sourceDir = "${{ github.workspace }}\AppPackages"
+        # 找到生成的带 _Test 后缀的目录 (例如 XianYuLauncher_1.4.1.0_x64_Test)
+        $testDir = Get-ChildItem -Path $sourceDir -Directory -Filter "*_Test" | Select-Object -First 1
+        
+        if (-not $testDir) {
+            Write-Error "Could not find build output directory *_Test"
+            exit 1
+        }
+        
+        # 在里面找 .msix 文件
+        $msixFile = Get-ChildItem -Path $testDir.FullName -Filter "*.msix" | Select-Object -First 1
+        if (-not $msixFile) {
+             # 如果没找到 msix, 可能是 appx
+             $msixFile = Get-ChildItem -Path $testDir.FullName -Filter "*.appx" | Select-Object -First 1
+        }
+        
+        if (-not $msixFile) {
+            Write-Error "Could not find .msix or .appx file in $($testDir.FullName)"
+            exit 1
+        }
+
+        Write-Host "Found artifact to sign: $($msixFile.FullName)"
+        
+        # 输出给后续步骤使用
+        echo "MSIX_PATH=$($msixFile.FullName)" >> $env:GITHUB_ENV
+        echo "MSIX_DIR=$($testDir.FullName)" >> $env:GITHUB_ENV
+
+        # 准备输出目录
+        $signedDir = "$env:GITHUB_WORKSPACE\SignedArtifacts"
+        New-Item -ItemType Directory -Force -Path $signedDir | Out-Null
+        echo "SIGNED_DIR=$signedDir" >> $env:GITHUB_ENV
+
+    # 6.2. 提交给 SignPath 进行签名 (使用 API 直接调用)
+    - name: Sign with SignPath
+      shell: pwsh
+      env:
+        SP_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        SP_ORG_ID: '50751291-6d7b-4d37-bba2-bcd3fa936266'
+        SP_PROJECT_SLUG: 'xianyulauncher'
+        SP_POLICY_SLUG: 'release-signing'
+        ARTIFACT_PATH: ${{ env.MSIX_PATH }}
+        DOWNLOAD_DIR: ${{ env.SIGNED_DIR }}
+      run: |
+        $apiUrl = "https://app.signpath.io/API/v1/$env:SP_ORG_ID"
+        
+        Write-Host "Submitting signing request for $($env:ARTIFACT_PATH)..."
+        
+        # 使用 PowerShell 7 (pwsh) 的 -Form 自动处理 multipart/form-data
+        $form = @{
+            projectSlug = $env:SP_PROJECT_SLUG
+            signingPolicySlug = $env:SP_POLICY_SLUG
+            artifact = Get-Item -Path $env:ARTIFACT_PATH
+        }
+        
+        try {
+            $response = Invoke-RestMethod -Uri "$apiUrl/SigningRequests/SubmitWithArtifact" `
+                -Method Post `
+                -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" } `
+                -Form $form
+        } catch {
+            Write-Error "Submission failed: $_"
+            if ($_.Exception.Response) {
+                $reader = New-Object System.IO.StreamReader $_.Exception.Response.GetResponseStream()
+                Write-Error $reader.ReadToEnd()
+            }
+            exit 1
+        }
+            
+        $requestId = $response.signingRequestId
+        Write-Host "Signing Request ID: $requestId"
+        
+        # 轮询等待签名完成
+        $status = "InProgress"
+        while ($status -in "InProgress", "QueuedForProcessing", "Processing", "RetrievingArtifact", "Submitted") {
+            # 缩短轮询间隔
+            Start-Sleep -Seconds 3
+            try {
+                $check = Invoke-RestMethod -Uri "$apiUrl/SigningRequests/$requestId" `
+                    -Method Get `
+                    -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" }
+                $status = $check.status
+                Write-Host "Current Status: $status"
+            } catch {
+                Write-Warning "Status check returned error, retrying..."
+            }
+        }
+        
+        if ($status -ne "Completed") {
+            Write-Error "Signing failed with final status: $status"
+            exit 1
+        }
+        
+        # 下载签名后的文件
+        $signedArtifactLink = $check.signedArtifactLink
+        $fileName = Split-Path $env:ARTIFACT_PATH -Leaf
+        $outputFile = Join-Path $env:DOWNLOAD_DIR $fileName
+        
+        Write-Host "Downloading signed artifact to $outputFile..."
+        
+        Invoke-RestMethod -Uri $signedArtifactLink `
+            -Method Get `
+            -Headers @{ Authorization = "Bearer $env:SP_API_TOKEN" } `
+            -OutFile $outputFile
+            
+        Write-Host "Signed artifact downloaded successfully."
+
+    # 6.3. 用签名后的文件替换掉本地文件
+    - name: Replace with Signed Artifact
+      shell: powershell
+      run: |
+        $originalMsix = "${{ env.MSIX_PATH }}"
+        $signedMsixDir = "${{ env.SIGNED_DIR }}"
+        
+        # SignPath 下载回来的文件名可能不一样，但目录里应该只有一个文件
+        $signedFile = Get-ChildItem -Path $signedMsixDir -File | Select-Object -First 1
+        
+        if (-not $signedFile) {
+            Write-Error "No signed file found in $signedMsixDir"
+            exit 1
+        }
+        
+        Write-Host "Replacing $originalMsix with $($signedFile.FullName)"
+        
+        # 覆盖原始文件
+        Copy-Item -Path $signedFile.FullName -Destination $originalMsix -Force
+
     # 7. 重命名并打包 Zip (去除 _Test 后缀)
     - name: Rename and Zip
       shell: powershell
