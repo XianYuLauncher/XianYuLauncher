@@ -36,6 +36,18 @@ public partial class ModInfo : ObservableObject
     }
     
     /// <summary>
+    /// 项目ID (Modrinth Project ID 或 CurseForge Project ID)
+    /// </summary>
+    [ObservableProperty]
+    private string? _projectId;
+
+    /// <summary>
+    /// 来源平台 (Modrinth/CurseForge)
+    /// </summary>
+    [ObservableProperty]
+    private string? _source;
+
+    /// <summary>
     /// Mod图标
     /// </summary>
     [ObservableProperty]
@@ -52,12 +64,6 @@ public partial class ModInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isLoadingDescription;
-    
-    /// <summary>
-    /// Mod来源（Modrinth/CurseForge）
-    /// </summary>
-    [ObservableProperty]
-    private string? _source;
     
     /// <summary>
     /// Mod显示名称

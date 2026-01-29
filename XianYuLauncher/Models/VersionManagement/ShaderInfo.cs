@@ -45,6 +45,24 @@ public partial class ShaderInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isLoadingDescription;
+
+    /// <summary>
+    /// 是否选中
+    /// </summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>
+    /// 项目ID (Modrinth Project ID 或 CurseForge Project ID)
+    /// </summary>
+    [ObservableProperty]
+    private string? _projectId;
+
+    /// <summary>
+    /// 来源平台 (Modrinth/CurseForge)
+    /// </summary>
+    [ObservableProperty]
+    private string? _source;
     
     /// <summary>
     /// 构造函数

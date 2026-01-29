@@ -766,3 +766,64 @@ public class ModrinthVersionFile
     [JsonPropertyName("file_type")]
     public string FileType { get; set; }
 }
+
+/// <summary>
+/// Modrinth项目成员信息
+/// </summary>
+public class ModrinthTeamMember
+{
+    /// <summary>
+    /// 团队ID
+    /// </summary>
+    [JsonPropertyName("team_id")]
+    public string TeamId { get; set; }
+
+    /// <summary>
+    /// 用户信息
+    /// </summary>
+    [JsonPropertyName("user")]
+    public ModrinthUser User { get; set; }
+
+    /// <summary>
+    /// 角色
+    /// </summary>
+    [JsonPropertyName("role")]
+    public string Role { get; set; }
+    
+    /// <summary>
+    /// 排序顺序
+    /// </summary>
+    [JsonPropertyName("ordering")]
+    public int Ordering { get; set; }
+}
+
+/// <summary>
+/// Modrinth用户信息
+/// </summary>
+public class ModrinthUser
+{
+    /// <summary>
+    /// 用户ID
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string Id { get; set; }
+
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    [JsonPropertyName("username")]
+    public string Username { get; set; }
+
+    /// <summary>
+    /// 显示名称
+    /// </summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+    
+    /// <summary>
+    /// 头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_url")]
+    [JsonConverter(typeof(StringToUriConverter))]
+    public Uri AvatarUrl { get; set; }
+}

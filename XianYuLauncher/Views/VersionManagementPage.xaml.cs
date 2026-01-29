@@ -87,7 +87,7 @@ public sealed partial class VersionManagementPage : Page
                     if (ViewModel.IsInstallingExtension)
                     {
                         // 关闭所有可能打开的弹窗
-                        MoveModsDialog.Hide();
+                        MoveResourcesDialog.Hide();
                         ResultDialog.Hide();
                         MoveResultDialog.Hide();
                         DownloadProgressDialog.Hide();
@@ -107,7 +107,7 @@ public sealed partial class VersionManagementPage : Page
                 else if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
                 {
                     // 关闭所有可能打开的弹窗
-                    MoveModsDialog.Hide();
+                    MoveResourcesDialog.Hide();
                     ResultDialog.Hide();
                     MoveResultDialog.Hide();
                     ExtensionInstallDialog.Hide();
@@ -130,7 +130,7 @@ public sealed partial class VersionManagementPage : Page
                     // 显示结果弹窗
                     await ResultDialog.ShowAsync();
                 }
-                else if (e.PropertyName == nameof(ViewModel.IsMoveModsDialogVisible) && ViewModel.IsMoveModsDialogVisible)
+                else if (e.PropertyName == nameof(ViewModel.IsMoveResourcesDialogVisible) && ViewModel.IsMoveResourcesDialogVisible)
                 {
                     // 关闭所有可能打开的弹窗
                     DownloadProgressDialog.Hide();
@@ -141,8 +141,8 @@ public sealed partial class VersionManagementPage : Page
                     // 等待足够长的时间，确保所有弹窗完全关闭
                     await Task.Delay(100);
                     
-                    // 显示转移Mod到其他版本弹窗
-                    await MoveModsDialog.ShowAsync();
+                    // 显示转移资源到其他版本弹窗
+                    await MoveResourcesDialog.ShowAsync();
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsMoveResultDialogVisible) && ViewModel.IsMoveResultDialogVisible)
                 {
@@ -161,7 +161,7 @@ public sealed partial class VersionManagementPage : Page
                     if (ViewModel.IsMapDetailDialogOpen)
                     {
                         // 关闭所有可能打开的弹窗
-                        MoveModsDialog.Hide();
+                        MoveResourcesDialog.Hide();
                         ResultDialog.Hide();
                         MoveResultDialog.Hide();
                         DownloadProgressDialog.Hide();
@@ -207,27 +207,30 @@ public sealed partial class VersionManagementPage : Page
     /// <summary>
         /// 转移Mod到其他版本弹窗 - 确认按钮点击事件
         /// </summary>
-        private async void MoveModsDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-        {
-            // 关闭当前弹窗
-            sender.Hide();
-            ViewModel.IsMoveModsDialogVisible = false;
-            
-            // 等待足够长的时间，确保弹窗完全关闭
-            await Task.Delay(200);
-            
-            // 调用ViewModel的确认转移命令
-            await ViewModel.ConfirmMoveModsCommand.ExecuteAsync(null);
-        }
-    
     /// <summary>
-        /// 转移Mod到其他版本弹窗 - 取消按钮点击事件
-        /// </summary>
-        private void MoveModsDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-        {
-            // 关闭弹窗
-            ViewModel.IsMoveModsDialogVisible = false;
-        }
+    /// 转移资源到其他版本弹窗 - 确定按钮点击事件
+    /// </summary>
+    private async void MoveResourcesDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        // 关闭当前弹窗
+        sender.Hide();
+        ViewModel.IsMoveResourcesDialogVisible = false;
+        
+        // 等待足够长的时间，确保弹窗完全关闭
+        await Task.Delay(200);
+        
+        // 调用ViewModel的确认转移命令
+        await ViewModel.ConfirmMoveResourcesCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>
+    /// 转移资源到其他版本弹窗 - 取消按钮点击事件
+    /// </summary>
+    private void MoveResourcesDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        // 关闭弹窗
+        ViewModel.IsMoveResourcesDialogVisible = false;
+    }
         
         /// <summary>
         /// 转移Mod结果弹窗 - 确定按钮点击事件

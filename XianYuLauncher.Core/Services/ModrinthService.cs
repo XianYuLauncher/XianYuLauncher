@@ -374,28 +374,81 @@ public class ModrinthService
             response.EnsureSuccessStatusCode();
 
             // 解析响应
-            return JsonSerializer.Deserialize<ModrinthProjectDetail>(responseContent);
-        }
-        catch (HttpRequestException ex)
-        {
-            // 处理HTTP请求异常，包含状态码
-            string errorMsg = $"获取Mod详情失败: {ex.Message}";
-            if (ex.StatusCode.HasValue)
-            {
-                errorMsg += $" (状态码: {ex.StatusCode})";
-            }
-            throw new Exception(errorMsg);
-        }
-        catch (JsonException ex)
-        {
-            throw new Exception($"解析Mod详情失败: {ex.Message}");
-        }
-        catch (Exception ex)
-        {
-            // 处理其他异常
-            throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
-        }
-    }
+              var detail = JsonSerializer.Deserialize<ModrinthProjectDetail>(responseContent);
+
+              // 如果没有作者信息但有团队ID，尝试获取团队成员作为补充
+              if (detail != null && string.IsNullOrEmpty(detail.Author) && !string.IsNullOrEmpty(detail.Team))
+              {
+                  try 
+                  {
+                      var members = await GetProjectTeamMembersAsync(detail.Team);
+                      if (members != null && members.Count > 0)
+                      {
+                          // 寻找所有者或第一个成员
+                          var owner = members.FirstOrDefault(m => m.Role == "Owner") ?? members.First();
+                          if (owner.User != null)
+                          {
+                              detail.Author = owner.User.Username;
+                          }
+                      }
+                  } 
+                  catch (Exception) 
+                  { 
+                      // 忽略获取作者信息的错误，以免影响主要功能的显示
+                  }
+              }
+
+              return detail;
+          }
+          catch (HttpRequestException ex)
+          {
+              // 处理HTTP请求异常，包含状态码
+              string errorMsg = $"获取Mod详情失败: {ex.Message}";
+              if (ex.StatusCode.HasValue)
+              {
+                  errorMsg += $" (状态码: {ex.StatusCode})";
+              }
+              throw new Exception(errorMsg);
+          }
+          catch (JsonException ex)
+          {
+              throw new Exception($"解析Mod详情失败: {ex.Message}");
+          }
+          catch (Exception ex)
+          {
+              // 处理其他异常
+              throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
+          }
+      }
+
+      /// <summary>
+      /// 获取项目团队成员
+      /// </summary>
+      /// <param name="teamId">团队ID</param>
+      /// <returns>团队成员列表</returns>
+      public async Task<List<ModrinthTeamMember>> GetProjectTeamMembersAsync(string teamId)
+      {
+          try
+          {
+              string url = $"{OfficialApiBaseUrl}/v2/team/{Uri.EscapeDataString(teamId)}/members";
+              
+              // 创建请求并设置 User-Agent
+              using var request = new HttpRequestMessage(HttpMethod.Get, url);
+              request.Headers.Add("User-Agent", GetUserAgent());
+              
+              // 发送请求
+              var response = await _httpClient.SendAsync(request);
+              response.EnsureSuccessStatusCode();
+              
+              var content = await response.Content.ReadAsStringAsync();
+              return JsonSerializer.Deserialize<List<ModrinthTeamMember>>(content);
+          }
+          catch (Exception ex)
+          {
+              System.Diagnostics.Debug.WriteLine($"获取团队成员失败: {ex.Message}");
+              return new List<ModrinthTeamMember>();
+          }
+      }
 
 
     /// <summary>

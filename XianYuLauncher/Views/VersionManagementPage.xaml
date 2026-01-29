@@ -79,17 +79,17 @@
             </StackPanel>
         </Grid>
         
-        <!-- 转移Mod到其他版本弹窗 -->
+        <!-- 转移资源到其他版本弹窗 -->
         <ContentDialog
-            x:Name="MoveModsDialog"
-            x:Uid="VersionManagerPage_MoveModsDialog"
+            x:Name="MoveResourcesDialog"
+            x:Uid="VersionManagerPage_MoveResourcesDialog"
             PrimaryButtonText="确认"
             CloseButtonText="取消"
             DefaultButton="Primary"
-            PrimaryButtonClick="MoveModsDialog_PrimaryButtonClick"
-            CloseButtonClick="MoveModsDialog_CloseButtonClick">
+            PrimaryButtonClick="MoveResourcesDialog_PrimaryButtonClick"
+            CloseButtonClick="MoveResourcesDialog_CloseButtonClick">
             <StackPanel Spacing="12">
-                <TextBlock x:Uid="VersionManagerPage_MoveModsDialog_InstructionText" Text="请选择要转移到的Minecraft版本：" FontSize="14" />
+                <TextBlock x:Uid="VersionManagerPage_MoveResourcesDialog_InstructionText" Text="请选择要转移到的Minecraft版本：" FontSize="14" />
                 <ListView
                     x:Name="TargetVersionListView"
                     ItemsSource="{Binding TargetVersions, Mode=OneWay}"
@@ -997,14 +997,41 @@
                                             <!-- 右键菜单 -->
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
-                                                    <MenuFlyoutItem Text="{Binding DataContext.SelectAllMenuItemText, ElementName=ModListView}" Command="{Binding DataContext.SelectAllModsCommand, ElementName=ModListView}">
+                                                    <!-- 选择模式控制 -->
+                                                    <MenuFlyoutItem Text="选择" 
+                                                                    Command="{Binding DataContext.ToggleModSelectionModeCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="AllApps" />
+                                                            <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="取消选择" 
+                                                                    Command="{Binding DataContext.ToggleModSelectionModeCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Cancel" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="全选" 
+                                                                    Command="{Binding DataContext.SelectAllModsCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="SelectAll" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutSeparator />
+                                                    
                                                     <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.UpdateModsCommand, ElementName=ModListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToModDetailsCommand, ElementName=ModListView}" CommandParameter="{Binding}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Go" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.MoveModsToOtherVersionCommand, ElementName=ModListView}">
@@ -1029,11 +1056,21 @@
                                             </Grid.ColumnDefinitions>
                                             
                                             <!-- 多选复选框容器 -->
-                                            <Grid Grid.Column="0" Width="24" Height="Auto" Margin="0,0,8,0">
-                                                <!-- 复选框 -->
+                                            <Grid Grid.Column="0" Width="Auto">
                                                 <CheckBox 
                                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                    Visibility="Visible"/>
+                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Margin="0,0,12,0"
+                                                    MinWidth="0">
+                                                    <animations:Implicit.ShowAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.4" From="-24,0,0" To="0" EasingMode="EaseOut" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.4" From="0" To="1.0" EasingMode="EaseOut" />
+                                                    </animations:Implicit.ShowAnimations>
+                                                    <animations:Implicit.HideAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.2" To="-24,0,0" From="0" EasingMode="EaseIn" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.2" To="0" From="1.0" EasingMode="EaseIn" />
+                                                    </animations:Implicit.HideAnimations>
+                                                </CheckBox>
                                             </Grid>
                                             
                                             <!-- Mod图标 -->
@@ -1234,14 +1271,83 @@
                                         <Grid MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                               CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
+                                            <!-- 右键菜单 -->
+                                            <Grid.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="选择" 
+                                                                    Command="{Binding DataContext.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Bullets" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="取消选择" 
+                                                                    Command="{Binding DataContext.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Cancel" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="全选" 
+                                                                    Command="{Binding DataContext.SelectAllShadersCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="SelectAll" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutSeparator />
+
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.UpdateShadersCommand, ElementName=ShaderListView}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Refresh" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToShaderDetailsCommand, ElementName=ShaderListView}" CommandParameter="{Binding}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Go" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.MoveShadersToOtherVersionCommand, ElementName=ShaderListView}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="MoveToFolder" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Grid.ContextFlyout>
+
                                             <Grid.ColumnDefinitions>
+                                                <!-- 复选框列 -->
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <!-- 多选复选框 -->
+                                            <Grid Grid.Column="0" Width="Auto">
+                                                <CheckBox 
+                                                    IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Margin="0,0,12,0"
+                                                    MinWidth="0">
+                                                    <animations:Implicit.ShowAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.4" From="-24,0,0" To="0" EasingMode="EaseOut" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.4" From="0" To="1.0" EasingMode="EaseOut" />
+                                                    </animations:Implicit.ShowAnimations>
+                                                    <animations:Implicit.HideAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.2" To="-24,0,0" From="0" EasingMode="EaseIn" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.2" To="0" From="1.0" EasingMode="EaseIn" />
+                                                    </animations:Implicit.HideAnimations>
+                                                </CheckBox>
+                                            </Grid>
+
                                             <!-- 光影图标 -->
-                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <Grid Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
                                                 <FontIcon 
                                                     Glyph="" 
                                                     FontSize="20" 
@@ -1258,7 +1364,7 @@
                                             </Grid>
                                             
                                             <!-- 光影名称和描述 -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                                 <TextBlock 
                                                     Text="{Binding Name}" 
                                                     FontSize="14" 
@@ -1295,7 +1401,7 @@
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="2" 
+                                                Grid.Column="3" 
                                                 x:Uid="VersionManagerPage_DeleteButton"
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteShaderCommand, ElementName=ShaderListView}" 
@@ -1426,12 +1532,79 @@
                                               CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1"
                                               PointerPressed="ResourcePackItem_PointerPressed">
+                                            <!-- Context Flyout -->
+                                            <Grid.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="选择" 
+                                                                    Command="{Binding DataContext.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Bullets" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="取消选择" 
+                                                                    Command="{Binding DataContext.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Cancel" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="全选" 
+                                                                    Command="{Binding DataContext.SelectAllResourcePacksCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="SelectAll" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutSeparator />
+
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.UpdateResourcePacksCommand, ElementName=ResourcePackListView}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Refresh" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToResourcePackDetailsCommand, ElementName=ResourcePackListView}" CommandParameter="{Binding}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Go" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.MoveResourcePacksToOtherVersionCommand, ElementName=ResourcePackListView}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="MoveToFolder" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Grid.ContextFlyout>
+
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
+                                            <Grid Grid.Column="0" Width="Auto">
+                                                <CheckBox 
+                                                    IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Margin="0,0,12,0"
+                                                    MinWidth="0">
+                                                    <animations:Implicit.ShowAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.4" From="-24,0,0" To="0" EasingMode="EaseOut" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.4" From="0" To="1.0" EasingMode="EaseOut" />
+                                                    </animations:Implicit.ShowAnimations>
+                                                    <animations:Implicit.HideAnimations>
+                                                        <animations:TranslationAnimation Duration="0:0:0.2" To="-24,0,0" From="0" EasingMode="EaseIn" />
+                                                        <animations:OpacityAnimation Duration="0:0:0.2" To="0" From="1.0" EasingMode="EaseIn" />
+                                                    </animations:Implicit.HideAnimations>
+                                                </CheckBox>
+                                            </Grid>
+
                                             <!-- 资源包预览 TeachingTip -->
                                             <TeachingTip x:Name="ResourcePackPreviewTip"
                                                         Target="{Binding ElementName=ResourcePackItemGrid}"
@@ -1459,7 +1632,7 @@
                                             </TeachingTip>
                                             
                                             <!-- 资源包图标 -->
-                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <Grid Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
                                                 <FontIcon 
                                                     Glyph="" 
                                                     FontSize="20" 
@@ -1476,7 +1649,7 @@
                                             </Grid>
                                             
                                             <!-- 资源包名称和描述 -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                                 <TextBlock 
                                                     Text="{Binding Name}" 
                                                     FontSize="14" 
@@ -1513,7 +1686,7 @@
                                             
                                             <!-- 删除按钮 -->
                                             <Button 
-                                                Grid.Column="2"
+                                                Grid.Column="3"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
                                                 Command="{Binding DataContext.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 

@@ -31,7 +31,74 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class VersionManagementViewModel
 {
+    [RelayCommand]
+    private async Task NavigateToModDetails(ModInfo mod)
+    {
+        if (mod == null) return;
+
+        // 如果没有ProjectId，尝试重新加载
+        if (string.IsNullOrEmpty(mod.ProjectId))
+        {
+            mod.IsLoadingDescription = true;
+            try 
+            {
+               await LoadModDescriptionAsync(mod, default);
+            }
+            finally
+            {
+               mod.IsLoadingDescription = false;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(mod.ProjectId))
+        {
+            string navigationId = mod.ProjectId;
+            if (mod.Source == "CurseForge" && !navigationId.StartsWith("curseforge-"))
+            {
+                navigationId = "curseforge-" + navigationId;
+            }
+            
+            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName, navigationId);
+        }
+        else
+        {
+             StatusMessage = "无法获取该Mod的详细信息（未在Modrinth或CurseForge找到）";
+        }
+    }
+
     #region Mod管理
+
+    /// <summary>
+    /// Mod管理相关的ViewModel逻辑
+    /// </summary>
+    [ObservableProperty]
+    private bool _isModSelectionModeEnabled;
+
+    [RelayCommand]
+    private void ToggleModSelectionMode()
+    {
+        IsModSelectionModeEnabled = !IsModSelectionModeEnabled;
+        if (!IsModSelectionModeEnabled)
+        {
+            // 退出选择模式时清楚所有选中状态
+            foreach (var mod in Mods)
+            {
+                mod.IsSelected = false;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void SelectAllMods()
+    {
+        if (IsModListEmpty) return;
+        
+        bool allSelected = Mods.All(m => m.IsSelected);
+        foreach (var mod in Mods)
+        {
+            mod.IsSelected = !allSelected;
+        }
+    }
 
     /// <summary>
         /// 检查本地图标是否存在并返回图标路径
@@ -630,28 +697,11 @@ public partial class VersionManagementViewModel
             }
         }
         
-        /// <summary>
-        /// 切换全选状态
-        /// </summary>
-        [RelayCommand]
-        private void SelectAllMods()
-        {
-            // 切换全选状态
-            IsSelectAll = !IsSelectAll;
-            
-            // 更新所有Mod的选中状态
-            foreach (var mod in Mods)
-            {
-                mod.IsSelected = IsSelectAll;
-            }
-        }
+
 
         /// <summary>
         /// 是否显示转移Mod弹窗
         /// </summary>
-        [ObservableProperty]
-        private bool _isMoveModsDialogVisible;
-        
         /// <summary>
         /// 转移选中的Mods到其他版本
         /// </summary>
@@ -674,8 +724,9 @@ public partial class VersionManagementViewModel
                 // 加载所有已安装的版本
                 await LoadTargetVersionsAsync();
                 
-                // 显示版本选择对话框
-                IsMoveModsDialogVisible = true;
+                // 设置类型并显示对话框
+                CurrentResourceMoveType = ResourceMoveType.Mod;
+                IsMoveResourcesDialogVisible = true;
             }
             catch (Exception ex)
             {
@@ -692,7 +743,6 @@ public partial class VersionManagementViewModel
         /// <summary>
         /// 确认转移Mods到目标版本
         /// </summary>
-        [RelayCommand]
         private async Task ConfirmMoveModsAsync()
         {
             if (SelectedTargetVersion == null || _selectedModsForMove == null || _selectedModsForMove.Count == 0)
@@ -859,7 +909,7 @@ public partial class VersionManagementViewModel
                 IsDownloading = false;
                 DownloadProgress = 0;
                 CurrentDownloadItem = string.Empty;
-                IsMoveModsDialogVisible = false;
+                IsMoveResourcesDialogVisible = false;
             }
         }
         
@@ -2029,6 +2079,12 @@ public partial class VersionManagementViewModel
                     {
                         mod.Description = metadata.Description;
                         mod.Source = metadata.Source;
+                        mod.ProjectId = metadata.ProjectId;
+                        // 如果是 CurseForge，尝试获取 Project ID (这里 Source 可能是 "CurseForge")
+                        if (mod.Source == "CurseForge" && metadata.CurseForgeModId > 0)
+                        {
+                            mod.ProjectId = metadata.CurseForgeModId.ToString();
+                        }
                     });
                 }
             }
@@ -2073,6 +2129,12 @@ public partial class VersionManagementViewModel
                     {
                         resourcePack.Description = metadata.Description;
                         resourcePack.Source = metadata.Source;
+                        resourcePack.ProjectId = metadata.ProjectId;
+                        
+                        if (resourcePack.Source == "CurseForge" && metadata.CurseForgeModId > 0)
+                        {
+                            resourcePack.ProjectId = metadata.CurseForgeModId.ToString();
+                        }
                     });
                 }
                 else
@@ -2207,6 +2269,13 @@ public partial class VersionManagementViewModel
                     App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                     {
                         shader.Description = metadata.Description;
+                        shader.Source = metadata.Source;
+                        shader.ProjectId = metadata.ProjectId;
+
+                        if (shader.Source == "CurseForge" && metadata.CurseForgeModId > 0)
+                        {
+                            shader.ProjectId = metadata.CurseForgeModId.ToString();
+                        }
                     });
                 }
             }

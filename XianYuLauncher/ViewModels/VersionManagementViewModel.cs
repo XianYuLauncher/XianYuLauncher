@@ -98,6 +98,48 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// mod列表是否为空
     /// </summary>
     public bool IsModListEmpty => Mods.Count == 0;
+
+    /// <summary>
+    /// 资源转移类型枚举
+    /// </summary>
+    public enum ResourceMoveType
+    {
+        Mod,
+        Shader,
+        ResourcePack
+    }
+
+    /// <summary>
+    /// 当前正在进行的资源转移类型
+    /// </summary>
+    [ObservableProperty]
+    private ResourceMoveType _currentResourceMoveType;
+    
+    /// <summary>
+    /// 是否显示资源转移对话框
+    /// </summary>
+    [ObservableProperty]
+    private bool _isMoveResourcesDialogVisible;
+
+    /// <summary>
+    /// 统一的确认转移资源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ConfirmMoveResourcesAsync()
+    {
+        switch (CurrentResourceMoveType)
+        {
+            case ResourceMoveType.Mod:
+                await ConfirmMoveModsAsync();
+                break;
+            case ResourceMoveType.Shader:
+                await ConfirmMoveShadersAsync();
+                break;
+            case ResourceMoveType.ResourcePack:
+                await ConfirmMoveResourcePacksAsync();
+                break;
+        }
+    }
     
     /// <summary>
         /// 是否启用多选模式
