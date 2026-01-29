@@ -2472,27 +2472,41 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             try
             {
                 McimTranslationResponse translation = null;
-                
+                Task<McimTranslationResponse?> task;
+
                 // 根据项目ID判断是Modrinth还是CurseForge
                 if (project.ProjectId.StartsWith("curseforge-"))
                 {
                     // CurseForge项目
                     if (int.TryParse(project.ProjectId.Replace("curseforge-", ""), out int modId))
                     {
-                        translation = await _translationService.GetCurseForgeTranslationAsync(modId);
+                        task = _translationService.GetCurseForgeTranslationAsync(modId);
+                    }
+                    else
+                    {
+                        return;
                     }
                 }
                 else
                 {
                     // Modrinth项目
-                    translation = await _translationService.GetModrinthTranslationAsync(project.ProjectId);
+                    task = _translationService.GetModrinthTranslationAsync(project.ProjectId);
                 }
                 
+                // 增加超时控制：如果3秒内未获取到翻译，则放弃（直接跳过，显示原文）
+                // 这里的源有时候比较慢
+                translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
+
                 // 如果获取到翻译，更新项目的翻译描述
                 if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                 {
                     project.TranslatedDescription = translation.Translated;
                 }
+            }
+            catch (TimeoutException)
+            {
+                // 超时忽略，保持原文，不打印错误以免刷屏
+                // System.Diagnostics.Debug.WriteLine($"[翻译] 翻译项目 {project.ProjectId} 超时");
             }
             catch (Exception ex)
             {
@@ -2500,6 +2514,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
         });
         
+        // 等待所有翻译任务完成（或者是超时结束）
         await Task.WhenAll(translationTasks);
     }
     
