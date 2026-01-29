@@ -452,7 +452,16 @@ public class UpdateService
     {
         try
         {
-            var latest = Version.Parse(latestVersion);
+            // 尝试处理可能带有 -dev, -beta 等后缀的版本号
+            // 如果解析失败，尝试只取前面的数字部分
+            string versionToParse = latestVersion;
+            int dashIndex = latestVersion.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                versionToParse = latestVersion.Substring(0, dashIndex);
+            }
+
+            var latest = Version.Parse(versionToParse);
             return latest > _currentVersion;
         }
         catch (Exception ex)
