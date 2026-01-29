@@ -189,6 +189,7 @@ jobs:
         artifact-file: ${{ env.MSIX_PATH }}
         output-artifact-directory: ${{ env.SIGNED_DIR }}
         wait-for-completion: true
+        github-token: ${{ secrets.GITHUB_TOKEN }} # 显式传递 GITHUB_TOKEN，避免上下文丢失导致无法上传 artifact
 
     # 3. 用签名后的文件替换掉本地文件，以便后续打包 Zip
     - name: Replace with Signed Artifact
