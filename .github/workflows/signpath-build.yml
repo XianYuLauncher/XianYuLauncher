@@ -178,18 +178,28 @@ jobs:
         New-Item -ItemType Directory -Force -Path $signedDir | Out-Null
         echo "SIGNED_DIR=$signedDir" >> $env:GITHUB_ENV
 
-    # 2. 提交给 SignPath 进行签名
+    # 2. 上传 MSIX 到 GitHub Artifacts 以便 SignPath 读取
+    - name: Upload Unsigned MSIX
+      id: upload_unsigned
+      uses: actions/upload-artifact@v4
+      with:
+        name: Unsigned-${{ matrix.platform }}
+        path: ${{ env.MSIX_PATH }}
+        if-no-files-found: error
+        retention-days: 1
+
+    # 3. 提交给 SignPath 进行签名
     - name: Sign with SignPath
       uses: signpath/github-action-submit-signing-request@v1
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
         organization-id: '50751291-6d7b-4d37-bba2-bcd3fa936266'
         project-slug: 'xianyulauncher'
-        policy-slug: 'release-signing'
-        artifact-file: ${{ env.MSIX_PATH }}
+        signing-policy-slug: 'release-signing'
+        github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
         output-artifact-directory: ${{ env.SIGNED_DIR }}
         wait-for-completion: true
-        github-token: ${{ secrets.GITHUB_TOKEN }} # 显式传递 GITHUB_TOKEN，避免上下文丢失导致无法上传 artifact
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     # 3. 用签名后的文件替换掉本地文件，以便后续打包 Zip
     - name: Replace with Signed Artifact
