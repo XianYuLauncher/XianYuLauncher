@@ -310,14 +310,28 @@ public class FallbackDownloadManager
                 System.Diagnostics.Debug.WriteLine($"[Fallback] Headers:");
                 foreach (var header in request.Headers)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {string.Join(", ", header.Value)}");
+                    string valueStr = string.Join(", ", header.Value);
+                    if (header.Key.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                        header.Key.IndexOf("auth", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        header.Key.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        valueStr = "******";
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {valueStr}");
                 }
                 System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient BaseAddress: {_httpClient.BaseAddress}");
                 System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient Timeout: {_httpClient.Timeout}");
                 System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient DefaultRequestHeaders:");
                 foreach (var header in _httpClient.DefaultRequestHeaders)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {string.Join(", ", header.Value)}");
+                    string valueStr = string.Join(", ", header.Value);
+                    if (header.Key.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                        header.Key.IndexOf("auth", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        header.Key.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        valueStr = "******";
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {valueStr}");
                 }
                 System.Diagnostics.Debug.WriteLine($"[Fallback] ======================");
 

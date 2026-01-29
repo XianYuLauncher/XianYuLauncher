@@ -384,6 +384,9 @@ public class ModrinthService
                       var members = await GetProjectTeamMembersAsync(detail.Team);
                       if (members != null && members.Count > 0)
                       {
+                          // 保存获取到的成员列表，供"查看所有发布者"功能直接使用，无需再次请求
+                          detail.TeamMembers = members;
+
                           // 寻找所有者或第一个成员
                           var owner = members.FirstOrDefault(m => m.Role == "Owner") ?? members.First();
                           if (owner.User != null)

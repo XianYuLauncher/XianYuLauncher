@@ -64,6 +64,103 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private bool _isFullDescriptionVisible = false;
 
+        // 发布者列表相关
+        [ObservableProperty]
+        private ObservableCollection<PublisherInfo> _publisherList = new();
+
+        [ObservableProperty]
+        private bool _isPublisherListDialogOpen = false;
+
+        private string _modTeamId; // 保存Modrinth Team ID用于懒加载
+
+        [RelayCommand]
+        public async Task ShowPublishers()
+        {
+            // 如果列表为空且有Modrinth Team ID，尝试懒加载
+            if (PublisherList.Count == 0 && !string.IsNullOrEmpty(_modTeamId))
+            {
+                // 使用 ProgressRing 指示加载，但不阻塞 UI (可选：使用专门的 IsLoadingPublishers 属性)
+                IsLoading = true; 
+                try 
+                {
+                    var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
+                    foreach(var m in members) 
+                    {
+                         PublisherList.Add(new PublisherInfo { 
+                             Name = m.User.Username, 
+                             Role = m.Role, 
+                             AvatarUrl = m.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                             Url = $"https://modrinth.com/user/{m.User.Username}"
+                         });
+                    }
+                } 
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"加载发布者列表失败: {ex.Message}");
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
+            }
+
+            // 构造并显示弹窗内容 - 使用代码创建 ContentDialog
+            var listView = new ListView
+            {
+                ItemsSource = PublisherList,
+                SelectionMode = ListViewSelectionMode.None,
+                ItemTemplate = (Microsoft.UI.Xaml.DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(@"
+                    <DataTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation"">
+                        <Grid Padding=""8"">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width=""Auto"" />
+                                <ColumnDefinition Width=""*"" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <Grid Grid.Column=""0"" Margin=""0,0,12,0"">
+                                <Border Width=""40"" Height=""40"" CornerRadius=""20"" Visibility=""{Binding AvatarVisibility}"">
+                                    <Border.Background>
+                                        <ImageBrush ImageSource=""{Binding AvatarUrl}"" Stretch=""UniformToFill"" />
+                                    </Border.Background>
+                                </Border>
+                                <Border Width=""40"" Height=""40"" CornerRadius=""20"" Background=""{ThemeResource LayerFillColorDefaultBrush}"" Visibility=""{Binding PlaceholderVisibility}"">
+                                    <FontIcon Glyph=""&#xE77B;"" FontSize=""20"" FontFamily=""{ThemeResource SymbolThemeFontFamily}"" Foreground=""{ThemeResource TextFillColorSecondary}"" />
+                                </Border>
+                            </Grid>
+                            
+                            <StackPanel Grid.Column=""1"" VerticalAlignment=""Center"">
+                                <TextBlock Text=""{Binding Name}"" FontWeight=""SemiBold"" />
+                                <TextBlock Text=""{Binding Role}"" FontSize=""12"" Foreground=""{ThemeResource TextFillColorSecondary}"" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>")
+            };
+
+            var stackPanel = new StackPanel { Spacing = 16, Width = 400, MaxHeight = 500 };
+            
+            // 如果正在加载（虽然上面是同步等待，但防一手异步并发），可以显示 Loading
+            if (IsLoading)
+            {
+                stackPanel.Children.Add(new ProgressRing { IsActive = true, HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Center });
+            }
+            else
+            {
+                stackPanel.Children.Add(listView);
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = "所有发布者",
+                Content = stackPanel,
+                CloseButtonText = "关闭",
+                DefaultButton = ContentDialogButton.None,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
+            };
+
+            await dialog.ShowAsync();
+        }
+
         [RelayCommand]
         public void ToggleFullDescription()
         {
@@ -706,6 +803,24 @@ namespace XianYuLauncher.ViewModels
                 // 优先使用从列表页传递过来的作者信息，如果没有则使用API返回的
                 ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (_passedModInfo?.Author ?? projectDetail.Author);
                 
+                // 处理发布者列表
+                PublisherList.Clear();
+                _modTeamId = projectDetail.Team;
+                
+                // 如果API自动获取了成员列表（"Fix"逻辑触发），直接使用
+                if (projectDetail.TeamMembers != null && projectDetail.TeamMembers.Count > 0)
+                {
+                    foreach (var m in projectDetail.TeamMembers)
+                    {
+                        PublisherList.Add(new PublisherInfo { 
+                             Name = m.User.Username, 
+                             Role = m.Role, 
+                             AvatarUrl = m.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                             Url = $"https://modrinth.com/user/{m.User.Username}"
+                         });
+                    }
+                }
+                
                 // 设置平台信息
                 ModSlug = projectDetail.Slug;
                 PlatformName = "Modrinth";
@@ -976,6 +1091,23 @@ namespace XianYuLauncher.ViewModels
             ModLicense = "CurseForge"; // CurseForge没有直接的许可证字段
             ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (modDetail.Authors?.FirstOrDefault()?.Name ?? "Unknown");
             
+            // 处理发布者列表 (CurseForge直接填充)
+            PublisherList.Clear();
+            _modTeamId = null; // CurseForge不需要懒加载ID
+            
+            if (modDetail.Authors != null)
+            {
+                foreach (var author in modDetail.Authors)
+                {
+                    PublisherList.Add(new PublisherInfo {
+                        Name = author.Name,
+                        Role = "Author", // CurseForge API通常不返回详细角色，统称Author
+                        AvatarUrl = "ms-appx:///Assets/Placeholder.png", // CurseForge API在此处通常不返回头像URL，使用占位符
+                        Url = author.Url
+                    });
+                }
+            }
+
             // 设置平台信息
             ModSlug = modDetail.Slug;
             PlatformName = "CurseForge";
@@ -4128,5 +4260,24 @@ namespace XianYuLauncher.ViewModels
         {
             OnPropertyChanged(nameof(TotalModVersionsCount));
         }
+    }
+    
+    /// <summary>
+    /// 发布者信息模型
+    /// </summary>
+    public class PublisherInfo
+    {
+        public string Name { get; set; }
+        public string Role { get; set; }
+        public string AvatarUrl { get; set; }
+        public string Url { get; set; }
+
+        public Microsoft.UI.Xaml.Visibility AvatarVisibility =>
+            (!string.IsNullOrEmpty(AvatarUrl) && !AvatarUrl.Contains("Placeholder"))
+            ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        public Microsoft.UI.Xaml.Visibility PlaceholderVisibility =>
+             AvatarVisibility == Microsoft.UI.Xaml.Visibility.Visible
+             ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     }
 }

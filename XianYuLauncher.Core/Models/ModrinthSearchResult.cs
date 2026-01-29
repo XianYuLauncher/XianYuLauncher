@@ -507,6 +507,12 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("gallery")]
         public List<GalleryImage> Gallery { get; set; }
+
+        /// <summary>
+        /// 团队成员（仅当API未返回作者信息且触发了自动获取团队逻辑时才会填充，或者手动获取）
+        /// </summary>
+        [JsonIgnore]
+        public List<ModrinthTeamMember> TeamMembers { get; set; }
     }
 
 /// <summary>

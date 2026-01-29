@@ -362,7 +362,16 @@
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind ViewModel.ModName, Mode=OneWay}" FontSize="24" FontWeight="Bold" />
-                                <TextBlock Text="{x:Bind ViewModel.ModAuthor, Mode=OneWay}" FontSize="16" Foreground="{ThemeResource TextFillColorSecondary}" />
+                                <Button Command="{x:Bind ViewModel.ShowPublishersCommand}" 
+                                        Style="{StaticResource TextBlockButtonStyle}"
+                                        Margin="0,4,0,0"
+                                        PointerEntered="AuthorButton_PointerEntered"
+                                        PointerExited="AuthorButton_PointerExited">
+                                    <TextBlock x:Name="AuthorTextBlock" 
+                                               Text="{x:Bind ViewModel.ModAuthor, Mode=OneWay}" 
+                                               FontSize="16" 
+                                               Foreground="{ThemeResource TextFillColorSecondary}" />
+                                </Button>
                                 <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
                                     <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
                                         <Run x:Uid="ModDownloadDetailPage_LicenseText" Text="许可证: " />

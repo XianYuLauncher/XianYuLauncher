@@ -197,6 +197,8 @@ namespace XianYuLauncher.Views
         }
         
         // 处理自定义位置下载的方法
+        
+        // 处理自定义位置下载的方法
         private async Task HandleCustomLocationDownload()
         {
             if (ViewModel.SelectedModVersion == null)
@@ -320,6 +322,16 @@ namespace XianYuLauncher.Views
         private void QuickInstallModVersionDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             ViewModel.IsQuickInstallModVersionDialogOpen = false;
+        }
+
+        private void AuthorButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            AuthorTextBlock.TextDecorations = Windows.UI.Text.TextDecorations.Underline;
+        }
+
+        private void AuthorButton_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            AuthorTextBlock.TextDecorations = Windows.UI.Text.TextDecorations.None;
         }
     }
 }
