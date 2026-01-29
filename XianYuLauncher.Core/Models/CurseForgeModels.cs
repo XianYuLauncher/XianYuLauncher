@@ -56,6 +56,9 @@ public class CurseForgeMod
     
     [JsonPropertyName("summary")]
     public string Summary { get; set; }
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; }
     
     [JsonPropertyName("status")]
     public int Status { get; set; }

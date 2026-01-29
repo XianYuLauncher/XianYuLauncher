@@ -4,6 +4,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:controls="using:XianYuLauncher.Controls"
+      xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
       xmlns:viewModels="using:XianYuLauncher.ViewModels"
       xmlns:local="using:XianYuLauncher.Views"
       xmlns:helpers="using:XianYuLauncher.Helpers"
@@ -402,10 +403,36 @@
                 <!-- Mod描述 -->
         <StackPanel Spacing="8">
             <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
-                    <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" FontSize="14" TextWrapping="WrapWholeWords" />
-                </StackPanel>
+                      
+                      <!-- 简短描述 (默认显示) -->
+                      <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" 
+                                 FontSize="14" 
+                                 TextWrapping="WrapWholeWords"
+                                 Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                      
+                      <!-- 查看更多链接 -->
+                      <HyperlinkButton Content="查看完整描述" 
+                                       Command="{x:Bind ViewModel.ToggleFullDescriptionCommand}" 
+                                       HorizontalAlignment="Left"
+                                       Padding="0"
+                                       Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
 
-                <!-- 支持的加载器/标签 -->
+                      <!-- 完整描述 (点击展开) -->
+                      <StackPanel Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}" 
+                                                Background="Transparent" 
+                                                TextWrapping="Wrap" 
+                                                FontSize="14"
+                                                IsTextSelectionEnabled="True"/>
+                          
+                          <HyperlinkButton Content="收起描述" 
+                                           Command="{x:Bind ViewModel.ToggleFullDescriptionCommand}" 
+                                           HorizontalAlignment="Left" 
+                                           Padding="0"
+                                           Margin="0,8,0,0" />
+                      </StackPanel>
+                  </StackPanel>
+                  
                 <StackPanel Spacing="8">
                     <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
                     <!-- 使用ScrollViewer + StackPanel替代WrapGrid，确保所有标签完整显示 -->

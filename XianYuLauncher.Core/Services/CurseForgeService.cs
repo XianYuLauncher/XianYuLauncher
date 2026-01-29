@@ -158,24 +158,7 @@ public class CurseForgeService
         return request;
     }
     
-    /// <summary>
-    /// 判断是否应该回退到官方源
-    /// </summary>
-    private bool ShouldFallback(System.Net.HttpStatusCode statusCode)
-    {
-        return statusCode == System.Net.HttpStatusCode.NotFound ||
-               (int)statusCode >= 500;
-    }
-    
-    /// <summary>
-    /// 回退到官方源执行GET请求
-    /// </summary>
-    private async Task<HttpResponseMessage> FallbackToOfficialAsync(string originalUrl)
-    {
-        System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 回退到官方源: {originalUrl}");
-        using var fallbackRequest = CreateRequest(HttpMethod.Get, originalUrl, _officialSource);
-        return await _httpClient.SendAsync(fallbackRequest);
-    }
+
 
     /// <summary>
     /// 搜索Mod
@@ -343,20 +326,94 @@ public class CurseForgeService
     {
         try
         {
-            var url = $"{GetApiBaseUrl()}/v1/mods/{modId}";
+            string detailUrlLocal = $"{OfficialApiBaseUrl}/v1/mods/{modId}";
+            string descUrlLocal = $"{OfficialApiBaseUrl}/v1/mods/{modId}/description";
             
-            using var request = CreateRequest(HttpMethod.Get, url);
-            var response = await _httpClient.SendAsync(request);
-            
-            var json = await response.Content.ReadAsStringAsync();
-            response.EnsureSuccessStatusCode();
-            
-            var result = JsonSerializer.Deserialize<CurseForgeModDetailResponse>(json, new JsonSerializerOptions
+            string json;
+            string descJson = null;
+
+            // 使用 FallbackDownloadManager 进行带自动回退机制的请求
+            if (_fallbackDownloadManager != null && IsUsingMirror())
+            {
+                // 1. 获取详情
+                var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
+                    detailUrlLocal,
+                    "curseforge_api",
+                    (req, source) => {
+                        // 镜像源禁止带 API Key，官方源必须带 API Key
+                        // ShouldIncludeCurseForgeApiKey 属性已在 Source 中正确配置
+                        if (source.ShouldIncludeCurseForgeApiKey && !string.IsNullOrEmpty(_apiKey))
+                        {
+                            req.Headers.Add("x-api-key", _apiKey);
+                        }
+                    }
+                );
+                
+                if (!result.Success)
+                    throw new HttpRequestException($"Failed to get mod detail: {result.ErrorMessage}");
+                    
+                json = await result.Response.Content.ReadAsStringAsync();
+                
+                // 2. 尝试获取描述 (允许失败)
+                try {
+                    var descResult = await _fallbackDownloadManager.SendGetWithFallbackAsync(
+                        descUrlLocal,
+                        "curseforge_api",
+                        (req, source) => {
+                             if (source.ShouldIncludeCurseForgeApiKey && !string.IsNullOrEmpty(_apiKey))
+                                req.Headers.Add("x-api-key", _apiKey);
+                        }
+                    );
+                    if (descResult.Success) 
+                        descJson = await descResult.Response.Content.ReadAsStringAsync();
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 获取描述失败 (Fallback): {ex.Message}");
+                }
+            }
+            else
+            {
+                // 无回退管理器或未使用镜像时的简单实现
+                // 注意：如果 _fallbackDownloadManager 为 null，我们无法使用自动回退
+                
+                // 获取当前源基础URL
+                var baseUrl = GetApiBaseUrl();
+                var isMirror = IsUsingMirror();
+                
+                // 手动构建 URL (CreateRequest 会处理 headers)
+                using var request = CreateRequest(HttpMethod.Get, $"{baseUrl}/v1/mods/{modId}");
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                json = await response.Content.ReadAsStringAsync();
+                
+                try {
+                    using var descRequest = CreateRequest(HttpMethod.Get, $"{baseUrl}/v1/mods/{modId}/description");
+                    var descResp = await _httpClient.SendAsync(descRequest);
+                    if (descResp.IsSuccessStatusCode)
+                        descJson = await descResp.Content.ReadAsStringAsync();
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 获取描述失败 (Direct): {ex.Message}");
+                }
+            }
+
+            var detailResult = JsonSerializer.Deserialize<CurseForgeModDetailResponse>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
+
+            if (detailResult?.Data != null && !string.IsNullOrEmpty(descJson))
+            {
+                 try 
+                 {
+                     using var doc = JsonDocument.Parse(descJson);
+                     if (doc.RootElement.TryGetProperty("data", out var dataProp))
+                     {
+                         detailResult.Data.Description = dataProp.GetString();
+                     }
+                 }
+                 catch {}
+            }
             
-            return result?.Data;
+            return detailResult?.Data;
         }
         catch (HttpRequestException ex)
         {
@@ -375,6 +432,15 @@ public class CurseForgeService
         {
             throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 判断是否应该回退到官方源
+    /// </summary>
+    private bool ShouldFallback(System.Net.HttpStatusCode statusCode)
+    {
+        return statusCode == System.Net.HttpStatusCode.NotFound ||
+               (int)statusCode >= 500;
     }
 
     /// <summary>

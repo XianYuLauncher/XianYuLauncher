@@ -57,7 +57,101 @@ namespace XianYuLauncher.ViewModels
         
         [ObservableProperty]
         private string _modDescriptionTranslated = string.Empty;
-        
+
+        [ObservableProperty]
+        private string _modDescriptionBody = string.Empty;
+
+        [ObservableProperty]
+        private bool _isFullDescriptionVisible = false;
+
+        [RelayCommand]
+        public void ToggleFullDescription()
+        {
+            IsFullDescriptionVisible = !IsFullDescriptionVisible;
+        }
+
+        /// <summary>
+        /// 预处理Mod描述，将HTML标签转换为Markdown
+        /// </summary>
+        private string PreprocessDescription(string description)
+        {
+            if (string.IsNullOrEmpty(description))
+                return string.Empty;
+
+            try
+            {
+                // 0. 解码 HTML 实体 (如 &lt; &gt; &nbsp;)
+                description = System.Net.WebUtility.HtmlDecode(description);
+
+                // 1. 标题: <h1 ...>Title</h1> -> # Title
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description,
+                    @"<h([1-6])(?: [^>]*)?>(.*?)</h\1>",
+                    m => "\n" + new string('#', int.Parse(m.Groups[1].Value)) + " " + m.Groups[2].Value + "\n",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                // 2. 粗体: <strong>, <b> -> **
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description, 
+                    @"<(?:strong|b)(?: [^>]*)?>(.*?)</(?:strong|b)>", 
+                    "**$1**", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                // 3. 斜体: <em>, <i> -> *
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description, 
+                    @"<(?:em|i)(?: [^>]*)?>(.*?)</(?:em|i)>", 
+                    "*$1*", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                // 4. 链接: <a href="url">text</a> -> [text](url)
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description,
+                    @"<a\s+(?:[^>]*?\s+)?href\s*=\s*([""'])(.*?)\1[^>]*>(.*?)</a>",
+                    "[$3]($2)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                // 5. 图片: <img src="url"> -> ![](url)
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description, 
+                    @"<img\s+(?:[^>]*?\s+)?src\s*=\s*([""'])(.*?)\1.*?>", 
+                    "![]($2)", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+                
+                // 处理残留的闭合标签
+                description = description.Replace("</img>", "");
+
+                // 6. 列表
+                description = description.Replace("<li>", "\n- ").Replace("</li>", "");
+                description = description.Replace("<ul>", "\n").Replace("</ul>", "\n");
+                description = description.Replace("<ol>", "\n").Replace("</ol>", "\n");
+
+                // 7. 段落和换行
+                description = description.Replace("<p>", "").Replace("</p>", "\n\n");
+                description = description.Replace("<br>", "\n").Replace("<br/>", "\n").Replace("<br />", "\n");
+
+                // 8. 引用: <blockquote> -> >
+                description = System.Text.RegularExpressions.Regex.Replace(description, @"<blockquote(?: [^>]*)?>", "\n> ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                description = description.Replace("</blockquote>", "\n\n");
+                
+                // 9. 分割线: <hr> -> ---
+                description = System.Text.RegularExpressions.Regex.Replace(description, @"<hr(?: [^>]*)?/?>", "\n---\n", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                // 10. 移除其他常见的容器/格式标签，保留内容 (div, span, center, font, table结构)
+                description = System.Text.RegularExpressions.Regex.Replace(
+                    description, 
+                    @"</?(?:div|span|center|font|tbody|tr|td|table|thead|th)[^>]*>", 
+                    "", 
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Markdown Preprocess] Error: {ex.Message}");
+            }
+
+            return description;
+        }
+
         /// <summary>
         /// 显示的Mod描述（根据当前语言返回翻译或原始描述）
         /// </summary>
@@ -581,6 +675,8 @@ namespace XianYuLauncher.ViewModels
                 // 更新ViewModel属性
                 ModName = _translationService.GetTranslatedName(projectDetail.Slug, projectDetail.Title);
                 ModDescriptionOriginal = projectDetail.Description;
+                ModDescriptionBody = PreprocessDescription(projectDetail.Body); // 完整描述（Markdown格式，预处理HTML）
+                IsFullDescriptionVisible = false; // 默认折叠
                 ModDescriptionTranslated = string.Empty; // 先清空翻译
                 
                 // 翻译描述（如果当前语言是中文）
@@ -850,6 +946,8 @@ namespace XianYuLauncher.ViewModels
             // 更新ViewModel属性
             ModName = _translationService.GetTranslatedName(modDetail.Slug, modDetail.Name);
             ModDescriptionOriginal = modDetail.Summary;
+            ModDescriptionBody = PreprocessDescription(modDetail.Description); // CurseForge的完整描述（HTML格式，转换为Markdown）
+            IsFullDescriptionVisible = false; // 默认折叠
             ModDescriptionTranslated = string.Empty; // 先清空翻译
             
             // 翻译描述（如果当前语言是中文）
