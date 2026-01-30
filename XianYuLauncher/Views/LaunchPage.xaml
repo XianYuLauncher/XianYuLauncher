@@ -317,6 +317,18 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextTrimming="CharacterEllipsis" />
                 </StackPanel>
+
+                <!-- 开发版警告 -->
+                <InfoBar
+                    IsOpen="{x:Bind ViewModel.IsDevBuild, Mode=OneWay}"
+                    Severity="Warning"
+                    Title="开发版"
+                    Message="可能不稳定，遇到问题请向开发人员反馈。"
+                    IsClosable="False">
+                    <InfoBar.ActionButton>
+                        <HyperlinkButton Content="反馈问题" Command="{x:Bind ViewModel.ReportIssueCommand}" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
             </StackPanel>
         </ScrollViewer>
 

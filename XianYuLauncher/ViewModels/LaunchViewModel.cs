@@ -42,6 +42,20 @@ public partial class LaunchViewModel : ObservableRecipient
     // 分辨率设置字段
     private int _windowWidth = 1280;
     private int _windowHeight = 720;
+
+    [ObservableProperty]
+    private bool _isDevBuild;
+
+    [RelayCommand]
+    private async Task ReportIssue()
+    {
+        try
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri("https://github.com/XianYuLauncher/XianYuLauncher/issues"));
+        }
+        catch { }
+    }
+
     private async Task ShowJavaNotFoundMessageAsync()
     {
         var versionText = GetRequiredJavaVersionText();
@@ -1024,6 +1038,21 @@ public partial class LaunchViewModel : ObservableRecipient
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         InitializeAsync().ConfigureAwait(false);
+
+        CheckDevBuild();
+    }
+
+    private void CheckDevBuild()
+    {
+        try
+        {
+            var packageName = Windows.ApplicationModel.Package.Current.Id.Name;
+            IsDevBuild = packageName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            IsDevBuild = false;
+        }
     }
     
     /// <summary>
