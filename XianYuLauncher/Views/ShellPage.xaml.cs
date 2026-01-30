@@ -39,7 +39,8 @@ public sealed partial class ShellPage : Page
         App.MainWindow.Activated += MainWindow_Activated;
         // AppTitleBar.Title is set in XAML
 #if DEV_CHANNEL
-        AppTitleBar.Subtitle = "Dev";
+        AppTitleSubtitle.Text = "Dev";
+        AppTitleSubtitle.Visibility = Visibility.Visible;
 #endif
         
         // 设置标题栏高度为 Tall，统一标题和窗口按钮高度
