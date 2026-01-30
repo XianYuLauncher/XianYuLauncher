@@ -572,7 +572,7 @@ public class FallbackDownloadManager
             }
 
             lastResult = await _innerManager.DownloadFileAsync(
-                url, targetPath, expectedSha1, progressCallback, cancellationToken);
+                url, targetPath, expectedSha1, progressCallback == null ? null : status => progressCallback(status.Percent), cancellationToken);
 
             if (lastResult.Success)
             {

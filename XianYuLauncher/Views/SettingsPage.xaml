@@ -762,7 +762,7 @@
                                             <TextBlock x:Uid="Settings_DownloadThreadCount" Text="下载线程数" />
                                             <TextBlock 
                                                 x:Uid="Settings_DownloadThreadCountDescription"
-                                                Text="同时下载资源文件的线程数量，数值越大下载越快，但可能占用更多系统资源" 
+                                                Text="同时下载资源文件的数量(并发数)，数值越大下载越快，但可能占用更多系统资源" 
                                                 Style="{ThemeResource CaptionTextBlockStyle}" 
                                                 Margin="0,4,0,0" 
                                                 Opacity="0.7"/>
@@ -775,6 +775,29 @@
                                             SpinButtonPlacementMode="Compact"
                                             SmallChange="1"
                                             LargeChange="8"
+                                            Width="120"
+                                            VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 下载分片数设置 -->
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="核心文件分片数" />
+                                            <TextBlock 
+                                                Text="单个大文件(如核心Jar)的分片并发下载数量，过高可能导致官方源/BMCLAPI返回429错误" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <NumberBox 
+                                            Value="{x:Bind ViewModel.DownloadShardCount, Mode=TwoWay}"
+                                            Minimum="1"
+                                            Maximum="32"
+                                            SpinButtonPlacementMode="Compact"
+                                            SmallChange="1"
+                                            LargeChange="4"
                                             Width="120"
                                             VerticalAlignment="Center" />
                                     </StackPanel>

@@ -15,7 +15,7 @@ namespace XianYuLauncher.Core.Services;
 
 public class JavaDownloadService : IJavaDownloadService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IDownloadManager _downloadManager;
     private readonly IFileService _fileService;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
@@ -24,15 +24,15 @@ public class JavaDownloadService : IJavaDownloadService
     private const string ManifestUrl = "https://piston-meta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json";
 
     public JavaDownloadService(
+        IDownloadManager downloadManager,
         IFileService fileService, 
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService)
     {
+        _downloadManager = downloadManager;
         _fileService = fileService;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "XianYuLauncher/1.0");
     }
 
     public async Task<List<JavaVersionDownloadOption>> GetAvailableJavaVersionsAsync(CancellationToken cancellationToken = default)
@@ -55,11 +55,6 @@ public class JavaDownloadService : IJavaDownloadService
             {
                 string component = kvp.Key;
                 var variants = kvp.Value;
-
-                // 通常取第一个（最新）作为推荐，或者添加所有
-                // 这里的 variants 可能包含多个历史版本，用户希望"选择"，我们可以把它们都列出来
-                // 为了避免列表过长且通常只需要最新的，我们这里只取列表中的第一个（最新版）
-                // 如果用户需要历史版本，逻辑可以调整
                 
                 if (variants != null && variants.Count > 0)
                 {
@@ -76,9 +71,6 @@ public class JavaDownloadService : IJavaDownloadService
             }
         }
         
-        // 排序：版本号倒序 (简单字符串排序可能不够精确，但作为展示通常够用，或者按Component排序)
-        // 比如 25.0.0 > 17.0.8 > 8.0.xxx
-        // 简单按 Name 降序
         return options.OrderByDescending(o => o.Name).ToList();
     }
 
@@ -123,12 +115,8 @@ public class JavaDownloadService : IJavaDownloadService
         var fileManifest = await FetchFileManifestAsync(variant.Manifest.Url, cancellationToken);
 
         // 5. 确定安装目录
-        // 强制使用标准路径 %APPDATA%\.minecraft\runtime 以确保兼容性和易识别性
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string minecraftPath = Path.Combine(appData, ".minecraft");
-
-        // 规范目录结构: runtime/<component>/<os>
-        // 例如: .minecraft/runtime/java-runtime-gamma/windows-x64
         string installDir = Path.Combine(minecraftPath, "runtime", component, platformKey);
         
         statusCallback?.Invoke("正在准备下载文件...");
@@ -139,7 +127,6 @@ public class JavaDownloadService : IJavaDownloadService
         // 7. 返回 java.exe 路径
         string javaPath = Path.Combine(installDir, "bin", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "javaw.exe" : "java");
         
-        // 如果在 mac 上，路径可能是 jre.bundle/Contents/Home/bin/java
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
              string macPath = Path.Combine(installDir, "jre.bundle", "Contents", "Home", "bin", "java");
@@ -148,7 +135,6 @@ public class JavaDownloadService : IJavaDownloadService
 
         if (!File.Exists(javaPath))
         {
-            // 尝试找一下
             var foundFiles = Directory.GetFiles(installDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "javaw.exe" : "java", SearchOption.AllDirectories);
             if (foundFiles.Length > 0)
             {
@@ -189,18 +175,12 @@ public class JavaDownloadService : IJavaDownloadService
         
         try
         {
-            // 优先尝试 BMCLAPI
-            using var response = await _httpClient.GetAsync(bmclapiUrl, token);
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = await _downloadManager.DownloadStringAsync(bmclapiUrl, token);
             return JsonConvert.DeserializeObject<JavaRuntimeManifest>(json);
         }
         catch
         {
-            // 失败回退到官方
-            using var response = await _httpClient.GetAsync(ManifestUrl, token);
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = await _downloadManager.DownloadStringAsync(ManifestUrl, token);
             return JsonConvert.DeserializeObject<JavaRuntimeManifest>(json);
         }
     }
@@ -211,7 +191,7 @@ public class JavaDownloadService : IJavaDownloadService
 
         if (platformDict != null && platformDict.TryGetValue(component, out var list) && list.Count > 0)
         {
-            return list[0]; // 通常取第一个，它是最新的或者推荐的
+            return list[0]; 
         }
 
         return null;
@@ -219,21 +199,16 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task<JavaRuntimeFileManifest> FetchFileManifestAsync(string url, CancellationToken token)
     {
-        // 同样支持镜像替换
         string bmclapiUrl = url.Replace("piston-meta.mojang.com", "bmclapi2.bangbang93.com");
 
         try
         {
-            using var response = await _httpClient.GetAsync(bmclapiUrl, token);
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = await _downloadManager.DownloadStringAsync(bmclapiUrl, token);
             return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
         }
         catch
         {
-            using var response = await _httpClient.GetAsync(url, token);
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = await _downloadManager.DownloadStringAsync(url, token);
             return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
         }
     }
@@ -241,116 +216,47 @@ public class JavaDownloadService : IJavaDownloadService
     private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string> statusCallback, CancellationToken token)
     {
         var filesToDownload = manifest.Files.Where(f => f.Value.Type == "file").ToList();
-        int totalFiles = filesToDownload.Count;
-        int downloadedFiles = 0;
+        var downloadTasks = new List<DownloadTask>();
         
-        // 获取下载线程数配置，默认为 32
-        int threadCount = 32;
-        try
+        foreach (var fileEntry in filesToDownload)
         {
-            var value = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount");
-            if (value.HasValue && value.Value > 0) 
+            string relativePath = fileEntry.Key;
+            JavaRuntimeFile fileInfo = fileEntry.Value;
+            string targetPath = Path.Combine(installDir, relativePath);
+            
+            // 简单校验大小
+            if (File.Exists(targetPath))
             {
-                threadCount = value.Value;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[JavaDownloadService] 读取线程数配置失败: {ex.Message}");
-        }
-        
-        // 简单的并行下载控制
-        var semaphore = new SemaphoreSlim(threadCount); 
-
-        var tasks = filesToDownload.Select(async fileEntry =>
-        {
-            await semaphore.WaitAsync(token);
-            try
-            {
-                if (token.IsCancellationRequested) return;
-
-                string relativePath = fileEntry.Key;
-                JavaRuntimeFile fileInfo = fileEntry.Value;
-                string targetPath = Path.Combine(installDir, relativePath);
-
-                // 检查是否已存在且完整
-                if (File.Exists(targetPath))
+                var fi = new FileInfo(targetPath);
+                if (fi.Length == fileInfo.Downloads.Raw.Size)
                 {
-                    // 简单校验大小，严格应该校验SHA1
-                    var fi = new FileInfo(targetPath);
-                    if (fi.Length == fileInfo.Downloads.Raw.Size)
-                    {
-                        // 跳过
-                        Interlocked.Increment(ref downloadedFiles);
-                        ReportProgress(totalFiles, downloadedFiles, progressCallback);
-                        return;
-                    }
+                    continue; 
                 }
-
-                // 确保目录存在
-                string dir = Path.GetDirectoryName(targetPath);
-                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-                // 下载
-                await DownloadSingleFileAsync(fileInfo.Downloads.Raw, targetPath, token);
-                
-                if (fileInfo.Executable && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    // 由于环境是Windows，这里暂不需要处理
-                }
-
-                Interlocked.Increment(ref downloadedFiles);
-                ReportProgress(totalFiles, downloadedFiles, progressCallback);
-                statusCallback?.Invoke($"正在下载 ({downloadedFiles}/{totalFiles}): {Path.GetFileName(relativePath)}");
             }
-            finally
+
+            // 构建下载任务
+            // 使用 BMCLAPI 镜像 URL
+            string downloadUrl = fileInfo.Downloads.Raw.Url.Replace("piston-meta.mojang.com", "bmclapi2.bangbang93.com")
+                                                           .Replace("piston-data.mojang.com", "bmclapi2.bangbang93.com");
+
+            downloadTasks.Add(new DownloadTask
             {
-                semaphore.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
-    }
-
-    private void ReportProgress(int total, int current, Action<double> callback)
-    {
-        if (total > 0)
-        {
-            double percent = (double)current / total * 100.0;
-            callback?.Invoke(percent);
-        }
-    }
-
-    private async Task DownloadSingleFileAsync(JavaRuntimeDownloadInfo info, string localPath, CancellationToken token)
-    {
-        string url = info.Url;
-        string mirrorUrl = url.Replace("piston-data.mojang.com", "bmclapi2.bangbang93.com");
-        
-        // 只有当URL确实被替换了（即属于piston-data域名）才尝试镜像
-        if (mirrorUrl != url)
-        {
-            try
-            {
-                await DownloadToFileAsync(mirrorUrl, localPath, token);
-                return; // 镜像下载成功，直接返回
-            }
-            catch (Exception ex) // 捕获错误（通常是404或连接超时）
-            {
-                // 在调试输出中打印警告，说明这是预期的回退行为
-                System.Diagnostics.Debug.WriteLine($"[JavaDownload] Mirror download failed for {Path.GetFileName(localPath)}: {ex.Message}. Falling back to official source.");
-            }
+                Url = downloadUrl,
+                TargetPath = targetPath,
+                ExpectedSha1 = fileInfo.Downloads.Raw.Sha1,
+                ExpectedSize = fileInfo.Downloads.Raw.Size,
+                Description = relativePath
+            });
         }
 
-        // 回退到官方源（或者URL本来就不支持镜像）
-        await DownloadToFileAsync(url, localPath, token);
-    }
-
-    private async Task DownloadToFileAsync(string url, string path, CancellationToken token)
-    {
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
-        response.EnsureSuccessStatusCode();
-        using var stream = await response.Content.ReadAsStreamAsync(token);
-        using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-        await stream.CopyToAsync(fs, token);
+        if (downloadTasks.Any())
+        {
+            statusCallback?.Invoke($"开始下载 {downloadTasks.Count} 个文件...");
+            await _downloadManager.DownloadFilesAsync(downloadTasks, 0, status => progressCallback?.Invoke(status.Percent), token);
+        }
+        else
+        {
+            progressCallback?.Invoke(100);
+        }
     }
 }

@@ -1,21 +1,20 @@
-using System; using System.Collections.Generic; using System.IO; using System.Net.Http; using System.Text; using System.Threading.Tasks; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
+using System; using System.Collections.Generic; using System.IO; using System.Threading.Tasks; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
 
 namespace XianYuLauncher.Core.Services
 {
     public class TerracottaService
     {
-        private readonly HttpClient _httpClient;
+        private readonly IDownloadManager _downloadManager;
         private readonly ILocalSettingsService _localSettingsService;
         private readonly string _cacheDirectory;
         private const string TerracottaCacheFile = "terracotta.cache.json";
         private const string GiteeApiUrl = "https://gitee.com/api/v5/repos/burningtnt/Terracotta/releases?per_page=1&direction=desc";
         private const string GithubApiUrl = "https://api.github.com/repos/burningtnt/Terracotta/releases?per_page=1&direction=desc";
         
-        public TerracottaService(ILocalSettingsService localSettingsService)
+        public TerracottaService(ILocalSettingsService localSettingsService, IDownloadManager downloadManager)
         {
             _localSettingsService = localSettingsService;
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
+            _downloadManager = downloadManager;
             
             // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -175,12 +174,11 @@ namespace XianYuLauncher.Core.Services
             try
             {
                 // 简单的地区检测：尝试访问Gitee API，如果成功则使用Gitee，否则使用GitHub
-                var response = await _httpClient.GetAsync(GiteeApiUrl, HttpCompletionOption.ResponseHeadersRead);
-                if (response.IsSuccessStatusCode)
-                {
-                    Debug.WriteLine("[TerracottaService] 使用Gitee API（中国大陆地区）");
-                    return GiteeApiUrl;
-                }
+                // 使用 DownloadManager 下载字符串来检测，虽然不是最佳实践但可以复用
+                await _downloadManager.DownloadStringAsync(GiteeApiUrl);
+                
+                Debug.WriteLine("[TerracottaService] 使用Gitee API（中国大陆地区）");
+                return GiteeApiUrl;
             }
             catch (Exception ex)
             {
@@ -199,10 +197,7 @@ namespace XianYuLauncher.Core.Services
             try
             {
                 Debug.WriteLine($"[TerracottaService] 发送请求获取最新版本信息: {apiUrl}");
-                var response = await _httpClient.GetAsync(apiUrl);
-                response.EnsureSuccessStatusCode();
-                
-                var content = await response.Content.ReadAsStringAsync();
+                var content = await _downloadManager.DownloadStringAsync(apiUrl);
                 var releases = JsonConvert.DeserializeObject<List<TerracottaRelease>>(content);
                 
                 if (releases != null && releases.Count > 0)
@@ -230,31 +225,17 @@ namespace XianYuLauncher.Core.Services
             string tempDir = Path.GetTempPath();
             string tempTarGzPath = Path.Combine(tempDir, asset.name);
             
-            var response = await _httpClient.GetAsync(asset.browser_download_url, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-            
-            long totalBytes = response.Content.Headers.ContentLength ?? 0;
-            long bytesRead = 0;
-            
-            using (var stream = await response.Content.ReadAsStreamAsync())
-            using (var fileStream = new FileStream(tempTarGzPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                var buffer = new byte[81920]; // 80KB buffer
-                int bytesReadThisTime;
-                
-                while ((bytesReadThisTime = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            await _downloadManager.DownloadFileAsync(
+                asset.browser_download_url,
+                tempTarGzPath,
+                null,
+                status => 
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesReadThisTime);
-                    bytesRead += bytesReadThisTime;
-                    
                     // 更新下载进度 (50% - 80%)
-                    if (totalBytes > 0)
-                    {
-                        double downloadProgress = 50 + ((double)bytesRead / totalBytes) * 30;
-                        progressCallback?.Invoke(downloadProgress);
-                    }
-                }
-            }
+                    double downloadProgress = 50 + (status.Percent * 0.3);
+                    progressCallback?.Invoke(downloadProgress);
+                },
+                default);
             
             Debug.WriteLine($"[TerracottaService] 陶瓦插件下载完成，大小: {new FileInfo(tempTarGzPath).Length}字节");
             

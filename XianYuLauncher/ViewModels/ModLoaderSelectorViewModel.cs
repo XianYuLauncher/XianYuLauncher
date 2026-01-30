@@ -188,47 +188,53 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     
     private void OnDownloadProgressChanged(object? sender, DownloadTaskInfo taskInfo)
     {
-        // 只有在弹窗打开时才更新
-        if (IsDownloadDialogOpen)
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            DownloadProgress = taskInfo.Progress;
-            DownloadProgressText = $"{taskInfo.Progress:F1}%";
-            // 移除 StatusMessage 末尾的百分比（如 "正在下载... 50%" -> "正在下载..."）
-            var status = taskInfo.StatusMessage;
-            var lastSpaceIndex = status.LastIndexOf(' ');
-            if (lastSpaceIndex > 0 && status.EndsWith("%"))
+            // 只有在弹窗打开时才更新
+            if (IsDownloadDialogOpen)
             {
-                status = status.Substring(0, lastSpaceIndex);
+                DownloadProgress = taskInfo.Progress;
+                DownloadProgressText = $"{taskInfo.Progress:F1}%";
+                // 移除 StatusMessage 末尾的百分比（如 "正在下载... 50%" -> "正在下载..."）
+                var status = taskInfo.StatusMessage;
+                var lastSpaceIndex = status.LastIndexOf(' ');
+                if (lastSpaceIndex > 0 && status.EndsWith("%"))
+                {
+                    status = status.Substring(0, lastSpaceIndex);
+                }
+                DownloadStatus = status;
             }
-            DownloadStatus = status;
-        }
+        });
     }
     
     private void OnDownloadStateChanged(object? sender, DownloadTaskInfo taskInfo)
     {
-        // 只有在弹窗打开时才处理
-        if (IsDownloadDialogOpen && !_isBackgroundDownload)
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            switch (taskInfo.State)
+            // 只有在弹窗打开时才处理
+            if (IsDownloadDialogOpen && !_isBackgroundDownload)
             {
-                case DownloadTaskState.Completed:
-                    DownloadStatus = "下载完成！";
-                    DownloadProgress = 100;
-                    // 延迟关闭弹窗
-                    _ = Task.Delay(1000).ContinueWith(_ =>
-                    {
+                switch (taskInfo.State)
+                {
+                    case DownloadTaskState.Completed:
+                        DownloadStatus = "下载完成！";
+                        DownloadProgress = 100;
+                        // 延迟关闭弹窗
+                        _ = Task.Delay(1000).ContinueWith(_ =>
+                        {
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() => IsDownloadDialogOpen = false);
+                        });
+                        break;
+                    case DownloadTaskState.Failed:
+                        DownloadStatus = $"下载失败: {taskInfo.ErrorMessage}";
+                        break;
+                    case DownloadTaskState.Cancelled:
+                        DownloadStatus = "下载已取消";
                         IsDownloadDialogOpen = false;
-                    });
-                    break;
-                case DownloadTaskState.Failed:
-                    DownloadStatus = $"下载失败: {taskInfo.ErrorMessage}";
-                    break;
-                case DownloadTaskState.Cancelled:
-                    DownloadStatus = "下载已取消";
-                    IsDownloadDialogOpen = false;
-                    break;
+                        break;
+                }
             }
-        }
+        });
     }
     
     /// <summary>

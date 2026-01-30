@@ -25,7 +25,6 @@ namespace XianYuLauncher.Core.Services;
 
 public partial class MinecraftVersionService : IMinecraftVersionService
 {
-    private readonly HttpClient _httpClient;
     private readonly ILogger<MinecraftVersionService> _logger;
     private readonly IFileService _fileService;
     private readonly ILocalSettingsService _localSettingsService;
@@ -51,8 +50,6 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         IModLoaderInstallerFactory modLoaderInstallerFactory,
         FallbackDownloadManager? fallbackDownloadManager = null)
     {
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
         _logger = logger;
         _fileService = fileService;
         _localSettingsService = localSettingsService;
@@ -65,10 +62,6 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         _modLoaderInstallerFactory = modLoaderInstallerFactory;
         _fallbackDownloadManager = fallbackDownloadManager;
     }
-
-    /// <summary>
-    /// 下载Optifine+Forge版本（先安装Forge，再将Optifine放入mods目录）
-    /// </summary>
     /// <param name="minecraftVersionId">Minecraft版本ID</param>
     /// <param name="forgeVersion">Forge版本</param>
     /// <param name="optifineType">Optifine类型</param>
@@ -116,7 +109,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 optifineDownloadUrl,
                 optifineJarPath,
                 null,
-                p => progressCallback?.Invoke(80 + p * 0.2), // Optifine下载占20%进度
+                p => progressCallback?.Invoke(80 + p.Percent * 0.2), // Optifine下载占20%进度
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -188,7 +181,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 添加超时机制
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
             {
-                var response = await _httpClient.GetStringAsync(versionManifestUrl, cts.Token);
+                var response = await _downloadManager.DownloadStringAsync(versionManifestUrl, cts.Token);
                 var manifest = JsonConvert.DeserializeObject<VersionManifest>(response);
                 _logger.LogInformation("成功获取Minecraft版本清单，共{VersionCount}个版本", manifest.Versions.Count);
                 return manifest;
@@ -361,7 +354,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
                         var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                         
-                        var response = await _httpClient.GetStringAsync(versionInfoUrl, cts.Token);
+                        var response = await _downloadManager.DownloadStringAsync(versionInfoUrl, cts.Token);
                         
                         // 添加Debug输出，显示获取到的原始JSON内容（前500个字符）
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到Minecraft版本{versionId}的原始JSON内容:\n{response.Substring(0, Math.Min(500, response.Length))}...");
@@ -449,7 +442,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 // 添加调试信息
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JSON配置文件, 下载源: {downloadSource.Name}, 版本: {versionId}, 下载URL: {versionInfoUrl}");
 
-                return await _httpClient.GetStringAsync(versionInfoUrl);
+                return await _downloadManager.DownloadStringAsync(versionInfoUrl);
             }
             else
             {
@@ -562,59 +555,19 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             progressCallback?.Invoke(20); // 20% - 开始下载JAR文件
 
-            using (var response = await _httpClient.GetAsync(clientJarUrl, HttpCompletionOption.ResponseHeadersRead))
-            {
-                try
+            await _downloadManager.DownloadFileAsync(
+                clientJarUrl,
+                jarPath,
+                clientDownload.Sha1,
+                status =>
                 {
-                    response.EnsureSuccessStatusCode();
-                }
-                catch (HttpRequestException httpEx)
-                {
-                    throw new Exception($"Failed to download JAR file for version {versionId}. HTTP Error: {httpEx.StatusCode} - {httpEx.Message}. URL: {clientDownload.Url}", httpEx);
-                }
-                
-                // 获取文件总大小
-                long totalSize = response.Content.Headers.ContentLength ?? -1L;
-                long totalRead = 0L;
-                
-                using (var stream = await response.Content.ReadAsStreamAsync())
-                // 使用异步文件IO，提高磁盘写入速度
-                using (var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous))
-                {
-                    var buffer = new byte[bufferSize];
-                    int bytesRead;
-                    
-                    // 下载并报告进度
-                    while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead);
-                        totalRead += bytesRead;
-                        
-                        // 计算进度（20% - 80%用于JAR下载）
-                        if (totalSize > 0)
-                        {
-                            double progress = 20 + ((double)totalRead / totalSize) * 60;
-                            progressCallback?.Invoke(progress);
-                        }
-                    }
-                }
-            }
+                    // 计算进度（20% - 80%用于JAR下载）
+                    double progress = 20 + (status.Percent * 0.6);
+                    progressCallback?.Invoke(progress);
+                },
+                default);
 
             progressCallback?.Invoke(85); // 85% - 开始验证JAR文件
-            
-            // 验证JAR文件的SHA1哈希
-            var downloadedBytes = await File.ReadAllBytesAsync(jarPath);
-            using (var sha1 = System.Security.Cryptography.SHA1.Create())
-            {
-                var hashBytes = sha1.ComputeHash(downloadedBytes);
-                var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-                
-                if (hashString != clientDownload.Sha1)
-                {
-                    File.Delete(jarPath);
-                    throw new Exception($"SHA1 hash mismatch for version {versionId} JAR file. Expected: {clientDownload.Sha1}, Got: {hashString}. The downloaded file may be corrupted.");
-                }
-            }
 
             progressCallback?.Invoke(95); // 95% - 开始保存JSON文件
             
@@ -2370,72 +2323,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("开始下载文件: {Url} to {TargetPath}", url, targetPath);
             // 添加调试输出，显示下载URL
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载文件: {url}，目标路径: {targetPath}");
-            
-            // 发送HTTP请求
-            using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
-            {
-                try
-                {
-                    response.EnsureSuccessStatusCode();
-                }
-                catch (HttpRequestException httpEx)
-                {
-                    string statusCode = response.StatusCode.ToString();
-                    string reasonPhrase = response.ReasonPhrase ?? "Unknown reason";
-                    string errorMessage = $"下载文件失败: {url}\nHTTP状态码: {statusCode}\n错误原因: {reasonPhrase}\n详细信息: {httpEx.Message}";
-                    _logger.LogError(httpEx, errorMessage);
-                    throw new Exception(errorMessage, httpEx);
-                }
-                
-                // 获取文件总大小
-                long totalBytes = response.Content.Headers.ContentLength ?? 0;
-                long downloadedBytes = 0;
-                
-                // 确保目标目录存在
-                string targetDirectory = Path.GetDirectoryName(targetPath);
-                if (!string.IsNullOrEmpty(targetDirectory))
-                {
-                    Directory.CreateDirectory(targetDirectory);
-                }
-                
-                // 读取响应内容
-                using (var stream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    var buffer = new byte[8192];
-                    int bytesRead;
-                    
-                    // 下载文件并报告进度
-                    while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead);
-                        downloadedBytes += bytesRead;
-                        
-                        // 计算进度
-                        if (totalBytes > 0)
-                        {
-                            double progress = (double)downloadedBytes / totalBytes * 100;
-                            progressCallback?.Invoke(progress);
-                        }
-                    }
-                }
-            }
-            
+
+            await _downloadManager.DownloadFileAsync(
+                url,
+                targetPath,
+                null,
+                status => progressCallback?.Invoke(status.Percent),
+                default);
+
             _logger.LogInformation("文件下载完成: {TargetPath}", targetPath);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "下载文件失败: {Url}", url);
-            throw; // 已经在上面处理过，直接抛出
-        }
-        catch (IOException ex)
-        {
-            string errorMessage = $"保存文件失败: {targetPath}\n请检查磁盘空间和写入权限\n详细信息: {ex.Message}";
-            _logger.LogError(ex, errorMessage);
-            throw new Exception(errorMessage, ex);
         }
         catch (Exception ex)
         {
+            // 保持原始的异常处理和日志记录逻辑，虽然 IDownloadManager 可能抛出不同的异常，
+            // 但保留这段逻辑可以确保日志连贯性
             string errorMessage = $"下载文件时发生错误: {url}\n详细信息: {ex.Message}";
             if (ex.InnerException != null)
             {

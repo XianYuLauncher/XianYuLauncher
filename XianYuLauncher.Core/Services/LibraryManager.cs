@@ -135,7 +135,7 @@ public class LibraryManager : ILibraryManager
         var results = await _downloadManager.DownloadFilesAsync(
             downloadTasks,
             maxConcurrency: 4,
-            progressCallback,
+            progressCallback == null ? null : status => progressCallback(status.Percent),
             cancellationToken);
 
         // 检查下载结果

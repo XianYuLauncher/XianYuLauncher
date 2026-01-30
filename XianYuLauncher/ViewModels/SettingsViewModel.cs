@@ -441,6 +441,17 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 下载线程数设置键
     /// </summary>
     private const string DownloadThreadCountKey = "DownloadThreadCount";
+
+    /// <summary>
+    /// 下载分片数设置
+    /// </summary>
+    [ObservableProperty]
+    private int _downloadShardCount = 4;
+    
+    /// <summary>
+    /// 下载分片数设置键
+    /// </summary>
+    private const string DownloadShardCountKey = "DownloadShardCount";
     
     /// <summary>
     /// 实时日志设置
@@ -904,6 +915,10 @@ public partial class SettingsViewModel : ObservableRecipient
         // 读取下载线程数设置，如果不存在则使用默认值32
         var value = await _localSettingsService.ReadSettingAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
+
+         // 读取下载分片数设置，如果不存在则使用默认值4
+        var shardValue = await _localSettingsService.ReadSettingAsync<int?>(DownloadShardCountKey);
+        DownloadShardCount = shardValue ?? 4;
     }
     
     /// <summary>
@@ -915,6 +930,17 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value < 1) value = 1;
         if (value > 128) value = 128;
         _localSettingsService.SaveSettingAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 当下载分片数设置变化时保存
+    /// </summary>
+    partial void OnDownloadShardCountChanged(int value)
+    {
+        // 限制范围在 1-32 之间
+        if (value < 1) value = 1;
+        if (value > 32) value = 32;
+        _localSettingsService.SaveSettingAsync(DownloadShardCountKey, value).ConfigureAwait(false);
     }
 
     /// <summary>

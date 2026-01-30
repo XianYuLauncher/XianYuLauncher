@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -21,7 +20,6 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public class NeoForgeInstaller : ModLoaderInstallerBase
 {
-    private readonly HttpClient _httpClient;
     private readonly IProcessorExecutor _processorExecutor;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
@@ -47,8 +45,6 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -139,7 +135,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 neoforgeInstallerUrl,
                 neoforgeInstallerPath,
                 null,
-                p => ReportProgress(progressCallback, p, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55),
                 cancellationToken);
 
             // 如果主下载源失败，尝试官方源
@@ -152,7 +148,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                     officialUrl,
                     neoforgeInstallerPath,
                     null,
-                    p => ReportProgress(progressCallback, p, 35, 55),
+                    status => ReportProgress(progressCallback, status.Percent, 35, 55),
                     cancellationToken);
             }
 
@@ -287,7 +283,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         {
             // NeoForge版本列表API
             var url = $"https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge";
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
+            var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var versionData = JsonConvert.DeserializeObject<NeoForgeVersionList>(response);
 
             // 过滤出匹配Minecraft版本的NeoForge版本
@@ -407,7 +403,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             return;
         }
 
-        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, progressCallback, cancellationToken);
+        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
     }
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)

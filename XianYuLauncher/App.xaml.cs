@@ -291,11 +291,9 @@ public partial class App : Application
             });
             
             // AuthlibInjector Service
-            services.AddHttpClient<AuthlibInjectorService>();
             services.AddSingleton<AuthlibInjectorService>();
             
             // Announcement Service
-            services.AddHttpClient<IAnnouncementService, AnnouncementService>();
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
 
             services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();

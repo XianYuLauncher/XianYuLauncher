@@ -180,7 +180,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             clientDownload.Url,
             jarPath,
             clientDownload.Sha1,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
 
         if (!result.Success)
@@ -279,7 +279,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         var results = await DownloadManager.DownloadFilesAsync(
             downloadTasks,
             maxConcurrency: 4,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
 
         var failedCount = 0;

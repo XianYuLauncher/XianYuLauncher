@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -14,7 +13,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly ILogger<DownloadTaskManager> _logger;
-    private readonly HttpClient _httpClient;
+    private readonly IDownloadManager _downloadManager;
 
     private DownloadTaskInfo? _currentTask;
     private CancellationTokenSource? _currentCts;
@@ -36,12 +35,12 @@ public class DownloadTaskManager : IDownloadTaskManager
         IMinecraftVersionService minecraftVersionService,
         IFileService fileService,
         ILogger<DownloadTaskManager> logger,
-        HttpClient? httpClient = null)
+        IDownloadManager downloadManager)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _logger = logger;
-        _httpClient = httpClient ?? new HttpClient();
+        _downloadManager = downloadManager;
     }
 
     /// <summary>
@@ -530,39 +529,12 @@ public class DownloadTaskManager : IDownloadTaskManager
              throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
         }
 
-        // 确保目录存在
-        var directory = Path.GetDirectoryName(savePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        using var response = await _httpClient.GetAsync(uriResult, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        var downloadedBytes = 0L;
-
-
-        await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-        var buffer = new byte[8192];
-        int bytesRead;
-
-        while ((bytesRead = await contentStream.ReadAsync(buffer, cancellationToken)) > 0)
-        {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
-            downloadedBytes += bytesRead;
-
-            if (totalBytes > 0)
-            {
-                var progress = (double)downloadedBytes / totalBytes * 100;
-                progressCallback(progress);
-            }
-        }
-
-        progressCallback(100);
+        await _downloadManager.DownloadFileAsync(
+            url,
+            savePath,
+            null,
+            status => progressCallback(status.Percent),
+            cancellationToken);
     }
 
     /// <summary>

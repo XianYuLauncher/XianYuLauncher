@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -20,7 +19,6 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public class FabricInstaller : ModLoaderInstallerBase
 {
-    private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
     
@@ -43,8 +41,6 @@ public class FabricInstaller : ModLoaderInstallerBase
     {
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -164,7 +160,7 @@ public class FabricInstaller : ModLoaderInstallerBase
         try
         {
             var url = $"{FabricMetaApiUrl}/versions/loader/{minecraftVersionId}";
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
+            var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var versions = JsonConvert.DeserializeObject<List<FabricLoaderVersion>>(response);
 
             return versions?.Select(v => v.Loader?.Version ?? string.Empty)
@@ -199,7 +195,7 @@ public class FabricInstaller : ModLoaderInstallerBase
 
         try
         {
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
+            var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var profile = JObject.Parse(response);
 
             if (profile == null)
@@ -220,7 +216,7 @@ public class FabricInstaller : ModLoaderInstallerBase
             Logger.LogWarning("主下载源失败，切换到官方源: {OfficialUrl}", officialUrl);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 主下载源失败: {url}，正在切换到备用源: {officialUrl}");
             
-            var response = await _httpClient.GetStringAsync(officialUrl, cancellationToken);
+            var response = await DownloadManager.DownloadStringAsync(officialUrl, cancellationToken);
             var profile = JObject.Parse(response);
 
             if (profile == null)

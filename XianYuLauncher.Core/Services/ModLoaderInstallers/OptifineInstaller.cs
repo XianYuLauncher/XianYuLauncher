@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +20,6 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public class OptifineInstaller : ModLoaderInstallerBase
 {
-    private readonly HttpClient _httpClient;
-    
     /// <inheritdoc/>
     public override string ModLoaderType => "Optifine";
 
@@ -33,8 +30,6 @@ public class OptifineInstaller : ModLoaderInstallerBase
         ILogger<OptifineInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, logger)
     {
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -117,7 +112,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 optifineUrl,
                 optifineJarPath,
                 null,
-                p => ReportProgress(progressCallback, p, 35, 50),
+                status => ReportProgress(progressCallback, status.Percent, 35, 50),
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -274,14 +269,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
         {
             var url = $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}";
             
-            // 创建请求消息并添加BMCLAPI User-Agent
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
-            
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var responseContent = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var versions = JsonConvert.DeserializeObject<List<OptifineVersionInfo>>(responseContent);
 
             return versions?.Select(v => $"{v.Type}_{v.Patch}")

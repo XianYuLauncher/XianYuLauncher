@@ -16,16 +16,18 @@ namespace XianYuLauncher.Core.Services
     public class AuthlibInjectorService
     {
         private readonly HttpClient _httpClient;
+        private readonly IDownloadManager _downloadManager;
         private readonly ILocalSettingsService _localSettingsService;
         private readonly ILogger<AuthlibInjectorService> _logger;
         private readonly string _cacheDirectory;
         private const string AuthlibInjectorFileName = "authlib-injector.jar";
         private const string AuthlibInjectorCacheFile = "authlib-injector.cache.json";
         
-        public AuthlibInjectorService(ILocalSettingsService localSettingsService, ILogger<AuthlibInjectorService> logger)
+        public AuthlibInjectorService(ILocalSettingsService localSettingsService, ILogger<AuthlibInjectorService> logger, IDownloadManager downloadManager)
         {
             _localSettingsService = localSettingsService;
             _logger = logger;
+            _downloadManager = downloadManager;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
@@ -295,36 +297,18 @@ namespace XianYuLauncher.Core.Services
                 Directory.CreateDirectory(directory);
             }
             
-            // 创建请求消息，为BMCLAPI请求添加User-Agent
-            using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
-            if (isBmclapi)
-            {
-                request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
-            }
-            
             _logger.LogDebug("[AuthlibInjector] 发送下载请求...");
-            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            _logger.LogDebug("[AuthlibInjector] 下载响应状态码: {StatusCode}", response.StatusCode);
             
-            response.EnsureSuccessStatusCode();
-            
-            var contentLength = response.Content.Headers.ContentLength;
-            _logger.LogDebug("[AuthlibInjector] 预期文件大小: {Size} 字节", contentLength);
-            
-            using (var stream = await response.Content.ReadAsStreamAsync())
-            using (var fileStream = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                await stream.CopyToAsync(fileStream);
-            }
+            await _downloadManager.DownloadFileAsync(
+                downloadUrl,
+                localPath,
+                null,
+                null,
+                default);
             
             var actualSize = new FileInfo(localPath).Length;
+
             _logger.LogInformation("[AuthlibInjector] 下载完成，实际文件大小: {Size} 字节", actualSize);
-            
-            if (contentLength.HasValue && actualSize != contentLength.Value)
-            {
-                _logger.LogWarning("[AuthlibInjector] 文件大小不匹配！预期: {Expected}, 实际: {Actual}", 
-                    contentLength.Value, actualSize);
-            }
         }
         
         /// <summary>

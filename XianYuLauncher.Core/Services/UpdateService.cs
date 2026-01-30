@@ -19,7 +19,7 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class UpdateService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IDownloadManager _downloadManager;
     private readonly ILogger<UpdateService> _logger;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IFileService _fileService;
@@ -36,11 +36,10 @@ public class UpdateService
     public UpdateService(
         ILogger<UpdateService> logger,
         ILocalSettingsService localSettingsService,
-        IFileService fileService)
+        IFileService fileService,
+        IDownloadManager downloadManager)
     {
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
+        _downloadManager = downloadManager;
         
         _logger = logger;
         _localSettingsService = localSettingsService;
@@ -78,7 +77,7 @@ public class UpdateService
                 _logger.LogInformation("尝试从URL获取版本信息: {Url}", url);
                 Debug.WriteLine($"[DEBUG] 尝试从URL获取版本信息: {url}");
                 
-                var response = await _httpClient.GetStringAsync(url);
+                var response = await _downloadManager.DownloadStringAsync(url);
                 _logger.LogDebug("成功获取版本信息: {Response}", response);
                 Debug.WriteLine($"[DEBUG] 成功获取版本信息: {response}");
                 
@@ -137,7 +136,7 @@ public class UpdateService
             string url = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases";
             _logger.LogInformation("检查 Dev 更新: {Url}", url);
 
-            var response = await _httpClient.GetStringAsync(url);
+            var response = await _downloadManager.DownloadStringAsync(url);
             dynamic releases = JsonConvert.DeserializeObject(response);
 
             foreach (var release in releases)
@@ -342,104 +341,42 @@ public class UpdateService
             _logger.LogInformation("创建下载目录: {Directory}", directory);
         }
         
-        // 开始下载
-        using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+        try
         {
-            response.EnsureSuccessStatusCode();
-            
-            long totalBytes = response.Content.Headers.ContentLength ?? -1;
-            long bytesDownloaded = 0;
-            
-            // 立即发送初始进度更新
-            if (progressCallback != null)
+            var watch = Stopwatch.StartNew();
+            long lastBytes = 0;
+
+            var result = await _downloadManager.DownloadFileAsync(url, savePath, null, status => 
             {
-                var initialProgressInfo = new DownloadProgressInfo
+                if (progressCallback != null)
                 {
-                    Progress = 0,
-                    BytesDownloaded = 0,
-                    TotalBytes = totalBytes,
-                    SpeedBytesPerSecond = 0,
-                    EstimatedTimeRemaining = TimeSpan.Zero
-                };
-                progressCallback(initialProgressInfo);
-            }
-            
-            // 创建文件流
-            using (var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-            {
-                using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                {
-                    var buffer = new byte[8192];
-                    int bytesRead;
+                    double speed = 0;
+                    double elapsed = watch.Elapsed.TotalSeconds;
                     
-                    // 用于计算下载速度
-                    var watch = System.Diagnostics.Stopwatch.StartNew();
-                    long lastBytesDownloaded = 0;
-                    long progressUpdateInterval = 0;
-                    
-                    while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                        bytesDownloaded += bytesRead;
-                        progressUpdateInterval += bytesRead;
-                        
-                        // 计算下载速度和预计剩余时间
-                        watch.Stop();
-                        double elapsedSeconds = watch.Elapsed.TotalSeconds;
-                        
-                        // 每下载10KB或每秒更新一次进度，以先到者为准
-                        if (elapsedSeconds >= 1.0 || progressUpdateInterval >= 10240) // 10KB
-                        {
-                            double speed = (bytesDownloaded - lastBytesDownloaded) / (elapsedSeconds > 0 ? elapsedSeconds : 1);
-                            TimeSpan estimatedTime = TimeSpan.Zero;
-                            
-                            if (totalBytes > 0 && speed > 0)
-                            {
-                                long remainingBytes = totalBytes - bytesDownloaded;
-                                estimatedTime = TimeSpan.FromSeconds(remainingBytes / speed);
-                            }
-                            
-                            // 计算进度百分比
-                            double progress = totalBytes > 0 ? (double)bytesDownloaded / totalBytes * 100 : 0;
-                            
-                            // 创建进度信息
-                            var progressInfo = new DownloadProgressInfo
-                            {
-                                Progress = progress,
-                                BytesDownloaded = bytesDownloaded,
-                                TotalBytes = totalBytes,
-                                SpeedBytesPerSecond = speed,
-                                EstimatedTimeRemaining = estimatedTime
-                            };
-                            
-                            // 触发进度回调
-                            progressCallback?.Invoke(progressInfo);
-                            
-                            // 重置计时器和更新间隔
-                            watch.Restart();
-                            lastBytesDownloaded = bytesDownloaded;
-                            progressUpdateInterval = 0;
-                        }
+                    if (elapsed > 1.0) {
+                        speed = (status.DownloadedBytes - lastBytes) / elapsed;
+                        watch.Restart();
+                        lastBytes = status.DownloadedBytes;
                     }
-                    
-                    // 确保最后一次进度更新
-                    if (progressCallback != null)
+
+                    var info = new DownloadProgressInfo
                     {
-                        double progress = totalBytes > 0 ? 100 : 0;
-                        var finalProgressInfo = new DownloadProgressInfo
-                        {
-                            Progress = progress,
-                            BytesDownloaded = bytesDownloaded,
-                            TotalBytes = totalBytes,
-                            SpeedBytesPerSecond = 0,
-                            EstimatedTimeRemaining = TimeSpan.Zero
-                        };
-                        progressCallback(finalProgressInfo);
-                    }
+                        Progress = status.Percent,
+                        BytesDownloaded = status.DownloadedBytes,
+                        TotalBytes = status.TotalBytes,
+                        SpeedBytesPerSecond = speed,
+                        EstimatedTimeRemaining = TimeSpan.Zero
+                    };
+                    progressCallback(info);
                 }
-            }
+            }, cancellationToken);
             
-            return true;
+            return result.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载文件失败: {Url}", url);
+            return false;
         }
     }
     

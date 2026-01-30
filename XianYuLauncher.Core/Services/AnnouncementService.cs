@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
@@ -12,7 +13,7 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class AnnouncementService : IAnnouncementService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IDownloadManager _downloadManager;
     private readonly ILogger<AnnouncementService> _logger;
     private readonly ILocalSettingsService _localSettingsService;
     
@@ -26,12 +27,10 @@ public class AnnouncementService : IAnnouncementService
     
     public AnnouncementService(
         ILogger<AnnouncementService> logger,
-        ILocalSettingsService localSettingsService)
+        ILocalSettingsService localSettingsService,
+        IDownloadManager downloadManager)
     {
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(10);
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
-        
+        _downloadManager = downloadManager;        
         _logger = logger;
         _localSettingsService = localSettingsService;
     }
@@ -50,7 +49,8 @@ public class AnnouncementService : IAnnouncementService
             {
                 _logger.LogInformation("尝试从 URL 获取公告: {Url}", url);
                 
-                var response = await _httpClient.GetStringAsync(url);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var response = await _downloadManager.DownloadStringAsync(url, cts.Token);
                 _logger.LogDebug("成功获取公告内容: {Response}", response);
                 
                 var announcement = JsonConvert.DeserializeObject<AnnouncementInfo>(response);

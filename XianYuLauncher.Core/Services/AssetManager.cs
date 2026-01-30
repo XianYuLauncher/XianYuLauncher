@@ -89,7 +89,7 @@ public class AssetManager : IAssetManager
             assetIndexUrl,
             indexFilePath,
             assetIndexSha1,
-            progressCallback,
+            progressCallback == null ? null : status => progressCallback(status.Percent),
             cancellationToken);
 
         if (!result.Success)
@@ -194,12 +194,12 @@ public class AssetManager : IAssetManager
         var totalCount = downloadTasks.Count;
 
         // 包装进度回调以支持当前下载文件回调
-        Action<double>? wrappedProgressCallback = null;
+        Action<DownloadProgressStatus>? wrappedProgressCallback = null;
         if (progressCallback != null || currentDownloadCallback != null)
         {
-            wrappedProgressCallback = progress =>
+            wrappedProgressCallback = status =>
             {
-                progressCallback?.Invoke(progress);
+                progressCallback?.Invoke(status.Percent);
             };
         }
 

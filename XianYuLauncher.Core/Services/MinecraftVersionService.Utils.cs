@@ -38,7 +38,7 @@ public partial class MinecraftVersionService
             url,
             targetPath,
             expectedSha1,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
 
         if (!result.Success)
@@ -63,7 +63,7 @@ public partial class MinecraftVersionService
             url,
             targetPath,
             expectedSha1,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
 
         if (!result.Success)
@@ -109,7 +109,7 @@ public partial class MinecraftVersionService
         return await _downloadManager.DownloadFilesAsync(
             downloadTasks,
             maxConcurrency,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
     }
 
@@ -135,7 +135,7 @@ public partial class MinecraftVersionService
             primaryUrl,
             targetPath,
             expectedSha1,
-            progressCallback,
+            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
             cancellationToken);
 
         if (!result.Success && !string.IsNullOrEmpty(fallbackUrl) && primaryUrl != fallbackUrl)
@@ -147,7 +147,7 @@ public partial class MinecraftVersionService
                 fallbackUrl,
                 targetPath,
                 expectedSha1,
-                progressCallback,
+                progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
                 cancellationToken);
         }
 

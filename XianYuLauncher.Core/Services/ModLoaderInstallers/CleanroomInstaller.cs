@@ -128,7 +128,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 installerUrl,
                 installerPath,
                 null, // Cleanroom Installer 没有提供 SHA1
-                p => ReportProgress(progressCallback, p, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55),
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -463,7 +463,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         }
 
         Logger.LogInformation("开始下载 {Count} 个依赖库", downloadTasks.Count);
-        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, progressCallback, cancellationToken);
+        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
         Logger.LogInformation("依赖库下载完成");
     }
 

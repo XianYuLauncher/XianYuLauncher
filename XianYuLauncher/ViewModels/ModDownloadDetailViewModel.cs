@@ -27,6 +27,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IFileService _fileService;
         private readonly ITranslationService _translationService;
         private readonly IDownloadTaskManager _downloadTaskManager;
+        private readonly IDownloadManager _downloadManager;
 
         [ObservableProperty]
         private string _modId;
@@ -648,7 +649,8 @@ namespace XianYuLauncher.ViewModels
             CurseForgeService curseForgeService,
             IMinecraftVersionService minecraftVersionService,
             ITranslationService translationService,
-            IDownloadTaskManager downloadTaskManager)
+            IDownloadTaskManager downloadTaskManager,
+            IDownloadManager downloadManager)
         {
             _modrinthService = modrinthService;
             _curseForgeService = curseForgeService;
@@ -657,6 +659,7 @@ namespace XianYuLauncher.ViewModels
             _localSettingsService = App.GetService<ILocalSettingsService>();
             _translationService = translationService;
             _downloadTaskManager = downloadTaskManager;
+            _downloadManager = downloadManager;
         }
         
         private readonly ILocalSettingsService _localSettingsService;
@@ -2678,34 +2681,21 @@ namespace XianYuLauncher.ViewModels
                     
                     if (modVersion.DownloadUrl.StartsWith("http://") || modVersion.DownloadUrl.StartsWith("https://"))
                     {
-                        // 远程文件：使用HttpClient下载
-                        using (HttpClient client = new HttpClient())
-                        {
-                            client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                            using (HttpResponseMessage response = await client.GetAsync(modVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
+                        // 远程文件：使用IDownloadManager下载
+                        await _downloadManager.DownloadFileAsync(
+                            modVersion.DownloadUrl,
+                            mrpackPath,
+                            null,
+                            (XianYuLauncher.Core.Contracts.Services.DownloadProgressStatus status) => 
                             {
-                                response.EnsureSuccessStatusCode();
-                                long totalBytes = response.Content.Headers.ContentLength ?? 0;
-                                long totalRead = 0;
-
-                                using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
-                                using (Stream fileStream = new FileStream(mrpackPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                                // 更新安装进度（0%-30%用于下载）
+                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                                 {
-                                    byte[] buffer = new byte[8192];
-                                    int bytesRead;
-
-                                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _installCancellationTokenSource.Token)) > 0)
-                                    {
-                                        await fileStream.WriteAsync(buffer, 0, bytesRead, _installCancellationTokenSource.Token);
-                                        totalRead += bytesRead;
-
-                                        // 更新安装进度（0%-30%用于下载）
-                                        InstallProgress = (double)totalRead / totalBytes * 30;
-                                        InstallProgressText = $"{InstallProgress:F1}%";
-                                    }
-                                }
-                            }
-                        }
+                                    InstallProgress = status.Percent * 0.3;
+                                    InstallProgressText = $"{InstallProgress:F1}%";
+                                });
+                            },
+                            _installCancellationTokenSource.Token);
                     }
                     else
                     {
@@ -2944,22 +2934,12 @@ namespace XianYuLauncher.ViewModels
                                                 
                                                 System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 开始下载: {fileName}");
                                                 
-                                                using (HttpClient client = new HttpClient())
-                                                {
-                                                    client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                                                    client.Timeout = TimeSpan.FromMinutes(5);
-                                                    
-                                                    using (HttpResponseMessage response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, _installCancellationTokenSource.Token))
-                                                    {
-                                                        response.EnsureSuccessStatusCode();
-                                                        
-                                                        using (Stream contentStream = await response.Content.ReadAsStreamAsync(_installCancellationTokenSource.Token))
-                                                        using (FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, FileOptions.Asynchronous))
-                                                        {
-                                                            await contentStream.CopyToAsync(fileStream, 65536, _installCancellationTokenSource.Token);
-                                                        }
-                                                    }
-                                                }
+                                                await _downloadManager.DownloadFileAsync(
+                                                    downloadUrl,
+                                                    targetPath,
+                                                    null,
+                                                    null,
+                                                    _installCancellationTokenSource.Token);
                                                 
                                                 System.Diagnostics.Debug.WriteLine($"[Modrinth整合包] 下载完成: {fileName}");
                                                 

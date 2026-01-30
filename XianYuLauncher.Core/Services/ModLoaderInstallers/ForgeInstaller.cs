@@ -21,7 +21,6 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public class ForgeInstaller : ModLoaderInstallerBase
 {
-    private readonly HttpClient _httpClient;
     private readonly IProcessorExecutor _processorExecutor;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
@@ -47,8 +46,6 @@ public class ForgeInstaller : ModLoaderInstallerBase
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
     }
 
     /// <inheritdoc/>
@@ -139,7 +136,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 forgeInstallerUrl,
                 forgeInstallerPath,
                 null, // Forge Installer 没有提供 SHA1
-                p => ReportProgress(progressCallback, p, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55),
                 cancellationToken);
 
             // 如果主下载源失败，尝试官方源
@@ -152,7 +149,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                     officialUrl,
                     forgeInstallerPath,
                     null,
-                    p => ReportProgress(progressCallback, p, 35, 55),
+                    status => ReportProgress(progressCallback, status.Percent, 35, 55),
                     cancellationToken);
             }
 
@@ -289,7 +286,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         {
             // Forge版本列表API
             var url = $"https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
+            var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var promotions = JsonConvert.DeserializeObject<ForgePromotions>(response);
 
             var versions = new List<string>();
@@ -505,7 +502,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             return;
         }
 
-        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, progressCallback, cancellationToken);
+        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
     }
 
     /// <summary>
