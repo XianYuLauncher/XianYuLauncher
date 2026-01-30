@@ -215,8 +215,9 @@ jobs:
         New-Item -ItemType Directory -Force -Path $signedDir | Out-Null
         echo "SIGNED_DIR=$signedDir" >> $env:GITHUB_ENV
 
-    # 6.2. 提交给 SignPath 进行签名 (使用 API 直接调用)
+    # 6.2. 提交给 SignPath 进行签名 (仅 Release 通道或非 Dev/Beta)
     - name: Sign with SignPath
+      if: ${{ !contains(github.ref, 'dev') && !contains(github.ref, 'beta') }}
       shell: pwsh
       env:
         SP_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -289,8 +290,9 @@ jobs:
             
         Write-Host "Signed artifact downloaded successfully."
 
-    # 6.3. 用签名后的文件替换掉本地文件
+    # 6.3. 用签名后的文件替换掉本地文件 (仅当使用了 SignPath 时)
     - name: Replace with Signed Artifact
+      if: ${{ !contains(github.ref, 'dev') && !contains(github.ref, 'beta') }}
       shell: powershell
       run: |
         $originalMsix = "${{ env.MSIX_PATH }}"
