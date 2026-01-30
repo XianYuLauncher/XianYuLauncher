@@ -355,6 +355,7 @@ jobs:
       with:
         configuration: ".github/changelog-configuration.json"
         ignorePreReleases: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
+        mode: "COMMIT"
 
     # 2. 发布 Release (只上传标准带版本号的文件，保持干净)
     - name: Release

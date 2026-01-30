@@ -452,17 +452,61 @@ public class UpdateService
     {
         try
         {
-            // 尝试处理可能带有 -dev, -beta 等后缀的版本号
-            // 如果解析失败，尝试只取前面的数字部分
-            string versionToParse = latestVersion;
-            int dashIndex = latestVersion.IndexOf('-');
-            if (dashIndex > 0)
+            string raw = latestVersion;
+            // 确保移除 'v' 前缀
+            if (raw.StartsWith("v", StringComparison.OrdinalIgnoreCase))
             {
-                versionToParse = latestVersion.Substring(0, dashIndex);
+                raw = raw.Substring(1);
             }
 
-            var latest = Version.Parse(versionToParse);
-            return latest > _currentVersion;
+            string basePart = raw;
+            int revision = 0;
+            
+            // 处理后缀 (如 -dev01, -beta2)
+            int dashIndex = raw.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                basePart = raw.Substring(0, dashIndex);
+                string suffix = raw.Substring(dashIndex + 1);
+                
+                // 从后缀提取 Revision 版本号 (参考 CI 构建逻辑: dev01 -> 1)
+                var match = System.Text.RegularExpressions.Regex.Match(suffix, @"(\d+)$");
+                if (match.Success)
+                {
+                    int.TryParse(match.Groups[1].Value, out revision);
+                }
+            }
+
+            // 解析基础版本
+            if (Version.TryParse(basePart, out Version baseVer))
+            {
+                // 构建完整的四段版本号 (Major.Minor.Build.Revision)
+                int major = baseVer.Major;
+                int minor = baseVer.Minor;
+                int build = baseVer.Build;
+                if (build == -1) build = 0;
+                
+                // 如果 baseVer 只有两段 (1.4), Build 也会是 -1 => 0
+                if (minor == -1) minor = 0;
+
+                // 如果基础版本只有三位 (1.4.1)，则 Revision 使用后缀提取的值
+                // 如果基础版本已有四位 (1.4.1.5)，且有后缀，这里的逻辑可能需要权衡。
+                // 但通常 Git Tag 是三位 (v1.4.1-dev01)。
+                
+                // 注意：如果从 JSON 获取的版本是 1.4.0 (稳定版)，revision 为 0
+                // 1.4.1.0 vs 1.4.0
+                
+                var latest = new Version(major, minor, build, revision);
+                
+                _logger.LogInformation("解析对比版本: Tag={Tag} -> Version={Ver} (Current={Cur})", latestVersion, latest, _currentVersion);
+                Debug.WriteLine($"[DEBUG] 解析对比版本: Tag={latestVersion} -> Version={latest} (Current={_currentVersion})");
+                
+                return latest > _currentVersion;
+            }
+            
+            // 兜底逻辑
+            var fallback = Version.Parse(basePart);
+            return fallback > _currentVersion;
         }
         catch (Exception ex)
         {
