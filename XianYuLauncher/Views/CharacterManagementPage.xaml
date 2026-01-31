@@ -27,7 +27,7 @@
             BorderThickness="1"
             CornerRadius="8"
             Padding="20"
-            Margin="0,0,0,20">
+            Margin="0,0,12,20">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -76,7 +76,7 @@
             Grid.Row="1"
             VerticalScrollBarVisibility="Auto"
             HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="20">
+            <StackPanel Spacing="20" Padding="0,0,12,0">
                 <!-- 皮肤3D预览卡片 -->
                 <Border
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
