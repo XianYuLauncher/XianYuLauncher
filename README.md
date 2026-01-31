@@ -77,6 +77,8 @@ Free code signing provided by [SignPath.io](https://about.signpath.io/), certifi
 
 This project uses SignPath to ensure the integrity and authenticity of our releases.
 
+> **Note**: Due to insufficient developer quota, SignPath signing may not be used temporarily.
+
 - **Process**: All standalone releases (excluding Microsoft Store builds) are built using GitHub Actions and automatically signed by SignPath.
 - **Privacy & Terms**: 
   - [Terms of Use](https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV)

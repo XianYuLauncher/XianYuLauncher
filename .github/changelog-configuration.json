@@ -25,8 +25,15 @@
   "empty_template": "- 本次更新包含了杂项改进。",
   "label_extractor": [
     {
-      "pattern": "^(feat|fix|perf|chore|refactor|style|docs|CI):(.*)",
-      "target": "$1"
+      "pattern": "^(feat|fix|perf|chore|refactor|style|docs|CI)(?:\\([^)]+\\))?!?:\\s+(.*)",
+      "target": "$1",
+      "flags": "i"
+    }
+  ],
+  "transformers": [
+    {
+      "pattern": "^(feat|fix|perf|chore|refactor|style|docs|CI)(?:\\([^)]+\\))?!?:\\s+(.*)",
+      "target": "$2"
     }
   ]
 }

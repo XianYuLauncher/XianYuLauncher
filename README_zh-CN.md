@@ -72,6 +72,19 @@
 - **GitHub**: [XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
 - **Issues**: [报告 Bug 或请求功能](https://github.com/XianYuLauncher/XianYuLauncher/issues)
 
+## 代码签名策略
+
+免费代码签名由 [SignPath.io](https://about.signpath.io/) 提供，证书由 [SignPath Foundation](https://signpath.org/) 提供。
+
+本项目使用 SignPath 以确保发布的完整性和真实性。
+
+> **注意**：由于开发者额度不足，暂时可能不会使用SignPath签名。
+
+- **流程**：所有独立发行版（不包括 Microsoft Store 构建）均使用 GitHub Actions 构建，并由 SignPath 自动签名。
+- **隐私与条款**：
+  - [使用条款](https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV)
+  - [隐私政策](https://docs.qq.com/doc/DVnFIaUVhb2NXRXRz)
+
 ---
 
 **XianYu Launcher** - 提升您的 Minecraft 体验！
