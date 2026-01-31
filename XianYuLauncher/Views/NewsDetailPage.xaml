@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:media="using:CommunityToolkit.WinUI.Media"
     mc:Ignorable="d">
 
     <Grid>
@@ -44,16 +45,47 @@
             Grid.Row="1" 
             Padding="40,24,40,24"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Left">
+            <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Center">
                 <!-- 头图 -->
                 <Border 
                     x:Name="ImageBorder"
                     CornerRadius="8"
+                    Height="400"
                     Visibility="Collapsed">
-                    <Image 
-                        x:Name="NewsImage"
-                        MaxHeight="300"
-                        Stretch="UniformToFill" />
+                    <Grid>
+                        <!-- 底层图（用作被模糊的源） -->
+                        <Image 
+                            x:Name="NewsImageBg"
+                            Stretch="UniformToFill" 
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+                        
+                        <!-- 模糊层：使用BackdropBlurBrush直接模糊背景 -->
+                        <Border x:Name="BlurBorder" Visibility="Collapsed">
+                            <Border.Background>
+                                <media:BackdropBlurBrush Amount="10" />
+                            </Border.Background>
+                        </Border>
+                        
+                        <!-- 变暗遮罩：确保前景图更突出 -->
+                        <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseBrush}" Opacity="0.05"/>
+                        
+                        <!-- 前景图：完整显示 -->
+                        <Border 
+                            VerticalAlignment="Center" 
+                            HorizontalAlignment="Center"
+                            Margin="32"
+                            CornerRadius="8"
+                            Translation="0,0,32">
+                            <Border.Shadow>
+                                <ThemeShadow />
+                            </Border.Shadow>
+                            
+                            <Image 
+                                x:Name="NewsImage"
+                                Stretch="Uniform" />
+                        </Border>
+                    </Grid>
                 </Border>
 
                 <!-- 标题 -->

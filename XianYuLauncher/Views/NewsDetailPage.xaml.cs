@@ -40,7 +40,27 @@ public sealed partial class NewsDetailPage : Page
 
         if (!string.IsNullOrEmpty(ViewModel.ImageUrl))
         {
-            NewsImage.Source = new BitmapImage(new System.Uri(ViewModel.ImageUrl));
+            var bitmap = new BitmapImage(new System.Uri(ViewModel.ImageUrl));
+            
+            // 重置模糊层状态
+            BlurBorder.Visibility = Visibility.Collapsed;
+            
+            // 当图片加载完成后，显示模糊层，确保BackdropBlurBrush能采集到正确的像素
+            bitmap.ImageOpened += (s, e) => 
+            {
+                // 确保在 UI 线程执行
+                if (DispatcherQueue.HasThreadAccess)
+                {
+                    BlurBorder.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    DispatcherQueue.TryEnqueue(() => BlurBorder.Visibility = Visibility.Visible);
+                }
+            };
+
+            NewsImage.Source = bitmap;
+            NewsImageBg.Source = bitmap;
             ImageBorder.Visibility = Visibility.Visible;
         }
     }
