@@ -854,9 +854,6 @@ public class GameLaunchService : IGameLaunchService
     /// </summary>
     private string ProcessJvmArgument(string argStr, string versionName, string versionDir, string librariesPath, string classpath, ref bool isNextArgPValue)
     {
-        // 获取不带.jar后缀的版本名称
-        string versionNameWithoutExt = Path.GetFileNameWithoutExtension(versionName);
-        
         // 替换占位符
         string processedArg = argStr
             .Replace("${natives_directory}", Path.Combine(versionDir, $"{versionName}-natives"))
@@ -864,7 +861,7 @@ public class GameLaunchService : IGameLaunchService
             .Replace("${launcher_version}", "1.0")
             .Replace("${classpath}", classpath)
             .Replace("${classpath_separator}", ";")
-            .Replace("${version_name}", versionNameWithoutExt);
+            .Replace("${version_name}", versionName);
         
         // 检查是否是-p参数的标记
         if (processedArg == "-p")
@@ -966,12 +963,6 @@ public class GameLaunchService : IGameLaunchService
             }
         }
 
-        // 处理 $extension 占位符
-        if (!string.IsNullOrEmpty(detectedExtension) && detectedExtension.Equals("$extension", StringComparison.OrdinalIgnoreCase))
-        {
-            detectedExtension = "zip";
-        }
-
         // 如果库名称中包含分类器（4个或更多部分）
         if (parts.Length >= 4)
         {
@@ -980,6 +971,16 @@ public class GameLaunchService : IGameLaunchService
 
         // 优先使用方法参数传入的分类器
         string? finalClassifier = !string.IsNullOrEmpty(classifier) ? classifier : detectedClassifier;
+
+        // 处理分类器中的特殊字符
+        if (!string.IsNullOrEmpty(finalClassifier))
+        {
+            finalClassifier = finalClassifier.Replace('@', '.');
+            if (finalClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
+            {
+                finalClassifier = "zip";
+            }
+        }
 
         // 将 groupId 中的点替换为目录分隔符
         string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
@@ -1010,7 +1011,14 @@ public class GameLaunchService : IGameLaunchService
             extension = "." + detectedExtension;
         }
         
-        fileName += extension;
+        // 只有当文件名不包含已知扩展名时才添加
+        var knownExtensions = new[] { ".jar", ".zip", ".lzma", ".tsrg" };
+        bool hasKnownExtension = knownExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        
+        if (!hasKnownExtension)
+        {
+            fileName += extension;
+        }
 
         return Path.Combine(librariesDirectory, groupPath, artifactId, version, fileName);
     }

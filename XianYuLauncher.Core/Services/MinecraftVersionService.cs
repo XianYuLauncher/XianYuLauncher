@@ -1183,21 +1183,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用从版本号中提取的extension: {extension}");
         }
         // 检查文件名是否已经包含特定扩展名
-        else if (fileName.EndsWith(".lzma", StringComparison.OrdinalIgnoreCase))
-        {
-            extension = ".lzma";
-            hasExtension = true;
-        }
-        else if (fileName.EndsWith(".tsrg", StringComparison.OrdinalIgnoreCase))
-        {
-            extension = ".tsrg";
-            hasExtension = true;
-        }
-        else if (fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-        {
-            extension = ".zip";
-            hasExtension = true;
-        }
+        var knownExtensions = new[] { ".jar", ".zip", ".lzma", ".tsrg" };
+        hasExtension = knownExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
         
         // 如果文件名已经包含扩展名，就不再添加；否则添加默认扩展名
         if (!hasExtension)

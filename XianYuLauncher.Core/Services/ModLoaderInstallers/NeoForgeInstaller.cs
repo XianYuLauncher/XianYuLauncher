@@ -214,6 +214,19 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var versionJsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
             var neoforgeVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent);
 
+            // 补全version.json中库的下载链接并下载
+            if (neoforgeVersionInfo?.Libraries != null)
+            {
+                EnsureLibraryUrls(neoforgeVersionInfo.Libraries);
+                
+                Logger.LogInformation("正在下载version.json中的依赖库...");
+                await DownloadInstallProfileLibrariesAsync(
+                    neoforgeVersionInfo.Libraries,
+                    librariesDirectory,
+                    p => {}, 
+                    cancellationToken);
+            }
+
             progressCallback?.Invoke(90);
 
             // 10. 执行处理器
@@ -406,6 +419,64 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
     }
 
+    private void EnsureLibraryUrls(List<Library> libraries)
+    {
+        foreach (var library in libraries)
+        {
+            if (library.Downloads == null)
+            {
+                library.Downloads = new LibraryDownloads();
+            }
+
+            if (library.Downloads.Artifact == null)
+            {
+                var parts = library.Name?.Split(':');
+                if (parts != null && parts.Length >= 3)
+                {
+                    string groupId = parts[0];
+                    string artifactId = parts[1];
+                    string version = parts[2];
+                    string? classifier = parts.Length > 3 ? parts[3] : null;
+
+                    // 处理@jar后缀
+                    string extension = "jar";
+                    if (classifier != null && classifier.Contains("@"))
+                    {
+                        var classifierParts = classifier.Split('@');
+                        classifier = classifierParts[0];
+                        if (classifierParts.Length > 1) extension = classifierParts[1];
+                    }
+
+                    string baseUrl = "https://libraries.minecraft.net/";
+                    if (library.Name?.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        baseUrl = "https://maven.neoforged.net/releases/";
+                    }
+                    else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        baseUrl = "https://maven.minecraftforge.net/";
+                    }
+
+                    string fileName = $"{artifactId}-{version}";
+                    if (!string.IsNullOrEmpty(classifier))
+                    {
+                        fileName += $"-{classifier}";
+                    }
+                    fileName += $".{extension}";
+
+                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
+                    
+                    library.Downloads.Artifact = new DownloadFile
+                    {
+                        Url = downloadUrl,
+                        Sha1 = null,
+                        Size = 0
+                    };
+                }
+            }
+        }
+    }
+
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
     {
         // 确保输入参数不为null
@@ -454,40 +525,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         }
 
         // 为所有库处理downloads字段，确保它们有正确的downloads信息
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    string baseUrl = "https://libraries.minecraft.net/";
-                    if (library.Name?.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = "https://maven.neoforged.net/releases/";
-                    }
-                    else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = "https://maven.minecraftforge.net/";
-                    }
-                    
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        EnsureLibraryUrls(merged.Libraries);
 
         // 去重依赖库
         merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
