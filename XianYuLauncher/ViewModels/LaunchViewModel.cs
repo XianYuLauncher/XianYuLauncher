@@ -436,6 +436,11 @@ public partial class LaunchViewModel : ObservableRecipient
         // 处理按钮点击事件
         dialog.PrimaryButtonClick += async (sender, args) =>
         {
+            // 设置版本信息
+            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+
             // 导出崩溃日志按钮
             var navigationService = App.GetService<INavigationService>();
             navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
@@ -444,12 +449,16 @@ public partial class LaunchViewModel : ObservableRecipient
             await Task.Delay(500);
             
             // 自动触发导出
-            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
             await errorAnalysisViewModel.ExportErrorLogsCommand.ExecuteAsync(null);
         };
         
         dialog.SecondaryButtonClick += (sender, args) =>
         {
+            // 设置版本信息
+            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+            var minecraftPath = _fileService.GetMinecraftDataPath();
+            errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+
             // 查看详细日志按钮
             var navigationService = App.GetService<INavigationService>();
             navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
