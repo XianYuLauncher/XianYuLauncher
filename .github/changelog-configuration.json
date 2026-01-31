@@ -14,7 +14,7 @@
     },
     {
       "title": "## 🧹 代码重构与维护",
-      "labels": ["chore", "refactor", "style", "docs", "CI"]
+      "labels": ["chore", "refactor", "style", "docs", "CI", "ci"]
     }
   ],
   "ignore_labels": [
