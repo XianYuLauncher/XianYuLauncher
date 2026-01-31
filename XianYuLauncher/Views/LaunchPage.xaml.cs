@@ -14,6 +14,7 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
 
 namespace XianYuLauncher.Views;
 
@@ -55,10 +56,24 @@ public sealed partial class LaunchPage : Page
         }
     }
     
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+
+        // 刷新角色列表 (必须在自动启动前执行，确保有选中的角色)
+        ViewModel.LoadProfiles();
         
+        // 刷新版本列表（等待加载完成，避免覆盖后续设置的 SelectedVersion）
+        await ViewModel.LoadInstalledVersionsCommand.ExecuteAsync(null);
+
+        if (e.Parameter is LaunchMapParameter launchParams)
+        {
+             ViewModel.SelectedVersion = launchParams.VersionId;
+             ViewModel.QuickPlayWorld = launchParams.WorldFolder;
+             // 自动启动
+             _ = ViewModel.LaunchGameCommand.ExecuteAsync(null);
+        }
+
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] OnNavigatedTo called");
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsGameRunning={ViewModel.IsGameRunning}");
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsLaunchSuccessInfoBarOpen={ViewModel.IsLaunchSuccessInfoBarOpen}");
@@ -71,12 +86,6 @@ public sealed partial class LaunchPage : Page
         }
         
         // InfoBar状态会自动根据 IsGameRunning 恢复，无需手动设置
-        
-        // 刷新版本列表（异步执行，不阻塞UI）
-        _ = ViewModel.LoadInstalledVersionsCommand.ExecuteAsync(null);
-        
-        // 刷新角色列表
-        ViewModel.LoadProfiles();
         
         // 每次导航到该页面时都加载头像
         // 对于正版玩家，会先显示缓存头像，然后后台静默刷新

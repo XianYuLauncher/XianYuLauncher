@@ -455,9 +455,10 @@
                                                     <Button HorizontalAlignment="Stretch" 
                                                             HorizontalContentAlignment="Stretch" 
                                                             Padding="12,10"
-                                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                                                            BorderThickness="0" 
-                                                            CornerRadius="6"
+                                                            Background="{ThemeResource CardBackgroundFillColorDefault}"
+                                                            BorderThickness="1" 
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                                                            CornerRadius="8"
                                                             Command="{Binding DataContext.LaunchWithSaveCommand, ElementName=ContentArea}"
                                                             CommandParameter="{Binding}">
                                                         <Grid>
@@ -1988,7 +1989,7 @@
                         <ListView 
                             x:Name="MapListView"
                             ItemsSource="{Binding Maps, Mode=OneWay}"
-                            SelectionMode="None"
+                            SelectionMode="Single"
                             IsItemClickEnabled="True"
                             ItemClick="MapListView_ItemClick"
                             CanReorderItems="False"
@@ -2027,6 +2028,11 @@
                                         <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                               CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                               BorderThickness="1">
+                                            <Grid.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                </MenuFlyout>
+                                            </Grid.ContextFlyout>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
@@ -2276,6 +2282,13 @@
                 
                 <!-- 操作按钮 - 使用 CommandBar 样式 -->
                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                    <Button Command="{Binding LaunchMapCommand}" 
+                            CommandParameter="{Binding SelectedMapForDetail}"
+                            ToolTipService.ToolTip="启动"
+                            Width="44" Height="36">
+                        <FontIcon Glyph="&#xE768;" FontSize="16" />
+                    </Button>
+
                     <Button Command="{Binding OpenMapFolderCommand}" 
                             ToolTipService.ToolTip="打开文件夹"
                             Width="44" Height="36">

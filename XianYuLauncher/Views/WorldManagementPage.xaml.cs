@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Models;
 
 namespace XianYuLauncher.Views;
 
@@ -40,7 +41,13 @@ public sealed partial class WorldManagementPage : Page
             base.OnNavigatedTo(e);
             System.Diagnostics.Debug.WriteLine("[WorldManagementPage] base.OnNavigatedTo 完成");
             
-            if (e.Parameter is string worldPath)
+            if (e.Parameter is Models.WorldManagementParameter param)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 保存待加载路径: {param.WorldPath} 版本: {param.VersionId}");
+                _pendingWorldPath = param.WorldPath;
+                ViewModel.CurrentVersionId = param.VersionId;
+            }
+            else if (e.Parameter is string worldPath)
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 保存待加载路径: {worldPath}");
                 _pendingWorldPath = worldPath;

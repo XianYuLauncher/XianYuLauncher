@@ -141,7 +141,7 @@ public class GameLaunchService : IGameLaunchService
             // 8. 构建启动参数
             var launchArgs = await BuildLaunchArgumentsAsync(
                 versionInfo, profile, config, versionName, versionDir, gameDir,
-                jarPath, librariesPath, assetsPath, javaPath, minecraftPath);
+                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, null);
             
             // 9. 生成完整命令
             string javaExecutable = javaPath;
@@ -175,7 +175,8 @@ public class GameLaunchService : IGameLaunchService
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default,
-        string? overrideJavaPath = null)
+        string? overrideJavaPath = null,
+        string? quickPlaySingleplayer = null)
     {
         _logger.LogInformation("=== GameLaunchService.LaunchGameAsync 开始 ===");
         _logger.LogInformation("版本名称: {VersionName}", versionName);
@@ -357,7 +358,7 @@ public class GameLaunchService : IGameLaunchService
             statusCallback?.Invoke("正在构建启动参数...");
             var launchArgs = await BuildLaunchArgumentsAsync(
                 versionInfo, profile, config, versionName, versionDir, gameDir,
-                jarPath, librariesPath, assetsPath, javaPath, minecraftPath);
+                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, quickPlaySingleplayer);
             _logger.LogInformation("启动参数构建完成，共 {Count} 个参数", launchArgs.Count);
             
             // 12. 创建进程
@@ -445,7 +446,8 @@ public class GameLaunchService : IGameLaunchService
         string librariesPath,
         string assetsPath,
         string javaPath,
-        string minecraftPath)
+        string minecraftPath,
+        string? quickPlaySingleplayer = null)
     {
         var args = new List<string>();
 
@@ -527,7 +529,7 @@ public class GameLaunchService : IGameLaunchService
         args.Add(versionInfo.MainClass);
         
         // 处理游戏参数
-        await AddGameArgumentsAsync(args, versionInfo, profile, versionName, gameDir, assetsPath, userType);
+        await AddGameArgumentsAsync(args, versionInfo, profile, config, versionName, gameDir, assetsPath, userType, quickPlaySingleplayer);
         
         // 分辨率参数
         args.Add("--width");
@@ -545,10 +547,12 @@ public class GameLaunchService : IGameLaunchService
         List<string> args,
         VersionInfo versionInfo,
         MinecraftProfile profile,
+        VersionConfig config,
         string versionName,
         string gameDir,
         string assetsPath,
-        string userType)
+        string userType,
+        string? quickPlaySingleplayer = null)
     {
         await Task.CompletedTask;
         
@@ -574,6 +578,33 @@ public class GameLaunchService : IGameLaunchService
         args.Add("--versionType");
         args.Add("XianYuLauncher");
         
+        // 快速启动存档支持 (1.20+)
+        // 获取真实的原版版本号 (从Config或InheritsFrom)
+        string realVersion = versionName;
+        if (config != null && !string.IsNullOrEmpty(config.MinecraftVersion))
+        {
+            realVersion = config.MinecraftVersion;
+        }
+        else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+        {
+            realVersion = versionInfo.InheritsFrom;
+        }
+        else
+        {
+            var extracted = _versionInfoService.ExtractVersionConfigFromName(versionName);
+            if (extracted != null && !string.IsNullOrEmpty(extracted.MinecraftVersion))
+            {
+                realVersion = extracted.MinecraftVersion;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(quickPlaySingleplayer) && IsSupportQuickPlay(realVersion))
+        {
+            _logger.LogInformation("添加快速启动参数: --quickPlaySingleplayer ***** (BaseVersion: {Version})", realVersion);
+            args.Add("--quickPlaySingleplayer");
+            args.Add(quickPlaySingleplayer);
+        }
+
         // 1.9 以下版本需要 userProperties
         if (IsVersionBelow1_9(versionName))
         {
@@ -1060,6 +1091,22 @@ public class GameLaunchService : IGameLaunchService
         return result;
     }
     
+    private bool IsSupportQuickPlay(string versionName)
+    {
+        if (string.IsNullOrEmpty(versionName)) return false;
+        // 简单正则匹配 1.20 及以上版本
+        // 匹配格式: 1.20, 1.20.1, 1.21, 1.21.4 等
+        var match = System.Text.RegularExpressions.Regex.Match(versionName, @"^1\.(\d+)(?:\.(\d+))?");
+        if (match.Success)
+        {
+            if (int.TryParse(match.Groups[1].Value, out int minor))
+            {
+                 return minor >= 20;
+            }
+        }
+        return false;
+    }
+
     /// <summary>
     /// 检查版本是否低于 1.9（完整实现）
     /// </summary>

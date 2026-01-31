@@ -44,6 +44,9 @@ public partial class LaunchViewModel : ObservableRecipient
     private int _windowHeight = 720;
 
     [ObservableProperty]
+    private string _quickPlayWorld;
+
+    [ObservableProperty]
     private bool _isDevBuild;
 
     [RelayCommand]
@@ -1825,6 +1828,10 @@ public partial class LaunchViewModel : ObservableRecipient
             
             var javaOverridePath = _temporaryJavaOverridePath;
             _temporaryJavaOverridePath = null;
+            
+            // 快速启动支持
+            string currentQuickPlayWorld = QuickPlayWorld;
+            QuickPlayWorld = null;
 
             var result = await _gameLaunchService.LaunchGameAsync(
                 SelectedVersion,
@@ -1881,7 +1888,8 @@ public partial class LaunchViewModel : ObservableRecipient
                     }
                 },
                 _downloadCancellationTokenSource.Token,
-                javaOverridePath);
+                javaOverridePath,
+                currentQuickPlayWorld);
 
             _currentUsedJavaPath = result.Success ? result.UsedJavaPath : string.Empty;
             

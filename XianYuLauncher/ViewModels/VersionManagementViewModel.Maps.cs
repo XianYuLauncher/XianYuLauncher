@@ -18,6 +18,7 @@ using Windows.Storage.Streams;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Models;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
@@ -211,6 +212,27 @@ public partial class VersionManagementViewModel
     }
     
     /// <summary>
+    /// 启动地图命令
+    /// </summary>
+    /// <param name="map">要启动的地图</param>
+    [RelayCommand]
+    private void LaunchMap(MapInfo map)
+    {
+        if (map == null || SelectedVersion == null)
+        {
+            return;
+        }
+
+        var param = new LaunchMapParameter
+        {
+            VersionId = SelectedVersion.Name,
+            WorldFolder = map.FileName
+        };
+
+        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName, param);
+    }
+
+    /// <summary>
     /// 删除地图命令
     /// </summary>
     /// <param name="map">要删除的地图</param>
@@ -264,13 +286,18 @@ public partial class VersionManagementViewModel
     [RelayCommand]
     private void ShowMapDetail(MapInfo map)
     {
-        if (map == null)
+        if (map == null || SelectedVersion == null)
         {
             return;
         }
-        
+
         // 导航到世界管理页面
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, map.FilePath);
+        var param = new WorldManagementParameter
+        {
+            WorldPath = map.FilePath,
+            VersionId = SelectedVersion.Name
+        };
+        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, param);
     }
     
     /// <summary>

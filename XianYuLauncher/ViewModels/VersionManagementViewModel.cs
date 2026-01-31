@@ -2232,13 +2232,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 return;
             
             // 导航到启动页面并传递存档信息
-            _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchWithSaveParameter
-            {
-                VersionName = SelectedVersion.Name,
-                SaveName = save.Name
-            });
-        }
+        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchMapParameter
+        {
+            VersionId = SelectedVersion.Name,
+            WorldFolder = save.Name
+        });
+    }
         
-        #endregion
+    #endregion
 
 }

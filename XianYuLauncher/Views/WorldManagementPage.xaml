@@ -115,8 +115,18 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
-                            <Button Command="{x:Bind ViewModel.OpenWorldFolderCommand}" 
+                            <!-- 启动按钮 -->
+                            <Button Command="{x:Bind ViewModel.LaunchWorldCommand}" 
                                     Style="{StaticResource AccentButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="16"/>
+                                    <TextBlock Text="启动游戏"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <!-- 打开文件夹按钮 -->
+                            <Button Command="{x:Bind ViewModel.OpenWorldFolderCommand}" 
+                                    Style="{StaticResource DefaultButtonStyle}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
                                     <TextBlock Text="打开文件夹" x:Uid="WorldManagement_OpenFolder"/>

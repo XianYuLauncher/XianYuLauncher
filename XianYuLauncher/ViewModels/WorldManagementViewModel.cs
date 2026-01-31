@@ -7,6 +7,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -115,6 +116,22 @@ public partial class WorldManagementViewModel : ObservableRecipient
     [ObservableProperty]
     private int _selectedTabIndex = 0;
     
+    [ObservableProperty]
+    private string _currentVersionId = string.Empty;
+
+    [RelayCommand]
+    private void LaunchWorld()
+    {
+        if (string.IsNullOrEmpty(CurrentVersionId) || string.IsNullOrEmpty(WorldName))
+            return;
+
+        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchMapParameter
+        {
+            VersionId = CurrentVersionId,
+            WorldFolder = WorldName
+        });
+    }
+
     public WorldManagementViewModel(
         IFileService fileService,
         INavigationService navigationService,

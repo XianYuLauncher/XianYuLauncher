@@ -30,7 +30,8 @@ public interface IGameLaunchService
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default,
-        string? overrideJavaPath = null);
+        string? overrideJavaPath = null,
+        string? quickPlaySingleplayer = null);
     
     /// <summary>
     /// 设置外置登录回调
