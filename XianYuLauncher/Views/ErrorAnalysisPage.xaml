@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:XianYuLauncher.Views"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -103,11 +104,11 @@
                               HorizontalScrollBarVisibility="Disabled" 
                               MaxHeight="300"
                               x:Name="KnowledgeBaseScrollViewer">
-                        <TextBlock 
+                        <ct:MarkdownTextBlock 
                                Text="{x:Bind ViewModel.AiAnalysisResult, Mode=OneWay}" 
+                               Background="Transparent" 
                                TextWrapping="Wrap" 
                                FontSize="14"
-                               LineHeight="24"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
                                x:Name="KnowledgeBaseTextBlock" 
                                IsTextSelectionEnabled="True" />
