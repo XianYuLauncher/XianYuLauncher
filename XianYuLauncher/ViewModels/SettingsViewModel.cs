@@ -860,7 +860,56 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadVersionListSourceAsync()
     {
-        VersionListSource = await _localSettingsService.ReadSettingAsync<VersionListSourceType>(VersionListSourceKey);
+        // 检查是否有保存的设置，对于Enum类型，LocalSettingsService如果不存会返回默认值(0/Official)
+        // 但我们需要区分"未设置(首次启动)"和"用户设置过Official"
+        // 由于ReadSettingAsync泛型如果不传默认值会返回default(T)，这里我们先尝试读取字符串判断是否存在
+        
+        var savedValue = await _localSettingsService.ReadSettingAsync<string>(VersionListSourceKey);
+        
+        if (string.IsNullOrEmpty(savedValue))
+        {
+            // 首次启动，根据地区设置默认值
+            var defaultSource = GetDefaultVersionListSourceByRegion();
+            VersionListSource = defaultSource;
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源首次初始化，地区检测默认值: {defaultSource}");
+        }
+        else
+        {
+             // 兼容旧的存储方式（可能是直接存的int），尝试转为Enum
+             // 如果是新保存的字符串方式，Enum.TryParse也能处理
+             if (Enum.TryParse<VersionListSourceType>(savedValue, out var source))
+             {
+                 VersionListSource = source;
+             }
+             // 兜底：如果是旧版直接存的数字
+             else if (int.TryParse(savedValue, out var intSource))
+             {
+                 VersionListSource = (VersionListSourceType)intSource;
+             }
+             
+             System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源加载已保存设置: {VersionListSource}");
+        }
+    }
+    
+    /// <summary>
+    /// 根据地区获取默认版本列表源
+    /// </summary>
+    private VersionListSourceType GetDefaultVersionListSourceByRegion()
+    {
+        var region = System.Globalization.RegionInfo.CurrentRegion;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源地区检测 - Region: {region.Name}, Culture: {culture.Name}");
+        
+        // 中国大陆用户默认使用BMCLAPI
+        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，版本列表源默认使用BMCLAPI");
+            return VersionListSourceType.BMCLAPI;
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，版本列表源默认使用官方源");
+        return VersionListSourceType.Official;
     }
     
     /// <summary>
@@ -868,7 +917,8 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnVersionListSourceChanged(VersionListSourceType value)
     {
-        _localSettingsService.SaveSettingAsync(VersionListSourceKey, value).ConfigureAwait(false);
+        // 保存为字符串，保持与其他源设置一致，并方便区分"未设置"状态
+        _localSettingsService.SaveSettingAsync(VersionListSourceKey, value.ToString()).ConfigureAwait(false);
     }
     
     /// <summary>
