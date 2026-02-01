@@ -20,6 +20,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -117,7 +118,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"格式化时间失败: {ex.Message}");
+            Log.Error(ex, $"格式化时间失败: {ex.Message}");
             // 确保ElapsedTimeText有一个默认值，避免UI崩溃
             ElapsedTimeText = "00:00:00";
         }
@@ -256,7 +257,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"获取玩家列表失败: {ex.Message}");
+            Log.Error(ex, $"获取玩家列表失败: {ex.Message}");
         }
     }
     
@@ -314,7 +315,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"处理默认头像失败: {ex.Message}");
+            Log.Error(ex, $"处理默认头像失败: {ex.Message}");
             // 失败时返回简单的BitmapImage
             return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
         }
@@ -345,7 +346,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载角色信息失败: {ex.Message}");
+            Log.Error(ex, $"加载角色信息失败: {ex.Message}");
         }
     }
     
@@ -379,7 +380,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"获取meta数据失败: {ex.Message}");
+            Log.Error(ex, $"获取meta数据失败: {ex.Message}");
         }
     }
     
@@ -408,25 +409,25 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                     // 首先尝试使用peaceful=true优雅退出
                     string panicUrl = $"http://localhost:{_port}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
                     
                     // 等待短暂时间，让进程有时间优雅退出
                     await Task.Delay(2000);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"调用terracotta /panic接口时发生错误：{ex.Message}");
+                    Log.Error(ex, $"调用terracotta /panic接口时发生错误：{ex.Message}");
                     // 可以尝试使用peaceful=false强制退出
                     try
                     {
                         string panicUrl = $"http://localhost:{_port}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                        System.Diagnostics.Debug.WriteLine($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
                         await Task.Delay(2000);
                     }
                     catch (Exception ex2)
                     {
-                        System.Diagnostics.Debug.WriteLine($"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                        Log.Error(ex2, $"调用terracotta强制退出接口时发生错误：{ex2.Message}");
                     }
                 }
             }
@@ -443,13 +444,13 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"终止进程时发生错误：{ex.Message}");
+                    Log.Error(ex, $"终止进程时发生错误：{ex.Message}");
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"停止terracotta进程时发生错误：{ex.Message}");
+            Log.Error(ex, $"停止terracotta进程时发生错误：{ex.Message}");
         }
     }
 }

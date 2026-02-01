@@ -1,4 +1,5 @@
 using System; using System.Collections.Generic; using System.IO; using System.Threading.Tasks; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
+using Serilog;
 
 namespace XianYuLauncher.Core.Services
 {
@@ -21,7 +22,7 @@ namespace XianYuLauncher.Core.Services
             _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "terracotta");
             Directory.CreateDirectory(_cacheDirectory);
             
-            Debug.WriteLine($"[TerracottaService] 初始化完成，缓存目录: {_cacheDirectory}");
+            Log.Information($"[TerracottaService] 初始化完成，缓存目录: {_cacheDirectory}");
         }
         
         /// <summary>
@@ -31,30 +32,30 @@ namespace XianYuLauncher.Core.Services
         /// <returns>陶瓦插件可执行文件的本地路径</returns>
         public async Task<string> EnsureTerracottaAsync(Action<double>? progressCallback = null)
         {
-            Debug.WriteLine("[TerracottaService] 开始检查并下载陶瓦插件");
+            Log.Information("[TerracottaService] 开始检查并下载陶瓦插件");
             
             try
             {
                 // 1. 获取当前架构
                 string architecture = GetCurrentArchitecture();
-                Debug.WriteLine($"[TerracottaService] 当前架构: {architecture}");
+                Log.Information($"[TerracottaService] 当前架构: {architecture}");
                 
                 // 2. 获取地区信息，选择合适的API
                 progressCallback?.Invoke(10); // 10% - 开始获取API信息
                 string apiUrl = await GetAppropriateApiUrlAsync();
-                Debug.WriteLine($"[TerracottaService] 使用API URL: {apiUrl}");
+                Log.Information($"[TerracottaService] 使用API URL: {apiUrl}");
                 
                 // 3. 获取最新版本信息
                 progressCallback?.Invoke(20); // 20% - 开始获取版本信息
                 var latestRelease = await GetLatestReleaseInfo(apiUrl);
                 if (latestRelease == null)
                 {
-                    Debug.WriteLine("[TerracottaService] 获取最新版本信息失败，尝试使用本地缓存");
+                    Log.Information("[TerracottaService] 获取最新版本信息失败，尝试使用本地缓存");
                     progressCallback?.Invoke(100); // 100% - 失败，使用缓存
                     return GetCachedTerracottaPath(architecture);
                 }
                 
-                Debug.WriteLine($"[TerracottaService] 最新版本: {latestRelease.tag_name}");
+                Log.Information($"[TerracottaService] 最新版本: {latestRelease.tag_name}");
                 
                 // 4. 检查本地缓存
                 progressCallback?.Invoke(30); // 30% - 检查本地缓存
@@ -65,7 +66,7 @@ namespace XianYuLauncher.Core.Services
                 {
                     var cacheContent = await File.ReadAllTextAsync(cacheFile);
                     cache = JsonConvert.DeserializeObject<TerracottaCache>(cacheContent);
-                    Debug.WriteLine($"[TerracottaService] 本地缓存版本: {cache?.tag_name}");
+                    Log.Information($"[TerracottaService] 本地缓存版本: {cache?.tag_name}");
                 }
                 
                 // 5. 如果本地版本不是最新，或者文件不存在，下载新的
@@ -74,7 +75,7 @@ namespace XianYuLauncher.Core.Services
                 
                 if (!File.Exists(localExecutablePath) || cache?.tag_name != latestRelease.tag_name)
                 {
-                    Debug.WriteLine("[TerracottaService] 需要下载最新版本");
+                    Log.Information("[TerracottaService] 需要下载最新版本");
                     
                     // 6. 查找对应架构的资源
                     progressCallback?.Invoke(40); // 40% - 查找资源
@@ -84,7 +85,7 @@ namespace XianYuLauncher.Core.Services
                     
                     if (asset == null)
                     {
-                        Debug.WriteLine($"[TerracottaService] 未找到对应架构的资源: windows-{architecture}");
+                        Log.Information($"[TerracottaService] 未找到对应架构的资源: windows-{architecture}");
                         progressCallback?.Invoke(100); // 100% - 失败，使用缓存
                         return GetCachedTerracottaPath(architecture);
                     }
@@ -105,7 +106,7 @@ namespace XianYuLauncher.Core.Services
                 }
                 else
                 {
-                    Debug.WriteLine("[TerracottaService] 本地版本已是最新，无需下载");
+                    Log.Information("[TerracottaService] 本地版本已是最新，无需下载");
                     progressCallback?.Invoke(100); // 100% - 已最新
                 }
                 
@@ -113,8 +114,8 @@ namespace XianYuLauncher.Core.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[TerracottaService] 下载陶瓦插件失败: {ex.Message}");
-                Debug.WriteLine($"[TerracottaService] 堆栈跟踪: {ex.StackTrace}");
+                Log.Error(ex, $"[TerracottaService] 下载陶瓦插件失败: {ex.Message}");
+                Log.Error($"[TerracottaService] 堆栈跟踪: {ex.StackTrace}");
                 
                 progressCallback?.Invoke(100); // 100% - 失败
                 
@@ -137,11 +138,11 @@ namespace XianYuLauncher.Core.Services
             
             if (!string.IsNullOrEmpty(terracottaExecutable))
             {
-                Debug.WriteLine($"[TerracottaService] 使用本地缓存的陶瓦插件: {terracottaExecutable}");
+                Log.Information($"[TerracottaService] 使用本地缓存的陶瓦插件: {terracottaExecutable}");
                 return terracottaExecutable;
             }
             
-            Debug.WriteLine("[TerracottaService] 没有找到本地缓存的陶瓦插件");
+            Log.Information("[TerracottaService] 没有找到本地缓存的陶瓦插件");
             return null;
         }
         
@@ -177,15 +178,15 @@ namespace XianYuLauncher.Core.Services
                 // 使用 DownloadManager 下载字符串来检测，虽然不是最佳实践但可以复用
                 await _downloadManager.DownloadStringAsync(GiteeApiUrl);
                 
-                Debug.WriteLine("[TerracottaService] 使用Gitee API（中国大陆地区）");
+                Log.Information("[TerracottaService] 使用Gitee API（中国大陆地区）");
                 return GiteeApiUrl;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[TerracottaService] Gitee API访问失败: {ex.Message}");
+                Log.Error(ex, $"[TerracottaService] Gitee API访问失败: {ex.Message}");
             }
             
-            Debug.WriteLine("[TerracottaService] 使用GitHub API（非中国大陆地区或未知）");
+            Log.Information("[TerracottaService] 使用GitHub API（非中国大陆地区或未知）");
             return GithubApiUrl;
         }
         
@@ -196,19 +197,19 @@ namespace XianYuLauncher.Core.Services
         {
             try
             {
-                Debug.WriteLine($"[TerracottaService] 发送请求获取最新版本信息: {apiUrl}");
+                Log.Information($"[TerracottaService] 发送请求获取最新版本信息: {apiUrl}");
                 var content = await _downloadManager.DownloadStringAsync(apiUrl);
                 var releases = JsonConvert.DeserializeObject<List<TerracottaRelease>>(content);
                 
                 if (releases != null && releases.Count > 0)
                 {
-                    Debug.WriteLine($"[TerracottaService] 成功获取最新版本: {releases[0].tag_name}");
+                    Log.Information($"[TerracottaService] 成功获取最新版本: {releases[0].tag_name}");
                     return releases[0];
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[TerracottaService] 获取最新版本信息失败: {ex.Message}");
+                Log.Error(ex, $"[TerracottaService] 获取最新版本信息失败: {ex.Message}");
             }
             
             return null;
@@ -219,7 +220,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         private async Task DownloadAndInstallTerracottaAsync(TerracottaAsset asset, string tagName, string architecture, Action<double>? progressCallback = null)
         {
-            Debug.WriteLine($"[TerracottaService] 开始下载陶瓦插件: {asset.name} -> {asset.browser_download_url}");
+            Log.Information($"[TerracottaService] 开始下载陶瓦插件: {asset.name} -> {asset.browser_download_url}");
             
             // 1. 下载tar.gz文件到临时目录
             string tempDir = Path.GetTempPath();
@@ -237,7 +238,7 @@ namespace XianYuLauncher.Core.Services
                 },
                 default);
             
-            Debug.WriteLine($"[TerracottaService] 陶瓦插件下载完成，大小: {new FileInfo(tempTarGzPath).Length}字节");
+            Log.Information($"[TerracottaService] 陶瓦插件下载完成，大小: {new FileInfo(tempTarGzPath).Length}字节");
             
             // 2. 删除旧文件 (80% - 85%)
             progressCallback?.Invoke(80);
@@ -252,10 +253,10 @@ namespace XianYuLauncher.Core.Services
             if (File.Exists(tempTarGzPath))
             {
                 File.Delete(tempTarGzPath);
-                Debug.WriteLine($"[TerracottaService] 临时文件已删除: {tempTarGzPath}");
+                Log.Information($"[TerracottaService] 临时文件已删除: {tempTarGzPath}");
             }
             
-            Debug.WriteLine("[TerracottaService] 陶瓦插件安装完成");
+            Log.Information("[TerracottaService] 陶瓦插件安装完成");
         }
         
         /// <summary>
@@ -271,7 +272,7 @@ namespace XianYuLauncher.Core.Services
                 foreach (var file in filesToDelete)
                 {
                     File.Delete(file);
-                    Debug.WriteLine($"[TerracottaService] 删除旧文件: {file}");
+                    Log.Information($"[TerracottaService] 删除旧文件: {file}");
                 }
                 
                 // 对于ARM64架构，还要删除VCRUNTIME140.DLL
@@ -281,13 +282,13 @@ namespace XianYuLauncher.Core.Services
                     if (File.Exists(vcruntimePath))
                     {
                         File.Delete(vcruntimePath);
-                        Debug.WriteLine($"[TerracottaService] 删除旧VCRUNTIME140.DLL: {vcruntimePath}");
+                        Log.Information($"[TerracottaService] 删除旧VCRUNTIME140.DLL: {vcruntimePath}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[TerracottaService] 清理旧文件失败: {ex.Message}");
+                Log.Error(ex, $"[TerracottaService] 清理旧文件失败: {ex.Message}");
             }
         }
         
@@ -296,7 +297,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         private async Task ExtractTarGzAsync(string tarGzPath, string destinationPath)
         {
-            Debug.WriteLine($"[TerracottaService] 开始解压: {tarGzPath} -> {destinationPath}");
+            Log.Information($"[TerracottaService] 开始解压: {tarGzPath} -> {destinationPath}");
             
             // 使用SharpCompress库解压tar.gz文件
             using (var fileStream = new FileStream(tarGzPath, FileMode.Open, FileAccess.Read))
@@ -322,13 +323,13 @@ namespace XianYuLauncher.Core.Services
                                 await entryStream.CopyToAsync(destinationFileStream);
                             }
                             
-                            Debug.WriteLine($"[TerracottaService] 解压文件: {reader.Entry.Key} -> {entryDestinationPath}");
+                            Log.Information($"[TerracottaService] 解压文件: {reader.Entry.Key} -> {entryDestinationPath}");
                         }
                     }
                 }
             }
             
-            Debug.WriteLine($"[TerracottaService] 解压完成");
+            Log.Information($"[TerracottaService] 解压完成");
         }
         
         /// <summary>
