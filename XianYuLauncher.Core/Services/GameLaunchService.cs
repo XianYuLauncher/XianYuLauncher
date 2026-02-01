@@ -176,13 +176,19 @@ public class GameLaunchService : IGameLaunchService
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default,
         string? overrideJavaPath = null,
-        string? quickPlaySingleplayer = null)
+        string? quickPlaySingleplayer = null,
+        string? quickPlayServer = null,
+        int? quickPlayPort = null)
     {
         _logger.LogInformation("=== GameLaunchService.LaunchGameAsync 开始 ===");
         _logger.LogInformation("版本名称: {VersionName}", versionName);
         _logger.LogInformation("角色名称: {ProfileName}, 类型: {ProfileType}", 
             profile?.Name ?? "null", 
             profile?.IsOffline == true ? "离线" : "在线");
+        if (!string.IsNullOrEmpty(quickPlayServer))
+        {
+             _logger.LogInformation("快速启动服务器: {Server}:{Port}", quickPlayServer, quickPlayPort);
+        }
         
         try
         {
@@ -358,7 +364,7 @@ public class GameLaunchService : IGameLaunchService
             statusCallback?.Invoke("正在构建启动参数...");
             var launchArgs = await BuildLaunchArgumentsAsync(
                 versionInfo, profile, config, versionName, versionDir, gameDir,
-                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, quickPlaySingleplayer);
+                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
             _logger.LogInformation("启动参数构建完成，共 {Count} 个参数", launchArgs.Count);
             
             // 12. 创建进程
@@ -447,7 +453,9 @@ public class GameLaunchService : IGameLaunchService
         string assetsPath,
         string javaPath,
         string minecraftPath,
-        string? quickPlaySingleplayer = null)
+        string? quickPlaySingleplayer = null,
+        string? quickPlayServer = null,
+        int? quickPlayPort = null)
     {
         var args = new List<string>();
 
@@ -529,7 +537,7 @@ public class GameLaunchService : IGameLaunchService
         args.Add(versionInfo.MainClass);
         
         // 处理游戏参数
-        await AddGameArgumentsAsync(args, versionInfo, profile, config, versionName, gameDir, assetsPath, userType, quickPlaySingleplayer);
+        await AddGameArgumentsAsync(args, versionInfo, profile, config, versionName, gameDir, assetsPath, userType, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
         
         // 分辨率参数
         args.Add("--width");
@@ -552,7 +560,9 @@ public class GameLaunchService : IGameLaunchService
         string gameDir,
         string assetsPath,
         string userType,
-        string? quickPlaySingleplayer = null)
+        string? quickPlaySingleplayer = null,
+        string? quickPlayServer = null,
+        int? quickPlayPort = null)
     {
         await Task.CompletedTask;
         
@@ -577,8 +587,7 @@ public class GameLaunchService : IGameLaunchService
         args.Add(userType);
         args.Add("--versionType");
         args.Add("XianYuLauncher");
-        
-        // 快速启动存档支持 (1.20+)
+
         // 获取真实的原版版本号 (从Config或InheritsFrom)
         string realVersion = versionName;
         if (config != null && !string.IsNullOrEmpty(config.MinecraftVersion))
@@ -597,7 +606,33 @@ public class GameLaunchService : IGameLaunchService
                 realVersion = extracted.MinecraftVersion;
             }
         }
-
+        
+        // 直连服务器支持
+        if (!string.IsNullOrEmpty(quickPlayServer))
+        {
+            if (IsSupportQuickPlay(realVersion))
+            {
+                // 1.20+ 使用 quickPlayMultiplayer
+                 _logger.LogInformation("添加快速启动多人游戏参数: --quickPlayMultiplayer ***** (BaseVersion: {Version})", realVersion);
+                 string target = quickPlayServer;
+                 if (quickPlayPort.HasValue && quickPlayPort.Value != 25565)
+                 {
+                     target = $"{quickPlayServer}:{quickPlayPort.Value}";
+                 }
+                 args.Add("--quickPlayMultiplayer");
+                 args.Add(target);
+            }
+            else
+            {
+                // 旧版本降级使用 --server
+                args.Add("--server");
+                args.Add(quickPlayServer);
+                args.Add("--port");
+                args.Add(quickPlayPort.HasValue ? quickPlayPort.Value.ToString() : "25565");
+            }
+        }
+        
+        // 快速启动存档支持 (1.20+)
         if (!string.IsNullOrEmpty(quickPlaySingleplayer) && IsSupportQuickPlay(realVersion))
         {
             _logger.LogInformation("添加快速启动参数: --quickPlaySingleplayer ***** (BaseVersion: {Version})", realVersion);

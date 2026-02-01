@@ -73,6 +73,8 @@ public sealed partial class LaunchPage : Page
              {
                  ViewModel.SelectedVersion = launchParams.VersionId;
                  ViewModel.QuickPlayWorld = launchParams.WorldFolder;
+                 ViewModel.QuickPlayServer = launchParams.ServerAddress;
+                 ViewModel.QuickPlayPort = launchParams.ServerPort;
                  
                  // 标记为已处理
                  launchParams.IsHandled = true;

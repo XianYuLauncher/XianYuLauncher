@@ -27,6 +27,24 @@ public partial class ServerItem : ObservableObject
     [ObservableProperty]
     private string? _playerCount = "- / -";
 
+    [ObservableProperty]
+    private string _motd = "";
+
+    [ObservableProperty]
+    private long _ping = -1;
+
+    public void UpdateStatus(string motd, int online, int max, long ping, string? iconBase64)
+    {
+        Motd = motd;
+        PlayerCount = $"{online}/{max}";
+        Ping = ping;
+        if (!string.IsNullOrEmpty(iconBase64))
+        {
+            IconBase64 = iconBase64;
+            _ = DecodeIconAsync();
+        }
+    }
+
     public async Task DecodeIconAsync()
     {
         if (string.IsNullOrEmpty(IconBase64)) return;

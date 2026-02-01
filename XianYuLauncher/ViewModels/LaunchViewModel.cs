@@ -47,6 +47,12 @@ public partial class LaunchViewModel : ObservableRecipient
     private string _quickPlayWorld;
 
     [ObservableProperty]
+    private string _quickPlayServer;
+
+    [ObservableProperty]
+    private int? _quickPlayPort;
+
+    [ObservableProperty]
     private bool _isDevBuild;
 
     [RelayCommand]
@@ -1832,6 +1838,12 @@ public partial class LaunchViewModel : ObservableRecipient
             // 快速启动支持
             string currentQuickPlayWorld = QuickPlayWorld;
             QuickPlayWorld = null;
+            
+            string currentQuickPlayServer = QuickPlayServer;
+            QuickPlayServer = null;
+            
+            int? currentQuickPlayPort = QuickPlayPort;
+            QuickPlayPort = null;
 
             var result = await _gameLaunchService.LaunchGameAsync(
                 SelectedVersion,
@@ -1889,7 +1901,9 @@ public partial class LaunchViewModel : ObservableRecipient
                 },
                 _downloadCancellationTokenSource.Token,
                 javaOverridePath,
-                currentQuickPlayWorld);
+                currentQuickPlayWorld,
+                currentQuickPlayServer,
+                currentQuickPlayPort);
 
             _currentUsedJavaPath = result.Success ? result.UsedJavaPath : string.Empty;
             

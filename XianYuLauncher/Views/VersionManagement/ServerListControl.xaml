@@ -11,6 +11,7 @@
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
+        <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringVisibilityConverter" />
         
         <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" />
         <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="{ThemeResource SystemControlForegroundBaseLowBrush}" />
@@ -38,14 +39,32 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 搜索栏 -->
-        <Grid Grid.Row="0" Margin="0,20,0,16">
+        <!-- 搜索栏及工具栏 -->
+        <Grid Grid.Row="0" Margin="0,20,0,16" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
             <AutoSuggestBox 
+                Grid.Column="0"
                 x:Uid="ServerListControl_SearchPlaceholder"
                 PlaceholderText="搜索服务器"
                 Text="{Binding ServerSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 QueryIcon="Find"
                 HorizontalAlignment="Stretch" />
+
+            <Button 
+                Grid.Column="1"
+                Command="{Binding AddServerCommand}"
+                ToolTipService.ToolTip="添加服务器"
+                Style="{StaticResource DefaultButtonStyle}"
+                Padding="10,6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE710;" FontSize="16" />
+                    <TextBlock Text="添加" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </Grid>
 
         <!-- 服务器列表容器 -->
@@ -71,6 +90,12 @@
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <Grid.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="启动" Icon="Play" Command="{Binding DataContext.LaunchServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                </MenuFlyout>
+                            </Grid.ContextFlyout>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -87,15 +112,39 @@
                             </Grid>
 
                             <!-- 信息 -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="4">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,16,0" Spacing="4">
                                 <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Address}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="12" Opacity="0.8">
+                                    <!-- Address -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE774;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Address}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- MOTD -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Visibility="{Binding Motd, Converter={StaticResource StringVisibilityConverter}}">
+                                        <FontIcon Glyph="&#xE8F3;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Motd}" MaxWidth="350" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding Motd}"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
 
-                            <!-- 状态/人数 -->
-                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{Binding PlayerCount, TargetNullValue='- / -'}" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <FontIcon Glyph="&#xE7F0;" FontSize="14" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+                            <!-- 状态 (右侧) -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="16">
+                                <!-- Players -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Opacity="0.9">
+                                    <TextBlock Text="{Binding PlayerCount, TargetNullValue='- / -'}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <FontIcon Glyph="&#xE7F0;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <!-- Ping -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Opacity="0.9">
+                                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                        <Run Text="{Binding Ping, TargetNullValue='-'}"/><Run Text="ms"/>
+                                    </TextBlock>
+                                    <FontIcon Glyph="&#xE701;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>
