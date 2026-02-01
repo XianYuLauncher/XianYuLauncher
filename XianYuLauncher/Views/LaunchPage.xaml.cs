@@ -68,10 +68,18 @@ public sealed partial class LaunchPage : Page
 
         if (e.Parameter is LaunchMapParameter launchParams)
         {
-             ViewModel.SelectedVersion = launchParams.VersionId;
-             ViewModel.QuickPlayWorld = launchParams.WorldFolder;
-             // 自动启动
-             _ = ViewModel.LaunchGameCommand.ExecuteAsync(null);
+             // 检查该请求是否已处理，防止页面回退时重复触发
+             if (!launchParams.IsHandled)
+             {
+                 ViewModel.SelectedVersion = launchParams.VersionId;
+                 ViewModel.QuickPlayWorld = launchParams.WorldFolder;
+                 
+                 // 标记为已处理
+                 launchParams.IsHandled = true;
+                 
+                 // 自动启动
+                 _ = ViewModel.LaunchGameCommand.ExecuteAsync(null);
+             }
         }
 
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] OnNavigatedTo called");
