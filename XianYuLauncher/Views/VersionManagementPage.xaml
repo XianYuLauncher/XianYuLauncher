@@ -941,7 +941,7 @@
                     </Grid.RowDefinitions>
                     
                     <!-- 搜索栏 -->
-                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                    <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchModPlaceholder"
                             Text="{Binding ModSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -1221,7 +1221,7 @@
                     </Grid.RowDefinitions>
                     
                     <!-- 搜索栏 -->
-                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                    <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchShaderPlaceholder"
                             Text="{Binding ShaderSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -1481,7 +1481,7 @@
                     </Grid.RowDefinitions>
                     
                     <!-- 搜索栏 -->
-                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                    <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchResourcePackPlaceholder"
                             Text="{Binding ResourcePackSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -1976,7 +1976,7 @@
                     </Grid.RowDefinitions>
                     
                     <!-- 搜索栏 -->
-                    <Grid Grid.Row="0" Margin="0,20,16,16">
+                    <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchMapPlaceholder"
                             Text="{Binding MapSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -1997,6 +1997,7 @@
                             AllowDrop="True"
                             Background="Transparent"
                             BorderThickness="0"
+                            Padding="0,0,0,20"
                             VerticalAlignment="Stretch">
                             <ListView.Resources>
                                 <Style TargetType="ScrollViewer">
@@ -2026,12 +2027,12 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:MapInfo">
-                                        <Grid Height="60" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="8" Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                              BorderThickness="1">
+                                        <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutSeparator />
+                                                    <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                 </MenuFlyout>
                                             </Grid.ContextFlyout>
                                             <Grid.ColumnDefinitions>
@@ -2041,30 +2042,23 @@
                                             </Grid.ColumnDefinitions>
                                             
                                             <!-- 地图图标 -->
-                                            <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                <FontIcon 
-                                                    Glyph="" 
-                                                    FontSize="20" 
-                                                    VerticalAlignment="Center" 
-                                                    HorizontalAlignment="Center"
-                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}"/>
-                                                <Image 
-                                                    Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" 
-                                                    Width="24" 
-                                                    Height="24" 
-                                                    Stretch="UniformToFill"
-                                                    Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                            <Grid Grid.Column="0" Width="48" Height="48" CornerRadius="4">
+                                                <Image Source="{Binding Icon, Mode=OneWay, Converter={StaticResource PathToUriConverter}}" Stretch="UniformToFill" />
+                                                <Border CornerRadius="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" 
+                                                        Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}, ConverterParameter=inverse}">
+                                                    <FontIcon Glyph="" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                </Border>
                                             </Grid>
                                             
-                                            <!-- 地图名称 -->
-                                            <TextBlock 
-                                                Grid.Column="1"
-                                                Text="{Binding Name}" 
-                                                VerticalAlignment="Center" 
-                                                FontSize="14" 
-                                                FontWeight="Medium"
-                                                Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+                                            <!-- 地图信息 -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="4">
+                                                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Text="{Binding Size}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="•" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{Binding FormattedLastPlayedTime, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                    <TextBlock Text="{Binding FormattedLastPlayedTime}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </StackPanel>
                                             
                                             <!-- 删除按钮 -->
                                             <Button 

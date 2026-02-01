@@ -716,6 +716,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly ModInfoService _modInfoService;
     private readonly IGameHistoryService _gameHistoryService;
     private readonly IVersionConfigService _versionConfigService;
+    private readonly IDialogService _dialogService;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -758,7 +759,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IDownloadManager downloadManager,
         ModInfoService modInfoService,
         IGameHistoryService gameHistoryService,
-        IVersionConfigService versionConfigService)
+        IVersionConfigService versionConfigService,
+        IDialogService dialogService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -778,6 +780,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _modInfoService = modInfoService;
         _gameHistoryService = gameHistoryService;
         _versionConfigService = versionConfigService;
+        _dialogService = dialogService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1216,45 +1219,32 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public async Task LoadLoaderVersionsAsync(LoaderItemViewModel loader)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] LoadLoaderVersionsAsync 被调用，加载器: {loader.Name}, LoaderType: {loader.LoaderType}");
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] IsLoading: {loader.IsLoading}, Versions.Count: {loader.Versions.Count}");
-        
         if (loader.IsLoading || loader.Versions.Count > 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 跳过加载 - IsLoading={loader.IsLoading}, Versions.Count={loader.Versions.Count}");
             return;
         }
         
         loader.IsLoading = true;
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载版本列表...");
         
         try
         {
             string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Minecraft版本: {minecraftVersion}");
             
             var versions = await GetLoaderVersionsAsync(loader.LoaderType, minecraftVersion);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {versions.Count} 个版本");
             
             loader.Versions.Clear();
             foreach (var version in versions)
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加版本: {version}");
                 loader.Versions.Add(version);
             }
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本列表填充完成，总共 {loader.Versions.Count} 个版本");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 加载{loader.Name}版本列表失败：{ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
             StatusMessage = $"加载{loader.Name}版本列表失败：{ex.Message}";
         }
         finally
         {
             loader.IsLoading = false;
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] IsLoading 设置为 false");
         }
     }
     
@@ -1263,8 +1253,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     private async Task<List<string>> GetLoaderVersionsAsync(string loaderType, string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetLoaderVersionsAsync - loaderType: {loaderType}, minecraftVersion: {minecraftVersion}");
-        
         try
         {
             var result = loaderType.ToLower() switch
@@ -1278,65 +1266,50 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 _ => new List<string>()
             };
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] GetLoaderVersionsAsync 返回 {result.Count} 个版本");
             return result;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] GetLoaderVersionsAsync 异常: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈: {ex.StackTrace}");
             throw;
         }
     }
     
     private async Task<List<string>> GetFabricVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetFabricVersionsAsync 开始");
         var fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(minecraftVersion);
         var result = fabricVersions.Select(v => v.Loader.Version).ToList();
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetFabricVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
     private async Task<List<string>> GetForgeVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetForgeVersionsAsync 开始");
         var result = await _forgeService.GetForgeVersionsAsync(minecraftVersion);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetForgeVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
     private async Task<List<string>> GetNeoForgeVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetNeoForgeVersionsAsync 开始");
         var result = await _neoForgeService.GetNeoForgeVersionsAsync(minecraftVersion);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetNeoForgeVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
     private async Task<List<string>> GetQuiltVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetQuiltVersionsAsync 开始");
         var quiltVersions = await _quiltService.GetQuiltLoaderVersionsAsync(minecraftVersion);
         var result = quiltVersions.Select(v => v.Loader.Version).ToList();
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetQuiltVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
     private async Task<List<string>> GetOptifineVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetOptifineVersionsAsync 开始");
         var optifineVersions = await _optifineService.GetOptifineVersionsAsync(minecraftVersion);
         var result = optifineVersions.Select(v => $"{v.Type}_{v.Patch}").ToList();
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetOptifineVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
     private async Task<List<string>> GetCleanroomVersionsAsync(string minecraftVersion)
     {
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetCleanroomVersionsAsync 开始");
         var result = await _cleanroomService.GetCleanroomVersionsAsync(minecraftVersion);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] GetCleanroomVersionsAsync 返回 {result.Count} 个版本");
         return result;
     }
     
@@ -1358,17 +1331,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 取消选择加载器: {loader.Name}");
-            
             // 清除临时选择状态
             loader.SelectedVersion = null;
             loader.IsExpanded = false;
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已清除 {loader.Name} 的选择状态");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 取消选择失败: {ex.Message}");
         }
     }
     
@@ -1400,23 +1368,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             IsInstallingExtension = true;
             ExtensionInstallProgress = 0;
             ExtensionInstallStatus = "正在准备安装...";
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始保存扩展配置并安装加载器");
             
             // 获取所有已选择的加载器
             var selectedLoaders = AvailableLoaders
                 .Where(l => !string.IsNullOrEmpty(l.SelectedVersion))
                 .ToList();
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 已选择 {selectedLoaders.Count} 个加载器");
-            
             // 获取Minecraft版本号和目录
             string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
             string versionDirectory = SelectedVersion.Path;
             string versionId = SelectedVersion.Name;
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Minecraft版本: {minecraftVersion}");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本目录: {versionDirectory}");
             
             // 确定主加载器和Optifine
             var primaryLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() != "optifine");
@@ -1431,7 +1393,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             // 步骤1：下载原版JSON并覆盖（重置为原版状态）
             ExtensionInstallStatus = "正在下载原版版本信息...";
             ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤1: 下载原版JSON");
             
             var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
                 minecraftVersion,
@@ -1441,7 +1402,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             // 覆盖版本JSON文件
             var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 原版JSON已保存到: {versionJsonPath}");
             currentStep++;
             ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
             
@@ -1449,7 +1409,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (primaryLoader != null)
             {
                 ExtensionInstallStatus = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤2: 安装主加载器 {primaryLoader.Name} {primaryLoader.SelectedVersion}");
                 
                 var installer = _modLoaderInstallerFactory.GetInstaller(primaryLoader.LoaderType);
                 var installOptions = new ModLoaderInstallOptions
@@ -1471,12 +1430,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     {
                         // 将安装器的进度映射到当前步骤的进度范围
                         ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 安装进度: {progress:F1}%");
                     });
                 
                 currentStep++;
                 ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 主加载器安装完成");
             }
             
             // 步骤3：安装Optifine（如果有）
@@ -1484,7 +1441,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (optifineLoader != null)
             {
                 ExtensionInstallStatus = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤3: 安装Optifine {optifineLoader.SelectedVersion}");
                 
                 var optifineInstaller = _modLoaderInstallerFactory.GetInstaller("optifine");
                 var optifineOptions = new ModLoaderInstallOptions
@@ -1505,17 +1461,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     progress =>
                     {
                         ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装进度: {progress:F1}%");
                     });
                 
                 currentStep++;
                 ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine安装完成");
             }
             
             // 步骤4：保存配置文件
             ExtensionInstallStatus = "正在保存配置...";
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 步骤4: 保存配置文件");
             
             string settingsFilePath = GetSettingsFilePath();
             XianYuLauncher.Core.Models.VersionConfig config;
@@ -1554,7 +1507,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             string jsonContent = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(settingsFilePath, jsonContent);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置已保存到: {settingsFilePath}");
             
             ExtensionInstallProgress = 100;
             ExtensionInstallStatus = "安装完成！";
@@ -1575,14 +1527,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             StatusMessage = selectedLoaders.Count > 0 
                 ? $"配置已保存，已安装：{string.Join(", ", selectedLoaders.Select(l => l.Name))}"
                 : "已重置为原版";
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 扩展配置保存成功");
         }
         catch (Exception ex)
         {
             ExtensionInstallStatus = $"安装失败：{ex.Message}";
             StatusMessage = $"安装失败：{ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 保存扩展配置失败: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈: {ex.StackTrace}");
         }
         finally
         {
@@ -1631,20 +1580,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         settings.MinecraftVersion = versionConfig.MinecraftVersion ?? SelectedVersion.Name;
                         settings.ModLoaderVersion = versionConfig.ModLoaderVersion ?? string.Empty;
                         settings.CreatedAt = versionConfig.CreatedAt;
-                        
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 从第三方配置读取到: ModLoaderType={settings.ModLoaderType}, MinecraftVersion={settings.MinecraftVersion}");
                     }
                     else
                     {
                         // 无法从第三方配置读取，回退到版本名称解析
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 无法从第三方配置读取，使用版本名称解析");
                         ParseVersionNameToSettings(settings, SelectedVersion.Name);
                     }
                 }
                 else
                 {
                     // VersionInfoService不可用，回退到版本名称解析
-                    System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] VersionInfoService不可用，使用版本名称解析");
                     ParseVersionNameToSettings(settings, SelectedVersion.Name);
                 }
                 
@@ -1858,7 +1803,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     LoadResourcePacksListOnlyAsync(),
                     LoadMapsListOnlyAsync(),
                     LoadScreenshotsAsync(),
-                    LoadSavesAsync()
+                    LoadSavesAsync(),
+                    LoadServersAsync()
                 );
                 
                 // 加载完成后隐藏加载圈，显示页面
@@ -2023,41 +1969,34 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadSavesAsync()
         {
-            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 开始加载存档列表 ===");
             
             if (SelectedVersion == null)
             {
-                System.Diagnostics.Debug.WriteLine("[VersionManagement] SelectedVersion 为 null，跳过加载");
                 return;
             }
             
             try
             {
                 var savesPath = Path.Combine(SelectedVersion.Path, "saves");
-                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档路径: {savesPath}");
                 
                 if (!Directory.Exists(savesPath))
                 {
-                    System.Diagnostics.Debug.WriteLine("[VersionManagement] 存档目录不存在");
                     Saves.Clear();
                     OnPropertyChanged(nameof(IsSaveListEmpty));
                     return;
                 }
                 
                 var saveDirectories = Directory.GetDirectories(savesPath);
-                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 找到 {saveDirectories.Length} 个存档目录");
                 
                 var saveInfos = new List<SaveInfo>();
                 
                 foreach (var saveDir in saveDirectories)
                 {
                     var saveName = Path.GetFileName(saveDir);
-                    System.Diagnostics.Debug.WriteLine($"[VersionManagement] 处理存档: {saveName}");
                     
                     var levelDatPath = Path.Combine(saveDir, "level.dat");
                     if (!File.Exists(levelDatPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} 没有 level.dat，跳过");
                         continue;
                     }
                     
@@ -2068,8 +2007,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         DisplayName = saveName,
                         LastPlayed = Directory.GetLastWriteTime(saveDir)
                     };
-                    
-                    System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} 基本信息创建完成");
                     
                     // 尝试读取 level.dat 获取存档名称
                     try
@@ -2091,59 +2028,44 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             {
                                 saveInfo.LastPlayed = DateTimeOffset.FromUnixTimeMilliseconds(levelData.LastPlayed).LocalDateTime;
                             }
-                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} level.dat 读取成功: DisplayName={saveInfo.DisplayName}, GameMode={saveInfo.GameMode}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {saveName} level.dat 读取失败: {ex.Message}");
                     }
                     
                     saveInfos.Add(saveInfo);
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 共加载 {saveInfos.Count} 个有效存档");
-                
                 // 按最后游玩时间排序
                 saveInfos = saveInfos.OrderByDescending(s => s.LastPlayed).ToList();
                 
                 // 更新UI
-                System.Diagnostics.Debug.WriteLine("[VersionManagement] 准备更新 UI");
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
                     try
                     {
-                        System.Diagnostics.Debug.WriteLine("[VersionManagement] 开始清空 Saves 集合");
                         Saves.Clear();
-                        System.Diagnostics.Debug.WriteLine("[VersionManagement] Saves 集合已清空");
                         
                         foreach (var save in saveInfos)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 添加存档到 UI: {save.DisplayName}, Icon={save.Icon}");
                             Saves.Add(save);
                         }
                         
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] UI 更新完成，Saves.Count={Saves.Count}");
                         OnPropertyChanged(nameof(IsSaveListEmpty));
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] UI 更新失败: {ex.Message}");
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 堆栈跟踪: {ex.StackTrace}");
                     }
                 });
                 
                 // 异步加载存档图标
-                System.Diagnostics.Debug.WriteLine("[VersionManagement] 开始异步加载存档图标");
                 _ = LoadSaveIconsAsync(saveInfos);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 加载存档列表失败: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 堆栈跟踪: {ex.StackTrace}");
             }
             
-            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 存档列表加载流程结束 ===");
         }
         
         /// <summary>
@@ -2185,7 +2107,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// </summary>
         private async Task LoadSaveIconsAsync(List<SaveInfo> saves)
         {
-            System.Diagnostics.Debug.WriteLine($"[VersionManagement] === 开始加载 {saves.Count} 个存档的图标 ===");
             
             await Task.Run(() =>
             {
@@ -2193,7 +2114,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 {
                     if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
                     {
-                        System.Diagnostics.Debug.WriteLine("[VersionManagement] 图标加载被取消");
                         break;
                     }
                     
@@ -2205,21 +2125,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         {
                             // 直接设置图标路径，让 XAML 的转换器处理
                             save.Icon = iconPath;
-                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 的图标路径已设置: {iconPath}");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 没有图标文件");
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagement] 存档 {save.Name} 图标加载异常: {ex.Message}");
                     }
                 }
             });
-            
-            System.Diagnostics.Debug.WriteLine("[VersionManagement] === 存档图标加载流程结束 ===");
         }
         
         /// <summary>

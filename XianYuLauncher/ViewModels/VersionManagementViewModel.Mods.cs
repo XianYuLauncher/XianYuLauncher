@@ -147,7 +147,7 @@ public partial class VersionManagementViewModel
                         else
                         {
                             // 删除损坏的图标文件
-                            System.Diagnostics.Debug.WriteLine($"删除损坏的图标文件: {iconFile}");
+                            // System.Diagnostics.Debug.WriteLine($"删除损坏的图标文件: {iconFile}");
                             try { File.Delete(iconFile); } catch { }
                         }
                     }
@@ -159,12 +159,12 @@ public partial class VersionManagementViewModel
                 {
                     if (IsValidIconFile(modrinthIconPattern))
                     {
-                        System.Diagnostics.Debug.WriteLine($"找到Modrinth图标: {modrinthIconPattern}");
+                        // System.Diagnostics.Debug.WriteLine($"找到Modrinth图标: {modrinthIconPattern}");
                         return modrinthIconPattern;
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"删除损坏的Modrinth图标: {modrinthIconPattern}");
+                        // System.Diagnostics.Debug.WriteLine($"删除损坏的Modrinth图标: {modrinthIconPattern}");
                         try { File.Delete(modrinthIconPattern); } catch { }
                     }
                 }
@@ -175,12 +175,12 @@ public partial class VersionManagementViewModel
                 {
                     if (IsValidIconFile(curseForgeIconPattern))
                     {
-                        System.Diagnostics.Debug.WriteLine($"找到CurseForge图标: {curseForgeIconPattern}");
+                        // System.Diagnostics.Debug.WriteLine($"找到CurseForge图标: {curseForgeIconPattern}");
                         return curseForgeIconPattern;
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"删除损坏的CurseForge图标: {curseForgeIconPattern}");
+                        // System.Diagnostics.Debug.WriteLine($"删除损坏的CurseForge图标: {curseForgeIconPattern}");
                         try { File.Delete(curseForgeIconPattern); } catch { }
                     }
                 }
@@ -193,7 +193,7 @@ public partial class VersionManagementViewModel
                     string extractedIconPath = ExtractResourcePackIcon(filePath, iconDir, fileBaseName);
                     if (!string.IsNullOrEmpty(extractedIconPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"从资源包中提取图标: {extractedIconPath}");
+                        // System.Diagnostics.Debug.WriteLine($"从资源包中提取图标: {extractedIconPath}");
                         return extractedIconPath;
                     }
                 }

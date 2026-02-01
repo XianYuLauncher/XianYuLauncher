@@ -317,7 +317,6 @@ public partial class VersionManagementViewModel
                 {
                     if (Directory.Exists(pack.FilePath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"跳过文件夹资源包: {pack.Name}");
                         continue;
                     }
 
@@ -329,7 +328,6 @@ public partial class VersionManagementViewModel
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"计算Hash失败: {pack.Name}, {ex.Message}");
                     }
                 }
                 
@@ -359,7 +357,6 @@ public partial class VersionManagementViewModel
                 int upToDateCount = 0;
                 
                 // Modrinth
-                System.Diagnostics.Debug.WriteLine($"[UpdateRP] Modrinth检查...");
                 var modrinthResult = await TryUpdateResourcePacksViaModrinthAsync(
                     packHashes, 
                     packFilePathMap, 
@@ -376,7 +373,6 @@ public partial class VersionManagementViewModel
                 
                 if (failedPacks.Count > 0)
                 {
-                     System.Diagnostics.Debug.WriteLine($"[UpdateRP] CurseForge检查...");
                      var curseForgeResult = await TryUpdateResourcePacksViaCurseForgeAsync(
                          failedPacks,
                          gameVersion,

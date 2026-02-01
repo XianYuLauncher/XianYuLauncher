@@ -377,11 +377,9 @@ public partial class VersionManagementViewModel
                         string sha1Hash = CalculateSHA1(shader.FilePath);
                         shaderHashes.Add(sha1Hash);
                         shaderFilePathMap[sha1Hash] = shader.FilePath;
-                        System.Diagnostics.Debug.WriteLine($"光影 {shader.Name} 的SHA1哈希值: {sha1Hash}");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"计算Hash失败: {shader.Name}, {ex.Message}");
                     }
                 }
                 
@@ -412,7 +410,6 @@ public partial class VersionManagementViewModel
                 int upToDateCount = 0;
                 
                 // 第一步：尝试通过 Modrinth 更新
-                System.Diagnostics.Debug.WriteLine($"[UpdateShaders] 第一步：尝试通过 Modrinth 更新 {shaderHashes.Count} 个光影");
                 var modrinthResult = await TryUpdateShadersViaModrinthAsync(
                     shaderHashes, 
                     shaderFilePathMap, 
@@ -429,7 +426,6 @@ public partial class VersionManagementViewModel
                 
                 if (failedShaders.Count > 0)
                 {
-                     System.Diagnostics.Debug.WriteLine($"[UpdateShaders] 第二步：尝试通过 CurseForge 更新 {failedShaders.Count} 个光影");
                      var curseForgeResult = await TryUpdateShadersViaCurseForgeAsync(
                          failedShaders,
                          gameVersion,

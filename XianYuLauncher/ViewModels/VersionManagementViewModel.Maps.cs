@@ -173,6 +173,9 @@ public partial class VersionManagementViewModel
                     
                     // 先设置默认图标为空，后续异步加载
                     mapInfo.Icon = null;
+
+                    // 启动异步任务加载基本信息（大小和时间），不等待
+                    _ = mapInfo.LoadBasicInfoAsync();
                     
                     newMaps.Add(mapInfo);
                 }

@@ -54,7 +54,7 @@ public partial class MapInfo : ObservableObject
     /// <summary>
     /// 格式化的最后游玩时间
     /// </summary>
-    public string FormattedLastPlayedTime => LastPlayedTime.ToString("yyyy-MM-dd HH:mm:ss");
+    public string FormattedLastPlayedTime => LastPlayedTime == DateTime.MinValue ? "" : LastPlayedTime.ToString("yyyy-MM-dd HH:mm:ss");
     
     /// <summary>
     /// 构造函数

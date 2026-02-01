@@ -39,7 +39,7 @@
         </Grid.RowDefinitions>
 
         <!-- 搜索栏 -->
-        <Grid Grid.Row="0" Margin="0,20,16,16">
+        <Grid Grid.Row="0" Margin="0,20,0,16">
             <AutoSuggestBox 
                 x:Uid="ServerListControl_SearchPlaceholder"
                 PlaceholderText="搜索服务器"
@@ -56,28 +56,32 @@
                 ItemsSource="{Binding Servers, Mode=OneWay}"
                 SelectionMode="Single"
                 IsItemClickEnabled="True"
-                Padding="0,0,16,20">
+                Padding="0,0,0,20">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="Padding" Value="0,0,0,8" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="Margin" Value="0,0,0,16" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="UseLayoutRounding" Value="True"/>
+                        <Setter Property="CacheMode" Value="BitmapCache"/>
                     </Style>
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Grid CornerRadius="8" Padding="12" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- 图标占位 -->
+                            <!-- 图标 -->
                             <Grid Grid.Column="0" Width="48" Height="48" CornerRadius="4">
-                                <!-- 实际应该绑定 Icon -->
-                                <Border CornerRadius="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                                <Image Source="{Binding Icon}" Stretch="Uniform" />
+                                <Border CornerRadius="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" 
+                                        Visibility="{Binding HasIcon, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                     <FontIcon Glyph="&#xE753;" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </Border>
                             </Grid>
