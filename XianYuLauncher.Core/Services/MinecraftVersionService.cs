@@ -1432,158 +1432,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         return _versionInfoService.GetVersionConfigFromDirectory(versionDirectory);
     }
     
-    /// <summary>
-    /// 确保NeoForge版本依赖完整，包括检查和执行NeoForge处理器
-    /// </summary>
-    private async Task EnsureNeoForgeDependenciesAsync(string versionId, string minecraftDirectory, string librariesDirectory, Action<double> progressCallback, Action<string> currentDownloadCallback)
-    {
-        try
-        {
-            // 检查是否是NeoForge版本
-            bool isNeoForgeVersion = false;
-            string neoforgeVersion = string.Empty;
-            string minecraftVersion = string.Empty;
-            
-            // 先尝试从配置文件读取
-            string versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
-            VersionConfig config = ReadVersionConfig(versionDirectory);
-            if (config != null && config.ModLoaderType == "neoforge")
-            {
-                isNeoForgeVersion = true;
-                neoforgeVersion = config.ModLoaderVersion;
-                minecraftVersion = config.MinecraftVersion;
-                _logger.LogInformation("从配置文件识别为NeoForge版本: {VersionId}, 版本号: {NeoforgeVersion}", versionId, neoforgeVersion);
-            }
-            // 回退到旧的名称识别逻辑
-            else if (versionId.StartsWith("neoforge-"))
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置文件读取失败，回退到旧的名称识别逻辑来判断NeoForge版本: {versionId}");
-                isNeoForgeVersion = true;
-                // 解析NeoForge版本信息
-                string[] versionParts = versionId.Split('-');
-                if (versionParts.Length < 3)
-                {
-                    _logger.LogWarning("无效的NeoForge版本格式: {VersionId}", versionId);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 无效的NeoForge版本格式: {versionId}");
-                    return;
-                }
-                
-                neoforgeVersion = string.Join("-", versionParts.Skip(2)); // 完整版本号，包含后缀
-                minecraftVersion = versionParts[1];
-                _logger.LogInformation("从版本名称识别为NeoForge版本: {VersionId}, 版本号: {NeoforgeVersion}", versionId, neoforgeVersion);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的Minecraft版本: {minecraftVersion}");
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的完整NeoForge版本: {neoforgeVersion}");
-            }
-            
-            if (!isNeoForgeVersion)
-            {
-                return;
-            }
-            
-            _logger.LogInformation("开始检查NeoForge版本依赖: {VersionId}", versionId);
-            
-            // 注释掉检查minecraft-client-patched JAR的逻辑，避免每次启动都执行处理器
-            // 解决特定版本下NeoForge每次启动都要patched导致的卡顿问题
-            // string patchedJarPath = Path.Combine(librariesDirectory, "net", "neoforged", "minecraft-client-patched", neoforgeVersion, $"minecraft-client-patched-{neoforgeVersion}.jar");
-            // 
-            // if (File.Exists(patchedJarPath))
-            // {
-            //     _logger.LogInformation("minecraft-client-patched JAR已存在，跳过NeoForge处理器执行: {PatchedJarPath}", patchedJarPath);
-            //     return;
-            // }
-            
-            // _logger.LogInformation("minecraft-client-patched JAR不存在，开始执行NeoForge处理器: {PatchedJarPath}", patchedJarPath);
-            _logger.LogInformation("已跳过NeoForge处理器执行检查，直接返回");
-            return;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "执行NeoForge处理器失败: {VersionId}", versionId);
-            throw new Exception($"执行NeoForge处理器失败 (版本: {versionId}): {ex.Message}", ex);
-        }
-    }
+
     
-    /// <summary>
-    /// 确保Forge版本依赖完整，包括检查和执行Forge处理器
-    /// </summary>
-    private async Task EnsureForgeDependenciesAsync(string versionId, string minecraftDirectory, string librariesDirectory, Action<double> progressCallback, Action<string> currentDownloadCallback)
-    {
-        try
-        {
-            // 检查是否是Forge版本
-            bool isForgeVersion = false;
-            string forgeVersion = string.Empty;
-            string minecraftVersion = string.Empty;
-            
-            // 先尝试从配置文件读取
-            string versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
-            VersionConfig config = ReadVersionConfig(versionDirectory);
-            if (config != null && config.ModLoaderType == "forge")
-            {
-                isForgeVersion = true;
-                forgeVersion = config.ModLoaderVersion;
-                minecraftVersion = config.MinecraftVersion;
-                _logger.LogInformation("从配置文件识别为Forge版本: {VersionId}, 版本号: {ForgeVersion}", versionId, forgeVersion);
-            }
-            // 回退到旧的名称识别逻辑
-            else if (versionId.StartsWith("forge-"))
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置文件读取失败，回退到旧的名称识别逻辑来判断Forge版本: {versionId}");
-                isForgeVersion = true;
-                
-                // 从版本名称提取版本信息
-                string[] versionParts = versionId.Split('-');
-                if (versionParts.Length < 3)
-                {
-                    _logger.LogWarning("无效的Forge版本格式: {VersionId}", versionId);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 无效的Forge版本格式: {versionId}");
-                    return;
-                }
-                
-                minecraftVersion = versionParts[1];
-                forgeVersion = string.Join("-", versionParts.Skip(2));
-                _logger.LogInformation("从版本名称识别为Forge版本: {VersionId}, 版本号: {ForgeVersion}", versionId, forgeVersion);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的Minecraft版本: {minecraftVersion}");
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称解析的完整Forge版本: {forgeVersion}");
-            }
-            
-            if (!isForgeVersion)
-            {
-                return;
-            }
-            
-            _logger.LogInformation("开始检查Forge版本依赖: {VersionId}", versionId);
-            currentDownloadCallback?.Invoke("正在检查Forge依赖");
-            
-            // 检查Forge客户端库是否存在
-            string fullForgeVersion = $"{minecraftVersion}-{forgeVersion}";
-            string forgeClientJarPath = Path.Combine(librariesDirectory, "net", "minecraftforge", "forge", fullForgeVersion, $"forge-{fullForgeVersion}-client.jar");
-            string forgeUniversalJarPath = Path.Combine(librariesDirectory, "net", "minecraftforge", "forge", fullForgeVersion, $"forge-{fullForgeVersion}.jar");
-            
-            // 对于旧版Forge，检查universal jar是否存在；对于新版Forge，检查client jar是否存在
-            bool forgeExists = File.Exists(forgeClientJarPath) || File.Exists(forgeUniversalJarPath);
-            
-            if (!forgeExists)
-            {
-                _logger.LogInformation("Forge客户端库不存在，准备执行Forge处理器: {ForgeClientJarPath} 或 {ForgeUniversalJarPath}", forgeClientJarPath, forgeUniversalJarPath);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge客户端库不存在，准备执行Forge处理器: {forgeClientJarPath} 或 {forgeUniversalJarPath}");
-                
-                // 使用新的 ForgeInstaller 执行Forge版本下载和处理器逻辑
-                var forgeInstaller = _modLoaderInstallerFactory.GetInstaller("Forge");
-                await forgeInstaller.InstallAsync(minecraftVersion, forgeVersion, minecraftDirectory, progressCallback, CancellationToken.None, versionId);
-            }
-            else
-            {
-                _logger.LogInformation("Forge客户端库已存在，跳过Forge处理器执行: {ForgeClientJarPath}", forgeClientJarPath);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Forge客户端库已存在，跳过Forge处理器执行: {forgeClientJarPath}");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "执行Forge处理器失败: {VersionId}", versionId);
-            throw new Exception($"执行Forge处理器失败 (版本: {versionId}): {ex.Message}", ex);
-        }
-    }
+
 
     public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null)
     {
@@ -1591,10 +1442,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             // 设计新的进度分配方案（更平滑的过渡）：
             // - 初始化阶段：0-5%
-            // - NeoForge处理器执行：1%（独立于其他阶段）
             // - 依赖库下载：5-45%
-            // - 资源索引处理：45-50%
-            // - 资源对象下载：50-100%
+            // - 原生库解压：45-50%
+            // - 资源索引处理：50-55%
+            // - 资源对象下载：55-100%
             
             // 初始化阶段 - 报告0%进度
             progressCallback?.Invoke(0);
@@ -1605,13 +1456,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string nativesDirectory = Path.Combine(versionDirectory, $"{versionId}-natives");
             
-            // 1. 执行NeoForge处理器（如果需要），占1%进度
-            await EnsureNeoForgeDependenciesAsync(versionId, minecraftDirectory, librariesDirectory, progressCallback, currentDownloadCallback);
-            
-            // 2. 执行Forge处理器（如果需要），占1%进度
-            await EnsureForgeDependenciesAsync(versionId, minecraftDirectory, librariesDirectory, progressCallback, currentDownloadCallback);
-            
-            // 3. 下载缺失的依赖库 (5-45%)
+            // 1. 下载缺失的依赖库 (5-45%)
             try
             {
                 currentDownloadCallback?.Invoke("正在下载依赖库...");
@@ -1641,7 +1486,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
             }
 
-            // 1.5 解压原生库到natives目录 (45-50%)
+            // 2. 解压原生库到natives目录 (45-50%)
             try
             {
                 currentDownloadCallback?.Invoke("正在解压原生库...");
@@ -1655,7 +1500,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 throw new Exception($"原生库解压失败 (版本: {versionId}): {ex.Message}", ex);
             }
 
-            // 2. 确保资源索引文件可用 (50-55%)
+            // 3. 确保资源索引文件可用 (50-55%)
             try
             {
                 currentDownloadCallback?.Invoke("正在处理资源索引...");
@@ -1685,7 +1530,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
             }
 
-            // 3. 下载所有资源对象 (55-100%)
+            // 4. 下载所有资源对象 (55-100%)
             try
             {
                 _logger.LogInformation("[EnsureDeps] 开始下载资源对象阶段 (55-100%)");
