@@ -49,6 +49,7 @@ public sealed partial class ShellPage : Page
         // 订阅背景变更事件
         _materialService = App.GetService<MaterialService>();
         _materialService.BackgroundChanged += OnBackgroundChanged;
+        _materialService.MotionSettingsChanged += OnMotionSettingsChanged;
         
         // 设置材质应用委托（UI层实现）
         _materialService.ApplyMaterialAction = ApplyMaterialToWindowImpl;
@@ -84,6 +85,7 @@ public sealed partial class ShellPage : Page
                     window.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
                     break;
                 case MaterialType.CustomBackground:
+                case MaterialType.Motion:
                     window.SystemBackdrop = null;
                     break;
             }
@@ -111,11 +113,60 @@ public sealed partial class ShellPage : Page
             {
                 ApplyBackground(materialType, null);
             }
+            
+            LoadMotionSettingsAsync();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"加载背景设置失败: {ex.Message}");
         }
+    }
+
+    private async void LoadMotionSettingsAsync()
+    {
+        try 
+        {
+            var speed = await _materialService.LoadMotionSpeedAsync();
+            MotionBg.SpeedRatio = speed;
+            
+            var colors = await _materialService.LoadMotionColorsAsync();
+            if (colors != null && colors.Length == 5)
+            {
+                MotionBg.Orb1Color = ParseMotionColor(colors[0]);
+                MotionBg.Orb2Color = ParseMotionColor(colors[1]);
+                MotionBg.Orb3Color = ParseMotionColor(colors[2]);
+                MotionBg.Orb4Color = ParseMotionColor(colors[3]);
+                MotionBg.Orb5Color = ParseMotionColor(colors[4]);
+            }
+        }
+        catch (Exception ex)
+        {
+             System.Diagnostics.Debug.WriteLine($"加载流光设置失败: {ex.Message}");
+        }
+    }
+
+    private void OnMotionSettingsChanged(object sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() => LoadMotionSettingsAsync());
+    }
+
+    private Windows.UI.Color ParseMotionColor(string hex)
+    {
+        try 
+        {
+            if (string.IsNullOrEmpty(hex)) return Windows.UI.Color.FromArgb(255, 255, 255, 255);
+            hex = hex.Replace("#", "");
+            if (hex.Length == 8)
+            {
+                 var a = byte.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
+                 var r = byte.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
+                 var g = byte.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+                 var b = byte.Parse(hex.Substring(6, 2), System.Globalization.NumberStyles.HexNumber);
+                 return Windows.UI.Color.FromArgb(a, r, g, b);
+            }
+        }
+        catch {}
+        return Windows.UI.Color.FromArgb(255, 255, 255, 255); 
     }
     
     /// <summary>
@@ -134,6 +185,13 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void ApplyBackground(MaterialType materialType, string? backgroundPath)
     {
+        // 1. 重置所有状态
+        BackgroundImage.Visibility = Visibility.Collapsed;
+        MotionBg.Visibility = Visibility.Collapsed;
+        AcrylicOverlay.Visibility = Visibility.Collapsed;
+        NavigationViewControl.Background = null;
+
+        // 2. 根据类型应用
         if (materialType == MaterialType.CustomBackground && !string.IsNullOrEmpty(backgroundPath))
         {
             try
@@ -143,22 +201,25 @@ public sealed partial class ShellPage : Page
                 BackgroundImage.Source = bitmap;
                 BackgroundImage.Visibility = Visibility.Visible;
                 
-                // 设置 NavigationView 背景为半透明
+                // 设置 NavigationView 背景为半透明以显示底层图片
                 NavigationViewControl.Background = new SolidColorBrush(
                     Microsoft.UI.Colors.Transparent);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"加载背景图片失败: {ex.Message}");
-                BackgroundImage.Visibility = Visibility.Collapsed;
+                // 失败时保持 Collapsed
             }
         }
-        else
+        else if (materialType == MaterialType.Motion)
         {
-            // 隐藏背景图片，恢复默认
-            BackgroundImage.Visibility = Visibility.Collapsed;
-            BackgroundImage.Source = null;
-            NavigationViewControl.Background = null;
+            // 显示动态光效和亚克力遮罩
+            MotionBg.Visibility = Visibility.Visible;
+            AcrylicOverlay.Visibility = Visibility.Visible;
+            
+            // 设置 NavigationView 背景为半透明以透出光效
+            NavigationViewControl.Background = new SolidColorBrush(
+                Microsoft.UI.Colors.Transparent);
         }
     }
 

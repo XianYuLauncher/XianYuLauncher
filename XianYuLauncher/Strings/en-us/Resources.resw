@@ -2542,4 +2542,7 @@ Continue downloading?</value>
   <data name="Settings_McModSupportText" xml:space="preserve">
     <value>Provides Mod Data Translation</value>
   </data>
+  <data name="MaterialType_Motion" xml:space="preserve">
+    <value>Aurora Motion</value>
+  </data>
 </root>

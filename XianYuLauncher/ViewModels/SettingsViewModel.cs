@@ -238,6 +238,72 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否使用自定义背景
     /// </summary>
     public bool IsCustomBackground => MaterialType == XianYuLauncher.Core.Services.MaterialType.CustomBackground;
+
+    /// <summary>
+    /// 是否使用流光背景
+    /// </summary>
+    public bool IsMotionBackground => MaterialType == XianYuLauncher.Core.Services.MaterialType.Motion;
+
+    [ObservableProperty]
+    private double _motionSpeed = 1.0;
+    
+    [ObservableProperty]
+    private Windows.UI.Color _motionColor1 = Windows.UI.Color.FromArgb(255, 100, 50, 200);
+    [ObservableProperty]
+    private Windows.UI.Color _motionColor2 = Windows.UI.Color.FromArgb(255, 0, 100, 200);
+    [ObservableProperty]
+    private Windows.UI.Color _motionColor3 = Windows.UI.Color.FromArgb(255, 200, 50, 100);
+    [ObservableProperty]
+    private Windows.UI.Color _motionColor4 = Windows.UI.Color.FromArgb(255, 50, 200, 150);
+    [ObservableProperty]
+    private Windows.UI.Color _motionColor5 = Windows.UI.Color.FromArgb(255, 20, 20, 80);
+
+    private async void SaveMotionSettings()
+    {
+        if (_materialService == null) return;
+        await _materialService.SaveMotionSpeedAsync(MotionSpeed);
+        var colors = new[] 
+        { 
+             ColorToHex(MotionColor1),
+             ColorToHex(MotionColor2),
+             ColorToHex(MotionColor3),
+             ColorToHex(MotionColor4),
+             ColorToHex(MotionColor5)
+        };
+        await _materialService.SaveMotionColorsAsync(colors);
+    }
+
+    private string ColorToHex(Windows.UI.Color color)
+    {
+        return $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+    }
+
+    private Windows.UI.Color ParseColor(string hex)
+    {
+        try 
+        {
+            hex = hex.Replace("#", "");
+            if (hex.Length == 8)
+            {
+                 var a = byte.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
+                 var r = byte.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
+                 var g = byte.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+                 var b = byte.Parse(hex.Substring(6, 2), System.Globalization.NumberStyles.HexNumber);
+                 return Windows.UI.Color.FromArgb(a, r, g, b);
+            }
+        }
+        catch {}
+        return Windows.UI.Color.FromArgb(0, 0, 0, 0); 
+    }
+
+    partial void OnMotionSpeedChanged(double value) => SaveMotionSettings();
+    partial void OnMotionColor1Changed(Windows.UI.Color value) => SaveMotionSettings();
+    partial void OnMotionColor2Changed(Windows.UI.Color value) => SaveMotionSettings();
+    partial void OnMotionColor3Changed(Windows.UI.Color value) => SaveMotionSettings();
+    partial void OnMotionColor4Changed(Windows.UI.Color value) => SaveMotionSettings();
+    partial void OnMotionColor5Changed(Windows.UI.Color value) => SaveMotionSettings();
+
+    /* Removed SaveMotionSetting(string key, object value) */
     
     /// <summary>
     /// 字体设置键
@@ -1259,6 +1325,19 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         // 使用MaterialService加载材质设置
         MaterialType = await _materialService.LoadMaterialTypeAsync();
+        
+        // Load motion settings
+        MotionSpeed = await _materialService.LoadMotionSpeedAsync();
+        var colors = await _materialService.LoadMotionColorsAsync();
+        if (colors.Length == 5)
+        {
+            MotionColor1 = ParseColor(colors[0]);
+            MotionColor2 = ParseColor(colors[1]);
+            MotionColor3 = ParseColor(colors[2]);
+            MotionColor4 = ParseColor(colors[3]);
+            MotionColor5 = ParseColor(colors[4]);
+        }
+
         // 移除设置页打开时的材质刷新，避免窗口闪烁
         // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
     }
@@ -1284,6 +1363,7 @@ public partial class SettingsViewModel : ObservableRecipient
             
             // 通知 IsCustomBackground 属性变化
             OnPropertyChanged(nameof(IsCustomBackground));
+            OnPropertyChanged(nameof(IsMotionBackground));
             
             // 只有当不是初始化加载材质时，才应用材质到主窗口
             // 避免设置页打开时窗口闪烁

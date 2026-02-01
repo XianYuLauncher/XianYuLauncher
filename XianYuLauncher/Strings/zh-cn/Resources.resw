@@ -2554,4 +2554,7 @@
   <data name="Settings_McModSupportText" xml:space="preserve">
     <value>提供 Mod 数据翻译</value>
   </data>
+  <data name="MaterialType_Motion" xml:space="preserve">
+    <value>流光</value>
+  </data>
 </root>

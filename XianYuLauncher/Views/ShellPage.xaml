@@ -6,10 +6,26 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:behaviors="using:XianYuLauncher.Behaviors"
+    xmlns:controls="using:XianYuLauncher.Controls"
     xmlns:i="using:Microsoft.Xaml.Interactivity"
     Loaded="OnLoaded">
 
     <Grid>
+        <!-- 动态光效背景 (ZIndex -2: 最底层) - 默认隐藏 -->
+        <controls:MotionBackgroundControl x:Name="MotionBg" Canvas.ZIndex="-2" Visibility="Collapsed" />
+        
+        <!-- 亚克力磨砂层 (ZIndex -1.5) - 默认隐藏 -->
+        <Rectangle x:Name="AcrylicOverlay" 
+                   Canvas.ZIndex="-1" 
+                   IsHitTestVisible="False"
+                   Visibility="Collapsed">
+            <Rectangle.Fill>
+                <AcrylicBrush TintColor="#FF000000" 
+                              TintOpacity="0.3" 
+                              FallbackColor="#FF000000"/>
+            </Rectangle.Fill>
+        </Rectangle>
+
         <!-- 自定义背景图片层 -->
         <Image x:Name="BackgroundImage"
                Stretch="UniformToFill"
@@ -38,6 +54,7 @@
         <NavigationView
             x:Name="NavigationViewControl"
             Canvas.ZIndex="0"
+            Background="Transparent"
             IsBackButtonVisible="Visible"
             IsBackEnabled="{x:Bind ViewModel.IsBackEnabled, Mode=OneWay}"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"

@@ -16,6 +16,7 @@
         <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
+        <helpers:ColorToBrushConverter x:Key="ColorToBrushConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -343,6 +344,60 @@
                                             Style="{ThemeResource CaptionTextBlockStyle}" 
                                             Margin="0,4,0,0" 
                                             Opacity="0.7"/>
+                                    </StackPanel>
+
+                                    <!-- 动态光效设置 -->
+                                    <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="流光设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,8"/>
+                                        
+                                        <!-- 速度 -->
+                                        <TextBlock Text="移动速度" Margin="0,0,0,4"/>
+                                        <Slider Minimum="0.1" Maximum="3.0" StepFrequency="0.1" Value="{x:Bind ViewModel.MotionSpeed, Mode=TwoWay}" Width="300" HorizontalAlignment="Left" />
+
+                                        <!-- 颜色 -->
+                                        <TextBlock Text="光球颜色" Margin="0,8,0,8"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                <Border Background="{x:Bind ViewModel.MotionColor1, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor1, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                <Border Background="{x:Bind ViewModel.MotionColor2, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor2, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                <Border Background="{x:Bind ViewModel.MotionColor3, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor3, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                <Border Background="{x:Bind ViewModel.MotionColor4, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor4, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                <Border Background="{x:Bind ViewModel.MotionColor5, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor5, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 

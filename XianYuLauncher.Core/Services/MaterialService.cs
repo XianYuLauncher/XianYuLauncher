@@ -24,7 +24,11 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 自定义背景图片
         /// </summary>
-        CustomBackground
+        CustomBackground,
+        /// <summary>
+        /// 动态光效 (Aurora)
+        /// </summary>
+        Motion
     }
     
     /// <summary>
@@ -45,11 +49,18 @@ namespace XianYuLauncher.Core.Services
         private readonly ILocalSettingsService _localSettingsService;
         private const string MaterialTypeKey = "MaterialType";
         private const string BackgroundImagePathKey = "BackgroundImagePath";
+        private const string MotionSpeedKey = "MotionSpeed";
+        private const string MotionColorsKey = "MotionColors"; // format: "hex1;hex2;hex3;hex4;hex5"
         
         /// <summary>
         /// 背景设置变更事件
         /// </summary>
         public event EventHandler<BackgroundChangedEventArgs>? BackgroundChanged;
+
+        /// <summary>
+        /// 流光设置变更事件
+        /// </summary>
+        public event EventHandler? MotionSettingsChanged;
         
         /// <summary>
         /// 应用材质到窗口的委托（由UI层设置）
@@ -95,6 +106,32 @@ namespace XianYuLauncher.Core.Services
         public async Task SaveBackgroundImagePathAsync(string? path)
         {
             await _localSettingsService.SaveSettingAsync(BackgroundImagePathKey, path ?? string.Empty);
+        }
+
+        public async Task<double> LoadMotionSpeedAsync()
+        {
+            var val = await _localSettingsService.ReadSettingAsync<double?>(MotionSpeedKey);
+            return val ?? 1.0;
+        }
+
+        public async Task SaveMotionSpeedAsync(double speed)
+        {
+            await _localSettingsService.SaveSettingAsync(MotionSpeedKey, speed);
+            MotionSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public async Task<string[]> LoadMotionColorsAsync()
+        {
+            var colorsStr = await _localSettingsService.ReadSettingAsync<string>(MotionColorsKey);
+            if (string.IsNullOrEmpty(colorsStr)) return Array.Empty<string>();
+            return colorsStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        public async Task SaveMotionColorsAsync(string[] colors)
+        {
+            var colorsStr = string.Join(";", colors);
+            await _localSettingsService.SaveSettingAsync(MotionColorsKey, colorsStr);
+            MotionSettingsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
