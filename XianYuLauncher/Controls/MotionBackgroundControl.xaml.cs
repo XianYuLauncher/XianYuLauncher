@@ -100,6 +100,10 @@ public sealed partial class MotionBackgroundControl : UserControl
         {
             if (ActualWidth > 0 && ActualHeight > 0)
             {
+                // 停止可能由初始化阶段 SizeChanged 触发的计时器
+                // 解决启动 0.5 秒后动画重置导致的位置跳变
+                if (_resizeTimer.IsEnabled) _resizeTimer.Stop();
+
                 UpdateAnimations();
             }
         });
