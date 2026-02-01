@@ -494,22 +494,29 @@ public class ModrinthService
                 url += $"?{string.Join("&", queryParams)}";
             }
 
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] GetProjectVersionsAsync Request: {url}");
+
             // 使用带回退的请求
             var response = await SendWithFallbackAsync(url);
             
-            // 获取完整响应内容
-            responseContent = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] GetProjectVersionsAsync Response: {response.StatusCode}");
 
             // 确保响应成功
             response.EnsureSuccessStatusCode();
 
-            // 解析响应
-            return JsonSerializer.Deserialize<List<ModrinthVersion>>(responseContent);
+            // 解析响应 (使用流式反序列化以提高性能并减少内存使用)
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var versions = await JsonSerializer.DeserializeAsync<List<ModrinthVersion>>(stream);
+            
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] GetProjectVersionsAsync Parsed: {versions?.Count ?? 0} versions");
+            
+            return versions ?? new List<ModrinthVersion>();
         }
         catch (HttpRequestException ex)
         {
             // 处理HTTP请求异常，包含状态码
             string errorMsg = $"获取Mod版本列表失败: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP Error in GetProjectVersionsAsync: {ex}");
             if (ex.StatusCode.HasValue)
             {
                 errorMsg += $" (状态码: {ex.StatusCode})";
@@ -518,11 +525,13 @@ public class ModrinthService
         }
         catch (JsonException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON Error in GetProjectVersionsAsync: {ex}");
             throw new Exception($"解析Mod版本列表失败: {ex.Message}");
         }
         catch (Exception ex)
         {
             // 处理其他异常
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] General Error in GetProjectVersionsAsync: {ex}");
             throw new Exception($"获取Mod版本列表时发生错误: {ex.Message}");
         }
     }

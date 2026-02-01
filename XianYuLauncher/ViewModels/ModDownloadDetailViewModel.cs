@@ -916,12 +916,12 @@ namespace XianYuLauncher.ViewModels
                 if (_sourceType == "mod")
                 {
                     // 如果来源是mod页，过滤掉datapack类型的版本
-                    allVersions = allVersions.Where(v => !v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
+                    allVersions = allVersions.Where(v => v.Loaders != null && !v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
                 }
                 else if (_sourceType == "datapack")
                 {
                     // 如果来源是数据包页，只保留datapack类型的版本
-                    allVersions = allVersions.Where(v => v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
+                    allVersions = allVersions.Where(v => v.Loaders != null && v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
                 }
                 
                 // 预构建加载器名称格式化缓存，避免重复计算
@@ -950,7 +950,7 @@ namespace XianYuLauncher.ViewModels
                         var gameVersionsList = gameVersionsInOrder.ToList();
                         
                         // 预格式化所有可能的加载器名称
-                        var allLoaders = allVersions.SelectMany(v => v.Loaders).Distinct().ToList();
+                        var allLoaders = allVersions.Where(v => v.Loaders != null).SelectMany(v => v.Loaders).Distinct().ToList();
                         foreach (var loader in allLoaders)
                         {
                             if (!loaderNameCache.ContainsKey(loader))
@@ -961,6 +961,7 @@ namespace XianYuLauncher.ViewModels
                         
                         // 预先按游戏版本分组所有 Mod 版本，避免重复过滤
                         var versionsByGameVersion = allVersions
+                            .Where(v => v.GameVersions != null)
                             .SelectMany(v => v.GameVersions.Select(gv => new { GameVersion = gv, ModVersion = v }))
                             .GroupBy(x => x.GameVersion)
                             .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().OrderByDescending(v => v.DatePublished).ToList());
@@ -975,6 +976,7 @@ namespace XianYuLauncher.ViewModels
                             
                             // 按加载器分组
                             var versionsByLoader = gameVersionModVersions
+                                .Where(v => v.Loaders != null)
                                 .SelectMany(v => v.Loaders.Select(l => new { Loader = l, ModVersion = v }))
                                 .GroupBy(x => x.Loader)
                                 .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().ToList());
@@ -1739,6 +1741,9 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private bool _isLoadingDependencies = false;
         
+        // 当前正在下载的游戏版本上下文（用于解决跨流程/弹窗操作时 SelectedInstalledVersion 可能丢失的问题）
+        private InstalledGameVersionViewModel _currentDownloadingGameVersion;
+
         // 显示存档选择弹窗
         private async Task ShowSaveSelectionDialog()
         {
@@ -1753,11 +1758,14 @@ namespace XianYuLauncher.ViewModels
                 // 构建saves目录路径 - 对于模组加载器版本，saves目录在versions目录下的具体版本文件夹内
                 string savesPath;
                 
+                // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
+                var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
+
                 // 如果选择了已安装的版本，使用该版本的路径
-                if (SelectedInstalledVersion != null)
+                if (targetVersion != null)
                 {
                     // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
-                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
                     
                     // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesPath = Path.Combine(versionDir, "saves");
@@ -1839,11 +1847,14 @@ namespace XianYuLauncher.ViewModels
                 // 构建存档文件夹路径
                 string savesDir;
                 
+                // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
+                var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
+
                 // 如果选择了已安装的版本，使用该版本的路径
-                if (SelectedInstalledVersion != null)
+                if (targetVersion != null)
                 {
                     // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
-                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
                     
                     // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesDir = Path.Combine(versionDir, "saves");
@@ -2487,6 +2498,8 @@ namespace XianYuLauncher.ViewModels
             if (SelectedInstalledVersion != null)
             {
                 IsVersionSelectionDialogOpen = false;
+                // 设置当前操作的版本上下文
+                _currentDownloadingGameVersion = SelectedInstalledVersion;
                 await DownloadModAsync(SelectedModVersion);
             }
         }
@@ -2553,10 +2566,13 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("未选择要下载的Mod版本");
                 }
                 
+                // 确保有可用的游戏版本上下文
+                var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
+
                 // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
-                if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
+                if (!UseCustomDownloadPath && targetVersion == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] 错误: SelectedInstalledVersion 为 null");
+                    System.Diagnostics.Debug.WriteLine($"[DownloadModAsync] 错误: 未选择游戏版本");
                     throw new Exception("未选择要安装的游戏版本");
                 }
                 
@@ -2596,7 +2612,7 @@ namespace XianYuLauncher.ViewModels
                     string minecraftPath = _fileService.GetMinecraftDataPath();
                     
                     // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
-                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
                     
                     // 根据项目类型选择文件夹名称
                     string targetFolder;
@@ -2628,7 +2644,7 @@ namespace XianYuLauncher.ViewModels
                 var dependenciesTargetDir = Path.GetDirectoryName(savePath);
                 if (!string.IsNullOrEmpty(dependenciesTargetDir))
                 {
-                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, SelectedInstalledVersion);
+                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
                 }
                 
                 // 执行主Mod下载
@@ -3032,7 +3048,7 @@ namespace XianYuLauncher.ViewModels
                 }
 
                 // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
-                if (!UseCustomDownloadPath && SelectedInstalledVersion == null)
+                if (!UseCustomDownloadPath && _currentDownloadingGameVersion == null && SelectedInstalledVersion == null)
                 {
                     throw new Exception("未选择要安装的游戏版本");
                 }
@@ -3045,8 +3061,11 @@ namespace XianYuLauncher.ViewModels
                 }
                 else
                 {
+                    // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
+                    var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
+
                     string minecraftPath = _fileService.GetMinecraftDataPath();
-                    string versionDir = Path.Combine(minecraftPath, "versions", SelectedInstalledVersion.OriginalVersionName);
+                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
                     savesDir = Path.Combine(versionDir, "saves");
                 }
 
@@ -3934,7 +3953,7 @@ namespace XianYuLauncher.ViewModels
                     
                     // 保存当前正在下载的Mod版本和游戏版本
                     _currentDownloadingModVersion = modVersion;
-                    SelectedInstalledVersion = gameVersion;
+                    _currentDownloadingGameVersion = gameVersion;
                     
                     // 打开存档选择弹窗
                     await ShowSaveSelectionDialog();
@@ -3948,8 +3967,8 @@ namespace XianYuLauncher.ViewModels
                 {
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到世界，使用世界安装流程");
                     
-                    // 设置 SelectedInstalledVersion 以便 InstallWorldAsync 使用
-                    SelectedInstalledVersion = gameVersion;
+                    // 设置 _currentDownloadingGameVersion 以便 InstallWorldAsync 使用
+                    _currentDownloadingGameVersion = gameVersion;
                     
                     // 使用现有的世界安装流程
                     await InstallWorldAsync(modVersion);
