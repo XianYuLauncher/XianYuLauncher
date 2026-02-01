@@ -9,11 +9,11 @@
     Loaded="OnLoaded"
     Unloaded="OnUnloaded">
 
-    <Grid x:Name="RootGrid" Background="Black">
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!-- 画布用于承载 Visuals -->
         <Canvas x:Name="CompositionHost" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
         
         <!-- 覆盖一层噪点或半透明遮罩增强质感 (可选) -->
-        <Rectangle Fill="#10FFFFFF" IsHitTestVisible="False"/>
+        <Rectangle Fill="{ThemeResource SystemControlBackgroundBaseMediumLowBrush}" Opacity="0.1" IsHitTestVisible="False"/>
     </Grid>
 </UserControl>

@@ -10,6 +10,21 @@
     xmlns:i="using:Microsoft.Xaml.Interactivity"
     Loaded="OnLoaded">
 
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="MotionOverlayColor">#CCFFFFFF</Color>
+                    <x:Double x:Key="MotionOverlayOpacity">0.5</x:Double>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="MotionOverlayColor">#FF000000</Color>
+                    <x:Double x:Key="MotionOverlayOpacity">0.3</x:Double>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
+
     <Grid>
         <!-- 动态光效背景 (ZIndex -2: 最底层) - 默认隐藏 -->
         <controls:MotionBackgroundControl x:Name="MotionBg" Canvas.ZIndex="-2" Visibility="Collapsed" />
@@ -20,9 +35,9 @@
                    IsHitTestVisible="False"
                    Visibility="Collapsed">
             <Rectangle.Fill>
-                <AcrylicBrush TintColor="#FF000000" 
-                              TintOpacity="0.3" 
-                              FallbackColor="#FF000000"/>
+                <AcrylicBrush TintColor="{ThemeResource MotionOverlayColor}" 
+                              TintOpacity="{ThemeResource MotionOverlayOpacity}" 
+                              FallbackColor="{ThemeResource MotionOverlayColor}"/>
             </Rectangle.Fill>
         </Rectangle>
 
