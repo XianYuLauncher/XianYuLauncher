@@ -242,12 +242,7 @@
                                                     </VisualState>
                                                     <VisualState x:Name="Selected">
                                                         <Storyboard>
-                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderBrush">
-                                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
-                                                            </ObjectAnimationUsingKeyFrames>
-                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="BorderThickness">
-                                                                <DiscreteObjectKeyFrame KeyTime="0" Value="2" />
-                                                            </ObjectAnimationUsingKeyFrames>
+                                                            <!-- Removed selection border style -->
                                                         </Storyboard>
                                                     </VisualState>
                                                 </VisualStateGroup>
