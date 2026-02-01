@@ -10,6 +10,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:vmviews="using:XianYuLauncher.Views.VersionManagement"
     mc:Ignorable="d">
 
     <Grid x:Name="ContentArea" Padding="40,60,40,20" AllowDrop="True" DragEnter="ContentArea_DragEnter" DragOver="ContentArea_DragOver" DragLeave="ContentArea_DragLeave" Drop="ContentArea_Drop">
@@ -2124,6 +2125,16 @@
                         </StackPanel>
                     </Grid>
                 </Grid>
+            </TabViewItem>
+
+            <TabViewItem>
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE753;" FontSize="16" />
+                        <TextBlock Text="服务器" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabViewItem.Header>
+                <vmviews:ServerListControl />
             </TabViewItem>
         </TabView>
         <!-- 扩展安装进度弹窗 -->
