@@ -16,18 +16,39 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 [English](README.md) | [简体中文](README_zh-CN.md) | [繁體中文](README_zh-TW.md)
 </div>
 
-## Features
+## ✨ Features
 
-- **Sleek, Modern UI**: Built with WinUI 3 for a native and fluent Windows experience.
-- **Built-in Multiplayer Support**: Integrated P2P networking lobby powered by **Terracotta**, allowing you to easily play with friends as if you were on the same LAN (Virtual LAN).
-- **AI-Powered Crash Analysis**: Provides the capability to connect to OpenAI API-compatible services for analyzing game crashes. *Note: No built-in AI model is included; users must configure their own API Endpoint and Key.*
-- **Comprehensive Resource Center**: Search and one-click install Modpacks, Mods, Resource Packs, and Shaders from Modrinth and CurseForge.
-- **Smart Environment Management**: Automated downloading and matching of appropriate Java runtimes (JRE/JDK).
-- **Skin Management**: Built-in 3D skin viewer and skin manager.
-- **Loader Support**: One-click installation for Forge, Fabric, NeoForge, Quilt, Optifine, and Cleanroom (experimental).
-- **Version Management**: Easy installation and independent directories to keep your versions and mods organized.
-- **Real-time Logs**: Monitor game output with live log viewing.
-- **Multi-language Support**: Available in English and Chinese.
+### 🎮 Game Management
+- **Smart Version Management**: One-click installation for Minecraft Vanilla, Forge, Fabric, NeoForge, Quilt, Optifine, Cleanroom (Experimental).
+- **Version Isolation**: Independent directories for each version, keeping Mods separate and interference-free.
+- **World Management System**: World overview, Data Pack management, one-click world launch.
+- **Server Management**: Add/manage servers, real-time status detection (MOTD, online players, latency), one-click instance launch and join server.
+
+### 🔧 Smart Diagnosis & Repair
+- **AI Crash Analysis**: Compatible with OpenAI API services to intelligently analyze crash reasons *(requires self-configuration of API Endpoint and Key)*.
+- **XianYu Fixer**: One-click repair for common issues (Java version mismatch, missing Mod dependencies, etc.).
+- **Knowledge Base Matching**: Built-in error knowledge base for quick problem localization and solutions.
+- **Real-time Logs**: Monitor game output in real-time with log export support.
+
+### 📦 Resource Center
+- **Dual Platform Support**: Search and download resources from Modrinth + CurseForge.
+- **Smart Dependency Management**: Automatically identify and download dependency Mods to avoid dependency hell.
+- **Favorites System**: Collect favorite resources, supports import/export and batch installation.
+- **Resource Types**: Modpacks, Mods, Resource Packs, Shaders, Data Packs, Maps.
+
+### ⚡ Performance Optimization
+- **Segmented Download**: Multi-threaded segmented downloading for significantly improved speeds.
+- **Java Management**: Auto-download and match appropriate Java versions (8/17/21...).
+- **Caching Mechanism**: Smart caching for resource icons and translation results to reduce network requests.
+
+### 🌐 Online Features
+- **Terracotta Integration**: P2P Virtual LAN, allowing multiplayer without a public IP.
+
+### 🎨 User Experience
+- **Fluent Design**: Native WinUI 3 interface for a modern and premium visual effect.
+- **3D Skin Preview**: Built-in skinview3d for real-time character skin preview.
+- **Multi-language Support**: Simplified Chinese, English.
+- **Dual Channel Update**: Switch between Stable/Dev channels to experience new features early.
 
 ## Getting Started
 
