@@ -91,6 +91,7 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IDialogService _dialogService;
+        private readonly DownloadSourceFactory _downloadSourceFactory;
         private const string JavaPathKey = "JavaPath";
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
@@ -557,7 +558,8 @@ public partial class SettingsViewModel : ObservableRecipient
         ModInfoService modInfoService,
         IJavaRuntimeService javaRuntimeService,
         IJavaDownloadService javaDownloadService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        DownloadSourceFactory downloadSourceFactory)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -571,6 +573,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _javaRuntimeService = javaRuntimeService;
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
+        _downloadSourceFactory = downloadSourceFactory;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -739,6 +742,18 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源加载已保存设置: {DownloadSource}");
         }
+
+        // 确保初始化时也同步到 Factory
+        try
+        {
+            var sourceKey = DownloadSource.ToString().ToLowerInvariant();
+            _downloadSourceFactory.SetDefaultSource(sourceKey);
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 初始化全局下载源工厂配置: {sourceKey}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 初始化全局下载源失败: {ex.Message}");
+        }
     }
     
     /// <summary>
@@ -770,6 +785,18 @@ public partial class SettingsViewModel : ObservableRecipient
         // 保存为字符串，方便后续判断是否有保存过
         _localSettingsService.SaveSettingAsync(DownloadSourceKey, value.ToString()).ConfigureAwait(false);
         System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源已保存: {value}");
+
+        // 同步更新 DownloadSourceFactory 的默认源
+        try
+        {
+            var sourceKey = value.ToString().ToLowerInvariant();
+            _downloadSourceFactory.SetDefaultSource(sourceKey);
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 已更新全局下载源工厂配置: {sourceKey}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 更新全局下载源失败: {ex.Message}");
+        }
     }
     
     /// <summary>
