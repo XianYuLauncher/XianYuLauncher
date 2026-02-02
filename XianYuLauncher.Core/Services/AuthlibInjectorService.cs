@@ -633,6 +633,131 @@ namespace XianYuLauncher.Core.Services
         }
         
         /// <summary>
+        /// 上传皮肤到外置登录服务器
+        /// 调用 PUT /api/user/profile/{uuid}/skin 接口
+        /// </summary>
+        /// <param name="authServerUrl">认证服务器 URL</param>
+        /// <param name="uuid">角色 UUID（无符号）</param>
+        /// <param name="accessToken">访问令牌</param>
+        /// <param name="skinFileStream">皮肤文件流</param>
+        /// <param name="fileName">文件名</param>
+        /// <param name="model">皮肤模型：空字符串为 Steve，"slim" 为 Alex</param>
+        /// <returns>上传结果（成功、不支持、失败）</returns>
+        public async Task<(bool Success, bool NotSupported)> UploadSkinAsync(
+            string authServerUrl,
+            string uuid,
+            string accessToken,
+            Stream skinFileStream,
+            string fileName,
+            string model)
+        {
+            if (string.IsNullOrEmpty(authServerUrl) || string.IsNullOrEmpty(uuid) || string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("[AuthlibInjector] 上传皮肤失败：参数为空");
+                return (false, false);
+            }
+
+            try
+            {
+                _logger.LogInformation("[AuthlibInjector] ========== 开始上传皮肤到外置登录服务器 ==========");
+                _logger.LogInformation("[AuthlibInjector] 认证服务器: {AuthServer}", authServerUrl);
+                _logger.LogInformation("[AuthlibInjector] 角色 UUID: {Uuid}", uuid);
+                _logger.LogInformation("[AuthlibInjector] 皮肤模型: {Model}", string.IsNullOrEmpty(model) ? "Steve (classic)" : model);
+
+                // 移除 UUID 中的横杠（如果有）
+                var uuidWithoutDashes = uuid.Replace("-", "");
+
+                // 构建上传 URL
+                var uploadUrl = authServerUrl.TrimEnd('/') + $"/api/user/profile/{uuidWithoutDashes}/skin";
+                _logger.LogInformation("[AuthlibInjector] 请求 URL: {Url}", uploadUrl);
+
+                // 创建 multipart/form-data 请求
+                using var formContent = new MultipartFormDataContent();
+
+                // 添加 model 参数（仅用于皮肤）
+                var modelValue = string.IsNullOrEmpty(model) || !model.Equals("slim", StringComparison.OrdinalIgnoreCase) ? "" : "slim";
+                formContent.Add(new StringContent(modelValue), "model");
+                _logger.LogDebug("[AuthlibInjector] 添加 model 参数: {Model}", string.IsNullOrEmpty(modelValue) ? "空字符串 (Steve)" : modelValue);
+
+                // 添加 file 参数
+                var fileContent = new StreamContent(skinFileStream);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+                formContent.Add(fileContent, "file", fileName);
+                _logger.LogDebug("[AuthlibInjector] 添加 file 参数: {FileName}", fileName);
+
+                // 创建请求
+                using var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                request.Content = formContent;
+
+                _logger.LogDebug("[AuthlibInjector] 发送 PUT 请求...");
+
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var response = await _httpClient.SendAsync(request, cts.Token);
+
+                _logger.LogInformation("[AuthlibInjector] 响应状态码: {StatusCode} ({StatusCodeInt})", response.StatusCode, (int)response.StatusCode);
+
+                // 读取响应内容（如果有）
+                var responseContent = await response.Content.ReadAsStringAsync();
+                if (!string.IsNullOrEmpty(responseContent))
+                {
+                    _logger.LogDebug("[AuthlibInjector] 响应内容: {ResponseContent}", responseContent);
+                }
+
+                // 204 No Content 表示成功
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    _logger.LogInformation("[AuthlibInjector] ✅ 皮肤上传成功 (204 No Content)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                    return (true, false);
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _logger.LogWarning("[AuthlibInjector] ⚠️ 服务器不支持皮肤上传 (404 Not Found)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                    return (false, true); // NotSupported = true
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 皮肤上传失败：未授权 (401 Unauthorized)");
+                    _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                    return (false, false);
+                }
+                else if (response.IsSuccessStatusCode)
+                {
+                    // 其他 2xx 状态码也视为成功
+                    _logger.LogInformation("[AuthlibInjector] ✅ 皮肤上传成功 ({StatusCode})", response.StatusCode);
+                    _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                    return (true, false);
+                }
+                else
+                {
+                    _logger.LogWarning("[AuthlibInjector] ❌ 皮肤上传失败，状态码: {StatusCode}", response.StatusCode);
+                    _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                    return (false, false);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning("[AuthlibInjector] ⚠️ 皮肤上传超时（30秒）");
+                _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                return (false, false);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 皮肤上传网络错误");
+                _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                return (false, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthlibInjector] 皮肤上传发生异常");
+                _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
+                return (false, false);
+            }
+        }
+
+        /// <summary>
         /// 刷新外置登录令牌
         /// 调用 POST /authserver/refresh 接口
         /// </summary>

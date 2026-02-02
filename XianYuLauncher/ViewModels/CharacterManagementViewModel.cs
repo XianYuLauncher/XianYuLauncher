@@ -56,12 +56,6 @@ namespace XianYuLauncher.ViewModels
         private async Task ApplyBuiltInSkin(BuiltInSkin skin)
         {
             if (CurrentProfile.IsOffline) return;
-            // 仅允许微软账户
-            if (CurrentProfile.TokenType == "external") 
-            {
-               // TODO: Handle external if needed (User said only Microsoft)
-               return; 
-            }
 
             try 
             {
@@ -601,11 +595,31 @@ namespace XianYuLauncher.ViewModels
         }
         
         /// <summary>
-        /// 上传皮肤到Mojang API
+        /// 上传皮肤到服务器（根据账户类型自动选择 API）
         /// </summary>
         /// <param name="file">皮肤文件</param>
         /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
         public async Task UploadSkinAsync(Windows.Storage.StorageFile file, string model)
+        {
+            // 根据账户类型选择不同的上传方式
+            if (CurrentProfile.TokenType == "external")
+            {
+                // 外置登录账户：使用 Yggdrasil API
+                await UploadSkinToExternalServerAsync(file, model);
+            }
+            else
+            {
+                // 微软账户：使用 Mojang API
+                await UploadSkinToMojangAsync(file, model);
+            }
+        }
+
+        /// <summary>
+        /// 上传皮肤到 Mojang API（微软账户）
+        /// </summary>
+        /// <param name="file">皮肤文件</param>
+        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        private async Task UploadSkinToMojangAsync(Windows.Storage.StorageFile file, string model)
         {
             // 1. 准备API请求 - 使用POST方法
             var apiUrl = "https://api.minecraftservices.com/minecraft/profile/skins";
@@ -662,6 +676,53 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 response.EnsureSuccessStatusCode();
+            }
+        }
+
+        /// <summary>
+        /// 上传皮肤到外置登录服务器（Yggdrasil API）
+        /// </summary>
+        /// <param name="file">皮肤文件</param>
+        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        private async Task UploadSkinToExternalServerAsync(Windows.Storage.StorageFile file, string model)
+        {
+            if (string.IsNullOrEmpty(CurrentProfile.AuthServer))
+            {
+                throw new InvalidOperationException("外置登录账户缺少认证服务器地址");
+            }
+
+            if (string.IsNullOrEmpty(CurrentProfile.AccessToken))
+            {
+                throw new InvalidOperationException("外置登录账户缺少访问令牌");
+            }
+
+            // 获取 AuthlibInjectorService
+            var authlibService = App.GetService<AuthlibInjectorService>();
+            if (authlibService == null)
+            {
+                throw new InvalidOperationException("无法获取 AuthlibInjectorService");
+            }
+
+            // 打开文件流
+            using var fileStream = await file.OpenStreamForReadAsync();
+
+            // 调用外置登录的皮肤上传 API
+            var (success, notSupported) = await authlibService.UploadSkinAsync(
+                CurrentProfile.AuthServer,
+                CurrentProfile.Id,
+                CurrentProfile.AccessToken,
+                fileStream,
+                file.Name,
+                model);
+
+            if (notSupported)
+            {
+                throw new NotSupportedException("当前外置登录服务器不支持此操作");
+            }
+
+            if (!success)
+            {
+                throw new HttpRequestException("外置登录服务器皮肤上传失败");
             }
         }
 

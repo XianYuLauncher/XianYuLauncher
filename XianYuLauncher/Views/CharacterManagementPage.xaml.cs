@@ -995,14 +995,6 @@ namespace XianYuLauncher.Views
                 Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传皮肤");
                 return;
             }
-            
-            // 禁用外置登录的上传功能
-            if (ViewModel.CurrentProfile.TokenType == "external")
-            {
-                await ShowMessageAsync("操作失败", "外置登录暂不支持上传皮肤");
-                Debug.WriteLine($"[CharacterManagementPage] 外置登录，拒绝上传皮肤");
-                return;
-            }
 
             try
             {
