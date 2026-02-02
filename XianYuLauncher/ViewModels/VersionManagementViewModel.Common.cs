@@ -64,6 +64,26 @@ public partial class VersionManagementViewModel
     }
     
     /// <summary>
+    /// 异步获取版本特定的文件路径（考虑版本隔离设置）
+    /// </summary>
+    /// <param name="fileName">文件名（如 "servers.dat"）</param>
+    /// <returns>完整的文件路径</returns>
+    private async Task<string> GetVersionSpecificFilePathAsync(string fileName)
+    {
+        var localSettingsService = App.GetService<ILocalSettingsService>();
+        var enableVersionIsolation = (await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation")) ?? true;
+        
+        if (enableVersionIsolation && !string.IsNullOrEmpty(SelectedVersion?.Path))
+        {
+            return Path.Combine(SelectedVersion.Path, fileName);
+        }
+        else
+        {
+            return Path.Combine(MinecraftPath, fileName);
+        }
+    }
+    
+    /// <summary>
     /// 打开指定文件夹
     /// </summary>
     /// <param name="folderPath">文件夹路径</param>

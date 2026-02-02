@@ -75,19 +75,8 @@ public partial class VersionManagementViewModel
     {
         try
         {
-            // 复用路径逻辑 (简化版，理想情况应重构为 Helper)
-            var localSettingsService = App.GetService<XianYuLauncher.Core.Contracts.Services.ILocalSettingsService>();
-            var enableVersionIsolation = (await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation")) ?? true;
-            
-            string serversDatPath;
-            if (enableVersionIsolation && !string.IsNullOrEmpty(SelectedVersion?.Path))
-            {
-                serversDatPath = Path.Combine(SelectedVersion.Path, "servers.dat");
-            }
-            else
-            {
-                serversDatPath = Path.Combine(MinecraftPath, "servers.dat");
-            }
+            // 使用统一的路径获取方法
+            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
             
             if (string.IsNullOrEmpty(serversDatPath)) return;
 
@@ -145,7 +134,7 @@ public partial class VersionManagementViewModel
             IsLoading = true;
             
             // 获取设置服务和当前状态
-            var localSettingsService = App.GetService<XianYuLauncher.Core.Contracts.Services.ILocalSettingsService>();
+            var localSettingsService = App.GetService<ILocalSettingsService>();
             
             // 注意：ReadSettingAsync<bool> 如果key不存在可能会返回默认值false，而SettingsViewModel中的默认值是true
             // 因此这里需要使用 bool? 读取并处理默认情况
@@ -161,37 +150,21 @@ public partial class VersionManagementViewModel
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前版本路径: {currentVersionPath}");
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前MC路径: {currentMinecraftPath}");
 
+            // 使用统一的路径获取方法
+            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
+
             // 在后台线程处理文件读取和解析
             var servers = await Task.Run(async () =>
             {
                 var list = new List<ServerItem>();
-                string serversDatPath = string.Empty;
                 
-                // 根据版本隔离设置决定路径
-                if (enableVersionIsolation)
-                {
-                    if (!string.IsNullOrEmpty(currentVersionPath))
-                    {
-                        serversDatPath = Path.Combine(currentVersionPath, "servers.dat");
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本隔离已启用，使用版本目录下的servers.dat");
-                    }
-                    else
-                    {
-                         System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本隔离已启用但版本路径为空，不加载服务器列表");
-                    }
-                }
-                else
-                {
-                    serversDatPath = Path.Combine(currentMinecraftPath, "servers.dat");
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 版本隔离未启用，使用根目录下的servers.dat");
-                }
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 目标路径: {serversDatPath}");
                 
                 if (string.IsNullOrEmpty(serversDatPath))
                 {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 服务器文件路径为空，不加载服务器列表");
                     return list;
                 }
-                
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 目标路径: {serversDatPath}");
                 
                 if (File.Exists(serversDatPath))
                 {
@@ -400,20 +373,8 @@ public partial class VersionManagementViewModel
         
         try
         {
-            // 获取正确的服务器文件路径（复制自 LoadServersAsync 逻辑）
-            var localSettingsService = App.GetService<XianYuLauncher.Core.Contracts.Services.ILocalSettingsService>();
-            var enableVersionIsolationSetting = await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation");
-            var enableVersionIsolation = enableVersionIsolationSetting ?? true;
-            
-            string serversDatPath;
-            if (enableVersionIsolation && !string.IsNullOrEmpty(SelectedVersion?.Path))
-            {
-                serversDatPath = Path.Combine(SelectedVersion.Path, "servers.dat");
-            }
-            else
-            {
-                serversDatPath = Path.Combine(MinecraftPath, "servers.dat");
-            }
+            // 使用统一的路径获取方法
+            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
 
             System.Diagnostics.Debug.WriteLine($"[DeleteServer] Target file: {serversDatPath}");
 
