@@ -17,13 +17,15 @@ namespace XianYuLauncher.Tests.Services;
 public class DownloadManagerTests : IDisposable
 {
     private readonly Mock<ILogger<DownloadManager>> _loggerMock;
+    private readonly Mock<ILocalSettingsService> _localSettingsServiceMock;
     private readonly DownloadManager _downloadManager;
     private readonly string _testDirectory;
 
     public DownloadManagerTests()
     {
         _loggerMock = new Mock<ILogger<DownloadManager>>();
-        _downloadManager = new DownloadManager(_loggerMock.Object);
+        _localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        _downloadManager = new DownloadManager(_loggerMock.Object, _localSettingsServiceMock.Object);
         _testDirectory = Path.Combine(Path.GetTempPath(), "DownloadManagerTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_testDirectory);
     }
@@ -102,7 +104,7 @@ public class DownloadManagerTests : IDisposable
         var result = await _downloadManager.DownloadFileAsync(
             url, 
             targetPath, 
-            progressCallback: progress => progressValues.Add(progress));
+            progressCallback: progress => progressValues.Add(progress.Percent));
 
         // Assert
         result.Success.Should().BeTrue();
@@ -203,7 +205,7 @@ public class DownloadManagerTests : IDisposable
         await _downloadManager.DownloadFilesAsync(
             tasks, 
             maxConcurrency: 1,
-            progressCallback: progress => progressValues.Add(progress));
+            progressCallback: progress => progressValues.Add(progress.Percent));
 
         // Assert
         progressValues.Should().NotBeEmpty();
@@ -223,7 +225,7 @@ public class DownloadManagerTests : IDisposable
         // Act
         var results = await _downloadManager.DownloadFilesAsync(
             tasks,
-            progressCallback: progress => finalProgress = progress);
+            progressCallback: progress => finalProgress = progress.Percent);
 
         // Assert
         results.Should().BeEmpty();

@@ -16,6 +16,7 @@ public class DownloadTaskManagerTests
     private readonly Mock<IMinecraftVersionService> _minecraftVersionServiceMock;
     private readonly Mock<IFileService> _fileServiceMock;
     private readonly Mock<ILogger<DownloadTaskManager>> _loggerMock;
+    private readonly Mock<IDownloadManager> _downloadManagerMock;
     private readonly DownloadTaskManager _downloadTaskManager;
 
     public DownloadTaskManagerTests()
@@ -23,6 +24,8 @@ public class DownloadTaskManagerTests
         _minecraftVersionServiceMock = new Mock<IMinecraftVersionService>();
         _fileServiceMock = new Mock<IFileService>();
         _loggerMock = new Mock<ILogger<DownloadTaskManager>>();
+        _downloadManagerMock = new Mock<IDownloadManager>();
+        _downloadManagerMock = new Mock<IDownloadManager>();
 
         _fileServiceMock.Setup(f => f.GetMinecraftDataPath())
             .Returns(Path.Combine(Path.GetTempPath(), "minecraft_test"));
@@ -30,7 +33,8 @@ public class DownloadTaskManagerTests
         _downloadTaskManager = new DownloadTaskManager(
             _minecraftVersionServiceMock.Object,
             _fileServiceMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _downloadManagerMock.Object);
     }
 
     [Fact]
@@ -290,18 +294,12 @@ public class DownloadTaskManagerResourceDownloadTests
     public async Task StartResourceDownloadAsync_ShouldCreateTaskWithCorrectState()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new ByteArrayContent(new byte[100])
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
+        var downloadManagerMock = new Mock<IDownloadManager>();
         var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+            _minecraftVersionServiceMock.Object, 
+            _fileServiceMock.Object, 
+            _loggerMock.Object, 
+            downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskInfo>();
         downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(new DownloadTaskInfo
@@ -343,18 +341,8 @@ public class DownloadTaskManagerResourceDownloadTests
     public async Task StartResourceDownloadAsync_OnComplete_ShouldRaiseTaskStateChangedWithCompleted()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new ByteArrayContent(new byte[100])
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskState>();
         downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task.State);
@@ -384,17 +372,8 @@ public class DownloadTaskManagerResourceDownloadTests
     public async Task StartResourceDownloadAsync_OnFailure_ShouldRaiseTaskStateChangedWithFailed()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.NotFound
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         DownloadTaskInfo? finalTask = null;
         downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
@@ -424,18 +403,8 @@ public class DownloadTaskManagerResourceDownloadTests
     public async Task StartResourceDownloadAsync_WhenDownloadActive_ShouldThrow()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new StreamContent(new SlowStream(1000)) // 慢速流模拟长时间下载
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var savePath1 = Path.Combine(_tempDirectory, "test_mod1.jar");
         var savePath2 = Path.Combine(_tempDirectory, "test_mod2.jar");
@@ -474,13 +443,8 @@ public class DownloadTaskManagerResourceDownloadTests
                 Headers = { ContentLength = content.Length }
             }
         });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var progressValues = new List<double>();
         downloadTaskManager.TaskProgressChanged += (_, task) => progressValues.Add(task.Progress);
@@ -629,13 +593,8 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
                 Headers = { ContentLength = zipContent.Length }
             }
         });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskInfo>();
         downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(new DownloadTaskInfo
@@ -683,13 +642,8 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
                 Headers = { ContentLength = zipContent.Length }
             }
         });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskState>();
         downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task.State);
@@ -717,17 +671,8 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     public async Task StartWorldDownloadAsync_OnFailure_ShouldSetFailedState()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.NotFound
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         DownloadTaskInfo? finalTask = null;
         downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
@@ -756,18 +701,8 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     public async Task StartWorldDownloadAsync_WhenDownloadActive_ShouldThrow()
     {
         // Arrange
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new StreamContent(new SlowStream(1000))
-        });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var savesDir = Path.Combine(_tempDirectory, "saves");
 
@@ -804,13 +739,8 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
                 Headers = { ContentLength = zipContent.Length }
             }
         });
-        var httpClient = new HttpClient(mockHandler);
-        
-        var downloadTaskManager = new DownloadTaskManager(
-            _minecraftVersionServiceMock.Object,
-            _fileServiceMock.Object,
-            _loggerMock.Object,
-            httpClient);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var progressValues = new List<double>();
         downloadTaskManager.TaskProgressChanged += (_, task) => progressValues.Add(task.Progress);

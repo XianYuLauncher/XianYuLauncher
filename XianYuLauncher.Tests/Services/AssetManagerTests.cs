@@ -240,7 +240,7 @@ public class AssetManagerTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -282,7 +282,7 @@ public class AssetManagerTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -306,7 +306,7 @@ public class AssetManagerTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(DownloadResult.Succeeded("index.json", "https://example.com/index.json"));
 
@@ -322,7 +322,7 @@ public class AssetManagerTests : IDisposable
                 "https://example.com/index.json",
                 It.Is<string>(p => p.EndsWith("1.20.json")),
                 "abc123",
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -399,7 +399,7 @@ public class AssetManagerTests : IDisposable
             m => m.DownloadFilesAsync(
                 It.IsAny<IEnumerable<DownloadTask>>(),
                 It.IsAny<int>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -439,7 +439,7 @@ public class AssetManagerTests : IDisposable
             .Setup(m => m.DownloadFilesAsync(
                 It.IsAny<IEnumerable<DownloadTask>>(),
                 It.IsAny<int>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DownloadResult>
             {
@@ -455,7 +455,7 @@ public class AssetManagerTests : IDisposable
                 It.Is<IEnumerable<DownloadTask>>(tasks => 
                     tasks.Any(t => t.ExpectedSha1 == "a1b2c3d4e5f6")),
                 8, // 默认并发数
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -499,3 +499,4 @@ public class AssetManagerTests : IDisposable
 
     #endregion
 }
+

@@ -408,7 +408,7 @@ public class LibraryManagerTests : IDisposable
             m => m.DownloadFilesAsync(
                 It.IsAny<IEnumerable<DownloadTask>>(),
                 It.IsAny<int>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -451,7 +451,7 @@ public class LibraryManagerTests : IDisposable
             m => m.DownloadFilesAsync(
                 It.IsAny<IEnumerable<DownloadTask>>(),
                 It.IsAny<int>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -483,7 +483,7 @@ public class LibraryManagerTests : IDisposable
             .Setup(m => m.DownloadFilesAsync(
                 It.IsAny<IEnumerable<DownloadTask>>(),
                 It.IsAny<int>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DownloadResult>
             {
@@ -499,7 +499,7 @@ public class LibraryManagerTests : IDisposable
                 It.Is<IEnumerable<DownloadTask>>(tasks => 
                     tasks.Any(t => t.Url == "https://example.com/library.jar")),
                 4, // 默认并发数
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
