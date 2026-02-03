@@ -105,12 +105,13 @@ jobs:
           
           for file in release-assets/*.zip; do
             filename=$(basename "$file")
-            echo "Uploading $filename..."
-            UPLOAD_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
-              -H "Content-Type: multipart/form-data" \
+            filesize=$(du -h "$file" | cut -f1)
+            echo "Uploading $filename ($filesize)..."
+            UPLOAD_RESP=$(curl --progress-bar -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
               -F "access_token=${GITEE_TOKEN}" \
               -F "file=@${file}")
-            echo "Upload response: $UPLOAD_RESP"
+            echo ""
+            echo "Done: $filename"
           done
 
       - name: Sync Gitee latest_version.json
