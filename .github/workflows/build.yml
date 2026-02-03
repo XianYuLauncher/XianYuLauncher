@@ -388,10 +388,12 @@ jobs:
           --current-ref "${{ github.ref_name }}" \
           --output "CHANGELOG.md"
           
-        # 读取文件内容到 Output
-        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        # 读取文件内容到 Output (使用随机分界符防止冲突，并确保有换行)
+        DELIMITER="EOF-$(date +%s)"
+        echo "changelog<<$DELIMITER" >> $GITHUB_OUTPUT
         cat CHANGELOG.md >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "$DELIMITER" >> $GITHUB_OUTPUT
 
     # 2. 发布 Release (只上传标准带版本号的文件，保持干净)
     - name: Release
