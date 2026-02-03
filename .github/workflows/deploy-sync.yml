@@ -1,4 +1,4 @@
-name: Sync to Gitee
+name: Publish Release (123Pan & Gitee)
 
 on:
   workflow_dispatch:
@@ -13,9 +13,12 @@ on:
         default: ''
 
 jobs:
-  sync_to_gitee:
+  sync_to_123pan:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Compute Version
         id: vars
         shell: bash
@@ -53,65 +56,33 @@ jobs:
           gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets
           
           cd release-assets
-          mv "XianYuLauncher_${FULL_VER}_x64.zip" "XianYuLauncher-x64.zip" 2>/dev/null || true
-          mv "XianYuLauncher_${FULL_VER}_x86.zip" "XianYuLauncher-x86.zip" 2>/dev/null || true
-          mv "XianYuLauncher_${FULL_VER}_arm64.zip" "XianYuLauncher-arm64.zip" 2>/dev/null || true
+          # 重命名以便统一管理，方便脚本识别
+          mv "XianYuLauncher_${FULL_VER}_x64.zip" "XianYuLauncher_${FULL_VER}_x64.zip" 2>/dev/null || true
+          mv "XianYuLauncher_${FULL_VER}_x86.zip" "XianYuLauncher_${FULL_VER}_x86.zip" 2>/dev/null || true
+          mv "XianYuLauncher_${FULL_VER}_arm64.zip" "XianYuLauncher_${FULL_VER}_arm64.zip" 2>/dev/null || true
           ls -lh
 
-      - name: Upload to Gitee Release
+      - name: Install Python Dependencies
+        run: pip install requests
+
+      - name: Upload to 123Pan
         env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          TAG: ${{ steps.vars.outputs.tag }}
-          CHANGELOG: ${{ steps.release.outputs.body }}
+          PAN123_CLIENT_ID: ${{ secrets.PAN123_CLIENT_ID }}
+          PAN123_CLIENT_SECRET: ${{ secrets.PAN123_CLIENT_SECRET }}
         run: |
-          OWNER="spiritos"
-          REPO="XianYuLauncher-Resource"
-          
-          echo "Checking if release exists for tag $TAG..."
-          RELEASE_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/tags/${TAG}?access_token=${GITEE_TOKEN}")
-          echo "Release check response: $RELEASE_CHECK"
-          
-          if echo "$RELEASE_CHECK" | grep -q '"id"'; then
-            RELEASE_ID=$(echo "$RELEASE_CHECK" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-            echo "Release exists, ID: $RELEASE_ID"
-          else
-            echo "Creating new release for tag $TAG..."
-            
-            TAG_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags?access_token=${GITEE_TOKEN}")
-            if ! echo "$TAG_CHECK" | grep -q "\"name\":\"${TAG}\""; then
-              echo "Tag $TAG does not exist on Gitee, creating it..."
-              COMMIT_SHA=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/branches/main?access_token=${GITEE_TOKEN}" | python3 -c "import sys,json; print(json.load(sys.stdin)['commit']['sha'])")
-              echo "Latest commit on main: $COMMIT_SHA"
-              
-              curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags" \
-                -H "Content-Type: application/json" \
-                -d "{\"access_token\": \"${GITEE_TOKEN}\", \"tag_name\": \"${TAG}\", \"refs\": \"${COMMIT_SHA}\"}"
-              echo "Tag created."
-            fi
-            
-            CHANGELOG_JSON=$(echo "$CHANGELOG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
-            RELEASE_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases" \
-              -H "Content-Type: application/json" \
-              -d "{\"access_token\": \"${GITEE_TOKEN}\", \"tag_name\": \"${TAG}\", \"name\": \"${TAG}\", \"body\": ${CHANGELOG_JSON}, \"prerelease\": false}")
-            echo "Create release response: $RELEASE_RESP"
-            
-            RELEASE_ID=$(echo "$RELEASE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
-            if [ -z "$RELEASE_ID" ]; then
-              echo "ERROR: Failed to create release"
-              exit 1
-            fi
-            echo "Created release, ID: $RELEASE_ID"
-          fi
-          
+          echo "Starting upload to 123Pan..."
+          # 遍历 release-assets 下的所有 zip 文件
           for file in release-assets/*.zip; do
-            filename=$(basename "$file")
-            filesize=$(du -h "$file" | cut -f1)
-            echo "Uploading $filename ($filesize)..."
-            UPLOAD_RESP=$(curl --progress-bar -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
-              -F "access_token=${GITEE_TOKEN}" \
-              -F "file=@${file}")
-            echo ""
-            echo "Done: $filename"
+            if [ -f "$file" ]; then
+              echo "----------------------------------------"
+              echo "Processing $file ..."
+              python3 .github/scripts/upload_123pan.py \
+                --file "$file" \
+                --client_id "$PAN123_CLIENT_ID" \
+                --client_secret "$PAN123_CLIENT_SECRET" \
+                --parent_id "29037672" \
+                --output_json "123pan_links.json"
+            fi
           done
 
       - name: Sync Gitee latest_version.json
@@ -130,13 +101,25 @@ jobs:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
+          # Pass 123Pan links to the python script
+          cp ../123pan_links.json .
+
           python3 << 'PYEOF'
           import json, os
           from datetime import datetime
 
           path = "latest_version.json"
+          links_path = "123pan_links.json"
+          
+          # Read existing version file
           with open(path, "r", encoding="utf-8") as f:
               data = json.load(f)
+              
+          # Read 123Pan links
+          links = {}
+          if os.path.exists(links_path):
+              with open(links_path, "r", encoding="utf-8") as f:
+                  links = json.load(f)
 
           full_ver = os.environ.get("FULL_VER")
           tag = os.environ.get("TAG")
@@ -148,17 +131,23 @@ jobs:
           if changelog:
               data["changelog"] = [line.strip() for line in changelog.split("\n") if line.strip()]
           
-          base_url = f"https://gitee.com/spiritos/XianYuLauncher-Resource/releases/download/{tag}"
+          # Helper to find link by arch
+          def get_link(arch):
+              # Filename format: XianYuLauncher_{full_ver}_{arch}.zip
+              expected = f"XianYuLauncher_{full_ver}_{arch}.zip"
+              return links.get(expected, "")
+
+          # GitHub fallback URLs
           github_base = f"https://github.com/N123999/XianYuLauncher/releases/download/{tag}"
-          
+
           data["download_mirrors"] = [
               {
-                  "name": "Gitee",
-                  "url": f"{base_url}/XianYuLauncher-x64.zip",
+                  "name": "123Pan (Fast)",
+                  "url": get_link("x64"), # Main button usually uses x64
                   "arch_urls": {
-                      "x64": f"{base_url}/XianYuLauncher-x64.zip",
-                      "x86": f"{base_url}/XianYuLauncher-x86.zip",
-                      "arm64": f"{base_url}/XianYuLauncher-arm64.zip"
+                      "x64": get_link("x64"),
+                      "x86": get_link("x86"),
+                      "arm64": get_link("arm64")
                   }
               },
               {
@@ -175,11 +164,11 @@ jobs:
           with open(path, "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
           
-          print(f"Updated: version={full_ver}, tag={tag}")
+          print(f"Updated latest_version.json with version={full_ver}")
           PYEOF
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add latest_version.json
-          git commit -m "chore: update version to $FULL_VER" || echo "No changes"
+          git commit -m "chore: update version to $FULL_VER (123Pan)" || echo "No changes"
           git push
