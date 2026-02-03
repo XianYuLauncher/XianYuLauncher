@@ -37,9 +37,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BODY=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json body -q .body)
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'\n'}"
-          BODY="${BODY//$'\r'/''}"
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -55,7 +52,6 @@ jobs:
           echo "Downloading assets for $TAG..."
           gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets
           
-          # 重命名为简洁文件名
           cd release-assets
           mv "XianYuLauncher_${FULL_VER}_x64.zip" "XianYuLauncher-x64.zip" 2>/dev/null || true
           mv "XianYuLauncher_${FULL_VER}_x86.zip" "XianYuLauncher-x86.zip" 2>/dev/null || true
@@ -71,7 +67,6 @@ jobs:
           OWNER="spiritos"
           REPO="XianYuLauncher-Resource"
           
-          # 检查 Release 是否存在
           echo "Checking if release exists for tag $TAG..."
           RELEASE_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/tags/${TAG}?access_token=${GITEE_TOKEN}")
           echo "Release check response: $RELEASE_CHECK"
@@ -82,52 +77,32 @@ jobs:
           else
             echo "Creating new release for tag $TAG..."
             
-            # 先检查 tag 是否存在，不存在则创建
             TAG_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags?access_token=${GITEE_TOKEN}")
             if ! echo "$TAG_CHECK" | grep -q "\"name\":\"${TAG}\""; then
               echo "Tag $TAG does not exist on Gitee, creating it..."
-              # 获取 main 分支最新 commit
               COMMIT_SHA=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/branches/main?access_token=${GITEE_TOKEN}" | python3 -c "import sys,json; print(json.load(sys.stdin)['commit']['sha'])")
               echo "Latest commit on main: $COMMIT_SHA"
               
-              # 创建 tag
               curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags" \
                 -H "Content-Type: application/json" \
-                -d "{
-                  \"access_token\": \"${GITEE_TOKEN}\",
-                  \"tag_name\": \"${TAG}\",
-                  \"refs\": \"${COMMIT_SHA}\"
-                }"
+                -d "{\"access_token\": \"${GITEE_TOKEN}\", \"tag_name\": \"${TAG}\", \"refs\": \"${COMMIT_SHA}\"}"
               echo "Tag created."
             fi
             
-            # 创建 Release
             CHANGELOG_JSON=$(echo "$CHANGELOG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
             RELEASE_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases" \
               -H "Content-Type: application/json" \
-              -d "{
-                \"access_token\": \"${GITEE_TOKEN}\",
-                \"tag_name\": \"${TAG}\",
-                \"name\": \"${TAG}\",
-                \"body\": ${CHANGELOG_JSON},
-                \"prerelease\": false
-              }")
+              -d "{\"access_token\": \"${GITEE_TOKEN}\", \"tag_name\": \"${TAG}\", \"name\": \"${TAG}\", \"body\": ${CHANGELOG_JSON}, \"prerelease\": false}")
             echo "Create release response: $RELEASE_RESP"
             
-            # 提取 ID，带错误处理
-            RELEASE_ID=$(echo "$RELEASE_RESP" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-if 'id' in data:
-    print(data['id'])
-else:
-    print('ERROR: ' + str(data), file=sys.stderr)
-    sys.exit(1)
-")
+            RELEASE_ID=$(echo "$RELEASE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
+            if [ -z "$RELEASE_ID" ]; then
+              echo "ERROR: Failed to create release"
+              exit 1
+            fi
             echo "Created release, ID: $RELEASE_ID"
           fi
           
-          # 上传文件
           for file in release-assets/*.zip; do
             filename=$(basename "$file")
             echo "Uploading $filename..."
@@ -146,7 +121,7 @@ else:
           CHANGELOG: ${{ steps.release.outputs.body }}
         run: |
           if [ -z "$GITEE_TOKEN" ]; then
-            echo "GITEE_TOKEN is missing. Add it in repo secrets." >&2
+            echo "GITEE_TOKEN is missing." >&2
             exit 1
           fi
 
@@ -154,9 +129,8 @@ else:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
-          python3 - << 'PY'
-          import json
-          import os
+          python3 << 'PYEOF'
+          import json, os
           from datetime import datetime
 
           path = "latest_version.json"
@@ -167,53 +141,44 @@ else:
           tag = os.environ.get("TAG")
           changelog = os.environ.get("CHANGELOG", "")
 
-          # 更新版本号
           data["version"] = full_ver
-
-          # 更新发布时间
           data["release_time"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-          # 更新 changelog (转为列表格式)
           if changelog:
               data["changelog"] = [line.strip() for line in changelog.split("\n") if line.strip()]
           
-          # 构建 Gitee Release 下载链接
           base_url = f"https://gitee.com/spiritos/XianYuLauncher-Resource/releases/download/{tag}"
-          
-          # 更新 download_mirrors
-          gitee_mirror = {
-              "name": "Gitee",
-              "url": f"{base_url}/XianYuLauncher-x64.zip",
-              "arch_urls": {
-                  "x64": f"{base_url}/XianYuLauncher-x64.zip",
-                  "x86": f"{base_url}/XianYuLauncher-x86.zip",
-                  "arm64": f"{base_url}/XianYuLauncher-arm64.zip"
-              }
-          }
-          
-          # GitHub 备用源
           github_base = f"https://github.com/N123999/XianYuLauncher/releases/download/{tag}"
-          github_mirror = {
-              "name": "GitHub",
-              "url": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-              "arch_urls": {
-                  "x64": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-                  "x86": f"{github_base}/XianYuLauncher_{full_ver}_x86.zip",
-                  "arm64": f"{github_base}/XianYuLauncher_{full_ver}_arm64.zip"
-              }
-          }
           
-          data["download_mirrors"] = [gitee_mirror, github_mirror]
+          data["download_mirrors"] = [
+              {
+                  "name": "Gitee",
+                  "url": f"{base_url}/XianYuLauncher-x64.zip",
+                  "arch_urls": {
+                      "x64": f"{base_url}/XianYuLauncher-x64.zip",
+                      "x86": f"{base_url}/XianYuLauncher-x86.zip",
+                      "arm64": f"{base_url}/XianYuLauncher-arm64.zip"
+                  }
+              },
+              {
+                  "name": "GitHub",
+                  "url": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
+                  "arch_urls": {
+                      "x64": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
+                      "x86": f"{github_base}/XianYuLauncher_{full_ver}_x86.zip",
+                      "arm64": f"{github_base}/XianYuLauncher_{full_ver}_arm64.zip"
+                  }
+              }
+          ]
 
           with open(path, "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
           
-          print(f"Updated latest_version.json: version={full_ver}, tag={tag}")
-          PY
+          print(f"Updated: version={full_ver}, tag={tag}")
+          PYEOF
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-
           git add latest_version.json
-          git commit -m "chore: update version to $FULL_VER" || echo "No changes to commit"
+          git commit -m "chore: update version to $FULL_VER" || echo "No changes"
           git push
