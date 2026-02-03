@@ -59,6 +59,9 @@ public partial class App : Application
     {
         InitializeComponent();
 
+        // 执行缓存迁移（从旧的虚拟化路径迁移到新的安全路径）
+        XianYuLauncher.Core.Services.CacheMigrationService.MigrateIfNeeded();
+
         // 配置Serilog
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
