@@ -357,14 +357,41 @@ jobs:
     - name: Display structure of downloaded files
       run: ls -R artifacts
 
-    # 1. 生成更新日志 (提前到部署前)
-    - name: Build Changelog
+    # 1. 生成更新日志 (AI Powered)
+    - name: Install Python Dependencies
+      run: pip install requests
+
+    - name: Generate AI Changelog
       id: build_changelog
-      uses: mikepenz/release-changelog-builder-action@v4
-      with:
-        configuration: ".github/changelog-configuration.json"
-        ignorePreReleases: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'dev') }}
-        mode: "COMMIT"
+      shell: bash
+      run: |
+        # 设置默认值
+        BASE_URL="${{ secrets.AI_API_BASE }}"
+        if [ -z "$BASE_URL" ]; then BASE_URL="https://api.openai.com/v1"; fi
+        
+        MODEL="${{ secrets.AI_MODEL }}"
+        if [ -z "$MODEL" ]; then MODEL="gpt-3.5-turbo"; fi
+        
+        # 如果没有配置 API Key，生成一个简单的占位符，防止流程失败
+        if [ -z "${{ secrets.AI_API_KEY }}" ]; then
+            echo "::warning::AI_API_KEY nor set. Skipping AI generation."
+            echo "changelog=Auto-generated release (AI Token missing)." >> $GITHUB_OUTPUT
+            exit 0
+        fi
+
+        echo "Generating changelog using model: $MODEL"
+        
+        python3 .github/scripts/generate_changelog_ai.py \
+          --token "${{ secrets.AI_API_KEY }}" \
+          --base-url "$BASE_URL" \
+          --model "$MODEL" \
+          --current-ref "${{ github.ref_name }}" \
+          --output "CHANGELOG.md"
+          
+        # 读取文件内容到 Output
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     # 2. 发布 Release (只上传标准带版本号的文件，保持干净)
     - name: Release
