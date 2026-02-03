@@ -74,12 +74,8 @@ public class ModrinthRecommendationService
     /// </summary>
     private string GetCacheFilePath()
     {
-        var basePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "XianYuLauncher",
-            "Cache"
-        );
-        return Path.Combine(basePath, CacheFileName);
+        // 使用安全缓存路径
+        return Path.Combine(XianYuLauncher.Core.Helpers.AppEnvironment.SafeCachePath, CacheFileName);
     }
     
     /// <summary>

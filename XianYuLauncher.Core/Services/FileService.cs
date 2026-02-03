@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using Newtonsoft.Json;
 
 namespace XianYuLauncher.Core.Services;
@@ -9,10 +10,9 @@ public class FileService : IFileService
 {
     private string? _customMinecraftDataPath;
     private const string MinecraftPathKey = "MinecraftPath";
-    private const string _defaultApplicationDataFolder = "XianYuLauncher/ApplicationData";
+    private const string _defaultApplicationDataFolder = "ApplicationData";
     private const string _defaultLocalSettingsFile = "LocalSettings.json";
     
-    private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
     private readonly string _applicationDataFolder;
     private readonly string _localsettingsFile;
     
@@ -20,8 +20,16 @@ public class FileService : IFileService
     
     public FileService()
     {
-        _applicationDataFolder = Path.Combine(_localApplicationData, _defaultApplicationDataFolder);
+        // 使用安全路径，避免 MSIX 虚拟化问题
+        _applicationDataFolder = Path.Combine(AppEnvironment.SafeAppDataPath, _defaultApplicationDataFolder);
         _localsettingsFile = _defaultLocalSettingsFile;
+        
+        // 确保目录存在
+        if (!Directory.Exists(_applicationDataFolder))
+        {
+            Directory.CreateDirectory(_applicationDataFolder);
+        }
+        
         // 在构造函数中从本地设置加载保存的Minecraft路径
         LoadMinecraftPathFromSettings();
     }
@@ -48,8 +56,8 @@ public class FileService : IFileService
 
     public string GetAppDataPath()
     {
-        // 返回应用程序的本地数据文件夹 - 使用 LocalApplicationData 替代 Windows.Storage
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XianYuLauncher");
+        // 使用安全路径，MSIX 环境下返回 LocalState，非 MSIX 返回 LocalAppData\XianYuLauncher
+        return AppEnvironment.SafeAppDataPath;
     }
 
     public string GetMinecraftDataPath()
@@ -79,14 +87,11 @@ public class FileService : IFileService
     {
         try
         {
-            // 对于所有部署类型，都从本地应用数据文件夹加载设置
-            // 这样可以确保在开发环境和生产环境中都能正确加载设置
-            string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string settingsPath = Path.Combine(localAppDataPath, "XianYuLauncher", "ApplicationData", "LocalSettings.json");
+            // 使用安全路径加载设置
+            string settingsPath = Path.Combine(_applicationDataFolder, _localsettingsFile);
             if (File.Exists(settingsPath))
             {
                 var json = File.ReadAllText(settingsPath);
-                // 使用Newtonsoft.Json.Linq.JObject来解析JSON，这样可以处理任何JSON对象类型
                 Newtonsoft.Json.Linq.JObject jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
                 if (jObject.TryGetValue(MinecraftPathKey, out var jToken))
                 {
@@ -101,7 +106,6 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            // 加载失败时使用默认路径
             System.Diagnostics.Debug.WriteLine($"加载Minecraft路径失败: {ex.Message}");
         }
     }
@@ -110,11 +114,7 @@ public class FileService : IFileService
     {
         try
         {
-            // 对于所有部署类型，都保存到本地应用数据文件夹
-            // 这样可以确保在开发环境和生产环境中都能正确保存设置
-            string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string settingsFolder = Path.Combine(localAppDataPath, "XianYuLauncher", "ApplicationData");
-            string settingsPath = Path.Combine(settingsFolder, "LocalSettings.json");
+            string settingsPath = Path.Combine(_applicationDataFolder, _localsettingsFile);
             
             Newtonsoft.Json.Linq.JObject jObject = new Newtonsoft.Json.Linq.JObject();
             
@@ -130,7 +130,7 @@ public class FileService : IFileService
             System.Diagnostics.Debug.WriteLine($"成功保存Minecraft路径: {path} 到 {settingsPath}");
             
             // 确保目录存在
-            Directory.CreateDirectory(settingsFolder);
+            Directory.CreateDirectory(_applicationDataFolder);
             
             // 保存到文件
             File.WriteAllText(settingsPath, jObject.ToString(Newtonsoft.Json.Formatting.Indented));
@@ -149,17 +149,8 @@ public class FileService : IFileService
 
     public string GetLauncherCachePath()
     {
-        // 返回启动器专用的缓存目录，位于 LocalApplicationData/XianYuLauncher/Cache
-        string appDataPath = GetAppDataPath();
-        string cachePath = Path.Combine(appDataPath, "Cache");
-        
-        // 确保目录存在
-        if (!Directory.Exists(cachePath))
-        {
-            Directory.CreateDirectory(cachePath);
-        }
-        
-        return cachePath;
+        // 使用安全缓存路径
+        return AppEnvironment.SafeCachePath;
     }
 
     public T Read<T>(string folderPath, string fileName)

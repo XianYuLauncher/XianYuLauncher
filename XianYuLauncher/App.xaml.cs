@@ -65,14 +65,9 @@ public partial class App : Application
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
-        // 获取用户可写的日志目录
-        var logDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "XianYuLauncher",
-            "logs");
-        
-        // 确保日志目录存在
-        Directory.CreateDirectory(logDirectory);
+        // 使用统一的安全日志路径
+        string logDirectory = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
+        System.Diagnostics.Debug.WriteLine($"[App] Check IsMSIX: {XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
         
         var logFilePath = Path.Combine(logDirectory, "log-.txt");
 
@@ -83,6 +78,9 @@ public partial class App : Application
                 rollingInterval: Serilog.RollingInterval.Day,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
+
+        Log.Information($"[App] Startup environment check. IsMSIX: {XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
+        Log.Information($"[App] Log Directory: {logDirectory}");
 
         Host = Microsoft.Extensions.Hosting.Host.
         CreateDefaultBuilder().

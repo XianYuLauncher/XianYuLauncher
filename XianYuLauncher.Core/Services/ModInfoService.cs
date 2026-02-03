@@ -78,9 +78,7 @@ public class ModInfoService
     
     // 缓存文件路径
     private string CacheFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "XianYuLauncher",
-        "Cache",
+        AppEnvironment.SafeCachePath,
         "mod_info_cache.json"
     );
     

@@ -1,4 +1,5 @@
 using System; using System.Collections.Generic; using System.IO; using System.Threading.Tasks; using Newtonsoft.Json; using System.Diagnostics; using System.Linq; using System.IO.Compression; using XianYuLauncher.Core.Contracts.Services; using System.Runtime.InteropServices;
+using XianYuLauncher.Core.Helpers;
 using Serilog;
 
 namespace XianYuLauncher.Core.Services
@@ -17,9 +18,8 @@ namespace XianYuLauncher.Core.Services
             _localSettingsService = localSettingsService;
             _downloadManager = downloadManager;
             
-            // 获取应用缓存目录 - 使用 LocalApplicationData 替代 Windows.Storage
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "terracotta");
+            // 使用安全路径，避免 MSIX 虚拟化问题，确保外部进程可访问
+            _cacheDirectory = Path.Combine(AppEnvironment.SafeAppDataPath, "terracotta");
             Directory.CreateDirectory(_cacheDirectory);
             
             Log.Information($"[TerracottaService] 初始化完成，缓存目录: {_cacheDirectory}");

@@ -31,9 +31,8 @@ namespace XianYuLauncher.Core.Services
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
             
-            // 获取应用缓存目录 - 使用 LocalApplicationData
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _cacheDirectory = Path.Combine(localAppData, "XianYuLauncher", "authlib-injector");
+            // 使用安全路径，避免 MSIX 虚拟化问题，确保 Java 进程可访问
+            _cacheDirectory = Path.Combine(AppEnvironment.SafeAppDataPath, "authlib-injector");
             
             _logger.LogInformation("[AuthlibInjector] 初始化服务，缓存目录: {CacheDirectory}", _cacheDirectory);
             

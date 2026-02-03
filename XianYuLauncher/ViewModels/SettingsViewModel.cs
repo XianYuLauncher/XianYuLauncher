@@ -5,6 +5,7 @@ using Windows.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
+using Serilog;
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -2698,15 +2699,16 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XianYuLauncher", "logs");
-            if (!Directory.Exists(logPath))
-            {
-                Directory.CreateDirectory(logPath);
-            }
+            // 使用统一的安全日志路径
+            string logPath = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
+            Log.Information($"[Settings] Preparing to open log directory... IsMSIX={XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
+            Log.Information($"[Settings] Target log path: {logPath}");
+
             await Windows.System.Launcher.LaunchFolderAsync(await StorageFolder.GetFolderFromPathAsync(logPath));
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[Settings] Failed to open log directory");
             System.Diagnostics.Debug.WriteLine($"Failed to open log directory: {ex.Message}");
         }
     }

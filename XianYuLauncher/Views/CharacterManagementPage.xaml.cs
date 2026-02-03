@@ -148,9 +148,8 @@ namespace XianYuLauncher.Views
         {
             try
             {
-                // 获取应用数据目录
-                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string appFolderPath = Path.Combine(appDataPath, "XianYuLauncher");
+                // 使用安全路径，避免 MSIX 虚拟化问题
+                string appFolderPath = XianYuLauncher.Core.Helpers.AppEnvironment.SafeAppDataPath;
                 string htmlFolderPath = Path.Combine(appFolderPath, "Assets");
                 string libsFolderPath = Path.Combine(htmlFolderPath, "Libs");
                 

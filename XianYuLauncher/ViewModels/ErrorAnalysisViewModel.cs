@@ -1666,10 +1666,8 @@ namespace XianYuLauncher.ViewModels
                 // 3. 复制启动器日志
                 try
                 {
-                    string launcherLogDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "XianYuLauncher",
-                        "logs");
+                    // 使用安全日志路径
+                    string launcherLogDir = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
                     
                     if (Directory.Exists(launcherLogDir))
                     {
