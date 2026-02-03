@@ -69,27 +69,61 @@ jobs:
           CHANGELOG: ${{ steps.release.outputs.body }}
         run: |
           OWNER="spiritos"
-          REPO="XianYuLauncher"
+          REPO="XianYuLauncher-Resource"
           
-          # 检查 Release 是否存在，不存在则创建
+          # 检查 Release 是否存在
+          echo "Checking if release exists for tag $TAG..."
           RELEASE_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/tags/${TAG}?access_token=${GITEE_TOKEN}")
+          echo "Release check response: $RELEASE_CHECK"
           
           if echo "$RELEASE_CHECK" | grep -q '"id"'; then
             RELEASE_ID=$(echo "$RELEASE_CHECK" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
             echo "Release exists, ID: $RELEASE_ID"
           else
             echo "Creating new release for tag $TAG..."
+            
+            # 先检查 tag 是否存在，不存在则创建
+            TAG_CHECK=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags?access_token=${GITEE_TOKEN}")
+            if ! echo "$TAG_CHECK" | grep -q "\"name\":\"${TAG}\""; then
+              echo "Tag $TAG does not exist on Gitee, creating it..."
+              # 获取 main 分支最新 commit
+              COMMIT_SHA=$(curl -s "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/branches/main?access_token=${GITEE_TOKEN}" | python3 -c "import sys,json; print(json.load(sys.stdin)['commit']['sha'])")
+              echo "Latest commit on main: $COMMIT_SHA"
+              
+              # 创建 tag
+              curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/tags" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"access_token\": \"${GITEE_TOKEN}\",
+                  \"tag_name\": \"${TAG}\",
+                  \"refs\": \"${COMMIT_SHA}\"
+                }"
+              echo "Tag created."
+            fi
+            
+            # 创建 Release
+            CHANGELOG_JSON=$(echo "$CHANGELOG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
             RELEASE_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases" \
               -H "Content-Type: application/json" \
               -d "{
                 \"access_token\": \"${GITEE_TOKEN}\",
                 \"tag_name\": \"${TAG}\",
                 \"name\": \"${TAG}\",
-                \"body\": $(echo "$CHANGELOG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'),
-                \"prerelease\": false,
-                \"target_commitish\": \"main\"
+                \"body\": ${CHANGELOG_JSON},
+                \"prerelease\": false
               }")
-            RELEASE_ID=$(echo "$RELEASE_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+            echo "Create release response: $RELEASE_RESP"
+            
+            # 提取 ID，带错误处理
+            RELEASE_ID=$(echo "$RELEASE_RESP" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if 'id' in data:
+    print(data['id'])
+else:
+    print('ERROR: ' + str(data), file=sys.stderr)
+    sys.exit(1)
+")
             echo "Created release, ID: $RELEASE_ID"
           fi
           
@@ -97,11 +131,11 @@ jobs:
           for file in release-assets/*.zip; do
             filename=$(basename "$file")
             echo "Uploading $filename..."
-            curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
+            UPLOAD_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
               -H "Content-Type: multipart/form-data" \
               -F "access_token=${GITEE_TOKEN}" \
-              -F "file=@${file}"
-            echo "Uploaded $filename"
+              -F "file=@${file}")
+            echo "Upload response: $UPLOAD_RESP"
           done
 
       - name: Sync Gitee latest_version.json
@@ -144,7 +178,7 @@ jobs:
               data["changelog"] = [line.strip() for line in changelog.split("\n") if line.strip()]
           
           # 构建 Gitee Release 下载链接
-          base_url = f"https://gitee.com/spiritos/XianYuLauncher/releases/download/{tag}"
+          base_url = f"https://gitee.com/spiritos/XianYuLauncher-Resource/releases/download/{tag}"
           
           # 更新 download_mirrors
           gitee_mirror = {
