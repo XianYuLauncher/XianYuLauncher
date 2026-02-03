@@ -28,8 +28,8 @@ public class UpdateService
     
     // 版本检查URL列表，优先使用Gitee，备选GitHub
     private readonly string[] _versionCheckUrls = {
-        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/latest_version_test.json",
-        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version_test.json"
+        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/latest_version.json",
+        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version.json"
     };
     
     // 当前应用版本
@@ -770,23 +770,48 @@ public class UpdateService
             // 假设 AppId 默认为 "App" (大多数 WinUI/UWP 项目默认值)
             string appFamilyName = Windows.ApplicationModel.Package.Current.Id.FamilyName;
             string appStartUri = $"shell:AppsFolder\\{appFamilyName}!App";
+            string logPath = Path.Combine(Path.GetTempPath(), "XianYuUpdate_PS.log");
             
             _logger.LogInformation("准备启动 PowerShell 进行更新与重启，目标: {AppUri}", appStartUri);
+            _logger.LogInformation("PowerShell 日志路径: {LogPath}", logPath);
 
             // 构造 Add-AppxPackage 参数
-            string psCommand = $"Add-AppxPackage -Path '{mainPackagePath}' -ForceApplicationShutdown";
+            string psCommand = $"Add-AppxPackage -Path '{mainPackagePath}' -ForceApplicationShutdown -ErrorAction Stop";
             if (dependencyPaths.Count > 0)
             {
                 string deps = string.Join("', '", dependencyPaths); // 'path1', 'path2'
                 psCommand += $" -DependencyPath '{deps}'";
             }
             
-            // 组合脚本：等待 -> 安装 -> 启动
-            // Start-Sleep 确保本进程有机会自行退出或被系统清理
-            // Start-Process 启动新版应用
-            string finalScript = $"Start-Sleep -Seconds 1; {psCommand}; Start-Sleep -Seconds 1; Start-Process '{appStartUri}';";
+            // 组合脚本
+            // Start-Transcript: 记录所有输出到文件
+            // try-catch: 捕获安装错误并记录日志
+            string finalScript = $@"
+$ErrorActionPreference = 'Stop'
+Start-Transcript -Path '{logPath}' -Force
+try {{
+    Write-Output 'XianYu Launcher 自我更新程序启动'
+    Write-Output '等待主程序退出 (2秒)...'
+    Start-Sleep -Seconds 2
+    
+    Write-Output '正在执行安装命令: {mainPackagePath}'
+    {psCommand}
+    
+    Write-Output '安装成功，等待系统刷新...'
+    Start-Sleep -Seconds 1
+    
+    Write-Output '正在重启应用: {appStartUri}'
+    Start-Process '{appStartUri}'
+}} catch {{
+    Write-Error '更新发生严重错误:'
+    Write-Error $_
+}}
+Stop-Transcript
+";
             
             _logger.LogInformation("PowerShell命令长度: {Len}", finalScript.Length);
+            // 记录完整脚本以便排查（注意脱敏）
+            _logger.LogDebug("PowerShell脚本内容: {Script}", finalScript);
 
             // 4. 执行 PowerShell (Fire and Forget)
             using (var process = new Process())
@@ -796,7 +821,7 @@ public class UpdateService
                     FileName = "powershell.exe",
                     Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{finalScript}\"",
                     UseShellExecute = true, // 使用 ShellExecute 允许分离
-                    // CreateNoWindow = true, // 隐藏窗口 (为了调试可以看到窗口，发布时可隐藏)
+                    // CreateNoWindow = true, // 隐藏窗口
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
                 

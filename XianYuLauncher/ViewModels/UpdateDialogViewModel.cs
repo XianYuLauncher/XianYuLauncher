@@ -236,8 +236,11 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                         // 确保用户能看到安装成功的状态
                         await Task.Delay(1000);
                         
-                        // 清理临时文件
-                        _updateService.CleanupTempFiles(extractResult.ExtractDirectory);
+                        // 注意：不要在此处清理临时文件！
+                        // 原因是 InstallMsixPackageAsync 在 Hybrid 模式下启动了异步 PowerShell 进程。
+                        // 如果在这里调用 CleanupTempFiles，会导致 PowerShell 进程找不到安装文件而更新失败。
+                        // 临时文件留给系统 %TEMP% 清理机制处理。
+                        // _updateService.CleanupTempFiles(extractResult.ExtractDirectory);
                         
                         // 安装完成后关闭弹窗
                         OnCloseDialog(true);
