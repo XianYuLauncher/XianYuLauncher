@@ -100,20 +100,20 @@ def get_previous_tag(current_tag):
 def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
     """调用 AI 生成日志"""
     
-    prompt = f"""
-你是一个负责生成软件发布更新日志的智能助手。
+    prompt = f"""你是一个负责生成软件发布更新日志的智能助手。
 我将提供 git commit 的详细信息，包括提交信息、修改的文件列表以及代码差异（Diff）。
 请分析这些代码变更，理解其实际修改的逻辑，生成一份面向最终用户的 Release Note。
 
 要求：
-1. **深度分析**：不要只看 Commit Message（有时开发者写得很随意），要通过 Diff 代码变更推断实际功能变化。例如，如果修改了 `Resources.resw`，可能是“新增多语言支持”；如果修改了 `Package.appxmanifest` 的版本号，可以忽略。
+1. **深度分析**：不要只看 Commit Message（有时开发者写得很随意），要通过 Diff 代码变更推断实际功能变化。例如，如果修改了 `Resources.resw`，可能是"新增多语言支持"；如果修改了 `Package.appxmanifest` 的版本号，可以忽略。
 2. **语言**：请使用简体中文。
 3. **格式**：Markdown 格式。
-4. **分类**：请将更新分为 "✨ 新增功能"、"🛠️ 修复"、"⚡ 优化"、"🔨 内部变更" 等。
+4. **分类**：请将更新分为 "✨ 新增功能"、"🛠️ 修复"、"⚡ 优化"、" 内部变更" 等。
 5. **内容精简**：
    - 如果某个功能被多次 Commit 修改，请合并为一条。
    - 忽略纯粹的格式化、注释修改、CI/CD 配置文件调整（除非影响到发布产物）。
    - 每个条目末尾加上主要 Commit 的短 Hash（如 `(b9c2a1)`）。
+6. **输出要求**：最终返回内容仅包含更新日志本身，不要有任何开场白、解释或总结性文字（如"好的"、"以下是更新日志"等）。
 
 以下是提交记录详情：
 {commits}
@@ -127,7 +127,7 @@ def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
     data = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "你是一个专业的发布日志生成助手。"},
+            {"role": "system", "content": "你是一个专业的发布日志生成助手。直接输出更新日志内容，不要有任何开场白或解释。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.5
