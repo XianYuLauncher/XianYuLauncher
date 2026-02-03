@@ -152,6 +152,7 @@ def main():
     parser.add_argument("--client_id", required=True, help="123Pan Client ID")
     parser.add_argument("--client_secret", required=True, help="123Pan Client Secret")
     parser.add_argument("--parent_id", required=True, default="29037672", help="Parent Directory ID")
+    parser.add_argument("--output_json", required=False, help="Path to JSON file to append download link")
     
     args = parser.parse_args()
     
@@ -191,6 +192,9 @@ def main():
             
             print(f"Uploading Slices to {upload_host} (Size: {slice_size})...")
             
+            file_total_size = os.path.getsize(file_path)
+            uploaded_size = 0
+
             with open(file_path, "rb") as f:
                 slice_no = 1
                 while True:
@@ -202,7 +206,10 @@ def main():
                     # 算分片MD5
                     chunk_md5 = hashlib.md5(chunk).hexdigest()
                     
-                    print(f"  - Uploading Slice {slice_no} ({len(chunk)} bytes)...")
+                    uploaded_size += len(chunk)
+                    percent = (uploaded_size / file_total_size) * 100
+                    
+                    print(f"  - Uploading Slice {slice_no} ({len(chunk)} bytes) - Progress: {percent:.2f}% ...")
                     upload_slice(token, upload_host, preupload_id, slice_no, chunk_md5, chunk)
                     slice_no += 1
             
@@ -219,6 +226,22 @@ def main():
         print(f"DIRECT LINK: {direct_link}")
         print("="*30 + "\n")
         
+        # 将直链写入 JSON 文件 (如果指定)
+        if args.output_json:
+            data = {}
+            if os.path.exists(args.output_json):
+                try:
+                    with open(args.output_json, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except:
+                    pass
+            
+            filename = os.path.basename(file_path)
+            data[filename] = direct_link
+            
+            with open(args.output_json, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+
         # 将直链写入 环境变量文件，供后续Step读取
         # GitHub Actions 中可以用 GITHUB_OUTPUT
         if "GITHUB_OUTPUT" in os.environ:
