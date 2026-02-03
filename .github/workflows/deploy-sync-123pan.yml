@@ -16,6 +16,9 @@ jobs:
   sync_to_123pan:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Compute Version
         id: vars
         shell: bash
@@ -58,9 +61,6 @@ jobs:
           mv "XianYuLauncher_${FULL_VER}_x86.zip" "XianYuLauncher_${FULL_VER}_x86.zip" 2>/dev/null || true
           mv "XianYuLauncher_${FULL_VER}_arm64.zip" "XianYuLauncher_${FULL_VER}_arm64.zip" 2>/dev/null || true
           ls -lh
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
       - name: Install Python Dependencies
         run: pip install requests
