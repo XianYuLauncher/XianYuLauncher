@@ -4,6 +4,7 @@ using Windows.Storage.Pickers;
 using Windows.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Diagnostics;
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -2690,6 +2691,24 @@ public partial class SettingsViewModel : ObservableRecipient
         MinecraftPath = pathItem.Path;
         
         await SaveMinecraftPathsAsync();
+    }
+
+    [RelayCommand]
+    private async Task OpenLogDirectory()
+    {
+        try
+        {
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XianYuLauncher", "logs");
+            if (!Directory.Exists(logPath))
+            {
+                Directory.CreateDirectory(logPath);
+            }
+            await Windows.System.Launcher.LaunchFolderAsync(await StorageFolder.GetFolderFromPathAsync(logPath));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to open log directory: {ex.Message}");
+        }
     }
     
     #endregion

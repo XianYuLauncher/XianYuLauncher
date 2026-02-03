@@ -2545,4 +2545,13 @@ Continue downloading?</value>
   <data name="MaterialType_Motion" xml:space="preserve">
     <value>Aurora Motion</value>
   </data>
+  <data name="Settings_OpenLogDirectory.Text" xml:space="preserve">
+    <value>Open Log Directory</value>
+  </data>
+  <data name="Settings_OpenLogDirectoryDescription.Text" xml:space="preserve">
+    <value>View launcher logs for troubleshooting</value>
+  </data>
+  <data name="Settings_MoreTitle.Text" xml:space="preserve">
+    <value>More</value>
+  </data>
 </root>

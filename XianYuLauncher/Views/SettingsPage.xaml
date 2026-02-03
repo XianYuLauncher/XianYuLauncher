@@ -991,12 +991,12 @@
                         </ScrollViewer>
                     </TabViewItem>
 
-                    <!-- 关于标签 -->
+                    <!-- 更多标签 -->
                     <TabViewItem>
                         <TabViewItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="Settings_AboutTitle" Text="关于" VerticalAlignment="Center" />
+                                <TextBlock x:Uid="Settings_AboutTitle" Text="更多" VerticalAlignment="Center" />
                             </StackPanel>
                         </TabViewItem.Header>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -1005,6 +1005,7 @@
                                     <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" />
                                     <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
                                 </animations:Implicit.ShowAnimations>
+
                                 <!-- 开发人员区域 -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20" Spacing="20" VerticalAlignment="Center">
                                     <!-- 圆形头像区域 -->
@@ -1131,6 +1132,23 @@
                                             Width="20" 
                                             Height="20" 
                                             VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 快速动作区域 -->
+                                <TextBlock x:Uid="Settings_QuickActions" Text="快速动作" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Uid="Settings_OpenLogDirectory" Text="打开日志目录" />
+                                            <TextBlock 
+                                                x:Uid="Settings_OpenLogDirectoryDescription"
+                                                Text="查看启动器运行日志，用于排查问题" 
+                                                Style="{ThemeResource CaptionTextBlockStyle}" 
+                                                Margin="0,4,0,0" 
+                                                Opacity="0.7"/>
+                                        </StackPanel>
+                                        <Button x:Uid="Settings_Open" Content="打开" Command="{x:Bind ViewModel.OpenLogDirectoryCommand}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </StackPanel>
 

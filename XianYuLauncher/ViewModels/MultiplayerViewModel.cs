@@ -392,7 +392,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 {
                     Log.Error($"[Multiplayer] 超时：未能获取端口号");
                     isSuccess = false;
-                    errorMessage = "无法获取 Terracotta 端口信息，请检查：\n1. 防火墙是否阻止了程序\n2. 杀毒软件是否拦截了程序\n3. 是否有足够的磁盘空间";
+                    errorMessage = "无法获取 Terracotta 端口信息，请检查：\n1. 防火墙是否阻止了程序\n2. 杀毒软件是否拦截了程序\n3. 是否有足够的磁盘空间\n\n这可能是一个Bug，请前往 设置->关于->快速动作 导出日志并发送给开发者";
                     
                     // 终止进程
                     if (_terracottaProcess != null && !_terracottaProcess.HasExited)

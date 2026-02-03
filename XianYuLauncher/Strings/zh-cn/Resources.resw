@@ -2557,4 +2557,13 @@
   <data name="MaterialType_Motion" xml:space="preserve">
     <value>流光</value>
   </data>
+  <data name="Settings_OpenLogDirectory.Text" xml:space="preserve">
+    <value>打开日志目录</value>
+  </data>
+  <data name="Settings_OpenLogDirectoryDescription.Text" xml:space="preserve">
+    <value>查看启动器运行日志，用于排查问题</value>
+  </data>
+  <data name="Settings_MoreTitle.Text" xml:space="preserve">
+    <value>更多</value>
+  </data>
 </root>
