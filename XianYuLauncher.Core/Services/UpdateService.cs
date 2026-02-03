@@ -11,6 +11,8 @@ using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using System.Diagnostics;
+using Windows.Management.Deployment;
+using Windows.ApplicationModel;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -26,8 +28,8 @@ public class UpdateService
     
     // 版本检查URL列表，优先使用Gitee，备选GitHub
     private readonly string[] _versionCheckUrls = {
-        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/latest_version.json",
-        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version.json"
+        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/latest_version_test.json",
+        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version_test.json"
     };
     
     // 当前应用版本
@@ -646,64 +648,168 @@ public class UpdateService
             Debug.WriteLine($"[DEBUG] 打开证书属性页失败: {certificateFilePath}, 错误: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// 尝试静默安装证书到受信任的根证书颁发机构
+    /// </summary>
+    public async Task InstallCertificateSilentlyAsync(string cerFilePath)
+    {
+        _logger.LogInformation("尝试静默安装证书: {CerFilePath}", cerFilePath);
+        try
+        {
+            var certPsi = new ProcessStartInfo
+            {
+                FileName = "certutil",
+                // -addstore "Root" 将证书加入受信任根证书存储
+                Arguments = $"-addstore \"Root\" \"{cerFilePath}\"",
+                Verb = "runas", // 申请管理员权限
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden // 隐藏窗口
+            };
+            
+            using (var p = Process.Start(certPsi))
+            {
+                await p.WaitForExitAsync();
+            }
+            _logger.LogInformation("证书安装命令执行完成");
+        }
+        catch (Exception ex)
+        {
+            // 记录日志，如果静默安装失败，可能需要回退到手动模式
+            _logger.LogWarning(ex, "证书静默安装失败");
+            Debug.WriteLine($"Certificate auto-install exception: {ex.Message}");
+        }
+    }
     
     /// <summary>
-    /// 安装MSIX包
+    ///  安装MSIX包 (Hybrid模式：C#解析路径 + PowerShell执行安装与重启)
+    ///  原生API (AddPackageAsync) 会强制杀死当前进程，导致无法执行重启逻辑。
+    ///  因此这里使用 PowerShell 脚本来执行最后的安装和重启操作。
     /// </summary>
     /// <param name="extractDirectory">解压目录路径</param>
     /// <param name="msixFilePath">MSIX包文件路径</param>
-    /// <returns>安装是否成功</returns>
+    /// <returns>操作是否成功启动</returns>
     public async Task<bool> InstallMsixPackageAsync(string extractDirectory, string msixFilePath)
     {
-        _logger.LogInformation("开始安装MSIX包，解压目录: {ExtractDirectory}, MSIX路径: {MsixFilePath}", extractDirectory, msixFilePath);
-        Debug.WriteLine($"[DEBUG] 开始安装MSIX包，解压目录: {extractDirectory}, MSIX路径: {msixFilePath}");
+        _logger.LogInformation("开始安装流程 (Hybrid)，解压目录: {ExtractDirectory}", extractDirectory);
+        Debug.WriteLine($"[DEBUG] 开始安装流程 (Hybrid)，解压目录: {extractDirectory}");
         
         try
         {
-            // 在解压目录中查找Install.ps1文件
-            string installScriptPath = FindFileByPattern(extractDirectory, "Install.ps1");
-            if (string.IsNullOrEmpty(installScriptPath))
+            // 1. 查找主应用程序包 (优先使用 Bundle，其次是单独的 Package)
+            var pkgFiles = Directory.GetFiles(extractDirectory, "*.*", SearchOption.TopDirectoryOnly)
+                .Where(f => f.EndsWith(".msixbundle", StringComparison.OrdinalIgnoreCase) || 
+                            f.EndsWith(".appxbundle", StringComparison.OrdinalIgnoreCase) || 
+                            f.EndsWith(".msix", StringComparison.OrdinalIgnoreCase) || 
+                            f.EndsWith(".appx", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f => f.EndsWith("bundle", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            string mainPackagePath;
+            if (pkgFiles.Length > 0)
             {
-                _logger.LogError("在解压目录中未找到Install.ps1文件: {ExtractDirectory}", extractDirectory);
-                Debug.WriteLine($"[DEBUG] 在解压目录中未找到Install.ps1文件: {extractDirectory}");
+                mainPackagePath = pkgFiles[0];
+            }
+            else if (!string.IsNullOrEmpty(msixFilePath) && File.Exists(msixFilePath))
+            {
+                mainPackagePath = msixFilePath;
+            }
+            else
+            {
+                _logger.LogError("未在更新目录中找到应用程序包 (.msix/.appx)");
                 return false;
             }
+
+            _logger.LogInformation("主程序包: {Path}", mainPackagePath);
+
+            // 2. 智能解析依赖包 (Dependencies 文件夹)
+            var dependencyPaths = new List<string>();
+            string dependenciesRoot = Path.Combine(extractDirectory, "Dependencies");
             
-            _logger.LogInformation("找到Install.ps1文件: {InstallScriptPath}", installScriptPath);
-            Debug.WriteLine($"[DEBUG] 找到Install.ps1文件: {installScriptPath}");
+            if (Directory.Exists(dependenciesRoot))
+            {
+                // 简单的架构判断逻辑 (x64/x86/arm64)
+                string pkgName = Path.GetFileName(mainPackagePath).ToLower();
+                bool isArm64 = pkgName.Contains("arm64");
+                bool isX64 = pkgName.Contains("x64") && !isArm64;
+                bool isX86 = pkgName.Contains("x86") && !isX64 && !isArm64;
+
+                // 如果包名没写架构，尝试系统架构
+                if (!isX64 && !isX86 && !isArm64)
+                {
+                     var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
+                     isX64 = arch == System.Runtime.InteropServices.Architecture.X64;
+                     isArm64 = arch == System.Runtime.InteropServices.Architecture.Arm64;
+                     isX86 = arch == System.Runtime.InteropServices.Architecture.X86;
+                }
+
+                var allDepFiles = Directory.GetFiles(dependenciesRoot, "*.*", SearchOption.AllDirectories)
+                    .Where(f => f.EndsWith(".appx", StringComparison.OrdinalIgnoreCase) || 
+                                f.EndsWith(".msix", StringComparison.OrdinalIgnoreCase));
+
+                foreach (var depFile in allDepFiles)
+                {
+                    string depDirName = Path.GetFileName(Path.GetDirectoryName(depFile)).ToLower();
+                    // 筛选规则：通用依赖(neutral) 或 匹配当前包架构的依赖
+                    bool shouldInclude = depDirName == "dependencies" || 
+                                         depDirName == "neutral" || 
+                                         (isX64 && depDirName == "x64") ||
+                                         (isX86 && depDirName == "x86") ||
+                                         (isArm64 && depDirName == "arm64");
+                    
+                    if (shouldInclude) 
+                    {
+                        dependencyPaths.Add(depFile);
+                        _logger.LogDebug("添加依赖: {DepFile}", depFile);
+                    }
+                }
+            }
+
+            // 3. 构建 PowerShell 脚本
+            // 获取当前应用的 FamilyName!AppId 用于重启
+            // 假设 AppId 默认为 "App" (大多数 WinUI/UWP 项目默认值)
+            string appFamilyName = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+            string appStartUri = $"shell:AppsFolder\\{appFamilyName}!App";
             
-            // 直接运行Install.ps1文件
+            _logger.LogInformation("准备启动 PowerShell 进行更新与重启，目标: {AppUri}", appStartUri);
+
+            // 构造 Add-AppxPackage 参数
+            string psCommand = $"Add-AppxPackage -Path '{mainPackagePath}' -ForceApplicationShutdown";
+            if (dependencyPaths.Count > 0)
+            {
+                string deps = string.Join("', '", dependencyPaths); // 'path1', 'path2'
+                psCommand += $" -DependencyPath '{deps}'";
+            }
+            
+            // 组合脚本：等待 -> 安装 -> 启动
+            // Start-Sleep 确保本进程有机会自行退出或被系统清理
+            // Start-Process 启动新版应用
+            string finalScript = $"Start-Sleep -Seconds 1; {psCommand}; Start-Sleep -Seconds 1; Start-Process '{appStartUri}';";
+            
+            _logger.LogInformation("PowerShell命令长度: {Len}", finalScript.Length);
+
+            // 4. 执行 PowerShell (Fire and Forget)
             using (var process = new Process())
             {
                 process.StartInfo = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{installScriptPath}\"",
-                    UseShellExecute = true,
-                    Verb = "runas", // 以管理员身份运行
-                    WorkingDirectory = extractDirectory, // 设置工作目录为解压目录
-                    CreateNoWindow = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{finalScript}\"",
+                    UseShellExecute = true, // 使用 ShellExecute 允许分离
+                    // CreateNoWindow = true, // 隐藏窗口 (为了调试可以看到窗口，发布时可隐藏)
+                    WindowStyle = ProcessWindowStyle.Hidden
                 };
                 
-                _logger.LogInformation("启动PowerShell进程运行Install.ps1脚本");
-                Debug.WriteLine("[DEBUG] 启动PowerShell进程运行Install.ps1脚本");
-                
                 process.Start();
-                await process.WaitForExitAsync();
-                
-                bool isSuccess = process.ExitCode == 0;
-                _logger.LogInformation("Install.ps1脚本执行完成，退出代码: {ExitCode}, 成功: {IsSuccess}", process.ExitCode, isSuccess);
-                Debug.WriteLine($"[DEBUG] Install.ps1脚本执行完成，退出代码: {process.ExitCode}, 成功: {isSuccess}");
-                
-                return isSuccess;
+                // 不等待退出，因为安装命令会杀死本进程
             }
+            
+            _logger.LogInformation("更新进程已启动，应用即将退出");
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "运行Install.ps1脚本失败: {ExtractDirectory}", extractDirectory);
-            Debug.WriteLine($"[DEBUG] 运行Install.ps1脚本失败: {extractDirectory}, 错误: {ex.Message}");
+            _logger.LogError(ex, "启动更新进程失败: {ExtractDirectory}", extractDirectory);
             return false;
         }
     }

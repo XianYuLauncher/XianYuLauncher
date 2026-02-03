@@ -152,6 +152,19 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                         DownloadStatusText = "正在检查证书...";
                         
                         bool isCertificateInstalled = _updateService.IsCertificateInstalled(extractResult.CertificateFilePath);
+                        
+                        if (!isCertificateInstalled)
+                        {
+                            _logger.LogInformation("证书未安装，尝试静默安装");
+                            Debug.WriteLine($"[DEBUG] 证书未安装，尝试静默安装: {extractResult.CertificateFilePath}");
+                            DownloadStatusText = "正在尝试自动安装证书...";
+                            
+                            await _updateService.InstallCertificateSilentlyAsync(extractResult.CertificateFilePath);
+                            
+                            // 再次检查
+                            isCertificateInstalled = _updateService.IsCertificateInstalled(extractResult.CertificateFilePath);
+                        }
+
                         if (!isCertificateInstalled)
                         {
                             _logger.LogInformation("证书未安装，打开证书属性页");
@@ -200,14 +213,25 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     // 安装MSIX包
                     _logger.LogInformation("开始安装MSIX包: {MsixFilePath}", extractResult.MsixFilePath);
                     Debug.WriteLine($"[DEBUG] 开始安装MSIX包: {extractResult.MsixFilePath}");
-                    DownloadStatusText = "正在安装MSIX包...";
                     
+                    // 提示用户应用将关闭
+                    DownloadStatusText = "正在请求系统更新，应用即将自动关闭...";
+                    // 给UI一点时间刷新
+                    await Task.Delay(500);
+
+                    // 注意：InstallMsixPackageAsync 使用了 ForceApplicationShutdown
+                    // 一旦执行，本进程会被系统强制终止，以下代码(直到catch块)很可能不会执行
                     bool installSuccess = await _updateService.InstallMsixPackageAsync(extractResult.ExtractDirectory, extractResult.MsixFilePath);
+                    
+                    // ==========================================
+                    // 如果代码还能执行到这里，说明没有触发强制关闭（可能是更新失败，或者不是自我更新）
+                    // ==========================================
+                    
                     if (installSuccess)
                     {
-                        _logger.LogInformation("MSIX包安装成功");
-                        Debug.WriteLine("[DEBUG] MSIX包安装成功");
-                        DownloadStatusText = "安装成功！";
+                        _logger.LogInformation("MSIX包安装请求成功");
+                        Debug.WriteLine("[DEBUG] MSIX包安装请求成功");
+                        DownloadStatusText = "更新请求已提交";
                         
                         // 确保用户能看到安装成功的状态
                         await Task.Delay(1000);
@@ -222,10 +246,10 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     {
                         _logger.LogError("MSIX包安装失败");
                         Debug.WriteLine("[DEBUG] MSIX包安装失败");
-                        DownloadStatusText = "安装失败，请尝试手动下载安装包";
+                        DownloadStatusText = "安装请求失败，请尝试手动下载安装包";
                         IsDownloading = false;
                         
-                        // 清理临时文件
+                        // 清理临时文件 (依然尝试清理)
                         _updateService.CleanupTempFiles(extractResult.ExtractDirectory);
                     }
                 }
