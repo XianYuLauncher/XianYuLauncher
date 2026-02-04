@@ -52,24 +52,16 @@ public class LogSanitizerService : ILogSanitizerService
                 sensitiveWords.Add(activeProfile.Id);
             }
 
-            // 3. AccessToken (需要解密)
+            // 3. AccessToken (已由 ProfileManager.LoadProfilesAsync() 解密)
             if (!string.IsNullOrEmpty(activeProfile.AccessToken))
             {
-                var token = TokenEncryption.Decrypt(activeProfile.AccessToken);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    sensitiveWords.Add(token);
-                }
+                sensitiveWords.Add(activeProfile.AccessToken);
             }
 
-            // 4. RefreshToken (需要解密)
+            // 4. RefreshToken (已由 ProfileManager.LoadProfilesAsync() 解密)
             if (!string.IsNullOrEmpty(activeProfile.RefreshToken))
             {
-                var token = TokenEncryption.Decrypt(activeProfile.RefreshToken);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    sensitiveWords.Add(token);
-                }
+                sensitiveWords.Add(activeProfile.RefreshToken);
             }
 
             // 执行替换
