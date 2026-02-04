@@ -283,7 +283,8 @@
                                         <MenuFlyoutItem 
                                             x:Uid="VersionListPage_ExportModpackMenuItem"
                                             Command="{Binding DataContext.ExportModpackCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding IsValid}">
                                             <MenuFlyoutItem.Icon>
                                                 <FontIcon Glyph="&#xE72C;" />
                                             </MenuFlyoutItem.Icon>
@@ -292,7 +293,8 @@
                                             x:Uid="VersionListPage_GenerateLaunchScriptMenuItem"
                                             Text="生成启动参数"
                                             Command="{Binding DataContext.GenerateLaunchScriptCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding IsValid}">
                                             <MenuFlyoutItem.Icon>
                                                 <FontIcon Glyph="&#xE756;" />
                                             </MenuFlyoutItem.Icon>
@@ -301,7 +303,8 @@
                                             x:Uid="VersionListPage_CompleteVersionMenuItem"
                                             Text="版本补全"
                                             Command="{Binding DataContext.CompleteVersionCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding IsValid}">
                                             <MenuFlyoutItem.Icon>
                                                 <FontIcon Glyph="&#xE896;" />
                                             </MenuFlyoutItem.Icon>

@@ -54,6 +54,11 @@ public partial class VersionListViewModel : ObservableRecipient
         /// 版本文件夹路径
         /// </summary>
         public string Path { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 是否为有效版本（包含json文件）
+        /// </summary>
+        public bool IsValid { get; set; } = true;
     }
 
     /// <summary>
@@ -301,7 +306,8 @@ public partial class VersionListViewModel : ObservableRecipient
                     Type = type,
                     InstallDate = installDate,
                     VersionNumber = versionNumber,
-                    Path = versionDir
+                    Path = versionDir,
+                    IsValid = isValidVersion
                 };
 
                 versionItems.Add(versionItem);
