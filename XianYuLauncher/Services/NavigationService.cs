@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -115,7 +115,9 @@ public class NavigationService : INavigationService
                 Title = "导航错误",
                 Content = $"无法导航到页面: {pageKey}\n\n错误信息: {ex.Message}\n\n堆栈跟踪: {ex.StackTrace}",
                 CloseButtonText = "确定",
-                XamlRoot = _frame?.XamlRoot
+                XamlRoot = _frame?.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             _ = dialog.ShowAsync();
             return false;

@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
@@ -496,7 +497,8 @@ namespace XianYuLauncher.ViewModels
                 Content = "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
                 PrimaryButtonText = "购买Minecraft",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close
+                DefaultButton = ContentDialogButton.Close,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             // 设置XamlRoot，确保弹窗能正确显示
@@ -519,7 +521,9 @@ namespace XianYuLauncher.ViewModels
                         Title = "打开链接失败",
                         Content = "无法打开购买链接，请手动访问该网址。",
                         CloseButtonText = "确定",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     await errorDialog.ShowAsync();
                 }
@@ -544,7 +548,8 @@ namespace XianYuLauncher.ViewModels
                 PrimaryButtonText = "创建档案",
                 CloseButtonText = "确定",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             // 处理创建档案按钮点击事件
@@ -564,7 +569,9 @@ namespace XianYuLauncher.ViewModels
                         Title = "打开链接失败",
                         Content = "无法打开创建档案链接，请手动访问该网址。",
                         CloseButtonText = "确定",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     await errorDialog.ShowAsync();
                 }
@@ -587,7 +594,8 @@ namespace XianYuLauncher.ViewModels
                 Content = errorMessage,
                 CloseButtonText = "确定",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             await dialog.ShowAsync();

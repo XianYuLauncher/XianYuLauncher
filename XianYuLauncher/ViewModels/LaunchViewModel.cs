@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.System;
@@ -439,7 +440,8 @@ public partial class LaunchViewModel : ObservableRecipient
             PrimaryButtonText = "导出崩溃日志",
             SecondaryButtonText = "查看详细日志",
             CloseButtonText = "关闭",
-            DefaultButton = ContentDialogButton.Primary
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
         };
         
         // 处理按钮点击事件

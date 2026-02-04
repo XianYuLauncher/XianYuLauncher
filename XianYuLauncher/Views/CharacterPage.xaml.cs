@@ -1078,7 +1078,8 @@ namespace XianYuLauncher.Views
                     Content = "当前地区无法使用离线登录，请使用微软账户登录。",
                     CloseButtonText = "确定",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.XamlRoot
+                    XamlRoot = this.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
                 await dialog.ShowAsync();
                 return;
@@ -1112,7 +1113,8 @@ namespace XianYuLauncher.Views
                     Content = "当前地区无法使用外置登录，请使用微软账户登录。",
                     CloseButtonText = "确定",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.XamlRoot
+                    XamlRoot = this.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
                 await dialog.ShowAsync();
                 return;
@@ -1146,7 +1148,9 @@ namespace XianYuLauncher.Views
                         Title = "提示",
                         Content = "离线账户无需续签令牌",
                         CloseButtonText = "确定",
-                        XamlRoot = this.XamlRoot
+                        XamlRoot = this.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     await offlineDialog.ShowAsync();
                     return;
@@ -1166,7 +1170,9 @@ namespace XianYuLauncher.Views
             {
                 Title = "续签令牌",
                 CloseButtonText = null, // 初始不显示关闭按钮
-                XamlRoot = this.XamlRoot
+                XamlRoot = this.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             
             // 创建对话框内容
@@ -1623,7 +1629,8 @@ namespace XianYuLauncher.Views
                 PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
                 SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
                 DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             // 显示对话框并获取结果
@@ -1907,7 +1914,8 @@ namespace XianYuLauncher.Views
                 PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
                 SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
                 DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             // 显示对话框并获取结果
@@ -2015,7 +2023,8 @@ namespace XianYuLauncher.Views
                 Content = errorMessage,
                 CloseButtonText = "确定",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             await dialog.ShowAsync();
@@ -2059,7 +2068,8 @@ namespace XianYuLauncher.Views
                 PrimaryButtonText = "确定",
                 SecondaryButtonText = "取消",
                 DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             // 显示对话框并获取结果
@@ -2120,7 +2130,8 @@ namespace XianYuLauncher.Views
                             PrimaryButtonText = "确定",
                             SecondaryButtonText = "取消",
                             DefaultButton = ContentDialogButton.Primary,
-                            XamlRoot = this.Content.XamlRoot
+                            XamlRoot = this.Content.XamlRoot,
+                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                         };
                         
                         var result = await dialog.ShowAsync();
@@ -2262,7 +2273,8 @@ namespace XianYuLauncher.Views
                 PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
                 SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
                 DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             // 显示对话框并获取结果

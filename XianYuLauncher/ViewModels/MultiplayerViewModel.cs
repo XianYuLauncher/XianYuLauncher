@@ -58,11 +58,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
 
-    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, ILocalSettingsService localSettingsService, IDownloadManager downloadManager)
+    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, TerracottaService terracottaService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
-        _terracottaService = new TerracottaService(localSettingsService, downloadManager);
+        _terracottaService = terracottaService;
     }
     
     /// <summary>
@@ -128,7 +128,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             },
             IsPrimaryButtonEnabled = false,
             IsSecondaryButtonEnabled = false,
-            XamlRoot = App.MainWindow.Content.XamlRoot
+            XamlRoot = App.MainWindow.Content.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
         
         // 显示进度弹窗
@@ -387,7 +388,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 Content = this, // 绑定到当前ViewModel，以便显示PollingResult
                 ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["PollingContentTemplate"],
                 PrimaryButtonText = "联机Page_StopButton".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             
             // 处理停止按钮点击事件
@@ -413,7 +416,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 Title = "Common_ErrorTitle".GetLocalized(),
                 Content = errorMessage,
                 CloseButtonText = "Common_OKButton".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             
             await errorDialog.ShowAsync();
@@ -669,7 +674,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             },
             PrimaryButtonText = "联机Page_ConfirmButton".GetLocalized(),
             SecondaryButtonText = "联机Page_CancelButton".GetLocalized(),
-            XamlRoot = App.MainWindow.Content.XamlRoot
+            XamlRoot = App.MainWindow.Content.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            DefaultButton = ContentDialogButton.None
         };
         
         var result = await dialog.ShowAsync();
@@ -699,7 +706,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 },
                 IsPrimaryButtonEnabled = false,
                 IsSecondaryButtonEnabled = false,
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             // 显示进度弹窗
@@ -1014,7 +1022,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             Title = "Common_ErrorTitle".GetLocalized(),
             Content = message,
             CloseButtonText = "Common_OKButton".GetLocalized(),
-            XamlRoot = App.MainWindow.Content.XamlRoot
+            XamlRoot = App.MainWindow.Content.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            DefaultButton = ContentDialogButton.None
         };
         
         await errorDialog.ShowAsync();

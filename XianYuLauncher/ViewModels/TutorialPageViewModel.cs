@@ -341,7 +341,9 @@ namespace XianYuLauncher.ViewModels
                 Title = "TutorialPage_LoginRequiredDialog_Title".GetLocalized(),
                 Content = "TutorialPage_LoginRequiredDialog_Content".GetLocalized(),
                 CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             
             await dialog.ShowAsync();
@@ -495,7 +497,8 @@ namespace XianYuLauncher.ViewModels
                     PrimaryButtonText = "下载",
                     CloseButtonText = "取消",
                     XamlRoot = App.MainWindow.Content.XamlRoot,
-                    DefaultButton = ContentDialogButton.Primary
+                    DefaultButton = ContentDialogButton.Primary,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
 
                 var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
@@ -851,7 +854,9 @@ namespace XianYuLauncher.ViewModels
                 Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
                 Content = errorMessage,
                 CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             await errorDialog.ShowAsync();
         }
@@ -867,7 +872,9 @@ namespace XianYuLauncher.ViewModels
                 Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
                 PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
                 CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
 
             // 处理前往按钮点击事件
@@ -887,7 +894,9 @@ namespace XianYuLauncher.ViewModels
                         Title = "TutorialPage_CannotOpenLinkDialog_Title".GetLocalized(),
                         Content = "TutorialPage_CannotOpenLinkDialog_Content".GetLocalized(),
                         CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     await errorDialog.ShowAsync();
                 }

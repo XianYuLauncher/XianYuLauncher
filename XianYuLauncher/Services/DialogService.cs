@@ -84,7 +84,8 @@ public class DialogService : IDialogService
             Title = title,
             Content = message,
             CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Close
+            DefaultButton = ContentDialogButton.Close,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         await ShowSafeAsync(dialog);
@@ -98,7 +99,8 @@ public class DialogService : IDialogService
             Content = message,
             PrimaryButtonText = primaryButtonText,
             CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Primary
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         var result = await ShowSafeAsync(dialog);
@@ -113,7 +115,8 @@ public class DialogService : IDialogService
             Content = $"未找到适用于当前游戏版本的Java运行时环境。\n\n游戏版本需要: Java {requiredVersion}\n\n推荐使用自动下载功能，启动器将自动安装并配置环境。",
             PrimaryButtonText = "自动下载(推荐)",
             SecondaryButtonText = "手动下载",
-            CloseButtonText = "取消"
+            CloseButtonText = "取消",
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         dialog.PrimaryButtonClick += (s, e) => onAutoDownload?.Invoke();
@@ -129,7 +132,8 @@ public class DialogService : IDialogService
             Title = "离线游玩提示",
             Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
             PrimaryButtonText = "知道了",
-            SecondaryButtonText = "支持正版"
+            SecondaryButtonText = "支持正版",
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
         
         var result = await ShowSafeAsync(dialog);
@@ -147,7 +151,8 @@ public class DialogService : IDialogService
             Content = "LaunchPage_TokenExpiredContent".GetLocalized(),
             PrimaryButtonText = "LaunchPage_GoToLoginText".GetLocalized(),
             CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-            DefaultButton = ContentDialogButton.Primary
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
         
         var result = await ShowSafeAsync(dialog);
@@ -161,7 +166,8 @@ public class DialogService : IDialogService
             Title = "导出成功",
             Content = $"启动参数已成功导出到桌面:\n{System.IO.Path.GetFileName(filePath)}\n\n您可以双击该文件来启动游戏。",
             PrimaryButtonText = "打开文件位置",
-            CloseButtonText = "确定"
+            CloseButtonText = "确定",
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
         
         dialog.PrimaryButtonClick += (s, e) =>
@@ -185,7 +191,8 @@ public class DialogService : IDialogService
             Content = errorMessage,
             PrimaryButtonText = "前往",
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close
+            DefaultButton = ContentDialogButton.Close,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         var result = await ShowSafeAsync(dialog);
@@ -211,7 +218,8 @@ public class DialogService : IDialogService
             Title = title,
             Content = contentPanel,
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.None
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         var cts = new CancellationTokenSource();
@@ -387,7 +395,8 @@ public class DialogService : IDialogService
             PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
             CloseButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
-            Content = listView
+            Content = listView,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         var result = await ShowSafeAsync(dialog);

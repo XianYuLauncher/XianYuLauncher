@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Newtonsoft.Json;
 using System;
@@ -631,7 +632,9 @@ namespace XianYuLauncher.ViewModels
                     Title = "提示",
                     Content = message,
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.Close
                 };
                 
                 await dialog.ShowAsync();
@@ -2870,8 +2873,12 @@ namespace XianYuLauncher.ViewModels
                         minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
                         {
                             // 更新进度（50%-80%用于版本下载）
-                            InstallProgress = 50 + (progress / 100) * 30;
-                            InstallProgressText = $"{InstallProgress:F1}%";
+                            // 确保在UI线程更新
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() => 
+                            {
+                                InstallProgress = 50 + (progress / 100) * 30;
+                                InstallProgressText = $"{InstallProgress:F1}%";
+                            });
                         }, _installCancellationTokenSource.Token, modpackVersionId);
 
                     InstallStatus = "版本下载完成，正在部署整合包文件...";

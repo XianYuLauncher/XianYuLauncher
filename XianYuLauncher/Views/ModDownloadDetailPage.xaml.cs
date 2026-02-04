@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -27,6 +28,32 @@ namespace XianYuLauncher.Views
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
+        private SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
+
+        private async Task ShowDialogSafeAsync(ContentDialog dialog)
+        {
+            try
+            {
+                // 等待上一个弹窗完全关闭
+                await _dialogSemaphore.WaitAsync();
+                
+                // 增加一个小延迟，确保WinUI内部状态已重置
+                // 许多COM异常是因为上一个弹窗的关闭动画还没完全结束就开始显示下一个
+                await Task.Delay(50);
+                
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                // 忽略特定错误，避免崩溃
+                System.Diagnostics.Debug.WriteLine($"[ModDownloadDetailPage] 弹窗显示异常: {ex.Message}");
+            }
+            finally
+            {
+                _dialogSemaphore.Release();
+            }
+        }
+
         // 处理ViewModel属性变化
         private async void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -34,7 +61,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsDownloadDialogOpen)
                 {
-                    await DownloadDialog.ShowAsync();
+                    await ShowDialogSafeAsync(DownloadDialog);
                 }
                 else
                 {
@@ -45,7 +72,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsVersionSelectionDialogOpen)
                 {
-                    await VersionSelectionDialog.ShowAsync();
+                    await ShowDialogSafeAsync(VersionSelectionDialog);
                 }
                 else
                 {
@@ -56,7 +83,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsModpackInstallDialogOpen)
                 {
-                    await ModpackInstallDialog.ShowAsync();
+                    await ShowDialogSafeAsync(ModpackInstallDialog);
                 }
                 else
                 {
@@ -67,7 +94,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsSaveSelectionDialogOpen)
                 {
-                    await SaveSelectionDialog.ShowAsync();
+                    await ShowDialogSafeAsync(SaveSelectionDialog);
                 }
                 else
                 {
@@ -78,7 +105,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsDownloadProgressDialogOpen)
                 {
-                    await DownloadProgressDialog.ShowAsync();
+                    await ShowDialogSafeAsync(DownloadProgressDialog);
                 }
                 else
                 {
@@ -89,7 +116,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsQuickInstallGameVersionDialogOpen)
                 {
-                    await QuickInstallGameVersionDialog.ShowAsync();
+                    await ShowDialogSafeAsync(QuickInstallGameVersionDialog);
                 }
                 else
                 {
@@ -100,7 +127,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsQuickInstallModVersionDialogOpen)
                 {
-                    await QuickInstallModVersionDialog.ShowAsync();
+                    await ShowDialogSafeAsync(QuickInstallModVersionDialog);
                 }
                 else
                 {

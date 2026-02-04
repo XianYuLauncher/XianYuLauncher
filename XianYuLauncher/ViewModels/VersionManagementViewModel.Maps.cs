@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Graphics.Canvas;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -257,7 +258,8 @@ public partial class VersionManagementViewModel
                 PrimaryButtonText = "确定删除",
                 CloseButtonText = "取消",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             var result = await dialog.ShowAsync();
@@ -349,7 +351,9 @@ public partial class VersionManagementViewModel
                     Title = "重命名失败",
                     Content = "该名称已存在，请使用其他名称。",
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await dialog.ShowAsync();
                 return;
