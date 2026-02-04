@@ -31,25 +31,23 @@ public class ActivationService : IActivationService
 
     public async Task ActivateAsync(object activationArgs)
     {
-        // Check if this is a silent launch via protocol
+        // Check if this is a silent launch via protocol (before initializing UI services)
         var appArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
-        if (appArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol)
+        if (appArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol
+            && appArgs.Data is Windows.ApplicationModel.Activation.ProtocolActivatedEventArgs protoArgs
+            && protoArgs.Uri.Scheme == "xianyulauncher"
+            && protoArgs.Uri.Host == "launch")
         {
-            var protoArgs = appArgs.Data as Windows.ApplicationModel.Activation.ProtocolActivatedEventArgs;
-            if (protoArgs != null && protoArgs.Uri.Scheme == "xianyulauncher")
-            {
-                // Format: xianyulauncher://launch/?path={TargetInstancePath}
-                if (protoArgs.Uri.Host == "launch")
-                {
-                    // Handle Silent Launch
-                    await HandleSilentLaunchAsync(protoArgs.Uri);
-                    // Do not show main window, exit app after handling logic is done inside HandleSilentLaunchAsync
-                    // But we need to keep the process alive until launch is done.
-                    // HandleSilentLaunchAsync handles the lifecycle.
-                    return; 
-                }
-            }
+            // Handle Silent Launch
+            await HandleSilentLaunchAsync(protoArgs.Uri);
+            // Do not show main window, exit app after handling logic is done inside HandleSilentLaunchAsync
+            // But we need to keep the process alive until launch is done.
+            // HandleSilentLaunchAsync handles the lifecycle.
+            return;
         }
+
+        // Initialize theme and language services for normal activation
+        await InitializeAsync();
 
         // Set the MainWindow Content.
         if (App.MainWindow.Content == null)
@@ -487,11 +485,11 @@ public class ActivationService : IActivationService
     private async Task HandleSilentLaunchAsync(Uri uri)
     {
         // New Uri format: xianyulauncher://launch/?path={TargetInstancePath}&map={MapName}&server={ServerIp}&port={ServerPort}
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        var targetPath = query["path"];
-        var mapName = query["map"]; // Map folder name
-        var serverIp = query["server"];
-        var serverPortStr = query["port"];
+        var queryParams = ParseQueryString(uri.Query);
+        var targetPath = queryParams.ContainsKey("path") ? queryParams["path"] : null;
+        var mapName = queryParams.ContainsKey("map") ? queryParams["map"] : null;
+        var serverIp = queryParams.ContainsKey("server") ? queryParams["server"] : null;
+        var serverPortStr = queryParams.ContainsKey("port") ? queryParams["port"] : null;
         
         string versionName = string.Empty;
 
@@ -503,10 +501,19 @@ public class ActivationService : IActivationService
         }
         else
         {
+             // Security: Validate path to prevent UNC path attacks
+             if (IsUncPath(targetPath))
+             {
+                 ShowToast("启动错误", "不支持网络路径，请使用本地路径。");
+                 EnsureMainWindowInitialized();
+                 App.MainWindow.Activate();
+                 return;
+             }
+
              // 使用传入的绝对路径
              if (!System.IO.Directory.Exists(targetPath))
              {
-                 ShowToast("启动错误", $"找不到目标实例路径:\n{targetPath}");
+                 ShowToast("启动错误", "找不到目标实例路径");
                  EnsureMainWindowInitialized();
                  App.MainWindow.Activate();
                  return;
@@ -596,19 +603,19 @@ public class ActivationService : IActivationService
                 quickPlayServer,
                 quickPlayPort);
 
-             // 6. Success
-             if (launchResult.GameProcess != null)
-             {
-                 ShowToast("游戏已启动", $"{versionName} 正在运行中...");
-                 // Exit launcher
-                 Application.Current.Exit();
-             }
-             else
-             {
-                 ShowToast("启动失败", "游戏未能启动，请查看日志。");
-                 EnsureMainWindowInitialized();
-                 App.MainWindow.Activate();
-             }
+            // 6. Success
+            if (launchResult.GameProcess != null)
+            {
+                ShowToast("游戏已启动", $"{versionName} 正在运行中...");
+                // Exit launcher
+                Application.Current.Exit();
+            }
+            else
+            {
+                ShowToast("启动失败", "游戏未能启动，请查看日志。");
+                EnsureMainWindowInitialized();
+                App.MainWindow.Activate();
+            }
 
         }
         catch (Exception ex)
@@ -636,5 +643,46 @@ public class ActivationService : IActivationService
         {
             Serilog.Log.Error(ex, "Failed to show toast notification");
         }
+    }
+
+    private static Dictionary<string, string> ParseQueryString(string query)
+    {
+        // Note: Using case-insensitive comparison for query parameter keys for better
+        // user experience, though this deviates from strict URL standards
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(query))
+        {
+            return result;
+        }
+
+        // Remove leading '?' if present
+        query = query.TrimStart('?');
+
+        foreach (var pair in query.Split('&'))
+        {
+            var equalIndex = pair.IndexOf('=');
+            if (equalIndex >= 0)
+            {
+                var key = System.Net.WebUtility.UrlDecode(pair.Substring(0, equalIndex));
+                var value = equalIndex + 1 < pair.Length 
+                    ? System.Net.WebUtility.UrlDecode(pair.Substring(equalIndex + 1)) 
+                    : string.Empty;
+                result[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsUncPath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        // Check for UNC paths (\\server\share or //server/share)
+        return path.StartsWith("\\\\", StringComparison.Ordinal) ||
+               path.StartsWith("//", StringComparison.Ordinal);
     }
 }

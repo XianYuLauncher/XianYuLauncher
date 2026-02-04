@@ -463,27 +463,30 @@ public partial class VersionManagementViewModel
             string shortcutName = $"{safeVersionName} - {safeServerName}";
             string shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
             
+            // Check if shortcut already exists
+            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
+            {
+                try
+                {
+                    var dialogService = App.GetService<IDialogService>();
+                    if (dialogService != null)
+                    {
+                        await dialogService.ShowMessageDialogAsync("快捷方式已存在", 
+                            $"桌面上已存在 {shortcutName} 的快捷方式。\n将覆盖现有快捷方式。");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
+                }
+            }
+
             // Icon Logic
             // Use SafeCachePath to ensure the path is accessible by Explorer (physical path in MSIX)
             string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
             if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
 
-            string iconPath = Path.Combine(cacheDir, "DefaultAppIcon.ico");
-
-             // 1. Prepare Default App Icon if missing
-            if (!File.Exists(iconPath))
-            {
-                try 
-                {
-                    string installedLoc = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-                    string assetIcon = Path.Combine(installedLoc, "Assets", "WindowIcon.ico");
-                    if (File.Exists(assetIcon))
-                    {
-                        File.Copy(assetIcon, iconPath, true);
-                    }
-                }
-                catch {}
-            }
+            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
             
             // Try to save server icon
             if (!string.IsNullOrEmpty(server.IconBase64))
@@ -494,19 +497,30 @@ public partial class VersionManagementViewModel
                     string validIconName = Helpers.HashHelper.ComputeMD5(server.Address + server.Name);
                     string savedIconPath = Path.Combine(cacheDir, $"{validIconName}.ico");
                     
-                     if (!File.Exists(savedIconPath))
-                     {
+                    if (!File.Exists(savedIconPath))
+                    {
                         string base64Data = server.IconBase64;
-                        if (base64Data.Contains(",")) 
+                        
+                        // If the icon is provided as a data URI, strip the metadata prefix and keep only the base64 payload
+                        if (base64Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
                         {
-                            base64Data = base64Data.Split(',')[1];
+                            int commaIndex = base64Data.IndexOf(',');
+                            if (commaIndex >= 0 && commaIndex < base64Data.Length - 1)
+                            {
+                                base64Data = base64Data.Substring(commaIndex + 1);
+                            }
+                            else
+                            {
+                                // Invalid data URI format (comma missing or at end), skip icon decoding
+                                throw new FormatException("Invalid data URI format for server icon");
+                            }
                         }
                         
                         byte[] pngBytes = Convert.FromBase64String(base64Data);
                         byte[] icoBytes = Helpers.IconHelper.CreateIcoFromPng(pngBytes);
                         
                         await File.WriteAllBytesAsync(savedIconPath, icoBytes);
-                     }
+                    }
 
                     iconPath = savedIconPath;
                 }
@@ -515,28 +529,74 @@ public partial class VersionManagementViewModel
                     System.Diagnostics.Debug.WriteLine($"Saving server icon failed: {ex.Message}");
                 }
             }
-            // If still pointing to valid fallback? 
-            // The default logic above sets iconPath to DefaultAppIcon.ico initially.
 
-            string targetPath = SelectedVersion.Path;
-            if(!string.IsNullOrEmpty(targetPath) && targetPath.EndsWith("\\"))
-               targetPath = targetPath.Substring(0, targetPath.Length - 1);
+            string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(SelectedVersion.Path);
             
+            // Parse server address with IPv6 support
             string finalAddress = server.Address;
             string portPart = "25565";
-            if (!string.IsNullOrEmpty(finalAddress) && finalAddress.Contains(':'))
+            if (!string.IsNullOrEmpty(finalAddress) && finalAddress.Length > 0)
             {
-                var parts = finalAddress.Split(':');
-                if (parts.Length == 2 && int.TryParse(parts[1], out int p))
+                // Handle IPv6 addresses in bracket notation, e.g. [::1]:25565
+                if (finalAddress.StartsWith("[", StringComparison.Ordinal))
                 {
-                    finalAddress = parts[0];
-                    portPart = parts[1];
+                    int endBracket = finalAddress.IndexOf(']');
+                    if (endBracket > 0)
+                    {
+                        string hostPart = finalAddress.Substring(1, endBracket - 1);
+                        string remainder = endBracket + 1 < finalAddress.Length
+                            ? finalAddress.Substring(endBracket + 1)
+                            : string.Empty;
+
+                        if (remainder.StartsWith(":", StringComparison.Ordinal))
+                        {
+                            string portCandidate = remainder.Substring(1);
+                            // We only need to validate that portCandidate is a valid integer, not use the parsed value
+                            if (int.TryParse(portCandidate, out int _))
+                            {
+                                portPart = portCandidate;
+                            }
+                        }
+
+                        finalAddress = hostPart;
+                    }
                 }
+                else
+                {
+                    // Non-bracketed form: treat single ':' as host:port, but avoid
+                    // breaking unbracketed IPv6 literals with multiple colons.
+                    int firstColon = finalAddress.IndexOf(':');
+                    int lastColon = finalAddress.LastIndexOf(':');
+                    if (firstColon > 0 && firstColon == lastColon)
+                    {
+                        string hostPart = finalAddress.Substring(0, lastColon);
+                        string portCandidate = lastColon + 1 < finalAddress.Length
+                            ? finalAddress.Substring(lastColon + 1)
+                            : string.Empty;
+
+                        // We only need to validate that portCandidate is a valid integer, not use the parsed value
+                        if (!string.IsNullOrEmpty(portCandidate) && int.TryParse(portCandidate, out int _))
+                        {
+                            finalAddress = hostPart;
+                            portPart = portCandidate;
+                        }
+                    }
+                }
+            }
+
+            string encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
+            string encodedServer = Uri.EscapeDataString(finalAddress ?? string.Empty);
+            string url = $"xianyulauncher://launch/?path={encodedPath}&server={encodedServer}&port={portPart}";
+            
+            // Validate URL
+            if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
+            {
+                throw new InvalidOperationException("Invalid shortcut URL constructed for server.");
             }
 
             var builder = new System.Text.StringBuilder();
             builder.AppendLine("[InternetShortcut]");
-            builder.AppendLine($"URL=xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}&server={Uri.EscapeDataString(finalAddress)}&port={portPart}");
+            builder.AppendLine($"URL={url}");
             builder.AppendLine($"IconIndex=0");
             builder.AppendLine($"IconFile={iconPath}");
 
@@ -559,7 +619,19 @@ public partial class VersionManagementViewModel
         }
         catch (Exception ex)
         {
-            StatusMessage = $"创建快捷方式失败: {ex.Message}";
+            StatusMessage = "创建快捷方式失败";
+            System.Diagnostics.Debug.WriteLine($"创建服务器快捷方式失败: {ex}");
+            
+            // Show user-friendly error message
+            try
+            {
+                var dialogService = App.GetService<IDialogService>();
+                await dialogService?.ShowMessageDialogAsync("创建失败", "创建快捷方式失败，请检查桌面权限或稍后重试。");
+            }
+            catch (Exception dialogEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示错误对话框失败: {dialogEx}");
+            }
         }
     }
 }
