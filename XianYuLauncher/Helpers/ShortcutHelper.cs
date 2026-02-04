@@ -21,7 +21,7 @@ namespace XianYuLauncher.Helpers
         /// <summary>
         /// Prepare default application icon in cache directory
         /// </summary>
-        /// <returns>Path to the default icon, or null if preparation failed</returns>
+        /// <returns>Path to the default icon (may or may not exist depending on if copy succeeded)</returns>
         public static string PrepareDefaultAppIcon(string cacheDir)
         {
             string iconPath = Path.Combine(cacheDir, "DefaultAppIcon.ico");

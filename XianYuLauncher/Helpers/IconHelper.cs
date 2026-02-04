@@ -6,6 +6,9 @@ namespace XianYuLauncher.Helpers
 {
     public static class IconHelper
     {
+        // PNG file signature (magic bytes)
+        private static readonly byte[] PngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
+
         public static async Task ConvertPngToIcoAsync(string pngPath, string icoPath)
         {
             if (!File.Exists(pngPath)) return;
@@ -43,7 +46,11 @@ namespace XianYuLauncher.Helpers
                 // Width: 4 bytes (Big Endian)
                 // Height: 4 bytes (Big Endian)
                 
-                if (pngData.Length > 24 && pngData[0] == 0x89 && pngData[1] == 0x50 && pngData[2] == 0x4E && pngData[3] == 0x47)
+                if (pngData.Length > 24 && 
+                    pngData[0] == PngSignature[0] && 
+                    pngData[1] == PngSignature[1] && 
+                    pngData[2] == PngSignature[2] && 
+                    pngData[3] == PngSignature[3])
                 {
                     // Read width/height from IHDR (offset 16)
                     // PNG stores integers as big-endian, need to convert to system endianness

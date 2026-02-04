@@ -509,6 +509,11 @@ public partial class VersionManagementViewModel
                             {
                                 base64Data = base64Data.Substring(commaIndex + 1);
                             }
+                            else
+                            {
+                                // Invalid data URI format (comma missing or at end), skip icon decoding
+                                throw new FormatException("Invalid data URI format for server icon");
+                            }
                         }
                         
                         byte[] pngBytes = Convert.FromBase64String(base64Data);
@@ -546,6 +551,7 @@ public partial class VersionManagementViewModel
                         if (remainder.StartsWith(":", StringComparison.Ordinal))
                         {
                             string portCandidate = remainder.Substring(1);
+                            // We only need to validate that portCandidate is a valid integer, not use the parsed value
                             if (int.TryParse(portCandidate, out int _))
                             {
                                 portPart = portCandidate;
@@ -568,6 +574,7 @@ public partial class VersionManagementViewModel
                             ? finalAddress.Substring(lastColon + 1)
                             : string.Empty;
 
+                        // We only need to validate that portCandidate is a valid integer, not use the parsed value
                         if (!string.IsNullOrEmpty(portCandidate) && int.TryParse(portCandidate, out int _))
                         {
                             finalAddress = hostPart;
