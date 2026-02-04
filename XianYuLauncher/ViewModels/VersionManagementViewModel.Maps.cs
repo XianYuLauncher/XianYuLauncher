@@ -471,35 +471,37 @@ public partial class VersionManagementViewModel
             string shortcutName = $"{safeVersionName} - {safeMapName}";
             string shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
             
+            // Check if shortcut already exists
+            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
+            {
+                try
+                {
+                    var dialogService = App.GetService<IDialogService>();
+                    if (dialogService != null)
+                    {
+                        await dialogService.ShowMessageDialogAsync("快捷方式已存在", 
+                            $"桌面上已存在 {shortcutName} 的快捷方式。\n将覆盖现有快捷方式。");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
+                }
+            }
+
             // Icon Logic
             // Ensure Cache Directory Exists
             // Use SafeCachePath to ensure the path is accessible by Explorer (physical path in MSIX)
             string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
             if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
 
-            string iconPath = Path.Combine(cacheDir, "DefaultAppIcon.ico");
-            
-            // 1. Prepare Default App Icon if missing
-            if (!File.Exists(iconPath))
-            {
-                try 
-                {
-                    // Copy from Assets if possible, otherwise rely on Process path (which may fail in .url)
-                    string installedLoc = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-                    string assetIcon = Path.Combine(installedLoc, "Assets", "WindowIcon.ico");
-                    if (File.Exists(assetIcon))
-                    {
-                        File.Copy(assetIcon, iconPath, true);
-                    }
-                }
-                catch {}
-            }
+            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
 
             // 2. Try Map Icon (Convert PNG to ICO)
             if (!string.IsNullOrEmpty(map.Icon) && File.Exists(map.Icon))
             {
-                 try
-                 {
+                try
+                {
                     // Hash path for unique cache name
                     string mapIconHash = Helpers.HashHelper.ComputeMD5(map.Icon);
                     string customIconPath = Path.Combine(cacheDir, $"{mapIconHash}.ico");
@@ -507,32 +509,38 @@ public partial class VersionManagementViewModel
                     // Convert only if not exists or map icon updated? Simple check exists for now
                     if (!File.Exists(customIconPath))
                     {
-                         await Helpers.IconHelper.ConvertPngToIcoAsync(map.Icon, customIconPath);
+                        await Helpers.IconHelper.ConvertPngToIcoAsync(map.Icon, customIconPath);
                     }
                     
                     if (File.Exists(customIconPath))
                     {
                         iconPath = customIconPath;
                     }
-                 }
-                 catch (Exception ex)
-                 {
-                     System.Diagnostics.Debug.WriteLine($"Failed to convert map icon: {ex.Message}");
-                 }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to convert map icon: {ex.Message}");
+                }
             }
 
             // 获取版本路径
-            string targetPath = SelectedVersion.Path;
-            if(!string.IsNullOrEmpty(targetPath) && targetPath.EndsWith("\\"))
-            {
-               targetPath = targetPath.Substring(0, targetPath.Length - 1);
-            }
+            string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(SelectedVersion.Path);
             
             // 构建 URI: xianyulauncher://launch/?path={Path}&map={MapFullPath}
             // 游戏会自动在 saves 目录下寻找。传递绝对路径反而会导致游戏无法识别。
+            string encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
+            string encodedMap = Uri.EscapeDataString(map.FileName ?? string.Empty);
+            string url = $"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}";
+            
+            // Validate URL
+            if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
+            {
+                throw new InvalidOperationException("Invalid shortcut URL constructed for map.");
+            }
+
             var builder = new System.Text.StringBuilder();
             builder.AppendLine("[InternetShortcut]");
-            builder.AppendLine($"URL=xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}&map={Uri.EscapeDataString(map.FileName)}");
+            builder.AppendLine($"URL={url}");
             builder.AppendLine($"IconIndex=0");
             builder.AppendLine($"IconFile={iconPath}");
 
@@ -541,7 +549,7 @@ public partial class VersionManagementViewModel
             StatusMessage = $"快捷方式已创建: {shortcutName}";
             
             // 提示用户
-            try 
+            try
             {
                 var dialogService = App.GetService<IDialogService>();
                 if (dialogService != null)
@@ -549,8 +557,11 @@ public partial class VersionManagementViewModel
                     await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
                         $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接进入此存档。");
                 }
-            } 
-            catch { }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示快捷方式创建提示对话框失败: {ex}");
+            }
         }
         catch (Exception ex)
         {

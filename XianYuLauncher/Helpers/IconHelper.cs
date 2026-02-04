@@ -43,12 +43,19 @@ namespace XianYuLauncher.Helpers
                 // Width: 4 bytes (Big Endian)
                 // Height: 4 bytes (Big Endian)
                 
-                if (pngData.Length > 24 && pngData[0] == 0x89 && pngData[1] == 0x50)
+                if (pngData.Length > 24 && pngData[0] == 0x89 && pngData[1] == 0x50 && pngData[2] == 0x4E && pngData[3] == 0x47)
                 {
                     // Read width/height from IHDR (offset 16)
-                    // Big Endian
-                    var wRaw = new byte[] { pngData[19], pngData[18], pngData[17], pngData[16] }; // Reverse for Little Endian
-                    var hRaw = new byte[] { pngData[23], pngData[22], pngData[21], pngData[20] };
+                    // PNG stores integers as big-endian, need to convert to system endianness
+                    var wRaw = new byte[] { pngData[16], pngData[17], pngData[18], pngData[19] };
+                    var hRaw = new byte[] { pngData[20], pngData[21], pngData[22], pngData[23] };
+                    
+                    // Convert from big-endian to the system endianness
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(wRaw);
+                        Array.Reverse(hRaw);
+                    }
                     
                     int w = BitConverter.ToInt32(wRaw, 0);
                     int h = BitConverter.ToInt32(hRaw, 0);
