@@ -192,16 +192,24 @@ public partial class VersionListViewModel : ObservableRecipient
                 var versionDir = Path.Combine(versionsPath, versionName);
                 var versionJsonPath = Path.Combine(versionDir, $"{versionName}.json");
 
-                if (Directory.Exists(versionDir) && File.Exists(versionJsonPath))
+                if (!Directory.Exists(versionDir))
                 {
-                    // 获取安装日期（使用文件夹创建日期）
-                    var dirInfo = new DirectoryInfo(versionDir);
-                    var installDate = dirInfo.CreationTime;
-                    
-                    // 获取版本类型和版本号
-                    string type = "Release";
-                    string versionNumber = versionName;
+                    continue;
+                }
 
+                // 获取安装日期（使用文件夹创建日期）
+                var dirInfo = new DirectoryInfo(versionDir);
+                var installDate = dirInfo.CreationTime;
+                
+                // 检查版本是否有效（json 文件存在）
+                bool isValidVersion = File.Exists(versionJsonPath);
+                
+                // 获取版本类型和版本号
+                string type = isValidVersion ? "Release" : "VersionListPage_ErrorType".GetLocalized();
+                string versionNumber = isValidVersion ? versionName : "VersionListPage_MissingJsonFile".GetLocalized();
+
+                if (isValidVersion)
+                {
                     // 使用快速路径：如果已有XianYuL.cfg文件，直接读取
                     string xianYuLConfigPath = Path.Combine(versionDir, "XianYuL.cfg");
                     if (File.Exists(xianYuLConfigPath))
@@ -284,19 +292,19 @@ public partial class VersionListViewModel : ObservableRecipient
                             }
                         }
                     }
-
-                    // 创建版本信息项
-                    var versionItem = new VersionInfoItem
-                    {
-                        Name = versionName,
-                        Type = type,
-                        InstallDate = installDate,
-                        VersionNumber = versionNumber,
-                        Path = versionDir
-                    };
-
-                    versionItems.Add(versionItem);
                 }
+
+                // 创建版本信息项
+                var versionItem = new VersionInfoItem
+                {
+                    Name = versionName,
+                    Type = type,
+                    InstallDate = installDate,
+                    VersionNumber = versionNumber,
+                    Path = versionDir
+                };
+
+                versionItems.Add(versionItem);
             }
             
             // 将版本项添加到ObservableCollection

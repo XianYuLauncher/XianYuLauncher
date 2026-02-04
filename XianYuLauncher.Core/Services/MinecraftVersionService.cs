@@ -477,20 +477,16 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             var installedVersions = new List<string>();
             var versionDirectories = Directory.GetDirectories(versionsDirectory);
             
-            // 验证每个版本目录是否包含有效的JSON文件
+            // 返回所有版本目录，不再检查 json 文件是否存在
+            // 由调用方决定如何处理无效版本
             foreach (var versionDir in versionDirectories)
             {
                 var versionId = Path.GetFileName(versionDir);
-                var jsonPath = Path.Combine(versionDir, $"{versionId}.json");
-                
-                if (File.Exists(jsonPath))
-                {
-                    installedVersions.Add(versionId);
-                    _logger.LogInformation("找到已安装版本: {VersionId}", versionId);
-                }
+                installedVersions.Add(versionId);
+                _logger.LogInformation("找到版本目录: {VersionId}", versionId);
             }
             
-            _logger.LogInformation("共找到{VersionCount}个已安装的Minecraft版本", installedVersions.Count);
+            _logger.LogInformation("共找到{VersionCount}个版本目录", installedVersions.Count);
             return installedVersions;
         }
         catch (Exception ex)
