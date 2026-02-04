@@ -23,6 +23,15 @@ namespace XianYuLauncher.Core.VersionAnalysis
 
         public async Task<string> GetMinecraftVersionFromJarAsync(string versionDirectory, string versionId)
         {
+            if (string.IsNullOrWhiteSpace(versionDirectory))
+            {
+                throw new ArgumentException("versionDirectory cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionDirectory));
+            }
+            if (string.IsNullOrWhiteSpace(versionId))
+            {
+                throw new ArgumentException("versionId cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionId));
+            }
+
             // 1. 尝试直接从 {id}/{id}.jar 读取
             string jarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
             
@@ -69,7 +78,14 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[JarAnalyzer] 分析 .jar 失败: {ex.Message}");
+                    if (_logger != null)
+                    {
+                        _logger.LogError(ex, "[JarAnalyzer] 分析 .jar 失败，版本目录: {VersionDirectory}，版本ID: {VersionId}，JAR 路径: {JarPath}", versionDirectory, versionId, jarPath);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[JarAnalyzer] 分析 .jar 失败 (JAR 路径: {jarPath}): {ex}");
+                    }
                 }
 
                 return null;

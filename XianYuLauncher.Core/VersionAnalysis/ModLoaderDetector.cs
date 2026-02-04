@@ -17,7 +17,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
             _logger = logger;
         }
 
-        public (string Type, string Version) Detect(VersionManifest? manifest)
+        public (string Type, string Version) Detect(MinecraftVersionManifest? manifest)
         {
             if (manifest == null || manifest.Libraries == null)
             {
@@ -135,60 +135,53 @@ namespace XianYuLauncher.Core.VersionAnalysis
                     return parts[2];
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[ModLoaderDetector] 解析 Maven 坐标失败: {MavenCoordinate}", mavenCoordinate);
+            }
             return string.Empty;
         }
 
         /// <summary>
-        /// 从参数列表中提取 NeoForge 版本
+        /// 从参数列表中提取指定键的值
         /// </summary>
-        private string? GetNeoForgeVersionFromArguments(VersionManifest manifest)
+        private string? GetArgumentValue(List<object> args, string key)
         {
-            if (manifest?.Arguments?.Game == null) return null;
-
-            for (int i = 0; i < manifest.Arguments.Game.Count - 1; i++)
+            for (int i = 0; i < args.Count - 1; i++)
             {
-                // NeoForge 使用 --fml.neoForgeVersion
-                if (manifest.Arguments.Game[i] is string key && key == "--fml.neoForgeVersion")
+                // 参数可能是字符串，也可能是对象(规则)。我们只关心字符串形式的参数
+                if (args[i] is string argKey && argKey == key)
                 {
-                    if (manifest.Arguments.Game[i + 1] is string val)
-                    {
-                        return val;
-                    }
-                }
-                else if (manifest.Arguments.Game[i]?.ToString() == "--fml.neoForgeVersion")
-                {
-                     return manifest.Arguments.Game[i + 1]?.ToString();
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// 从参数列表中提取 Forge 版本
-        /// </summary>
-        private string? GetForgeVersionFromArguments(VersionManifest manifest)
-        {
-            if (manifest?.Arguments?.Game == null) return null;
-
-            for (int i = 0; i < manifest.Arguments.Game.Count - 1; i++)
-            {
-                // 参数可能是字符串，也可能是对象(规则)。我们只关心字符串形式的参数。
-                if (manifest.Arguments.Game[i] is string key && key == "--fml.forgeVersion")
-                {
-                    if (manifest.Arguments.Game[i + 1] is string val)
+                    if (args[i + 1] is string val)
                     {
                         return val;
                     }
                 }
                 // Newtonsoft.Json 可能将字符串解析为 JValue，这里简单通过 ToString 兼容一下
-                // 但更严谨的是依靠 JSON 对象结构，这里假设是混合 List<object>
-                else if (manifest.Arguments.Game[i]?.ToString() == "--fml.forgeVersion")
+                else if (args[i]?.ToString() == key)
                 {
-                     return manifest.Arguments.Game[i + 1]?.ToString();
+                    return args[i + 1]?.ToString();
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// 从参数列表中提取 NeoForge 版本
+        /// </summary>
+        private string? GetNeoForgeVersionFromArguments(MinecraftVersionManifest manifest)
+        {
+            if (manifest.Arguments?.Game == null) return null;
+            return GetArgumentValue(manifest.Arguments.Game, "--fml.neoForgeVersion");
+        }
+
+        /// <summary>
+        /// 从参数列表中提取 Forge 版本
+        /// </summary>
+        private string? GetForgeVersionFromArguments(MinecraftVersionManifest manifest)
+        {
+            if (manifest.Arguments?.Game == null) return null;
+            return GetArgumentValue(manifest.Arguments.Game, "--fml.forgeVersion");
         }
 
         /// <summary>

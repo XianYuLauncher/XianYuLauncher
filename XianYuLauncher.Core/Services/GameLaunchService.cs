@@ -108,7 +108,7 @@ public class GameLaunchService : IGameLaunchService
             
             if (versionInfo == null)
             {
-                throw new InvalidOperationException("无法获取完整的版本元数据 (VersionInfo 为空)");
+                throw new InvalidOperationException("无法从本地文件读取版本元数据 (VersionInfo 为空)，请确保版本文件存在且完整");
             }
             // 针对旧版 Forge 处理: 如果没有 mainClass，尝试从 inheritsFrom 补全，或者报错
             if (string.IsNullOrEmpty(versionInfo.MainClass))
