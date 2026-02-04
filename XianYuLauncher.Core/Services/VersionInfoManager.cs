@@ -191,15 +191,12 @@ public class VersionInfoManager : IVersionInfoManager
         foreach (var versionDir in Directory.GetDirectories(versionsDirectory))
         {
             var versionId = Path.GetFileName(versionDir);
-            var jsonPath = Path.Combine(versionDir, $"{versionId}.json");
-
-            if (File.Exists(jsonPath))
-            {
-                installedVersions.Add(versionId);
-            }
+            // 返回所有版本目录，不再检查 json 文件是否存在
+            // 由调用方决定如何处理无效版本
+            installedVersions.Add(versionId);
         }
 
-        _logger.LogInformation("找到 {Count} 个已安装的版本", installedVersions.Count);
+        _logger.LogInformation("找到 {Count} 个版本目录", installedVersions.Count);
         return Task.FromResult(installedVersions);
     }
 

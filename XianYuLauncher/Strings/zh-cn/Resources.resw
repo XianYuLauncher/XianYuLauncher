@@ -2566,4 +2566,10 @@
   <data name="Settings_MoreTitle.Text" xml:space="preserve">
     <value>更多</value>
   </data>
+  <data name="VersionListPage_ErrorType" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="VersionListPage_MissingJsonFile" xml:space="preserve">
+    <value>缺少版本文件</value>
+  </data>
 </root>

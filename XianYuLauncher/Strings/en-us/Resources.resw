@@ -2554,4 +2554,10 @@ Continue downloading?</value>
   <data name="Settings_MoreTitle.Text" xml:space="preserve">
     <value>More</value>
   </data>
+  <data name="VersionListPage_ErrorType" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="VersionListPage_MissingJsonFile" xml:space="preserve">
+    <value>Missing version file</value>
+  </data>
 </root>

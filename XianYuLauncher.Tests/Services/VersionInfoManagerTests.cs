@@ -86,10 +86,10 @@ public class VersionInfoManagerTests : IDisposable
         var result = await _versionInfoManager.GetInstalledVersionsAsync(_testDirectory);
 
         // Assert
-        Assert.Equal(2, result.Count);
+        Assert.Equal(3, result.Count);
         Assert.Contains("1.20.4", result);
         Assert.Contains("1.19.4", result);
-        Assert.DoesNotContain("invalid", result);
+        Assert.Contains("invalid", result);
     }
 
     #endregion
