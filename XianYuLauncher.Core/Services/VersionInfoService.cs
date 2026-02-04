@@ -32,21 +32,13 @@ public class VersionInfoService : IVersionInfoService
     /// </summary>
     public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory)
     {
-        if (versionId is null)
-        {
-            throw new ArgumentNullException(nameof(versionId));
-        }
         if (string.IsNullOrWhiteSpace(versionId))
         {
-            throw new ArgumentException("versionId cannot be empty or whitespace.", nameof(versionId));
-        }
-        if (versionDirectory is null)
-        {
-            throw new ArgumentNullException(nameof(versionDirectory));
+            throw new ArgumentException("versionId cannot be null, empty or whitespace.", nameof(versionId));
         }
         if (string.IsNullOrWhiteSpace(versionDirectory))
         {
-            throw new ArgumentException("versionDirectory cannot be empty or whitespace.", nameof(versionDirectory));
+            throw new ArgumentException("versionDirectory cannot be null, empty or whitespace.", nameof(versionDirectory));
         }
 
         var result = new VersionConfig
@@ -519,6 +511,37 @@ public class VersionInfoService : IVersionInfoService
                 // 检查Optifine
                 string optifineVersion = pclConfig.ContainsKey("VersionOptiFine") ? pclConfig["VersionOptiFine"] : string.Empty;
                 if (!string.IsNullOrEmpty(optifineVersion))
+                {
+                    System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Optifine版本");
+                }
+                
+                // 创建并返回VersionConfig对象
+                VersionConfig result = new VersionConfig
+                {
+                    ModLoaderType = modLoaderType,
+                    ModLoaderVersion = modLoaderVersion,
+                    MinecraftVersion = minecraftVersion,
+                    OptifineVersion = optifineVersion,
+                    CreatedAt = DateTime.Now
+                };
+                
+                System.Diagnostics.Debug.WriteLine("[VersionInfoService]   成功创建VersionConfig对象");
+                
+                return result;
+            }
+            catch (IOException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取PCL2配置文件IO错误: {ex.Message}");
+                _logger.LogWarning(ex, "读取PCL2配置文件IO错误");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   读取PCL2配置文件未知错误: {ex.Message}");
+                _logger.LogWarning(ex, "读取PCL2配置文件未知错误");
+            }
+            
+            return null;
+        }
         
         /// <summary>
         /// 解析INI格式配置文件

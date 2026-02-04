@@ -23,21 +23,13 @@ namespace XianYuLauncher.Core.VersionAnalysis
 
         public async Task<string> GetMinecraftVersionFromJarAsync(string versionDirectory, string versionId)
         {
-            if (versionDirectory is null)
-            {
-                throw new ArgumentNullException(nameof(versionDirectory), "versionDirectory cannot be null when analyzing Minecraft JAR versions.");
-            }
             if (string.IsNullOrWhiteSpace(versionDirectory))
             {
-                throw new ArgumentException("versionDirectory cannot be empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionDirectory));
-            }
-            if (versionId is null)
-            {
-                throw new ArgumentNullException(nameof(versionId), "versionId cannot be null when analyzing Minecraft JAR versions.");
+                throw new ArgumentException("versionDirectory cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionDirectory));
             }
             if (string.IsNullOrWhiteSpace(versionId))
             {
-                throw new ArgumentException("versionId cannot be empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionId));
+                throw new ArgumentException("versionId cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionId));
             }
 
             // 1. 尝试直接从 {id}/{id}.jar 读取
