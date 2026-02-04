@@ -2873,8 +2873,12 @@ namespace XianYuLauncher.ViewModels
                         minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
                         {
                             // 更新进度（50%-80%用于版本下载）
-                            InstallProgress = 50 + (progress / 100) * 30;
-                            InstallProgressText = $"{InstallProgress:F1}%";
+                            // 确保在UI线程更新
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() => 
+                            {
+                                InstallProgress = 50 + (progress / 100) * 30;
+                                InstallProgressText = $"{InstallProgress:F1}%";
+                            });
                         }, _installCancellationTokenSource.Token, modpackVersionId);
 
                     InstallStatus = "版本下载完成，正在部署整合包文件...";
