@@ -127,7 +127,7 @@ namespace XianYuLauncher.Views
             {
                 if (ViewModel.IsQuickInstallModVersionDialogOpen)
                 {
-                    await QuickInstallModVersionDialog.ShowAsync();
+                    await ShowDialogSafeAsync(QuickInstallModVersionDialog);
                 }
                 else
                 {
