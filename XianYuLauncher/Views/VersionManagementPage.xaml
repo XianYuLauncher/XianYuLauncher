@@ -2031,6 +2031,7 @@
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutItem Text="创建快捷方式" Icon="Link" Command="{Binding DataContext.CreateMapShortcutCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                     <MenuFlyoutSeparator />
                                                     <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                 </MenuFlyout>

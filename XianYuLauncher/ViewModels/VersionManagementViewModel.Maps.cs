@@ -28,7 +28,6 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
 
-
 namespace XianYuLauncher.ViewModels;
 
 public partial class VersionManagementViewModel
@@ -451,6 +450,125 @@ public partial class VersionManagementViewModel
         
         // 调用删除命令
         await DeleteMapAsync(SelectedMapForDetail);
+    }
+
+    /// <summary>
+    /// 创建地图快捷方式命令
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateMapShortcutAsync(MapInfo map)
+    {
+        if (map == null || SelectedVersion == null) return;
+        
+        try
+        {
+            StatusMessage = $"正在创建快捷方式: {map.Name}...";
+            
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            // 命名格式: 版本名称 - 地图名称
+            string safeMapName = string.Join("_", map.Name.Split(Path.GetInvalidFileNameChars()));
+            string safeVersionName = string.Join("_", SelectedVersion.Name.Split(Path.GetInvalidFileNameChars()));
+            string shortcutName = $"{safeVersionName} - {safeMapName}";
+            string shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
+            
+            // Check if shortcut already exists
+            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
+            {
+                try
+                {
+                    var dialogService = App.GetService<IDialogService>();
+                    if (dialogService != null)
+                    {
+                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
+                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                        if (!result) return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
+                }
+            }
+
+            // Icon Logic
+            // Ensure Cache Directory Exists
+            // Use SafeCachePath to ensure the path is accessible by Explorer (physical path in MSIX)
+            string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+
+            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
+
+            // 2. Try Map Icon (Convert PNG to ICO)
+            if (!string.IsNullOrEmpty(map.Icon) && File.Exists(map.Icon))
+            {
+                try
+                {
+                    // Hash path for unique cache name
+                    string mapIconHash = Helpers.HashHelper.ComputeMD5(map.Icon);
+                    string customIconPath = Path.Combine(cacheDir, $"{mapIconHash}.ico");
+                    
+                    // Convert only if not exists or map icon updated? Simple check exists for now
+                    if (!File.Exists(customIconPath))
+                    {
+                        await Helpers.IconHelper.ConvertPngToIcoAsync(map.Icon, customIconPath);
+                    }
+                    
+                    if (File.Exists(customIconPath))
+                    {
+                        iconPath = customIconPath;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to convert map icon: {ex.Message}");
+                }
+            }
+
+            // 获取版本路径
+            string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(SelectedVersion.Path);
+            
+            // 构建 URI: xianyulauncher://launch/?path={Path}&map={MapFullPath}
+            // 游戏会自动在 saves 目录下寻找。传递绝对路径反而会导致游戏无法识别。
+            string encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
+            string encodedMap = Uri.EscapeDataString(map.FileName ?? string.Empty);
+            string url = $"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}";
+            
+            // Validate URL
+            if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
+            {
+                throw new InvalidOperationException("Invalid shortcut URL constructed for map.");
+            }
+
+            var builder = new System.Text.StringBuilder();
+            builder.AppendLine("[InternetShortcut]");
+            builder.AppendLine($"URL={url}");
+            builder.AppendLine($"IconIndex=0");
+            builder.AppendLine($"IconFile={iconPath}");
+
+            await File.WriteAllTextAsync(shortcutPath, builder.ToString());
+            
+            StatusMessage = $"快捷方式已创建: {shortcutName}";
+            
+            // 提示用户
+            try
+            {
+                var dialogService = App.GetService<IDialogService>();
+                if (dialogService != null)
+                {
+                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
+                        $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接进入此存档。");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示快捷方式创建提示对话框失败: {ex}");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"创建快捷方式失败: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"创建地图快捷方式失败: {ex.Message}");
+        }
     }
 
     #endregion

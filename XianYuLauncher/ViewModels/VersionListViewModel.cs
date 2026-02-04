@@ -13,6 +13,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
@@ -525,6 +526,94 @@ public partial class VersionListViewModel : ObservableRecipient
         catch (Exception ex)
         {
             StatusMessage = $"{"VersionListPage_OpenFolderFailedText".GetLocalized()}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 创建版本快捷方式 (xianyulauncher:// protocol)
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateShortcutAsync(VersionInfoItem version)
+    {
+        if (version == null) return;
+        
+        try
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string safeName = string.Join("_", version.Name.Split(Path.GetInvalidFileNameChars()));
+            string shortcutPath = Path.Combine(desktopPath, $"{safeName}.url");
+            
+            // Check if shortcut already exists
+            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
+            {
+                try
+                {
+                    var dialogService = App.GetService<IDialogService>();
+                    if (dialogService != null)
+                    {
+                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
+                            $"桌面上已存在 {safeName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                        if (!result) return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
+                }
+            }
+
+            // Construct shortcut URL
+            string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(version.Path);
+            string url = $"xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}";
+            
+            // Validate URL
+            if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
+            {
+                throw new InvalidOperationException("Invalid shortcut URL constructed for version.");
+            }
+
+            // Prepare icon (use same approach as map/server shortcuts for consistency)
+            string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
+
+            var builder = new System.Text.StringBuilder();
+            builder.AppendLine("[InternetShortcut]");
+            builder.AppendLine($"URL={url}");
+            builder.AppendLine($"IconIndex=0");
+            builder.AppendLine($"IconFile={iconPath}");
+
+            await File.WriteAllTextAsync(shortcutPath, builder.ToString());
+            
+            StatusMessage = $"快捷方式已创建: {safeName}";
+            
+            try 
+            {
+                var dialogService = App.GetService<IDialogService>();
+                if (dialogService != null)
+                {
+                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
+                        $"已在桌面创建 {safeName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示快捷方式创建提示对话框失败: {ex}");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "创建快捷方式失败";
+            System.Diagnostics.Debug.WriteLine($"创建快捷方式失败: {ex}");
+            try 
+            {
+                var dialogService = App.GetService<IDialogService>();
+                await dialogService?.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");
+            }
+            catch (Exception dialogEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示错误对话框失败: {dialogEx}");
+            }
         }
     }
 
