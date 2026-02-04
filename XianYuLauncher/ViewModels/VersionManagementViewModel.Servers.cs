@@ -621,6 +621,17 @@ public partial class VersionManagementViewModel
         {
             StatusMessage = "创建快捷方式失败";
             System.Diagnostics.Debug.WriteLine($"创建服务器快捷方式失败: {ex}");
+            
+            // Show user-friendly error message
+            try
+            {
+                var dialogService = App.GetService<IDialogService>();
+                await dialogService?.ShowMessageDialogAsync("创建失败", "创建快捷方式失败，请检查桌面权限或稍后重试。");
+            }
+            catch (Exception dialogEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"显示错误对话框失败: {dialogEx}");
+            }
         }
     }
 }

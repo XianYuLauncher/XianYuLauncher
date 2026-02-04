@@ -15,7 +15,8 @@ namespace XianYuLauncher.Helpers
                 return path;
             }
 
-            return path.TrimEnd('\\', '/');
+            // Trim both backslash and forward slash for Windows compatibility
+            return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
 
         /// <summary>

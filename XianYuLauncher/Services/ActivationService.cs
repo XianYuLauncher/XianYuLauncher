@@ -647,6 +647,8 @@ public class ActivationService : IActivationService
 
     private static Dictionary<string, string> ParseQueryString(string query)
     {
+        // Note: Using case-insensitive comparison for query parameter keys for better
+        // user experience, though this deviates from strict URL standards
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrEmpty(query))
         {
