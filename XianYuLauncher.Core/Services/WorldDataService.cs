@@ -54,18 +54,38 @@ public class WorldDataService
                 }
             }
             
-            // 读取难度 (0=和平, 1=简单, 2=普通, 3=困难)
-            var difficultyTag = dataTag.Get<NbtByte>("Difficulty");
-            if (difficultyTag != null)
+            // 读取难度 - 支持新旧两种格式
+            // 26.1+ 新格式: difficulty_settings.difficulty (string)
+            // 旧格式: Difficulty (byte: 0=和平, 1=简单, 2=普通, 3=困难)
+            var difficultySettings = dataTag.Get<NbtCompound>("difficulty_settings");
+            if (difficultySettings != null)
             {
-                worldData.Difficulty = difficultyTag.Value switch
+                // 26.1+ 新格式
+                var difficultyStr = difficultySettings.Get<NbtString>("difficulty")?.Value;
+                worldData.Difficulty = difficultyStr?.ToLowerInvariant() switch
                 {
-                    0 => DifficultyType.Peaceful,
-                    1 => DifficultyType.Easy,
-                    2 => DifficultyType.Normal,
-                    3 => DifficultyType.Hard,
+                    "peaceful" => DifficultyType.Peaceful,
+                    "easy" => DifficultyType.Easy,
+                    "normal" => DifficultyType.Normal,
+                    "hard" => DifficultyType.Hard,
                     _ => DifficultyType.Unknown
                 };
+            }
+            else
+            {
+                // 旧格式
+                var difficultyTag = dataTag.Get<NbtByte>("Difficulty");
+                if (difficultyTag != null)
+                {
+                    worldData.Difficulty = difficultyTag.Value switch
+                    {
+                        0 => DifficultyType.Peaceful,
+                        1 => DifficultyType.Easy,
+                        2 => DifficultyType.Normal,
+                        3 => DifficultyType.Hard,
+                        _ => DifficultyType.Unknown
+                    };
+                }
             }
             
             // 读取游戏模式
