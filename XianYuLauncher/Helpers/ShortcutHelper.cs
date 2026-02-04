@@ -60,8 +60,48 @@ namespace XianYuLauncher.Helpers
         /// </summary>
         public static bool ValidateShortcutUrl(string url)
         {
-            return Uri.TryCreate(url, UriKind.Absolute, out var validatedUri) &&
-                   validatedUri.Scheme == "xianyulauncher";
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var validatedUri))
+            {
+                return false;
+            }
+
+            // Check scheme
+            if (validatedUri.Scheme != "xianyulauncher")
+            {
+                return false;
+            }
+
+            // Check host
+            if (validatedUri.Host != "launch")
+            {
+                return false;
+            }
+
+            // Parse query parameters and validate path parameter for UNC paths
+            var query = validatedUri.Query.TrimStart('?');
+            foreach (var pair in query.Split('&'))
+            {
+                var equalIndex = pair.IndexOf('=');
+                if (equalIndex >= 0)
+                {
+                    var key = System.Net.WebUtility.UrlDecode(pair.Substring(0, equalIndex));
+                    var value = equalIndex + 1 < pair.Length 
+                        ? System.Net.WebUtility.UrlDecode(pair.Substring(equalIndex + 1)) 
+                        : string.Empty;
+
+                    // If this is a path parameter, check for UNC paths
+                    if (key.Equals("path", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(value))
+                    {
+                        if (value.StartsWith("\\\\", StringComparison.Ordinal) ||
+                            value.StartsWith("//", StringComparison.Ordinal))
+                        {
+                            return false; // UNC paths not allowed
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }

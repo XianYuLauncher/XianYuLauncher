@@ -31,10 +31,7 @@ public class ActivationService : IActivationService
 
     public async Task ActivateAsync(object activationArgs)
     {
-        // Initialize theme and language services first
-        await InitializeAsync();
-
-        // Check if this is a silent launch via protocol
+        // Check if this is a silent launch via protocol (before initializing UI services)
         var appArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
         if (appArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol
             && appArgs.Data is Windows.ApplicationModel.Activation.ProtocolActivatedEventArgs protoArgs
@@ -48,6 +45,9 @@ public class ActivationService : IActivationService
             // HandleSilentLaunchAsync handles the lifecycle.
             return;
         }
+
+        // Initialize theme and language services for normal activation
+        await InitializeAsync();
 
         // Set the MainWindow Content.
         if (App.MainWindow.Content == null)
@@ -658,11 +658,13 @@ public class ActivationService : IActivationService
 
         foreach (var pair in query.Split('&'))
         {
-            var parts = pair.Split('=');
-            if (parts.Length >= 1)
+            var equalIndex = pair.IndexOf('=');
+            if (equalIndex >= 0)
             {
-                var key = System.Net.WebUtility.UrlDecode(parts[0]);
-                var value = parts.Length >= 2 ? System.Net.WebUtility.UrlDecode(parts[1]) : string.Empty;
+                var key = System.Net.WebUtility.UrlDecode(pair.Substring(0, equalIndex));
+                var value = equalIndex + 1 < pair.Length 
+                    ? System.Net.WebUtility.UrlDecode(pair.Substring(equalIndex + 1)) 
+                    : string.Empty;
                 result[key] = value;
             }
         }

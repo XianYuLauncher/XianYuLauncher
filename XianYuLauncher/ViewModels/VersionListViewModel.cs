@@ -13,6 +13,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
@@ -560,7 +561,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 }
             }
 
-            // 构建 URI: xianyulauncher://launch/?path={PathToVersionFolder}
+            // Construct shortcut URL
             string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(version.Path);
             string url = $"xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}";
             
@@ -570,10 +571,16 @@ public partial class VersionListViewModel : ObservableRecipient
                 throw new InvalidOperationException("Invalid shortcut URL constructed for version.");
             }
 
+            // Prepare icon (use same approach as map/server shortcuts for consistency)
+            string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
+
             var builder = new System.Text.StringBuilder();
             builder.AppendLine("[InternetShortcut]");
             builder.AppendLine($"URL={url}");
             builder.AppendLine($"IconIndex=0");
+            builder.AppendLine($"IconFile={iconPath}");
 
             await File.WriteAllTextAsync(shortcutPath, builder.ToString());
             

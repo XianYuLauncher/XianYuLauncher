@@ -502,8 +502,7 @@ public partial class VersionManagementViewModel
                         string base64Data = server.IconBase64;
                         
                         // If the icon is provided as a data URI, strip the metadata prefix and keep only the base64 payload
-                        if (!string.IsNullOrEmpty(base64Data) &&
-                            base64Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                        if (base64Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
                         {
                             int commaIndex = base64Data.IndexOf(',');
                             if (commaIndex >= 0 && commaIndex < base64Data.Length - 1)
@@ -531,10 +530,10 @@ public partial class VersionManagementViewModel
             // Parse server address with IPv6 support
             string finalAddress = server.Address;
             string portPart = "25565";
-            if (!string.IsNullOrEmpty(finalAddress))
+            if (!string.IsNullOrEmpty(finalAddress) && finalAddress.Length > 0)
             {
                 // Handle IPv6 addresses in bracket notation, e.g. [::1]:25565
-                if (finalAddress[0] == '[')
+                if (finalAddress.StartsWith("[", StringComparison.Ordinal))
                 {
                     int endBracket = finalAddress.IndexOf(']');
                     if (endBracket > 0)
