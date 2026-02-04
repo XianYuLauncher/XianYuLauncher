@@ -982,7 +982,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 string settingsFilePath = GetSettingsFilePath();
                 if (!File.Exists(settingsFilePath))
                 {
-                   // 由于ViewModel属性已经更新，直接调用Save即可
+                   // 由于扫描得到的 versionConfig 已写回到 ViewModel 属性，此时可直接调用 Save 固化到配置文件
                    await SaveSettingsAsync();
                 }
                 
@@ -995,7 +995,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         catch (Exception ex)
         {
             StatusMessage = $"分析版本信息失败：{ex.Message}";
-            // 降级处理：如果不幸失败，至少保证不白屏，可以尝试用文件名猜测
+            // TODO: 考虑实现降级处理，比如用文件名猜测版本信息
             System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] Analysis Failed: {ex}");
         }
     }

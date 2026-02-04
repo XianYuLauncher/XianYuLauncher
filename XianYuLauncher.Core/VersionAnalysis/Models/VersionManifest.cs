@@ -6,7 +6,7 @@ namespace XianYuLauncher.Core.VersionAnalysis.Models
     /// <summary>
     /// 对应 .minecraft/versions/{id}/{id}.json 的结构
     /// </summary>
-    public class VersionManifest
+    public class MinecraftVersionManifest
     {
         [JsonProperty("id")]
         public string Id { get; set; }
