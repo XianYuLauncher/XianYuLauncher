@@ -158,75 +158,18 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
             {
                 // 获取真实的物理路径（非虚拟化路径）
-                string terracottaDir = Path.GetDirectoryName(terracottaPath);
+                // 已经在 TerracottaService 中确保返回的是 SafeAppDataPath (LocalState)
+                // 所以这里无需再做任何复杂的转换逻辑，直接使用即可
+                string realTerracottaDir = Path.GetDirectoryName(terracottaPath);
                 
-                // 在MSIX环境下，需要转换为真实物理路径
-                // 智能检测：如果原路径目录不存在，尝试转换
-                string realTerracottaDir = terracottaDir;
-                string realTempDir;
-                
-                // 检查原路径是否存在
-                bool originalExists = Directory.Exists(terracottaDir);
-                
-                if (!originalExists)
-                {
-                    // 原路径不存在，尝试转换
-                    if (!terracottaDir.Contains("Packages"))
-                    {
-                        // 真实路径 -> 沙盒路径
-                        try
-                        {
-                            string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                            string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
-                            string sandboxPath = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
-                            if (Directory.Exists(sandboxPath) || File.Exists(Path.Combine(sandboxPath, Path.GetFileName(terracottaPath))))
-                            {
-                                realTerracottaDir = sandboxPath;
-                                realTempDir = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "temp");
-                                Log.Information($"[Multiplayer] 真实->沙盒路径: {sandboxPath}");
-                            }
-                            else
-                            {
-                                realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
-                            }
-                        }
-                        catch
-                        {
-                            realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
-                        }
-                    }
-                    else
-                    {
-                        // 沙盒路径 -> 真实路径
-                        int localCacheIndex = terracottaDir.IndexOf("LocalCache\\Local\\");
-                        if (localCacheIndex > 0)
-                        {
-                            string relativePath = terracottaDir.Substring(localCacheIndex + "LocalCache\\Local\\".Length);
-                            string realPath = Path.Combine(
-                                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                                "AppData", "Local", relativePath);
-                            if (Directory.Exists(realPath))
-                            {
-                                realTerracottaDir = realPath;
-                                Log.Information($"[Multiplayer] 沙盒->真实路径: {realPath}");
-                            }
-                        }
-                        realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
-                    }
-                }
-                else
-                {
-                    // 原路径存在，直接使用
-                    realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
-                    Log.Information($"[Multiplayer] 原路径存在，无需转换: {terracottaDir}");
-                }
+                // 临时文件目录
+                string realTempDir = Path.Combine(realTerracottaDir, "temp");
                 
                 // 确保目录存在
                 Directory.CreateDirectory(realTempDir);
                 
-                Log.Information($"[Multiplayer] 虚拟Terracotta目录: {terracottaDir}");
-                Log.Information($"[Multiplayer] 真实Terracotta目录: {realTerracottaDir}");
-                Log.Information($"[Multiplayer] 真实临时文件目录: {realTempDir}");
+                Log.Information($"[Multiplayer] Terracotta目录: {realTerracottaDir}");
+                Log.Information($"[Multiplayer] 临时文件目录: {realTempDir}");
                 
                 // 生成时间戳
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
