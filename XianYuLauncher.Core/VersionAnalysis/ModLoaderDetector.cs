@@ -149,7 +149,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
         {
             for (int i = 0; i < args.Count - 1; i++)
             {
-                // 参数可能是字符串，也可能是对象(规则)。我们只关心字符串形式的参数。
+                // 参数可能是字符串，也可能是对象(规则)。我们只关心字符串形式的参数
                 if (args[i] is string argKey && argKey == key)
                 {
                     if (args[i + 1] is string val)
