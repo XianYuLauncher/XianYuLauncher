@@ -324,54 +324,31 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 读取MultiMC配置文件
         /// </summary>
+        /// <remarks>
+        /// MultiMC 使用完全不同的目录结构（instances/实例名/），
+        /// 与标准 .minecraft/versions/ 结构不兼容，无法适配。
+        /// </remarks>
         /// <param name="versionDirectory">版本目录路径</param>
-        /// <returns>版本配置信息，如果读取失败则返回null</returns>
+        /// <returns>始终返回 null</returns>
         private VersionConfig ReadMultiMCConfig(string versionDirectory)
         {
-            try
-            {
-                // MultiMC配置文件通常不在版本目录中，这里仅作为示例
-                // 实际实现需要根据MultiMC的配置文件位置和格式进行调整
-                string configPath = Path.Combine(versionDirectory, "instance.cfg");
-                if (File.Exists(configPath))
-                {
-                    // 读取并解析MultiMC配置文件
-                    // 这里仅作为示例，实际实现需要根据MultiMC的配置文件格式进行调整
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "读取MultiMC配置文件错误: {VersionDirectory}", versionDirectory);
-            }
-            
+            // MultiMC 目录结构不兼容，不支持
             return null;
         }
         
         /// <summary>
         /// 读取HMCL配置文件
         /// </summary>
+        /// <remarks>
+        /// HMCL 的 hmclversion.cfg 只存储启动配置（内存、窗口大小、Java路径等），
+        /// 不包含 ModLoader 类型和版本信息。HMCL 通过解析 version.json 的 inheritsFrom 
+        /// 和库依赖来判断 ModLoader，因此此方法无法提供有效的版本配置信息。
+        /// </remarks>
         /// <param name="versionDirectory">版本目录路径</param>
-        /// <returns>版本配置信息，如果读取失败则返回null</returns>
+        /// <returns>始终返回 null</returns>
         private VersionConfig ReadHMCLConfig(string versionDirectory)
         {
-            try
-            {
-                // HMCL配置文件通常不在版本目录中，这里仅作为示例
-                // 实际实现需要根据HMCL的配置文件位置和格式进行调整
-                string configPath = Path.Combine(versionDirectory, "version.json");
-                if (File.Exists(configPath))
-                {
-                    // 读取并解析HMCL配置文件
-                    // 这里仅作为示例，实际实现需要根据HMCL的配置文件格式进行调整
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "读取HMCL配置文件错误: {VersionDirectory}", versionDirectory);
-            }
-            
+            // HMCL 不单独存储 ModLoader 信息，无法从其配置文件获取
             return null;
         }
         
