@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,6 +13,7 @@ using Windows.Storage.Streams;
 using fNbt;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
+using XianYuLauncher.Core.Helpers; // Ensure Core.Helpers is included for AppEnvironment
 
 namespace XianYuLauncher.ViewModels;
 
@@ -436,6 +442,124 @@ public partial class VersionManagementViewModel
                 XamlRoot = App.MainWindow.Content.XamlRoot,
                 Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
             }.ShowAsync();
+        }
+    }
+
+    /// <summary>
+    /// 创建服务器快捷方式命令
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateServerShortcutAsync(ServerItem server)
+    {
+        if (server == null || SelectedVersion == null) return;
+        
+        try
+        {
+            StatusMessage = $"正在创建快捷方式: {server.Name}...";
+            
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string safeServerName = string.Join("_", server.Name.Split(Path.GetInvalidFileNameChars()));
+            string safeVersionName = string.Join("_", SelectedVersion.Name.Split(Path.GetInvalidFileNameChars()));
+            string shortcutName = $"{safeVersionName} - {safeServerName}";
+            string shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
+            
+            // Icon Logic
+            // Use SafeCachePath to ensure the path is accessible by Explorer (physical path in MSIX)
+            string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+
+            string iconPath = Path.Combine(cacheDir, "DefaultAppIcon.ico");
+
+             // 1. Prepare Default App Icon if missing
+            if (!File.Exists(iconPath))
+            {
+                try 
+                {
+                    string installedLoc = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
+                    string assetIcon = Path.Combine(installedLoc, "Assets", "WindowIcon.ico");
+                    if (File.Exists(assetIcon))
+                    {
+                        File.Copy(assetIcon, iconPath, true);
+                    }
+                }
+                catch {}
+            }
+            
+            // Try to save server icon
+            if (!string.IsNullOrEmpty(server.IconBase64))
+            {
+                try
+                {
+                    // SafeCachePath ensures we are working in a location backed by a real path Explorer can reach
+                    string validIconName = Helpers.HashHelper.ComputeMD5(server.Address + server.Name);
+                    string savedIconPath = Path.Combine(cacheDir, $"{validIconName}.ico");
+                    
+                     if (!File.Exists(savedIconPath))
+                     {
+                        string base64Data = server.IconBase64;
+                        if (base64Data.Contains(",")) 
+                        {
+                            base64Data = base64Data.Split(',')[1];
+                        }
+                        
+                        byte[] pngBytes = Convert.FromBase64String(base64Data);
+                        byte[] icoBytes = Helpers.IconHelper.CreateIcoFromPng(pngBytes);
+                        
+                        await File.WriteAllBytesAsync(savedIconPath, icoBytes);
+                     }
+
+                    iconPath = savedIconPath;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Saving server icon failed: {ex.Message}");
+                }
+            }
+            // If still pointing to valid fallback? 
+            // The default logic above sets iconPath to DefaultAppIcon.ico initially.
+
+            string targetPath = SelectedVersion.Path;
+            if(!string.IsNullOrEmpty(targetPath) && targetPath.EndsWith("\\"))
+               targetPath = targetPath.Substring(0, targetPath.Length - 1);
+            
+            string finalAddress = server.Address;
+            string portPart = "25565";
+            if (!string.IsNullOrEmpty(finalAddress) && finalAddress.Contains(':'))
+            {
+                var parts = finalAddress.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[1], out int p))
+                {
+                    finalAddress = parts[0];
+                    portPart = parts[1];
+                }
+            }
+
+            var builder = new System.Text.StringBuilder();
+            builder.AppendLine("[InternetShortcut]");
+            builder.AppendLine($"URL=xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}&server={Uri.EscapeDataString(finalAddress)}&port={portPart}");
+            builder.AppendLine($"IconIndex=0");
+            builder.AppendLine($"IconFile={iconPath}");
+
+            await File.WriteAllTextAsync(shortcutPath, builder.ToString());
+            
+            StatusMessage = $"快捷方式已创建: {shortcutName}";
+            
+            // 提示用户
+            App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+            {
+                await new ContentDialog
+                {
+                    Title = "快捷方式已创建",
+                    Content = $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接连接此服务器。",
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
+                }.ShowAsync();
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"创建快捷方式失败: {ex.Message}";
         }
     }
 }

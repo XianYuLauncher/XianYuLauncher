@@ -300,6 +300,16 @@
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
                                         <MenuFlyoutItem 
+                                            x:Uid="VersionListPage_CreateShortcutMenuItem"
+                                            Text="创建快捷方式"
+                                            Command="{Binding DataContext.CreateShortcutCommand, ElementName=VersionsListView}" 
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding IsValid}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE71B;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem 
                                             x:Uid="VersionListPage_CompleteVersionMenuItem"
                                             Text="版本补全"
                                             Command="{Binding DataContext.CompleteVersionCommand, ElementName=VersionsListView}" 

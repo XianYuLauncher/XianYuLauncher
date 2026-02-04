@@ -31,8 +31,25 @@ public class ActivationService : IActivationService
 
     public async Task ActivateAsync(object activationArgs)
     {
-        // Execute tasks before activation.
-        await InitializeAsync();
+        // Check if this is a silent launch via protocol
+        var appArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (appArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol)
+        {
+            var protoArgs = appArgs.Data as Windows.ApplicationModel.Activation.ProtocolActivatedEventArgs;
+            if (protoArgs != null && protoArgs.Uri.Scheme == "xianyulauncher")
+            {
+                // Format: xianyulauncher://launch/?path={TargetInstancePath}
+                if (protoArgs.Uri.Host == "launch")
+                {
+                    // Handle Silent Launch
+                    await HandleSilentLaunchAsync(protoArgs.Uri);
+                    // Do not show main window, exit app after handling logic is done inside HandleSilentLaunchAsync
+                    // But we need to keep the process alive until launch is done.
+                    // HandleSilentLaunchAsync handles the lifecycle.
+                    return; 
+                }
+            }
+        }
 
         // Set the MainWindow Content.
         if (App.MainWindow.Content == null)
@@ -450,6 +467,174 @@ public class ActivationService : IActivationService
             Serilog.Log.Error(ex, "检查应用安装来源失败: {ErrorMessage}", ex.Message);
             // 如果检查失败，为安全起见，假设不是商店版本，允许更新检查
             return false;
+        }
+    }
+
+    private void EnsureMainWindowInitialized()
+    {
+        if (App.MainWindow.Content == null)
+        {
+            _shell = App.GetService<ShellPage>();
+            App.MainWindow.Content = _shell ?? new Frame();
+            
+            // 确保导航到主页 (LaunchViewModel)
+            // 否则侧边栏会出现但内容区域可能为空
+            var navigationService = App.GetService<INavigationService>();
+            navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
+        }
+    }
+
+    private async Task HandleSilentLaunchAsync(Uri uri)
+    {
+        // New Uri format: xianyulauncher://launch/?path={TargetInstancePath}&map={MapName}&server={ServerIp}&port={ServerPort}
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var targetPath = query["path"];
+        var mapName = query["map"]; // Map folder name
+        var serverIp = query["server"];
+        var serverPortStr = query["port"];
+        
+        string versionName = string.Empty;
+
+        // Legacy support or fallback logic
+        if (string.IsNullOrEmpty(targetPath))
+        {
+             // Fallback to getting version name from absolute path if user used old style or weird manual input
+             versionName = System.Net.WebUtility.UrlDecode(uri.AbsolutePath.TrimStart('/'));
+        }
+        else
+        {
+             // 使用传入的绝对路径
+             if (!System.IO.Directory.Exists(targetPath))
+             {
+                 ShowToast("启动错误", $"找不到目标实例路径:\n{targetPath}");
+                 EnsureMainWindowInitialized();
+                 App.MainWindow.Activate();
+                 return;
+             }
+             // 从文件夹名称获取版本名 (GameLaunchService 目前主要依赖版本名)
+             versionName = new System.IO.DirectoryInfo(targetPath).Name;
+        }
+
+        if (string.IsNullOrEmpty(versionName))
+        {
+            return;
+        }
+
+        var logger = Serilog.Log.Logger;
+        logger.Information($"Silent Launch requested for: {versionName}, Path: {targetPath}");
+
+        try
+        {
+            // 1. Show Toast
+            string toastTitle = $"正在启动: {versionName}";
+            string toastContent = "请稍候，正在准备游戏环境...";
+
+            string? quickPlaySingleplayer = null;
+            string? quickPlayServer = null;
+            int? quickPlayPort = null;
+
+            if (!string.IsNullOrEmpty(mapName))
+            {
+                quickPlaySingleplayer = mapName;
+                toastTitle = $"正在启动存档: {mapName}";
+            }
+            else if (!string.IsNullOrEmpty(serverIp))
+            {
+                toastTitle = $"正在连接服务器: {serverIp}";
+                quickPlayServer = serverIp;
+                if (int.TryParse(serverPortStr, out int p))
+                {
+                    quickPlayPort = p;
+                }
+            }
+
+            ShowToast(toastTitle, toastContent);
+
+            // 2. Resolve Services
+            var gameLaunchService = App.GetService<IGameLaunchService>();
+            var tokenRefreshService = App.GetService<ITokenRefreshService>();
+            var profileManager = App.GetService<IProfileManager>();
+
+            // 3. Load Profile
+            // 确保UI线程访问（虽然现在可能没有UI，但服务内部可能有依赖）
+            var profiles = await profileManager.LoadProfilesAsync();
+            var profile = profiles.FirstOrDefault(p => p.IsActive);
+            
+            if (profile == null)
+            {
+                 ShowToast("启动失败", "未选择任何账户，请先打开启动器登录。");
+                 // 激活主窗口以便用户登录
+                 EnsureMainWindowInitialized();
+                 App.MainWindow.Activate(); 
+                 return;
+            }
+
+            // 4. Validate Token
+            // If offline, skip validation
+            if (!profile.IsOffline)
+            {
+                 // 更新Toast提示
+                 // ShowToast("正在验证账户...", "正在检查您的登录凭证");
+                 
+                 var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
+                 if (!result.Success)
+                 {
+                     ShowToast("启动失败", "账户登录已过期，请重新登录。");
+                     EnsureMainWindowInitialized();
+                     App.MainWindow.Activate(); 
+                     return;
+                 }
+            }
+
+            // 5. Launch Game
+            var launchResult = await gameLaunchService.LaunchGameAsync(versionName, profile, 
+                progress => { },
+                status => { },
+                default,
+                null,
+                quickPlaySingleplayer,
+                quickPlayServer,
+                quickPlayPort);
+
+             // 6. Success
+             if (launchResult.GameProcess != null)
+             {
+                 ShowToast("游戏已启动", $"{versionName} 正在运行中...");
+                 // Exit launcher
+                 Application.Current.Exit();
+             }
+             else
+             {
+                 ShowToast("启动失败", "游戏未能启动，请查看日志。");
+                 EnsureMainWindowInitialized();
+                 App.MainWindow.Activate();
+             }
+
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Silent launch failed");
+            ShowToast("启动错误", $"发生异常: {ex.Message}");
+            EnsureMainWindowInitialized();
+            App.MainWindow.Activate(); // 发生异常时显示主界面
+        }
+    }
+
+    private void ShowToast(string title, string content)
+    {
+        try
+        {
+            var template = Windows.UI.Notifications.ToastNotificationManager.GetTemplateContent(Windows.UI.Notifications.ToastTemplateType.ToastText02);
+            var textNodes = template.GetElementsByTagName("text");
+            textNodes[0].InnerText = title;
+            textNodes[1].InnerText = content;
+
+            var toast = new Windows.UI.Notifications.ToastNotification(template);
+            Windows.UI.Notifications.ToastNotificationManager.CreateToastNotifier().Show(toast);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to show toast notification");
         }
     }
 }

@@ -47,7 +47,12 @@
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
       <Extensions>
-          <desktop:Extension Category="windows.toastNotificationActivation">
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="xianyulauncher">
+             <uap:DisplayName>XianYu Launcher Protocol</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+        <desktop:Extension Category="windows.toastNotificationActivation">
               <desktop:ToastNotificationActivation ToastActivatorCLSID="ff7490ea-7561-48d8-a61e-ecb75b91cd88" />
           </desktop:Extension>
 

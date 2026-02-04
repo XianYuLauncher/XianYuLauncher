@@ -529,6 +529,78 @@ public partial class VersionListViewModel : ObservableRecipient
     }
 
     /// <summary>
+    /// 创建版本快捷方式 (xianyulauncher:// protocol)
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateShortcutAsync(VersionInfoItem version)
+    {
+        if (version == null) return;
+        
+        try
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string safeName = string.Join("_", version.Name.Split(Path.GetInvalidFileNameChars()));
+            string shortcutPath = Path.Combine(desktopPath, $"{safeName}.url");
+            
+            // 指向 xianyulauncher.exe 的图标 (应用执行别名)
+            string exePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\WindowsApps\xianyulauncher.exe");
+            
+            // 构建 URI: xianyulauncher://launch/?path={PathToVersionFolder}
+            // 使用 Uri.EscapeDataString 确保路径中的特殊字符（如空格）被正确编码
+            string targetPath = version.Path;
+            if(!string.IsNullOrEmpty(targetPath) && targetPath.EndsWith("\\"))
+            {
+               targetPath = targetPath.Substring(0, targetPath.Length - 1);
+            }
+
+            var builder = new System.Text.StringBuilder();
+            builder.AppendLine("[InternetShortcut]");
+            builder.AppendLine($"URL=xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}");
+            builder.AppendLine($"IconIndex=0");
+            
+            if(File.Exists(exePath))
+            {
+                builder.AppendLine($"IconFile={exePath}");
+            }
+            else
+            {
+                // Fallback
+                try 
+                {
+                   builder.AppendLine($"IconFile={System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName}"); 
+                }
+                catch {}
+            }
+
+            await File.WriteAllTextAsync(shortcutPath, builder.ToString());
+            
+            StatusMessage = $"快捷方式已创建: {safeName}";
+            
+            try 
+            {
+                var dialogService = App.GetService<IDialogService>();
+                if (dialogService != null)
+                {
+                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
+                        $"已在桌面创建 {safeName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
+                }
+            } 
+            catch { }
+        }
+        catch (Exception ex)
+        {
+             StatusMessage = "创建快捷方式失败";
+             System.Diagnostics.Debug.WriteLine($"创建快捷方式失败: {ex.Message}");
+             try 
+             {
+                 var dialogService = App.GetService<IDialogService>();
+                 await dialogService?.ShowMessageDialogAsync("创建失败", $"创建快捷方式时发生错误: {ex.Message}");
+             } 
+             catch { }
+        }
+    }
+
+    /// <summary>
     /// 删除版本命令
     /// </summary>
     [RelayCommand]

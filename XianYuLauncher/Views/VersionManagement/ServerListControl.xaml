@@ -93,6 +93,7 @@
                             <Grid.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem Text="启动" Icon="Play" Command="{Binding DataContext.LaunchServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem Text="创建快捷方式" Icon="Link" Command="{Binding DataContext.CreateServerShortcutCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
                                     <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
                                 </MenuFlyout>
                             </Grid.ContextFlyout>
