@@ -58,11 +58,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
 
-    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, ILocalSettingsService localSettingsService, IDownloadManager downloadManager)
+    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, TerracottaService terracottaService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
-        _terracottaService = new TerracottaService(localSettingsService, downloadManager);
+        _terracottaService = terracottaService;
     }
     
     /// <summary>

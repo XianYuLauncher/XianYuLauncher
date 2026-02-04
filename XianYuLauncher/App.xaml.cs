@@ -170,6 +170,7 @@ public partial class App : Application
             services.AddSingleton<IProfileManager, ProfileManager>();
             services.AddSingleton<IVersionConfigService, VersionConfigService>();
             services.AddSingleton<IRegionValidator, RegionValidator>();
+            services.AddSingleton<TerracottaService>();
             services.AddSingleton<ITokenRefreshService>(sp =>
             {
                 var microsoftAuthService = sp.GetRequiredService<MicrosoftAuthService>();
