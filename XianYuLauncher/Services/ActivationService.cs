@@ -504,7 +504,7 @@ public class ActivationService : IActivationService
              // Security: Validate path to prevent UNC path attacks
              if (IsUncPath(targetPath))
              {
-                 ShowToast("启动错误", "不支持网络路径，请使用本地路径。");
+                 ShowToast("拦截提示", "为了您的系统安全，已禁止从网络路径(UNC)加载游戏，请使用本地磁盘路径。");
                  EnsureMainWindowInitialized();
                  App.MainWindow.Activate();
                  return;

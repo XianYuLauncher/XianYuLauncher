@@ -479,8 +479,9 @@ public partial class VersionManagementViewModel
                     var dialogService = App.GetService<IDialogService>();
                     if (dialogService != null)
                     {
-                        await dialogService.ShowMessageDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {shortcutName} 的快捷方式。\n将覆盖现有快捷方式。");
+                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
+                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                        if (!result) return;
                     }
                 }
                 catch (Exception ex)
