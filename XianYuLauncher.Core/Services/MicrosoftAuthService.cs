@@ -802,7 +802,6 @@ public class MicrosoftAuthService
             
             // 保存原始响应内容
             string rawResponse = await response.Content.ReadAsStringAsync();
-            Log.Information($"检查游戏拥有情况原始响应: {rawResponse}");
             
             // 不使用EnsureSuccessStatusCode，避免丢失响应内容
             if (!response.IsSuccessStatusCode)
