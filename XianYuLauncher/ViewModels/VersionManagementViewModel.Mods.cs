@@ -794,7 +794,7 @@ public partial class VersionManagementViewModel
                 if (versionInfoService != null && SelectedVersion != null)
                 {
                     string versionDir = Path.Combine(SelectedVersion.Path);
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, versionDir);
                     
                     if (versionConfig != null)
                     {
@@ -1272,7 +1272,7 @@ public partial class VersionManagementViewModel
                 if (versionInfoService != null && SelectedVersion != null)
                 {
                     string versionDir = Path.Combine(SelectedVersion.Path);
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, versionDir);
                     
                     if (versionConfig != null)
                     {
@@ -1923,7 +1923,7 @@ public partial class VersionManagementViewModel
                 if (versionInfoService != null && SelectedVersion != null)
                 {
                     string versionDir = Path.Combine(SelectedVersion.Path);
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, versionDir);
                     
                     if (versionConfig != null)
                     {

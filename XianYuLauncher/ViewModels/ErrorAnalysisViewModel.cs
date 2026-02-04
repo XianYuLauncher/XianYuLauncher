@@ -211,7 +211,7 @@ namespace XianYuLauncher.ViewModels
 
             try
             {
-                var currentLoader = GetCurrentLoaderType();
+                var currentLoader = await GetCurrentLoaderType();
                 if (!string.IsNullOrWhiteSpace(currentLoader) && !string.Equals(currentLoader, "vanilla", StringComparison.OrdinalIgnoreCase))
                 {
                     _currentFixAction.Parameters["loader"] = currentLoader;
@@ -607,7 +607,7 @@ namespace XianYuLauncher.ViewModels
             return normalized.ToLowerInvariant();
         }
 
-        private string GetCurrentLoaderType()
+        private async Task<string> GetCurrentLoaderType()
         {
             if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
             {
@@ -618,7 +618,7 @@ namespace XianYuLauncher.ViewModels
             {
                 var versionDirectory = Path.Combine(_minecraftPath, "versions", _versionId);
                 var versionInfoService = App.GetService<XianYuLauncher.Core.Services.IVersionInfoService>();
-                var config = versionInfoService?.GetFullVersionInfo(_versionId, versionDirectory);
+                var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory);
                 return config?.ModLoaderType?.Trim().ToLowerInvariant() ?? string.Empty;
             }
             catch (Exception ex)

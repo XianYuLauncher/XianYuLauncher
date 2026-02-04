@@ -926,7 +926,7 @@ public sealed partial class VersionListPage : Page
                             string versionName = viewModel.SelectedVersion?.Name ?? "";
                             
                             // 获取完整的版本信息
-                            Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(versionName, versionPath);
+                            Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(versionName, versionPath);
                             
                             // 提取加载器和Minecraft版本信息
                             string loaderName = "";

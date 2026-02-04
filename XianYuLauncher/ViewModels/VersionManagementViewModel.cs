@@ -1048,7 +1048,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         AvailableLoaders.Clear();
         
         // 获取当前版本的Minecraft版本号
-        string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+        string minecraftVersion = await GetMinecraftVersionFromSelectedVersionAsync();
         
         // 添加常用加载器（使用项目中已有的图标）
         AvailableLoaders.Add(new LoaderItemViewModel
@@ -1175,7 +1175,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 从选中的版本获取Minecraft版本号
     /// </summary>
-    private string GetMinecraftVersionFromSelectedVersion()
+    private async Task<string> GetMinecraftVersionFromSelectedVersionAsync()
     {
         if (SelectedVersion == null)
         {
@@ -1186,10 +1186,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         var versionInfoService = App.GetService<IVersionInfoService>();
         if (versionInfoService != null)
         {
-            var versionConfig = versionInfoService.GetVersionConfigFromDirectory(SelectedVersion.Path);
-            if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+            try 
             {
-                return versionConfig.MinecraftVersion;
+                var versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path);
+                if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
+                {
+                    return versionConfig.MinecraftVersion;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 获取版本信息失败: {ex.Message}");
             }
         }
         
@@ -1225,7 +1232,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         try
         {
-            string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+            string minecraftVersion = await GetMinecraftVersionFromSelectedVersionAsync();
             
             var versions = await GetLoaderVersionsAsync(loader.LoaderType, minecraftVersion);
             
@@ -1372,7 +1379,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 .ToList();
             
             // 获取Minecraft版本号和目录
-            string minecraftVersion = GetMinecraftVersionFromSelectedVersion();
+            string minecraftVersion = await GetMinecraftVersionFromSelectedVersionAsync();
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
             string versionDirectory = SelectedVersion.Path;
             string versionId = SelectedVersion.Name;
@@ -1569,7 +1576,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 var versionInfoService = App.GetService<IVersionInfoService>();
                 if (versionInfoService != null)
                 {
-                    var versionConfig = versionInfoService.GetVersionConfigFromDirectory(SelectedVersion.Path);
+                    // 这里的上下文支持异步，直接 await
+                    var versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path);
                     if (versionConfig != null)
                     {
                         // 从第三方配置文件成功读取

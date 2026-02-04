@@ -381,11 +381,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 检查是否为ModLoader版本（Fabric或NeoForge）
             bool isModLoaderVersion = false;
             
-            // 先尝试从配置文件读取
+            // 先尝试从配置文件读取 (使用异步版本)
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
             string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
-            VersionConfig config = ReadVersionConfig(versionDirectory);
+            
+            VersionConfig config = await ReadVersionConfigAsync(versionId, versionDirectory);
             if (config != null)
             {
                 isModLoaderVersion = true;
@@ -1414,9 +1415,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 从版本目录读取配置文件，获取ModLoader信息
     /// </summary>
-    private VersionConfig ReadVersionConfig(string versionDirectory)
+    private async Task<VersionConfig> ReadVersionConfigAsync(string versionId, string versionDirectory)
     {
-        return _versionInfoService.GetVersionConfigFromDirectory(versionDirectory);
+        return await _versionInfoService.GetFullVersionInfoAsync(versionId, versionDirectory);
     }
     
 

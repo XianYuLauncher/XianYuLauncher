@@ -794,7 +794,7 @@ public class GameLaunchService : IGameLaunchService
         }
         
         // 判断是否为 Fabric 版本
-        bool isFabricVersion = IsFabricVersion(versionName, versionInfo, minecraftPath);
+        bool isFabricVersion = await IsFabricVersionAsync(versionName, versionInfo, minecraftPath);
         
         // 收集 ASM 库版本（用于 Fabric 版本冲突处理）
         var asmLibraryVersions = new Dictionary<string, string>();
@@ -891,13 +891,13 @@ public class GameLaunchService : IGameLaunchService
     /// <summary>
     /// 判断是否为 Fabric 版本
     /// </summary>
-    private bool IsFabricVersion(string versionName, VersionInfo versionInfo, string minecraftPath)
+    private async Task<bool> IsFabricVersionAsync(string versionName, VersionInfo versionInfo, string minecraftPath)
     {
         // 1. 优先使用统一版本信息服务判断
         try
         {
             string versionDirectory = Path.Combine(minecraftPath, "versions", versionName);
-            var versionConfig = _versionInfoService.GetFullVersionInfo(versionName, versionDirectory);
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(versionName, versionDirectory);
             
             if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
             {

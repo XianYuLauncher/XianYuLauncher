@@ -157,21 +157,7 @@ public class VersionInfoService : IVersionInfoService
     /// <summary>
     /// 兼容旧接口，内部调用新异步方法并等待
     /// </summary>
-    /// <remarks>
-    /// 此方法已过时。建议在新代码中使用 GetFullVersionInfoAsync 方法。
-    /// 此同步方法仅为兼容性而保留，会阻塞调用线程直到异步操作完成。
-    /// </remarks>
-    [Obsolete("This synchronous method is deprecated. Use GetFullVersionInfoAsync for new code.")]
-    public VersionConfig GetFullVersionInfo(string versionId, string versionDirectory)
-    {
-        return GetFullVersionInfoAsync(versionId, versionDirectory).GetAwaiter().GetResult();
-    }
-    
-    // 兼容旧接口
-    public VersionConfig GetVersionConfigFromDirectory(string versionDirectory)
-    {
-         return GetLegacyConfig(versionDirectory);
-    }
+
     
     // 兼容旧接口
     public VersionConfig ExtractVersionConfigFromName(string versionId)
