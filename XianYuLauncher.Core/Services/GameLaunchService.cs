@@ -101,18 +101,20 @@ public class GameLaunchService : IGameLaunchService
                 throw new FileNotFoundException($"游戏JSON文件不存在: {jsonPath}");
             }
             
-            // 5. 读取版本信息
-            string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
-            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
+            // 5. 读取版本信息 (使用 MinecraftVersionService 以支持继承和深度分析)
+            // 原有代码: string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
+            // 原有代码: var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
+            var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(versionName, null, allowNetwork: false);
             
             if (versionInfo == null)
             {
-                throw new InvalidOperationException("解析版本信息失败");
+                throw new InvalidOperationException("无法获取完整的版本元数据 (VersionInfo 为空)");
             }
-            
+            // 针对旧版 Forge 处理: 如果没有 mainClass，尝试从 inheritsFrom 补全，或者报错
             if (string.IsNullOrEmpty(versionInfo.MainClass))
             {
-                throw new InvalidOperationException("无法获取主类信息");
+                 // 注意：GetVersionInfoAsync 应该已经处理了继承合并。如果还是空，说明真的没有。
+                 throw new InvalidOperationException("无法获取主启动类 (MainClass)，请检查版本文件完整性");
             }
             
             // 6. 加载版本配置

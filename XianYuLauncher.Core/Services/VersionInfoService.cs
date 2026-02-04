@@ -1,271 +1,183 @@
-using System;using System.IO;using System.Text.RegularExpressions;using Microsoft.Extensions.Logging;using Newtonsoft.Json;using XianYuLauncher.Core.Models;
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.VersionAnalysis;
+using VersionManifest = XianYuLauncher.Core.VersionAnalysis.Models.VersionManifest; // Explicit alias to resolve ambiguity
 
-namespace XianYuLauncher.Core.Services
+namespace XianYuLauncher.Core.Services; // File-scoped namespace
+
+/// <summary>
+/// 版本信息服务 - 新架构实现
+/// </summary>
+public class VersionInfoService : IVersionInfoService
 {
-    /// <summary>
-    /// 版本信息服务实现，提供统一的版本信息获取方法
-    /// </summary>
-    public class VersionInfoService : IVersionInfoService
+    private readonly ILogger _logger;
+    private readonly JarAnalyzer _jarAnalyzer;
+    private readonly ModLoaderDetector _modLoaderDetector;
+
+    public VersionInfoService(ILoggerFactory loggerFactory)
     {
-        private readonly ILogger _logger;
-        
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="logger">日志记录器</param>
-        public VersionInfoService(ILoggerFactory loggerFactory)
+        _logger = loggerFactory.CreateLogger<VersionInfoService>();
+        _jarAnalyzer = new JarAnalyzer(_logger);
+        _modLoaderDetector = new ModLoaderDetector(_logger);
+    }
+
+    /// <summary>
+    /// 标准实现：获取完整版本信息
+    /// </summary>
+    public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory)
+    {
+        return await Task.Run(async () =>
         {
-            _logger = loggerFactory.CreateLogger<VersionInfoService>();
-        }
-        
-        /// <summary>
-        /// 从版本目录获取版本配置信息，支持从多个来源读取
-        /// </summary>
-        /// <param name="versionDirectory">版本目录路径</param>
-        /// <returns>版本配置信息，如果无法获取则返回null</returns>
-        public VersionConfig GetVersionConfigFromDirectory(string versionDirectory)
-        {
-            if (string.IsNullOrEmpty(versionDirectory))
+            var result = new VersionConfig
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 版本目录路径为空");
-                return null;
-            }
-            
-            if (!Directory.Exists(versionDirectory))
+                CreatedAt = DateTime.Now
+            };
+
+            _logger.LogInformation($"[VersionInfoService] 开始深入分析版本: {versionId}");
+
+            // Step 1: 读取 .json (Manifest)
+            // 这是分析的基础，无论是 Loader 还是继承关系都在这里
+            string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
+            VersionManifest? manifest = null;
+
+            if (File.Exists(jsonPath))
             {
-                System.Diagnostics.Debug.WriteLine("[VersionInfoService] 版本目录不存在");
-                return null;
-            }
-            
-            System.Diagnostics.Debug.WriteLine("[VersionInfoService] 开始获取版本配置");
-            
-            VersionConfig config = null;
-            bool isFromThirdParty = false;
-            string configSource = "";
-            
-            // 1. 优先尝试读取XianYuL.cfg
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 1. 尝试读取XianYuL.cfg配置文件");
-            config = ReadXianYuLConfig(versionDirectory);
-            if (config != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ✅ 成功读取XianYuL.cfg配置文件");
-                configSource = "XianYuL.cfg";
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ❌ 未能读取XianYuL.cfg配置文件");
-                
-                // 2. 尝试读取PCL2配置文件
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 2. 尝试读取PCL2配置文件");
-                config = ReadPCL2Config(versionDirectory);
-                if (config != null)
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ✅ 成功读取PCL2配置文件");
-                    isFromThirdParty = true;
-                    configSource = "PCL2 Setup.ini";
+                    string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                    manifest = JsonConvert.DeserializeObject<VersionManifest>(jsonContent);
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"[VersionInfoService] JSON 解析失败: {ex.Message}");
+                }
+            }
+
+            // Step 2: 确定 Minecraft 核心版本
+            string? mcVersion = null;
+
+            if (manifest != null)
+            {
+                // 1. 继承版本 (Isolation / Official Style)
+                // 如果 JSON 声明了 inheritsFrom (如 "1.20.1")，则它就是该版本的一个变体。
+                // 此时无需耗费 I/O 去寻找并读取父级 Jar，直接信任配置中的继承源即可。
+                // (这也避免了在隔离模式下，当前目录没有 Jar 导致读取失败的问题)
+                if (!string.IsNullOrEmpty(manifest.InheritsFrom))
+                {
+                    _logger.LogInformation($"[VersionInfoService] 继承模式: 直接采纳 inheritsFrom = {manifest.InheritsFrom}");
+                    mcVersion = manifest.InheritsFrom;
+                }
+                // 2. 独立/合并版本 (Vanilla / Merged Style)
+                // 没有 inheritsFrom，说明它是独立的，或者是一个包含了 Jar 的整合版。
+                // 直接尝试读取当前目录下的同名 Jar (id.jar) 内的 version.json。
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ❌ 未能读取PCL2配置文件");
-                    
-                    // 3. 尝试读取MultiMC配置文件
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 3. 尝试读取MultiMC配置文件");
-                    config = ReadMultiMCConfig(versionDirectory);
-                    if (config != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ✅ 成功读取MultiMC配置文件");
-                        isFromThirdParty = true;
-                        configSource = "MultiMC config";
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ❌ 未能读取MultiMC配置文件");
-                        
-                        // 4. 尝试读取HMCL配置文件
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 4. 尝试读取HMCL配置文件");
-                        config = ReadHMCLConfig(versionDirectory);
-                        if (config != null)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ✅ 成功读取HMCL配置文件");
-                            isFromThirdParty = true;
-                            configSource = "HMCL config";
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ❌ 未能读取HMCL配置文件");
-                            
-                            // 5. 尝试读取其他常见启动器配置文件
-                            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 5. 尝试读取其他启动器配置文件");
-                            config = ReadOtherLauncherConfigs(versionDirectory);
-                            if (config != null)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ✅ 成功读取其他启动器配置文件");
-                                isFromThirdParty = true;
-                                configSource = "Other launcher config";
-                            }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] ❌ 未能读取任何配置文件");
-                            }
-                        }
-                    }
+                     _logger.LogInformation($"[VersionInfoService] 独立模式: 尝试读取本地 Jar ({versionId}.jar)");
+                     mcVersion = await _jarAnalyzer.GetMinecraftVersionFromJarAsync(versionDirectory, versionId);
                 }
             }
             
-            // 如果从第三方启动器读取到配置，创建或更新XianYuL.cfg文件
-            if (config != null && isFromThirdParty)
+            // 如果上述方法都失败了（比如没有下载 JAR），尝试从 JSON ID 猜测（不推荐但也得有）
+            if (string.IsNullOrEmpty(mcVersion) && manifest != null && string.IsNullOrEmpty(manifest.InheritsFrom))
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 📝 从{configSource}读取到配置，开始创建/更新XianYuL.cfg文件");
-                CreateOrUpdateXianYuLConfig(versionDirectory, config);
+                 // 对于 Vanilla JSON，ID 通常就是版本号
+                 mcVersion = manifest.Id;
+                 _logger.LogWarning($"[VersionInfoService] 无法通过常规手段确定版本，回退使用 JSON ID: {mcVersion}");
             }
-            else if (config != null)
+
+            result.MinecraftVersion = mcVersion ?? "Unknown";
+            _logger.LogInformation($"[VersionInfoService] 最终判定 MC 版本: {result.MinecraftVersion}");
+
+
+            // Step 3: 确定 ModLoader 类型和版本
+            var (loaderType, loaderVer) = _modLoaderDetector.Detect(manifest);
+            result.ModLoaderType = loaderType;
+            result.ModLoaderVersion = loaderVer;
+            _logger.LogInformation($"[VersionInfoService] 最终判定 Loader: {loaderType} {loaderVer}");
+
+
+            // Step 4: 迁移/读取旧配置 (Configuration)
+            // 这里我们保留之前的逻辑，读取 XianYuL.cfg 或迁移 PCL2 配置
+            // 但是！！我们只读取里面的 "配置项" (Config)，而忽略它里面可能错误的 "身份项" (Identity)
+            // 除非我们的身份识别完全失败（Unknown），才回退到旧配置读取。
+
+            var legacyConfig = GetLegacyConfig(versionDirectory);
+            if (legacyConfig != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 🔍 配置来自{configSource}，无需更新XianYuL.cfg");
-            }
-            
-            System.Diagnostics.Debug.WriteLine("[VersionInfoService] 所有配置文件读取完成");
-            return config;
-        }
-        
-        /// <summary>
-        /// 从版本名称提取版本配置信息
-        /// </summary>
-        /// <param name="versionId">版本ID</param>
-        /// <returns>提取的版本配置信息</returns>
-        public VersionConfig ExtractVersionConfigFromName(string versionId)
-        {
-            if (string.IsNullOrEmpty(versionId))
-            {
-                return null;
-            }
-            
-            string minecraftVersion = string.Empty;
-            string modLoaderType = "vanilla";
-            string modLoaderVersion = string.Empty;
-            
-            // 处理不同格式的版本名称
-            if (versionId.Contains("fabric-"))
-            {
-                modLoaderType = "fabric";
-                var parts = versionId.Split('-');
-                if (parts.Length >= 3)
+                // 迁移用户偏好设置
+                result.AutoMemoryAllocation = legacyConfig.AutoMemoryAllocation;
+                result.InitialHeapMemory = legacyConfig.InitialHeapMemory;
+                result.MaximumHeapMemory = legacyConfig.MaximumHeapMemory;
+                result.JavaPath = legacyConfig.JavaPath;
+                result.UseGlobalJavaSetting = legacyConfig.UseGlobalJavaSetting; // 修复：保留全局Java设置
+                result.WindowWidth = legacyConfig.WindowWidth;
+                result.WindowHeight = legacyConfig.WindowHeight;
+                result.LaunchCount = legacyConfig.LaunchCount;
+                result.TotalPlayTimeSeconds = legacyConfig.TotalPlayTimeSeconds;
+                result.LastLaunchTime = legacyConfig.LastLaunchTime;
+
+                // 如果分析失败，才使用旧配置的版本信息兜底
+                if (result.MinecraftVersion == "Unknown" && !string.IsNullOrEmpty(legacyConfig.MinecraftVersion))
                 {
-                    minecraftVersion = parts[1];
-                    modLoaderVersion = parts[2];
+                    result.MinecraftVersion = legacyConfig.MinecraftVersion;
                 }
-            }
-            else if (versionId.Contains("forge-"))
-            {
-                modLoaderType = "forge";
-                var parts = versionId.Split('-');
-                if (parts.Length >= 3)
+                if (result.ModLoaderType == "vanilla" && legacyConfig.ModLoaderType != "vanilla")
                 {
-                    minecraftVersion = parts[1];
-                    modLoaderVersion = string.Join("-", parts.Skip(2));
-                }
-            }
-            else if (versionId.Contains("neoforge-"))
-            {
-                modLoaderType = "neoforge";
-                var parts = versionId.Split('-');
-                if (parts.Length >= 3)
-                {
-                    minecraftVersion = parts[1];
-                    modLoaderVersion = string.Join("-", parts.Skip(2));
-                }
-            }
-            else if (versionId.Contains("quilt-"))
-            {
-                modLoaderType = "quilt";
-                var parts = versionId.Split('-');
-                if (parts.Length >= 3)
-                {
-                    minecraftVersion = parts[1];
-                    modLoaderVersion = string.Join("-", parts.Skip(2));
+                    result.ModLoaderType = legacyConfig.ModLoaderType;
+                    result.ModLoaderVersion = legacyConfig.ModLoaderVersion;
                 }
             }
             else
             {
-                // 尝试从版本名中提取Minecraft版本号
-                var versionMatch = Regex.Match(versionId, @"^(\d+\.\d+(\.\d+)?)");
-                if (versionMatch.Success)
-                {
-                    minecraftVersion = versionMatch.Value;
-                }
+                // 确保默认值正确
+                 result.AutoMemoryAllocation = true;
+                 result.UseGlobalJavaSetting = true;
             }
-            
-            return new VersionConfig
-            {
-                ModLoaderType = modLoaderType,
-                ModLoaderVersion = modLoaderVersion,
-                MinecraftVersion = minecraftVersion,
-                CreatedAt = DateTime.Now
-            };
-        }
-        
-        /// <summary>
-        /// 获取完整的版本信息，包括从配置文件和版本名提取的信息
-        /// </summary>
-        /// <param name="versionId">版本ID</param>
-        /// <param name="versionDirectory">版本目录路径</param>
-        /// <returns>完整的版本配置信息</returns>
-        public VersionConfig GetFullVersionInfo(string versionId, string versionDirectory)
-        {
-            // 快速路径：如果已有XianYuL.cfg文件，直接读取
-            string xianYuLConfigPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-            if (File.Exists(xianYuLConfigPath))
-            {
-                return ReadXianYuLConfig(versionDirectory);
-            }
-            
-            // 完整读取逻辑
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 开始获取完整版本信息，版本ID: {versionId}");
-            
-            // 1. 先尝试从配置文件读取
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 1. 尝试从配置文件读取版本信息");
-            VersionConfig config = GetVersionConfigFromDirectory(versionDirectory);
-            if (config != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 从配置文件成功获取版本信息");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   最终版本信息: ModLoaderType={config.ModLoaderType}, ModLoaderVersion={config.ModLoaderVersion}, MinecraftVersion={config.MinecraftVersion}");
-                return config;
-            }
-            
-            // 2. 如果配置文件读取失败，从版本名提取
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 2. 配置文件读取失败，尝试从版本名提取");
-            config = ExtractVersionConfigFromName(versionId);
-            if (config != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 从版本名成功提取版本信息");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   最终版本信息: ModLoaderType={config.ModLoaderType}, ModLoaderVersion={config.ModLoaderVersion}, MinecraftVersion={config.MinecraftVersion}");
-                return config;
-            }
-            
-            // 3. 如果所有方法都失败，返回默认配置
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService] 3. 所有方法都失败，返回默认配置");
-            var defaultConfig = new VersionConfig
-            {
-                ModLoaderType = "vanilla",
-                ModLoaderVersion = string.Empty,
-                MinecraftVersion = string.Empty,
-                CreatedAt = DateTime.Now
-            };
-            
-            System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   最终版本信息: 默认配置 (vanilla)");
-            return defaultConfig;
-        }
-        
-        /// <summary>
-        /// 异步获取完整的版本信息，包括从配置文件和版本名提取的信息
-        /// </summary>
-        /// <param name="versionId">版本ID</param>
-        /// <param name="versionDirectory">版本目录路径</param>
-        /// <returns>完整的版本配置信息</returns>
-        public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory)
-        {
-            // 在后台线程执行IO密集型操作，避免阻塞UI线程
-            return await Task.Run(() => GetFullVersionInfo(versionId, versionDirectory));
-        }
+
+            // Step 5: 保存/更新 XianYuL.cfg
+            // 确保这些精准分析的数据被持久化，下次可以直接读 cfg 变快
+            SaveConfig(versionDirectory, result);
+
+            return result;
+        });
+    }
+    
+    // 兼容旧接口，内部调用新异步方法并等待
+    public VersionConfig GetFullVersionInfo(string versionId, string versionDirectory)
+    {
+        return GetFullVersionInfoAsync(versionId, versionDirectory).GetAwaiter().GetResult();
+    }
+    
+    // 兼容旧接口
+    public VersionConfig GetVersionConfigFromDirectory(string versionDirectory)
+    {
+         return GetLegacyConfig(versionDirectory);
+    }
+    
+    // 兼容旧接口
+    public VersionConfig ExtractVersionConfigFromName(string versionId)
+    {
+        // 简单实现，不再推荐使用
+        return new VersionConfig { CreatedAt = DateTime.Now };
+    }
+
+    private VersionConfig? GetLegacyConfig(string dir)
+    {
+        return ReadXianYuLConfig(dir) ?? ReadPCL2Config(dir); 
+    }
+    
+    private void SaveConfig(string dir, VersionConfig config)
+    {
+         CreateOrUpdateXianYuLConfig(dir, config);
+    }
+
+
         
         /// <summary>
         /// 读取XianYuL.cfg配置文件
@@ -591,4 +503,3 @@ namespace XianYuLauncher.Core.Services
             return null;
         }
     }
-}

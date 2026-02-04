@@ -76,7 +76,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             progressCallback?.Invoke(5);
 
             // 2. 保存版本配置
-            await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
+            // 修复: 显式传入 OptifineVersion 以确保 XianYuL.cfg 正确记录
+            await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion, optifineVersion: modLoaderVersion);
 
             // 3. 获取原版Minecraft版本信息
             Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);

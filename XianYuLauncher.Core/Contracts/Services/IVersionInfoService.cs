@@ -9,6 +9,14 @@ namespace XianYuLauncher.Core.Services
     public interface IVersionInfoService
     {
         /// <summary>
+        /// 深度分析获取完整版本信息 (支持 JSON/Models/Jar 深度扫描)
+        /// </summary>
+        /// <param name="versionId">版本ID (文件夹名称)</param>
+        /// <param name="versionDirectory">版本物理路径</param>
+        /// <returns>完整的版本配置信息</returns>
+        Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory);
+
+        /// <summary>
         /// 从版本目录获取版本配置信息
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>

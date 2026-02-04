@@ -37,6 +37,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
+    private readonly IVersionInfoService _versionInfoService;
     
     /// <summary>
     /// 转换 Modrinth API URL 到当前下载源
@@ -756,6 +757,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CleanroomService cleanroomService,
         IModLoaderInstallerFactory modLoaderInstallerFactory,
         IVersionInfoManager versionInfoManager,
+        IVersionInfoService versionInfoService,
         IDownloadManager downloadManager,
         ModInfoService modInfoService,
         IGameHistoryService gameHistoryService,
@@ -769,6 +771,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _curseForgeService = curseForgeService;
         _downloadSourceFactory = downloadSourceFactory;
         _fabricService = fabricService;
+        _versionInfoService = versionInfoService;
         _forgeService = forgeService;
         _neoForgeService = neoForgeService;
         _quiltService = quiltService;
@@ -942,56 +945,48 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         try
         {
-            string settingsFilePath = GetSettingsFilePath();
-            if (File.Exists(settingsFilePath))
+            // 使用新版 VersionInfoService 进行全量深度分析
+            // 这将涵盖：读取 .json, 扫描 jar (如有), 检查 libraries, 迁移/读取旧配置文件
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path);
+            
+            if (versionConfig != null)
             {
-                // 读取设置文件
-                string jsonContent = await File.ReadAllTextAsync(settingsFilePath);
-                var settings = JsonSerializer.Deserialize<VersionSettings>(jsonContent);
+                // 1. 更新 ViewModel 基础配置属性
+                AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
+                InitialHeapMemory = versionConfig.InitialHeapMemory;
+                MaximumHeapMemory = versionConfig.MaximumHeapMemory;
+                UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
+                JavaPath = versionConfig.JavaPath;
+                WindowWidth = versionConfig.WindowWidth;
+                WindowHeight = versionConfig.WindowHeight;
                 
-                if (settings != null)
+                // 更新统计数据
+                LaunchCount = versionConfig.LaunchCount;
+                TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
+                LastLaunchTime = versionConfig.LastLaunchTime;
+
+                // 2. 更新身份信息 (Loader & Version)
+                // 构造临时的 UI 模型用于辅助方法调用
+                var uiSettings = new VersionSettings 
                 {
-                    // 更新ViewModel属性
-                    AutoMemoryAllocation = settings.AutoMemoryAllocation;
-                    InitialHeapMemory = settings.InitialHeapMemory;
-                    MaximumHeapMemory = settings.MaximumHeapMemory;
-                    UseGlobalJavaSetting = settings.UseGlobalJavaSetting;
-                    JavaPath = settings.JavaPath;
-                    WindowWidth = settings.WindowWidth;
-                    WindowHeight = settings.WindowHeight;
-                    
-                    // 更新当前加载器信息
-                    UpdateCurrentLoaderInfo(settings);
-                }
-            }
-            else
-            {
-                // 设置文件不存在，创建默认设置文件
-                await SaveSettingsAsync();
+                    MinecraftVersion = versionConfig.MinecraftVersion,
+                    ModLoaderType = versionConfig.ModLoaderType,
+                    ModLoaderVersion = versionConfig.ModLoaderVersion,
+                    OptifineVersion = versionConfig.OptifineVersion
+                };
                 
-                // 重新读取刚创建的配置文件并更新UI
-                if (File.Exists(settingsFilePath))
+                UpdateCurrentLoaderInfo(uiSettings);
+                
+                // 3. (可选) 如果配置文件不存在，保存一份以固化扫描结果
+                // 这样下次启动或其他也没读取时能直接拿到被扫描确认过的正确信息
+                string settingsFilePath = GetSettingsFilePath();
+                if (!File.Exists(settingsFilePath))
                 {
-                    string jsonContent = await File.ReadAllTextAsync(settingsFilePath);
-                    var settings = JsonSerializer.Deserialize<VersionSettings>(jsonContent);
-                    
-                    if (settings != null)
-                    {
-                        // 更新ViewModel属性
-                        AutoMemoryAllocation = settings.AutoMemoryAllocation;
-                        InitialHeapMemory = settings.InitialHeapMemory;
-                        MaximumHeapMemory = settings.MaximumHeapMemory;
-                        UseGlobalJavaSetting = settings.UseGlobalJavaSetting;
-                        JavaPath = settings.JavaPath;
-                        WindowWidth = settings.WindowWidth;
-                        WindowHeight = settings.WindowHeight;
-                        
-                        // 更新当前加载器信息
-                        UpdateCurrentLoaderInfo(settings);
-                        
-                        System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 创建配置文件后更新UI: ModLoaderType={settings.ModLoaderType}, DisplayName={CurrentLoaderDisplayName}");
-                    }
+                   // 由于ViewModel属性已经更新，直接调用Save即可
+                   await SaveSettingsAsync();
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 深度分析完成: {versionConfig.MinecraftVersion} ({versionConfig.ModLoaderType})");
             }
             
             // 初始化可用加载器列表
@@ -999,7 +994,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            StatusMessage = $"加载设置失败：{ex.Message}";
+            StatusMessage = $"分析版本信息失败：{ex.Message}";
+            // 降级处理：如果不幸失败，至少保证不白屏，可以尝试用文件名猜测
+            System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] Analysis Failed: {ex}");
         }
     }
     
