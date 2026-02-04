@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.ApplicationModel.Resources;
 using System;
@@ -425,7 +426,9 @@ namespace XianYuLauncher.ViewModels
                     Content = $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
                     PrimaryButtonText = "删除",
                     CloseButtonText = "取消",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.Close
                 };
 
                 var result = await dialog.ShowAsync();
@@ -585,7 +588,9 @@ namespace XianYuLauncher.ViewModels
                     Title = "未找到",
                     Content = $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
                     PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await dialog.ShowAsync();
             });
@@ -1764,7 +1769,9 @@ namespace XianYuLauncher.ViewModels
                     Title = "成功",
                     Content = string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
                     PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
 
                 await successDialog.ShowAsync();
@@ -1777,7 +1784,9 @@ namespace XianYuLauncher.ViewModels
                     Title = "错误",
                     Content = string.Format("导出崩溃日志失败：{0}", ex.Message),
                     PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
 
                 await errorDialog.ShowAsync();

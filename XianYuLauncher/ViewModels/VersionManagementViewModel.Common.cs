@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Graphics.Canvas;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -248,7 +249,8 @@ public partial class VersionManagementViewModel
                 PrimaryButtonText = "确定删除",
                 CloseButtonText = "取消",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
             
             var result = await dialog.ShowAsync();

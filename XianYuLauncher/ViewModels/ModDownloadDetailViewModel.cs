@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Newtonsoft.Json;
 using System;
@@ -631,7 +632,9 @@ namespace XianYuLauncher.ViewModels
                     Title = "提示",
                     Content = message,
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.Close
                 };
                 
                 await dialog.ShowAsync();

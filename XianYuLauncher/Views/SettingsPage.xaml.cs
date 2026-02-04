@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System.IO;
@@ -50,7 +51,9 @@ public sealed partial class SettingsPage : Page
                         ? "恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()" 
                         : "彩蛋模式已关闭，一切恢复正常。",
                     CloseButtonText = "好的",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await dialog.ShowAsync();
             }

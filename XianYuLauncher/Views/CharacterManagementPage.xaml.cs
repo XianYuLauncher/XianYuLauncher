@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -973,7 +974,9 @@ namespace XianYuLauncher.Views
                 Title = title,
                 Content = content,
                 PrimaryButtonText = "确定",
-                XamlRoot = this.Content.XamlRoot
+                DefaultButton = ContentDialogButton.None,
+                XamlRoot = this.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             await dialog.ShowAsync();
@@ -1035,7 +1038,9 @@ namespace XianYuLauncher.Views
                     PrimaryButtonText = "Steve",
                     SecondaryButtonText = "Alex",
                     CloseButtonText = "取消",
-                    XamlRoot = this.Content.XamlRoot
+                    DefaultButton = ContentDialogButton.None,
+                    XamlRoot = this.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
 
                 var result = await modelDialog.ShowAsync();

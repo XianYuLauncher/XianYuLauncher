@@ -1772,7 +1772,8 @@ public partial class SettingsViewModel : ObservableRecipient
                 PrimaryButtonText = "下载",
                 CloseButtonText = "取消",
                 XamlRoot = App.MainWindow.Content.XamlRoot,
-                DefaultButton = ContentDialogButton.Primary
+                DefaultButton = ContentDialogButton.Primary,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
             var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
@@ -2277,7 +2278,9 @@ public partial class SettingsViewModel : ObservableRecipient
                     Title = "检查更新",
                     Content = "您使用的是微软商店版本，应用将通过商店自动更新。",
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await storeDialog.ShowAsync();
                 return;
@@ -2315,7 +2318,8 @@ public partial class SettingsViewModel : ObservableRecipient
                     PrimaryButtonText = "更新",
                     CloseButtonText = "取消",
                     DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
                 
                 var result = await updateDialog.ShowAsync();
@@ -2331,7 +2335,9 @@ public partial class SettingsViewModel : ObservableRecipient
                         Content = new Views.DownloadProgressDialog(updateDialogViewModel),
                         IsPrimaryButtonEnabled = false,
                         CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     
                     downloadDialog.CloseButtonClick += (sender, args) =>
@@ -2360,7 +2366,9 @@ public partial class SettingsViewModel : ObservableRecipient
                     Title = "检查更新",
                     Content = "当前已是最新版本！",
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await dialog.ShowAsync();
             }
@@ -2374,7 +2382,9 @@ public partial class SettingsViewModel : ObservableRecipient
                 Title = "检查更新失败",
                 Content = $"无法检查更新：{ex.Message}",
                 CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             await dialog.ShowAsync();
         }
@@ -2414,7 +2424,8 @@ public partial class SettingsViewModel : ObservableRecipient
                     PrimaryButtonText = "安装",
                     CloseButtonText = "取消",
                     DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                  };
                  
                  var result = await devDialog.ShowAsync();
@@ -2430,7 +2441,9 @@ public partial class SettingsViewModel : ObservableRecipient
                         Content = new Views.DownloadProgressDialog(updateDialogViewModel),
                         IsPrimaryButtonEnabled = false,
                         CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     
                     downloadDialog.CloseButtonClick += (sender, args) =>
@@ -2454,7 +2467,9 @@ public partial class SettingsViewModel : ObservableRecipient
                     Title = "Dev 通道",
                     Content = "当前没有可用的 Dev 版本。",
                     CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await noDevDialog.ShowAsync();
             }
@@ -2467,7 +2482,9 @@ public partial class SettingsViewModel : ObservableRecipient
                 Title = "Dev 通道检查失败",
                 Content = $"无法获取 Dev 版本: {ex.Message}",
                 CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                DefaultButton = ContentDialogButton.None
             };
             await errorDialog.ShowAsync();
         }
@@ -2599,7 +2616,9 @@ public partial class SettingsViewModel : ObservableRecipient
                     Title = "Settings_Hint".GetLocalized(),
                     Content = "Settings_DirectoryAlreadyExists".GetLocalized(),
                     CloseButtonText = "Settings_OK".GetLocalized(),
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 await dialog.ShowAsync();
                 return;
@@ -2641,7 +2660,8 @@ public partial class SettingsViewModel : ObservableRecipient
             PrimaryButtonText = "删除",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
-            XamlRoot = App.MainWindow.Content.XamlRoot
+            XamlRoot = App.MainWindow.Content.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
         
         var result = await confirmDialog.ShowAsync();

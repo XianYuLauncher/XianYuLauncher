@@ -167,7 +167,9 @@ public class ActivationService : IActivationService
                     Content = new UpdateDialog(updateDialogViewModel),
                     PrimaryButtonText = "更新",
                     CloseButtonText = !updateInfo.important_update ? "取消" : null,
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 
                 // 显示更新弹窗并获取结果
@@ -185,7 +187,9 @@ public class ActivationService : IActivationService
                         Content = new DownloadProgressDialog(updateDialogViewModel),
                         IsPrimaryButtonEnabled = false,
                         CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot
+                        XamlRoot = App.MainWindow.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                        DefaultButton = ContentDialogButton.None
                     };
                     
                     // 处理取消按钮点击事件
@@ -277,7 +281,9 @@ public class ActivationService : IActivationService
                 {
                     Title = announcement.title,
                     Content = new AnnouncementDialog(viewModel),
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
                 };
                 
                 // 根据按钮配置设置对话框按钮
@@ -360,7 +366,8 @@ public class ActivationService : IActivationService
                     SecondaryButtonText = "用户协议",
                     CloseButtonText = "拒绝",
                     DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
                 };
 
                 // 处理导航按钮点击事件
