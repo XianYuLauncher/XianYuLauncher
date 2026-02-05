@@ -92,22 +92,20 @@ public partial class VersionManagementViewModel
                         var resourcePackZips = Directory.GetFiles(resourcePacksPath, "*.zip");
                         
                         // 添加所有资源包文件夹
-                        foreach (var resourcePackFolder in resourcePackFolders)
-                        {
-                            var resourcePackInfo = new ResourcePackInfo(resourcePackFolder);
-                            // 先设置默认图标为空，后续异步加载
-                            resourcePackInfo.Icon = null;
-                            list.Add(resourcePackInfo);
-                        }
+                        list.AddRange(resourcePackFolders.Select(resourcePackFolder => 
+                            new ResourcePackInfo(resourcePackFolder)
+                            {
+                                // 先设置默认图标为空，后续异步加载
+                                Icon = null
+                            }));
                         
                         // 添加所有资源包zip文件
-                        foreach (var resourcePackZip in resourcePackZips)
-                        {
-                            var resourcePackInfo = new ResourcePackInfo(resourcePackZip);
-                            // 先设置默认图标为空，后续异步加载
-                            resourcePackInfo.Icon = null;
-                            list.Add(resourcePackInfo);
-                        }
+                        list.AddRange(resourcePackZips.Select(resourcePackZip => 
+                            new ResourcePackInfo(resourcePackZip)
+                            {
+                                // 先设置默认图标为空，后续异步加载
+                                Icon = null
+                            }));
                     }
                 }
                 catch (Exception ex)

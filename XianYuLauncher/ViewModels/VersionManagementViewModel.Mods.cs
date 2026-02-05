@@ -2007,19 +2007,17 @@ public partial class VersionManagementViewModel
                     if (Directory.Exists(modsPath))
                     {
                         // 获取所有mod文件（.jar和.jar.disabled）
-                        var modFiles = Directory.GetFiles(modsPath, "*.jar*");
+                        var modFiles = Directory
+                            .GetFiles(modsPath, "*.jar*")
+                            .Where(modFile => modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"));
                     
                         // 遍历所有mod文件，创建mod信息对象
                         foreach (var modFile in modFiles)
                         {
-                            // 只处理.jar和.jar.disabled文件
-                            if (modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"))
-                            {
-                                var modInfo = new ModInfo(modFile);
-                                // 先设置默认图标为空，后续异步加载
-                                modInfo.Icon = null;
-                                result.Add(modInfo);
-                            }
+                            var modInfo = new ModInfo(modFile);
+                            // 先设置默认图标为空，后续异步加载
+                            modInfo.Icon = null;
+                            result.Add(modInfo);
                         }
                     }
                 }

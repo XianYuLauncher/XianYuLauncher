@@ -882,7 +882,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 导航到页面时调用
     /// </summary>
     /// <param name="parameter">导航参数</param>
-    private bool _isPageReady = false;
+    /// <remarks>
+    /// 在导航到页面并完成初始数据加载之前为 <c>false</c>，完成后应设置为 <c>true</c>，
+    /// 以便在绑定和渲染逻辑中安全地依赖页面状态。
+    /// </remarks>
+    private volatile bool _isPageReady = false;
+    
+    // 与页面过渡动画时长（约 500ms）保持一致，避免数据加载打断动画
+    private const int AnimationDelayMilliseconds = 500;
 
     public void OnNavigatedTo(object parameter)
     {
@@ -1257,13 +1264,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         // 只有当需要深度分析时，才调用 GetFullVersionInfoAsync
         
         // 1. 尝试从缓存文件读取
-        try
-        {
-             // 检查是否已经在 AnalyzeVersionInfoAsync 中被设置过
-             // 这里没有简单的判断方式，因为 MinecraftVersion 没有绑定到 View/ViewModel 顶层属性，而是分散在 VersionConfig
-        }
-        catch {}
-        
+        // 检查是否已经在 AnalyzeVersionInfoAsync 中被设置过
+        // 这里没有简单的判断方式，因为 MinecraftVersion 没有绑定到 View/ViewModel 顶层属性，而是分散在 VersionConfig
+
         // 回退方案：直接使用VersionNumber属性
         // 以前这里的逻辑会触发 GetFullVersionInfoAsync，导致在 InitializeAvailableLoadersAsync 产生巨大开销
         // 现改为相信 VersionNumber，深度分析会异步修正它
@@ -1272,7 +1275,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return SelectedVersion.VersionNumber;
         }
 
-        return "1.20.1"; // Default fallback
+        // 当无法确定具体版本时，返回空字符串，交由调用方决定如何处理“未知版本”的情况
+        return string.Empty;
     }
     
     /// <summary>
@@ -1864,24 +1868,21 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 // 并发执行所有加载任务，不再等待 Settings 和 Overview
                 // 确保 IsLoading = false 尽快执行，消除 UI 停顿
-                var allTasks = new List<Task>
-                {
-                    LoadSettingsAsync(),
-                    LoadOverviewDataAsync(),
-                    LoadModsListOnlyAsync(),
-                    LoadShadersListOnlyAsync(),
-                    LoadResourcePacksListOnlyAsync(),
-                    LoadMapsListOnlyAsync(),
-                    LoadScreenshotsAsync(),
-                    LoadSavesAsync(),
-                    LoadServersAsync()
-                };
+                _ = LoadSettingsAsync();
+                _ = LoadOverviewDataAsync();
+                _ = LoadModsListOnlyAsync();
+                _ = LoadShadersListOnlyAsync();
+                _ = LoadResourcePacksListOnlyAsync();
+                _ = LoadMapsListOnlyAsync();
+                _ = LoadScreenshotsAsync();
+                _ = LoadSavesAsync();
+                _ = LoadServersAsync();
                 
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
                 
                 // 确保动画开始前没有其他繁重任务干扰
-                await Task.Delay(500);
+                await Task.Delay(AnimationDelayMilliseconds);
                 
                 _isPageReady = true;
 
@@ -1926,9 +1927,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     FilterMaps();
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略
+                System.Diagnostics.Debug.WriteLine($"[RefreshAllCollections] Error refreshing UI collections: {ex.Message}");
             }
         }
         

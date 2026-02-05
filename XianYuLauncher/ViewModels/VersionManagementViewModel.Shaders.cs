@@ -91,23 +91,19 @@ public partial class VersionManagementViewModel
                         var shaderFolders = Directory.GetDirectories(shadersPath);
                         var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
                         
-                        // 添加所有光影文件夹
-                        foreach (var shaderFolder in shaderFolders)
+                        // 使用 LINQ 将所有光影文件夹映射为 ShaderInfo 并添加到列表
+                        list.AddRange(shaderFolders.Select(shaderFolder => new ShaderInfo(shaderFolder)
                         {
-                            var shaderInfo = new ShaderInfo(shaderFolder);
                             // 先设置默认图标为空，后续异步加载
-                            shaderInfo.Icon = null;
-                            list.Add(shaderInfo);
-                        }
+                            Icon = null
+                        }));
                         
-                        // 添加所有光影zip文件
-                        foreach (var shaderZip in shaderZips)
+                        // 使用 LINQ 将所有光影 zip 文件映射为 ShaderInfo 并添加到列表
+                        list.AddRange(shaderZips.Select(shaderZip => new ShaderInfo(shaderZip)
                         {
-                            var shaderInfo = new ShaderInfo(shaderZip);
                             // 先设置默认图标为空，后续异步加载
-                            shaderInfo.Icon = null;
-                            list.Add(shaderInfo);
-                        }
+                            Icon = null
+                        }));
                     }
                 }
                 catch (Exception ex)

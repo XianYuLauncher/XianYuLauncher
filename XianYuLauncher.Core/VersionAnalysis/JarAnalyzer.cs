@@ -25,11 +25,11 @@ namespace XianYuLauncher.Core.VersionAnalysis
         {
             if (string.IsNullOrWhiteSpace(versionDirectory))
             {
-                throw new ArgumentException("versionDirectory cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionDirectory));
+                throw new ArgumentException("versionDirectory cannot be null, empty, or whitespace.", nameof(versionDirectory));
             }
             if (string.IsNullOrWhiteSpace(versionId))
             {
-                throw new ArgumentException("versionId cannot be null, empty or whitespace when analyzing Minecraft JAR versions.", nameof(versionId));
+                throw new ArgumentException("versionId cannot be null, empty, or whitespace.", nameof(versionId));
             }
 
             // 1. 尝试直接从 {id}/{id}.jar 读取
@@ -42,6 +42,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
             {
                 // 如果没有 JAR 文件，这可能是继承版本（如 Fabric）
                 // 此时我们应该返回 null，让调用者去处理继承逻辑
+                // 注意：这里返回 null 是预期的行为，调用者应该处理 null 的情况
                 return null;
             }
 

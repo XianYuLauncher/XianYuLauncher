@@ -141,7 +141,7 @@ public partial class VersionManagementViewModel
                     if (Directory.Exists(savesPath))
                     {
                         var mapFolders = Directory.GetDirectories(savesPath);
-                        foreach (var mapFolder in mapFolders)
+                        var mapInfos = mapFolders.Select(mapFolder =>
                         {
                             var mapInfo = new MapInfo(mapFolder);
                             mapInfo.Icon = null;
@@ -150,10 +150,15 @@ public partial class VersionManagementViewModel
                             // 注意：这将在后台线程启动，如果 LoadBasicInfoAsync 内部没有 Dispatcher 处理，
                             // 且对象被立即绑定到 UI，可能会有线程安全风险。
                             // 但由于此时对象尚未绑定，风险较小。
-                            _ = mapInfo.LoadBasicInfoAsync();
+                            // 添加简单的异常捕获以防万一
+                            _ = Task.Run(async () => 
+                            { 
+                                try { await mapInfo.LoadBasicInfoAsync(); } catch { } 
+                            });
                             
-                            list.Add(mapInfo);
-                        }
+                            return mapInfo;
+                        });
+                        list.AddRange(mapInfos);
                     }
                 }
                 catch (Exception ex)

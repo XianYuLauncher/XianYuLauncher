@@ -114,7 +114,10 @@ namespace XianYuLauncher.Core.VersionAnalysis
              {
                  // 检查下划线前面是否像版本号 (包含点)
                  string prefix = rawVersion.Substring(0, index);
-                 if (prefix.Contains('.') && char.IsDigit(prefix[0]))
+                 
+                 // 简单的验证：前缀应该是数字开头，并且包含点（例如 1.8.9, 1.12.2）
+                 // 避免误判诸如 "My_Version_1.0" 这样的字符串
+                 if (char.IsDigit(prefix[0]) && (prefix.Contains(".") || prefix.All(c => char.IsDigit(c) || c == '.')))
                  {
                      return rawVersion.Substring(index + 1);
                  }

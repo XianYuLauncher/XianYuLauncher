@@ -153,8 +153,8 @@ public class VersionInfoService : IVersionInfoService
         // 确保这些精准分析的数据被持久化，下次可以直接读 cfg 变快
         // 仅在分析结果具有有效版本信息，或不存在旧配置时，才写入配置文件，避免用不完整数据覆盖已有配置
         var hasMeaningfulAnalysis =
-            !(string.Equals(result.MinecraftVersion, "Unknown", StringComparison.OrdinalIgnoreCase)
-              && string.Equals(result.ModLoaderType, "vanilla", StringComparison.OrdinalIgnoreCase));
+            !(result.MinecraftVersion == "Unknown"
+              && result.ModLoaderType == "vanilla");
         if (legacyConfig == null || hasMeaningfulAnalysis)
         {
             await SaveConfigAsync(versionDirectory, result);
@@ -248,7 +248,6 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <returns>版本配置信息，如果读取失败则返回null</returns>
-        [Obsolete("Use ReadXianYuLConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
         private VersionConfig ReadXianYuLConfig(string versionDirectory)
         {
             try
@@ -441,7 +440,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <returns>版本配置信息，如果读取失败则返回null</returns>
-        [Obsolete("Use ReadPCL2ConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
+
         private VersionConfig ReadPCL2Config(string versionDirectory)
         {
             try
@@ -672,7 +671,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <param name="config">版本配置信息</param>
-        [Obsolete("Use CreateOrUpdateXianYuLConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
+
         private void CreateOrUpdateXianYuLConfig(string versionDirectory, VersionConfig config)
         {
             try
