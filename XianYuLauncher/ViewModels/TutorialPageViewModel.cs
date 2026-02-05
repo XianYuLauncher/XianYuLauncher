@@ -762,76 +762,77 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 IsLoggingIn = true;
-                LoginStatus = "TutorialPage_LoginStatus_GettingCode".GetLocalized();
-
-                // 获取设备代码
-                var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
-                if (deviceCodeResponse == null)
+                
+                // 1. 询问用户选择登录方式
+                var selectionDialog = new ContentDialog
                 {
-                    await ShowLoginErrorDialogAsync("获取登录代码失败");
+                    Title = "选择登录方式",
+                    Content = new StackPanel
+                    {
+                        Children =
+                        {
+                            new TextBlock { Text = "请选择您喜欢的登录方式：", Margin = new Thickness(0,0,0,10) },
+                            new TextBlock { Text = "• 浏览器登录：打开系统默认浏览器进行登录 (推荐)", Opacity = 0.8, FontSize = 12 },
+                            new TextBlock { Text = "• 设备代码登录：获取代码后手动访问网页输入", Opacity = 0.8, FontSize = 12 }
+                        }
+                    },
+                    PrimaryButtonText = "浏览器登录",
+                    SecondaryButtonText = "设备代码登录",
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                };
+
+                var selectionResult = await selectionDialog.ShowAsync();
+
+                if (selectionResult == ContentDialogResult.None)
+                {
+                    IsLoggingIn = false;
                     return;
                 }
 
-                LoginStatus = string.Format("{0} {1}，{2}：{3}", 
-                    "TutorialPage_LoginStatus_VisitUrl".GetLocalized(), 
-                    deviceCodeResponse.VerificationUri, 
-                    "TutorialPage_LoginStatus_EnterCode".GetLocalized(), 
-                    deviceCodeResponse.UserCode);
-
-                // 自动打开浏览器
-                var uri = new Uri(deviceCodeResponse.VerificationUri);
-                await Windows.System.Launcher.LaunchUriAsync(uri);
-
-                // 复制8位ID到剪贴板
-                var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                dataPackage.SetText(deviceCodeResponse.UserCode);
-                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
-
-                // 完成登录
-                var result = await _microsoftAuthService.CompleteMicrosoftLoginAsync(
-                    deviceCodeResponse.DeviceCode,
-                    deviceCodeResponse.Interval,
-                    deviceCodeResponse.ExpiresIn);
-
-                if (result.Success)
+                if (selectionResult == ContentDialogResult.Primary)
                 {
-                    // 创建微软角色
-                    var microsoftProfile = new MinecraftProfile
-                    {
-                        Id = result.Uuid,
-                        Name = result.Username,
-                        AccessToken = result.AccessToken,
-                        RefreshToken = result.RefreshToken,
-                        TokenType = result.TokenType,
-                        ExpiresIn = result.ExpiresIn,
-                        IssueInstant = DateTime.Parse(result.IssueInstant),
-                        NotAfter = DateTime.Parse(result.NotAfter),
-                        Roles = result.Roles,
-                        IsOffline = false
-                    };
-
-                    // 保存到临时变量，等待点击完成按钮时添加
-                    _pendingMicrosoftProfile = microsoftProfile;
-
-                    LoginStatus = "TutorialPage_LoginStatus_Success".GetLocalized();
-                    ProfileName = result.Username;
-                    
-                    // 延迟一段时间后再次触发，确保角色已经成功添加
-                    await Task.Delay(500);
-                    OnPropertyChanged(nameof(ProfileName));
+                    // === 浏览器登录流程 ===
+                    LoginStatus = "正在等待浏览器登录...";
+                    var result = await _microsoftAuthService.LoginWithBrowserAsync();
+                    await HandleLoginResultAsync(result);
                 }
                 else
                 {
-                    // 检查是否是账户没有购买Minecraft的错误
-                    if (result.ErrorMessage.Contains("该账号没有购买Minecraft"))
+                    LoginStatus = "TutorialPage_LoginStatus_GettingCode".GetLocalized();
+
+                    // 获取设备代码
+                    var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
+                    if (deviceCodeResponse == null)
                     {
-                        // 显示购买提示弹窗
-                        await ShowMinecraftPurchaseDialogAsync();
+                        await ShowLoginErrorDialogAsync("获取登录代码失败");
+                        return;
                     }
-                    else
-                    {
-                        await ShowLoginErrorDialogAsync(result.ErrorMessage);
-                    }
+
+                    LoginStatus = string.Format("{0} {1}，{2}：{3}", 
+                        "TutorialPage_LoginStatus_VisitUrl".GetLocalized(), 
+                        deviceCodeResponse.VerificationUri, 
+                        "TutorialPage_LoginStatus_EnterCode".GetLocalized(), 
+                        deviceCodeResponse.UserCode);
+
+                    // 自动打开浏览器
+                    var uri = new Uri(deviceCodeResponse.VerificationUri);
+                    await Windows.System.Launcher.LaunchUriAsync(uri);
+
+                    // 复制8位ID到剪贴板
+                    var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    dataPackage.SetText(deviceCodeResponse.UserCode);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+
+                    // 完成登录
+                    var result = await _microsoftAuthService.CompleteMicrosoftLoginAsync(
+                        deviceCodeResponse.DeviceCode,
+                        deviceCodeResponse.Interval,
+                        deviceCodeResponse.ExpiresIn);
+
+                    await HandleLoginResultAsync(result);
                 }
             }
             catch (Exception ex)
@@ -841,6 +842,50 @@ namespace XianYuLauncher.ViewModels
             finally
             {
                 IsLoggingIn = false;
+            }
+        }
+
+        private async Task HandleLoginResultAsync(MicrosoftAuthService.LoginResult result)
+        {
+            if (result.Success)
+            {
+                // 创建微软角色
+                var microsoftProfile = new MinecraftProfile
+                {
+                    Id = result.Uuid,
+                    Name = result.Username,
+                    AccessToken = result.AccessToken,
+                    RefreshToken = result.RefreshToken,
+                    TokenType = result.TokenType,
+                    ExpiresIn = result.ExpiresIn,
+                    IssueInstant = DateTime.Parse(result.IssueInstant),
+                    NotAfter = DateTime.Parse(result.NotAfter),
+                    Roles = result.Roles,
+                    IsOffline = false
+                };
+
+                // 保存到临时变量，等待点击完成按钮时添加
+                _pendingMicrosoftProfile = microsoftProfile;
+
+                LoginStatus = "TutorialPage_LoginStatus_Success".GetLocalized();
+                ProfileName = result.Username;
+                
+                // 延迟一段时间后再次触发，确保角色已经成功添加
+                await Task.Delay(500);
+                OnPropertyChanged(nameof(ProfileName));
+            }
+            else
+            {
+                // 检查是否是账户没有购买Minecraft的错误
+                if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买Minecraft"))
+                {
+                    // 显示购买提示弹窗
+                    await ShowMinecraftPurchaseDialogAsync();
+                }
+                else
+                {
+                    await ShowLoginErrorDialogAsync(result.ErrorMessage ?? "未知错误");
+                }
             }
         }
 
