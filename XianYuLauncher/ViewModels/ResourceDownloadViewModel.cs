@@ -2352,7 +2352,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     curseForgeTotalHits = cachedData.TotalHits;
                     System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
                 }
-                else
+                else if (SelectedLoader != "legacy-fabric")
                 {
                     try
                     {
@@ -2672,33 +2672,43 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 try
                 {
                     // 映射加载器类型
-                    int? modLoaderType = SelectedLoader switch
+                    // 特别注意：Legacy Fabric 不被 CurseForge 支持，如果选中则必须跳过 CurseForge 搜索
+                    if (SelectedLoader == "legacy-fabric")
                     {
-                        "forge" => 1,
-                        "fabric" => 4,
-                        "quilt" => 5,
-                        "neoforge" => 6,
-                        _ => null
-                    };
-                    
-                    var curseForgeResult = await _curseForgeService.SearchModsAsync(
-                        searchFilter: searchKeyword,
-                        gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
-                        modLoaderType: modLoaderType,
-                        index: _curseForgeModOffset,
-                        pageSize: _modPageSize
-                    );
-                    
-                    // 转换CurseForge结果为ModrinthProject格式
-                    foreach (var curseForgeMod in curseForgeResult.Data)
-                    {
-                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                        curseForgeMods.Add(convertedMod);
+                        // 显式跳过CurseForge
+                        curseForgeTotalHits = 0;
                     }
-                    
-                    _curseForgeModOffset += curseForgeResult.Data.Count;
-                    curseForgeTotalHits = _curseForgeModOffset; // 使用累计数量作为总数
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeResult.Data.Count} 个Mod，当前offset: {_curseForgeModOffset}");
+                    else
+                    {
+                        int? modLoaderType = SelectedLoader switch
+                        {
+                            "forge" => 1,
+                            "fabric" => 4,
+                            "quilt" => 5,
+                            "neoforge" => 6,
+                            _ => null
+                        };
+                        
+                        var curseForgeResult = await _curseForgeService.SearchModsAsync(
+                            searchFilter: searchKeyword,
+                            gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
+                            modLoaderType: modLoaderType,
+                            index: _curseForgeModOffset,
+                            pageSize: _modPageSize
+                        );
+                        
+                        // 转换CurseForge结果为ModrinthProject格式
+                        foreach (var curseForgeMod in curseForgeResult.Data)
+                        {
+                            var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                            curseForgeMods.Add(convertedMod);
+                        }
+                        
+                        _curseForgeModOffset += curseForgeResult.Data.Count;
+                        curseForgeTotalHits = _curseForgeModOffset; // 使用累计数量作为总数
+                        
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeResult.Data.Count} 个Mod，当前offset: {_curseForgeModOffset}");
+                    }
                     
                     // 追加到缓存
                     if (curseForgeMods.Count > 0)

@@ -513,7 +513,8 @@
                                         <ComboBoxItem Content="Fabric" Tag="fabric" />
                                         <ComboBoxItem Content="Forge" Tag="forge" />
                                         <ComboBoxItem Content="Quilt" Tag="quilt" />
-                                        <ComboBoxItem Content="NeoForge" Tag="neoforge" />
+                                        <ComboBoxItem Content="Bolt" Tag="bolt" Visibility="Collapsed"/>
+                                        <ComboBoxItem Content="Legacy Fabric" Tag="legacy-fabric" />
                                     </ComboBox>
 
                                     <!-- Version Filter -->

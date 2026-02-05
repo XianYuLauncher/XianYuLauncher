@@ -35,6 +35,9 @@ namespace XianYuLauncher.Core.VersionAnalysis.Models
         [JsonProperty("name")]
         public string Name { get; set; }
 
+        [JsonProperty("url")]
+        public string Url { get; set; }
+
         // 其他字段按需添加，目前只用 Name 进行特征识别
     }
 
