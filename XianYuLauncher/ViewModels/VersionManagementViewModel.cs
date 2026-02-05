@@ -1659,7 +1659,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             if (primaryLoader != null)
             {
-                config.ModLoaderType = primaryLoader.LoaderType;
+                config.ModLoaderType = primaryLoader.LoaderType?.ToLowerInvariant();
                 config.ModLoaderVersion = primaryLoader.SelectedVersion ?? string.Empty;
             }
             else

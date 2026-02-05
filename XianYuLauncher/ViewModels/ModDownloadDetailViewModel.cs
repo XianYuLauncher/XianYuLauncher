@@ -2392,11 +2392,8 @@ namespace XianYuLauncher.ViewModels
                         }
                         else
                         {
-                            // 尝试直接匹配和格式化后匹配
-                            isCompatible = supportedLoaders.Contains(loaderType) || 
-                                           supportedLoaders.Contains(formattedLoaderType) ||
-                                           supportedLoaders.Contains(loaderType.ToLower()) ||
-                                           supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
+                            // 使用不区分大小写的比较来检查加载器兼容性
+                            isCompatible = supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
                         }
                     }
                     else
@@ -2512,19 +2509,11 @@ namespace XianYuLauncher.ViewModels
                         string formattedLoaderType = !string.IsNullOrEmpty(loaderType) ? char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower() : loaderType;
 
                         // 特别处理 LegacyFabric: 需要匹配 "LegacyFabric" 或 "legacy-fabric" (Modrinth ID)
-                        if (loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                        {
-                            isCompatible = supportedLoaders.Any(l => 
-                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
-                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
-                        }
-                        else
-                        {
-                             isCompatible = supportedLoaders.Contains(loaderType) || 
-                                            supportedLoaders.Contains(formattedLoaderType) ||  
-                                            supportedLoaders.Contains(loaderType.ToLower()) || 
-                                            supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
-                        }
+                        isCompatible = loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase)
+                            ? supportedLoaders.Any(l =>
+                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) ||
+                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            : supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
                     }
                     else
                     {

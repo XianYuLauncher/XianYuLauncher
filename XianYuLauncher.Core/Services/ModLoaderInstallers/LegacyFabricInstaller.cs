@@ -370,9 +370,9 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
                     string artifactId = parts[1];
                     string version = parts[2];
                     
-                    // Legacy Fabric might use a different meta, but let's default to fabric maven for now
-                    // as many libs are shared. If specific legacy fabric libs fail, we might need to adjust this.
-                    // Legacy fabric repo: https://repo.legacyfabric.net/repository/legacyfabric/
+                    // Default to Fabric Maven; override for known special cases such as Legacy Fabric
+                    // (https://repo.legacyfabric.net/repository/legacyfabric/) and core Minecraft libraries.
+                    // This mirrors the repository selection logic below based on groupId and explicit library.Url.
                     string baseUrl = "https://maven.fabricmc.net/";
                     if (!string.IsNullOrEmpty(library.Url))
                     {
