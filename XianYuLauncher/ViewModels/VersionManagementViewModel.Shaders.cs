@@ -71,9 +71,9 @@ public partial class VersionManagementViewModel
     /// <summary>
         /// 仅加载光影列表，不加载图标
         /// </summary>
-        private async Task LoadShadersListOnlyAsync()
+        private async Task LoadShadersListOnlyAsync(CancellationToken cancellationToken = default)
         {
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
             {
                 return;
             }
@@ -117,11 +117,16 @@ public partial class VersionManagementViewModel
 
             if (_isPageReady)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(FilterShaders);
+                // 使用 UI 线程安全调度，并再次检查 _isPageReady
+                App.MainWindow.DispatcherQueue.TryEnqueue(() => 
+                {
+                    if (_isPageReady)
+                    {
+                        FilterShaders();
+                    }
+                });
             }
         }
-
-    private async Task LoadShadersAsync() => await LoadShadersListOnlyAsync();
 
     private async Task OpenShaderFolderAsync()
     {

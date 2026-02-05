@@ -21,7 +21,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
             _logger = logger;
         }
 
-        public async Task<string> GetMinecraftVersionFromJarAsync(string versionDirectory, string versionId)
+        public async Task<string?> GetMinecraftVersionFromJarAsync(string versionDirectory, string versionId)
         {
             if (string.IsNullOrWhiteSpace(versionDirectory))
             {

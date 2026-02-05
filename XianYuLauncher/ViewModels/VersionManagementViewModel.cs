@@ -1071,8 +1071,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 加载版本设置
     /// </summary>
-    private async Task LoadSettingsAsync()
+    private async Task LoadSettingsAsync(CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested) return;
         await LoadSettingsFastAsync();
     }
     
@@ -1867,15 +1868,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 // 并发执行所有加载任务，不再等待 Settings 和 Overview
                 // 确保 IsLoading = false 尽快执行，消除 UI 停顿
-                _ = LoadSettingsAsync();
-                _ = LoadOverviewDataAsync();
-                _ = LoadModsListOnlyAsync();
-                _ = LoadShadersListOnlyAsync();
-                _ = LoadResourcePacksListOnlyAsync();
-                _ = LoadMapsListOnlyAsync();
-                _ = LoadScreenshotsAsync();
-                _ = LoadSavesAsync();
-                _ = LoadServersAsync();
+                // 注意：这里我们使用传入的 cancellationToken 参数，而不是重新声明一个局部变量
+                // var cancellationToken = _pageCancellationTokenSource.Token; // 删除此行，解决 CS0136 错误
+                
+                _ = LoadSettingsAsync(cancellationToken);
+                _ = LoadOverviewDataAsync(cancellationToken);
+                _ = LoadModsListOnlyAsync(cancellationToken);
+                _ = LoadShadersListOnlyAsync(cancellationToken);
+                _ = LoadResourcePacksListOnlyAsync(cancellationToken);
+                _ = LoadMapsListOnlyAsync(cancellationToken);
+                _ = LoadScreenshotsAsync(cancellationToken);
+                _ = LoadSavesAsync(cancellationToken);
+                _ = LoadServersAsync(cancellationToken);
                 
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
@@ -1920,6 +1924,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
+                    if (!_isPageReady) return;
+
                     FilterMods();
                     FilterShaders();
                     FilterResourcePacks();
@@ -2041,9 +2047,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 加载概览统计数据
         /// </summary>
-        private async Task LoadOverviewDataAsync()
+        private async Task LoadOverviewDataAsync(CancellationToken cancellationToken = default)
         {
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
                 return;
             
             try
@@ -2070,10 +2076,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 加载存档列表
         /// </summary>
-        private async Task LoadSavesAsync()
+        private async Task LoadSavesAsync(CancellationToken cancellationToken = default)
         {
             
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
             {
                 return;
             }

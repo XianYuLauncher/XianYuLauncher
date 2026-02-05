@@ -802,8 +802,10 @@ public class MicrosoftAuthService
             
             // 保存原始响应内容
             string rawResponse = await response.Content.ReadAsStringAsync();
-            // 使用 Debug 级别记录响应内容，便于排查游戏拥有情况验证问题，同时避免在生产环境产生过多日志
-            Log.Debug("Entitlements API raw response: {RawResponse}", rawResponse);
+            // 使用 Debug 级别记录响应内容，便于排查游戏拥有情况验证问题
+            // Log.Debug("Entitlements API raw response: {RawResponse}", rawResponse);
+            // 修正：Reviewer建议在生产环境也需要这些信息，升级为 Information
+            Log.Information("Entitlements API raw response: {RawResponse}", rawResponse);
             
             // 不使用EnsureSuccessStatusCode，避免丢失响应内容
             if (!response.IsSuccessStatusCode)

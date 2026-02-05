@@ -1989,9 +1989,9 @@ public partial class VersionManagementViewModel
         /// <summary>
         /// 仅加载mod列表，不加载图标
         /// </summary>
-        private async Task LoadModsListOnlyAsync()
+        private async Task LoadModsListOnlyAsync(CancellationToken cancellationToken = default)
         {
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
             {
                 return;
             }

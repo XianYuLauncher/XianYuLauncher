@@ -71,9 +71,9 @@ public partial class VersionManagementViewModel
     /// <summary>
         /// 仅加载资源包列表，不加载图标
         /// </summary>
-        private async Task LoadResourcePacksListOnlyAsync()
+        private async Task LoadResourcePacksListOnlyAsync(CancellationToken cancellationToken = default)
         {
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
             {
                 return;
             }

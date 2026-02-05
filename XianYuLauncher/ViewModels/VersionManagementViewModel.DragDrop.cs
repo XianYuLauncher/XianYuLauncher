@@ -229,7 +229,7 @@ public partial class VersionManagementViewModel
                 await LoadModsAsync();
                 break;
             case "shaderpacks":
-                await LoadShadersAsync();
+                await LoadShadersListOnlyAsync();
                 break;
             case "resourcepacks":
                 await LoadResourcePacksAsync();

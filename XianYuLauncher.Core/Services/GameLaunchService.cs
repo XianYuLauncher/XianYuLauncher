@@ -104,7 +104,7 @@ public class GameLaunchService : IGameLaunchService
             // 5. 读取版本信息 (使用 MinecraftVersionService 以支持继承和深度分析)
             // 原有代码: string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
             // 原有代码: var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
-            var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(versionName, null, allowNetwork: false);
+            var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(versionName, null, allowNetwork: false).ConfigureAwait(false);
             
             if (versionInfo == null)
             {

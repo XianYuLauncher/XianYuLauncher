@@ -94,7 +94,7 @@ public class VersionInfoService : IVersionInfoService
         if (string.IsNullOrEmpty(mcVersion) && manifest != null && string.IsNullOrEmpty(manifest.InheritsFrom))
         {
             // 对于 Vanilla JSON，ID 通常就是版本号
-            mcVersion = manifest.Id;
+            mcVersion = manifest.Id ?? "Unknown";
             _logger.LogWarning($"[VersionInfoService] 无法通过常规手段确定版本，回退使用 JSON ID: {mcVersion}");
         }
 
@@ -134,7 +134,7 @@ public class VersionInfoService : IVersionInfoService
             {
                 result.MinecraftVersion = legacyConfig.MinecraftVersion;
             }
-            if (result.ModLoaderType == "vanilla" 
+            if ((string.IsNullOrEmpty(result.ModLoaderType) || result.ModLoaderType == "vanilla")
                 && !string.IsNullOrEmpty(legacyConfig.ModLoaderType) 
                 && legacyConfig.ModLoaderType != "vanilla")
             {
@@ -173,6 +173,22 @@ public class VersionInfoService : IVersionInfoService
     {
         // 简单实现，不再推荐使用
         return new VersionConfig { CreatedAt = DateTime.Now };
+    }
+
+    /// <inheritdoc/>
+    [Obsolete("Use GetFullVersionInfoAsync instead.")]
+    public VersionConfig GetFullVersionInfo(string versionId, string versionDirectory)
+    {
+        return GetFullVersionInfoAsync(versionId, versionDirectory).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc/>
+    [Obsolete("Use GetFullVersionInfoAsync or ExtractVersionConfigFromName instead.")]
+    public VersionConfig GetVersionConfigFromDirectory(string versionDirectory)
+    {
+        // 只能尝试从目录名推断 ID，不太准确
+        string versionId = new DirectoryInfo(versionDirectory).Name;
+        return GetFullVersionInfoAsync(versionId, versionDirectory).GetAwaiter().GetResult();
     }
 
     private async Task<VersionConfig?> GetLegacyConfigAsync(string dir)
@@ -248,6 +264,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <returns>版本配置信息，如果读取失败则返回null</returns>
+        [Obsolete("Use ReadXianYuLConfigAsync instead.")]
         private VersionConfig ReadXianYuLConfig(string versionDirectory)
         {
             try
@@ -355,7 +372,7 @@ public class VersionInfoService : IVersionInfoService
                 
                 // 解析INI格式配置
                 Dictionary<string, string> pclConfig = ParseIniConfig(configContent);
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共{ pclConfig.Count}个键值对");
+                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共 {pclConfig.Count} 个键值对");
                 
                 // 从VersionOriginal获取MC版本号
                 if (!pclConfig.TryGetValue("VersionOriginal", out var minecraftVersion) || string.IsNullOrEmpty(minecraftVersion))
@@ -463,7 +480,7 @@ public class VersionInfoService : IVersionInfoService
                 
                 // 解析INI格式配置
                 Dictionary<string, string> pclConfig = ParseIniConfig(configContent);
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共{ pclConfig.Count}个键值对");
+                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共 {pclConfig.Count} 个键值对");
                 
                 // 从VersionOriginal获取MC版本号
                 if (!pclConfig.TryGetValue("VersionOriginal", out var minecraftVersion) || string.IsNullOrEmpty(minecraftVersion))
@@ -610,9 +627,13 @@ public class VersionInfoService : IVersionInfoService
                         var existingJson = await File.ReadAllTextAsync(configPath);
                         existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingJson);
                     }
-                    catch
+                    catch (IOException ioEx)
                     {
-                        // 读取失败，忽略
+                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
                     }
                 }
                 
@@ -695,9 +716,13 @@ public class VersionInfoService : IVersionInfoService
                         var existingJson = File.ReadAllText(configPath);
                         existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingJson);
                     }
-                    catch
+                    catch (IOException ioEx)
                     {
-                        // 读取失败，忽略
+                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
                     }
                 }
                 

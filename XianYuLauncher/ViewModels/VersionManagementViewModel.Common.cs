@@ -121,9 +121,9 @@ public partial class VersionManagementViewModel
     /// <summary>
     /// 加载截图列表
     /// </summary>
-    private async Task LoadScreenshotsAsync()
+    private async Task LoadScreenshotsAsync(CancellationToken cancellationToken = default)
     {
-        if (SelectedVersion == null)
+        if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
         {
             return;
         }

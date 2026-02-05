@@ -124,11 +124,11 @@ public partial class VersionManagementViewModel
         /// <summary>
         /// 仅加载地图列表，不加载图标
         /// </summary>
-        private async Task LoadMapsListOnlyAsync()
+        private async Task LoadMapsListOnlyAsync(CancellationToken cancellationToken = default)
         {
             System.Diagnostics.Debug.WriteLine("[LoadMapsList] 开始加载地图列表");
             
-            if (SelectedVersion == null) { return; }
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested) { return; }
 
             var savesPath = GetVersionSpecificPath("saves");
             
@@ -147,21 +147,14 @@ public partial class VersionManagementViewModel
                             mapInfo.Icon = null;
                             
                             // 启动异步任务加载基本信息
-                            // 注意：这将在后台线程启动，如果 LoadBasicInfoAsync 内部没有 Dispatcher 处理，
-                            // 且对象被立即绑定到 UI，可能会有线程安全风险。
-                            // 但由于此时对象尚未绑定，风险较小。
-                            // 添加简单的异常捕获以防万一
-                            _ = Task.Run(async () =>
+                            // 使用 ContinueWith 处理异常，避免嵌套 Task.Run
+                            _ = mapInfo.LoadBasicInfoAsync().ContinueWith(t =>
                             {
-                                try
+                                if (t.IsFaulted && t.Exception is not null)
                                 {
-                                    await mapInfo.LoadBasicInfoAsync();
+                                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] LoadBasicInfoAsync error: {t.Exception}");
                                 }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] LoadBasicInfoAsync error: {ex}");
-                                }
-                            });
+                            }, TaskContinuationOptions.OnlyOnFaulted);
                             
                             return mapInfo;
                         });
