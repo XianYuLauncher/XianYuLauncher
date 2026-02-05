@@ -188,6 +188,21 @@ public interface IDownloadSource
     string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion);
     
     /// <summary>
+    /// 获取Legacy Fabric版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>Legacy Fabric版本列表URL</returns>
+    string GetLegacyFabricVersionsUrl(string minecraftVersion);
+    
+    /// <summary>
+    /// 获取Legacy Fabric完整配置URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="modLoaderVersion">Legacy Fabric版本号</param>
+    /// <returns>Legacy Fabric完整配置URL</returns>
+    string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion);
+    
+    /// <summary>
     /// 获取依赖库下载URL
     /// </summary>
     /// <param name="libraryName">库名称</param>

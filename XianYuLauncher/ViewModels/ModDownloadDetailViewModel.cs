@@ -958,7 +958,23 @@ namespace XianYuLauncher.ViewModels
                         {
                             if (!loaderNameCache.ContainsKey(loader))
                             {
-                                loaderNameCache[loader] = char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
+                                if (loader.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
+                                    loader.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                                {
+                                     loaderNameCache[loader] = "LegacyFabric";
+                                }
+                                else if (loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
+                                {
+                                     loaderNameCache[loader] = "NeoForge";
+                                }
+                                else if (loader.Length > 0)
+                                {
+                                    loaderNameCache[loader] = char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
+                                }
+                                else
+                                {
+                                    loaderNameCache[loader] = loader;
+                                }
                             }
                         }
                         
@@ -1284,10 +1300,21 @@ namespace XianYuLauncher.ViewModels
                     {
                         var lower = gv.ToLower();
                         // 判断是否为加载器
-                        if (lower == "forge" || lower == "neoforge" || lower == "fabric" || lower == "quilt" || lower == "optifine" || lower == "iris")
+                        if (lower == "forge" || lower == "neoforge" || lower == "fabric" || lower == "quilt" || lower == "optifine" || lower == "iris" || lower == "legacyfabric")
                         {
-                            // 首字母大写
-                            loaders.Add(char.ToUpper(gv[0]) + gv.Substring(1).ToLower());
+                            if (lower == "neoforge")
+                            {
+                                loaders.Add("NeoForge");
+                            }
+                            else if (lower == "legacyfabric")
+                            {
+                                loaders.Add("LegacyFabric");
+                            }
+                            else
+                            {
+                                // 首字母大写
+                                loaders.Add(char.ToUpper(gv[0]) + gv.Substring(1).ToLower());
+                            }
                         }
                         else
                         {
@@ -2248,8 +2275,9 @@ namespace XianYuLauncher.ViewModels
                     var versionInfoService = App.GetService<IVersionInfoService>();
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
                     
-                    // 获取完整的版本配置信息
-                    VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(installedVersion, versionDir);
+                    // 使用内置的 Fast Path (preferCache = true)
+                    // 这将优先读取 XianYuL.cfg，如果不存在或无效，Service 层会自动回退到深度扫描
+                    VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(installedVersion, versionDir, preferCache: true);
                     
                     // 1. 优先从配置中获取游戏版本号
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
@@ -2280,9 +2308,21 @@ namespace XianYuLauncher.ViewModels
                     // 3. 解析加载器类型
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
                     {
-                        // 首字母大写处理
                         string modLoaderTypeFromConfig = versionConfig.ModLoaderType;
-                        loaderType = char.ToUpper(modLoaderTypeFromConfig[0]) + modLoaderTypeFromConfig.Substring(1).ToLower();
+                        // 特殊处理 LegacyFabric 和 NeoForge，保持其原有的大小写格式
+                        if (modLoaderTypeFromConfig.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "LegacyFabric";
+                        }
+                        else if (modLoaderTypeFromConfig.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            loaderType = "NeoForge";
+                        }
+                        else
+                        {
+                            // 首字母大写处理
+                            loaderType = char.ToUpper(modLoaderTypeFromConfig[0]) + modLoaderTypeFromConfig.Substring(1).ToLower();
+                        }
                     }
                     else
                     {
@@ -2328,9 +2368,33 @@ namespace XianYuLauncher.ViewModels
                     if (supportedLoaders != null && supportedLoaders.Count > 0)
                     {
                         // 检查已安装版本的加载器是否在Mod支持的加载器列表中
-                        // 注意：需要处理大小写，这里统一转为首字母大写进行比较
-                        var formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
-                        isCompatible = supportedLoaders.Contains(formattedLoaderType);
+                        // 注意：需要处理大小写
+                        string formattedLoaderType;
+                        if (loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                        {
+                            formattedLoaderType = "LegacyFabric";
+                        }
+                        else if (loaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
+                        {
+                            formattedLoaderType = "NeoForge";
+                        }
+                        else
+                        {
+                            formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
+                        }
+                        
+                        // 特别处理 LegacyFabric: 需要匹配 "LegacyFabric" 或 "legacy-fabric" (Modrinth ID)
+                        if (loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                        {
+                            isCompatible = supportedLoaders.Any(l => 
+                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
+                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
+                        }
+                        else
+                        {
+                            // 使用不区分大小写的比较来检查加载器兼容性
+                            isCompatible = supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
+                        }
                     }
                     else
                     {
@@ -2442,7 +2506,14 @@ namespace XianYuLauncher.ViewModels
                     if (supportedLoaders != null && supportedLoaders.Count > 0)
                     {
                         // 检查加载器是否匹配
-                        isCompatible = supportedLoaders.Contains(loaderType);
+                        string formattedLoaderType = !string.IsNullOrEmpty(loaderType) ? char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower() : loaderType;
+
+                        // 特别处理 LegacyFabric: 需要匹配 "LegacyFabric" 或 "legacy-fabric" (Modrinth ID)
+                        isCompatible = loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase)
+                            ? supportedLoaders.Any(l =>
+                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) ||
+                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            : supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
                     }
                     else
                     {

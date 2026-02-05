@@ -166,6 +166,12 @@ public class McimDownloadSource : IDownloadSource
     
     public string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion)
         => $"https://meta.quiltmc.org/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json";
+
+    public string GetLegacyFabricVersionsUrl(string minecraftVersion)
+        => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}";
+
+    public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
+        => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
     
     public string GetLibraryUrl(string libraryName, string originalUrl = null) => originalUrl ?? string.Empty;
     

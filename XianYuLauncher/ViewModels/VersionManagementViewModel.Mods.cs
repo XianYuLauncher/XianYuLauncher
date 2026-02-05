@@ -801,12 +801,28 @@ public partial class VersionManagementViewModel
                         // 获取ModLoader类型
                         if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
                         {
-                            modLoader = versionConfig.ModLoaderType.ToLower();
+                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "NeoForge";
+                            }
+                            else
+                            {
+                                modLoader = versionConfig.ModLoaderType.ToLower();
+                            }
                         }
                         else
                         {
                             // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
+                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
                             {
                                 modLoader = "fabric";
                             }
@@ -1279,12 +1295,28 @@ public partial class VersionManagementViewModel
                         // 获取ModLoader类型
                         if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
                         {
-                            modLoader = versionConfig.ModLoaderType.ToLower();
+                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "NeoForge";
+                            }
+                            else
+                            {
+                                modLoader = versionConfig.ModLoaderType.ToLower();
+                            }
                         }
                         else
                         {
                             // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
+                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
                             {
                                 modLoader = "fabric";
                             }
@@ -1930,12 +1962,28 @@ public partial class VersionManagementViewModel
                         // 获取ModLoader类型
                         if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
                         {
-                            modLoader = versionConfig.ModLoaderType.ToLower();
+                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "NeoForge";
+                            }
+                            else
+                            {
+                                modLoader = versionConfig.ModLoaderType.ToLower();
+                            }
                         }
                         else
                         {
                             // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
+                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                modLoader = "LegacyFabric";
+                            }
+                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
                             {
                                 modLoader = "fabric";
                             }

@@ -942,6 +942,10 @@ public sealed partial class VersionListPage : Page
                                         loaderName = "fabric-loader";
                                         loaderVersion = versionConfig.ModLoaderVersion ?? "";
                                         break;
+                                    case "legacyfabric":
+                                        loaderName = "LegacyFabric";
+                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
+                                        break;
                                     case "forge":
                                         loaderName = "forge";
                                         loaderVersion = versionConfig.ModLoaderVersion ?? "";

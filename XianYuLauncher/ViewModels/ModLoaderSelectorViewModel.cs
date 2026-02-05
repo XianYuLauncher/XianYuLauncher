@@ -21,6 +21,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly ForgeService _forgeService;
     private readonly OptifineService _optifineService;
     private readonly CleanroomService _cleanroomService;
+    private readonly LegacyFabricService _legacyFabricService;
     private readonly IDownloadTaskManager _downloadTaskManager;
 
     [ObservableProperty]
@@ -84,6 +85,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     [ObservableProperty]
     private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
+
+    [ObservableProperty]
+    private Dictionary<string, FabricLoaderVersion> _legacyFabricVersionMap = new();
     
     [ObservableProperty]
     private Dictionary<string, QuiltLoaderVersion> _quiltVersionMap = new();
@@ -179,6 +183,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _forgeService = App.GetService<ForgeService>();
         _optifineService = App.GetService<OptifineService>();
         _cleanroomService = App.GetService<CleanroomService>();
+        _legacyFabricService = App.GetService<LegacyFabricService>();
         _downloadTaskManager = App.GetService<IDownloadTaskManager>();
         
         // 订阅下载事件以更新弹窗进度
@@ -361,6 +366,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             var neoForgeItem = new ModLoaderItem("NeoForge");
             var quiltItem = new ModLoaderItem("Quilt");
             var optifineItem = new ModLoaderItem("Optifine");
+            var legacyFabricItem = new ModLoaderItem("LegacyFabric");
             
             // 为每个项添加PropertyChanged事件监听
             AddPropertyChangedHandler(forgeItem);
@@ -368,6 +374,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             AddPropertyChangedHandler(neoForgeItem);
             AddPropertyChangedHandler(quiltItem);
             AddPropertyChangedHandler(optifineItem);
+            AddPropertyChangedHandler(legacyFabricItem);
             
             // 添加到列表
             ModLoaderItems.Add(forgeItem);
@@ -384,11 +391,45 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 ModLoaderItems.Add(cleanroomItem);
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加Cleanroom选项（Minecraft {SelectedMinecraftVersion}）");
             }
+            
+            // Legacy Fabric 支持逻辑：大部分版本小于 1.14 (精确地说是 <= 1.13.2)
+            // 简单判断：major=1, minor<=13
+            if (IsLegacyFabricSupported(SelectedMinecraftVersion))
+            {
+                ModLoaderItems.Add(legacyFabricItem);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加LegacyFabric选项（Minecraft {SelectedMinecraftVersion}）");
+            }
         
         // 不默认选择任何ModLoader
         SelectedModLoaderItem = null;
     }
     
+    private bool IsLegacyFabricSupported(string minecraftVersion)
+    {
+        // 解析版本号 logic
+        // 格式通常是 "1.8.9", "1.12.2", "1.20.1" 等
+        try 
+        {
+            var parts = minecraftVersion.Split('.');
+            if (parts.Length >= 2 && int.TryParse(parts[0], out int major) && int.TryParse(parts[1], out int minor))
+            {
+                // Major 必须是 1
+                if (major != 1) return false;
+                
+                // Legacy Fabric 也就是 <= 1.13.2
+                // 但是它还特别支持了早在 1.3 的版本，所以我们只要判断 minor <= 13 即可
+                // 注意：1.14+ 就是标准 Fabric 了
+                return minor <= 13;
+            }
+        }
+        catch 
+        {
+            // 解析失败（比如 23w01a 快照），默认不支持
+            return false;
+        }
+        return false;
+    }
+
     /// <summary>
     /// 为ModLoaderItem添加PropertyChanged事件处理程序
     /// </summary>
@@ -510,6 +551,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     VersionName = $"{SelectedMinecraftVersion}-fabric";
                 }
                 break;
+            case "LegacyFabric":
+                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-legacyfabric-{SelectedModLoaderVersion}";
+                }
+                else
+                {
+                    VersionName = $"{SelectedMinecraftVersion}-legacyfabric";
+                }
+                break;
             case "NeoForge":
                 if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
                 {
@@ -614,6 +665,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 case "Fabric":
                     await LoadFabricVersionsAsync(modLoaderItem, cts.Token);
                     break;
+                case "LegacyFabric":
+                    await LoadLegacyFabricVersionsAsync(modLoaderItem, cts.Token);
+                    break;
                 case "NeoForge":
                     await LoadNeoForgeVersionsAsync(modLoaderItem, cts.Token);
                     break;
@@ -710,6 +764,43 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 从Legacy Fabric API获取实际的Legacy Fabric版本列表
+    /// </summary>
+    private async Task LoadLegacyFabricVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
+    {
+        try
+        {
+            List<FabricLoaderVersion> fabricVersions = await _legacyFabricService.GetLegacyFabricLoaderVersionsAsync(SelectedMinecraftVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // 将版本添加到对应mod loader的列表中，并保存映射关系
+            foreach (var version in fabricVersions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string displayVersion = version.Loader.Version;
+                modLoaderItem.Versions.Add(displayVersion);
+                // 使用独立的映射表，或者确保key唯一。这里使用专门的LegacyFabricVersionMap
+                LegacyFabricVersionMap[displayVersion] = version;
+            }
+            
+            // 如果有版本，默认选择第一个
+            if (modLoaderItem.Versions.Count > 0)
+            {
+                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 任务被取消，不处理
+        }
+        catch (Exception ex)
+        {
+            // Legacy Fabric 获取失败通常是因为该版本不支持，直接忽略错误不弹窗，只记录日志
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Legacy Fabric版本列表失败: {ex.Message}");
         }
     }
     

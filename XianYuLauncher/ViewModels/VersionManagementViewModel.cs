@@ -709,6 +709,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private int _windowHeight = 720;
 
     private readonly FabricService _fabricService;
+    private readonly LegacyFabricService _legacyFabricService;
     private readonly ForgeService _forgeService;
     private readonly NeoForgeService _neoForgeService;
     private readonly QuiltService _quiltService;
@@ -753,6 +754,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CurseForgeService curseForgeService, 
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
         FabricService fabricService,
+        LegacyFabricService legacyFabricService,
         ForgeService forgeService,
         NeoForgeService neoForgeService,
         QuiltService quiltService,
@@ -774,6 +776,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _curseForgeService = curseForgeService;
         _downloadSourceFactory = downloadSourceFactory;
         _fabricService = fabricService;
+        _legacyFabricService = legacyFabricService;
         _versionInfoService = versionInfoService;
         _forgeService = forgeService;
         _neoForgeService = neoForgeService;
@@ -958,40 +961,36 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         try
         {
-            string settingsFilePath = GetSettingsFilePath();
-            if (File.Exists(settingsFilePath))
-            {
-                // 如果配置文件存在，直接读取，非常快
-                string json = await File.ReadAllTextAsync(settingsFilePath);
-                var versionConfig = JsonSerializer.Deserialize<VersionConfig>(json);
+            // 使用新版 VersionInfoService 优先加载缓存 (preferCache=true)
+            // 如果缓存不存在，Service 会自动回退到深度扫描，确保尽可能显示数据
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path, preferCache: true);
                 
-                if (versionConfig != null)
-                {
-                    // 1. 更新 ViewModel 基础配置属性
-                    AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
-                    InitialHeapMemory = versionConfig.InitialHeapMemory;
-                    MaximumHeapMemory = versionConfig.MaximumHeapMemory;
-                    UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
-                    JavaPath = versionConfig.JavaPath;
-                    WindowWidth = versionConfig.WindowWidth;
-                    WindowHeight = versionConfig.WindowHeight;
+            if (versionConfig != null && versionConfig.MinecraftVersion != "Unknown")
+            {
+                // 1. 更新 ViewModel 基础配置属性
+                AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
+                InitialHeapMemory = versionConfig.InitialHeapMemory;
+                MaximumHeapMemory = versionConfig.MaximumHeapMemory;
+                UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
+                JavaPath = versionConfig.JavaPath;
+                WindowWidth = versionConfig.WindowWidth;
+                WindowHeight = versionConfig.WindowHeight;
                     
-                    // 更新统计数据
-                    LaunchCount = versionConfig.LaunchCount;
-                    TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
-                    LastLaunchTime = versionConfig.LastLaunchTime;
+                // 更新统计数据
+                LaunchCount = versionConfig.LaunchCount;
+                TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
+                LastLaunchTime = versionConfig.LastLaunchTime;
 
-                    // 2. 更新身份信息 (Loader & Version)
-                    var uiSettings = new VersionSettings 
-                    {
-                        MinecraftVersion = versionConfig.MinecraftVersion,
-                        ModLoaderType = versionConfig.ModLoaderType,
-                        ModLoaderVersion = versionConfig.ModLoaderVersion,
-                        OptifineVersion = versionConfig.OptifineVersion
-                    };
+                // 2. 更新身份信息 (Loader & Version)
+                var uiSettings = new VersionSettings 
+                {
+                    MinecraftVersion = versionConfig.MinecraftVersion,
+                    ModLoaderType = versionConfig.ModLoaderType,
+                    ModLoaderVersion = versionConfig.ModLoaderVersion,
+                    OptifineVersion = versionConfig.OptifineVersion
+                };
                     
-                    UpdateCurrentLoaderInfo(uiSettings);
-                }
+                UpdateCurrentLoaderInfo(uiSettings);
             }
             
             // 初始化可用加载器列表 (内部也会尝试读取缓存)
@@ -1095,6 +1094,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CurrentLoaderDisplayName = settings.ModLoaderType switch
         {
             "fabric" => "Fabric",
+            "legacyfabric" => "Legacy Fabric",
+            "LegacyFabric" => "Legacy Fabric",
             "forge" => "Forge",
             "neoforge" => "NeoForge",
             "quilt" => "Quilt",
@@ -1108,6 +1109,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CurrentLoaderIconUrl = settings.ModLoaderType switch
         {
             "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+            "legacyfabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+            "LegacyFabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
             "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
             "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
             "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
@@ -1117,6 +1120,33 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
     }
     
+    /// <summary>
+    /// 判断版本是否低于 1.14
+    /// </summary>
+    private bool IsVersionBelow1_14(string version)
+    {
+        if (string.IsNullOrEmpty(version)) return false;
+        
+        try 
+        {
+            var parts = version.Split('.');
+            if (parts.Length < 2) return false;
+            
+            int major = int.Parse(parts[0]);
+            int minor = int.Parse(parts[1]);
+            
+            if (major == 1 && minor < 14)
+            {
+                return true;
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// 初始化可用加载器列表
     /// </summary>
@@ -1177,6 +1207,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 LoaderType = "cleanroom",
                 IconUrl = "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
                 IsInstalled = IsLoaderInstalled("cleanroom")
+            });
+        }
+        
+        // 简单判断版本号，如果是1.13及以下，添加 Legacy Fabric
+        // 这里只是简单的字符串判断，更好的方式是解析版本号对象，但对于目前需求足够了
+        // 兼容: 1.13.2, 1.12.2, 1.8.9, 1.7.10 等
+        if (IsVersionBelow1_14(minecraftVersion))
+        {
+             AvailableLoaders.Add(new LoaderItemViewModel
+            {
+                Name = "Legacy Fabric",
+                LoaderType = "LegacyFabric",
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+                IsInstalled = IsLoaderInstalled("legacyfabric")
             });
         }
 
@@ -1319,7 +1363,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            StatusMessage = $"加载{loader.Name}版本列表失败：{ex.Message}";
+            // 对于Legacy Fabric，如果是版本未找到等错误，不显示状态消息（避免干扰用户）
+            if (loader.LoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Diagnostics.Debug.WriteLine($"加载{loader.Name}版本列表失败：{ex.Message}");
+            }
+            else
+            {
+                StatusMessage = $"加载{loader.Name}版本列表失败：{ex.Message}";
+            }
         }
         finally
         {
@@ -1337,6 +1389,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             var result = loaderType.ToLower() switch
             {
                 "fabric" => await GetFabricVersionsAsync(minecraftVersion),
+                "legacyfabric" => await GetLegacyFabricVersionsAsync(minecraftVersion),
                 "forge" => await GetForgeVersionsAsync(minecraftVersion),
                 "neoforge" => await GetNeoForgeVersionsAsync(minecraftVersion),
                 "quilt" => await GetQuiltVersionsAsync(minecraftVersion),
@@ -1357,6 +1410,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         var fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(minecraftVersion);
         var result = fabricVersions.Select(v => v.Loader.Version).ToList();
+        return result;
+    }
+
+    private async Task<List<string>> GetLegacyFabricVersionsAsync(string minecraftVersion)
+    {
+        var legacyFabricVersions = await _legacyFabricService.GetLegacyFabricLoaderVersionsAsync(minecraftVersion);
+        var result = legacyFabricVersions.Select(v => v.Loader.Version).ToList();
         return result;
     }
     
@@ -1599,7 +1659,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             if (primaryLoader != null)
             {
-                config.ModLoaderType = primaryLoader.LoaderType.ToLower();
+                config.ModLoaderType = primaryLoader.LoaderType?.ToLowerInvariant();
                 config.ModLoaderVersion = primaryLoader.SelectedVersion ?? string.Empty;
             }
             else

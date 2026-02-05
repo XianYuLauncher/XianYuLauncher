@@ -115,7 +115,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         
         var config = new VersionConfig
         {
-            ModLoaderType = ModLoaderType.ToLower(),
+            ModLoaderType = ModLoaderType,
             ModLoaderVersion = modLoaderVersion,
             MinecraftVersion = minecraftVersionId,
             OptifineVersion = optifineVersion,

@@ -301,4 +301,14 @@ public class OfficialDownloadSource : IDownloadSource
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Quilt {quiltVersion} 完整配置URL: {url}");
         return url;
     }
+
+    public string GetLegacyFabricVersionsUrl(string minecraftVersion)
+    {
+        return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}";
+    }
+
+    public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
+    {
+        return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+    }
 }

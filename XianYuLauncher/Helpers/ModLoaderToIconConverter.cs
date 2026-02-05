@@ -23,7 +23,9 @@ public class ModLoaderToIconConverter : IValueConverter
             switch (modLoaderName)
             {
                 case "Fabric":
-                    return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png";
+                    return "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png";
+                case "LegacyFabric":
+                    return "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png";
                 case "Forge":
                     return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
                 case "NeoForge":

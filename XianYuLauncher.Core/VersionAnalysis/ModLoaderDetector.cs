@@ -24,10 +24,22 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 return ("vanilla", string.Empty);
             }
 
-            // 1. Fabric
+            // 1. Fabric (and Legacy Fabric)
             var fabricLib = manifest.Libraries.FirstOrDefault(l => l.Name.StartsWith("net.fabricmc:fabric-loader"));
             if (fabricLib != null)
             {
+                // Check for Legacy Fabric via URL or Library Name in other libraries
+                // Legacy Fabric uses standard fabric-loader but includes other libraries from legacyfabric.net
+                var isLegacyFabric = manifest.Libraries.Any(l => 
+                    (l.Url != null && l.Url.Contains("legacyfabric.net")) || 
+                    l.Name.StartsWith("net.legacyfabric"));
+
+                if (isLegacyFabric)
+                {
+                     _logger?.LogInformation($"[ModLoaderDetector] 命中特征库 (Legacy Fabric detected via dependencies): {fabricLib.Name}");
+                     return ("LegacyFabric", ParseVersion(fabricLib.Name));
+                }
+
                 _logger?.LogInformation($"[ModLoaderDetector] 命中特征库 (Fabric): {fabricLib.Name}");
                 return ("fabric", ParseVersion(fabricLib.Name));
             }

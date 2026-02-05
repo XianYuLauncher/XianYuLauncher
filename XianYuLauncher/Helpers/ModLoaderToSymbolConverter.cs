@@ -14,6 +14,7 @@ public class ModLoaderToSymbolConverter : IValueConverter
                 case "forge":
                     return Symbol.List;
                 case "fabric":
+                case "legacyfabric":
                     return Symbol.Document;
                 case "neoforge":
                     return Symbol.Refresh;

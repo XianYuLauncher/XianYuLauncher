@@ -140,6 +140,7 @@ public partial class App : Application
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.NeoForgeInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.OptifineInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.CleanroomInstaller>();
+            services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.LegacyFabricInstaller>();
             services.AddSingleton<IModLoaderInstallerFactory, XianYuLauncher.Core.Services.ModLoaderInstallers.ModLoaderInstallerFactory>();
             
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>(sp =>
@@ -196,6 +197,18 @@ public partial class App : Application
                 var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
                 var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
                 return new FabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
+
+            // Legacy Fabric Service
+            services.AddHttpClient<LegacyFabricService>();
+            services.AddSingleton<LegacyFabricService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(LegacyFabricService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new LegacyFabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
             });
             
             // Quilt Service

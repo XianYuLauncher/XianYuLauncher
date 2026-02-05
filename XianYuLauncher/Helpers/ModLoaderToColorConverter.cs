@@ -16,6 +16,7 @@ public class ModLoaderToColorConverter : IValueConverter
                 case "forge":
                     return new SolidColorBrush(Colors.Orange);
                 case "fabric":
+                case "legacyfabric":
                     return new SolidColorBrush(Colors.Blue);
                 case "neoforge":
                     return new SolidColorBrush(Colors.Purple);

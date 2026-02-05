@@ -30,7 +30,7 @@ public class VersionInfoService : IVersionInfoService
     /// <summary>
     /// 标准实现：获取完整版本信息
     /// </summary>
-    public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory)
+    public async Task<VersionConfig> GetFullVersionInfoAsync(string versionId, string versionDirectory, bool preferCache = false)
     {
         if (string.IsNullOrWhiteSpace(versionId))
         {
@@ -39,6 +39,19 @@ public class VersionInfoService : IVersionInfoService
         if (string.IsNullOrWhiteSpace(versionDirectory))
         {
             throw new ArgumentException("versionDirectory cannot be null, empty or whitespace.", nameof(versionDirectory));
+        }
+
+        // Fast Path: 如果允许使用缓存，且缓存存在且有效，直接返回缓存
+        if (preferCache)
+        {
+            var cachedConfig = await GetLegacyConfigAsync(versionDirectory);
+            // 简单的有效性检查：必须要有MC版本号
+            if (cachedConfig != null && !string.IsNullOrEmpty(cachedConfig.MinecraftVersion) && cachedConfig.MinecraftVersion != "Unknown")
+            {
+                _logger.LogInformation($"[VersionInfoService] 命中缓存 (Fast Mode): {versionId}");
+                return cachedConfig;
+            }
+            _logger.LogInformation($"[VersionInfoService] 缓存未命中或无效，回退到深度扫描: {versionId}");
         }
 
         var result = new VersionConfig

@@ -341,4 +341,16 @@ public class BmclapiDownloadSource : IDownloadSource
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Quilt {quiltVersion} 完整配置URL: {url}");
         return url;
     }
+
+    public string GetLegacyFabricVersionsUrl(string minecraftVersion)
+    {
+        // BMCLAPI 暂不支持 Legacy Fabric，回退到官方源
+        return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}";
+    }
+
+    public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
+    {
+        // BMCLAPI 暂不支持 Legacy Fabric，回退到官方源
+        return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+    }
 }
