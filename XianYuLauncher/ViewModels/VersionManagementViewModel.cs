@@ -961,40 +961,36 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         try
         {
-            string settingsFilePath = GetSettingsFilePath();
-            if (File.Exists(settingsFilePath))
-            {
-                // 如果配置文件存在，直接读取，非常快
-                string json = await File.ReadAllTextAsync(settingsFilePath);
-                var versionConfig = JsonSerializer.Deserialize<VersionConfig>(json);
+            // 使用新版 VersionInfoService 优先加载缓存 (preferCache=true)
+            // 如果缓存不存在，Service 会自动回退到深度扫描，确保尽可能显示数据
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path, preferCache: true);
                 
-                if (versionConfig != null)
-                {
-                    // 1. 更新 ViewModel 基础配置属性
-                    AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
-                    InitialHeapMemory = versionConfig.InitialHeapMemory;
-                    MaximumHeapMemory = versionConfig.MaximumHeapMemory;
-                    UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
-                    JavaPath = versionConfig.JavaPath;
-                    WindowWidth = versionConfig.WindowWidth;
-                    WindowHeight = versionConfig.WindowHeight;
+            if (versionConfig != null && versionConfig.MinecraftVersion != "Unknown")
+            {
+                // 1. 更新 ViewModel 基础配置属性
+                AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
+                InitialHeapMemory = versionConfig.InitialHeapMemory;
+                MaximumHeapMemory = versionConfig.MaximumHeapMemory;
+                UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
+                JavaPath = versionConfig.JavaPath;
+                WindowWidth = versionConfig.WindowWidth;
+                WindowHeight = versionConfig.WindowHeight;
                     
-                    // 更新统计数据
-                    LaunchCount = versionConfig.LaunchCount;
-                    TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
-                    LastLaunchTime = versionConfig.LastLaunchTime;
+                // 更新统计数据
+                LaunchCount = versionConfig.LaunchCount;
+                TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
+                LastLaunchTime = versionConfig.LastLaunchTime;
 
-                    // 2. 更新身份信息 (Loader & Version)
-                    var uiSettings = new VersionSettings 
-                    {
-                        MinecraftVersion = versionConfig.MinecraftVersion,
-                        ModLoaderType = versionConfig.ModLoaderType,
-                        ModLoaderVersion = versionConfig.ModLoaderVersion,
-                        OptifineVersion = versionConfig.OptifineVersion
-                    };
+                // 2. 更新身份信息 (Loader & Version)
+                var uiSettings = new VersionSettings 
+                {
+                    MinecraftVersion = versionConfig.MinecraftVersion,
+                    ModLoaderType = versionConfig.ModLoaderType,
+                    ModLoaderVersion = versionConfig.ModLoaderVersion,
+                    OptifineVersion = versionConfig.OptifineVersion
+                };
                     
-                    UpdateCurrentLoaderInfo(uiSettings);
-                }
+                UpdateCurrentLoaderInfo(uiSettings);
             }
             
             // 初始化可用加载器列表 (内部也会尝试读取缓存)

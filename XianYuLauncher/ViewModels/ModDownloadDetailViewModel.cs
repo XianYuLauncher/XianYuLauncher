@@ -2275,8 +2275,9 @@ namespace XianYuLauncher.ViewModels
                     var versionInfoService = App.GetService<IVersionInfoService>();
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
                     
-                    // 获取完整的版本配置信息
-                    VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(installedVersion, versionDir);
+                    // 使用内置的 Fast Path (preferCache = true)
+                    // 这将优先读取 XianYuL.cfg，如果不存在或无效，Service 层会自动回退到深度扫描
+                    VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(installedVersion, versionDir, preferCache: true);
                     
                     // 1. 优先从配置中获取游戏版本号
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))

@@ -216,85 +216,44 @@ public partial class VersionListViewModel : ObservableRecipient
 
                 if (isValidVersion)
                 {
-                    // 使用快速路径：如果已有XianYuL.cfg文件，直接读取
-                    string xianYuLConfigPath = Path.Combine(versionDir, "XianYuL.cfg");
-                    if (File.Exists(xianYuLConfigPath))
+                    // 使用统一的服务获取版本信息 (优先读取缓存)
+                    var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(versionName, versionDir, preferCache: true);
+                    
+                    if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion) && versionConfig.MinecraftVersion != "Unknown")
                     {
-                        // 直接从XianYuL.cfg文件读取，避免完整的配置读取逻辑
-                        try
+                        versionNumber = versionConfig.MinecraftVersion;
+                        
+                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType) && versionConfig.ModLoaderType != "vanilla")
                         {
-                            string configContent = await File.ReadAllTextAsync(xianYuLConfigPath);
-                            var config = Newtonsoft.Json.JsonConvert.DeserializeObject<Core.Models.VersionConfig>(configContent);
-                            if (config != null && !string.IsNullOrEmpty(config.MinecraftVersion))
+                            if (versionConfig.ModLoaderType.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase))
                             {
-                                versionNumber = config.MinecraftVersion;
-                                
-                                if (!string.IsNullOrEmpty(config.ModLoaderType))
-                                {
-                                    type = char.ToUpper(config.ModLoaderType[0]) + config.ModLoaderType.Substring(1).ToLower();
-                                }
+                                type = "LegacyFabric";
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[版本列表ViewModel] 读取XianYuL.cfg失败: {ex.Message}");
-                            // 读取失败，回退到基于版本名称的提取
+                            else if (versionConfig.ModLoaderType.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
+                            {
+                                type = "NeoForge";
+                            }
+                            else
+                            {
+                                type = char.ToUpper(versionConfig.ModLoaderType[0]) + versionConfig.ModLoaderType.Substring(1).ToLower();
+                            }
                         }
                     }
-                    // 回退到基于版本名称的提取
-                    if (versionNumber == versionName) // 如果没有从配置文件获取到版本号
+                    else
                     {
-                        // 尝试从版本名称中提取版本类型
-                        if (versionName.Contains("-snapshot", StringComparison.OrdinalIgnoreCase))
+                        // 若服务无法分析（极少见），尝试基于名称推断
+                        var nameConfig = _versionInfoService.ExtractVersionConfigFromName(versionName);
+                        if (nameConfig != null && !string.IsNullOrEmpty(nameConfig.MinecraftVersion))
                         {
-                            type = "Snapshot";
-                        }
-                        else if (versionName.Contains("-beta", StringComparison.OrdinalIgnoreCase))
-                        {
-                            type = "Beta";
-                        }
-                        else if (versionName.Contains("-alpha", StringComparison.OrdinalIgnoreCase))
-                        {
-                            type = "Alpha";
-                        }
-                        else if (versionName.StartsWith("fabric-"))
-                        {
-                            type = "Fabric";
-                            // 提取实际Minecraft版本号
-                            versionNumber = versionName.Substring("fabric-".Length);
-                            if (versionNumber.Contains("-"))
+                            versionNumber = nameConfig.MinecraftVersion;
+                            if (!string.IsNullOrEmpty(nameConfig.ModLoaderType))
                             {
-                                versionNumber = versionNumber.Split('-')[0];
-                            }
-                        }
-                        else if (versionName.StartsWith("forge-"))
-                        {
-                            type = "Forge";
-                            // 提取实际Minecraft版本号
-                            versionNumber = versionName.Substring("forge-".Length);
-                            if (versionNumber.Contains("-"))
-                            {
-                                versionNumber = versionNumber.Split('-')[0];
-                            }
-                        }
-                        else if (versionName.StartsWith("neoforge-"))
-                        {
-                            type = "NeoForge";
-                            // 提取实际Minecraft版本号
-                            versionNumber = versionName.Substring("neoforge-".Length);
-                            if (versionNumber.Contains("-"))
-                            {
-                                versionNumber = versionNumber.Split('-')[0];
-                            }
-                        }
-                        else if (versionName.StartsWith("quilt-"))
-                        {
-                            type = "Quilt";
-                            // 提取实际Minecraft版本号
-                            versionNumber = versionName.Substring("quilt-".Length);
-                            if (versionNumber.Contains("-"))
-                            {
-                                versionNumber = versionNumber.Split('-')[0];
+                                if (nameConfig.ModLoaderType.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase))
+                                    type = "LegacyFabric";
+                                else if (nameConfig.ModLoaderType.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
+                                    type = "NeoForge";
+                                else
+                                    type = char.ToUpper(nameConfig.ModLoaderType[0]) + nameConfig.ModLoaderType.Substring(1).ToLower();
                             }
                         }
                     }
