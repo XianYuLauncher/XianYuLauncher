@@ -2249,7 +2249,7 @@ namespace XianYuLauncher.ViewModels
                     string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
                     
                     // 获取完整的版本配置信息
-                    VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(installedVersion, versionDir);
+                    VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(installedVersion, versionDir);
                     
                     // 1. 优先从配置中获取游戏版本号
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))

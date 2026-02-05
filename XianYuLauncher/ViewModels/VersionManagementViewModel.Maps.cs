@@ -124,76 +124,56 @@ public partial class VersionManagementViewModel
         /// <summary>
         /// 仅加载地图列表，不加载图标
         /// </summary>
-        private async Task LoadMapsListOnlyAsync()
+        private async Task LoadMapsListOnlyAsync(CancellationToken cancellationToken = default)
         {
             System.Diagnostics.Debug.WriteLine("[LoadMapsList] 开始加载地图列表");
             
-            if (SelectedVersion == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[LoadMapsList] SelectedVersion 为空");
-                return;
-            }
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested) { return; }
 
             var savesPath = GetVersionSpecificPath("saves");
-            System.Diagnostics.Debug.WriteLine($"[LoadMapsList] saves路径: {savesPath}");
             
-            // 在后台线程获取地图文件夹列表
-            var mapFolders = await Task.Run(() =>
+            // 在后台线程获取地图列表（包括创建对象）
+            var newMapList = await Task.Run(() =>
             {
+                var list = new List<MapInfo>();
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 检查目录存在");
                     if (Directory.Exists(savesPath))
                     {
-                        System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 获取子目录");
-                        return Directory.GetDirectories(savesPath);
+                        var mapFolders = Directory.GetDirectories(savesPath);
+                        var mapInfos = mapFolders.Select(mapFolder =>
+                        {
+                            var mapInfo = new MapInfo(mapFolder);
+                            mapInfo.Icon = null;
+                            
+                            // 启动异步任务加载基本信息
+                            // 使用 ContinueWith 处理异常，避免嵌套 Task.Run
+                            _ = mapInfo.LoadBasicInfoAsync().ContinueWith(t =>
+                            {
+                                if (t.IsFaulted && t.Exception is not null)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] LoadBasicInfoAsync error: {t.Exception}");
+                                }
+                            }, TaskContinuationOptions.OnlyOnFaulted);
+                            
+                            return mapInfo;
+                        });
+                        list.AddRange(mapInfos);
                     }
-                    System.Diagnostics.Debug.WriteLine("[LoadMapsList] 后台线程 - 目录不存在");
-                    return Array.Empty<string>();
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 后台线程异常: {ex.Message}");
-                    return Array.Empty<string>();
+                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] Error: {ex.Message}");
                 }
+                return list;
             });
             
-            System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 找到 {mapFolders.Length} 个地图");
+            _allMaps = newMapList;
             
-            if (mapFolders.Length > 0)
+            if (_isPageReady)
             {
-                // 创建新的地图列表，减少CollectionChanged事件触发次数
-                var newMaps = new ObservableCollection<MapInfo>();
-                
-                // 添加所有地图文件夹
-                foreach (var mapFolder in mapFolders)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 创建 MapInfo: {Path.GetFileName(mapFolder)}");
-                    var mapInfo = new MapInfo(mapFolder);
-                    
-                    // 先设置默认图标为空，后续异步加载
-                    mapInfo.Icon = null;
-
-                    // 启动异步任务加载基本信息（大小和时间），不等待
-                    _ = mapInfo.LoadBasicInfoAsync();
-                    
-                    newMaps.Add(mapInfo);
-                }
-                
-                System.Diagnostics.Debug.WriteLine($"[LoadMapsList] 设置 Maps 集合，共 {newMaps.Count} 个");
-                // 立即显示地图列表，不等待图标加载完成
-                _allMaps = newMaps.ToList();
-                FilterMaps();
+                App.MainWindow.DispatcherQueue.TryEnqueue(FilterMaps);
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[LoadMapsList] 清空地图列表");
-                // 清空地图列表
-                _allMaps.Clear();
-                FilterMaps();
-            }
-            
-            System.Diagnostics.Debug.WriteLine("[LoadMapsList] 完成加载地图列表");
         }
         
         /// <summary>

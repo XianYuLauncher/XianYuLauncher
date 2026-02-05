@@ -135,8 +135,10 @@ public partial class VersionManagementViewModel
     /// <summary>
     /// 加载服务器列表
     /// </summary>
-    public async Task LoadServersAsync()
+    public async Task LoadServersAsync(CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested) return;
+
         try
         {
             IsLoading = true;

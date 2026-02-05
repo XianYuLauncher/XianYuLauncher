@@ -76,7 +76,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             progressCallback?.Invoke(5);
 
             // 2. 保存版本配置
-            await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
+            // 注意: 对于 OptiFine，modLoaderVersion 就是 OptiFine 版本，因此传递给 optifineVersion 参数
+            await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion, optifineVersion: modLoaderVersion);
 
             // 3. 获取原版Minecraft版本信息
             Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
