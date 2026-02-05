@@ -2011,14 +2011,16 @@ public partial class VersionManagementViewModel
                             .GetFiles(modsPath, "*.jar*")
                             .Where(modFile => modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"));
                     
-                        // 遍历所有mod文件，创建mod信息对象
-                        foreach (var modFile in modFiles)
-                        {
-                            var modInfo = new ModInfo(modFile);
-                            // 先设置默认图标为空，后续异步加载
-                            modInfo.Icon = null;
-                            result.Add(modInfo);
-                        }
+                        // 使用 LINQ 将文件路径映射为 ModInfo 对象列表
+                        result = modFiles
+                            .Select(modFile =>
+                            {
+                                var modInfo = new ModInfo(modFile);
+                                // 先设置默认图标为空，后续异步加载
+                                modInfo.Icon = null;
+                                return modInfo;
+                            })
+                            .ToList();
                     }
                 }
                 catch (Exception ex)

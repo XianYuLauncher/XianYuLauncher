@@ -895,7 +895,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         _isPageReady = false;
         if (parameter is VersionListViewModel.VersionInfoItem version)
-
         {
             SelectedVersion = version;
             MinecraftPath = _fileService.GetMinecraftDataPath();

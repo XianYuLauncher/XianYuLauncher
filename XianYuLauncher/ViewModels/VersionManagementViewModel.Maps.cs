@@ -151,9 +151,16 @@ public partial class VersionManagementViewModel
                             // 且对象被立即绑定到 UI，可能会有线程安全风险。
                             // 但由于此时对象尚未绑定，风险较小。
                             // 添加简单的异常捕获以防万一
-                            _ = Task.Run(async () => 
-                            { 
-                                try { await mapInfo.LoadBasicInfoAsync(); } catch { } 
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await mapInfo.LoadBasicInfoAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] LoadBasicInfoAsync error: {ex}");
+                                }
                             });
                             
                             return mapInfo;
