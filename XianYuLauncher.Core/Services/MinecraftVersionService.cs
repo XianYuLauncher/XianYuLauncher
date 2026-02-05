@@ -206,29 +206,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             
-            // 1. 检查是否为ModLoader版本（Fabric或NeoForge）
+            // 1. 使用 VersionInfoService 进行深度分析
+            // 这将涵盖：读取配置文件、分析 arguments 参数、分析 libraries 依赖库、分析 Jar 主类
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(versionId, versionDirectory);
+            
             bool isModLoaderVersion = false;
             string modLoaderType = string.Empty;
-            
-            // 先尝试从配置文件读取
-            VersionConfig config = ReadVersionConfig(Path.GetDirectoryName(jsonPath));
-            if (config != null)
+
+            if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType) && versionConfig.ModLoaderType != "vanilla")
             {
                 isModLoaderVersion = true;
-                modLoaderType = config.ModLoaderType;
-                _logger.LogInformation("从配置文件识别为{ModLoaderType}版本: {VersionId}", modLoaderType, versionId);
-            }
-            // 回退到旧的名称识别逻辑
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 配置文件读取失败，回退到旧的名称识别逻辑来判断版本类型: {versionId}");
-                isModLoaderVersion = versionId.StartsWith("fabric-") || versionId.StartsWith("neoforge-");
-                if (isModLoaderVersion)
-                {
-                    modLoaderType = versionId.StartsWith("fabric-") ? "fabric" : "neoforge";
-                    _logger.LogInformation("从版本名称识别为{ModLoaderType}版本: {VersionId}", modLoaderType, versionId);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 从版本名称识别为{modLoaderType}版本: {versionId}");
-                }
+                modLoaderType = versionConfig.ModLoaderType;
+                _logger.LogInformation("经深度分析识别为 {ModLoaderType} 版本: {VersionId} (LoaderVer: {LoaderVer})", 
+                    modLoaderType, versionId, versionConfig.ModLoaderVersion);
+                System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 深度分析结果: {modLoaderType}, Version: {versionConfig.ModLoaderVersion}");
             }
             
             if (isModLoaderVersion)
@@ -390,11 +381,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 检查是否为ModLoader版本（Fabric或NeoForge）
             bool isModLoaderVersion = false;
             
-            // 先尝试从配置文件读取
+            // 先尝试从配置文件读取 (使用异步版本)
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
             string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
-            VersionConfig config = ReadVersionConfig(versionDirectory);
+            
+            VersionConfig config = await ReadVersionConfigAsync(versionId, versionDirectory);
             if (config != null)
             {
                 isModLoaderVersion = true;
@@ -1423,9 +1415,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 从版本目录读取配置文件，获取ModLoader信息
     /// </summary>
-    private VersionConfig ReadVersionConfig(string versionDirectory)
+    private async Task<VersionConfig> ReadVersionConfigAsync(string versionId, string versionDirectory)
     {
-        return _versionInfoService.GetVersionConfigFromDirectory(versionDirectory);
+        return await _versionInfoService.GetFullVersionInfoAsync(versionId, versionDirectory);
     }
     
 

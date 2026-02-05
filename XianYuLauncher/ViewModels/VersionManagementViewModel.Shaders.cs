@@ -71,54 +71,62 @@ public partial class VersionManagementViewModel
     /// <summary>
         /// 仅加载光影列表，不加载图标
         /// </summary>
-        private async Task LoadShadersListOnlyAsync()
+        private async Task LoadShadersListOnlyAsync(CancellationToken cancellationToken = default)
         {
-            if (SelectedVersion == null)
+            if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
             {
                 return;
             }
 
             var shadersPath = GetVersionSpecificPath("shaderpacks");
-            if (Directory.Exists(shadersPath))
+            
+            var newShadersList = await Task.Run(() =>
             {
-                // 获取所有光影文件夹和zip文件
-                var shaderFolders = Directory.GetDirectories(shadersPath);
-                var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
-                
-                // 创建新的光影列表，减少CollectionChanged事件触发次数
-                var newShaders = new ObservableCollection<ShaderInfo>();
-                
-                // 添加所有光影文件夹
-                foreach (var shaderFolder in shaderFolders)
+                var list = new List<ShaderInfo>();
+                try
                 {
-                    var shaderInfo = new ShaderInfo(shaderFolder);
-                    // 先设置默认图标为空，后续异步加载
-                    shaderInfo.Icon = null;
-                    newShaders.Add(shaderInfo);
+                    if (Directory.Exists(shadersPath))
+                    {
+                         // 获取所有光影文件夹和zip文件
+                        var shaderFolders = Directory.GetDirectories(shadersPath);
+                        var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
+                        
+                        // 使用 LINQ 将所有光影文件夹映射为 ShaderInfo 并添加到列表
+                        list.AddRange(shaderFolders.Select(shaderFolder => new ShaderInfo(shaderFolder)
+                        {
+                            // 先设置默认图标为空，后续异步加载
+                            Icon = null
+                        }));
+                        
+                        // 使用 LINQ 将所有光影 zip 文件映射为 ShaderInfo 并添加到列表
+                        list.AddRange(shaderZips.Select(shaderZip => new ShaderInfo(shaderZip)
+                        {
+                            // 先设置默认图标为空，后续异步加载
+                            Icon = null
+                        }));
+                    }
                 }
-                
-                // 添加所有光影zip文件
-                foreach (var shaderZip in shaderZips)
+                catch (Exception ex)
                 {
-                    var shaderInfo = new ShaderInfo(shaderZip);
-                    // 先设置默认图标为空，后续异步加载
-                    shaderInfo.Icon = null;
-                    newShaders.Add(shaderInfo);
+                    System.Diagnostics.Debug.WriteLine($"Error loading shaders: {ex.Message}");
                 }
-                
-                // 立即显示光影列表，不等待图标加载完成
-                _allShaders = newShaders.ToList();
-                FilterShaders();
-            }
-            else
+                return list;
+            });
+
+            _allShaders = newShadersList;
+
+            if (_isPageReady)
             {
-                // 清空光影列表
-                _allShaders.Clear();
-                FilterShaders();
+                // 使用 UI 线程安全调度，并再次检查 _isPageReady
+                App.MainWindow.DispatcherQueue.TryEnqueue(() => 
+                {
+                    if (_isPageReady)
+                    {
+                        FilterShaders();
+                    }
+                });
             }
         }
-
-    private async Task LoadShadersAsync() => await LoadShadersListOnlyAsync();
 
     private async Task OpenShaderFolderAsync()
     {
@@ -398,7 +406,7 @@ public partial class VersionManagementViewModel
                 if (versionInfoService != null && SelectedVersion != null)
                 {
                     string versionDir = Path.Combine(SelectedVersion.Path);
-                    Core.Models.VersionConfig versionConfig = versionInfoService.GetFullVersionInfo(SelectedVersion.Name, versionDir);
+                    Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, versionDir);
                     if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
                     {
                         gameVersion = versionConfig.MinecraftVersion;
