@@ -62,7 +62,7 @@ public class VersionInfoService : IVersionInfoService
             }
             catch (Exception ex)
             {
-                _logger.LogError($"[VersionInfoService] JSON 解析失败: {ex.Message}");
+                _logger.LogError(ex, "[VersionInfoService] JSON 解析失败: {Message}", ex.Message);
             }
         }
 
@@ -85,17 +85,17 @@ public class VersionInfoService : IVersionInfoService
             // 直接尝试读取当前目录下的同名 Jar (id.jar) 内的 version.json。
             else
             {
-                 _logger.LogInformation($"[VersionInfoService] 独立模式: 尝试读取本地 Jar ({versionId}.jar)");
-                 mcVersion = await _jarAnalyzer.GetMinecraftVersionFromJarAsync(versionDirectory, versionId);
+                _logger.LogInformation($"[VersionInfoService] 独立模式: 尝试读取本地 Jar ({versionId}.jar)");
+                mcVersion = await _jarAnalyzer.GetMinecraftVersionFromJarAsync(versionDirectory, versionId);
             }
         }
         
         // 如果上述方法都失败了（比如没有下载 JAR），尝试从 JSON ID 猜测（不推荐但也得有）
         if (string.IsNullOrEmpty(mcVersion) && manifest != null && string.IsNullOrEmpty(manifest.InheritsFrom))
         {
-             // 对于 Vanilla JSON，ID 通常就是版本号
-             mcVersion = manifest.Id;
-             _logger.LogWarning($"[VersionInfoService] 无法通过常规手段确定版本，回退使用 JSON ID: {mcVersion}");
+            // 对于 Vanilla JSON，ID 通常就是版本号
+            mcVersion = manifest.Id;
+            _logger.LogWarning($"[VersionInfoService] 无法通过常规手段确定版本，回退使用 JSON ID: {mcVersion}");
         }
 
         result.MinecraftVersion = mcVersion ?? "Unknown";
@@ -134,7 +134,9 @@ public class VersionInfoService : IVersionInfoService
             {
                 result.MinecraftVersion = legacyConfig.MinecraftVersion;
             }
-            if (result.ModLoaderType == "vanilla" && legacyConfig.ModLoaderType != "vanilla")
+            if (result.ModLoaderType == "vanilla" 
+                && !string.IsNullOrEmpty(legacyConfig.ModLoaderType) 
+                && legacyConfig.ModLoaderType != "vanilla")
             {
                 result.ModLoaderType = legacyConfig.ModLoaderType;
                 result.ModLoaderVersion = legacyConfig.ModLoaderVersion;
@@ -143,13 +145,20 @@ public class VersionInfoService : IVersionInfoService
         else
         {
             // 确保默认值正确
-             result.AutoMemoryAllocation = true;
-             result.UseGlobalJavaSetting = true;
+            result.AutoMemoryAllocation = true;
+            result.UseGlobalJavaSetting = true;
         }
 
         // Step 5: 保存/更新 XianYuL.cfg
         // 确保这些精准分析的数据被持久化，下次可以直接读 cfg 变快
-        await SaveConfigAsync(versionDirectory, result);
+        // 仅在分析结果具有有效版本信息，或不存在旧配置时，才写入配置文件，避免用不完整数据覆盖已有配置
+        var hasMeaningfulAnalysis =
+            !(string.Equals(result.MinecraftVersion, "Unknown", StringComparison.OrdinalIgnoreCase)
+              && string.Equals(result.ModLoaderType, "vanilla", StringComparison.OrdinalIgnoreCase));
+        if (legacyConfig == null || hasMeaningfulAnalysis)
+        {
+            await SaveConfigAsync(versionDirectory, result);
+        }
 
         return result;
     }
@@ -239,7 +248,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <returns>版本配置信息，如果读取失败则返回null</returns>
-        [Obsolete("Use ReadXianYuLConfigAsync instead")]
+        [Obsolete("Use ReadXianYuLConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
         private VersionConfig ReadXianYuLConfig(string versionDirectory)
         {
             try
@@ -350,8 +359,7 @@ public class VersionInfoService : IVersionInfoService
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共{ pclConfig.Count}个键值对");
                 
                 // 从VersionOriginal获取MC版本号
-                string minecraftVersion = pclConfig.ContainsKey("VersionOriginal") ? pclConfig["VersionOriginal"] : string.Empty;
-                if (string.IsNullOrEmpty(minecraftVersion))
+                if (!pclConfig.TryGetValue("VersionOriginal", out var minecraftVersion) || string.IsNullOrEmpty(minecraftVersion))
                 {
                     System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   未能从VersionOriginal获取MC版本号");
                     return null;
@@ -364,24 +372,24 @@ public class VersionInfoService : IVersionInfoService
                 string modLoaderVersion = string.Empty;
                 
                 // 检查Fabric
-                if (pclConfig.ContainsKey("VersionFabric") && !string.IsNullOrEmpty(pclConfig["VersionFabric"]))
+                if (pclConfig.TryGetValue("VersionFabric", out var fabricVersion) && !string.IsNullOrEmpty(fabricVersion))
                 {
                     modLoaderType = "fabric";
-                    modLoaderVersion = pclConfig["VersionFabric"];
+                    modLoaderVersion = fabricVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Fabric版本");
                 }
                 // 检查Forge
-                else if (pclConfig.ContainsKey("VersionForge") && !string.IsNullOrEmpty(pclConfig["VersionForge"]))
+                else if (pclConfig.TryGetValue("VersionForge", out var forgeVersion) && !string.IsNullOrEmpty(forgeVersion))
                 {
                     modLoaderType = "forge";
-                    modLoaderVersion = pclConfig["VersionForge"];
+                    modLoaderVersion = forgeVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Forge版本");
                 }
                 // 检查NeoForge
-                else if (pclConfig.ContainsKey("VersionNeoForge") && !string.IsNullOrEmpty(pclConfig["VersionNeoForge"]))
+                else if (pclConfig.TryGetValue("VersionNeoForge", out var neoForgeVersion) && !string.IsNullOrEmpty(neoForgeVersion))
                 {
                     modLoaderType = "neoforge";
-                    modLoaderVersion = pclConfig["VersionNeoForge"];
+                    modLoaderVersion = neoForgeVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到NeoForge版本");
                 }
                 else
@@ -390,7 +398,11 @@ public class VersionInfoService : IVersionInfoService
                 }
                 
                 // 检查Optifine
-                string optifineVersion = pclConfig.ContainsKey("VersionOptiFine") ? pclConfig["VersionOptiFine"] : string.Empty;
+                if (!pclConfig.TryGetValue("VersionOptiFine", out var optifineVersion))
+                {
+                    optifineVersion = string.Empty;
+                }
+                
                 if (!string.IsNullOrEmpty(optifineVersion))
                 {
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Optifine版本");
@@ -429,7 +441,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <returns>版本配置信息，如果读取失败则返回null</returns>
-        [Obsolete("Use ReadPCL2ConfigAsync instead")]
+        [Obsolete("Use ReadPCL2ConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
         private VersionConfig ReadPCL2Config(string versionDirectory)
         {
             try
@@ -455,8 +467,7 @@ public class VersionInfoService : IVersionInfoService
                 System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析PCL2配置文件成功，共{ pclConfig.Count}个键值对");
                 
                 // 从VersionOriginal获取MC版本号
-                string minecraftVersion = pclConfig.ContainsKey("VersionOriginal") ? pclConfig["VersionOriginal"] : string.Empty;
-                if (string.IsNullOrEmpty(minecraftVersion))
+                if (!pclConfig.TryGetValue("VersionOriginal", out var minecraftVersion) || string.IsNullOrEmpty(minecraftVersion))
                 {
                     System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   未能从VersionOriginal获取MC版本号");
                     return null;
@@ -469,24 +480,24 @@ public class VersionInfoService : IVersionInfoService
                 string modLoaderVersion = string.Empty;
                 
                 // 检查Fabric
-                if (pclConfig.ContainsKey("VersionFabric") && !string.IsNullOrEmpty(pclConfig["VersionFabric"]))
+                if (pclConfig.TryGetValue("VersionFabric", out var fabricVersion) && !string.IsNullOrEmpty(fabricVersion))
                 {
                     modLoaderType = "fabric";
-                    modLoaderVersion = pclConfig["VersionFabric"];
+                    modLoaderVersion = fabricVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Fabric版本");
                 }
                 // 检查Forge
-                else if (pclConfig.ContainsKey("VersionForge") && !string.IsNullOrEmpty(pclConfig["VersionForge"]))
+                else if (pclConfig.TryGetValue("VersionForge", out var forgeVersion) && !string.IsNullOrEmpty(forgeVersion))
                 {
                     modLoaderType = "forge";
-                    modLoaderVersion = pclConfig["VersionForge"];
+                    modLoaderVersion = forgeVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Forge版本");
                 }
                 // 检查NeoForge
-                else if (pclConfig.ContainsKey("VersionNeoForge") && !string.IsNullOrEmpty(pclConfig["VersionNeoForge"]))
+                else if (pclConfig.TryGetValue("VersionNeoForge", out var neoForgeVersion) && !string.IsNullOrEmpty(neoForgeVersion))
                 {
                     modLoaderType = "neoforge";
-                    modLoaderVersion = pclConfig["VersionNeoForge"];
+                    modLoaderVersion = neoForgeVersion;
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到NeoForge版本");
                 }
                 else
@@ -495,7 +506,11 @@ public class VersionInfoService : IVersionInfoService
                 }
                 
                 // 检查Optifine
-                string optifineVersion = pclConfig.ContainsKey("VersionOptiFine") ? pclConfig["VersionOptiFine"] : string.Empty;
+                if (!pclConfig.TryGetValue("VersionOptiFine", out var optifineVersion))
+                {
+                    optifineVersion = string.Empty;
+                }
+                
                 if (!string.IsNullOrEmpty(optifineVersion))
                 {
                     System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检测到Optifine版本");
@@ -657,7 +672,7 @@ public class VersionInfoService : IVersionInfoService
         /// </summary>
         /// <param name="versionDirectory">版本目录路径</param>
         /// <param name="config">版本配置信息</param>
-        [Obsolete("Use CreateOrUpdateXianYuLConfigAsync instead")]
+        [Obsolete("Use CreateOrUpdateXianYuLConfigAsync instead. This synchronous method is deprecated and will be removed in a future version.", error: false)]
         private void CreateOrUpdateXianYuLConfig(string versionDirectory, VersionConfig config)
         {
             try

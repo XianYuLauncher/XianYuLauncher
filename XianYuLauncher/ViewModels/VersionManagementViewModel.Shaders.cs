@@ -79,42 +79,49 @@ public partial class VersionManagementViewModel
             }
 
             var shadersPath = GetVersionSpecificPath("shaderpacks");
-            if (Directory.Exists(shadersPath))
+            
+            var newShadersList = await Task.Run(() =>
             {
-                // 获取所有光影文件夹和zip文件
-                var shaderFolders = Directory.GetDirectories(shadersPath);
-                var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
-                
-                // 创建新的光影列表，减少CollectionChanged事件触发次数
-                var newShaders = new ObservableCollection<ShaderInfo>();
-                
-                // 添加所有光影文件夹
-                foreach (var shaderFolder in shaderFolders)
+                var list = new List<ShaderInfo>();
+                try
                 {
-                    var shaderInfo = new ShaderInfo(shaderFolder);
-                    // 先设置默认图标为空，后续异步加载
-                    shaderInfo.Icon = null;
-                    newShaders.Add(shaderInfo);
+                    if (Directory.Exists(shadersPath))
+                    {
+                         // 获取所有光影文件夹和zip文件
+                        var shaderFolders = Directory.GetDirectories(shadersPath);
+                        var shaderZips = Directory.GetFiles(shadersPath, "*.zip");
+                        
+                        // 添加所有光影文件夹
+                        foreach (var shaderFolder in shaderFolders)
+                        {
+                            var shaderInfo = new ShaderInfo(shaderFolder);
+                            // 先设置默认图标为空，后续异步加载
+                            shaderInfo.Icon = null;
+                            list.Add(shaderInfo);
+                        }
+                        
+                        // 添加所有光影zip文件
+                        foreach (var shaderZip in shaderZips)
+                        {
+                            var shaderInfo = new ShaderInfo(shaderZip);
+                            // 先设置默认图标为空，后续异步加载
+                            shaderInfo.Icon = null;
+                            list.Add(shaderInfo);
+                        }
+                    }
                 }
-                
-                // 添加所有光影zip文件
-                foreach (var shaderZip in shaderZips)
+                catch (Exception ex)
                 {
-                    var shaderInfo = new ShaderInfo(shaderZip);
-                    // 先设置默认图标为空，后续异步加载
-                    shaderInfo.Icon = null;
-                    newShaders.Add(shaderInfo);
+                    System.Diagnostics.Debug.WriteLine($"Error loading shaders: {ex.Message}");
                 }
-                
-                // 立即显示光影列表，不等待图标加载完成
-                _allShaders = newShaders.ToList();
-                FilterShaders();
-            }
-            else
+                return list;
+            });
+
+            _allShaders = newShadersList;
+
+            if (_isPageReady)
             {
-                // 清空光影列表
-                _allShaders.Clear();
-                FilterShaders();
+                App.MainWindow.DispatcherQueue.TryEnqueue(FilterShaders);
             }
         }
 

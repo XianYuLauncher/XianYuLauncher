@@ -255,6 +255,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
              Mods = new ObservableCollection<ModInfo>(filtered);
         }
         OnPropertyChanged(nameof(IsModListEmpty));
+
+        // 启动描述加载任务 (完全在后台，不阻塞)
+        _ = LoadAllModDescriptionsAsync(Mods);
     }
 
     private void FilterShaders()
@@ -879,9 +882,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 导航到页面时调用
     /// </summary>
     /// <param name="parameter">导航参数</param>
+    private bool _isPageReady = false;
+
     public void OnNavigatedTo(object parameter)
     {
+        _isPageReady = false;
         if (parameter is VersionListViewModel.VersionInfoItem version)
+
         {
             SelectedVersion = version;
             MinecraftPath = _fileService.GetMinecraftDataPath();
@@ -934,9 +941,66 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 加载版本设置
+    /// 快速加载已缓存的版本设置（不进行深度分析）
     /// </summary>
-    private async Task LoadSettingsAsync()
+    private async Task LoadSettingsFastAsync()
+    {
+        if (SelectedVersion == null)
+        {
+            return;
+        }
+
+        try
+        {
+            string settingsFilePath = GetSettingsFilePath();
+            if (File.Exists(settingsFilePath))
+            {
+                // 如果配置文件存在，直接读取，非常快
+                string json = await File.ReadAllTextAsync(settingsFilePath);
+                var versionConfig = JsonSerializer.Deserialize<VersionConfig>(json);
+                
+                if (versionConfig != null)
+                {
+                    // 1. 更新 ViewModel 基础配置属性
+                    AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
+                    InitialHeapMemory = versionConfig.InitialHeapMemory;
+                    MaximumHeapMemory = versionConfig.MaximumHeapMemory;
+                    UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
+                    JavaPath = versionConfig.JavaPath;
+                    WindowWidth = versionConfig.WindowWidth;
+                    WindowHeight = versionConfig.WindowHeight;
+                    
+                    // 更新统计数据
+                    LaunchCount = versionConfig.LaunchCount;
+                    TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
+                    LastLaunchTime = versionConfig.LastLaunchTime;
+
+                    // 2. 更新身份信息 (Loader & Version)
+                    var uiSettings = new VersionSettings 
+                    {
+                        MinecraftVersion = versionConfig.MinecraftVersion,
+                        ModLoaderType = versionConfig.ModLoaderType,
+                        ModLoaderVersion = versionConfig.ModLoaderVersion,
+                        OptifineVersion = versionConfig.OptifineVersion
+                    };
+                    
+                    UpdateCurrentLoaderInfo(uiSettings);
+                }
+            }
+            
+            // 初始化可用加载器列表 (内部也会尝试读取缓存)
+            await InitializeAvailableLoadersAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] Fast Load Failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 深度分析并刷新版本信息
+    /// </summary>
+    private async Task LoadSettingsDeepAsync()
     {
         if (SelectedVersion == null)
         {
@@ -949,6 +1013,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             // 这将涵盖：读取 .json, 扫描 jar (如有), 检查 libraries, 迁移/读取旧配置文件
             var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path);
             
+            // 检查当前页面是否已被取消或切换
+            if (_pageCancellationTokenSource?.IsCancellationRequested == true) return;
+            
             if (versionConfig != null)
             {
                 // 1. 更新 ViewModel 基础配置属性
@@ -960,13 +1027,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
                 
-                // 更新统计数据
+                // 更新统计数据 (注意：如果快速加载已经加载通过，这里可能会覆盖，但通常是一致的)
+                // 深度分析可能会从PCL2等外部来源获取更准确的初始启动数据
                 LaunchCount = versionConfig.LaunchCount;
                 TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
                 LastLaunchTime = versionConfig.LastLaunchTime;
 
                 // 2. 更新身份信息 (Loader & Version)
-                // 构造临时的 UI 模型用于辅助方法调用
                 var uiSettings = new VersionSettings 
                 {
                     MinecraftVersion = versionConfig.MinecraftVersion,
@@ -977,27 +1044,30 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 UpdateCurrentLoaderInfo(uiSettings);
                 
-                // 3. (可选) 如果配置文件不存在，保存一份以固化扫描结果
-                // 这样下次启动或其他也没读取时能直接拿到被扫描确认过的正确信息
+                // 3. 如果配置文件不存在，保存一份以固化扫描结果
                 string settingsFilePath = GetSettingsFilePath();
                 if (!File.Exists(settingsFilePath))
                 {
-                   // 由于扫描得到的 versionConfig 已写回到 ViewModel 属性，此时可直接调用 Save 固化到配置文件
                    await SaveSettingsAsync();
                 }
-                
-                System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 深度分析完成: {versionConfig.MinecraftVersion} ({versionConfig.ModLoaderType})");
             }
             
-            // 初始化可用加载器列表
-            InitializeAvailableLoaders();
+            // 再次确保加载器列表正确（深度分析可能修正了MC版本号）
+            await InitializeAvailableLoadersAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"分析版本信息失败：{ex.Message}";
-            // TODO: 考虑实现降级处理，比如用文件名猜测版本信息
-            System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] Analysis Failed: {ex}");
+            // 这是后台静默刷新，失败也只需打印日志
+            System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] Deep Analysis Failed: {ex}");
         }
+    }
+    
+    /// <summary>
+    /// 加载版本设置
+    /// </summary>
+    private async Task LoadSettingsAsync()
+    {
+        await LoadSettingsFastAsync();
     }
     
     /// <summary>
@@ -1043,7 +1113,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 初始化可用加载器列表
     /// </summary>
-    private async void InitializeAvailableLoaders()
+    private async Task InitializeAvailableLoadersAsync()
     {
         AvailableLoaders.Clear();
         
@@ -1182,26 +1252,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return string.Empty;
         }
         
-        // 使用VersionInfoService统一获取版本号，支持从XianYuL.cfg、PCL2、HMCL、MultiMC等配置读取
-        var versionInfoService = App.GetService<IVersionInfoService>();
-        if (versionInfoService != null)
+        // 优先使用快速方式判断：如果 SelectedVersion.VersionNumber 看起来像是一个合法的纯版本号
+        // 或者我们已经从 Cache 中加载了 MinecraftVersion，则直接使用
+        // 只有当需要深度分析时，才调用 GetFullVersionInfoAsync
+        
+        // 1. 尝试从缓存文件读取
+        try
         {
-            try 
-            {
-                var versionConfig = await versionInfoService.GetFullVersionInfoAsync(SelectedVersion.Name, SelectedVersion.Path);
-                if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.MinecraftVersion))
-                {
-                    return versionConfig.MinecraftVersion;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] 获取版本信息失败: {ex.Message}");
-            }
+             // 检查是否已经在 AnalyzeVersionInfoAsync 中被设置过
+             // 这里没有简单的判断方式，因为 MinecraftVersion 没有绑定到 View/ViewModel 顶层属性，而是分散在 VersionConfig
         }
+        catch {}
         
         // 回退方案：直接使用VersionNumber属性
-        return SelectedVersion.VersionNumber;
+        // 以前这里的逻辑会触发 GetFullVersionInfoAsync，导致在 InitializeAvailableLoadersAsync 产生巨大开销
+        // 现改为相信 VersionNumber，深度分析会异步修正它
+        if (!string.IsNullOrEmpty(SelectedVersion.VersionNumber))
+        {
+            return SelectedVersion.VersionNumber;
+        }
+
+        return "1.20.1"; // Default fallback
     }
     
     /// <summary>
@@ -1791,18 +1862,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                // 先加载版本设置，这个比较轻量
-                await LoadSettingsAsync();
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                // 加载概览统计数据
-                await LoadOverviewDataAsync();
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                // 快速加载所有资源列表（不加载图标）
-                await Task.WhenAll(
+                // 并发执行所有加载任务，不再等待 Settings 和 Overview
+                // 确保 IsLoading = false 尽快执行，消除 UI 停顿
+                var allTasks = new List<Task>
+                {
+                    LoadSettingsAsync(),
+                    LoadOverviewDataAsync(),
                     LoadModsListOnlyAsync(),
                     LoadShadersListOnlyAsync(),
                     LoadResourcePacksListOnlyAsync(),
@@ -1810,10 +1875,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     LoadScreenshotsAsync(),
                     LoadSavesAsync(),
                     LoadServersAsync()
-                );
+                };
                 
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
+                
+                // 确保动画开始前没有其他繁重任务干扰
+                await Task.Delay(500);
+                
+                _isPageReady = true;
+
+                // 动画播放完毕后，尝试刷新目前已就绪的数据
+                // 对于尚未加载完成的任务，它们会在各自完成后通过检查 _isPageReady 标志来自动刷新
+                RefreshAllCollections();
+                
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // 在后台进行深度分析（可能比较慢）
+                // 这将修正版本号、加载器类型等（如果没有缓存）
+                await LoadSettingsDeepAsync();
                 
                 cancellationToken.ThrowIfCancellationRequested();
                 
@@ -1831,6 +1911,24 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 StatusMessage = $"加载版本数据失败：{ex.Message}";
                 IsLoading = false;
+            }
+        }
+
+        private void RefreshAllCollections()
+        {
+            try
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    FilterMods();
+                    FilterShaders();
+                    FilterResourcePacks();
+                    FilterMaps();
+                });
+            }
+            catch
+            {
+                // 忽略
             }
         }
         

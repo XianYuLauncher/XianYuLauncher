@@ -1997,41 +1997,47 @@ public partial class VersionManagementViewModel
             }
             
             var modsPath = GetVersionSpecificPath("mods");
-            if (Directory.Exists(modsPath))
+            
+            // IO操作移至后台线程，避免阻塞UI导致加载动画卡顿
+            var newModsList = await Task.Run(() => 
             {
-                // 创建新的mod列表，减少CollectionChanged事件触发次数
-                var newMods = new ObservableCollection<ModInfo>();
-                
-                // 获取所有mod文件（.jar和.jar.disabled）
-                var modFiles = Directory.GetFiles(modsPath, "*.jar*");
-                
-                // 遍历所有mod文件，创建mod信息对象
-                foreach (var modFile in modFiles)
+                var result = new List<ModInfo>();
+                try
                 {
-                    // 只处理.jar和.jar.disabled文件
-                    if (modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"))
+                    if (Directory.Exists(modsPath))
                     {
-                        var modInfo = new ModInfo(modFile);
-                        
-                        // 先设置默认图标为空，后续异步加载
-                        modInfo.Icon = null;
-                        
-                        newMods.Add(modInfo);
+                        // 获取所有mod文件（.jar和.jar.disabled）
+                        var modFiles = Directory.GetFiles(modsPath, "*.jar*");
+                    
+                        // 遍历所有mod文件，创建mod信息对象
+                        foreach (var modFile in modFiles)
+                        {
+                            // 只处理.jar和.jar.disabled文件
+                            if (modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"))
+                            {
+                                var modInfo = new ModInfo(modFile);
+                                // 先设置默认图标为空，后续异步加载
+                                modInfo.Icon = null;
+                                result.Add(modInfo);
+                            }
+                        }
                     }
                 }
-                
-                // 立即显示mod列表，不等待图标加载完成
-                _allMods = newMods.ToList();
-                FilterMods();
-                
-                // 异步加载每个 Mod 的描述（不阻塞 UI）
-                _ = LoadAllModDescriptionsAsync(new ObservableCollection<ModInfo>(_allMods));
-            }
-            else
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadModsListOnlyAsync] Error: {ex.Message}");
+                }
+                return result;
+            });
+            
+            // 回到UI线程更新列表数据源
+            _allMods = newModsList;
+            
+            // 如果页面动画已经播放完毕（_isPageReady == true），则立即刷新
+            // 否则（_isPageReady == false），等待主流程中的 RefreshAllCollections 调用
+            if (_isPageReady)
             {
-                // 清空mod列表
-                _allMods.Clear();
-                FilterMods();
+                 App.MainWindow.DispatcherQueue.TryEnqueue(FilterMods);
             }
         }
         

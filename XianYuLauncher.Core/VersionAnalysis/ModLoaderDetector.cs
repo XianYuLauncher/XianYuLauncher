@@ -127,18 +127,19 @@ namespace XianYuLauncher.Core.VersionAnalysis
         /// </summary>
         private string ParseVersion(string mavenCoordinate)
         {
-            try
+            if (string.IsNullOrEmpty(mavenCoordinate))
             {
-                var parts = mavenCoordinate.Split(':');
-                if (parts.Length >= 3)
-                {
-                    return parts[2];
-                }
+                _logger?.LogWarning("[ModLoaderDetector] Maven 坐标为空或为 null");
+                return string.Empty;
             }
-            catch (Exception ex)
+
+            var parts = mavenCoordinate.Split(':');
+            if (parts.Length >= 3)
             {
-                _logger?.LogWarning(ex, "[ModLoaderDetector] 解析 Maven 坐标失败: {MavenCoordinate}", mavenCoordinate);
+                return parts[2];
             }
+            
+            _logger?.LogWarning("[ModLoaderDetector] Maven 坐标格式不正确: {MavenCoordinate}", mavenCoordinate);
             return string.Empty;
         }
 

@@ -79,42 +79,49 @@ public partial class VersionManagementViewModel
             }
 
             var resourcePacksPath = GetVersionSpecificPath("resourcepacks");
-            if (Directory.Exists(resourcePacksPath))
+            
+            var newPackList = await Task.Run(() =>
             {
-                // 获取所有资源包文件夹和zip文件
-                var resourcePackFolders = Directory.GetDirectories(resourcePacksPath);
-                var resourcePackZips = Directory.GetFiles(resourcePacksPath, "*.zip");
-                
-                // 创建新的资源包列表，减少CollectionChanged事件触发次数
-                var newResourcePacks = new ObservableCollection<ResourcePackInfo>();
-                
-                // 添加所有资源包文件夹
-                foreach (var resourcePackFolder in resourcePackFolders)
+                var list = new List<ResourcePackInfo>();
+                try
                 {
-                    var resourcePackInfo = new ResourcePackInfo(resourcePackFolder);
-                    // 先设置默认图标为空，后续异步加载
-                    resourcePackInfo.Icon = null;
-                    newResourcePacks.Add(resourcePackInfo);
+                    if (Directory.Exists(resourcePacksPath))
+                    {
+                        // 获取所有资源包文件夹和zip文件
+                        var resourcePackFolders = Directory.GetDirectories(resourcePacksPath);
+                        var resourcePackZips = Directory.GetFiles(resourcePacksPath, "*.zip");
+                        
+                        // 添加所有资源包文件夹
+                        foreach (var resourcePackFolder in resourcePackFolders)
+                        {
+                            var resourcePackInfo = new ResourcePackInfo(resourcePackFolder);
+                            // 先设置默认图标为空，后续异步加载
+                            resourcePackInfo.Icon = null;
+                            list.Add(resourcePackInfo);
+                        }
+                        
+                        // 添加所有资源包zip文件
+                        foreach (var resourcePackZip in resourcePackZips)
+                        {
+                            var resourcePackInfo = new ResourcePackInfo(resourcePackZip);
+                            // 先设置默认图标为空，后续异步加载
+                            resourcePackInfo.Icon = null;
+                            list.Add(resourcePackInfo);
+                        }
+                    }
                 }
-                
-                // 添加所有资源包zip文件
-                foreach (var resourcePackZip in resourcePackZips)
+                catch (Exception ex)
                 {
-                    var resourcePackInfo = new ResourcePackInfo(resourcePackZip);
-                    // 先设置默认图标为空，后续异步加载
-                    resourcePackInfo.Icon = null;
-                    newResourcePacks.Add(resourcePackInfo);
+                    System.Diagnostics.Debug.WriteLine($"Error loading resource packs: {ex.Message}");
                 }
-                
-                // 立即显示资源包列表，不等待图标加载完成
-                _allResourcePacks = newResourcePacks.ToList();
-                FilterResourcePacks();
-            }
-            else
+                return list;
+            });
+
+            _allResourcePacks = newPackList;
+
+            if (_isPageReady)
             {
-                // 清空资源包列表
-                _allResourcePacks.Clear();
-                FilterResourcePacks();
+                App.MainWindow.DispatcherQueue.TryEnqueue(FilterResourcePacks);
             }
         }
 
