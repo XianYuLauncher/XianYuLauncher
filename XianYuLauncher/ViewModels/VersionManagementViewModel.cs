@@ -1463,87 +1463,119 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             var primaryLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() != "optifine");
             var optifineLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() == "optifine");
             
+            // 检查配置变更，避免不必要的重新安装
+            bool needsReinstall = true;
+            try
+            {
+                var currentConfig = await _versionInfoService.GetFullVersionInfoAsync(versionId, versionDirectory);
+                
+                string targetType = primaryLoader?.LoaderType.ToLower() ?? "vanilla";
+                string targetVersion = primaryLoader?.SelectedVersion ?? string.Empty;
+                string? targetOptifine = optifineLoader?.SelectedVersion;
+                
+                string currentType = string.IsNullOrEmpty(currentConfig.ModLoaderType) ? "vanilla" : currentConfig.ModLoaderType.ToLower();
+                string currentVersion = currentConfig.ModLoaderVersion ?? string.Empty;
+                string? currentOptifine = currentConfig.OptifineVersion;
+                
+                bool isLoaderSame = string.Equals(targetType, currentType, StringComparison.OrdinalIgnoreCase) && 
+                                    string.Equals(targetVersion, currentVersion, StringComparison.OrdinalIgnoreCase);
+                                    
+                bool isOptifineSame = string.Equals(targetOptifine ?? string.Empty, currentOptifine ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+                
+                if (isLoaderSame && isOptifineSame)
+                {
+                    needsReinstall = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] Config check failed: {ex.Message}");
+            }
+
             // 计算总步骤数
             int totalSteps = 2; // 下载JSON + 保存配置
             if (primaryLoader != null) totalSteps++;
             if (optifineLoader != null) totalSteps++;
             int currentStep = 0;
             
-            // 步骤1：下载原版JSON并覆盖（重置为原版状态）
-            ExtensionInstallStatus = "正在下载原版版本信息...";
-            ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-            
-            var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
-                minecraftVersion,
-                minecraftDirectory,
-                allowNetwork: true);
-            
-            // 覆盖版本JSON文件
-            var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
-            await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
-            currentStep++;
-            ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-            
-            // 步骤2：安装主加载器（如果有）
-            if (primaryLoader != null)
+            if (needsReinstall)
             {
-                ExtensionInstallStatus = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
+                // 步骤1：下载原版JSON并覆盖（重置为原版状态）
+                ExtensionInstallStatus = "正在下载原版版本信息...";
+                ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
                 
-                var installer = _modLoaderInstallerFactory.GetInstaller(primaryLoader.LoaderType);
-                var installOptions = new ModLoaderInstallOptions
-                {
-                    SkipJarDownload = true, // 跳过JAR下载，因为JAR已存在
-                    CustomVersionName = versionId, // 使用现有版本名称
-                    OverwriteExisting = true
-                };
-                
-                double stepStartProgress = (double)currentStep / totalSteps * 100;
-                double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
-                
-                await installer.InstallAsync(
+                var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
                     minecraftVersion,
-                    primaryLoader.SelectedVersion!,
                     minecraftDirectory,
-                    installOptions,
-                    progress => 
-                    {
-                        // 将安装器的进度映射到当前步骤的进度范围
-                        ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
-                    });
+                    allowNetwork: true);
                 
+                // 覆盖版本JSON文件
+                var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
+                await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
                 currentStep++;
                 ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
-            }
-            
-            // 步骤3：安装Optifine（如果有）
-            // 注意：Optifine需要在Forge之后安装（如果同时选择了Forge和Optifine）
-            if (optifineLoader != null)
-            {
-                ExtensionInstallStatus = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
                 
-                var optifineInstaller = _modLoaderInstallerFactory.GetInstaller("optifine");
-                var optifineOptions = new ModLoaderInstallOptions
+                // 步骤2：安装主加载器（如果有）
+                if (primaryLoader != null)
                 {
-                    SkipJarDownload = true,
-                    CustomVersionName = versionId,
-                    OverwriteExisting = true
-                };
-                
-                double stepStartProgress = (double)currentStep / totalSteps * 100;
-                double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
-                
-                await optifineInstaller.InstallAsync(
-                    minecraftVersion,
-                    optifineLoader.SelectedVersion!,
-                    minecraftDirectory,
-                    optifineOptions,
-                    progress =>
+                    ExtensionInstallStatus = $"正在安装 {primaryLoader.Name} {primaryLoader.SelectedVersion}...";
+                    
+                    var installer = _modLoaderInstallerFactory.GetInstaller(primaryLoader.LoaderType);
+                    var installOptions = new ModLoaderInstallOptions
                     {
-                        ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
-                    });
+                        SkipJarDownload = true, // 跳过JAR下载，因为JAR已存在
+                        CustomVersionName = versionId, // 使用现有版本名称
+                        OverwriteExisting = true
+                    };
+                    
+                    double stepStartProgress = (double)currentStep / totalSteps * 100;
+                    double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
+                    
+                    await installer.InstallAsync(
+                        minecraftVersion,
+                        primaryLoader.SelectedVersion!,
+                        minecraftDirectory,
+                        installOptions,
+                        progress => 
+                        {
+                            // 将安装器的进度映射到当前步骤的进度范围
+                            ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
+                        });
+                    
+                    currentStep++;
+                    ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
+                }
                 
-                currentStep++;
-                ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
+                // 步骤3：安装Optifine（如果有）
+                // 注意：Optifine需要在Forge之后安装（如果同时选择了Forge和Optifine）
+                if (optifineLoader != null)
+                {
+                    ExtensionInstallStatus = $"正在安装 OptiFine {optifineLoader.SelectedVersion}...";
+                    
+                    var optifineInstaller = _modLoaderInstallerFactory.GetInstaller("optifine");
+                    var optifineOptions = new ModLoaderInstallOptions
+                    {
+                        SkipJarDownload = true,
+                        CustomVersionName = versionId,
+                        OverwriteExisting = true
+                    };
+                    
+                    double stepStartProgress = (double)currentStep / totalSteps * 100;
+                    double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
+                    
+                    await optifineInstaller.InstallAsync(
+                        minecraftVersion,
+                        optifineLoader.SelectedVersion!,
+                        minecraftDirectory,
+                        optifineOptions,
+                        progress =>
+                        {
+                            ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
+                        });
+                    
+                    currentStep++;
+                    ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
+                }
             }
             
             // 步骤4：保存配置文件
