@@ -609,12 +609,15 @@ public class VersionInfoService : IVersionInfoService
             try
             {
                 string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   开始创建/更新XianYuL.cfg文件: {configPath}");
+                
+                // 增加详细的调试日志
+                _logger.LogInformation($"[VersionInfoService]   开始创建/更新XianYuL.cfg文件: {configPath}");
+                _logger.LogInformation($"[VersionInfoService]   >> 传入参数 config 中内存设置: Initial={config?.InitialHeapMemory}GB, Max={config?.MaximumHeapMemory}GB, Auto={config?.AutoMemoryAllocation}");
                 
                 // 确保配置信息完整
                 if (config == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 配置信息为空，跳过创建/更新");
+                    _logger.LogWarning($"[VersionInfoService]   ❌ 配置信息为空，跳过创建/更新");
                     return;
                 }
                 
@@ -626,15 +629,20 @@ public class VersionInfoService : IVersionInfoService
                     {
                         var existingJson = await File.ReadAllTextAsync(configPath);
                         existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingJson);
+                        _logger.LogInformation($"[VersionInfoService]   >> 读取到旧文件 config 中内存设置: Initial={existingConfig?.InitialHeapMemory}GB, Max={existingConfig?.MaximumHeapMemory}GB");
                     }
                     catch (IOException ioEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
+                        _logger.LogWarning($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
                     }
                     catch (JsonException jsonEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
+                        _logger.LogWarning($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
                     }
+                }
+                else 
+                {
+                    _logger.LogInformation($"[VersionInfoService]   >> 旧文件不存在，将创建新文件");
                 }
                 
                 // 准备标准格式的配置内容，保留现有统计数据
@@ -645,18 +653,26 @@ public class VersionInfoService : IVersionInfoService
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
                     OptifineVersion = config.OptifineVersion ?? string.Empty,
                     CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
-                    AutoMemoryAllocation = existingConfig?.AutoMemoryAllocation ?? true,
-                    InitialHeapMemory = existingConfig?.InitialHeapMemory ?? 6.0,
-                    MaximumHeapMemory = existingConfig?.MaximumHeapMemory ?? 12.0,
-                    JavaPath = existingConfig?.JavaPath ?? string.Empty,
-                    UseGlobalJavaSetting = existingConfig?.UseGlobalJavaSetting ?? true,
-                    WindowWidth = existingConfig?.WindowWidth ?? 1280,
-                    WindowHeight = existingConfig?.WindowHeight ?? 720,
+                    
+                    // 使用传入的 config 中的设置（因为 config 已经融合了 legacyConfig 的用户设置）
+                    // 之前的写法会再次读取 existingConfig，如果读取失败就会导致配置重置为默认值 (12G/6G)
+                    AutoMemoryAllocation = config.AutoMemoryAllocation,
+                    InitialHeapMemory = config.InitialHeapMemory,
+                    MaximumHeapMemory = config.MaximumHeapMemory,
+                    JavaPath = config.JavaPath,
+                    UseGlobalJavaSetting = config.UseGlobalJavaSetting,
+                    WindowWidth = config.WindowWidth,
+                    WindowHeight = config.WindowHeight,
+
                     // 保留统计数据
-                    LaunchCount = existingConfig?.LaunchCount ?? 0,
-                    TotalPlayTimeSeconds = existingConfig?.TotalPlayTimeSeconds ?? 0,
-                    LastLaunchTime = existingConfig?.LastLaunchTime
+                    LaunchCount = config.LaunchCount,
+                    TotalPlayTimeSeconds = config.TotalPlayTimeSeconds,
+                    LastLaunchTime = config.LastLaunchTime
                 };
+
+                _logger.LogInformation($"[VersionInfoService]   >> 最终写入文件的内存设置: Initial={standardConfig.InitialHeapMemory}GB, Max={standardConfig.MaximumHeapMemory}GB");
+                
+                // 序列化配置为JSON格式
                 
                 // 序列化配置为JSON格式
                 string jsonContent = JsonConvert.SerializeObject(standardConfig, Formatting.Indented);
@@ -664,26 +680,23 @@ public class VersionInfoService : IVersionInfoService
                 // 写入文件
                 await File.WriteAllTextAsync(configPath, jsonContent);
                 
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ✅ 成功创建/更新XianYuL.cfg文件");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderType: {standardConfig.ModLoaderType}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderVersion: {standardConfig.ModLoaderVersion}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     MinecraftVersion: {standardConfig.MinecraftVersion}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     OptifineVersion: {standardConfig.OptifineVersion}");
+                _logger.LogInformation($"[VersionInfoService]   ✅ 成功创建/更新XianYuL.cfg文件");
+                _logger.LogInformation($"[VersionInfoService]     ModLoaderType: {standardConfig.ModLoaderType}");
+                _logger.LogInformation($"[VersionInfoService]     ModLoaderVersion: {standardConfig.ModLoaderVersion}");
+                _logger.LogInformation($"[VersionInfoService]     MinecraftVersion: {standardConfig.MinecraftVersion}");
+                _logger.LogInformation($"[VersionInfoService]     OptifineVersion: {standardConfig.OptifineVersion}");
             }
             catch (IOException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件IO错误: {ex.Message}");
-                _logger.LogWarning(ex, "创建/更新XianYuL.cfg文件IO错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件IO错误: {ex.Message}");
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 序列化XianYuL.cfg配置JSON错误: {ex.Message}");
-                _logger.LogWarning(ex, "序列化XianYuL.cfg配置JSON错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 序列化XianYuL.cfg配置JSON错误: {ex.Message}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件未知错误: {ex.Message}");
-                _logger.LogWarning(ex, "创建/更新XianYuL.cfg文件未知错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件未知错误: {ex.Message}");
             }
         }
         
@@ -698,12 +711,15 @@ public class VersionInfoService : IVersionInfoService
             try
             {
                 string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   开始创建/更新XianYuL.cfg文件: {configPath}");
+                
+                // 增加详细的调试日志
+                _logger.LogInformation($"[VersionInfoService]   开始创建/更新XianYuL.cfg文件: {configPath}");
+                _logger.LogInformation($"[VersionInfoService]   >> 传入参数 config 中内存设置: Initial={config?.InitialHeapMemory}GB, Max={config?.MaximumHeapMemory}GB, Auto={config?.AutoMemoryAllocation}");
                 
                 // 确保配置信息完整
                 if (config == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 配置信息为空，跳过创建/更新");
+                    _logger.LogWarning($"[VersionInfoService]   ❌ 配置信息为空，跳过创建/更新");
                     return;
                 }
                 
@@ -715,15 +731,20 @@ public class VersionInfoService : IVersionInfoService
                     {
                         var existingJson = File.ReadAllText(configPath);
                         existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingJson);
+                        _logger.LogInformation($"[VersionInfoService]   >> 读取到旧文件 config 中内存设置: Initial={existingConfig?.InitialHeapMemory}GB, Max={existingConfig?.MaximumHeapMemory}GB");
                     }
                     catch (IOException ioEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
+                        _logger.LogWarning($"[VersionInfoService]   ⚠ 读取现有配置文件失败（IO异常），将使用默认配置。路径: {configPath}, 错误: {ioEx}");
                     }
                     catch (JsonException jsonEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
+                        _logger.LogWarning($"[VersionInfoService]   ⚠ 解析现有配置文件失败（JSON异常），将使用默认配置。路径: {configPath}, 错误: {jsonEx}");
                     }
+                }
+                else 
+                {
+                    _logger.LogInformation($"[VersionInfoService]   >> 旧文件不存在，将创建新文件");
                 }
                 
                 // 准备标准格式的配置内容，保留现有统计数据
@@ -734,18 +755,26 @@ public class VersionInfoService : IVersionInfoService
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
                     OptifineVersion = config.OptifineVersion ?? string.Empty,
                     CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
-                    AutoMemoryAllocation = existingConfig?.AutoMemoryAllocation ?? true,
-                    InitialHeapMemory = existingConfig?.InitialHeapMemory ?? 6.0,
-                    MaximumHeapMemory = existingConfig?.MaximumHeapMemory ?? 12.0,
-                    JavaPath = existingConfig?.JavaPath ?? string.Empty,
-                    UseGlobalJavaSetting = existingConfig?.UseGlobalJavaSetting ?? true,
-                    WindowWidth = existingConfig?.WindowWidth ?? 1280,
-                    WindowHeight = existingConfig?.WindowHeight ?? 720,
+                    
+                    // 使用传入的 config 中的设置（因为 config 已经融合了 legacyConfig 的用户设置）
+                    // 之前的写法会再次读取 existingConfig，如果读取失败就会导致配置重置为默认值 (12G/6G)
+                    AutoMemoryAllocation = config.AutoMemoryAllocation,
+                    InitialHeapMemory = config.InitialHeapMemory,
+                    MaximumHeapMemory = config.MaximumHeapMemory,
+                    JavaPath = config.JavaPath,
+                    UseGlobalJavaSetting = config.UseGlobalJavaSetting,
+                    WindowWidth = config.WindowWidth,
+                    WindowHeight = config.WindowHeight,
+
                     // 保留统计数据
-                    LaunchCount = existingConfig?.LaunchCount ?? 0,
-                    TotalPlayTimeSeconds = existingConfig?.TotalPlayTimeSeconds ?? 0,
-                    LastLaunchTime = existingConfig?.LastLaunchTime
+                    LaunchCount = config.LaunchCount,
+                    TotalPlayTimeSeconds = config.TotalPlayTimeSeconds,
+                    LastLaunchTime = config.LastLaunchTime
                 };
+
+                _logger.LogInformation($"[VersionInfoService]   >> 最终写入文件的内存设置: Initial={standardConfig.InitialHeapMemory}GB, Max={standardConfig.MaximumHeapMemory}GB");
+
+                // 序列化配置为JSON格式
                 
                 // 序列化配置为JSON格式
                 string jsonContent = JsonConvert.SerializeObject(standardConfig, Formatting.Indented);
@@ -753,26 +782,23 @@ public class VersionInfoService : IVersionInfoService
                 // 写入文件
                 File.WriteAllText(configPath, jsonContent);
                 
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ✅ 成功创建/更新XianYuL.cfg文件");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderType: {standardConfig.ModLoaderType}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     ModLoaderVersion: {standardConfig.ModLoaderVersion}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     MinecraftVersion: {standardConfig.MinecraftVersion}");
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]     OptifineVersion: {standardConfig.OptifineVersion}");
+                _logger.LogInformation($"[VersionInfoService]   ✅ 成功创建/更新XianYuL.cfg文件");
+                _logger.LogInformation($"[VersionInfoService]     ModLoaderType: {standardConfig.ModLoaderType}");
+                _logger.LogInformation($"[VersionInfoService]     ModLoaderVersion: {standardConfig.ModLoaderVersion}");
+                _logger.LogInformation($"[VersionInfoService]     MinecraftVersion: {standardConfig.MinecraftVersion}");
+                _logger.LogInformation($"[VersionInfoService]     OptifineVersion: {standardConfig.OptifineVersion}");
             }
             catch (IOException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件IO错误: {ex.Message}");
-                _logger.LogWarning(ex, "创建/更新XianYuL.cfg文件IO错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件IO错误: {ex.Message}");
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 序列化XianYuL.cfg配置JSON错误: {ex.Message}");
-                _logger.LogWarning(ex, "序列化XianYuL.cfg配置JSON错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 序列化XianYuL.cfg配置JSON错误: {ex.Message}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件未知错误: {ex.Message}");
-                _logger.LogWarning(ex, "创建/更新XianYuL.cfg文件未知错误: {VersionDirectory}", versionDirectory);
+                _logger.LogWarning(ex, $"[VersionInfoService]   ❌ 创建/更新XianYuL.cfg文件未知错误: {ex.Message}");
             }
         }
         
