@@ -1094,6 +1094,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CurrentLoaderDisplayName = settings.ModLoaderType switch
         {
             "fabric" => "Fabric",
+            "legacyfabric" => "Legacy Fabric",
+            "LegacyFabric" => "Legacy Fabric",
             "forge" => "Forge",
             "neoforge" => "NeoForge",
             "quilt" => "Quilt",
@@ -1107,6 +1109,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         CurrentLoaderIconUrl = settings.ModLoaderType switch
         {
             "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+            "legacyfabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+            "LegacyFabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
             "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
             "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
             "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
@@ -1215,8 +1219,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 Name = "Legacy Fabric",
                 LoaderType = "LegacyFabric",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png", // 复用Fabric图标
-                IsInstalled = IsLoaderInstalled("LegacyFabric")
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+                IsInstalled = IsLoaderInstalled("legacyfabric")
             });
         }
 
