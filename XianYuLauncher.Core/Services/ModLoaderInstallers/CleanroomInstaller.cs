@@ -182,6 +182,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             await DownloadInstallProfileLibrariesAsync(
                 installProfileLibraries,
                 librariesDirectory,
+                installerPath,
                 p => ReportProgress(progressCallback, p, 70, 80),
                 cancellationToken);
 
@@ -369,11 +370,12 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 下载install_profile中的依赖库
+    /// 下载/提取install_profile中的依赖库
     /// </summary>
     private async Task DownloadInstallProfileLibrariesAsync(
         List<Library> libraries,
         string librariesDirectory,
+        string installerPath,
         Action<double>? progressCallback,
         CancellationToken cancellationToken)
     {
@@ -395,6 +397,13 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             if (File.Exists(libraryPath))
             {
                 Logger.LogDebug("库文件已存在，跳过: {LibraryPath}", libraryPath);
+                continue;
+            }
+
+            // 尝试从installer中提取
+            if (await TryExtractFromInstallerAsync(library, libraryPath, installerPath))
+            {
+                Logger.LogInformation("已从Installer中提取库: {LibraryName}", library.Name);
                 continue;
             }
 
@@ -468,6 +477,52 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
+    /// 尝试从Installer jar中直接提取库文件
+    /// </summary>
+    private async Task<bool> TryExtractFromInstallerAsync(Library library, string destPath, string installerPath)
+    {
+        // 只有Cleanroom自身或显式声明在maven路径下的库才尝试提取
+        // 通常 cleanroom-installer.jar 包含 maven/com/cleanroommc/...
+        
+        // 构建库的相对路径
+        string? artifactPath = library.Downloads?.Artifact?.Path;
+        if (string.IsNullOrEmpty(artifactPath))
+        {
+             var parts = library.Name.Split(':');
+             if (parts.Length >= 3)
+             {
+                 var fileName = parts.Length > 3 ? $"{parts[1]}-{parts[2]}-{parts[3]}.jar" : $"{parts[1]}-{parts[2]}.jar";
+                 artifactPath = $"{parts[0].Replace('.', '/')}/{parts[1]}/{parts[2]}/{fileName}";
+             }
+        }
+
+        if (string.IsNullOrEmpty(artifactPath)) return false;
+
+        var mavenPath = $"maven/{artifactPath}";
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                using var archive = ZipFile.OpenRead(installerPath);
+                var entry = archive.GetEntry(mavenPath);
+                if (entry != null)
+                {
+                    var dir = Path.GetDirectoryName(destPath);
+                    if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                    entry.ExtractToFile(destPath, overwrite: true);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "尝试从Installer提取库失败: {Path}", mavenPath);
+            }
+            return false;
+        });
+    }
+
+    /// <summary>
     /// 根据库名和基础URL构建下载地址
     /// </summary>
     private string? BuildLibraryDownloadUrl(string libraryName, string baseUrl)
@@ -520,7 +575,13 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
             Downloads = original.Downloads,
-            JavaVersion = cleanroom?.JavaVersion ?? original.JavaVersion,
+            // 关键字段：Cleanroom 强制要求 Java 21+，原版 1.12.2 默认为 8
+            // 我们手动指定 majorVersion 为 21，component 留空或使用标识符，让启动器去匹配本地的 Java 21
+            JavaVersion = new MinecraftJavaVersion 
+            {
+                Component = "java-runtime-delta", 
+                MajorVersion = 21
+            },
             Arguments = !string.IsNullOrEmpty(cleanroom?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
                 ? null
                 : (cleanroom?.Arguments != null && (cleanroom.Arguments.Game != null || cleanroom.Arguments.Jvm != null) ? cleanroom.Arguments : original.Arguments),
@@ -528,10 +589,46 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 添加原版库
+        // 构建Cleanroom库的查找表 (Group:Artifact)
+        var cleanroomLibKeys = new HashSet<string>();
+        if (cleanroom?.Libraries != null)
+        {
+            foreach (var lib in cleanroom.Libraries)
+            {
+                var key = GetLibraryKey(lib.Name);
+                if (!string.IsNullOrEmpty(key))
+                {
+                    cleanroomLibKeys.Add(key);
+                }
+            }
+        }
+
+        // 添加原版库，但过滤掉与LWJGL相关的旧版库以及Cleanroom已提供更新版本的库
+        bool shouldUseLwjgl3 = cleanroom?.Libraries?.Any(l => l.Name.StartsWith("org.lwjgl", StringComparison.OrdinalIgnoreCase) && !l.Name.Contains("2.9")) ?? false;
+        
         if (original.Libraries != null)
         {
-            merged.Libraries.AddRange(original.Libraries);
+            foreach (var lib in original.Libraries)
+            {
+                // 1. 过滤 LWJGL 2
+                if (shouldUseLwjgl3 && IsLwjgl2Library(lib.Name))
+                {
+                    Logger.LogInformation("Cleanroom使用LWJGL 3，移除原版LWJGL 2库: {LibName}", lib.Name);
+                    continue;
+                }
+
+                // 2. 过滤被Cleanroom覆盖的库 (例如 Gson, Guava, ASM等)
+                var key = GetLibraryKey(lib.Name);
+                if (!string.IsNullOrEmpty(key) && cleanroomLibKeys.Contains(key))
+                {
+                     // 特殊情况：如果是Cleanroom核心库自己，当然不跳过原版（原版也没这个）
+                     // 但如果是 Gson 2.8.0 (Original) vs Gson 2.8.9 (Cleanroom)，则跳过Original
+                     Logger.LogInformation("Cleanroom提供了更新版本的库，移除原版库: {LibName}", lib.Name);
+                     continue;
+                }
+
+                merged.Libraries.Add(lib);
+            }
         }
 
         // 添加Cleanroom库
@@ -582,6 +679,27 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
+    }
+
+    private bool IsLwjgl2Library(string libraryName)
+    {
+        return libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl") || 
+               libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl_util") || 
+               libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl-platform") ||
+               libraryName.StartsWith("net.java.jinput:jinput") ||
+               // 这个库如果不移除会导致 java.lang.NoSuchFieldError: Class com.sun.jna.Pointer does not have member field 'int SIZE'
+               libraryName.StartsWith("net.java.dev.jna:jna") || 
+               libraryName.StartsWith("net.java.dev.jna:platform");
+    }
+
+    private string? GetLibraryKey(string libraryName)
+    {
+        var parts = libraryName.Split(':');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0]}:{parts[1]}";
+        }
+        return null;
     }
 
     private void CleanupTempFiles(string? extractedPath)

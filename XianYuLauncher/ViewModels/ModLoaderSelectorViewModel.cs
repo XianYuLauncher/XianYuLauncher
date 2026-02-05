@@ -1009,28 +1009,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 return;
             }
             
-            // 如果选择了Cleanroom，显示警告弹窗
-            if (SelectedModLoader == "Cleanroom")
-            {
-                var warningDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-                {
-                    Title = "ModLoaderSelectionPage_CleanroomWarningTitleText".GetLocalized(),
-                    Content = "ModLoaderSelectionPage_CleanroomWarningContentText".GetLocalized(),
-                    PrimaryButtonText = "ModLoaderSelectionPage_ContinueDownloadText".GetLocalized(),
-                    CloseButtonText = "ModLoaderSelectionPage_CancelButtonText".GetLocalized(),
-                    DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Close,
-                    XamlRoot = App.MainWindow.Content.XamlRoot
-                };
-                
-                var result = await warningDialog.ShowAsync();
-                
-                // 如果用户选择取消，直接返回
-                if (result != Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
-                {
-                    return;
-                }
-            }
-            
             // 初始化下载状态
             _isBackgroundDownload = false;
             DownloadStatus = "ModLoaderSelectionPage_PreparingDownloadText".GetLocalized();

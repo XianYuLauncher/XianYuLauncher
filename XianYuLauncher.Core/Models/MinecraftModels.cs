@@ -254,6 +254,9 @@ public class DownloadFile
     
     [JsonProperty("url")]
     public string? Url { get; set; }
+
+    [JsonProperty("path")]
+    public string? Path { get; set; }
 }
 
 /// <summary>
