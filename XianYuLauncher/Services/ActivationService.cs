@@ -19,14 +19,24 @@ public class ActivationService : IActivationService
     private readonly IEnumerable<IActivationHandler> _activationHandlers;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly ILanguageSelectorService _languageSelectorService;
+    private readonly ILocalSettingsService _localSettingsService;
+    private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
     private UIElement? _shell = null;
 
-    public ActivationService(ActivationHandler<LaunchActivatedEventArgs> defaultHandler, IEnumerable<IActivationHandler> activationHandlers, IThemeSelectorService themeSelectorService, ILanguageSelectorService languageSelectorService)
+    public ActivationService(
+        ActivationHandler<LaunchActivatedEventArgs> defaultHandler, 
+        IEnumerable<IActivationHandler> activationHandlers, 
+        IThemeSelectorService themeSelectorService, 
+        ILanguageSelectorService languageSelectorService,
+        ILocalSettingsService localSettingsService,
+        XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
     {
         _defaultHandler = defaultHandler;
         _activationHandlers = activationHandlers;
         _themeSelectorService = themeSelectorService;
         _languageSelectorService = languageSelectorService;
+        _localSettingsService = localSettingsService;
+        _downloadSourceFactory = downloadSourceFactory;
     }
 
     public async Task ActivateAsync(object activationArgs)
@@ -85,7 +95,55 @@ public class ActivationService : IActivationService
     {
         await _themeSelectorService.InitializeAsync().ConfigureAwait(false);
         await _languageSelectorService.InitializeAsync().ConfigureAwait(false);
+        await InitializeDownloadSourceAsync().ConfigureAwait(false);
         await Task.CompletedTask;
+    }
+
+    private async Task InitializeDownloadSourceAsync()
+    {
+        try
+        {
+            // 初始化通用下载源
+            var savedSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+            string sourceKey;
+
+            if (!string.IsNullOrEmpty(savedSource))
+            {
+                sourceKey = savedSource.ToLowerInvariant();
+            }
+            else
+            {
+                // 首次运行，根据地区自动选择
+                var region = System.Globalization.RegionInfo.CurrentRegion;
+                var culture = System.Globalization.CultureInfo.CurrentCulture;
+                
+                if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+                {
+                    sourceKey = "bmclapi";
+                }
+                else
+                {
+                    sourceKey = "official";
+                }
+                Serilog.Log.Information($"[ActivationService] First run detected. Auto-selected download source: {sourceKey} (Region: {region.Name})");
+            }
+
+            _downloadSourceFactory.SetDefaultSource(sourceKey);
+            Serilog.Log.Information($"[ActivationService] Download source initialized to: {sourceKey}");
+
+            // 初始化Modrinth源
+            var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
+            if (!string.IsNullOrEmpty(savedModrinthSource))
+            {
+                var modrinthKey = savedModrinthSource.ToLowerInvariant();
+                _downloadSourceFactory.SetModrinthSource(modrinthKey);
+                Serilog.Log.Information($"[ActivationService] Modrinth source initialized to: {modrinthKey}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[ActivationService] Failed to initialize download sources.");
+        }
     }
 
     private async Task StartupAsync()
