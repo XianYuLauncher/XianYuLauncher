@@ -557,6 +557,11 @@ namespace XianYuLauncher.ViewModels
                     DownloadSectionText = "ModDownloadDetailPage_DownloadSectionText_Datapack".GetLocalized();
                     VersionSelectionTip = "ModDownloadDetailPage_VersionSelectionTip_Datapack".GetLocalized();
                     break;
+                case "world":
+                    SupportedLoadersText = "ModDownloadDetailPage_SupportedLoadersText_Tags".GetLocalized();
+                    DownloadSectionText = "ModDownloadDetailPage_DownloadSectionText_World".GetLocalized();
+                    VersionSelectionTip = "ModDownloadDetailPage_VersionSelectionTip_World".GetLocalized();
+                    break;
                 default:
                     SupportedLoadersText = "ModDownloadDetailPage_SupportedLoadersText_Mod".GetLocalized();
                     DownloadSectionText = "ModDownloadDetailPage_DownloadSectionText_Mod".GetLocalized();
@@ -1144,6 +1149,7 @@ namespace XianYuLauncher.ViewModels
                   {
                       6 => "mod",
                       12 => "resourcepack",
+                      17 => "world",
                       4471 => "modpack",
                       6552 => "shader",
                       6945 => "datapack",
@@ -2190,6 +2196,7 @@ namespace XianYuLauncher.ViewModels
             return classId switch
             {
                 12 => "resourcepack",
+                17 => "world",
                 4471 => "modpack",
                 6552 => "shader",
                 6945 => "datapack",
@@ -2735,6 +2742,14 @@ namespace XianYuLauncher.ViewModels
                     savePath = Path.Combine(targetDir, modVersion.FileName);
                 }
                 
+                // 如果是世界，则不执行普通下载逻辑，转为 InstallWorldAsync
+                if (ProjectType == "world")
+                {
+                   // 执行世界下载
+                   await InstallWorldAsync(modVersion);
+                   return;
+                }
+
                 var dependenciesTargetDir = Path.GetDirectoryName(savePath);
                 if (!string.IsNullOrEmpty(dependenciesTargetDir))
                 {

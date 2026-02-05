@@ -2560,4 +2560,10 @@ Continue downloading?</value>
   <data name="VersionListPage_MissingJsonFile" xml:space="preserve">
     <value>Missing version file</value>
   </data>
+  <data name="ModDownloadDetailPage_DownloadSectionText_World" xml:space="preserve">
+    <value>World Download</value>
+  </data>
+  <data name="ModDownloadDetailPage_VersionSelectionTip_World" xml:space="preserve">
+    <value>Please verify if the world version matches the game version. It is recommended to perform a backup before importing.</value>
+  </data>
 </root>

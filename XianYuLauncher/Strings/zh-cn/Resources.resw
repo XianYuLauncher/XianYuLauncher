@@ -2572,4 +2572,10 @@
   <data name="VersionListPage_MissingJsonFile" xml:space="preserve">
     <value>缺少版本文件</value>
   </data>
+  <data name="ModDownloadDetailPage_DownloadSectionText_World" xml:space="preserve">
+    <value>世界下载</value>
+  </data>
+  <data name="ModDownloadDetailPage_VersionSelectionTip_World" xml:space="preserve">
+    <value>选择游戏版本</value>
+  </data>
 </root>
