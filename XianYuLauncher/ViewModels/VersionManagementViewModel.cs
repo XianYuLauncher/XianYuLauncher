@@ -2351,7 +2351,43 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             WorldFolder = save.Name
         });
     }
-        
+
+    /// <summary>
+    /// 根据版本配置或名称确定 ModLoader 类型
+    /// </summary>
+    public static string DetermineModLoaderType(Core.Models.VersionConfig? versionConfig, string versionName)
+    {
+        // 1. 优先使用 versionConfig 中的 ModLoaderType
+        if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
+        {
+            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+            {
+                return "LegacyFabric";
+            }
+            if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
+            {
+                return "NeoForge";
+            }
+            return versionConfig.ModLoaderType.ToLower();
+        }
+
+        // 2. 回退到基于版本名的判断
+        if (string.IsNullOrEmpty(versionName)) return "fabric";
+
+        if (versionName.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) ||
+            versionName.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+        {
+            return "LegacyFabric";
+        }
+        if (versionName.Contains("fabric", StringComparison.OrdinalIgnoreCase)) return "fabric";
+        if (versionName.Contains("forge", StringComparison.OrdinalIgnoreCase)) return "forge";
+        if (versionName.Contains("neoforge", StringComparison.OrdinalIgnoreCase)) return "neoforge";
+        if (versionName.Contains("quilt", StringComparison.OrdinalIgnoreCase)) return "quilt";
+
+        // 默认
+        return "fabric";
+    }
+
     #endregion
 
 }

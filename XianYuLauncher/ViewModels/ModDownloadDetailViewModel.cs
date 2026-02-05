@@ -1135,6 +1135,7 @@ namespace XianYuLauncher.ViewModels
             // 设置平台信息
             ModSlug = modDetail.Slug;
             PlatformName = "CurseForge";
+            PlatformUrl = modDetail.Links?.WebsiteUrl;
             
               // 设置项目类型：优先通过ClassId判断，其次使用传递进来的_sourceType，最后默认为mod
               if (modDetail.ClassId.HasValue)
@@ -1925,6 +1926,22 @@ namespace XianYuLauncher.ViewModels
         // 执行实际下载操作
         private async Task PerformDownload(ModVersionViewModel modVersion, string savePath)
         {
+            // 如果URL缺失且是CurseForge资源，尝试手动构造
+            if (string.IsNullOrEmpty(modVersion.DownloadUrl) && modVersion.IsCurseForge && modVersion.OriginalCurseForgeFile != null)
+            {
+                try 
+                {
+                    modVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
+                        modVersion.OriginalCurseForgeFile.Id,
+                        modVersion.OriginalCurseForgeFile.FileName ?? modVersion.FileName);
+                    System.Diagnostics.Debug.WriteLine($"[PerformDownload] 手动构造下载URL: {modVersion.DownloadUrl}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PerformDownload] 构造URL失败: {ex.Message}");
+                }
+            }
+
             // 设置待后台下载信息（用于用户点击"后台下载"按钮时只关闭弹窗）
             SetPendingBackgroundDownload(modVersion, savePath);
             
@@ -2352,12 +2369,15 @@ namespace XianYuLauncher.ViewModels
                 if (ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack)
                 {
                     // 这些类型只基于游戏版本号兼容，不需要检查加载器
-                    if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
+                    // 增加对"Generic"版本的支持
+                    if (!string.IsNullOrEmpty(gameVersion) && 
+                       (supportedGameVersionIds.Contains(gameVersion) || supportedGameVersionIds.Contains("Generic")))
                     {
                         isCompatible = true;
                     }
                 }
-                else if (!string.IsNullOrEmpty(gameVersion) && supportedGameVersionIds.Contains(gameVersion))
+                else if (!string.IsNullOrEmpty(gameVersion) && 
+                        (supportedGameVersionIds.Contains(gameVersion) || supportedGameVersionIds.Contains("Generic")))
                 {
                     // 获取该Mod版本支持的加载器列表
                     var supportedLoaders = modVersion.Loaders;

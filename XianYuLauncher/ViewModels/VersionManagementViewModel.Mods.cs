@@ -799,46 +799,7 @@ public partial class VersionManagementViewModel
                     if (versionConfig != null)
                     {
                         // 获取ModLoader类型
-                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
-                        {
-                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "NeoForge";
-                            }
-                            else
-                            {
-                                modLoader = versionConfig.ModLoaderType.ToLower();
-                            }
-                        }
-                        else
-                        {
-                            // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
-                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "fabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("forge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "forge";
-                            }
-                            else if (SelectedVersion.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "neoforge";
-                            }
-                            else if (SelectedVersion.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "quilt";
-                            }
-                        }
+                        modLoader = DetermineModLoaderType(versionConfig, SelectedVersion.Name);
                         
                         // 获取游戏版本
                         if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
@@ -1293,46 +1254,7 @@ public partial class VersionManagementViewModel
                     if (versionConfig != null)
                     {
                         // 获取ModLoader类型
-                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
-                        {
-                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "NeoForge";
-                            }
-                            else
-                            {
-                                modLoader = versionConfig.ModLoaderType.ToLower();
-                            }
-                        }
-                        else
-                        {
-                            // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
-                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "fabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("forge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "forge";
-                            }
-                            else if (SelectedVersion.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "neoforge";
-                            }
-                            else if (SelectedVersion.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "quilt";
-                            }
-                        }
+                        modLoader = DetermineModLoaderType(versionConfig, SelectedVersion.Name);
                         
                         // 获取游戏版本
                         if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
@@ -1960,46 +1882,7 @@ public partial class VersionManagementViewModel
                     if (versionConfig != null)
                     {
                         // 获取ModLoader类型
-                        if (!string.IsNullOrEmpty(versionConfig.ModLoaderType))
-                        {
-                            if (versionConfig.ModLoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (versionConfig.ModLoaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "NeoForge";
-                            }
-                            else
-                            {
-                                modLoader = versionConfig.ModLoaderType.ToLower();
-                            }
-                        }
-                        else
-                        {
-                            // 回退到基于版本名的判断
-                            if (SelectedVersion.Name.Contains("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
-                                SelectedVersion.Name.Contains("legacy-fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "LegacyFabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("fabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "fabric";
-                            }
-                            else if (SelectedVersion.Name.Contains("forge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "forge";
-                            }
-                            else if (SelectedVersion.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "neoforge";
-                            }
-                            else if (SelectedVersion.Name.Contains("quilt", StringComparison.OrdinalIgnoreCase))
-                            {
-                                modLoader = "quilt";
-                            }
-                        }
+                        modLoader = DetermineModLoaderType(versionConfig, SelectedVersion.Name);
                         
                         // 获取游戏版本
                         if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
