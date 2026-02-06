@@ -93,15 +93,6 @@
 - **GitHub**: [XianYuLauncher](https://github.com/XianYuLauncher/XianYuLauncher)
 - **Issues**: [報告 Bug 或請求功能](https://github.com/XianYuLauncher/XianYuLauncher/issues)
 
-## 程式碼簽章策略
-
-免費程式碼簽章由 [SignPath.io](https://about.signpath.io/) 提供，憑證由 [SignPath Foundation](https://signpath.org/) 提供。
-
-本專案使用 SignPath 以確保發布的完整性和真實性。
-
-> **注意**：由於開發者額度不足，暫時可能不會使用 SignPath 簽章。
-
-- **流程**：所有獨立發行版（不包括 Microsoft Store 構建）均使用 GitHub Actions 構建，並由 SignPath 自動簽章。
 - **隱私與條款**：
   - [使用條款](https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV)
   - [隱私政策](https://docs.qq.com/doc/DVnFIaUVhb2NXRXRz)
