@@ -40,6 +40,11 @@ namespace XianYuLauncher.ViewModels
         private ObservableCollection<string> _logLines = new();
 
         /// <summary>
+        /// 独立 Fixer 聊天窗口是否打开（打开时离开分析页不清空聊天）
+        /// </summary>
+        public bool IsFixerWindowOpen { get; set; }
+
+        /// <summary>
         /// 加入QQ群进行反馈
         /// </summary>
         [RelayCommand]
@@ -123,6 +128,39 @@ namespace XianYuLauncher.ViewModels
                 }
             }
         }
+
+        public async Task ClearChatStateAsync()
+        {
+            if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
+            {
+                _aiAnalysisCts.Cancel();
+            }
+
+            await EnqueueOnUiAsync(() =>
+            {
+                ChatMessages.Clear();
+                ChatInput = string.Empty;
+                IsChatEnabled = false;
+                ResetFixActionState();
+            });
+
+            _aiAnalysisCts?.Dispose();
+            _aiAnalysisCts = null;
+
+            _isToolBlockActive = false;
+            _toolTagCarry = string.Empty;
+            _toolBlockBuffer.Clear();
+        }
+
+        // Chat Properties
+        [ObservableProperty]
+        private ObservableCollection<UiChatMessage> _chatMessages = new();
+
+        [ObservableProperty]
+        private string _chatInput = string.Empty;
+
+        [ObservableProperty]
+        private bool _isChatEnabled = false;
 
         // 新增：智能修复相关属性
         [ObservableProperty]
@@ -278,6 +316,25 @@ namespace XianYuLauncher.ViewModels
                     AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
                 });
             }
+        }
+
+        [RelayCommand]
+        private async Task RejectFixAction()
+        {
+            var rejectedText = FixButtonText;
+            await EnqueueOnUiAsync(() =>
+            {
+                ResetFixActionState();
+
+                if (!string.IsNullOrWhiteSpace(rejectedText))
+                {
+                    ChatMessages.Add(new UiChatMessage("assistant", $"已拒绝执行：{rejectedText}"));
+                }
+                else
+                {
+                    ChatMessages.Add(new UiChatMessage("assistant", "已拒绝执行该操作。"));
+                }
+            });
         }
 
         private async Task ExecuteSearchModrinthProjectAsync(Dictionary<string, string> parameters)
@@ -788,7 +845,7 @@ namespace XianYuLauncher.ViewModels
         if (isCrashed)
         {
             System.Diagnostics.Debug.WriteLine("崩溃分析: 游戏崩溃，自动触发崩溃分析");
-            Task.Run(async () => await AnalyzeWithAiAsync());
+            _ = AnalyzeWithAiAsync();
         }
         else
         {
@@ -801,6 +858,548 @@ namespace XianYuLauncher.ViewModels
     private bool _isToolBlockActive;
     private string _toolTagCarry = string.Empty;
     private readonly StringBuilder _toolBlockBuffer = new();
+
+    private const string ChatSystemPromptTemplate = 
+        "You are an expert Minecraft technical support agent. " +
+        "Analyze the following Minecraft crash log and explain in simple localized language ({0}) what caused the crash and how to fix it. " +
+        "Be concise and reference specific mods or config files if they are responsible. " +
+        "\n\n" +
+        "If you need to suggest actionable fixes, output a JSON array inside <TOOL_CALLS>...</TOOL_CALLS> at the END of your reply. " +
+        "Each item should follow: {{\"type\": string, \"buttonText\": string, \"parameters\": {{ ... }} }}. " +
+        "Available types: searchModrinthProject, deleteMod, switchJavaForVersion. " +
+        "Parameters: searchModrinthProject => {{query, projectType?, loader?}}; deleteMod => {{modId}}; switchJavaForVersion => {{}}. " +
+        "Do not include any other keys in tool objects.";
+
+    [RelayCommand]
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(ChatInput)) return;
+        if (IsAiAnalyzing) return;
+
+        var userMsg = ChatInput.Trim();
+        ChatInput = string.Empty;
+
+        IsAiAnalyzing = true;
+        IsChatEnabled = false;
+
+        await EnqueueOnUiAsync(() =>
+        {
+            ResetFixActionState();
+            ChatMessages.Add(new UiChatMessage("user", userMsg));
+            ChatMessages.Add(new UiChatMessage("assistant", "..."));
+        });
+        
+        // Give UI a moment to render the new messages
+        await Task.Delay(50);
+
+        try {
+            var isAiEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableAIAnalysis") ?? false;
+            if (!isAiEnabled)
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    if (ChatMessages.Any())
+                    {
+                        ChatMessages.Last().Content = "当前为知识库模式，无法进行 AI 对话。请在设置中开启 AI 分析。";
+                    }
+                });
+                return;
+            }
+
+            var endpoint = await _localSettingsService.ReadSettingAsync<string>("AIApiEndpoint") ?? string.Empty;
+            var storedKey = await _localSettingsService.ReadSettingAsync<string>("AIApiKey") ?? string.Empty;
+            var key = TokenEncryption.IsEncrypted(storedKey) ? TokenEncryption.Decrypt(storedKey) : storedKey;
+            var model = await _localSettingsService.ReadSettingAsync<string>("AIModel") ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(key)) {
+                await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
+            } else {
+                 if (ChatMessages.Any()) await EnqueueOnUiAsync(() => ChatMessages.Last().Content = "API Key Missing.");
+            }
+        }
+        finally {
+             await EnqueueOnUiAsync(() => {
+                IsAiAnalyzing = false;
+                IsChatEnabled = true;
+             });
+        }
+    }
+
+    /// <summary>
+    /// 工具调用循环的最大轮次，防止 AI 无限调用工具
+    /// </summary>
+    private const int MaxToolCallRounds = 8;
+
+    private async Task StreamResponseToLastMessage(string key, string endpoint, string model)
+    {
+        // 构建消息历史
+        var apiMessages = new List<ChatMessage>();
+
+        var langCode = _languageSelectorService.Language;
+        var languageForAi = (langCode == "zh-CN") ? "Simplified Chinese" : "English";
+        var sysPrompt = BuildFunctionCallingSystemPrompt(languageForAi);
+        apiMessages.Add(new ChatMessage("system", sysPrompt));
+
+        // 添加历史消息（跳过最后一条 assistant 占位符）
+        foreach (var msg in ChatMessages.Take(ChatMessages.Count - 1))
+        {
+            if (msg.Role == "system") continue;
+            apiMessages.Add(new ChatMessage(msg.Role, msg.Content));
+        }
+
+        // 获取工具定义
+        var tools = XianYuLauncher.Core.Services.FixerToolRegistry.GetAllTools();
+
+        // 工具调用循环
+        for (int round = 0; round < MaxToolCallRounds; round++)
+        {
+            if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
+
+            bool isFirstChunk = true;
+            var contentBuilder = new StringBuilder();
+            var updateBuffer = new StringBuilder();
+            var lastUpdate = DateTime.UtcNow;
+            var uiUpdateInterval = TimeSpan.FromMilliseconds(50);
+            List<ToolCallInfo>? pendingToolCalls = null;
+
+            await foreach (var chunk in _aiAnalysisService.StreamChatWithToolsAsync(apiMessages, tools, key, endpoint, model))
+            {
+                if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
+
+                // 处理文本内容
+                if (chunk.IsContent)
+                {
+                    contentBuilder.Append(chunk.ContentDelta);
+                    updateBuffer.Append(chunk.ContentDelta);
+
+                    var now = DateTime.UtcNow;
+                    if ((now - lastUpdate) > uiUpdateInterval || updateBuffer.Length > 20)
+                    {
+                        var textToAppend = updateBuffer.ToString();
+                        updateBuffer.Clear();
+                        lastUpdate = now;
+
+                        await EnqueueOnUiAsync(() =>
+                        {
+                            if (ChatMessages.Any())
+                            {
+                                var lastMsg = ChatMessages.Last();
+                                if (isFirstChunk)
+                                {
+                                    if (lastMsg.Content == "...") lastMsg.Content = "";
+                                    isFirstChunk = false;
+                                }
+                                lastMsg.Content += textToAppend;
+                                if (ChatMessages.Count <= 3) AiAnalysisResult = lastMsg.Content;
+                            }
+                        });
+                    }
+                }
+
+                // 处理工具调用
+                if (chunk.IsToolCall)
+                {
+                    pendingToolCalls = chunk.ToolCalls;
+                }
+            }
+
+            // 刷新剩余缓冲
+            if (updateBuffer.Length > 0)
+            {
+                var finalText = updateBuffer.ToString();
+                await EnqueueOnUiAsync(() =>
+                {
+                    if (ChatMessages.Any())
+                    {
+                        var lastMsg = ChatMessages.Last();
+                        if (isFirstChunk) { if (lastMsg.Content == "...") lastMsg.Content = ""; }
+                        lastMsg.Content += finalText;
+                        if (ChatMessages.Count <= 3) AiAnalysisResult = lastMsg.Content;
+                    }
+                });
+            }
+
+            // 如果没有工具调用，对话结束
+            if (pendingToolCalls == null || pendingToolCalls.Count == 0)
+            {
+                break;
+            }
+
+            // 将 assistant 的工具调用消息加入历史
+            var assistantContent = contentBuilder.Length > 0 ? contentBuilder.ToString() : null;
+            apiMessages.Add(new ChatMessage("assistant", assistantContent, pendingToolCalls));
+
+            // 执行每个工具调用并将结果加入历史
+            foreach (var toolCall in pendingToolCalls)
+            {
+                if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
+
+                System.Diagnostics.Debug.WriteLine($"[AI FunctionCall] {toolCall.FunctionName}({toolCall.Arguments})");
+
+                // 在 UI 上显示工具调用状态
+                await EnqueueOnUiAsync(() =>
+                {
+                    if (ChatMessages.Any())
+                    {
+                        var lastMsg = ChatMessages.Last();
+                        if (string.IsNullOrEmpty(lastMsg.Content) || lastMsg.Content == "...")
+                            lastMsg.Content = $"正在调用 {toolCall.FunctionName}...";
+                        else
+                            lastMsg.Content += $"\n\n正在调用 {toolCall.FunctionName}...";
+                    }
+                });
+
+                var result = await ExecuteToolCallAsync(toolCall);
+                apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result));
+            }
+
+            // 为下一轮 AI 回复添加新的 UI 占位符
+            await EnqueueOnUiAsync(() =>
+            {
+                ChatMessages.Add(new UiChatMessage("assistant", "..."));
+            });
+            await Task.Delay(50);
+        }
+    }
+
+    /// <summary>
+    /// 构建使用 function calling 的系统提示词
+    /// </summary>
+    private static string BuildFunctionCallingSystemPrompt(string language)
+    {
+        return
+            "You are an expert Minecraft technical support agent built into XianYu Launcher. " +
+            "XianYu Launcher is the product's global brand name — always refer to it as \"XianYu Launcher\", never translate or localize this name. " +
+            $"Analyze crash logs and help users fix issues. Respond in {language}. " +
+            "Be concise and reference specific mods or config files if they are responsible. " +
+            "\n\n" +
+            "You have access to tools that can query the user's game environment (installed mods, Java versions, config, etc.) " +
+            "and perform fix actions (search mods, toggle mods, switch Java). " +
+            "Use query tools FIRST to gather information before suggesting fixes. " +
+            "For destructive actions (delete/toggle mods), always explain what you're doing and why. " +
+            "For search actions (searchModrinthProject), prefer using the tool so the user gets a direct download link.";
+    }
+
+
+    /// <summary>
+    /// 执行单个工具调用，返回结果字符串
+    /// </summary>
+    private async Task<string> ExecuteToolCallAsync(ToolCallInfo toolCall)
+    {
+        try
+        {
+            var args = string.IsNullOrWhiteSpace(toolCall.Arguments)
+                ? new JObject()
+                : JObject.Parse(toolCall.Arguments);
+
+            return toolCall.FunctionName switch
+            {
+                // 查询类工具
+                "listInstalledMods" => await ExecuteListInstalledModsAsync(),
+                "getVersionConfig" => await ExecuteGetVersionConfigAsync(),
+                "checkJavaVersions" => await ExecuteCheckJavaVersionsAsync(),
+                "searchKnowledgeBase" => await ExecuteSearchKnowledgeBaseAsync(args),
+                "readModInfo" => await ExecuteReadModInfoAsync(args),
+
+                // 操作类工具 — 返回操作结果，同时设置 UI 修复按钮
+                "searchModrinthProject" => await ExecuteToolSearchModrinthAsync(args),
+                "deleteMod" => await ExecuteToolDeleteModAsync(args),
+                "toggleMod" => await ExecuteToolToggleModAsync(args),
+                "switchJavaForVersion" => await ExecuteToolSwitchJavaAsync(),
+
+                _ => $"未知工具: {toolCall.FunctionName}"
+            };
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName}: {ex.Message}");
+            return $"工具执行失败: {ex.Message}";
+        }
+    }
+
+    // ===== 查询类工具实现 =====
+
+    private async Task<string> ExecuteListInstalledModsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
+            return "无法获取版本信息，未设置版本ID或Minecraft路径。";
+
+        var modsPath = Path.Combine(_minecraftPath, "versions", _versionId, "mods");
+        if (!Directory.Exists(modsPath))
+        {
+            // 尝试全局 mods 目录
+            modsPath = Path.Combine(_minecraftPath, "mods");
+        }
+        if (!Directory.Exists(modsPath))
+            return "未找到 mods 目录，当前版本可能没有安装任何 Mod。";
+
+        var files = Directory.GetFiles(modsPath, "*.jar")
+            .Concat(Directory.GetFiles(modsPath, "*.jar.disabled"))
+            .ToList();
+
+        if (files.Count == 0)
+            return "mods 目录为空，没有安装任何 Mod。";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"共 {files.Count} 个 Mod 文件：");
+        foreach (var file in files)
+        {
+            var fileName = Path.GetFileName(file);
+            var enabled = !fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+            sb.AppendLine($"- {fileName} [{(enabled ? "启用" : "禁用")}]");
+        }
+        return sb.ToString();
+    }
+
+    private async Task<string> ExecuteGetVersionConfigAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
+            return "未设置版本信息。";
+
+        try
+        {
+            var versionDirectory = Path.Combine(_minecraftPath, "versions", _versionId);
+            var versionInfoService = App.GetService<IVersionInfoService>();
+            var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory, preferCache: true);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"版本ID: {_versionId}");
+            sb.AppendLine($"Minecraft版本: {config.MinecraftVersion}");
+            sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? ""}");
+            sb.AppendLine($"Java路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
+            sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"读取版本配置失败: {ex.Message}";
+        }
+    }
+
+    private async Task<string> ExecuteCheckJavaVersionsAsync()
+    {
+        try
+        {
+            var javaRuntimeService = App.GetService<IJavaRuntimeService>();
+            var javaVersions = await javaRuntimeService.DetectJavaVersionsAsync(true);
+
+            if (javaVersions == null || javaVersions.Count == 0)
+                return "未检测到任何已安装的 Java 版本。";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"检测到 {javaVersions.Count} 个 Java 版本：");
+            foreach (var jv in javaVersions)
+            {
+                sb.AppendLine($"- Java {jv.MajorVersion} ({jv.FullVersion}) - {jv.Path}");
+            }
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"检测 Java 版本失败: {ex.Message}";
+        }
+    }
+
+    private async Task<string> ExecuteSearchKnowledgeBaseAsync(JObject args)
+    {
+        var keyword = args["keyword"]?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(keyword))
+            return "请提供搜索关键词。";
+
+        try
+        {
+            var crashAnalyzer = App.GetService<ICrashAnalyzer>();
+            // 用关键词构造一个模拟日志行来匹配知识库
+            var fakeOutput = new List<string> { keyword };
+            var result = await crashAnalyzer.AnalyzeCrashAsync(0, fakeOutput, fakeOutput);
+
+            if (result.Type == CrashType.Unknown)
+                return $"知识库中未找到与 \"{keyword}\" 匹配的错误规则。";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"匹配到错误: {result.Title}");
+            sb.AppendLine($"类型: {result.Type}");
+            sb.AppendLine($"分析: {result.Analysis}");
+            if (result.Suggestions.Count > 0)
+            {
+                sb.AppendLine("建议:");
+                foreach (var s in result.Suggestions) sb.AppendLine($"  - {s}");
+            }
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"搜索知识库失败: {ex.Message}";
+        }
+    }
+
+    private async Task<string> ExecuteReadModInfoAsync(JObject args)
+    {
+        var fileName = args["fileName"]?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(fileName))
+            return "请提供 Mod 文件名。";
+
+        // 安全：只取文件名部分
+        fileName = Path.GetFileName(fileName);
+
+        var filePath = await FindModFileByIdAsync(fileName);
+        if (string.IsNullOrWhiteSpace(filePath))
+            return $"未找到 Mod 文件: {fileName}";
+
+        try
+        {
+            // 尝试读取 fabric.mod.json
+            var modId = await TryGetFabricModIdAsync(filePath);
+            if (!string.IsNullOrEmpty(modId))
+                return $"Mod文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)";
+
+            return $"Mod文件: {fileName}\n无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）";
+        }
+        catch (Exception ex)
+        {
+            return $"读取 Mod 信息失败: {ex.Message}";
+        }
+    }
+
+    // ===== 操作类工具实现（包装现有方法）=====
+
+    private async Task<string> ExecuteToolSearchModrinthAsync(JObject args)
+    {
+        var query = args["query"]?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(query))
+            return "请提供搜索关键词。";
+
+        var parameters = new Dictionary<string, string> { ["query"] = query };
+        if (args["projectType"] != null) parameters["projectType"] = args["projectType"]!.ToString();
+        if (args["loader"] != null) parameters["loader"] = args["loader"]!.ToString();
+
+        // 自动填充当前 loader
+        var currentLoader = await GetCurrentLoaderType();
+        if (!string.IsNullOrWhiteSpace(currentLoader) && !parameters.ContainsKey("loader"))
+            parameters["loader"] = currentLoader;
+
+        // 设置修复按钮让用户点击执行导航
+        await EnqueueOnUiAsync(() =>
+        {
+            ResetFixActionState();
+            _currentFixAction = new CrashFixAction
+            {
+                Type = "searchModrinthProject",
+                ButtonText = $"搜索 {query}",
+                Parameters = parameters
+            };
+            FixButtonText = _currentFixAction.ButtonText;
+            HasFixAction = true;
+        });
+
+        return $"已准备搜索 \"{query}\"，用户可点击按钮执行搜索并查看结果。";
+    }
+
+    private async Task<string> ExecuteToolDeleteModAsync(JObject args)
+    {
+        var modId = args["modId"]?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(modId))
+            return "请提供要删除的 Mod ID 或文件名。";
+
+        modId = Path.GetFileName(modId);
+        var parameters = new Dictionary<string, string> { ["modId"] = modId };
+
+        // 设置修复按钮让用户确认
+        await EnqueueOnUiAsync(() =>
+        {
+            ResetFixActionState();
+            _currentFixAction = new CrashFixAction
+            {
+                Type = "deleteMod",
+                ButtonText = $"删除 {modId}",
+                Parameters = parameters
+            };
+            FixButtonText = _currentFixAction.ButtonText;
+            HasFixAction = true;
+        });
+
+        return $"已准备删除 Mod \"{modId}\"，等待用户确认。";
+    }
+
+    private async Task<string> ExecuteToolToggleModAsync(JObject args)
+    {
+        var fileName = args["fileName"]?.ToString() ?? string.Empty;
+        var enabled = args["enabled"]?.Value<bool>() ?? true;
+
+        if (string.IsNullOrWhiteSpace(fileName))
+            return "请提供 Mod 文件名。";
+
+        fileName = Path.GetFileName(fileName);
+        var filePath = await FindModFileByIdAsync(fileName);
+
+        // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            var altName = enabled
+                ? fileName + ".disabled"  // 要启用，找 .disabled 文件
+                : fileName.EndsWith(".disabled") ? fileName : fileName; // 要禁用，找 .jar 文件
+            filePath = await FindModFileByIdAsync(altName);
+        }
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            return $"未找到 Mod 文件: {fileName}";
+
+        try
+        {
+            var currentName = Path.GetFileName(filePath);
+            var dir = Path.GetDirectoryName(filePath)!;
+            string newName;
+
+            if (enabled)
+            {
+                // 启用：移除 .disabled 后缀
+                newName = currentName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                    ? currentName[..^".disabled".Length]
+                    : currentName;
+            }
+            else
+            {
+                // 禁用：添加 .disabled 后缀
+                newName = currentName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                    ? currentName
+                    : currentName + ".disabled";
+            }
+
+            if (newName != currentName)
+            {
+                var newPath = Path.Combine(dir, newName);
+                File.Move(filePath, newPath);
+                return $"已{(enabled ? "启用" : "禁用")} Mod: {currentName} → {newName}";
+            }
+            else
+            {
+                return $"Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"切换 Mod 状态失败: {ex.Message}";
+        }
+    }
+
+    private async Task<string> ExecuteToolSwitchJavaAsync()
+    {
+        // 设置修复按钮让用户点击执行
+        await EnqueueOnUiAsync(() =>
+        {
+            ResetFixActionState();
+            _currentFixAction = new CrashFixAction
+            {
+                Type = "switchJavaForVersion",
+                ButtonText = "自动切换 Java 版本",
+                Parameters = new Dictionary<string, string>()
+            };
+            FixButtonText = _currentFixAction.ButtonText;
+            HasFixAction = true;
+        });
+
+        return "已准备自动切换 Java 版本，等待用户点击按钮执行。";
+    }
     
     /// <summary>
     /// 使用本地知识库进行错误分析（流式输出）
@@ -811,28 +1410,24 @@ namespace XianYuLauncher.ViewModels
         // 检查是否可以进行分析
         if (!_isGameCrashed || IsAiAnalyzing)
         {
-            System.Diagnostics.Debug.WriteLine("==================== 崩溃分析 ====================");
-            System.Diagnostics.Debug.WriteLine("崩溃分析: 条件不满足，跳过分析");
-            System.Diagnostics.Debug.WriteLine("游戏崩溃状态: " + _isGameCrashed);
-            System.Diagnostics.Debug.WriteLine("是否正在分析: " + IsAiAnalyzing);
-            System.Diagnostics.Debug.WriteLine("===============================================");
             return;
         }
         
         try
         {
-            System.Diagnostics.Debug.WriteLine("==================== 崩溃分析 ====================");
-            System.Diagnostics.Debug.WriteLine("崩溃分析: 开始分析崩溃原因");
-            
             // 重置分析结果和状态
-            IsAiAnalyzing = true;
             await EnqueueOnUiAsync(() =>
             {
+                IsAiAnalyzing = true;
+                IsChatEnabled = false;
+                ChatMessages.Clear();
+                // Initialize old property for compatibility
                 AiAnalysisResult = "正在分析崩溃原因...\n\n";
-                HasFixAction = false;
-                FixButtonText = string.Empty;
-                _currentFixAction = null;
+                ResetFixActionState();
             });
+            
+            // Give UI a moment to update
+            await Task.Delay(50);
             
             // 创建取消令牌
             _aiAnalysisCts = new System.Threading.CancellationTokenSource();
@@ -856,75 +1451,49 @@ namespace XianYuLauncher.ViewModels
                     });
 
                     var sanitizedLog = await _logSanitizerService.SanitizeAsync(FullLog);
-                    var fullTextBuilder = new StringBuilder();
+                    if (sanitizedLog.Length > 15000)
+                    {
+                        sanitizedLog = sanitizedLog.Substring(sanitizedLog.Length - 15000);
+                        sanitizedLog = "[...Log Truncated...] " + sanitizedLog;
+                    }
 
-                    _isToolBlockActive = false;
-                    _toolTagCarry = string.Empty;
-                    _toolBlockBuffer.Clear();
-
-                    // Get current language from service
-                    var langCode = _languageSelectorService.Language;
-                    var languageForAi = (langCode == "zh-CN") ? "Simplified Chinese" : "English";
+                    await EnqueueOnUiAsync(() =>
+                    {
+                         ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
+                         ChatMessages.Add(new UiChatMessage("assistant", "..."));
+                    });
                     
-                    await foreach (var chunk in _aiAnalysisService.StreamAnalyzeLogAsync(sanitizedLog, key, endpoint, model, languageForAi))
-                    {
-                        if (_aiAnalysisCts.Token.IsCancellationRequested)
-                        {
-                            break;
-                        }
+                    await Task.Delay(50);
 
-                        var visibleChunk = ConsumeToolBlockAndGetVisibleText(chunk);
-                        if (!string.IsNullOrEmpty(visibleChunk))
-                        {
-                            fullTextBuilder.Append(visibleChunk);
-                            var textChunk = visibleChunk;
-                            await EnqueueOnUiAsync(() =>
-                            {
-                                AiAnalysisResult += textChunk;
-                            });
-                        }
-                    }
-
-                    if (!_isToolBlockActive && !string.IsNullOrEmpty(_toolTagCarry))
+                    await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
+                    
+                    await EnqueueOnUiAsync(() =>
                     {
-                        fullTextBuilder.Append(_toolTagCarry);
-                        var carry = _toolTagCarry;
-                        _toolTagCarry = string.Empty;
-                        await EnqueueOnUiAsync(() =>
-                        {
-                            AiAnalysisResult += carry;
-                        });
-                    }
-                    else if (_isToolBlockActive && !string.IsNullOrEmpty(_toolTagCarry))
-                    {
-                        _toolBlockBuffer.Append(_toolTagCarry);
-                        _toolTagCarry = string.Empty;
-                    }
-
-                    var fullText = fullTextBuilder.ToString();
-                    if (_toolBlockBuffer.Length > 0)
-                    {
-                        TryApplyToolCallsFromAiResponse($"{ToolStartTag}{_toolBlockBuffer}{ToolEndTag}");
-                    }
+                        IsChatEnabled = true;
+                    });
                 }
                 else
                 {
                     await EnqueueOnUiAsync(() =>
                     {
-                        AiAnalysisResult = "未配置 API Key，无法进行 AI 分析。";
+                        var msg = "未配置 API Key，无法进行 AI 分析。";
+                        ChatMessages.Add(new UiChatMessage("assistant", msg));
+                        AiAnalysisResult = msg;
                     });
                 }
-
-                System.Diagnostics.Debug.WriteLine("崩溃分析: AI 分析完成");
-                System.Diagnostics.Debug.WriteLine("===============================================");
                 return;
             }
             
             // 使用知识库服务进行分析
             var crashAnalyzer = App.GetService<XianYuLauncher.Core.Contracts.Services.ICrashAnalyzer>();
             
+             await EnqueueOnUiAsync(() => {
+                 ChatMessages.Add(new UiChatMessage("assistant", "..."));
+             });
+
             // 获取流式分析结果
             var buffered = new StringBuilder();
+            bool isFirstChunk = true;
             var lastFlush = DateTime.UtcNow;
             const int flushIntervalMs = 10;
             const int flushSize = 80;
@@ -947,7 +1516,15 @@ namespace XianYuLauncher.ViewModels
 
                     await EnqueueOnUiAsync(() =>
                     {
-                        AiAnalysisResult += text;
+                         if(ChatMessages.Any()) {
+                            var lastMsg = ChatMessages.Last();
+                            if(isFirstChunk) { 
+                                if(lastMsg.Content == "...") lastMsg.Content = "";
+                                isFirstChunk = false; 
+                            }
+                            lastMsg.Content += text;
+                            if (ChatMessages.Count <= 1) AiAnalysisResult = ChatMessages.Last().Content;
+                         }
                     });
                 }
             }
@@ -958,7 +1535,10 @@ namespace XianYuLauncher.ViewModels
                 buffered.Clear();
                 await EnqueueOnUiAsync(() =>
                 {
-                    AiAnalysisResult += remaining;
+                     if(ChatMessages.Any()) {
+                        ChatMessages.Last().Content += remaining;
+                        if (ChatMessages.Count <= 1) AiAnalysisResult = ChatMessages.Last().Content;
+                     }
                 });
             }
 
@@ -1000,7 +1580,9 @@ namespace XianYuLauncher.ViewModels
             // 用户取消了分析
             await EnqueueOnUiAsync(() =>
             {
-                AiAnalysisResult += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+               if(ChatMessages.Any()) {
+                  ChatMessages.Last().Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+               }
             });
         }
         catch (Exception ex)
@@ -1012,7 +1594,11 @@ namespace XianYuLauncher.ViewModels
             
             await EnqueueOnUiAsync(() =>
             {
-                AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message)}";
+                var msg = string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message);
+                if (ChatMessages.Any()) {
+                     ChatMessages.Add(new UiChatMessage("assistant", $"\n\n{msg}"));
+                }
+                AiAnalysisResult += $"\n\n{msg}";
             });
         }
         finally
@@ -1022,7 +1608,11 @@ namespace XianYuLauncher.ViewModels
             _aiAnalysisCts = null;
             
             // 更新分析状态
-            IsAiAnalyzing = false;
+            await EnqueueOnUiAsync(() =>
+            {
+                IsAiAnalyzing = false;
+                IsChatEnabled = true;
+            });
         }
     }
     
@@ -1194,9 +1784,7 @@ namespace XianYuLauncher.ViewModels
 
         var output = new StringBuilder();
         var index = 0;
-        var startTagLen = ToolStartTag.Length;
-        var endTagLen = ToolEndTag.Length;
-
+        
         while (index < data.Length)
         {
             if (!_isToolBlockActive)
@@ -1204,46 +1792,65 @@ namespace XianYuLauncher.ViewModels
                 var start = data.IndexOf(ToolStartTag, index, StringComparison.OrdinalIgnoreCase);
                 if (start < 0)
                 {
+                    // Tag not found in this chunk.
+                    // Check if the END of the data matches a PREFIX of the start tag.
                     var remaining = data.Substring(index);
-                    if (remaining.Length >= startTagLen)
+                    int keepCount = 0;
+                    
+                    // Only buffer if we have a partial match at the end
+                    for (int i = 1; i < ToolStartTag.Length && i <= remaining.Length; i++)
                     {
-                        var safeLen = remaining.Length - (startTagLen - 1);
-                        output.Append(remaining.Substring(0, safeLen));
-                        _toolTagCarry = remaining.Substring(safeLen);
+                        var suffix = remaining.Substring(remaining.Length - i);
+                        if (ToolStartTag.StartsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            keepCount = i;
+                        }
                     }
-                    else
+
+                    if (remaining.Length > keepCount)
                     {
-                        _toolTagCarry = remaining;
+                        output.Append(remaining.Substring(0, remaining.Length - keepCount));
                     }
+                    
+                    _toolTagCarry = remaining.Substring(remaining.Length - keepCount);
                     break;
                 }
 
                 output.Append(data.Substring(index, start - index));
                 _isToolBlockActive = true;
-                index = start + startTagLen;
+                index = start + ToolStartTag.Length;
             }
             else
             {
                 var end = data.IndexOf(ToolEndTag, index, StringComparison.OrdinalIgnoreCase);
                 if (end < 0)
                 {
+                    // End tag not found.
+                    // Check if the END of the data matches a PREFIX of the end tag.
                     var remaining = data.Substring(index);
-                    if (remaining.Length >= endTagLen)
+                    int keepCount = 0;
+                    
+                    for (int i = 1; i < ToolEndTag.Length && i <= remaining.Length; i++)
                     {
-                        var safeLen = remaining.Length - (endTagLen - 1);
-                        _toolBlockBuffer.Append(remaining.Substring(0, safeLen));
-                        _toolTagCarry = remaining.Substring(safeLen);
+                        var suffix = remaining.Substring(remaining.Length - i);
+                        if (ToolEndTag.StartsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            keepCount = i;
+                        }
                     }
-                    else
+
+                    if (remaining.Length > keepCount)
                     {
-                        _toolTagCarry = remaining;
+                        _toolBlockBuffer.Append(remaining.Substring(0, remaining.Length - keepCount));
                     }
+                    
+                    _toolTagCarry = remaining.Substring(remaining.Length - keepCount);
                     break;
                 }
 
                 _toolBlockBuffer.Append(data.Substring(index, end - index));
                 _isToolBlockActive = false;
-                index = end + endTagLen;
+                index = end + ToolEndTag.Length;
             }
         }
 

@@ -1,0 +1,71 @@
+<windowex:WindowEx
+    x:Class="XianYuLauncher.Views.FixerChatWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:windowex="using:WinUIEx"
+    xmlns:controls="using:XianYuLauncher.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="XianYu Fixer"
+    MinWidth="420"
+    MinHeight="500"
+    Width="520"
+    Height="680">
+
+    <Grid>
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <Color x:Key="MotionOverlayColor">#CCFFFFFF</Color>
+                        <x:Double x:Key="MotionOverlayOpacity">0.5</x:Double>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <Color x:Key="MotionOverlayColor">#FF000000</Color>
+                        <x:Double x:Key="MotionOverlayOpacity">0.3</x:Double>
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
+
+        <!-- 动态光效背景 -->
+        <controls:MotionBackgroundControl x:Name="MotionBg" Canvas.ZIndex="-2" Visibility="Collapsed" />
+
+        <!-- 亚克力磨砂层 -->
+        <Rectangle x:Name="AcrylicOverlay" 
+                   Canvas.ZIndex="-1" 
+                   IsHitTestVisible="False"
+                   Visibility="Collapsed">
+            <Rectangle.Fill>
+                <AcrylicBrush TintColor="{ThemeResource MotionOverlayColor}" 
+                              TintOpacity="{ThemeResource MotionOverlayOpacity}" 
+                              FallbackColor="{ThemeResource MotionOverlayColor}"/>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- 自定义背景图片层 -->
+        <Image x:Name="BackgroundImage"
+               Stretch="UniformToFill"
+               Visibility="Collapsed"
+               Canvas.ZIndex="-1" />
+
+        <!-- 自定义标题栏 -->
+        <Grid x:Name="AppTitleBar"
+              Canvas.ZIndex="1"
+              Height="48"
+              VerticalAlignment="Top"
+              Background="Transparent">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Padding="16,0,0,0">
+                <Image Source="/Assets/WindowIcon.ico" Width="16" Height="16" Margin="0,0,12,0" />
+                <TextBlock Text="XianYu Fixer" 
+                           VerticalAlignment="Center" 
+                           Style="{StaticResource CaptionTextBlockStyle}" 
+                           FontSize="12" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 内容区域 -->
+        <Frame x:Name="ContentFrame" Margin="0,48,0,0" />
+    </Grid>
+</windowex:WindowEx>
