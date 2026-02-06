@@ -150,17 +150,8 @@
   <data name="Settings_BasicTitle.Text" xml:space="preserve">
     <value>基础设置</value>
   </data>
-  <data name="Settings_MinecraftPath.Text" xml:space="preserve">
-    <value>Minecraft 路径</value>
-  </data>
   <data name="Settings_Game.Text" xml:space="preserve">
     <value>游戏设置</value>
-  </data>
-  <data name="Settings_VersionIsolation.Text" xml:space="preserve">
-    <value>启用版本隔离</value>
-  </data>
-  <data name="Settings_Theme.Text" xml:space="preserve">
-    <value>主题</value>
   </data>
   <data name="Settings_Theme_Light.Content" xml:space="preserve">
     <value>浅色</value>
@@ -170,9 +161,6 @@
   </data>
   <data name="Settings_Theme_Default.Content" xml:space="preserve">
     <value>跟随系统</value>
-  </data>
-  <data name="Settings_WindowMaterial.Text" xml:space="preserve">
-    <value>窗口材质</value>
   </data>
   <data name="Settings_WindowMaterialDescription.Text" xml:space="preserve">
     <value>选择窗口材质，云母效果与自定义背景不可同时使用</value>
@@ -189,9 +177,6 @@
   <data name="MaterialType_CustomBackground" xml:space="preserve">
     <value>自定义背景</value>
   </data>
-  <data name="Settings_Language.Text" xml:space="preserve">
-    <value>语言</value>
-  </data>
   <data name="Settings_Language_Chinese.Content" xml:space="preserve">
     <value>简体中文</value>
   </data>
@@ -207,29 +192,23 @@
   <data name="Settings_JavaPath.Text" xml:space="preserve">
     <value>Java路径设置</value>
   </data>
-  <data name="Settings_JavaVersionManagement.Text" xml:space="preserve">
-    <value>Java版本管理</value>
-  </data>
   <data name="Settings_InstalledJavaVersions.Text" xml:space="preserve">
     <value>已安装的Java版本</value>
   </data>
   <data name="Settings_Add.Content" xml:space="preserve">
     <value>添加</value>
   </data>
+  <data name="Settings_DownloadJava.Content" xml:space="preserve">
+    <value>下载</value>
+  </data>
   <data name="Settings_Refresh.Content" xml:space="preserve">
     <value>刷新</value>
-  </data>
-  <data name="Settings_JavaSelectionMode.Text" xml:space="preserve">
-    <value>Java选择方式</value>
   </data>
   <data name="Settings_JavaSelectionMode_Auto.Content" xml:space="preserve">
     <value>自动从列表内选择Java</value>
   </data>
   <data name="Settings_JavaSelectionMode_Manual.Content" xml:space="preserve">
     <value>手动选择Java</value>
-  </data>
-  <data name="Settings_JavaPathLabel.Text" xml:space="preserve">
-    <value>Java路径</value>
   </data>
   <data name="Settings_Browse.Content" xml:space="preserve">
     <value>浏览...</value>
@@ -243,9 +222,6 @@
   <data name="Settings_NetworkTitle.Text" xml:space="preserve">
     <value>网络与下载</value>
   </data>
-  <data name="Settings_DownloadSource.Text" xml:space="preserve">
-    <value>下载源设置</value>
-  </data>
   <data name="Settings_SelectDownloadSource.Text" xml:space="preserve">
     <value>选择下载源</value>
   </data>
@@ -257,9 +233,6 @@
   </data>
   <data name="Settings_DownloadSourceDescription.Text" xml:space="preserve">
     <value>选择下载源可以影响游戏资源的下载速度和稳定性</value>
-  </data>
-  <data name="Settings_SelectVersionListSource.Text" xml:space="preserve">
-    <value>选择版本列表源</value>
   </data>
   <data name="Settings_VersionListSource_Official.Content" xml:space="preserve">
     <value>尽量使用官方源</value>
@@ -273,29 +246,17 @@
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>下载设置</value>
   </data>
-  <data name="Settings_DownloadDependencies.Text" xml:space="preserve">
-    <value>下载前置Mod</value>
-  </data>
   <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
     <value>自动下载所需的前置Mod</value>
   </data>
-  <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
-    <value>Mod隐藏快照版本</value>
-  </data>
   <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
     <value>隐藏Mod下载页快照、预发布版和候选版本</value>
-  </data>
-  <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
-    <value>下载线程数</value>
   </data>
   <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
     <value>同时下载资源文件的线程数量，数值越大下载越快，但可能占用更多系统资源</value>
   </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>关于</value>
-  </data>
-  <data name="Settings_Acknowledgments.Text" xml:space="preserve">
-    <value>鸣谢</value>
   </data>
   <data name="Settings_Disclaimer.Text" xml:space="preserve">
     <value>XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。</value>
@@ -558,11 +519,23 @@
   <data name="LaunchPage_ViewLogsButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>查看日志</value>
   </data>
-  <data name="Settings_About.Text" xml:space="preserve">
-    <value>关于此应用</value>
-  </data>
   <data name="Settings_AboutDescription.Text" xml:space="preserve">
     <value>TODO:None</value>
+  </data>
+  <data name="Settings_ContributorsHeader.Header" xml:space="preserve">
+    <value>SpiritStudio</value>
+  </data>
+  <data name="Settings_ContributorsHeader.Description" xml:space="preserve">
+    <value>感谢所有作出贡献的成员</value>
+  </data>
+  <data name="Settings_Telemetry.Header" xml:space="preserve">
+    <value>允许发送匿名诊断数据</value>
+  </data>
+  <data name="Settings_Telemetry.Description" xml:space="preserve">
+    <value>帮助改进启动器，仅收集游戏版本、运行性能及启动结果类数据</value>
+  </data>
+  <data name="Settings_InstallDevChannel.Content" xml:space="preserve">
+    <value>安装 Dev 通道版本</value>
   </data>
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
     <value>最终用户协议(EULA)</value>
@@ -1300,20 +1273,17 @@
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>以下是Mod转移结果：</value>
   </data>
-  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
-    <value>启动游戏实时日志</value>
-  </data>
   <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
     <value>开启后，启动游戏成功后会自动打开实时日志页面</value>
-  </data>
-  <data name="Settings_FontFamily.Text" xml:space="preserve">
-    <value>字体</value>
   </data>
   <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
     <value>选择应用字体，更改后立即生效</value>
   </data>
   <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
     <value>开源软件许可说明</value>
+  </data>
+  <data name="Settings_OpenSourceTitle.Description" xml:space="preserve">
+    <value>本项目使用的开源软件</value>
   </data>
   <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
     <value>本项目使用的开源软件列表：</value>
@@ -1714,21 +1684,6 @@
   <data name="ProfilePage_RenewTokenMenuItem.Text" xml:space="preserve">
     <value>续签令牌</value>
   </data>
-  <data name="Settings_CacheManagement.Text" xml:space="preserve">
-    <value>缓存管理</value>
-  </data>
-  <data name="Settings_TotalCacheSize.Text" xml:space="preserve">
-    <value>总缓存大小</value>
-  </data>
-  <data name="Settings_SearchCacheSize.Text" xml:space="preserve">
-    <value>搜索结果缓存</value>
-  </data>
-  <data name="Settings_ImageCacheSize.Text" xml:space="preserve">
-    <value>图片缓存</value>
-  </data>
-  <data name="Settings_VersionCacheSize.Text" xml:space="preserve">
-    <value>版本列表缓存</value>
-  </data>
   <data name="Settings_ClearAllCache.Content" xml:space="preserve">
     <value>清理所有缓存</value>
   </data>
@@ -1813,9 +1768,6 @@
   <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
     <value>选择Modrinth资源（Mod、资源包等）的下载源，MCIM镜像可加速国内下载</value>
   </data>
-  <data name="Settings_SelectCommunityDownloadSource.Text" xml:space="preserve">
-    <value>社区资源下载源</value>
-  </data>
   <data name="Settings_CommunityDownloadSource_Official.Content" xml:space="preserve">
     <value>官方源</value>
   </data>
@@ -1824,12 +1776,6 @@
   </data>
   <data name="Settings_CommunityDownloadSourceDescription.Text" xml:space="preserve">
     <value>选择Modrinth和CurseForge资源（Mod、资源包、整合包等）的下载源，MCIM镜像可加速国内下载</value>
-  </data>
-  <data name="Settings_UpdateSettings.Text" xml:space="preserve">
-    <value>更新设置</value>
-  </data>
-  <data name="Settings_AutoUpdateCheck.Text" xml:space="preserve">
-    <value>自动检查更新</value>
   </data>
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>每次启动弹窗</value>
@@ -2503,8 +2449,11 @@
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
     <value>XianYuFixer AI 分析</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Text" xml:space="preserve">
+  <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
     <value>AI 崩溃分析</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
+    <value>启用后可使用第三方 AI 服务分析崩溃日志</value>
   </data>
   <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
     <value>启用后可使用第三方 AI 服务分析崩溃日志。</value>
@@ -2521,11 +2470,20 @@
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API 端点 (Base URL)</value>
   </data>
+  <data name="Settings_AI_ApiEndpoint.Description" xml:space="preserve">
+    <value>OpenAI 兼容的 API 基础 URL</value>
+  </data>
   <data name="Settings_AI_ApiKey.Header" xml:space="preserve">
     <value>API 密钥 (Key)</value>
   </data>
+  <data name="Settings_AI_ApiKey.Description" xml:space="preserve">
+    <value>您的 API 密钥</value>
+  </data>
   <data name="Settings_AI_ModelName.Header" xml:space="preserve">
     <value>模型名称 (Model)</value>
+  </data>
+  <data name="Settings_AI_ModelName.Description" xml:space="preserve">
+    <value>使用的 AI 模型</value>
   </data>
   <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>拖拽资源到此处以收藏</value>
@@ -2557,9 +2515,6 @@
   <data name="MaterialType_Motion" xml:space="preserve">
     <value>流光</value>
   </data>
-  <data name="Settings_OpenLogDirectory.Text" xml:space="preserve">
-    <value>打开日志目录</value>
-  </data>
   <data name="Settings_OpenLogDirectoryDescription.Text" xml:space="preserve">
     <value>查看启动器运行日志，用于排查问题</value>
   </data>
@@ -2577,5 +2532,166 @@
   </data>
   <data name="ModDownloadDetailPage_VersionSelectionTip_World" xml:space="preserve">
     <value>选择游戏版本</value>
+  </data>
+  <!-- SettingsPage Section Headers -->
+  <data name="Settings_GameSection.Text" xml:space="preserve">
+    <value>游戏</value>
+  </data>
+  <data name="Settings_PersonalizationSection.Text" xml:space="preserve">
+    <value>个性化</value>
+  </data>
+  <data name="Settings_NetworkSection.Text" xml:space="preserve">
+    <value>网络</value>
+  </data>
+  <data name="Settings_AISection.Text" xml:space="preserve">
+    <value>智能分析</value>
+  </data>
+  <data name="Settings_AboutSection.Text" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <!-- SettingsCard/SettingsExpander 本地化键 -->
+  <data name="Settings_MinecraftPath.Header" xml:space="preserve">
+    <value>Minecraft 游戏目录</value>
+  </data>
+  <data name="Settings_MinecraftPath.Description" xml:space="preserve">
+    <value>管理游戏目录，双击列表项可快速切换</value>
+  </data>
+  <data name="Settings_JavaVersionManagement.Header" xml:space="preserve">
+    <value>Java 版本管理</value>
+  </data>
+  <data name="Settings_JavaVersionManagement.Description" xml:space="preserve">
+    <value>管理已安装的 Java 运行时</value>
+  </data>
+  <data name="Settings_JavaSelectionMode.Header" xml:space="preserve">
+    <value>Java 选择方式</value>
+  </data>
+  <data name="Settings_JavaSelectionMode.Description" xml:space="preserve">
+    <value>选择启动游戏时使用的 Java 版本</value>
+  </data>
+  <data name="Settings_JavaPathLabel.Header" xml:space="preserve">
+    <value>Java 路径</value>
+  </data>
+  <data name="Settings_JavaPathLabel.Description" xml:space="preserve">
+    <value>手动指定 Java 可执行文件路径</value>
+  </data>
+  <data name="Settings_VersionIsolation.Header" xml:space="preserve">
+    <value>启用版本隔离</value>
+  </data>
+  <data name="Settings_VersionIsolation.Description" xml:space="preserve">
+    <value>开启后，每个Minecraft版本将使用独立的游戏目录</value>
+  </data>
+  <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
+    <value>启动游戏实时日志</value>
+  </data>
+  <data name="Settings_RealTimeLogs.Description" xml:space="preserve">
+    <value>开启后，启动游戏成功后会自动打开实时日志页面</value>
+  </data>
+  <data name="Settings_Theme.Header" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="Settings_Theme.Description" xml:space="preserve">
+    <value>选择应用的外观主题</value>
+  </data>
+  <data name="Settings_WindowMaterial.Header" xml:space="preserve">
+    <value>窗口材质</value>
+  </data>
+  <data name="Settings_WindowMaterial.Description" xml:space="preserve">
+    <value>选择窗口背景效果</value>
+  </data>
+  <data name="Settings_BackgroundImage.Header" xml:space="preserve">
+    <value>背景图片</value>
+  </data>
+  <data name="Settings_BackgroundImage.Description" xml:space="preserve">
+    <value>选择自定义背景图片</value>
+  </data>
+  <data name="Settings_Language.Header" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings_Language.Description" xml:space="preserve">
+    <value>选择应用语言，更改后需要重启应用</value>
+  </data>
+  <data name="Settings_FontFamily.Header" xml:space="preserve">
+    <value>字体</value>
+  </data>
+  <data name="Settings_FontFamily.Description" xml:space="preserve">
+    <value>选择应用字体，更改后立即生效</value>
+  </data>
+  <data name="Settings_DownloadSource.Header" xml:space="preserve">
+    <value>游戏下载源</value>
+  </data>
+  <data name="Settings_DownloadSource.Description" xml:space="preserve">
+    <value>选择下载源可以影响游戏资源的下载速度</value>
+  </data>
+  <data name="Settings_SelectVersionListSource.Header" xml:space="preserve">
+    <value>版本列表源</value>
+  </data>
+  <data name="Settings_SelectVersionListSource.Description" xml:space="preserve">
+    <value>选择版本列表源可以影响版本列表的获取速度</value>
+  </data>
+  <data name="Settings_SelectCommunityDownloadSource.Header" xml:space="preserve">
+    <value>社区资源下载源</value>
+  </data>
+  <data name="Settings_SelectCommunityDownloadSource.Description" xml:space="preserve">
+    <value>选择Modrinth和CurseForge资源的下载源</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Header" xml:space="preserve">
+    <value>下载前置Mod</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Description" xml:space="preserve">
+    <value>自动下载所需的前置Mod</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Header" xml:space="preserve">
+    <value>Mod隐藏快照版本</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Description" xml:space="preserve">
+    <value>隐藏Mod下载页快照、预发布版和候选版本</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Header" xml:space="preserve">
+    <value>下载线程数</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Description" xml:space="preserve">
+    <value>同时下载资源文件的数量，数值越大下载越快</value>
+  </data>
+  <data name="Settings_CacheManagement.Header" xml:space="preserve">
+    <value>缓存管理</value>
+  </data>
+  <data name="Settings_CacheManagement.Description" xml:space="preserve">
+    <value>管理搜索结果和图片缓存</value>
+  </data>
+  <data name="Settings_TotalCacheSize.Header" xml:space="preserve">
+    <value>总缓存大小</value>
+  </data>
+  <data name="Settings_SearchCacheSize.Header" xml:space="preserve">
+    <value>搜索结果缓存</value>
+  </data>
+  <data name="Settings_ImageCacheSize.Header" xml:space="preserve">
+    <value>图片缓存</value>
+  </data>
+  <data name="Settings_VersionCacheSize.Header" xml:space="preserve">
+    <value>版本列表缓存</value>
+  </data>
+  <data name="Settings_Acknowledgments.Header" xml:space="preserve">
+    <value>鸣谢</value>
+  </data>
+  <data name="Settings_Acknowledgments.Description" xml:space="preserve">
+    <value>感谢以下项目和贡献者</value>
+  </data>
+  <data name="Settings_About.Header" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Settings_UpdateSettings.Header" xml:space="preserve">
+    <value>更新设置</value>
+  </data>
+  <data name="Settings_UpdateSettings.Description" xml:space="preserve">
+    <value>配置自动检查更新的方式</value>
+  </data>
+  <data name="Settings_AutoUpdateCheck.Header" xml:space="preserve">
+    <value>自动检查更新</value>
+  </data>
+  <data name="Settings_OpenLogDirectory.Header" xml:space="preserve">
+    <value>打开日志目录</value>
+  </data>
+  <data name="Settings_OpenLogDirectory.Description" xml:space="preserve">
+    <value>查看启动器运行日志，用于排查问题</value>
   </data>
 </root>

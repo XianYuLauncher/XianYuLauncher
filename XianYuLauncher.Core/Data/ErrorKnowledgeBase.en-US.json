@@ -1,0 +1,453 @@
+{
+  "version": "1.0.0",
+  "errors": [
+    {
+      "id": "manually_triggered",
+      "type": "ManuallyTriggered",
+      "priority": 100,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "Manually triggered debug crash"
+        }
+      ],
+      "title": "Debug Crash",
+      "analysis": "This is a manually triggered debug crash for testing crash handling functionality.",
+      "suggestions": [
+        "This is not a real game crash; no need for concern."
+      ]
+    },
+    {
+      "id": "out_of_memory",
+      "type": "OutOfMemory",
+      "priority": 90,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "OutOfMemoryError"
+        },
+        {
+          "type": "contains",
+          "value": "Java heap space"
+        },
+        {
+          "type": "contains",
+          "value": "unable to create new native thread"
+        }
+      ],
+      "title": "Out of Memory",
+      "analysis": "The game crashed due to insufficient memory. The Java Virtual Machine could not allocate enough memory to run the game.",
+      "suggestions": [
+        "Try increasing the memory allocated to the game (set JVM arguments in the version management)",
+        "Close other memory-intensive programs such as browsers, video players, etc.",
+        "Reduce the render distance and graphics settings in-game",
+        "If using many mods, consider reducing the number of mods",
+        "For 32-bit systems, it is recommended to upgrade to a 64-bit system to support more memory"
+      ]
+    },
+    {
+      "id": "mod_conflict",
+      "type": "ModConflict",
+      "priority": 85,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)mod.*conflict"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)mod.*conflict"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Mod file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Mod file"
+        }
+      ],
+      "title": "Mod Conflict",
+      "analysis": "Mod conflict or incompatibility detected. This usually occurs because multiple mods modify the same game content, or the mod versions do not match the game version.",
+      "suggestions": [
+        "Carefully check the specific mod names mentioned in the crash log",
+        "Try removing recently added mods and test them one by one",
+        "Ensure all mod versions match the current game version",
+        "Check mod dependencies to ensure all required mods are installed",
+        "Visit the mod's official page for compatibility information"
+      ]
+    },
+    {
+      "id": "fabric_hard_dependency",
+      "type": "MissingDependency",
+      "priority": 96,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)(Immediate reason|Reason): \\[(HARD_DEP_NO_CANDIDATE|HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+(?<target>(?!java\\b)[\\w\\-_]+)\\s+@\\s+(?<version>\\[[^\\]]+\\])\\}\\]"
+        }
+      ],
+      "title": "Missing Dependency",
+      "analysis": "Detected that mod {source} requires dependency {target}, version requirement {version}.",
+      "suggestions": [
+        "Click the button below to automatically search and open {target}.",
+        "If the automatic search fails, manually download the corresponding version of {target}."
+      ],
+      "action": {
+        "type": "SearchModrinthProject",
+        "buttonText": "Search and open {target}",
+        "parameters": {
+          "query": "{target}",
+          "projectType": "mod",
+          "loader": "auto",
+          "versionRange": "{version}"
+        }
+      }
+    },
+    {
+      "id": "fabric_incompatible_mod_version",
+      "type": "ModConflict",
+      "priority": 97,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)Immediate reason: \\[(HARD_DEP_INCOMPATIBLE_PRESELECTED)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)Reason: \\[(HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "Fix:.*\\[\\[minecraft\\s+(?<mc_version>[^\\]\\s]+)\\]\\s*->\\s*add:minecraft\\s+(?<required_mc>[^\\s]+)"
+        }
+      ],
+      "title": "Incompatible Mod Version",
+      "analysis": "Detected that mod {source} ({mod_version}) is incompatible with the current Minecraft version {mc_version}. The mod's required MC version range is {mc_range}.",
+      "suggestions": [
+        "Please download a version of {source} that is compatible with the current Minecraft version",
+        "If you wish to keep this mod version, switch to a Minecraft version within the {required_mc} range instead",
+        "Click the button below to search and open {source}"
+      ],
+      "actions": [
+        {
+          "type": "SearchModrinthProject",
+          "buttonText": "Search and open {source}",
+          "parameters": {
+            "query": "{source}",
+            "projectType": "mod",
+            "loader": "auto",
+            "versionRange": "{mc_range}"
+          }
+        },
+        {
+          "type": "DeleteMod",
+          "buttonText": "Delete this Mod",
+          "parameters": {
+            "modId": "{source}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "neoforge_missing_dependency",
+      "type": "MissingDependency",
+      "priority": 94,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "Mod ID:\\s*(?:['\"‘’])?(?<target>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Requested by:\\s*(?:['\"‘’])?(?<source>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Expected range:\\s*(?:['\"‘’])?(?<version>\\[[^\\]]+\\])(?:['\"‘’])?\\s*,\\s*Actual version:\\s*(?:['\"‘’])?\\[MISSING\\](?:['\"‘’])?"
+        },
+        {
+          "type": "regex",
+          "value": "Mod\\s+(?<source>[^\\s]+)\\s+requires\\s+(?<target>[^\\s]+)\\s+(?<version>[0-9][^\\s]*)\\s+or\\s+(?<range>above|below)"
+        }
+      ],
+      "title": "Missing Dependency",
+      "analysis": "Detected that mod {source} requires dependency {target}, version requirement {version}.",
+      "suggestions": [
+        "Click the button below to automatically search and open {target}.",
+        "If the automatic search fails, manually download the corresponding version of {target}."
+      ],
+      "action": {
+        "type": "SearchModrinthProject",
+        "buttonText": "Search and open {target}",
+        "parameters": {
+          "query": "{target}",
+          "projectType": "mod",
+          "loader": "auto",
+          "versionRange": "{version}"
+        }
+      }
+    },
+    {
+      "id": "missing_dependency",
+      "type": "MissingDependency",
+      "priority": 80,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)caused by.*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)caused by.*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*FileNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*FileNotFoundException"
+        }
+      ],
+      "title": "Missing Dependencies",
+      "analysis": "The game is missing necessary dependency files or libraries. This may be due to incomplete game files or missing dependencies for certain mods.",
+      "suggestions": [
+        "Try re-downloading and reinstalling the game version",
+        "Check if any necessary library files are missing (in the libraries folder)",
+        "Ensure the game files are complete and have not been mistakenly deleted by antivirus software",
+        "If using mods, check that all required dependencies are installed",
+        "Try using the launcher's repair function to re-download missing files"
+      ]
+    },
+    {
+      "id": "entity_tick_crash",
+      "type": "Unknown",
+      "priority": 93,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)(ReportedException:\\s*Ticking entity|Description:\\s*Ticking entity)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Type:\\s*(?<entity_type>[^\\s]+)(?:\\s*\\((?<entity_class>[^\\)]+)\\))?"
+        },
+        {
+          "type": "regex",
+          "value": "Entity ID:\\s*(?<entity_id>\\d+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Name:\\s*(?<entity_name>.+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity's Exact location:\\s*(?<entity_pos>-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*)"
+        },
+        {
+          "type": "regex",
+          "value": "Level dimension:\\s*(?<dimension>[^\\s]+)"
+        }
+      ],
+      "title": "Entity Tick Crash",
+      "analysis": "Detected a crash involving entity {entity_type} ({entity_name}, ID {entity_id}) at coordinates {entity_pos} in dimension {dimension} (entity tick). This is usually caused by abnormal entity logic or related mod injection.",
+      "suggestions": [
+        "If this is a custom or mod-added entity, check if its tick logic throws an exception",
+        "Try removing or updating mods related to this entity",
+        "If unable to enter the world, restore from a backup or remove the entity from the save file",
+        "If it's a rendering thread crash, check client-side rendering-related mods"
+      ]
+    },
+    {
+      "id": "java_version_mismatch",
+      "type": "JavaVersionMismatch",
+      "priority": 95,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "UnsupportedClassVersionError"
+        },
+        {
+          "type": "contains",
+          "value": "java.lang.UnsupportedClassVersionError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)unsupported.*class.*version"
+        },
+        {
+          "type": "regex",
+          "value": "class file version \\d+\\.\\d+"
+        },
+        {
+          "type": "regex",
+          "value": "compiled by a more recent version"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)\\bFix:\\s*add.*replace.*\\bjava\\s*\\d+"
+        }
+      ],
+      "title": "Java Version Mismatch",
+      "analysis": "Java version mismatch. The game requires a higher Java version to run. The currently used Java version is too old to load class files compiled with a newer version.",
+      "suggestions": [
+        "Check the Java version required by the game (usually in the game description)",
+        "Select the correct Java version in the launcher settings",
+        "Minecraft 1.17+ recommends Java 17",
+        "Minecraft 1.20.5+ requires Java 21",
+        "If the current Java version is too low (e.g., Java 8), download and install a higher version of Java"
+      ],
+      "action": {
+        "type": "SwitchJavaForVersion",
+        "buttonText": "Automatically Switch Java and Restart",
+        "parameters": {
+          "source": "version.json"
+        }
+      }
+    },
+    {
+      "id": "graphics_driver",
+      "type": "GraphicsDriver",
+      "priority": 75,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*OpenGL"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*OpenGL"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*pixel format"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*pixel format"
+        }
+      ],
+      "title": "Graphics Driver Issue",
+      "analysis": "Graphics driver issue. The game cannot correctly initialize the graphics rendering system.",
+      "suggestions": [
+        "Update your graphics drivers to the latest version",
+        "If using a laptop, ensure the game is using the dedicated GPU, not the integrated one",
+        "Try adding `-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true` to the launch arguments",
+        "Check if the OpenGL version meets the game requirements (typically OpenGL 3.2+)",
+        "For older graphics cards, consider using optimization mods like OptiFine"
+      ]
+    },
+    {
+      "id": "network_error",
+      "type": "NetworkError",
+      "priority": 70,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection refused"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection refused"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*UnknownHostException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*UnknownHostException"
+        }
+      ],
+      "title": "Network Connection Issue",
+      "analysis": "Network connection issue. The game cannot connect to the server or download necessary resources.",
+      "suggestions": [
+        "Check if your network connection is working properly",
+        "If connecting to a multiplayer server, verify the server address and port are correct",
+        "Try disabling firewall or antivirus network interception",
+        "Check if a proxy server needs to be configured",
+        "If downloading resources fails, try switching the download source"
+      ]
+    },
+    {
+      "id": "corrupted_world",
+      "type": "CorruptedWorld",
+      "priority": 65,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)corrupt.*chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)corrupt.*chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*region file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*region file"
+        }
+      ],
+      "title": "Corrupted World Save",
+      "analysis": "World save file corruption. There is an issue with some chunk data in the game world.",
+      "suggestions": [
+        "Try restoring the world from a backup",
+        "If only some chunks are corrupted, you can delete the corresponding region files (terrain will regenerate)",
+        "Regularly backup important worlds to prevent data loss",
+        "Check the hard drive for bad sectors or insufficient space"
+      ]
+    }
+  ]
+}

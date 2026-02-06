@@ -13,12 +13,15 @@ public class ErrorKnowledgeBaseService
 {
     private ErrorKnowledgeBase? _knowledgeBase;
     private readonly string _knowledgeBasePath;
+    private readonly string _knowledgeBaseDirectory;
+    private string? _loadedLanguage;
     
     public ErrorKnowledgeBaseService()
     {
         // 知识库文件路径
         var appDir = AppContext.BaseDirectory;
-        _knowledgeBasePath = Path.Combine(appDir, "Data", "ErrorKnowledgeBase.json");
+        _knowledgeBaseDirectory = Path.Combine(appDir, "Data");
+        _knowledgeBasePath = Path.Combine(_knowledgeBaseDirectory, "ErrorKnowledgeBase.json");
     }
     
     /// <summary>
@@ -26,7 +29,8 @@ public class ErrorKnowledgeBaseService
     /// </summary>
     private async Task LoadKnowledgeBaseAsync()
     {
-        if (_knowledgeBase != null)
+        var currentLanguage = TranslationService.GetCurrentLanguage();
+        if (_knowledgeBase != null && string.Equals(_loadedLanguage, currentLanguage, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -37,6 +41,8 @@ public class ErrorKnowledgeBaseService
             {
                 var json = await File.ReadAllTextAsync(_knowledgeBasePath);
                 _knowledgeBase = JsonConvert.DeserializeObject<ErrorKnowledgeBase>(json);
+                await ApplyLocalizationAsync(_knowledgeBase, currentLanguage);
+                _loadedLanguage = currentLanguage;
                 System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 成功加载知识库，共 {_knowledgeBase?.Errors.Count ?? 0} 条规则");
             }
             else
@@ -49,6 +55,151 @@ public class ErrorKnowledgeBaseService
         {
             System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 加载知识库失败: {ex.Message}");
             _knowledgeBase = new ErrorKnowledgeBase();
+        }
+    }
+
+    private async Task ApplyLocalizationAsync(ErrorKnowledgeBase knowledgeBase, string language)
+    {
+        var localization = await LoadLocalizationAsync(language);
+        if (localization == null || localization.Errors.Count == 0)
+        {
+            return;
+        }
+
+        var localizedRules = localization.Errors
+            .Where(r => !string.IsNullOrWhiteSpace(r.Id))
+            .ToDictionary(r => r.Id, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var rule in knowledgeBase.Errors)
+        {
+            if (!localizedRules.TryGetValue(rule.Id, out var localizedRule))
+            {
+                continue;
+            }
+
+            ApplyRuleLocalization(rule, localizedRule);
+        }
+    }
+
+    private async Task<ErrorKnowledgeBaseLocalization?> LoadLocalizationAsync(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return null;
+        }
+
+        var candidates = new List<string>
+        {
+            $"ErrorKnowledgeBase.{language}.json"
+        };
+
+        var dashIndex = language.IndexOf('-');
+        if (dashIndex > 0)
+        {
+            candidates.Add($"ErrorKnowledgeBase.{language[..dashIndex]}.json");
+        }
+
+        if (!language.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+        {
+            candidates.Add("ErrorKnowledgeBase.en-US.json");
+        }
+
+        foreach (var fileName in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var path = Path.Combine(_knowledgeBaseDirectory, fileName);
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(path);
+                var localization = JsonConvert.DeserializeObject<ErrorKnowledgeBaseLocalization>(json);
+                if (localization != null)
+                {
+                    return localization;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 加载本地化资源失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static void ApplyRuleLocalization(ErrorRule rule, ErrorRuleLocalization localizedRule)
+    {
+        if (!string.IsNullOrWhiteSpace(localizedRule.Title))
+        {
+            rule.Title = localizedRule.Title;
+        }
+
+        if (!string.IsNullOrWhiteSpace(localizedRule.Analysis))
+        {
+            rule.Analysis = localizedRule.Analysis;
+        }
+
+        if (localizedRule.Suggestions != null && localizedRule.Suggestions.Count > 0)
+        {
+            rule.Suggestions = localizedRule.Suggestions;
+        }
+
+        if (rule.Action != null && localizedRule.Action != null)
+        {
+            ApplyActionLocalization(rule.Action, localizedRule.Action);
+        }
+
+        if (rule.Actions.Count > 0 && localizedRule.Actions != null && localizedRule.Actions.Count > 0)
+        {
+            for (int i = 0; i < rule.Actions.Count; i++)
+            {
+                var baseAction = rule.Actions[i];
+                var localizedAction = FindLocalizedAction(baseAction, i, localizedRule.Actions);
+                if (localizedAction != null)
+                {
+                    ApplyActionLocalization(baseAction, localizedAction);
+                }
+            }
+        }
+    }
+
+    private static ErrorActionLocalization? FindLocalizedAction(
+        ErrorAction baseAction,
+        int index,
+        IReadOnlyList<ErrorActionLocalization> localizedActions)
+    {
+        if (!string.IsNullOrWhiteSpace(baseAction.Type))
+        {
+            var matched = localizedActions.FirstOrDefault(action =>
+                string.Equals(action.Type, baseAction.Type, StringComparison.OrdinalIgnoreCase));
+            if (matched != null)
+            {
+                return matched;
+            }
+        }
+
+        return index >= 0 && index < localizedActions.Count ? localizedActions[index] : null;
+    }
+
+    private static void ApplyActionLocalization(ErrorAction action, ErrorActionLocalization localizedAction)
+    {
+        if (!string.IsNullOrWhiteSpace(localizedAction.ButtonText))
+        {
+            action.ButtonText = localizedAction.ButtonText;
+        }
+
+        if (localizedAction.Parameters == null)
+        {
+            return;
+        }
+
+        foreach (var kv in localizedAction.Parameters)
+        {
+            action.Parameters[kv.Key] = kv.Value ?? string.Empty;
         }
     }
     

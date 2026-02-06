@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Windows.ApplicationModel.DataTransfer;
@@ -19,20 +20,68 @@ namespace XianYuLauncher.Views
     {
         public ErrorAnalysisViewModel ViewModel { get; }
         private bool _isScrollPending = false;
+        private bool _isChatScrollPending = false;
+        private UiChatMessage? _lastChatMessage;
+
+        /// <summary>
+        /// 用户是否正在手动滚动聊天区域（此时不自动滚动）
+        /// </summary>
+        private bool _userIsScrollingChat = false;
+        private ScrollViewer? _chatScrollViewer;
 
         public ErrorAnalysisPage()
         {
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
             this.InitializeComponent();
             
-            // 订阅ViewModel的PropertyChanged事件，实现分析结果自动滚动
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            
             // 订阅LogLines集合变化事件，实现自动滚动到底部
             ViewModel.LogLines.CollectionChanged += LogLines_CollectionChanged;
             
+            // 订阅ChatMessages集合变化事件
+            ViewModel.ChatMessages.CollectionChanged += ChatMessages_CollectionChanged;
+
             // 添加键盘快捷键支持
             LogListView.KeyDown += LogListView_KeyDown;
+
+            // ChatListView 加载完成后获取内部 ScrollViewer
+            ChatListView.Loaded += (_, _) =>
+            {
+                _chatScrollViewer = FindScrollViewer(ChatListView);
+                if (_chatScrollViewer != null)
+                {
+                    _chatScrollViewer.ViewChanged += ChatScrollViewer_ViewChanged;
+                }
+            };
+        }
+
+        /// <summary>
+        /// 在可视树中查找 ScrollViewer
+        /// </summary>
+        private static ScrollViewer? FindScrollViewer(Microsoft.UI.Xaml.DependencyObject parent)
+        {
+            for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is ScrollViewer sv) return sv;
+                var result = FindScrollViewer(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 检测用户是否手动滚动了聊天区域
+        /// </summary>
+        private void ChatScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+        {
+            if (_chatScrollViewer == null) return;
+
+            // 当滚动结束时判断是否在底部附近（20px 容差）
+            if (!e.IsIntermediate)
+            {
+                var distanceFromBottom = _chatScrollViewer.ScrollableHeight - _chatScrollViewer.VerticalOffset;
+                _userIsScrollingChat = distanceFromBottom > 20;
+            }
         }
         
         /// <summary>
@@ -127,29 +176,103 @@ namespace XianYuLauncher.Views
         }
         
         /// <summary>
-        /// 监听ViewModel的PropertyChanged事件，实现分析结果自动滚动
+        /// 聊天集合变化时自动滚动
         /// </summary>
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ChatMessages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            // 检查是否是AiAnalysisResult属性发生变化
-            if (e.PropertyName == nameof(ViewModel.AiAnalysisResult))
+            if (e.Action == NotifyCollectionChangedAction.Add)
             {
-                // 使用防抖机制减少频繁滚动导致的UI卡顿
-                if (!_isScrollPending)
+                if (e.NewItems != null)
                 {
-                    _isScrollPending = true;
-                    
-                    // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
-                    System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
+                    foreach (var item in e.NewItems)
                     {
-                        // 确保在UI线程上执行滚动操作
-                        this.DispatcherQueue.TryEnqueue(() =>
+                        if (item is UiChatMessage msg)
                         {
-                            // 使用ChangeView方法实现自动滚动到底部
-                            KnowledgeBaseScrollViewer.ChangeView(null, double.MaxValue, null);
-                            _isScrollPending = false;
-                        });
-                    });
+                            if (_lastChatMessage != null)
+                            {
+                                _lastChatMessage.PropertyChanged -= ChatMessage_PropertyChanged;
+                            }
+
+                            _lastChatMessage = msg;
+                            _lastChatMessage.PropertyChanged += ChatMessage_PropertyChanged;
+                        }
+                    }
+                }
+
+                // 新消息添加时，重置用户滚动状态并滚到底部
+                _userIsScrollingChat = false;
+                ScrollChatToBottomAsync();
+            }
+            else if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                // 清空时重置状态
+                _userIsScrollingChat = false;
+                if (_lastChatMessage != null)
+                {
+                    _lastChatMessage.PropertyChanged -= ChatMessage_PropertyChanged;
+                    _lastChatMessage = null;
+                }
+            }
+        }
+
+        private void ChatMessage_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(UiChatMessage.Content)) return;
+
+            // 用户手动滚动了，不自动跟随
+            if (_userIsScrollingChat) return;
+
+            if (_isChatScrollPending) return;
+
+            _isChatScrollPending = true;
+            ScrollChatToBottomAsync();
+        }
+
+        /// <summary>
+        /// 将聊天 ScrollViewer 滚动到真正的底部
+        /// </summary>
+        private void ScrollChatToBottomAsync()
+        {
+            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            {
+                this.DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        if (_chatScrollViewer != null)
+                        {
+                            // 使用 ChangeView 滚动到 ScrollableHeight（真正的底部）
+                            _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, true);
+                        }
+                        else if (ChatListView.Items.Count > 0)
+                        {
+                            // 降级：ScrollViewer 还没拿到时用 ScrollIntoView
+                            ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        _isChatScrollPending = false;
+                    }
+                });
+            });
+        }
+
+        private void ChatInput_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == VirtualKey.Enter)
+            {
+                var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+                if (!shift.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+                {
+                    if (ViewModel.SendMessageCommand.CanExecute(null))
+                    {
+                        ViewModel.SendMessageCommand.Execute(null);
+                        e.Handled = true;
+                    }
                 }
             }
         }
@@ -176,6 +299,16 @@ namespace XianYuLauncher.Views
             // 只需要确保页面正常显示即可
         }
 
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            // 独立窗口还开着时不清空聊天，让用户继续在窗口里对话
+            if (!ViewModel.IsFixerWindowOpen)
+            {
+                _ = ViewModel.ClearChatStateAsync();
+            }
+        }
+
         /// <summary>
         /// 返回按钮点击事件
         /// </summary>
@@ -185,6 +318,15 @@ namespace XianYuLauncher.Views
             {
                 Frame.GoBack();
             }
+        }
+
+        /// <summary>
+        /// 弹出独立聊天窗口
+        /// </summary>
+        private void PopOutChat_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            var window = new FixerChatWindow();
+            window.Activate();
         }
     }
 }
