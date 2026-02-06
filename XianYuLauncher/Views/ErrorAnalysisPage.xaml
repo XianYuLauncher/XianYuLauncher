@@ -96,50 +96,87 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer 
+                    <ListView 
                               Grid.Row="0"
-                              VerticalScrollBarVisibility="Auto" 
-                              HorizontalScrollBarVisibility="Disabled" 
+                              ItemsSource="{x:Bind ViewModel.ChatMessages}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="False"
                               MaxHeight="300"
-                              x:Name="KnowledgeBaseScrollViewer">
-                        <ct:MarkdownTextBlock 
-                               Text="{x:Bind ViewModel.AiAnalysisResult, Mode=OneWay}" 
-                               Background="Transparent" 
-                               TextWrapping="Wrap" 
-                               FontSize="14"
-                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
-                               x:Name="KnowledgeBaseTextBlock" 
-                               IsTextSelectionEnabled="True" />
-                    </ScrollViewer>
+                              x:Name="ChatListView">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="viewModels:UiChatMessage">
+                                <Grid Margin="0,8">
+                                    <StackPanel Spacing="4">
+                                         <TextBlock Text="{x:Bind Role, Mode=OneWay}" FontWeight="Bold" FontSize="12" Opacity="0.6" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                         <TextBlock 
+                                            Text="{x:Bind Content, Mode=OneWay}" 
+                                            TextWrapping="Wrap" 
+                                            FontSize="14"
+                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
+                                            IsTextSelectionEnabled="True" 
+                                            Visibility="{x:Bind IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                      <ct:MarkdownTextBlock 
+                                                          Text="{x:Bind Content, Mode=OneWay}" 
+                                                          Background="Transparent" 
+                                                          TextWrapping="Wrap" 
+                                                          FontSize="14"
+                                                          Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
+                                                          IsTextSelectionEnabled="True" 
+                                                          Visibility="{x:Bind IsAssistant, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
 
                     <!-- 智能修复即操作区域 -->
                     <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="8">
-                        <Button
-                            x:Uid="ErrorAnalysis_FixButton"
-                            Command="{x:Bind ViewModel.FixErrorCommand}"
+                        <Grid
                             Visibility="{x:Bind ViewModel.HasFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                            HorizontalAlignment="Stretch"
-                            Padding="12,8"
-                            CornerRadius="4"
-                            Style="{StaticResource AccentButtonStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
-                                <TextBlock 
-                                    Grid.Column="1" 
-                                    Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
-                                    Foreground="White" 
-                                    FontWeight="SemiBold"
-                                    TextTrimming="CharacterEllipsis"/>
-                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
-                            </Grid>
-                        </Button>
+                            ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button
+                                x:Uid="ErrorAnalysis_FixButton"
+                                Grid.Column="0"
+                                Command="{x:Bind ViewModel.FixErrorCommand}"
+                                HorizontalAlignment="Stretch"
+                                Padding="12,8"
+                                CornerRadius="4"
+                                Style="{StaticResource AccentButtonStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
+                                    <TextBlock 
+                                        Grid.Column="1" 
+                                        Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
+                                        Foreground="White" 
+                                        FontWeight="SemiBold"
+                                        TextTrimming="CharacterEllipsis"/>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
+                                </Grid>
+                            </Button>
+                            <Button
+                                Grid.Column="1"
+                                Command="{x:Bind ViewModel.RejectFixActionCommand}"
+                                Padding="12,8"
+                                CornerRadius="4"
+                                Style="{StaticResource DefaultButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE711;" FontSize="14" />
+                                    <TextBlock Text="拒绝" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                         <Button
                             x:Uid="ErrorAnalysis_FixSecondaryButton"
                             Command="{x:Bind ViewModel.FixErrorSecondaryCommand}"
@@ -163,6 +200,21 @@
                             </Grid>
                         </Button>
                     </StackPanel>
+
+                    <Grid Grid.Row="2" Margin="0,12,0,0" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ChatInputBox"
+                                 Text="{x:Bind ViewModel.ChatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                 PlaceholderText="Ask a follow-up question..." 
+                                 IsEnabled="{x:Bind ViewModel.IsChatEnabled, Mode=OneWay}"
+                                 KeyDown="ChatInput_KeyDown"/> 
+                        <Button Grid.Column="1" Command="{x:Bind ViewModel.SendMessageCommand}" Style="{StaticResource DefaultButtonStyle}" IsEnabled="{x:Bind ViewModel.IsChatEnabled, Mode=OneWay}">
+                            <FontIcon Glyph="&#xE725;" />
+                        </Button>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

@@ -7,5 +7,6 @@ namespace XianYuLauncher.Core.Contracts.Services
     {
         Task<string> AnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model, string language = "Chinese");
         IAsyncEnumerable<string> StreamAnalyzeLogAsync(string logContent, string apiKey, string endpoint, string model, string language = "Chinese");
+        IAsyncEnumerable<string> StreamChatAsync(IEnumerable<XianYuLauncher.Core.Models.ChatMessage> messages, string apiKey, string endpoint, string model);
     }
 }

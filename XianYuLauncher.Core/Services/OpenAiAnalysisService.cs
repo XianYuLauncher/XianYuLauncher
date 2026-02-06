@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services
 {
@@ -172,6 +173,140 @@ namespace XianYuLauncher.Core.Services
                     yield return contentDelta;
                 }
             }
+        }
+
+        public async IAsyncEnumerable<string> StreamChatAsync(IEnumerable<ChatMessage> messages, string apiKey, string endpoint, string model)
+        {
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                yield return "API Key is missing.";
+                yield break;
+            }
+
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                endpoint = "https://api.openai.com/v1/chat/completions";
+            }
+            else if (!endpoint.EndsWith("/v1/chat/completions") && !endpoint.EndsWith("/chat/completions"))
+            {
+                if (endpoint.EndsWith("/"))
+                {
+                    endpoint += "v1/chat/completions";
+                }
+                else
+                {
+                    endpoint += "/v1/chat/completions";
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                model = "gpt-3.5-turbo";
+            }
+
+            // Convert to anonymous object list to ensure correct serialization
+            var apiMessages = new List<object>();
+            foreach(var msg in messages)
+            {
+                apiMessages.Add(new { role = msg.Role, content = msg.Content });
+            }
+
+            var requestBody = new
+            {
+                model = model,
+                messages = apiMessages,
+                temperature = 0.5,
+                stream = true
+            };
+
+            var json = JsonConvert.SerializeObject(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            string? error = null;
+            HttpResponseMessage? response = null;
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+                request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                request.Content = content;
+                
+                System.Diagnostics.Debug.WriteLine($"[AI Service] Sending request to {endpoint}");
+                response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                System.Diagnostics.Debug.WriteLine($"[AI Service] Response received: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AI Service] Request failed: {ex.Message}");
+                _logger.LogError(ex, "Error during streaming AI chat");
+                error = $"Chat Error: {ex.Message}";
+            }
+
+            if (error != null)
+            {
+                yield return error;
+                yield break;
+            }
+
+            if (response == null)
+            {
+                 yield return "Chat Error: Empty response.";
+                 yield break;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseString = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[AI Service] Error response body: {responseString}");
+                _logger.LogError($"AI Request Failed: {response.StatusCode} - {responseString}");
+                yield return $"AI Request Failed: {response.StatusCode}.";
+                yield break;
+            }
+
+            await using var responseStream = await response.Content.ReadAsStreamAsync();
+            using var reader = new System.IO.StreamReader(responseStream);
+
+            System.Diagnostics.Debug.WriteLine("[AI Service] Stream opened. Reading lines...");
+            int lineCount = 0;
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                
+                // Inspect raw line for debugging
+                if (line.StartsWith("data:")) 
+                {
+                     var debugPreview = line.Length > 100 ? line.Substring(0, 100) + "..." : line;
+                     System.Diagnostics.Debug.WriteLine($"[AI Service] RAW: {debugPreview}");
+                }
+
+                if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var data = line.Substring("data:".Length).Trim();
+                if (data == "[DONE]") 
+                {
+                    System.Diagnostics.Debug.WriteLine("[AI Service] Stream [DONE] received.");
+                    yield break;
+                }
+
+                if (TryExtractContentDelta(data, out var contentDelta))
+                {
+                    lineCount++;
+                    yield return contentDelta;
+                }
+                else
+                {
+                     // Check if it's a reasoning_content or just empty
+                     try {
+                        var parsedJson = JObject.Parse(data);
+                        var thinking = parsedJson["choices"]?[0]?["delta"]?["reasoning_content"]?.ToString();
+                        if (!string.IsNullOrEmpty(thinking)) {
+                            // System.Diagnostics.Debug.WriteLine("[AI Service] Skipping reasoning_content chunk.");
+                        }
+                     } catch {}
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"[AI Service] EndOfStream reached. Total Content Lines: {lineCount}");
         }
 
         private bool TryExtractContentDelta(string data, out string contentDelta)

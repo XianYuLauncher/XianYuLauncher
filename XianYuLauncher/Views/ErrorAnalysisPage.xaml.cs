@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Windows.ApplicationModel.DataTransfer;
@@ -19,18 +20,20 @@ namespace XianYuLauncher.Views
     {
         public ErrorAnalysisViewModel ViewModel { get; }
         private bool _isScrollPending = false;
+        private bool _isChatScrollPending = false;
+        private UiChatMessage? _lastChatMessage;
 
         public ErrorAnalysisPage()
         {
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
             this.InitializeComponent();
             
-            // 订阅ViewModel的PropertyChanged事件，实现分析结果自动滚动
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            
             // 订阅LogLines集合变化事件，实现自动滚动到底部
             ViewModel.LogLines.CollectionChanged += LogLines_CollectionChanged;
             
+            // 订阅ChatMessages集合变化事件
+            ViewModel.ChatMessages.CollectionChanged += ChatMessages_CollectionChanged;
+
             // 添加键盘快捷键支持
             LogListView.KeyDown += LogListView_KeyDown;
         }
@@ -127,29 +130,93 @@ namespace XianYuLauncher.Views
         }
         
         /// <summary>
-        /// 监听ViewModel的PropertyChanged事件，实现分析结果自动滚动
+        /// 聊天集合变化时自动滚动
         /// </summary>
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ChatMessages_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            // 检查是否是AiAnalysisResult属性发生变化
-            if (e.PropertyName == nameof(ViewModel.AiAnalysisResult))
+            if (e.Action == NotifyCollectionChangedAction.Add)
             {
-                // 使用防抖机制减少频繁滚动导致的UI卡顿
-                if (!_isScrollPending)
+                if (e.NewItems != null)
                 {
-                    _isScrollPending = true;
-                    
-                    // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
-                    System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
+                    foreach (var item in e.NewItems)
                     {
-                        // 确保在UI线程上执行滚动操作
-                        this.DispatcherQueue.TryEnqueue(() =>
+                        if (item is UiChatMessage msg)
                         {
-                            // 使用ChangeView方法实现自动滚动到底部
-                            KnowledgeBaseScrollViewer.ChangeView(null, double.MaxValue, null);
-                            _isScrollPending = false;
-                        });
+                            if (_lastChatMessage != null)
+                            {
+                                _lastChatMessage.PropertyChanged -= ChatMessage_PropertyChanged;
+                            }
+
+                            _lastChatMessage = msg;
+                            _lastChatMessage.PropertyChanged += ChatMessage_PropertyChanged;
+                        }
+                    }
+                }
+
+                 // 使用延迟执行滚动操作
+                System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
+                {
+                    this.DispatcherQueue.TryEnqueue(() =>
+                    {
+                         try {
+                            if (ChatListView.Items.Count > 0)
+                            {
+                                ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                            }
+                         } catch {}
                     });
+                });
+            }
+        }
+
+        private void ChatMessage_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(UiChatMessage.Content))
+            {
+                return;
+            }
+
+            if (_isChatScrollPending)
+            {
+                return;
+            }
+
+            _isChatScrollPending = true;
+            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            {
+                this.DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        var last = ViewModel.ChatMessages.LastOrDefault();
+                        if (last != null)
+                        {
+                            ChatListView.ScrollIntoView(last);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        _isChatScrollPending = false;
+                    }
+                });
+            });
+        }
+
+        private void ChatInput_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == VirtualKey.Enter)
+            {
+                var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+                if (!shift.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+                {
+                    if (ViewModel.SendMessageCommand.CanExecute(null))
+                    {
+                        ViewModel.SendMessageCommand.Execute(null);
+                        e.Handled = true;
+                    }
                 }
             }
         }
@@ -174,6 +241,12 @@ namespace XianYuLauncher.Views
             // 如果没有导航参数，说明是从 InfoBar 点击"查看日志"按钮进来的
             // 此时日志已经在 ViewModel 中了（因为是 Singleton），不需要清空
             // 只需要确保页面正常显示即可
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            _ = ViewModel.ClearChatStateAsync();
         }
 
         /// <summary>
