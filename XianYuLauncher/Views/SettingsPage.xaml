@@ -8,6 +8,7 @@
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:xaml="using:Microsoft.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
@@ -17,6 +18,7 @@
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
         <helpers:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+        <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -31,1305 +33,649 @@
         </StackPanel>
 
         <!-- 主要内容区域 -->
-        <Grid Grid.Row="1">
-            <!-- TabView控件 -->
-            <TabView 
-                x:Name="SettingsTabView" 
-                IsAddTabButtonVisible="False"
-                CanDragTabs="False"
-                CanReorderTabs="False"
-                HorizontalAlignment="Stretch" 
-                VerticalAlignment="Stretch" 
-                Height="Auto" 
-                SelectedIndex="0">
-                <TabView.Resources>
-                    <Style TargetType="TabViewItem">
-                        <Setter Property="IsClosable" Value="False" />
-                    </Style>
-                </TabView.Resources>
-                
-                <!-- 所有标签页 -->
-                <TabView.TabItems>
-                    <!-- 基础设置标签 -->
-                    <TabViewItem>
-                        <TabViewItem.Header>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="Settings_BasicTitle" Text="基础设置" VerticalAlignment="Center" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="4" Padding="0,0,16,20">
+                <animations:Implicit.ShowAnimations>
+                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
+                </animations:Implicit.ShowAnimations>
+
+                <!-- ==================== 游戏设置 ==================== -->
+                <TextBlock x:Uid="Settings_GameSection" Text="游戏" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
+
+                <!-- Minecraft 游戏目录 -->
+                <controls:SettingsExpander x:Uid="Settings_MinecraftPath" Header="Minecraft 游戏目录" Description="管理游戏目录，双击列表项可快速切换">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE8B7;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <Grid HorizontalAlignment="Right">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Uid="Settings_AddDirectory" Content="添加目录" Command="{x:Bind ViewModel.AddMinecraftPathCommand}" />
+                                <Button x:Uid="Settings_RemoveDirectory" Content="删除" Command="{x:Bind ViewModel.RemoveMinecraftPathCommand}" />
                             </StackPanel>
-                        </TabViewItem.Header>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="12,10,12,0">
-                                <animations:Implicit.ShowAnimations>
-                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
-                                </animations:Implicit.ShowAnimations>
-
-                                <!-- Minecraft 路径设置 -->
-                                <TextBlock x:Uid="Settings_MinecraftPath" Text="Minecraft 游戏目录" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <!-- 游戏目录列表 -->
-                                    <Grid Margin="{StaticResource XSmallTopMargin}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock x:Uid="Settings_AddedGameDirectories" Text="已添加的游戏目录" Margin="0,0,0,8" />
-                                        <StackPanel Orientation="Horizontal" Grid.Column="1" Spacing="8">
-                                            <Button 
-                                                x:Uid="Settings_AddDirectory"
-                                                Content="添加目录" 
-                                                Command="{x:Bind ViewModel.AddMinecraftPathCommand}"/>
-                                            <Button 
-                                                x:Uid="Settings_RemoveDirectory"
-                                                Content="删除" 
-                                                Command="{x:Bind ViewModel.RemoveMinecraftPathCommand}"
-                                                IsEnabled="{x:Bind ViewModel.SelectedMinecraftPathItem, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}, ConverterParameter=inverse}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                    
-                                    <!-- 游戏目录列表框 -->
-                                    <ListBox
-                                        ItemsSource="{x:Bind ViewModel.MinecraftPaths, Mode=OneWay}"
-                                        SelectedItem="{x:Bind ViewModel.SelectedMinecraftPathItem, Mode=TwoWay}"
-                                        Height="150"
-                                        Margin="0,0,0,8"
-                                        DoubleTapped="MinecraftPathListBox_DoubleTapped"
-                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="4">
-                                        <ListBox.ItemContainerStyle>
-                                            <Style TargetType="ListBoxItem">
-                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                                <Setter Property="Padding" Value="8,6" />
-                                                <Setter Property="Margin" Value="2" />
-                                                <Setter Property="CornerRadius" Value="4" />
-                                                <Setter Property="Background" Value="Transparent" />
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="ListBoxItem">
-                                                            <Grid
-                                                                x:Name="Root"
-                                                                Background="{TemplateBinding Background}"
-                                                                CornerRadius="{TemplateBinding CornerRadius}"
-                                                                Padding="{TemplateBinding Padding}">
-                                                                <VisualStateManager.VisualStateGroups>
-                                                                    <VisualStateGroup x:Name="CommonStates">
-                                                                        <VisualState x:Name="Normal" />
-                                                                        <VisualState x:Name="PointerOver">
-                                                                            <VisualState.Setters>
-                                                                                <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
-                                                                            </VisualState.Setters>
-                                                                        </VisualState>
-                                                                        <VisualState x:Name="Pressed">
-                                                                            <VisualState.Setters>
-                                                                                <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                            </VisualState.Setters>
-                                                                        </VisualState>
-                                                                        <VisualState x:Name="Selected">
-                                                                            <VisualState.Setters>
-                                                                                <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
-                                                                            </VisualState.Setters>
-                                                                        </VisualState>
-                                                                        <VisualState x:Name="SelectedPointerOver">
-                                                                            <VisualState.Setters>
-                                                                                <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                            </VisualState.Setters>
-                                                                        </VisualState>
-                                                                        <VisualState x:Name="SelectedPressed">
-                                                                            <VisualState.Setters>
-                                                                                <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                            </VisualState.Setters>
-                                                                        </VisualState>
-                                                                    </VisualStateGroup>
-                                                                </VisualStateManager.VisualStateGroups>
-                                                                <ContentPresenter
-                                                                    x:Name="ContentPresenter"
-                                                                    Content="{TemplateBinding Content}"
-                                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                                    ContentTransitions="{TemplateBinding ContentTransitions}"
-                                                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                                                            </Grid>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </ListBox.ItemContainerStyle>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate x:DataType="viewModels:MinecraftPathItem">
-                                                <Grid Padding="8,4">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-                                                    
-                                                    <!-- 当前使用标记 -->
-                                                    <FontIcon 
-                                                        Grid.Column="0"
-                                                        Glyph="&#xE73E;" 
-                                                        FontSize="16" 
-                                                        Foreground="{ThemeResource SystemAccentColor}"
-                                                        Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                        Margin="0,0,8,0"
-                                                        ToolTipService.ToolTip="当前使用的游戏目录" />
-                                                    
-                                                    <!-- 路径信息 -->
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock 
-                                                            Text="{x:Bind Name, Mode=OneWay}" 
-                                                            Style="{ThemeResource BodyTextBlockStyle}" 
-                                                            FontWeight="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToFontWeightConverter}}" />
-                                                        <TextBlock 
-                                                            Text="{x:Bind Path, Mode=OneWay}" 
-                                                            Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                            Opacity="0.7" 
-                                                            TextTrimming="CharacterEllipsis" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                    
-                                    <TextBlock 
-                                        x:Uid="Settings_MinecraftPathDescription"
-                                        Text="添加多个游戏目录，双击列表项即可快速切换。游戏目录应包含versions、saves等文件夹" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="{StaticResource XSmallTopMargin}" 
-                                        Opacity="0.7"
-                                        TextWrapping="Wrap"/>
-                                </StackPanel>
-                                
-                                <!-- 版本隔离设置 -->
-                                <TextBlock x:Uid="Settings_Game" Text="游戏设置" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_VersionIsolation" Text="启用版本隔离" />
-                                            <TextBlock 
-                                                x:Uid="Settings_VersionIsolationDescription"
-                                                Text="开启后，每个Minecraft版本将使用独立的游戏目录(.minecraft/versions/{版本ID})" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <ToggleSwitch 
-                                            IsOn="{x:Bind ViewModel.EnableVersionIsolation, Mode=TwoWay}" 
-                                            VerticalAlignment="Center" 
-                                            Margin="0,0,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 实时日志设置 -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_RealTimeLogs" Text="启动游戏实时日志" />
-                                            <TextBlock 
-                                                x:Uid="Settings_RealTimeLogsDescription"
-                                                Text="开启后，启动游戏成功后会自动打开实时日志页面" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <ToggleSwitch 
-                                            IsOn="{x:Bind ViewModel.EnableRealTimeLogs, Mode=TwoWay}" 
-                                            VerticalAlignment="Center" 
-                                            Margin="0,0,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-
-                            </StackPanel>
-                        </ScrollViewer>
-                    </TabViewItem>
-
-                    <!-- 个性化标签 -->
-                    <TabViewItem>
-                        <TabViewItem.Header>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE790;" FontSize="16" />
-                                <TextBlock x:Uid="Settings_PersonalizationTitle" Text="个性化" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </TabViewItem.Header>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="12,10,12,0">
-                                <animations:Implicit.ShowAnimations>
-                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
-                                </animations:Implicit.ShowAnimations>
-
-                                <!-- 主题设置 -->
-                                <TextBlock x:Uid="Settings_Theme" Text="主题" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_Theme_Light"
-                                            Content="浅色"
-                                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="AppTheme">
-                                            <RadioButton.CommandParameter>
-                                                <xaml:ElementTheme>Light</xaml:ElementTheme>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_Theme_Dark"
-                                            Content="深色"
-                                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="AppTheme">
-                                            <RadioButton.CommandParameter>
-                                                <xaml:ElementTheme>Dark</xaml:ElementTheme>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_Theme_Default"
-                                            Content="跟随系统"
-                                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Default, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="AppTheme">
-                                            <RadioButton.CommandParameter>
-                                                <xaml:ElementTheme>Default</xaml:ElementTheme>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 材质设置 -->
-                                <TextBlock x:Uid="Settings_WindowMaterial" Text="窗口材质" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <ComboBox
-                                            ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}"
-                                            SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}"
-                                            Width="300">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding Converter={StaticResource MaterialTypeToLocalizedStringConverter}}" />
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                        <TextBlock 
-                                            x:Uid="Settings_WindowMaterialDescription"
-                                            Text="选择窗口材质，云母效果与自定义背景不可同时使用" 
-                                            Style="{ThemeResource CaptionTextBlockStyle}" 
-                                            Margin="0,4,0,0" 
-                                            Opacity="0.7"/>
-                                    </StackPanel>
-                                    
-                                    <!-- 自定义背景图片设置 -->
-                                    <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="背景图片" Margin="0,0,0,8" />
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBox 
-                                                Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" 
-                                                PlaceholderText="请选择背景图片" 
-                                                Width="300"
-                                                IsReadOnly="True" />
-                                            <Button 
-                                                Content="浏览..." 
-                                                Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
-                                            <Button 
-                                                Content="清除" 
-                                                Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
-                                        </StackPanel>
-                                        <TextBlock 
-                                            Text="支持 JPG、PNG、BMP、GIF 格式的图片" 
-                                            Style="{ThemeResource CaptionTextBlockStyle}" 
-                                            Margin="0,4,0,0" 
-                                            Opacity="0.7"/>
-                                    </StackPanel>
-
-                                    <!-- 动态光效设置 -->
-                                    <StackPanel Margin="0,12,0,0" Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="流光设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,8"/>
-                                        
-                                        <!-- 速度 -->
-                                        <TextBlock Text="移动速度" Margin="0,0,0,4"/>
-                                        <Slider Minimum="0.1" Maximum="3.0" StepFrequency="0.1" Value="{x:Bind ViewModel.MotionSpeed, Mode=TwoWay}" Width="300" HorizontalAlignment="Left" />
-
-                                        <!-- 颜色 -->
-                                        <TextBlock Text="光球颜色" Margin="0,8,0,8"/>
-                                        <StackPanel Orientation="Horizontal" Spacing="12">
-                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                                <Border Background="{x:Bind ViewModel.MotionColor1, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
-                                                <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor1, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                                <Border Background="{x:Bind ViewModel.MotionColor2, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
-                                                <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor2, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                                <Border Background="{x:Bind ViewModel.MotionColor3, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
-                                                <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor3, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                                <Border Background="{x:Bind ViewModel.MotionColor4, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
-                                                <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor4, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                            <Button Width="40" Height="40" CornerRadius="20" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                                                <Border Background="{x:Bind ViewModel.MotionColor5, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="18" />
-                                                <Button.Flyout>
-                                                    <Flyout>
-                                                        <ColorPicker Color="{x:Bind ViewModel.MotionColor5, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" />
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                            </Button>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 语言设置 -->
-                                <TextBlock x:Uid="Settings_Language" Text="语言" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_Language_Chinese"
-                                            Content="简体中文"
-                                            Command="{x:Bind ViewModel.SwitchLanguageCommand}"
-                                            CommandParameter="zh-CN"
-                                            IsChecked="{x:Bind ViewModel.Language, Mode=OneWay, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=zh-CN}"
-                                            FontSize="15"
-                                            GroupName="AppLanguage">
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_Language_English"
-                                            Content="English"
-                                            Command="{x:Bind ViewModel.SwitchLanguageCommand}"
-                                            CommandParameter="en-US"
-                                            IsChecked="{x:Bind ViewModel.Language, Mode=OneWay, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=en-US}"
-                                            FontSize="15"
-                                            GroupName="AppLanguage">
-                                        </RadioButton>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_LanguageDescription"
-                                        Text="选择应用语言，更改后需要重启应用才能生效" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="0,4,0,0" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
-                                
-                                <!-- 字体设置 -->
-                                <TextBlock x:Uid="Settings_FontFamily" Text="字体" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <ComboBox
-                                            ItemsSource="{x:Bind ViewModel.FontFamilies, Mode=OneWay}"
-                                            SelectedItem="{x:Bind ViewModel.SelectedFontFamily, Mode=TwoWay}"
-                                            Width="300"
-                                            FontSize="15">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding}" FontFamily="{Binding}" />
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_FontFamilyDescription"
-                                        Text="选择应用字体，更改后立即生效" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="0,4,0,0" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </TabViewItem>
-
-                    <!-- Java设置标签 -->
-                    <TabViewItem>
-                        <TabViewItem.Header>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="Settings_JavaTitle" Text="Java设置" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </TabViewItem.Header>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="12,10,12,0">
-                                <animations:Implicit.ShowAnimations>
-                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
-                                </animations:Implicit.ShowAnimations>
-
-                                <!-- Java路径设置 -->
-                                <TextBlock x:Uid="Settings_JavaPath" Text="Java路径设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <TextBlock x:Uid="Settings_JavaVersionManagement" Text="Java版本管理" />
-                                    
-                                    <!-- Java Versions List -->
-                                    <StackPanel Margin="0,12,0,0">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock x:Uid="Settings_InstalledJavaVersions" Text="已安装的Java版本" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right" Grid.Column="1">
-                                                <Button
-                                            x:Uid="Settings_DownloadJava"
-                                            Content="下载"
-                                            Command="{x:Bind ViewModel.DownloadJavaCommand}"
-                                            IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
-                                            Margin="0,0,8,0" ToolTipService.ToolTip="在线下载并安装 Java 运行时" />
-                                                <Button
-                                            x:Uid="Settings_Add"
-                                            Content="添加"
-                                            Command="{x:Bind ViewModel.AddJavaVersionCommand}"
-                                            IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
-                                            Margin="0,0,8,0" ToolTipService.ToolTip="手动添加Java版本到列表" />
-                                                <Button
-                                            x:Uid="Settings_Refresh"
-                                            Content="刷新"
-                                            Command="{x:Bind ViewModel.RefreshJavaVersionsCommand}"
-                                            IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
-                                            Margin="0,0,8,0" ToolTipService.ToolTip="刷新已安装的Java版本列表" />
-                                                <Button
-                                            x:Uid="Settings_Clear"
-                                            Content="清除"
-                                            Command="{x:Bind ViewModel.ClearJavaVersionsCommand}"
-                                            IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
-                                            Margin="0,0,8,0" ToolTipService.ToolTip="清除所有Java版本" />
-                                                <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingJavaVersions, Mode=OneWay}" Width="20" Height="20" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Grid>
-                                        <ListBox
-                                            ItemsSource="{x:Bind ViewModel.JavaVersions, Mode=OneWay}"
-                                            SelectedItem="{x:Bind ViewModel.SelectedJavaVersion, Mode=TwoWay}"
-                                            Height="200"
-                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="8"
-                                            Padding="4">
-                                            <ListBox.ItemContainerStyle>
-                                                <Style TargetType="ListBoxItem">
-                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                                    <Setter Property="Padding" Value="8,6" />
-                                                    <Setter Property="Margin" Value="2" />
-                                                    <Setter Property="CornerRadius" Value="4" />
-                                                    <Setter Property="Background" Value="Transparent" />
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="ListBoxItem">
-                                                                <Grid
-                                                                    x:Name="Root"
-                                                                    Background="{TemplateBinding Background}"
-                                                                    CornerRadius="{TemplateBinding CornerRadius}"
-                                                                    Padding="{TemplateBinding Padding}">
-                                                                    <VisualStateManager.VisualStateGroups>
-                                                                        <VisualStateGroup x:Name="CommonStates">
-                                                                            <VisualState x:Name="Normal" />
-                                                                            <VisualState x:Name="PointerOver">
-                                                                                <VisualState.Setters>
-                                                                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
-                                                                                </VisualState.Setters>
-                                                                            </VisualState>
-                                                                            <VisualState x:Name="Pressed">
-                                                                                <VisualState.Setters>
-                                                                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                                </VisualState.Setters>
-                                                                            </VisualState>
-                                                                            <VisualState x:Name="Selected">
-                                                                                <VisualState.Setters>
-                                                                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
-                                                                                </VisualState.Setters>
-                                                                            </VisualState>
-                                                                            <VisualState x:Name="SelectedPointerOver">
-                                                                                <VisualState.Setters>
-                                                                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                                </VisualState.Setters>
-                                                                            </VisualState>
-                                                                            <VisualState x:Name="SelectedPressed">
-                                                                                <VisualState.Setters>
-                                                                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
-                                                                                </VisualState.Setters>
-                                                                            </VisualState>
-                                                                        </VisualStateGroup>
-                                                                    </VisualStateManager.VisualStateGroups>
-                                                                    <ContentPresenter
-                                                                        x:Name="ContentPresenter"
+                        </Grid>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0">
+                            <ListBox
+                                ItemsSource="{x:Bind ViewModel.MinecraftPaths, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedMinecraftPathItem, Mode=TwoWay}"
+                                Height="150"
+                                DoubleTapped="MinecraftPathListBox_DoubleTapped"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Grid x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="Transparent" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedUnfocused">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="Transparent" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedPointerOver">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedPressed">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
                                                                         Content="{TemplateBinding Content}"
                                                                         ContentTemplate="{TemplateBinding ContentTemplate}"
                                                                         ContentTransitions="{TemplateBinding ContentTransitions}"
                                                                         HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                                                                </Grid>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
-                                            </ListBox.ItemContainerStyle>
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate x:DataType="viewModels:JavaVersionInfo">
-                                                    <StackPanel Margin="4">
-                                                        <TextBlock Text="{x:Bind Version}" Style="{ThemeResource BodyTextBlockStyle}" />
-                                                        <TextBlock Text="{x:Bind Path}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-                                </StackPanel>
-                                
-                                <!-- Java选择方式 -->
-                                <TextBlock x:Uid="Settings_JavaSelectionMode" Text="Java选择方式" Margin="0,20,0,0" />
-                                <StackPanel Margin="0,8,0,0">
-                                    <RadioButton
-                                        x:Uid="Settings_JavaSelectionMode_Auto"
-                                        Content="自动从列表内选择Java"
-                                        Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}"
-                                        CommandParameter="Auto"
-                                        IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
-                                        FontSize="15"
-                                        GroupName="JavaSelectionMode"
-                                        ToolTipService.ToolTip="启动时根据游戏版本自动从列表中选择合适的Java版本">
-                                    </RadioButton>
-                                    <RadioButton
-                                        x:Uid="Settings_JavaSelectionMode_Manual"
-                                        Content="手动选择Java"
-                                        Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}"
-                                        CommandParameter="Manual"
-                                        IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
-                                        FontSize="15"
-                                        GroupName="JavaSelectionMode"
-                                        ToolTipService.ToolTip="使用当前选择的Java版本">
-                                    </RadioButton>
-                                </StackPanel>
-                                
-                                <TextBlock x:Uid="Settings_JavaPathLabel" Text="Java路径" Margin="0,20,0,0" />
-                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource XSmallTopMargin}" Spacing="8">
-                                        <TextBox 
-                                            Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" 
-                                            PlaceholderText="请选择Java可执行文件路径" 
-                                            Width="300"
-                                            Margin="0,0,8,0"/>
-                                        <Button 
-                                            x:Uid="Settings_Browse"
-                                            Content="浏览..." 
-                                            Command="{x:Bind ViewModel.BrowseJavaPathCommand}"/>
-                                        <Button 
-                                            x:Uid="Settings_Clear"
-                                            Content="清除" 
-                                            Command="{x:Bind ViewModel.ClearJavaPathCommand}"/>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_JavaPathDescription"
-                                        Text="使用'添加'按钮手动添加Java版本到列表，或直接指定Java路径" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="{StaticResource XSmallTopMargin}" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:MinecraftPathItem">
+                                        <controls:SettingsCard HorizontalAlignment="Stretch"
+                                                               ContentAlignment="Vertical"
+                                                               Padding="16,10"
+                                                               IsClickEnabled="False"
+                                                               Background="Transparent">
+                                            <controls:SettingsCard.Header>
+                                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" 
+                                                           FontWeight="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToFontWeightConverter}}" />
+                                            </controls:SettingsCard.Header>
+                                            <controls:SettingsCard.Description>
+                                                <TextBlock Text="{x:Bind Path, Mode=OneWay}" Opacity="0.7" TextTrimming="CharacterEllipsis"/>
+                                            </controls:SettingsCard.Description>
+                                            <controls:SettingsCard.HeaderIcon>
+                                                <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="{ThemeResource SystemAccentColor}"
+                                                          Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </controls:SettingsCard.HeaderIcon>
+                                        </controls:SettingsCard>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- Java 版本管理 -->
+                <controls:SettingsExpander x:Uid="Settings_JavaVersionManagement" Header="Java 版本管理" Description="管理已安装的 Java 运行时">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE756;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <Grid HorizontalAlignment="Right">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Uid="Settings_DownloadJava" Command="{x:Bind ViewModel.DownloadJavaCommand}"
+                                        IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
+                                        ToolTipService.ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Content}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE896;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                                <Button x:Uid="Settings_Add" Command="{x:Bind ViewModel.AddJavaVersionCommand}"
+                                        IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
+                                        ToolTipService.ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Content}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                                <Button x:Uid="Settings_Refresh" Command="{x:Bind ViewModel.RefreshJavaVersionsCommand}"
+                                        IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
+                                        ToolTipService.ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Content}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                                <Button x:Uid="Settings_Clear" Command="{x:Bind ViewModel.ClearJavaVersionsCommand}"
+                                        IsEnabled="{x:Bind ViewModel.CanRefreshJavaVersions, Mode=OneWay}"
+                                        ToolTipService.ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Content}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                                <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingJavaVersions, Mode=OneWay}" 
+                                              Visibility="{x:Bind ViewModel.IsLoadingJavaVersions, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                              Width="20" Height="20" />
                             </StackPanel>
-                        </ScrollViewer>
-                    </TabViewItem>
-
-                    <!-- 网络与下载标签 -->
-                    <TabViewItem>
-                        <TabViewItem.Header>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="Settings_NetworkTitle" Text="网络与下载" VerticalAlignment="Center" />
+                        </Grid>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0">
+                            <ListBox ItemsSource="{x:Bind ViewModel.JavaVersions, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedJavaVersion, Mode=TwoWay}"
+                                        Height="180" Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Grid x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+                                                        <VisualStateManager.VisualStateGroups>
+                                                            <VisualStateGroup x:Name="CommonStates">
+                                                                <VisualState x:Name="Normal" />
+                                                                <VisualState x:Name="PointerOver">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Pressed">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="Selected">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="Transparent" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedUnfocused">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="Transparent" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedPointerOver">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                                <VisualState x:Name="SelectedPressed">
+                                                                    <VisualState.Setters>
+                                                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                                                    </VisualState.Setters>
+                                                                </VisualState>
+                                                            </VisualStateGroup>
+                                                        </VisualStateManager.VisualStateGroups>
+                                                        <ContentPresenter x:Name="ContentPresenter"
+                                                                        Content="{TemplateBinding Content}"
+                                                                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                        ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:JavaVersionInfo">
+                                        <controls:SettingsCard HorizontalAlignment="Stretch"
+                                                                ContentAlignment="Vertical"
+                                                                Padding="16,10"
+                                                                IsClickEnabled="False"
+                                                                Background="Transparent">
+                                            <controls:SettingsCard.Header>
+                                                <TextBlock Text="{x:Bind Version}" FontWeight="SemiBold" />
+                                            </controls:SettingsCard.Header>
+                                            <controls:SettingsCard.Description>
+                                                <TextBlock Text="{x:Bind Path}" Opacity="0.7" TextTrimming="CharacterEllipsis"/>
+                                            </controls:SettingsCard.Description>
+                                        </controls:SettingsCard>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_JavaSelectionMode" Header="Java 选择方式" Description="选择启动游戏时使用的 Java 版本" Background="Transparent">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <RadioButton Content="自动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Auto" GroupName="JavaMode" />
+                                <RadioButton Content="手动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Manual" GroupName="JavaMode" />
                             </StackPanel>
-                        </TabViewItem.Header>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="12,10,12,0">
-                                <animations:Implicit.ShowAnimations>
-                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
-                                </animations:Implicit.ShowAnimations>
-
-                                <!-- 下载源设置 -->
-                                <TextBlock x:Uid="Settings_DownloadSource" Text="下载源设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <TextBlock x:Uid="Settings_SelectDownloadSource" Text="选择下载源" />
-
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_DownloadSource_Official"
-                                            Content="尽量使用官方源"
-                                            Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="DownloadSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>Official</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_DownloadSource_BMCLAPI"
-                                            Content="尽量使用BMCLAPI"
-                                            Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="DownloadSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>BMCLAPI</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_DownloadSourceDescription"
-                                        Text="选择下载源可以影响游戏资源的下载速度和稳定性" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="{StaticResource XSmallTopMargin}" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
-                                
-                                <!-- 版本列表源设置 -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <TextBlock x:Uid="Settings_SelectVersionListSource" Text="选择版本列表源" />
-
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_VersionListSource_Official"
-                                            Content="尽量使用官方源"
-                                            Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="VersionListSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>Official</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_VersionListSource_BMCLAPI"
-                                            Content="尽量使用BMCLAPI"
-                                            Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="VersionListSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>BMCLAPI</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_VersionListSourceDescription"
-                                        Text="选择版本列表源可以影响游戏版本列表的获取速度和稳定性" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="{StaticResource XSmallTopMargin}" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
-                                
-                                <!-- 社区资源下载源设置 (Modrinth + CurseForge) -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <TextBlock x:Uid="Settings_SelectCommunityDownloadSource" Text="社区资源下载源" />
-
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_CommunityDownloadSource_Official"
-                                            Content="官方源"
-                                            Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="CommunityDownloadSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>Official</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                        <RadioButton
-                                            x:Uid="Settings_CommunityDownloadSource_MCIM"
-                                            Content="MCIM镜像源"
-                                            Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}"
-                                            IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=MCIM, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="CommunityDownloadSource">
-                                            <RadioButton.CommandParameter>
-                                                <x:String>MCIM</x:String>
-                                            </RadioButton.CommandParameter>
-                                        </RadioButton>
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_CommunityDownloadSourceDescription"
-                                        Text="选择Modrinth和CurseForge资源（Mod、资源包、整合包等）的下载源" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="{StaticResource XSmallTopMargin}" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
-                                
-                                <!-- Mod下载设置 -->
-                                <TextBlock x:Uid="Settings_VersionDownload" Text="Mod下载" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_DownloadDependencies" Text="下载前置Mod" />
-                                            <TextBlock 
-                                                x:Uid="Settings_DownloadDependenciesDescription"
-                                                Text="自动下载所需的前置Mod" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <ToggleSwitch 
-                                            x:Uid="Settings_DownloadDependenciesToggle" 
-                                            IsOn="{x:Bind ViewModel.DownloadDependencies, Mode=TwoWay}" 
-                                            VerticalAlignment="Center" 
-                                            Margin="0,0,0,0" />
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 隐藏快照版本设置 -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_HideSnapshotVersions" Text="Mod隐藏快照版本" />
-                                            <TextBlock 
-                                                x:Uid="Settings_HideSnapshotVersionsDescription"
-                                                Text="隐藏Mod下载页快照、预发布版和候选版本" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <ToggleSwitch 
-                                            x:Uid="Settings_HideSnapshotVersionsToggle" 
-                                            IsOn="{x:Bind ViewModel.HideSnapshotVersions, Mode=TwoWay}" 
-                                            VerticalAlignment="Center" 
-                                            Margin="0,0,0,0" />
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 下载线程数设置 -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_DownloadThreadCount" Text="下载线程数" />
-                                            <TextBlock 
-                                                x:Uid="Settings_DownloadThreadCountDescription"
-                                                Text="同时下载资源文件的数量(并发数)，数值越大下载越快，但可能占用更多系统资源" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <NumberBox 
-                                            x:Uid="Settings_DownloadThreadCountInput"
-                                            Value="{x:Bind ViewModel.DownloadThreadCount, Mode=TwoWay}"
-                                            Minimum="1"
-                                            Maximum="128"
-                                            SpinButtonPlacementMode="Compact"
-                                            SmallChange="1"
-                                            LargeChange="8"
-                                            Width="120"
-                                            VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 下载分片数设置 -->
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="核心文件分片数" />
-                                            <TextBlock 
-                                                Text="单个大文件(如核心Jar)的分片并发下载数量，过高可能导致官方源/BMCLAPI返回429错误" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <NumberBox 
-                                            Value="{x:Bind ViewModel.DownloadShardCount, Mode=TwoWay}"
-                                            Minimum="1"
-                                            Maximum="32"
-                                            SpinButtonPlacementMode="Compact"
-                                            SmallChange="1"
-                                            LargeChange="4"
-                                            Width="120"
-                                            VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- AI 分析设置 -->
-                                <TextBlock x:Uid="Settings_AI_Analysis_Title" Text="XianYuFixer AI 分析" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel x:Name="AiAnalysisSection" Margin="{StaticResource SmallTopBottomMargin}" Spacing="10">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_AI_CrashAnalysis" Text="AI 崩溃分析" />
-                                            <TextBlock x:Uid="Settings_AI_CrashAnalysisDescription" Text="启用后可使用第三方 AI 服务分析崩溃日志。"
-                                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                                       Margin="0,4,0,0"
-                                                       Opacity="0.7" />
-                                        </StackPanel>
-                                        <ToggleSwitch IsOn="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=TwoWay}"
-                                                      VerticalAlignment="Center" />
-                                    </StackPanel>
-
-                                    <TextBlock x:Uid="Settings_AI_Disclaimer" Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               TextWrapping="Wrap"
-                                               Opacity="0.7" />
-
-                                    <Expander x:Uid="Settings_AI_ConfigDetails" Header="AI 配置详情"
-                                              IsEnabled="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}"
-                                              Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                              Width="{Binding ActualWidth, ElementName=AiAnalysisSection}"
-                                              HorizontalAlignment="Stretch"
-                                              HorizontalContentAlignment="Stretch">
-                                        <StackPanel Spacing="12" Padding="0,12,0,0">
-                                            <TextBlock x:Uid="Settings_AI_ConfigDescription" Text="配置 API 端点、密钥与模型"
-                                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                                       Opacity="0.7" />
-                                            <TextBox x:Uid="Settings_AI_ApiEndpoint" Header="API 端点 (Base URL)"
-                                                     PlaceholderText="https://api.openai.com"
-                                                     Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            <PasswordBox x:Uid="Settings_AI_ApiKey" Header="API 密钥 (Key)"
-                                                         PlaceholderText="sk-..."
-                                                         Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBox x:Uid="Settings_AI_ModelName" Header="模型名称 (Model)"
-                                                     PlaceholderText="gpt-3.5-turbo"
-                                                     Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                    </Expander>
-                                </StackPanel>
-                                
-                                <!-- 缓存管理 -->
-                                <TextBlock x:Uid="Settings_CacheManagement" Text="缓存管理" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <!-- 缓存大小信息 -->
-                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                                            BorderThickness="1" 
-                                            Padding="16" 
-                                            CornerRadius="8"
-                                            Margin="0,0,0,12">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            
-                                            <!-- 总缓存大小 -->
-                                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                                <FontIcon Glyph="&#xE74C;" FontSize="16" />
-                                                <TextBlock x:Uid="Settings_TotalCacheSize" Text="总缓存大小" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Row="0" Grid.Column="1" 
-                                                       Text="{x:Bind ViewModel.CacheSizeInfo.TotalSizeFormatted, Mode=OneWay}" 
-                                                       VerticalAlignment="Center" 
-                                                       FontWeight="SemiBold" />
-                                            
-                                            <!-- 搜索结果缓存 -->
-                                            <TextBlock Grid.Row="1" Grid.Column="0" 
-                                                       x:Uid="Settings_SearchCacheSize" 
-                                                       Text="搜索结果缓存" 
-                                                       Margin="24,8,0,0" 
-                                                       Opacity="0.7" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" 
-                                                       Text="{x:Bind ViewModel.CacheSizeInfo.SearchCacheSizeFormatted, Mode=OneWay}" 
-                                                       Margin="0,8,0,0" 
-                                                       Opacity="0.7" />
-                                            
-                                            <!-- 图片缓存 -->
-                                            <TextBlock Grid.Row="2" Grid.Column="0" 
-                                                       x:Uid="Settings_ImageCacheSize" 
-                                                       Text="图片缓存" 
-                                                       Margin="24,4,0,0" 
-                                                       Opacity="0.7" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" 
-                                                       Text="{x:Bind ViewModel.CacheSizeInfo.ImageCacheSizeFormatted, Mode=OneWay}" 
-                                                       Margin="0,4,0,0" 
-                                                       Opacity="0.7" />
-                                            
-                                            <!-- 版本列表缓存 -->
-                                            <TextBlock Grid.Row="3" Grid.Column="0" 
-                                                       x:Uid="Settings_VersionCacheSize" 
-                                                       Text="版本列表缓存" 
-                                                       Margin="24,4,0,0" 
-                                                       Opacity="0.7" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" 
-                                                       Text="{x:Bind ViewModel.CacheSizeInfo.VersionCacheSizeFormatted, Mode=OneWay}" 
-                                                       Margin="0,4,0,0" 
-                                                       Opacity="0.7" />
-                                        </Grid>
-                                    </Border>
-                                    
-                                    <!-- 清理按钮 -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button x:Uid="Settings_ClearAllCache" 
-                                                Content="清理所有缓存" 
-                                                Command="{x:Bind ViewModel.ClearAllCacheCommand}" />
-                                        <Button x:Uid="Settings_ClearImageCache" 
-                                                Content="清理图片缓存" 
-                                                Command="{x:Bind ViewModel.ClearImageCacheCommand}" />
-                                        <ProgressRing IsActive="{x:Bind ViewModel.IsClearingCache, Mode=OneWay}" 
-                                                      Width="20" Height="20" 
-                                                      VerticalAlignment="Center" />
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_CacheDescription"
-                                        Text="缓存用于加速资源列表加载，清理后下次访问时会重新下载" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="0,8,0,0" 
-                                        Opacity="0.7"/>
-                                </StackPanel>
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_JavaPathLabel" Header="Java 路径" Description="手动指定 Java 可执行文件路径" Background="Transparent">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择Java可执行文件路径" Width="280" IsReadOnly="True" />
+                                <Button x:Uid="Settings_Browse" Content="浏览..." Command="{x:Bind ViewModel.BrowseJavaPathCommand}" />
+                                <Button x:Uid="Settings_Clear" Content="清除" Command="{x:Bind ViewModel.ClearJavaPathCommand}" />
                             </StackPanel>
-                        </ScrollViewer>
-                    </TabViewItem>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
-                    <!-- 更多标签 -->
-                    <TabViewItem>
-                        <TabViewItem.Header>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="Settings_AboutTitle" Text="更多" VerticalAlignment="Center" />
+                <!-- 版本隔离 -->
+                <controls:SettingsCard x:Uid="Settings_VersionIsolation" Header="启用版本隔离" Description="开启后，每个Minecraft版本将使用独立的游戏目录">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE74C;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.EnableVersionIsolation, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <!-- 实时日志 -->
+                <controls:SettingsCard x:Uid="Settings_RealTimeLogs" Header="启动游戏实时日志" Description="开启后，启动游戏成功后会自动打开实时日志页面">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE756;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.EnableRealTimeLogs, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <!-- ==================== 个性化 ==================== -->
+                <TextBlock x:Uid="Settings_PersonalizationSection" Text="个性化" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+
+                <!-- 主题 -->
+                <controls:SettingsCard x:Uid="Settings_Theme" Header="主题" Description="选择应用的外观主题">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE790;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_Theme_Light" Content="浅色" IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="Theme">
+                            <RadioButton.CommandParameter><xaml:ElementTheme>Light</xaml:ElementTheme></RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton x:Uid="Settings_Theme_Dark" Content="深色" IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="Theme">
+                            <RadioButton.CommandParameter><xaml:ElementTheme>Dark</xaml:ElementTheme></RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton x:Uid="Settings_Theme_Default" Content="跟随系统" IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Default, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="Theme">
+                            <RadioButton.CommandParameter><xaml:ElementTheme>Default</xaml:ElementTheme></RadioButton.CommandParameter>
+                        </RadioButton>
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <!-- 窗口材质 -->
+                <controls:SettingsExpander x:Uid="Settings_WindowMaterial" Header="窗口材质" Description="选择窗口背景效果">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE771;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <ComboBox ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}" MinWidth="200">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource MaterialTypeToLocalizedStringConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <!-- 自定义背景图片 -->
+                        <controls:SettingsCard x:Uid="Settings_BackgroundImage" Header="背景图片" Description="选择自定义背景图片"
+                                               Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" PlaceholderText="请选择背景图片" Width="250" IsReadOnly="True" />
+                                <Button Content="浏览..." Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
+                                <Button Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
                             </StackPanel>
-                        </TabViewItem.Header>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="12,10,12,0">
-                                <animations:Implicit.ShowAnimations>
-                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" />
-                                    <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
-                                </animations:Implicit.ShowAnimations>
-
-                                <!-- 开发人员区域 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20" Spacing="20" VerticalAlignment="Center">
-                                    <!-- 圆形头像区域 -->
-                                    <Ellipse Width="80" Height="80">
-                                        <Ellipse.Fill>
-                                            <ImageBrush ImageSource="ms-appx:///Assets/Icons/Contributors/SpiritStudio.png" Stretch="Uniform" />
-                                        </Ellipse.Fill>
-                                    </Ellipse>
-                                    <!-- 作者名称占位符 -->
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="SpiritStudio" Style="{ThemeResource TitleTextBlockStyle}" FontSize="20" />
-                                        <TextBlock x:Uid="Settings_ThanksToTeam" Text="感谢所有作出贡献的成员" Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.7" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 鸣谢区域 -->
-                                <StackPanel Margin="0,0,0,20">
-                                    <!-- 鸣谢标题 -->
-                                    <TextBlock x:Uid="Settings_Acknowledgments" Text="鸣谢" Style="{ThemeResource TitleTextBlockStyle}" FontSize="14" Margin="0,0,0,8" />
-                                    <!-- 鸣谢人员列表，每行最多3个 -->
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.AcknowledgmentPersons, Mode=OneWay}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="3" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemContainerStyle>
-                                            <Style TargetType="ContentPresenter">
-                                                <Setter Property="Margin" Value="8" />
-                                            </Style>
-                                        </ItemsControl.ItemContainerStyle>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="viewModels:AcknowledgmentPerson">
-                                                <StackPanel Width="96" Height="100" HorizontalAlignment="Center" VerticalAlignment="Top">
-                                                    <!-- 圆形头像 -->
-                                                    <Ellipse Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,8">
-                                                        <Ellipse.Fill>
-                                                            <ImageBrush ImageSource="{x:Bind Avatar, Mode=OneWay}" Stretch="Uniform" />
-                                                        </Ellipse.Fill>
-                                                    </Ellipse>
-                                                    <!-- 姓名 -->
-                                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" HorizontalAlignment="Center" Margin="0,0,0,4" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                                                    <!-- 支持信息 -->
-                                                    <TextBlock Text="{x:Bind SupportInfo, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontSize="10" HorizontalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Opacity="0.5" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-
-                                <!-- 关于信息 -->
-                                <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
-
-                                <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                    <TextBlock Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" PointerPressed="VersionTextBlock_PointerPressed" />
-
-                                    <TextBlock
-                                        x:Uid="Settings_AboutDescription"
-                                        Margin="{StaticResource XSmallTopMargin}"
-                                        Style="{ThemeResource BodyTextBlockStyle}" />
-                                    <HyperlinkButton x:Uid="SettingsPage_EulaLink"
-                                                     Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
-                                    <HyperlinkButton x:Uid="SettingsPage_PrivacyPolicyLink"
-                                                     Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
-                                    <HyperlinkButton 
-                                        Content="GitHub" 
-                                        NavigateUri="https://github.com/XianYuLauncher/XianYuLauncher"
-                                        Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
-                                    
-                                    <CheckBox Content="允许发送匿名诊断数据以帮助改进启动器"
-                                              IsChecked="{x:Bind ViewModel.EnableTelemetry, Mode=TwoWay}"
-                                              Margin="-4,4,0,0">
-                                        <ToolTipService.ToolTip>
-                                            <ToolTip Content="放心，我们仅收集游戏版本、运行性能及启动结果类数据，用于修复问题、优化兼容性，绝不包含您的账号、存档或任何个人隐私！详情可点击「隐私政策」查看，本说明不具法律效应。" />
-                                        </ToolTipService.ToolTip>
-                                    </CheckBox>
-                                </StackPanel>
-                                
-                                <!-- 更新设置 -->
-                                <TextBlock x:Uid="Settings_UpdateSettings" Text="更新设置" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,0" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <!-- 自动检查更新选项 -->
-                                    <TextBlock x:Uid="Settings_AutoUpdateCheck" Text="自动检查更新" Margin="0,0,0,8" />
-                                    <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                                        <RadioButton
-                                            x:Uid="Settings_AutoUpdateCheck_Always"
-                                            Content="每次启动弹窗"
-                                            Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}"
-                                            CommandParameter="Always"
-                                            IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Always, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="AutoUpdateCheckMode" />
-                                        <RadioButton
-                                            x:Uid="Settings_AutoUpdateCheck_ImportantOnly"
-                                            Content="除重要更新外均不弹窗"
-                                            Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}"
-                                            CommandParameter="ImportantOnly"
-                                            IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ImportantOnly, Mode=OneWay}"
-                                            FontSize="15"
-                                            GroupName="AutoUpdateCheckMode" />
-                                    </StackPanel>
-                                    <TextBlock 
-                                        x:Uid="Settings_AutoUpdateCheckDescription"
-                                        Text="选择自动检查更新的方式" 
-                                        Style="{ThemeResource CaptionTextBlockStyle}" 
-                                        Margin="0,4,0,0" 
-                                        Opacity="0.7"/>
-                                    
-                                    <!-- 检查更新按钮 -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0" Spacing="12">
-                                        <Button 
-                                            x:Uid="Settings_CheckForUpdates"
-                                            Content="检查更新"
-                                            Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
-                                            IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
-                                        
-                                        <Button 
-                                            Content="安装 Dev 通道版本"
-                                            Command="{x:Bind ViewModel.InstallDevChannelCommand}"
-                                            IsEnabled="{x:Bind ViewModel.CanInstallDevChannel, Mode=OneWay}" />
-                                            
-                                        <ProgressRing 
-                                            IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" 
-                                            Width="20" 
-                                            Height="20" 
-                                            VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 快速动作区域 -->
-                                <TextBlock x:Uid="Settings_QuickActions" Text="快速动作" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="16">
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock x:Uid="Settings_OpenLogDirectory" Text="打开日志目录" />
-                                            <TextBlock 
-                                                x:Uid="Settings_OpenLogDirectoryDescription"
-                                                Text="查看启动器运行日志，用于排查问题" 
-                                                Style="{ThemeResource CaptionTextBlockStyle}" 
-                                                Margin="0,4,0,0" 
-                                                Opacity="0.7"/>
-                                        </StackPanel>
-                                        <Button x:Uid="Settings_Open" Content="打开" Command="{x:Bind ViewModel.OpenLogDirectoryCommand}" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 开源软件许可说明 -->
-                                <Expander x:Uid="Settings_OpenSourceTitle" Header="开源软件许可说明" Margin="0,20,0,20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                                    <Expander.Content>
-                                        <StackPanel>
-                                            <!-- 开源软件列表 -->
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/yushijinhun/authlib-injector">
-                                                        <Run Text="authlib-injector" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) yushijinhun" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：GNU Affero General Public License v3.0 or later" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                                <TextBlock Text="特例说明：已遵循AGPL例外条款" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/burningtnt/Terracotta">
-                                                        <Run Text="Terracotta | 陶瓦联机" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) burningtnt" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：GNU Affero General Public License v3.0 or later" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                                <TextBlock Text="特例说明：已遵循AGPL例外条款" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/bs-community/skinview3d">
-                                                        <Run Text="skinview3d" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) 2014-2018 Kent Rasmussen; Copyright (c) 2017-2022 Haowei Wen, Sean Boult and contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://www.newtonsoft.com/json">
-                                                        <Run Text="Newtonsoft.Json" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) 2007 James Newton-King" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
-                                                        <Run Text="CommunityToolkit.Mvvm" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
-                                                        <Run Text="CommunityToolkit.WinUI.Animations" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://aka.ms/CommunityToolkit">
-                                                        <Run Text="CommunityToolkit.WinUI.UI.Controls" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/dotnet/runtime">
-                                                        <Run Text="Microsoft.Extensions.Hosting" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/dotnet/runtime">
-                                                        <Run Text="Microsoft.Extensions.Http" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) .NET Foundation and Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/microsoft/Win2D">
-                                                        <Run Text="Microsoft.Graphics.Win2D" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/microsoft/windowsappsdk">
-                                                        <Run Text="Microsoft.WindowsAppSDK" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/microsoft/XamlBehaviors">
-                                                        <Run Text="Microsoft.Xaml.Behaviors.WinUI.Managed" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) Microsoft Corporation" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/serilog/serilog">
-                                                        <Run Text="Serilog" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) Serilog Contributors" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：Apache License 2.0" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/dotMorten/WinUIEx">
-                                                        <Run Text="WinUIEx" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) Morten Nielsen" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：MIT License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <StackPanel Margin="0,0,0,16">
-                                                <TextBlock FontSize="14" FontWeight="SemiBold" Style="{ThemeResource BodyTextBlockStyle}">
-                                                    <Hyperlink NavigateUri="https://github.com/mstefarov/fNbt">
-                                                        <Run Text="fNbt" />
-                                                    </Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="Copyright (c) 2012-2025, Matvei &quot;fragmer&quot; Stefarov" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,4,0,0" Opacity="0.7" />
-                                                <TextBlock Text="许可证：BSD 3-Clause License" Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,2,0,0" Opacity="0.7" />
-                                            </StackPanel>
-
-                                            <!-- 许可证说明 -->
-                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="12" CornerRadius="8">
-                                                <TextBlock Text="本项目使用的所有开源软件均遵循其各自的许可证要求，详细许可证信息可通过项目地址查看。" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords" />
-                                            </Border>
-                                        </StackPanel>
-                                    </Expander.Content>
-                                </Expander>
-                                
-                                <!-- 免责声明 -->
-                                <TextBlock 
-                                    x:Uid="Settings_Disclaimer"
-                                    Text="XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。" 
-                                    Style="{ThemeResource CaptionTextBlockStyle}" 
-                                    Margin="0,0,0,20" 
-                                    Opacity="0.7" 
-                                    TextWrapping="WrapWholeWords"/>
+                        </controls:SettingsCard>
+                        <!-- 流光设置 -->
+                        <controls:SettingsCard Header="流光速度" Description="调整流光背景的移动速度"
+                                               Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Slider Minimum="0.1" Maximum="3.0" StepFrequency="0.1" Value="{x:Bind ViewModel.MotionSpeed, Mode=TwoWay}" Width="200" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard Header="流光颜色" Description="自定义流光背景的颜色"
+                                               Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                    <Border Background="{x:Bind ViewModel.MotionColor1, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor1, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                </Button>
+                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                    <Border Background="{x:Bind ViewModel.MotionColor2, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor2, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                </Button>
+                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                    <Border Background="{x:Bind ViewModel.MotionColor3, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor3, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                </Button>
+                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                    <Border Background="{x:Bind ViewModel.MotionColor4, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor4, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                </Button>
+                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                    <Border Background="{x:Bind ViewModel.MotionColor5, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor5, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                </Button>
                             </StackPanel>
-                        </ScrollViewer>
-                    </TabViewItem>
-                </TabView.TabItems>
-            </TabView>
-        </Grid>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- 语言 -->
+                <controls:SettingsCard x:Uid="Settings_Language" Header="语言" Description="选择应用语言，更改后需要重启应用">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE774;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_Language_Chinese" Content="简体中文" IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=zh-CN, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="zh-CN" GroupName="Language" />
+                        <RadioButton x:Uid="Settings_Language_English" Content="English" IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=en-US, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="en-US" GroupName="Language" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <!-- 字体 -->
+                <controls:SettingsCard x:Uid="Settings_FontFamily" Header="字体" Description="选择应用字体，更改后立即生效">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8D2;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ComboBox ItemsSource="{x:Bind ViewModel.FontFamilies, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedFontFamily, Mode=TwoWay}" MinWidth="200">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontFamily="{Binding}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </controls:SettingsCard>
+
+
+                <!-- ==================== 网络 ==================== -->
+                <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+
+                <!-- 游戏下载源 -->
+                <controls:SettingsCard x:Uid="Settings_DownloadSource" Header="游戏下载源" Description="选择下载源可以影响游戏资源的下载速度">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE896;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_DownloadSource_Official" Content="官方源" IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}" CommandParameter="Official" GroupName="DownloadSource" />
+                        <RadioButton x:Uid="Settings_DownloadSource_BMCLAPI" Content="BMCLAPI" IsChecked="{x:Bind ViewModel.DownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchDownloadSourceCommand}" CommandParameter="BMCLAPI" GroupName="DownloadSource" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <!-- 版本列表源 -->
+                <controls:SettingsCard x:Uid="Settings_SelectVersionListSource" Header="版本列表源" Description="选择版本列表源可以影响版本列表的获取速度">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8FD;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_VersionListSource_Official" Content="官方源" IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}" CommandParameter="Official" GroupName="VersionListSource" />
+                        <RadioButton x:Uid="Settings_VersionListSource_BMCLAPI" Content="BMCLAPI" IsChecked="{x:Bind ViewModel.VersionListSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=BMCLAPI, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchVersionListSourceCommand}" CommandParameter="BMCLAPI" GroupName="VersionListSource" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <!-- 社区资源下载源 -->
+                <controls:SettingsCard x:Uid="Settings_SelectCommunityDownloadSource" Header="社区资源下载源" Description="选择Modrinth和CurseForge资源的下载源">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE753;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_CommunityDownloadSource_Official" Content="官方源" IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Official, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}" CommandParameter="Official" GroupName="ModrinthSource" />
+                        <RadioButton x:Uid="Settings_CommunityDownloadSource_MCIM" Content="MCIM镜像" IsChecked="{x:Bind ViewModel.ModrinthDownloadSource, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=MCIM, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchModrinthDownloadSourceCommand}" CommandParameter="MCIM" GroupName="ModrinthSource" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <!-- 下载前置Mod -->
+                <controls:SettingsCard x:Uid="Settings_DownloadDependencies" Header="下载前置Mod" Description="自动下载所需的前置Mod">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE74E;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.DownloadDependencies, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <!-- 隐藏快照版本 -->
+                <controls:SettingsCard x:Uid="Settings_HideSnapshotVersions" Header="Mod隐藏快照版本" Description="隐藏Mod下载页快照、预发布版和候选版本">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE7B3;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.HideSnapshotVersions, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <!-- 下载线程数 -->
+                <controls:SettingsCard x:Uid="Settings_DownloadThreadCount" Header="下载线程数" Description="同时下载资源文件的数量，数值越大下载越快">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8CB;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <NumberBox Value="{x:Bind ViewModel.DownloadThreadCount, Mode=TwoWay}" Minimum="1" Maximum="128" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="8" Width="120" />
+                </controls:SettingsCard>
+
+                <!-- 下载分片数 -->
+                <controls:SettingsCard Header="核心文件分片数" Description="单个大文件的分片并发下载数量">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8CB;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <NumberBox Value="{x:Bind ViewModel.DownloadShardCount, Mode=TwoWay}" Minimum="1" Maximum="32" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="4" Width="120" />
+                </controls:SettingsCard>
+
+                <!-- 缓存管理 -->
+                <controls:SettingsExpander x:Uid="Settings_CacheManagement" Header="缓存管理" Description="管理搜索结果和图片缓存">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE74D;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Uid="Settings_ClearAllCache" Content="清理所有缓存" Command="{x:Bind ViewModel.ClearAllCacheCommand}" />
+                            <Button x:Uid="Settings_ClearImageCache" Content="清理图片缓存" Command="{x:Bind ViewModel.ClearImageCacheCommand}" />
+                            <ProgressRing IsActive="{x:Bind ViewModel.IsClearingCache, Mode=OneWay}" Width="20" Height="20" />
+                        </StackPanel>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_TotalCacheSize" Header="总缓存大小">
+                            <TextBlock Text="{x:Bind ViewModel.CacheSizeInfo.TotalSizeFormatted, Mode=OneWay}" FontWeight="SemiBold" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_SearchCacheSize" Header="搜索结果缓存">
+                            <TextBlock Text="{x:Bind ViewModel.CacheSizeInfo.SearchCacheSizeFormatted, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_ImageCacheSize" Header="图片缓存">
+                            <TextBlock Text="{x:Bind ViewModel.CacheSizeInfo.ImageCacheSizeFormatted, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_VersionCacheSize" Header="版本列表缓存">
+                            <TextBlock Text="{x:Bind ViewModel.CacheSizeInfo.VersionCacheSizeFormatted, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- ==================== 智能分析 ==================== -->
+                <TextBlock x:Uid="Settings_AISection" Text="智能分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+
+                <!-- AI 分析设置 -->
+                <controls:SettingsExpander x:Uid="Settings_AI_CrashAnalysis" Header="AI 崩溃分析" Description="启用后可使用第三方 AI 服务分析崩溃日志" IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE945;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=TwoWay}" />
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock x:Uid="Settings_AI_Disclaimer" Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务。"
+                                       Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_AI_ApiEndpoint" Header="API 端点" Description="OpenAI 兼容的 API 基础 URL"
+                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBox Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="https://api.openai.com" Width="300" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_AI_ApiKey" Header="API 密钥" Description="您的 API 密钥"
+                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <PasswordBox Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="sk-..." Width="300" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_AI_ModelName" Header="模型名称" Description="使用的 AI 模型"
+                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBox Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="gpt-3.5-turbo" Width="300" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+
+                <!-- ==================== 关于 ==================== -->
+                <TextBlock x:Uid="Settings_AboutSection" Text="关于" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+
+                <!-- 开发者信息 -->
+                <controls:SettingsCard x:Uid="Settings_ContributorsHeader" Header="SpiritStudio" Description="感谢所有作出贡献的成员" IsClickEnabled="False">
+                    <controls:SettingsCard.HeaderIcon>
+                        <ImageIcon Source="ms-appx:///Assets/Icons/Contributors/SpiritStudio.png" />
+                    </controls:SettingsCard.HeaderIcon>
+                </controls:SettingsCard>
+
+                <!-- 鸣谢 -->
+                <controls:SettingsExpander x:Uid="Settings_Acknowledgments" Header="鸣谢" Description="感谢以下项目和贡献者">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE8D4;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.AcknowledgmentPersons, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="16" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:AcknowledgmentPerson">
+                                        <StackPanel Width="88" HorizontalAlignment="Center">
+                                            <Ellipse Width="40" Height="40" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{x:Bind Avatar, Mode=OneWay}" Stretch="Uniform" />
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontSize="12" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,0,0,2" />
+                                            <TextBlock Text="{x:Bind SupportInfo, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontSize="10" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Opacity="0.5" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- 版本信息 -->
+                <controls:SettingsCard x:Uid="Settings_About" Header="关于" IsClickEnabled="False">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE946;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <controls:SettingsCard.Description>
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" PointerPressed="VersionTextBlock_PointerPressed" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                <HyperlinkButton x:Uid="SettingsPage_EulaLink" Padding="0" />
+                                <HyperlinkButton x:Uid="SettingsPage_PrivacyPolicyLink" Padding="0" />
+                                <HyperlinkButton Content="GitHub" NavigateUri="https://github.com/XianYuLauncher/XianYuLauncher" Padding="0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:SettingsCard.Description>
+                </controls:SettingsCard>
+
+                <!-- 遥测 -->
+                <controls:SettingsCard x:Uid="Settings_Telemetry" Header="允许发送匿名诊断数据" Description="帮助改进启动器，仅收集游戏版本、运行性能及启动结果类数据">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE9D9;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.EnableTelemetry, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <!-- 更新设置 -->
+                <controls:SettingsExpander x:Uid="Settings_UpdateSettings" Header="更新设置" Description="配置自动检查更新的方式">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE777;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Uid="Settings_CheckForUpdates" Content="检查更新" Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                    IsEnabled="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                            <Button x:Uid="Settings_InstallDevChannel" Content="安装 Dev 通道版本" Command="{x:Bind ViewModel.InstallDevChannelCommand}"
+                                    IsEnabled="{x:Bind ViewModel.CanInstallDevChannel, Mode=OneWay}" />
+                            <ProgressRing IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" Width="20" Height="20" />
+                        </StackPanel>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_AutoUpdateCheck" Header="自动检查更新">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <RadioButton x:Uid="Settings_AutoUpdateCheck_Always" Content="每次启动弹窗" IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Always, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}" CommandParameter="Always" GroupName="UpdateMode" />
+                                <RadioButton x:Uid="Settings_AutoUpdateCheck_ImportantOnly" Content="仅重要更新" IsChecked="{x:Bind ViewModel.AutoUpdateCheckMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ImportantOnly, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchAutoUpdateCheckModeCommand}" CommandParameter="ImportantOnly" GroupName="UpdateMode" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- 快速动作 -->
+                <controls:SettingsCard x:Uid="Settings_OpenLogDirectory" Header="打开日志目录" Description="查看启动器运行日志，用于排查问题" IsClickEnabled="True" Click="OpenLogDirectory_Click">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8B7;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <controls:SettingsCard.ActionIcon>
+                        <FontIcon Glyph="&#xE8A7;" />
+                    </controls:SettingsCard.ActionIcon>
+                </controls:SettingsCard>
+
+                <!-- 开源软件许可 -->
+                <controls:SettingsExpander x:Uid="Settings_OpenSourceTitle" Header="开源软件许可说明" Description="本项目使用的开源软件">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE90F;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard Header="authlib-injector" Description="Copyright (c) yushijinhun | AGPL-3.0 | 已遵循AGPL例外条款" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/yushijinhun/authlib-injector" />
+                        <controls:SettingsCard Header="Terracotta | 陶瓦联机" Description="Copyright (c) burningtnt | AGPL-3.0 | 已遵循AGPL例外条款" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/burningtnt/Terracotta" />
+                        <controls:SettingsCard Header="skinview3d" Description="Copyright (c) Kent Rasmussen, Haowei Wen | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/bs-community/skinview3d" />
+                        <controls:SettingsCard Header="Newtonsoft.Json" Description="Copyright (c) James Newton-King | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://www.newtonsoft.com/json" />
+                        <controls:SettingsCard Header="CommunityToolkit" Description="Copyright (c) .NET Foundation | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://aka.ms/CommunityToolkit" />
+                        <controls:SettingsCard Header="Serilog" Description="Copyright (c) Serilog Contributors | Apache-2.0" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/serilog/serilog" />
+                        <controls:SettingsCard Header="WinUIEx" Description="Copyright (c) Morten Nielsen | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/dotMorten/WinUIEx" />
+                        <controls:SettingsCard Header="fNbt" Description="Copyright (c) Matvei Stefarov | BSD-3-Clause" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/mstefarov/fNbt" />
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- 免责声明 -->
+                <TextBlock x:Uid="Settings_Disclaimer" Text="XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中国大陆代理公司无任何从属关系或官方合作关联。"
+                           Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,16,0,20" Opacity="0.7" TextWrapping="WrapWholeWords" />
+
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

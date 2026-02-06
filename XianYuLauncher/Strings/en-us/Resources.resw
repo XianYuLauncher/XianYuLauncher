@@ -150,17 +150,8 @@
   <data name="Settings_BasicTitle.Text" xml:space="preserve">
     <value>Basic Settings</value>
   </data>
-  <data name="Settings_MinecraftPath.Text" xml:space="preserve">
-    <value>Minecraft Path</value>
-  </data>
   <data name="Settings_Game.Text" xml:space="preserve">
     <value>Game Settings</value>
-  </data>
-  <data name="Settings_VersionIsolation.Text" xml:space="preserve">
-    <value>Enable Version Isolation</value>
-  </data>
-  <data name="Settings_Theme.Text" xml:space="preserve">
-    <value>Theme</value>
   </data>
   <data name="Settings_Theme_Light.Content" xml:space="preserve">
     <value>Light</value>
@@ -170,9 +161,6 @@
   </data>
   <data name="Settings_Theme_Default.Content" xml:space="preserve">
     <value>Follow System</value>
-  </data>
-  <data name="Settings_WindowMaterial.Text" xml:space="preserve">
-    <value>Window Material</value>
   </data>
   <data name="Settings_WindowMaterialDescription.Text" xml:space="preserve">
     <value>Select window material. Mica effects and custom background cannot be used simultaneously.</value>
@@ -189,9 +177,6 @@
   <data name="MaterialType_CustomBackground" xml:space="preserve">
     <value>Custom Background</value>
   </data>
-  <data name="Settings_Language.Text" xml:space="preserve">
-    <value>Language</value>
-  </data>
   <data name="Settings_Language_Chinese.Content" xml:space="preserve">
     <value>Simplified Chinese</value>
   </data>
@@ -207,29 +192,23 @@
   <data name="Settings_JavaPath.Text" xml:space="preserve">
     <value>Java Path Settings</value>
   </data>
-  <data name="Settings_JavaVersionManagement.Text" xml:space="preserve">
-    <value>Java Version Management</value>
-  </data>
   <data name="Settings_InstalledJavaVersions.Text" xml:space="preserve">
     <value>Installed Java Versions</value>
   </data>
   <data name="Settings_Add.Content" xml:space="preserve">
     <value>Add</value>
   </data>
+  <data name="Settings_DownloadJava.Content" xml:space="preserve">
+    <value>Download</value>
+  </data>
   <data name="Settings_Refresh.Content" xml:space="preserve">
     <value>Refresh</value>
-  </data>
-  <data name="Settings_JavaSelectionMode.Text" xml:space="preserve">
-    <value>Java Selection Mode</value>
   </data>
   <data name="Settings_JavaSelectionMode_Auto.Content" xml:space="preserve">
     <value>Auto-select Java from list</value>
   </data>
   <data name="Settings_JavaSelectionMode_Manual.Content" xml:space="preserve">
     <value>Manually select Java</value>
-  </data>
-  <data name="Settings_JavaPathLabel.Text" xml:space="preserve">
-    <value>Java Path</value>
   </data>
   <data name="Settings_Browse.Content" xml:space="preserve">
     <value>Browse...</value>
@@ -243,9 +222,6 @@
   <data name="Settings_NetworkTitle.Text" xml:space="preserve">
     <value>Network Download</value>
   </data>
-  <data name="Settings_DownloadSource.Text" xml:space="preserve">
-    <value>Download Source</value>
-  </data>
   <data name="Settings_SelectDownloadSource.Text" xml:space="preserve">
     <value>Select Download Source</value>
   </data>
@@ -257,9 +233,6 @@
   </data>
   <data name="Settings_DownloadSourceDescription.Text" xml:space="preserve">
     <value>Selecting a download source can affect the download speed and stability of game resources</value>
-  </data>
-  <data name="Settings_SelectVersionListSource.Text" xml:space="preserve">
-    <value>Select Version List Source</value>
   </data>
   <data name="Settings_VersionListSource_Official.Content" xml:space="preserve">
     <value>Prefer Official Source</value>
@@ -273,29 +246,17 @@
   <data name="Settings_VersionDownload.Text" xml:space="preserve">
     <value>Download Settings</value>
   </data>
-  <data name="Settings_DownloadDependencies.Text" xml:space="preserve">
-    <value>Download Dependencies</value>
-  </data>
   <data name="Settings_DownloadDependenciesDescription.Text" xml:space="preserve">
     <value>Auto-download required dependency mods</value>
   </data>
-  <data name="Settings_HideSnapshotVersions.Text" xml:space="preserve">
-    <value>Mod Hide Snapshot Versions</value>
-  </data>
   <data name="Settings_HideSnapshotVersionsDescription.Text" xml:space="preserve">
     <value>Hide snapshots, pre-releases and release candidates</value>
-  </data>
-  <data name="Settings_DownloadThreadCount.Text" xml:space="preserve">
-    <value>Download Threads</value>
   </data>
   <data name="Settings_DownloadThreadCountDescription.Text" xml:space="preserve">
     <value>Number of concurrent threads for downloading resources.</value>
   </data>
   <data name="Settings_AboutTitle.Text" xml:space="preserve">
     <value>About</value>
-  </data>
-  <data name="Settings_Acknowledgments.Text" xml:space="preserve">
-    <value>Acknowledgments</value>
   </data>
   <data name="Settings_Disclaimer.Text" xml:space="preserve">
     <value>XianYuLauncher is an unofficial Minecraft launcher and has no affiliation or official cooperation with Mojang Studios, Microsoft, or their mainland China agents.</value>
@@ -558,11 +519,23 @@
   <data name="LaunchPage_ViewLogsButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>View Logs</value>
   </data>
-  <data name="Settings_About.Text" xml:space="preserve">
-    <value>About this application</value>
-  </data>
   <data name="Settings_AboutDescription.Text" xml:space="preserve">
     <value>TODO:None</value>
+  </data>
+  <data name="Settings_ContributorsHeader.Header" xml:space="preserve">
+    <value>SpiritStudio</value>
+  </data>
+  <data name="Settings_ContributorsHeader.Description" xml:space="preserve">
+    <value>Thanks to all contributors</value>
+  </data>
+  <data name="Settings_Telemetry.Header" xml:space="preserve">
+    <value>Allow sending anonymous diagnostic data</value>
+  </data>
+  <data name="Settings_Telemetry.Description" xml:space="preserve">
+    <value>Help improve the launcher by collecting only game version, performance, and launch result data.</value>
+  </data>
+  <data name="Settings_InstallDevChannel.Content" xml:space="preserve">
+    <value>Install Dev Channel Version</value>
   </data>
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
     <value>End User License Agreement (EULA)</value>
@@ -1297,20 +1270,17 @@ Continue downloading?</value>
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>Mod transfer results:</value>
   </data>
-  <data name="Settings_RealTimeLogs.Text" xml:space="preserve">
-    <value>Launch Game Real-time Log</value>
-  </data>
   <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
     <value>When enabled, the real-time log page will automatically open after the game starts successfully</value>
-  </data>
-  <data name="Settings_FontFamily.Text" xml:space="preserve">
-    <value>Font</value>
   </data>
   <data name="Settings_FontFamilyDescription.Text" xml:space="preserve">
     <value>Select application font, changes take effect immediately</value>
   </data>
   <data name="Settings_OpenSourceTitle.Header" xml:space="preserve">
     <value>Open Source Software License Information</value>
+  </data>
+  <data name="Settings_OpenSourceTitle.Description" xml:space="preserve">
+    <value>Open source software used in this project</value>
   </data>
   <data name="Settings_OpenSourceDescription.Text" xml:space="preserve">
     <value>List of open source software used in this project:</value>
@@ -1696,21 +1666,6 @@ Continue downloading?</value>
   <data name="ProfilePage_RenewTokenMenuItem.Text" xml:space="preserve">
     <value>Renew Token</value>
   </data>
-  <data name="Settings_CacheManagement.Text" xml:space="preserve">
-    <value>Cache Management</value>
-  </data>
-  <data name="Settings_TotalCacheSize.Text" xml:space="preserve">
-    <value>Total Cache Size</value>
-  </data>
-  <data name="Settings_SearchCacheSize.Text" xml:space="preserve">
-    <value>Search Results Cache</value>
-  </data>
-  <data name="Settings_ImageCacheSize.Text" xml:space="preserve">
-    <value>Image Cache</value>
-  </data>
-  <data name="Settings_VersionCacheSize.Text" xml:space="preserve">
-    <value>Version List Cache</value>
-  </data>
   <data name="Settings_ClearAllCache.Content" xml:space="preserve">
     <value>Clear All Cache</value>
   </data>
@@ -1795,9 +1750,6 @@ Continue downloading?</value>
   <data name="Settings_ModrinthDownloadSourceDescription.Text" xml:space="preserve">
     <value>Select download source for Modrinth resources (Mods, Resource Packs, etc.). MCIM mirror can speed up downloads in China</value>
   </data>
-  <data name="Settings_SelectCommunityDownloadSource.Text" xml:space="preserve">
-    <value>Community Resource Download Source</value>
-  </data>
   <data name="Settings_CommunityDownloadSource_Official.Content" xml:space="preserve">
     <value>Official</value>
   </data>
@@ -1806,12 +1758,6 @@ Continue downloading?</value>
   </data>
   <data name="Settings_CommunityDownloadSourceDescription.Text" xml:space="preserve">
     <value>Select download source for Modrinth and CurseForge resources (Mods, Resource Packs, Modpacks, etc.). MCIM mirror can speed up downloads in China</value>
-  </data>
-  <data name="Settings_UpdateSettings.Text" xml:space="preserve">
-    <value>Update Settings</value>
-  </data>
-  <data name="Settings_AutoUpdateCheck.Text" xml:space="preserve">
-    <value>Auto Update Check</value>
   </data>
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>Show popup on every launch</value>
@@ -2491,8 +2437,11 @@ Continue downloading?</value>
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
     <value>XianYuFixer AI Analysis</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Text" xml:space="preserve">
+  <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
     <value>AI Crash Analysis</value>
+  </data>
+  <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
+    <value>Use third-party AI service to analyze crash logs</value>
   </data>
   <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
     <value>Enable to use third-party AI service for crash log analysis.</value>
@@ -2509,11 +2458,20 @@ Continue downloading?</value>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API Endpoint (Base URL)</value>
   </data>
+  <data name="Settings_AI_ApiEndpoint.Description" xml:space="preserve">
+    <value>OpenAI compatible API base URL</value>
+  </data>
   <data name="Settings_AI_ApiKey.Header" xml:space="preserve">
     <value>API Key</value>
   </data>
+  <data name="Settings_AI_ApiKey.Description" xml:space="preserve">
+    <value>Your API key</value>
+  </data>
   <data name="Settings_AI_ModelName.Header" xml:space="preserve">
     <value>Model Name</value>
+  </data>
+  <data name="Settings_AI_ModelName.Description" xml:space="preserve">
+    <value>AI model to use</value>
   </data>
   <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Drag resources here to bookmark</value>
@@ -2545,9 +2503,6 @@ Continue downloading?</value>
   <data name="MaterialType_Motion" xml:space="preserve">
     <value>Aurora Motion</value>
   </data>
-  <data name="Settings_OpenLogDirectory.Text" xml:space="preserve">
-    <value>Open Log Directory</value>
-  </data>
   <data name="Settings_OpenLogDirectoryDescription.Text" xml:space="preserve">
     <value>View launcher logs for troubleshooting</value>
   </data>
@@ -2565,5 +2520,166 @@ Continue downloading?</value>
   </data>
   <data name="ModDownloadDetailPage_VersionSelectionTip_World" xml:space="preserve">
     <value>Please verify if the world version matches the game version. It is recommended to perform a backup before importing.</value>
+  </data>
+  <!-- SettingsPage Section Headers -->
+  <data name="Settings_GameSection.Text" xml:space="preserve">
+    <value>Game</value>
+  </data>
+  <data name="Settings_PersonalizationSection.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="Settings_NetworkSection.Text" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="Settings_AISection.Text" xml:space="preserve">
+    <value>AI Analysis</value>
+  </data>
+  <data name="Settings_AboutSection.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <!-- SettingsCard/SettingsExpander localization keys -->
+  <data name="Settings_MinecraftPath.Header" xml:space="preserve">
+    <value>Minecraft Game Directory</value>
+  </data>
+  <data name="Settings_MinecraftPath.Description" xml:space="preserve">
+    <value>Manage game directories, double-click to switch</value>
+  </data>
+  <data name="Settings_JavaVersionManagement.Header" xml:space="preserve">
+    <value>Java Version Management</value>
+  </data>
+  <data name="Settings_JavaVersionManagement.Description" xml:space="preserve">
+    <value>Manage installed Java runtimes</value>
+  </data>
+  <data name="Settings_JavaSelectionMode.Header" xml:space="preserve">
+    <value>Java Selection Mode</value>
+  </data>
+  <data name="Settings_JavaSelectionMode.Description" xml:space="preserve">
+    <value>Choose how Java is selected when launching games</value>
+  </data>
+  <data name="Settings_JavaPathLabel.Header" xml:space="preserve">
+    <value>Java Path</value>
+  </data>
+  <data name="Settings_JavaPathLabel.Description" xml:space="preserve">
+    <value>Manually specify Java executable path</value>
+  </data>
+  <data name="Settings_VersionIsolation.Header" xml:space="preserve">
+    <value>Enable Version Isolation</value>
+  </data>
+  <data name="Settings_VersionIsolation.Description" xml:space="preserve">
+    <value>Each Minecraft version will use its own game directory</value>
+  </data>
+  <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
+    <value>Real-time Game Logs</value>
+  </data>
+  <data name="Settings_RealTimeLogs.Description" xml:space="preserve">
+    <value>Automatically open real-time logs after game starts</value>
+  </data>
+  <data name="Settings_Theme.Header" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_Theme.Description" xml:space="preserve">
+    <value>Choose the app appearance theme</value>
+  </data>
+  <data name="Settings_WindowMaterial.Header" xml:space="preserve">
+    <value>Window Material</value>
+  </data>
+  <data name="Settings_WindowMaterial.Description" xml:space="preserve">
+    <value>Choose window background effect</value>
+  </data>
+  <data name="Settings_BackgroundImage.Header" xml:space="preserve">
+    <value>Background Image</value>
+  </data>
+  <data name="Settings_BackgroundImage.Description" xml:space="preserve">
+    <value>Select custom background image</value>
+  </data>
+  <data name="Settings_Language.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language.Description" xml:space="preserve">
+    <value>Select app language, restart required after change</value>
+  </data>
+  <data name="Settings_FontFamily.Header" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="Settings_FontFamily.Description" xml:space="preserve">
+    <value>Select app font, takes effect immediately</value>
+  </data>
+  <data name="Settings_DownloadSource.Header" xml:space="preserve">
+    <value>Game Download Source</value>
+  </data>
+  <data name="Settings_DownloadSource.Description" xml:space="preserve">
+    <value>Affects game resource download speed</value>
+  </data>
+  <data name="Settings_SelectVersionListSource.Header" xml:space="preserve">
+    <value>Version List Source</value>
+  </data>
+  <data name="Settings_SelectVersionListSource.Description" xml:space="preserve">
+    <value>Affects version list retrieval speed</value>
+  </data>
+  <data name="Settings_SelectCommunityDownloadSource.Header" xml:space="preserve">
+    <value>Community Resource Source</value>
+  </data>
+  <data name="Settings_SelectCommunityDownloadSource.Description" xml:space="preserve">
+    <value>Source for Modrinth and CurseForge resources</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Header" xml:space="preserve">
+    <value>Download Dependencies</value>
+  </data>
+  <data name="Settings_DownloadDependencies.Description" xml:space="preserve">
+    <value>Automatically download required dependency mods</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Header" xml:space="preserve">
+    <value>Hide Snapshot Versions</value>
+  </data>
+  <data name="Settings_HideSnapshotVersions.Description" xml:space="preserve">
+    <value>Hide snapshots, pre-releases and release candidates</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Header" xml:space="preserve">
+    <value>Download Threads</value>
+  </data>
+  <data name="Settings_DownloadThreadCount.Description" xml:space="preserve">
+    <value>Number of concurrent downloads, higher is faster</value>
+  </data>
+  <data name="Settings_CacheManagement.Header" xml:space="preserve">
+    <value>Cache Management</value>
+  </data>
+  <data name="Settings_CacheManagement.Description" xml:space="preserve">
+    <value>Manage search results and image cache</value>
+  </data>
+  <data name="Settings_TotalCacheSize.Header" xml:space="preserve">
+    <value>Total Cache Size</value>
+  </data>
+  <data name="Settings_SearchCacheSize.Header" xml:space="preserve">
+    <value>Search Results Cache</value>
+  </data>
+  <data name="Settings_ImageCacheSize.Header" xml:space="preserve">
+    <value>Image Cache</value>
+  </data>
+  <data name="Settings_VersionCacheSize.Header" xml:space="preserve">
+    <value>Version List Cache</value>
+  </data>
+  <data name="Settings_Acknowledgments.Header" xml:space="preserve">
+    <value>Acknowledgments</value>
+  </data>
+  <data name="Settings_Acknowledgments.Description" xml:space="preserve">
+    <value>Thanks to the following projects and contributors</value>
+  </data>
+  <data name="Settings_About.Header" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_UpdateSettings.Header" xml:space="preserve">
+    <value>Update Settings</value>
+  </data>
+  <data name="Settings_UpdateSettings.Description" xml:space="preserve">
+    <value>Configure automatic update checking</value>
+  </data>
+  <data name="Settings_AutoUpdateCheck.Header" xml:space="preserve">
+    <value>Auto Check Updates</value>
+  </data>
+  <data name="Settings_OpenLogDirectory.Header" xml:space="preserve">
+    <value>Open Log Directory</value>
+  </data>
+  <data name="Settings_OpenLogDirectory.Description" xml:space="preserve">
+    <value>View launcher logs for troubleshooting</value>
   </data>
 </root>

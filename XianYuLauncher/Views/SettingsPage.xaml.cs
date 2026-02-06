@@ -1,13 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using System.IO;
 
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
-// Set the URL for your privacy policy by updating SettingsPage_PrivacyTermsLink.NavigateUri in Resources.resw.
 public sealed partial class SettingsPage : Page
 {
     public SettingsViewModel ViewModel
@@ -16,10 +14,6 @@ public sealed partial class SettingsPage : Page
     }
 
     private int _clickCount = 0;
-    
-    /// <summary>
-    /// 彩蛋模式设置键
-    /// </summary>
     private const string EasterEggModeKey = "EasterEggMode";
 
     public SettingsPage()
@@ -35,15 +29,12 @@ public sealed partial class SettingsPage : Page
         {
             try
             {
-                // 获取当前彩蛋模式状态
                 var localSettingsService = App.GetService<ILocalSettingsService>();
                 var currentMode = await localSettingsService.ReadSettingAsync<bool?>(EasterEggModeKey) ?? false;
                 
-                // 切换彩蛋模式
                 var newMode = !currentMode;
                 await localSettingsService.SaveSettingAsync(EasterEggModeKey, newMode);
                 
-                // 显示提示
                 var dialog = new ContentDialog
                 {
                     Title = newMode ? "🎉 彩蛋模式已开启" : "彩蛋模式已关闭",
@@ -68,14 +59,24 @@ public sealed partial class SettingsPage : Page
         }
     }
     
-    /// <summary>
-    /// 处理游戏目录列表的双击事件
-    /// </summary>
     private async void MinecraftPathListBox_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         if (ViewModel.SelectedMinecraftPathItem != null)
         {
             await ViewModel.SwitchMinecraftPathCommand.ExecuteAsync(ViewModel.SelectedMinecraftPathItem);
+        }
+    }
+
+    private async void OpenLogDirectory_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.OpenLogDirectoryCommand.ExecuteAsync(null);
+    }
+
+    private async void OpenSourceLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CommunityToolkit.WinUI.Controls.SettingsCard card && card.Tag is string url)
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
         }
     }
 }
