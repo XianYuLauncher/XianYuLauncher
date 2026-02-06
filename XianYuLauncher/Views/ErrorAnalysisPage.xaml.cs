@@ -302,7 +302,11 @@ namespace XianYuLauncher.Views
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
-            _ = ViewModel.ClearChatStateAsync();
+            // 独立窗口还开着时不清空聊天，让用户继续在窗口里对话
+            if (!ViewModel.IsFixerWindowOpen)
+            {
+                _ = ViewModel.ClearChatStateAsync();
+            }
         }
 
         /// <summary>
@@ -314,6 +318,15 @@ namespace XianYuLauncher.Views
             {
                 Frame.GoBack();
             }
+        }
+
+        /// <summary>
+        /// 弹出独立聊天窗口
+        /// </summary>
+        private void PopOutChat_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            var window = new FixerChatWindow();
+            window.Activate();
         }
     }
 }

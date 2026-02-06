@@ -80,10 +80,23 @@
             </Grid.RowDefinitions>
             
             <!-- 标题栏 -->
-            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-                <FontIcon Glyph="&#xE946;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                <TextBlock x:Uid="ErrorAnalysis_AnalysisTitle" Text="崩溃分析" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-            </StackPanel>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE946;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock x:Uid="ErrorAnalysis_AnalysisTitle" Text="崩溃分析" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Grid.Column="1" 
+                        Click="PopOutChat_Click"
+                        ToolTipService.ToolTip="在独立窗口中打开"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Padding="6">
+                    <FontIcon Glyph="&#xE8A7;" FontSize="14" />
+                </Button>
+            </Grid>
             
             <!-- 分析结果卡片 - 使用 Mica 背景 -->
             <Border Grid.Row="1" 

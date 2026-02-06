@@ -40,6 +40,11 @@ namespace XianYuLauncher.ViewModels
         private ObservableCollection<string> _logLines = new();
 
         /// <summary>
+        /// 独立 Fixer 聊天窗口是否打开（打开时离开分析页不清空聊天）
+        /// </summary>
+        public bool IsFixerWindowOpen { get; set; }
+
+        /// <summary>
         /// 加入QQ群进行反馈
         /// </summary>
         [RelayCommand]
