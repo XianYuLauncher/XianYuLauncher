@@ -34,7 +34,7 @@
             <StackPanel Spacing="4" Padding="0,0,0,24">
                 
                 <!-- 当前加载器信息 -->
-                <TextBlock x:Uid="VersionManagerPage_CurrentLoaderSection" Text="当前加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
+                <TextBlock x:Uid="Settings_CurrentLoaderSection" Text="当前加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
                 
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
@@ -62,7 +62,7 @@
                                            Style="{StaticResource BodyTextBlockStyle}"
                                            FontWeight="SemiBold" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock x:Uid="VersionManagerPage_CurrentLoaderTitle" 
+                                    <TextBlock x:Uid="Settings_CurrentLoaderSection" 
                                                Text="当前加载器"
                                                Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -174,17 +174,33 @@
                 </controls:SettingsExpander>
                 
                 <!-- Java 设置 -->
-                <controls:SettingsExpander x:Uid="Settings_JavaSettings" Header="Java 设置" Description="配置游戏使用的 Java 运行时"
+                <controls:SettingsCard x:Uid="VersionSettings_JavaPathCard" Header="Java 路径" Description="指定 Java 可执行文件路径"
+                                       IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE756;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Uid="VersionSettings_JavaPathBox" Text="{Binding JavaPath, Mode=TwoWay}" Width="280" IsReadOnly="True" />
+                        <Button x:Uid="Settings_Browse" Content="浏览..." Command="{Binding BrowseJavaCommand}" />
+                    </StackPanel>
+                </controls:SettingsCard>
+                
+                <!-- JVM 参数 -->
+                <controls:SettingsExpander x:Uid="Settings_CustomJvmArguments" Header="自定义 JVM 参数" Description="高级选项，每行一个参数或空格分隔。注意：重复的 JVM 参数会自动去除"
                                            IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
                     <controls:SettingsExpander.HeaderIcon>
-                        <FontIcon Glyph="&#xE756;" />
+                        <FontIcon Glyph="&#xE943;" />
                     </controls:SettingsExpander.HeaderIcon>
                     <controls:SettingsExpander.Items>
-                        <controls:SettingsCard x:Uid="VersionSettings_JavaPathCard" Header="Java 路径" Description="指定 Java 可执行文件路径">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox Text="{Binding JavaPath, Mode=TwoWay}" PlaceholderText="请选择 Java 路径" Width="280" IsReadOnly="True" />
-                                <Button x:Uid="Settings_Browse" Content="浏览..." Command="{Binding BrowseJavaCommand}" />
-                            </StackPanel>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0">
+                            <TextBox Text="{Binding CustomJvmArguments, Mode=TwoWay}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="80"
+                                     MaxHeight="200"
+                                     HorizontalAlignment="Stretch"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     PlaceholderText="-XX:+UseG1GC&#x0a;-Dsun.rmi.dgc.server.gcInterval=2147483646" />
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
                 </controls:SettingsExpander>

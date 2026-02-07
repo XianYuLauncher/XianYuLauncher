@@ -676,6 +676,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _javaPath = string.Empty;
     
     /// <summary>
+    /// 自定义 JVM 参数
+    /// </summary>
+    [ObservableProperty]
+    private string _customJvmArguments = string.Empty;
+    
+    /// <summary>
     /// 是否覆盖全局分辨率设置（已废弃，由 UseGlobalSettings 统一控制）
     /// </summary>
     [ObservableProperty]
@@ -1090,6 +1096,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 MaximumHeapMemory = versionConfig.MaximumHeapMemory;
                 UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
                 JavaPath = versionConfig.JavaPath;
+                CustomJvmArguments = versionConfig.CustomJvmArguments ?? string.Empty;
                 OverrideResolution = versionConfig.OverrideResolution;
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
@@ -1148,7 +1155,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         if (settings == null || string.IsNullOrEmpty(settings.ModLoaderType) || settings.ModLoaderType == "vanilla")
         {
-            CurrentLoaderDisplayName = "原版";
+            CurrentLoaderDisplayName = "VersionManagement_Vanilla".GetLocalized();
             CurrentLoaderVersion = settings?.MinecraftVersion ?? string.Empty;
             CurrentLoaderIconUrl = null;
             IsVanillaLoader = true;
@@ -1842,6 +1849,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             settings.InitialHeapMemory = InitialHeapMemory;
             settings.MaximumHeapMemory = MaximumHeapMemory;
             settings.JavaPath = JavaPath;
+            settings.CustomJvmArguments = CustomJvmArguments;
             settings.OverrideResolution = OverrideResolution;
             settings.WindowWidth = WindowWidth;
             settings.WindowHeight = WindowHeight;

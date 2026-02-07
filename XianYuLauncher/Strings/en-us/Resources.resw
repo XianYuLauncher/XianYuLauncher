@@ -2790,6 +2790,9 @@ Continue downloading?</value>
   <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
     <value>Specify Java executable path</value>
   </data>
+  <data name="VersionSettings_JavaPathBox.PlaceholderText" xml:space="preserve">
+    <value>Select Java Path</value>
+  </data>
   <data name="Settings_Resolution.Header" xml:space="preserve">
     <value>Launch Resolution</value>
   </data>
@@ -2801,5 +2804,50 @@ Continue downloading?</value>
   </data>
   <data name="Settings_WindowHeight.Header" xml:space="preserve">
     <value>Window Height</value>
+  </data>
+  <data name="Settings_CustomJvmArguments.Header" xml:space="preserve">
+    <value>Custom JVM Arguments</value>
+  </data>
+  <data name="Settings_CustomJvmArguments.Description" xml:space="preserve">
+    <value>Advanced option, one parameter per line or space-separated. Note: Duplicate JVM arguments will be automatically removed</value>
+  </data>
+  <data name="Settings_GlobalCustomJvmArguments.Header" xml:space="preserve">
+    <value>Global Custom JVM Arguments</value>
+  </data>
+  <data name="Settings_GlobalCustomJvmArguments.Description" xml:space="preserve">
+    <value>Advanced option, one parameter per line or space-separated. Note: Duplicate JVM arguments will be automatically removed</value>
+  </data>
+  <data name="VersionManagement_Vanilla" xml:space="preserve">
+    <value>Vanilla</value>
+  </data>
+  <data name="VersionManagerPage_ServerManagementTab.Text" xml:space="preserve">
+    <value>Servers</value>
+  </data>
+  <data name="ServerListControl_SearchPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Search servers</value>
+  </data>
+  <data name="ServerListControl_AddServerButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add server</value>
+  </data>
+  <data name="ServerListControl_AddServerText.Text" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="ServerListControl_MenuItem_Launch.Text" xml:space="preserve">
+    <value>Launch</value>
+  </data>
+  <data name="ServerListControl_MenuItem_CreateShortcut.Text" xml:space="preserve">
+    <value>Create Shortcut</value>
+  </data>
+  <data name="ServerListControl_MenuItem_Delete.Text" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="ServerListControl_NoServersTitle.Text" xml:space="preserve">
+    <value>No Servers Found</value>
+  </data>
+  <data name="ServerListControl_NoServersDescription.Text" xml:space="preserve">
+    <value>Add a server to start multiplayer game</value>
+  </data>
+  <data name="ServerListControl_AddServerButtonEmpty.Content" xml:space="preserve">
+    <value>Add Server</value>
   </data>
 </root>

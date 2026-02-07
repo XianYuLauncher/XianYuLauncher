@@ -89,4 +89,9 @@ public class VersionSettings
     /// 最后启动时间
     /// </summary>
     public DateTime? LastLaunchTime { get; set; }
+    
+    /// <summary>
+    /// 自定义 JVM 参数
+    /// </summary>
+    public string CustomJvmArguments { get; set; } = string.Empty;
 }

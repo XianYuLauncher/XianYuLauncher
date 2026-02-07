@@ -58,6 +58,11 @@ public class VersionConfig
     public string JavaPath { get; set; } = string.Empty;
     
     /// <summary>
+    /// 自定义 JVM 参数
+    /// </summary>
+    public string? CustomJvmArguments { get; set; }
+    
+    /// <summary>
     /// 是否使用全局Java设置（兼容旧版，等同于 !OverrideJava）
     /// </summary>
     public bool UseGlobalJavaSetting { get; set; } = true;

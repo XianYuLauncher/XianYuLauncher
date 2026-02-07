@@ -17,6 +17,7 @@ public class LaunchSettingsResolver : ILaunchSettingsResolver
     private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
     private const string GlobalWindowWidthKey = "GlobalWindowWidth";
     private const string GlobalWindowHeightKey = "GlobalWindowHeight";
+    private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
 
     public LaunchSettingsResolver(
         ILocalSettingsService localSettingsService,
@@ -71,6 +72,20 @@ public class LaunchSettingsResolver : ILaunchSettingsResolver
             // 跟随全局
             result.WindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
             result.WindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
+        }
+
+        // === JVM 参数设置 ===
+        // 优先级：版本自定义 > 全局设置
+        // 如果版本使用全局设置，则使用全局 JVM 参数；否则使用版本自己的
+        if (!versionConfig.OverrideMemory && !versionConfig.OverrideResolution && versionConfig.UseGlobalJavaSetting)
+        {
+            // 完全跟随全局
+            result.CustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
+        }
+        else
+        {
+            // 版本自定义
+            result.CustomJvmArguments = versionConfig.CustomJvmArguments ?? string.Empty;
         }
 
         return result;

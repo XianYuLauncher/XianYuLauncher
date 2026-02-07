@@ -107,6 +107,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string GlobalAutoMemoryKey = "GlobalAutoMemoryAllocation";
     private const string GlobalInitialHeapKey = "GlobalInitialHeapMemory";
     private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
+    private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
     private const string GlobalWindowWidthKey = "GlobalWindowWidth";
     private const string GlobalWindowHeightKey = "GlobalWindowHeight";
     
@@ -560,6 +561,12 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private double _globalMaximumHeapMemory = 12.0;
+    
+    /// <summary>
+    /// 全局：自定义 JVM 参数
+    /// </summary>
+    [ObservableProperty]
+    private string _globalCustomJvmArguments = string.Empty;
     
     /// <summary>
     /// 全局：窗口宽度
@@ -1373,6 +1380,7 @@ public partial class SettingsViewModel : ObservableRecipient
         GlobalAutoMemoryAllocation = await _localSettingsService.ReadSettingAsync<bool?>(GlobalAutoMemoryKey) ?? true;
         GlobalInitialHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
         GlobalMaximumHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
+        GlobalCustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
         GlobalWindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
         GlobalWindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
     }
@@ -1390,6 +1398,11 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnGlobalMaximumHeapMemoryChanged(double value)
     {
         _localSettingsService.SaveSettingAsync(GlobalMaxHeapKey, value).ConfigureAwait(false);
+    }
+    
+    partial void OnGlobalCustomJvmArgumentsChanged(string value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalCustomJvmArgumentsKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalWindowWidthChanged(int value)

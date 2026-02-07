@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -524,6 +525,15 @@ public class GameLaunchService : IGameLaunchService
             System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加authlib-injector参数");
             var externalJvmArgs = await _authlibCallback.GetJvmArgumentsAsync(profile.AuthServer);
             args.InsertRange(0, externalJvmArgs);
+        }
+        
+        // === 合并自定义 JVM 参数并去重 ===
+        // 在添加主类之前，先处理自定义 JVM 参数
+        if (!string.IsNullOrWhiteSpace(effectiveSettings.CustomJvmArguments))
+        {
+            _logger.LogInformation("检测到自定义 JVM 参数，开始合并去重");
+            args = JvmArgumentsHelper.MergeAndDeduplicateArguments(args, effectiveSettings.CustomJvmArguments);
+            _logger.LogInformation("JVM 参数合并完成，最终参数数量: {Count}", args.Count);
         }
         
         // 确定 userType

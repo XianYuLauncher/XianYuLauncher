@@ -49,7 +49,6 @@
             <AutoSuggestBox 
                 Grid.Column="0"
                 x:Uid="ServerListControl_SearchPlaceholder"
-                PlaceholderText="搜索服务器"
                 Text="{Binding ServerSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 QueryIcon="Find"
                 HorizontalAlignment="Stretch" />
@@ -57,12 +56,12 @@
             <Button 
                 Grid.Column="1"
                 Command="{Binding AddServerCommand}"
-                ToolTipService.ToolTip="添加服务器"
+                x:Uid="ServerListControl_AddServerButton"
                 Style="{StaticResource DefaultButtonStyle}"
                 Padding="10,6">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE710;" FontSize="16" />
-                    <TextBlock Text="添加" VerticalAlignment="Center" />
+                    <TextBlock x:Uid="ServerListControl_AddServerText" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
         </Grid>
@@ -92,9 +91,9 @@
                         <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                             <Grid.ContextFlyout>
                                 <MenuFlyout>
-                                    <MenuFlyoutItem Text="启动" Icon="Play" Command="{Binding DataContext.LaunchServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
-                                    <MenuFlyoutItem Text="创建快捷方式" Icon="Link" Command="{Binding DataContext.CreateServerShortcutCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
-                                    <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_Launch" Icon="Play" Command="{Binding DataContext.LaunchServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_CreateShortcut" Icon="Link" Command="{Binding DataContext.CreateServerShortcutCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_Delete" Icon="Delete" Command="{Binding DataContext.DeleteServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
                                 </MenuFlyout>
                             </Grid.ContextFlyout>
                             <Grid.ColumnDefinitions>
@@ -171,14 +170,14 @@
                     HorizontalAlignment="Center"
                     Margin="0,0,0,24"/>
                 <TextBlock 
-                    Text="暂无服务器" 
+                    x:Uid="ServerListControl_NoServersTitle" 
                     Style="{StaticResource PageTitleStyle}" 
                     FontSize="20"
                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
                     HorizontalAlignment="Center" 
                     Margin="0,0,0,8"/>
                 <TextBlock 
-                    Text="添加服务器以开始多人游戏" 
+                    x:Uid="ServerListControl_NoServersDescription" 
                     Style="{StaticResource BodyTextStyle}" 
                     Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
                     HorizontalAlignment="Center" 
@@ -186,7 +185,7 @@
                     MaxWidth="300"
                     Margin="0,0,0,24"/>
                 <Button 
-                    Content="添加服务器" 
+                    x:Uid="ServerListControl_AddServerButtonEmpty" 
                     Command="{Binding AddServerCommand}"
                     Style="{StaticResource DefaultButtonStyle}" 
                     HorizontalAlignment="Center" 

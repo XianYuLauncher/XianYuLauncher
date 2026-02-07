@@ -2802,6 +2802,9 @@
   <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
     <value>指定 Java 可执行文件路径</value>
   </data>
+  <data name="VersionSettings_JavaPathBox.PlaceholderText" xml:space="preserve">
+    <value>请选择 Java 路径</value>
+  </data>
   <data name="Settings_Resolution.Header" xml:space="preserve">
     <value>启动分辨率</value>
   </data>
@@ -2813,5 +2816,50 @@
   </data>
   <data name="Settings_WindowHeight.Header" xml:space="preserve">
     <value>窗口高度</value>
+  </data>
+  <data name="Settings_CustomJvmArguments.Header" xml:space="preserve">
+    <value>自定义 JVM 参数</value>
+  </data>
+  <data name="Settings_CustomJvmArguments.Description" xml:space="preserve">
+    <value>高级选项，每行一个参数或空格分隔。注意：重复的 JVM 参数会自动去除</value>
+  </data>
+  <data name="Settings_GlobalCustomJvmArguments.Header" xml:space="preserve">
+    <value>全局自定义 JVM 参数</value>
+  </data>
+  <data name="Settings_GlobalCustomJvmArguments.Description" xml:space="preserve">
+    <value>高级选项，每行一个参数或空格分隔。注意：重复的 JVM 参数会自动去除</value>
+  </data>
+  <data name="VersionManagement_Vanilla" xml:space="preserve">
+    <value>原版</value>
+  </data>
+  <data name="VersionManagerPage_ServerManagementTab.Text" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="ServerListControl_SearchPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>搜索服务器</value>
+  </data>
+  <data name="ServerListControl_AddServerButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>添加服务器</value>
+  </data>
+  <data name="ServerListControl_AddServerText.Text" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="ServerListControl_MenuItem_Launch.Text" xml:space="preserve">
+    <value>启动</value>
+  </data>
+  <data name="ServerListControl_MenuItem_CreateShortcut.Text" xml:space="preserve">
+    <value>创建快捷方式</value>
+  </data>
+  <data name="ServerListControl_MenuItem_Delete.Text" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="ServerListControl_NoServersTitle.Text" xml:space="preserve">
+    <value>暂无服务器</value>
+  </data>
+  <data name="ServerListControl_NoServersDescription.Text" xml:space="preserve">
+    <value>添加服务器以开始多人游戏</value>
+  </data>
+  <data name="ServerListControl_AddServerButtonEmpty.Content" xml:space="preserve">
+    <value>添加服务器</value>
   </data>
 </root>

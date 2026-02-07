@@ -292,6 +292,25 @@
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
                 </controls:SettingsExpander>
+                
+                <!-- 全局 JVM 参数 -->
+                <controls:SettingsExpander x:Uid="Settings_GlobalCustomJvmArguments" Header="全局自定义 JVM 参数" Description="高级选项，每行一个参数或空格分隔。注意：重复的 JVM 参数会自动去除">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE943;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0">
+                            <TextBox Text="{x:Bind ViewModel.GlobalCustomJvmArguments, Mode=TwoWay}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="80"
+                                     MaxHeight="200"
+                                     HorizontalAlignment="Stretch"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     PlaceholderText="-XX:+UseG1GC&#x0a;-Dsun.rmi.dgc.server.gcInterval=2147483646" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- 版本隔离 -->
                 <controls:SettingsCard x:Uid="Settings_VersionIsolation" Header="启用版本隔离" Description="开启后，每个Minecraft版本将使用独立的游戏目录">

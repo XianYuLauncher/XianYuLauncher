@@ -34,4 +34,9 @@ public class EffectiveLaunchSettings
     /// 窗口高度
     /// </summary>
     public int WindowHeight { get; set; } = 720;
+    
+    /// <summary>
+    /// 自定义 JVM 参数
+    /// </summary>
+    public string CustomJvmArguments { get; set; } = string.Empty;
 }
