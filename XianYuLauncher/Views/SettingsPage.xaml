@@ -275,7 +275,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </controls:SettingsCard>
-                        <controls:SettingsCard x:Uid="Settings_JavaSelectionMode" Header="Java 选择方式" Description="选择启动游戏时使用的 Java 版本" Background="Transparent">
+                        <controls:SettingsCard x:Uid="Settings_JavaSelectionMode" Header="Java 选择方式" Description="选择启动游戏时使用的 Java 版本" Background="Transparent" BorderThickness="0" Padding="16,12,0,12">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <RadioButton Content="自动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
                                              Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Auto" GroupName="JavaMode" />
@@ -283,7 +283,7 @@
                                              Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Manual" GroupName="JavaMode" />
                             </StackPanel>
                         </controls:SettingsCard>
-                        <controls:SettingsCard x:Uid="Settings_JavaPathLabel" Header="Java 路径" Description="手动指定 Java 可执行文件路径" Background="Transparent">
+                        <controls:SettingsCard x:Uid="Settings_JavaPathLabel" Header="Java 路径" Description="手动指定 Java 可执行文件路径" Background="Transparent" BorderThickness="0" Padding="16,12,0,12">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBox Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择Java可执行文件路径" Width="280" IsReadOnly="True" />
                                 <Button x:Uid="Settings_Browse" Content="浏览..." Command="{x:Bind ViewModel.BrowseJavaPathCommand}" />
