@@ -2862,4 +2862,7 @@
   <data name="ServerListControl_AddServerButtonEmpty.Content" xml:space="preserve">
     <value>添加服务器</value>
   </data>
+  <data name="SettingsPage_AfdianLink.Content" xml:space="preserve">
+    <value>赞助</value>
+  </data>
 </root>

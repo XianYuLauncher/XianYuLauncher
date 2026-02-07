@@ -81,6 +81,7 @@ public class SecretsConfig
     public TelemetryConfig Telemetry { get; set; } = new();
     public AiAnalysisConfig AiAnalysis { get; set; } = new();
     public CurseForgeConfig CurseForge { get; set; } = new();
+    public AfdianConfig Afdian { get; set; } = new();
 }
 
 public class MicrosoftAuthConfig
@@ -104,4 +105,10 @@ public class AiAnalysisConfig
 public class CurseForgeConfig
 {
     public string ApiKey { get; set; } = string.Empty;
+}
+
+public class AfdianConfig
+{
+    public string UserId { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
 }

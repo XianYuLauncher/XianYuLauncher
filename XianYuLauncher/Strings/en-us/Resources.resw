@@ -2850,4 +2850,7 @@ Continue downloading?</value>
   <data name="ServerListControl_AddServerButtonEmpty.Content" xml:space="preserve">
     <value>Add Server</value>
   </data>
+  <data name="SettingsPage_AfdianLink.Content" xml:space="preserve">
+    <value>Sponsor</value>
+  </data>
 </root>

@@ -659,6 +659,7 @@
                                 <HyperlinkButton x:Uid="SettingsPage_EulaLink" Padding="0" />
                                 <HyperlinkButton x:Uid="SettingsPage_PrivacyPolicyLink" Padding="0" />
                                 <HyperlinkButton Content="GitHub" NavigateUri="https://github.com/XianYuLauncher/XianYuLauncher" Padding="0" />
+                                <HyperlinkButton x:Uid="SettingsPage_AfdianLink" NavigateUri="https://afdian.com/a/SpiritStudio" Padding="0" />
                             </StackPanel>
                         </StackPanel>
                     </controls:SettingsCard.Description>

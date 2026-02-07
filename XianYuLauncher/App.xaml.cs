@@ -311,6 +311,10 @@ public partial class App : Application
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
 
             services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
+            
+            // Afdian Service (爱发电赞助者服务)
+            services.AddHttpClient<IAfdianService, AfdianService>();
+            services.AddSingleton<IAfdianService, AfdianService>();
 
             // Views and ViewModels
             services.AddTransient<SettingsViewModel>();

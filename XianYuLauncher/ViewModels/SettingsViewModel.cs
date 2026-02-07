@@ -656,11 +656,74 @@ public partial class SettingsViewModel : ObservableRecipient
         int count = AcknowledgmentPersons.Count + 1;
         AcknowledgmentPersons.Add(new AcknowledgmentPerson($"鸣谢人员{count}", $"提供支持{count}"));
     }
+    
+    /// <summary>
+    /// 加载爱发电赞助者列表（带24小时缓存）
+    /// </summary>
+    private async Task LoadAfdianSponsorsAsync()
+    {
+        if (_afdianService == null)
+        {
+            Log.Debug("[SettingsViewModel] 爱发电服务未注册，跳过加载赞助者");
+            return;
+        }
+        
+        try
+        {
+            IsLoadingSponsors = true;
+            
+            // 使用带缓存的方法获取赞助者列表（24小时自动刷新）
+            var sponsors = await _afdianService.GetSponsorsAsync();
+            
+            if (sponsors.Count > 0)
+            {
+                // 在 UI 线程上添加赞助者
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    foreach (var sponsor in sponsors)
+                    {
+                        // 格式化赞助金额显示
+                        var supportInfo = $"累计赞助 ¥{sponsor.AllSumAmount}";
+                        
+                        // 使用网络头像URL，如果为空则使用默认头像
+                        var avatar = string.IsNullOrEmpty(sponsor.Avatar) 
+                            ? "ms-appx:///Assets/Icons/Avatars/Steve.png" 
+                            : sponsor.Avatar;
+                        
+                        AcknowledgmentPersons.Add(new AcknowledgmentPerson(
+                            sponsor.Name,
+                            supportInfo,
+                            avatar
+                        ));
+                    }
+                    
+                    Log.Information($"[SettingsViewModel] 成功加载 {sponsors.Count} 位爱发电赞助者");
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning($"[SettingsViewModel] 加载爱发电赞助者失败: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingSponsors = false;
+        }
+    }
+
 
         public ICommand SwitchJavaSelectionModeCommand
     {
         get;
     }
+
+    private readonly IAfdianService? _afdianService;
+    
+    /// <summary>
+    /// 是否正在加载赞助者列表
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLoadingSponsors = false;
 
     public SettingsViewModel(
         IThemeSelectorService themeSelectorService, 
@@ -675,7 +738,8 @@ public partial class SettingsViewModel : ObservableRecipient
         IJavaRuntimeService javaRuntimeService,
         IJavaDownloadService javaDownloadService,
         IDialogService dialogService,
-        DownloadSourceFactory downloadSourceFactory)
+        DownloadSourceFactory downloadSourceFactory,
+        IAfdianService? afdianService = null)
     {
         _themeSelectorService = themeSelectorService;
         _localSettingsService = localSettingsService;
@@ -690,6 +754,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
         _downloadSourceFactory = downloadSourceFactory;
+        _afdianService = afdianService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
         
@@ -787,6 +852,9 @@ public partial class SettingsViewModel : ObservableRecipient
             new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg"),
             new AcknowledgmentPerson("Settings_McModName".GetLocalized(), "Settings_McModSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/mcmod.ico")
         };
+        
+        // 加载爱发电赞助者列表
+        LoadAfdianSponsorsAsync().ConfigureAwait(false);
         
         // 初始化Java版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
