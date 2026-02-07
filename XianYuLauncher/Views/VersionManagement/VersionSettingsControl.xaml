@@ -1,0 +1,218 @@
+<UserControl
+    x:Class="XianYuLauncher.Views.VersionManagement.VersionSettingsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:XianYuLauncher.Models.VersionManagement"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
+        
+        <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}" />
+        <SolidColorBrush x:Key="OverviewCardBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
+    </UserControl.Resources>
+
+    <Grid>
+        <animations:Implicit.ShowAnimations>
+            <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+            <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+        </animations:Implicit.ShowAnimations>
+        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <ScrollViewer Grid.Row="0" Margin="0,16,0,0" Padding="0,0,12,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="4" Padding="0,0,0,24">
+                
+                <!-- 当前加载器信息 -->
+                <TextBlock x:Uid="VersionManagerPage_CurrentLoaderSection" Text="当前加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
+                
+                <controls:SettingsCard>
+                    <controls:SettingsCard.Header>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- 图标 -->
+                            <Grid Grid.Column="0" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <!-- 原版图标 -->
+                                <FontIcon Glyph="&#xE946;" FontSize="16" 
+                                          Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <!-- 非原版加载器图标 -->
+                                <Image Source="{Binding CurrentLoaderIconUrl, Mode=OneWay}" 
+                                       Width="20" Height="20"
+                                       Stretch="Uniform"
+                                       Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                            </Grid>
+                            
+                            <!-- 文字信息 -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="{Binding CurrentLoaderDisplayName, Mode=OneWay}" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           FontWeight="SemiBold" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock x:Uid="VersionManagerPage_CurrentLoaderTitle" 
+                                               Text="当前加载器"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding CurrentLoaderVersion, Mode=OneWay}" 
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </controls:SettingsCard.Header>
+                </controls:SettingsCard>
+                
+                <!-- 管理加载器 -->
+                <TextBlock x:Uid="VersionManagerPage_ManageLoaderTitle" Text="管理加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                
+                <ItemsRepeater ItemsSource="{Binding AvailableLoaders, Mode=OneWay}">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Spacing="4" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="models:LoaderItemViewModel">
+                            <Expander 
+                                IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}" 
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Expanding="LoaderExpander_Expanding"
+                                Tag="{x:Bind}">
+                                <Expander.Header>
+                                    <Grid Padding="4,8" HorizontalAlignment="Stretch" DataContext="{x:Bind}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Background="{ThemeResource ControlFillColorSecondaryBrush}" Margin="0,0,12,0">
+                                            <Image Source="{x:Bind IconUrl, Mode=OneWay}" Width="20" Height="20" Stretch="Uniform" />
+                                        </Border>
+                                        
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                        
+                                        <Button x:Uid="VersionManagerPage_CancelLoaderButton" Grid.Column="2" Width="24" Height="24" Padding="0" Margin="-8,0,0,0"
+                                                Background="Transparent" BorderBrush="Transparent" Foreground="{ThemeResource TextFillColorSecondary}"
+                                                Click="CancelLoader_Click" Tag="{x:Bind}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                Visibility="{x:Bind SelectedVersion, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"
+                                                ToolTipService.ToolTip="取消选择">
+                                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                                        </Button>
+                                    </Grid>
+                                </Expander.Header>
+                                
+                                <Grid Padding="4,8,4,12" MinHeight="100">
+                                    <ProgressRing IsActive="{x:Bind IsLoading, Mode=OneWay}" Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" Width="32" Height="32" />
+                                    
+                                    <ListView x:Name="LoaderVersionListView" ItemsSource="{x:Bind Versions, Mode=OneWay}" SelectedItem="{x:Bind SelectedVersion, Mode=TwoWay}"
+                                              SelectionMode="Single" SelectionChanged="LoaderVersionListView_SelectionChanged"
+                                              Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                              Background="Transparent" BorderThickness="0" MaxHeight="200" Tag="{x:Bind Mode=OneWay}">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <Grid>
+                                                    <Border Padding="12,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="6" Margin="0,4">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Image Source="{Binding ElementName=LoaderVersionListView, Path=Tag.IconUrl}" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center" Stretch="UniformToFill" />
+                                                            <TextBlock Text="{x:Bind}" FontSize="15" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Grid>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+                
+                <!-- 版本设置 -->
+                <TextBlock x:Uid="VersionManagerPage_VersionSettingsSection" Text="版本设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                
+                <!-- 全局设置模式切换 -->
+                <controls:SettingsCard x:Uid="Settings_UseGlobalSettings" Header="使用全局设置" Description="启用后，此版本将使用全局设置中的配置">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE774;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{Binding UseGlobalSettings, Mode=TwoWay}" />
+                </controls:SettingsCard>
+                
+                <!-- 内存设置 -->
+                <controls:SettingsExpander x:Uid="Settings_MemoryAllocation" Header="内存分配" Description="设置游戏运行时的内存配置"
+                                           IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xEEA0;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_AutoMemory" Header="自动分配内存" Description="启用后将根据系统内存自动分配">
+                            <ToggleSwitch IsOn="{Binding AutoMemoryAllocation, Mode=TwoWay}" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_InitialHeap" Header="初始堆内存" Description="游戏启动时分配的初始内存（GB）">
+                            <NumberBox Value="{Binding InitialHeapMemory, Mode=TwoWay}" Minimum="1" Maximum="64" SpinButtonPlacementMode="Compact" SmallChange="0.5" Width="120"
+                                       IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_MaxHeap" Header="最大堆内存" Description="游戏运行时允许使用的最大内存（GB）">
+                            <NumberBox Value="{Binding MaximumHeapMemory, Mode=TwoWay}" Minimum="1" Maximum="64" SpinButtonPlacementMode="Compact" SmallChange="0.5" Width="120"
+                                       IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+                
+                <!-- Java 设置 -->
+                <controls:SettingsExpander x:Uid="Settings_JavaSettings" Header="Java 设置" Description="配置游戏使用的 Java 运行时"
+                                           IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE756;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="VersionSettings_JavaPathCard" Header="Java 路径" Description="指定 Java 可执行文件路径">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{Binding JavaPath, Mode=TwoWay}" PlaceholderText="请选择 Java 路径" Width="280" IsReadOnly="True" />
+                                <Button x:Uid="Settings_Browse" Content="浏览..." Command="{Binding BrowseJavaCommand}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+                
+                <!-- 启动分辨率 -->
+                <controls:SettingsExpander x:Uid="Settings_Resolution" Header="启动分辨率" Description="设置游戏启动时的窗口大小"
+                                           IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE740;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_WindowWidth" Header="窗口宽度">
+                            <NumberBox Value="{Binding WindowWidth, Mode=TwoWay}" Minimum="800" Maximum="4096" SpinButtonPlacementMode="Compact" SmallChange="1" Width="120" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_WindowHeight" Header="窗口高度">
+                            <NumberBox Value="{Binding WindowHeight, Mode=TwoWay}" Minimum="600" Maximum="2160" SpinButtonPlacementMode="Compact" SmallChange="1" Width="120" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+                
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- 保存按钮 -->
+        <Border Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0" Padding="0,16,0,0">
+            <Button x:Uid="VersionManagerPage_SaveExtensionConfigButton" Content="保存配置" Command="{Binding SaveExtensionConfigCommand}"
+                    Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Right" MinWidth="120" Height="36" />
+        </Border>
+    </Grid>
+</UserControl>

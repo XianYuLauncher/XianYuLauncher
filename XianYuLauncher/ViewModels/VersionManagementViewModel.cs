@@ -640,7 +640,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private bool _autoMemoryAllocation = true;
     
     /// <summary>
-    /// 是否覆盖全局内存设置
+    /// 是否使用全局设置（统一控制内存、Java、分辨率）
+    /// </summary>
+    [ObservableProperty]
+    private bool _useGlobalSettings = true;
+    
+    /// <summary>
+    /// 是否覆盖全局内存设置（已废弃，由 UseGlobalSettings 统一控制）
     /// </summary>
     [ObservableProperty]
     private bool _overrideMemory = false;
@@ -658,7 +664,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private double _maximumHeapMemory = 12;
     
     /// <summary>
-    /// Java设置模式
+    /// Java设置模式（已废弃，由 UseGlobalSettings 统一控制）
     /// </summary>
     [ObservableProperty]
     private bool _useGlobalJavaSetting = true;
@@ -670,7 +676,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _javaPath = string.Empty;
     
     /// <summary>
-    /// 是否覆盖全局分辨率设置
+    /// 是否覆盖全局分辨率设置（已废弃，由 UseGlobalSettings 统一控制）
     /// </summary>
     [ObservableProperty]
     private bool _overrideResolution = false;
@@ -784,6 +790,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private const string SettingsFileName = "XianYuL.cfg";
     
     // 属性变化时自动保存设置
+    partial void OnUseGlobalSettingsChanged(bool value)
+    {
+        // 统一控制全局/自定义模式
+        OverrideMemory = !value;
+        UseGlobalJavaSetting = value;
+        OverrideResolution = !value;
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
     partial void OnAutoMemoryAllocationChanged(bool value)
     {
         SaveSettingsAsync().ConfigureAwait(false);
@@ -855,6 +870,57 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         catch (Exception ex)
         {
             StatusMessage = $"浏览Java路径失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 处理加载器版本选择事件 - 处理互斥逻辑
+    /// </summary>
+    public void OnLoaderVersionSelected(LoaderItemViewModel loader)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnLoaderVersionSelected: {loader.Name} - {loader.SelectedVersion}");
+        
+        // 如果选择了版本，需要处理互斥逻辑
+        if (!string.IsNullOrEmpty(loader.SelectedVersion))
+        {
+            // 获取当前选择的加载器类型
+            string currentLoaderType = loader.LoaderType.ToLower();
+            
+            // 清除其他互斥的加载器选择
+            // 规则：只有 Forge 和 Optifine 可以同时选择，其他都互斥
+            foreach (var otherLoader in AvailableLoaders)
+            {
+                if (otherLoader == loader)
+                    continue;
+                
+                string otherLoaderType = otherLoader.LoaderType.ToLower();
+                
+                // 检查是否需要清除
+                bool shouldClear = false;
+                
+                if (currentLoaderType == "forge" && otherLoaderType == "optifine")
+                {
+                    // Forge 和 Optifine 可以共存
+                    shouldClear = false;
+                }
+                else if (currentLoaderType == "optifine" && otherLoaderType == "forge")
+                {
+                    // Optifine 和 Forge 可以共存
+                    shouldClear = false;
+                }
+                else if (!string.IsNullOrEmpty(otherLoader.SelectedVersion))
+                {
+                    // 其他情况都互斥
+                    shouldClear = true;
+                }
+                
+                if (shouldClear)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 清除互斥的加载器选择: {otherLoader.Name}");
+                    otherLoader.SelectedVersion = null;
+                    otherLoader.IsExpanded = false;
+                }
+            }
         }
     }
     
@@ -966,6 +1032,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 OverrideResolution = versionConfig.OverrideResolution;
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
+                
+                // 根据旧的三个标志位推断 UseGlobalSettings
+                UseGlobalSettings = UseGlobalJavaSetting && !OverrideMemory && !OverrideResolution;
                     
                 // 更新统计数据
                 LaunchCount = versionConfig.LaunchCount;
@@ -1024,6 +1093,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 OverrideResolution = versionConfig.OverrideResolution;
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
+                
+                // 根据旧的三个标志位推断 UseGlobalSettings
+                UseGlobalSettings = UseGlobalJavaSetting && !OverrideMemory && !OverrideResolution;
                 
                 // 更新统计数据 (注意：如果快速加载已经加载通过，这里可能会覆盖，但通常是一致的)
                 // 深度分析可能会从PCL2等外部来源获取更准确的初始启动数据

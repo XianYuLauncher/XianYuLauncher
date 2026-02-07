@@ -2754,4 +2754,64 @@
   <data name="Settings_GlobalWindowHeight.Header" xml:space="preserve">
     <value>窗口高度</value>
   </data>
+  <data name="Settings_CurrentLoaderSection.Text" xml:space="preserve">
+    <value>当前加载器</value>
+  </data>
+  <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
+    <value>管理加载器</value>
+  </data>
+  <data name="VersionManagerPage_VersionSettingsSection.Text" xml:space="preserve">
+    <value>版本设置</value>
+  </data>
+  <data name="Settings_UseGlobalSettings.Header" xml:space="preserve">
+    <value>使用全局设置</value>
+  </data>
+  <data name="Settings_UseGlobalSettings.Description" xml:space="preserve">
+    <value>启用后，此版本将使用全局设置中的配置</value>
+  </data>
+  <data name="Settings_MemoryAllocation.Header" xml:space="preserve">
+    <value>内存分配</value>
+  </data>
+  <data name="Settings_MemoryAllocation.Description" xml:space="preserve">
+    <value>设置游戏运行时的内存配置</value>
+  </data>
+  <data name="Settings_AutoMemory.Header" xml:space="preserve">
+    <value>自动分配内存</value>
+  </data>
+  <data name="Settings_InitialHeap.Header" xml:space="preserve">
+    <value>初始堆内存</value>
+  </data>
+  <data name="Settings_InitialHeap.Description" xml:space="preserve">
+    <value>游戏启动时分配的初始内存（GB）</value>
+  </data>
+  <data name="Settings_MaxHeap.Header" xml:space="preserve">
+    <value>最大堆内存</value>
+  </data>
+  <data name="Settings_MaxHeap.Description" xml:space="preserve">
+    <value>游戏运行时允许使用的最大内存（GB）</value>
+  </data>
+  <data name="Settings_JavaSettings.Header" xml:space="preserve">
+    <value>Java 设置</value>
+  </data>
+  <data name="Settings_JavaSettings.Description" xml:space="preserve">
+    <value>配置游戏使用的 Java 运行时</value>
+  </data>
+  <data name="VersionSettings_JavaPathCard.Header" xml:space="preserve">
+    <value>Java 路径</value>
+  </data>
+  <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
+    <value>指定 Java 可执行文件路径</value>
+  </data>
+  <data name="Settings_Resolution.Header" xml:space="preserve">
+    <value>启动分辨率</value>
+  </data>
+  <data name="Settings_Resolution.Description" xml:space="preserve">
+    <value>设置游戏启动时的窗口大小</value>
+  </data>
+  <data name="Settings_WindowWidth.Header" xml:space="preserve">
+    <value>窗口宽度</value>
+  </data>
+  <data name="Settings_WindowHeight.Header" xml:space="preserve">
+    <value>窗口高度</value>
+  </data>
 </root>

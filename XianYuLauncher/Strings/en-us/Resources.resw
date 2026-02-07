@@ -2742,4 +2742,64 @@ Continue downloading?</value>
   <data name="Settings_GlobalWindowHeight.Header" xml:space="preserve">
     <value>Window Height</value>
   </data>
+  <data name="Settings_CurrentLoaderSection.Text" xml:space="preserve">
+    <value>Current Loader</value>
+  </data>
+  <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
+    <value>Manage Loaders</value>
+  </data>
+  <data name="VersionManagerPage_VersionSettingsSection.Text" xml:space="preserve">
+    <value>Version Settings</value>
+  </data>
+  <data name="Settings_UseGlobalSettings.Header" xml:space="preserve">
+    <value>Use Global Settings</value>
+  </data>
+  <data name="Settings_UseGlobalSettings.Description" xml:space="preserve">
+    <value>When enabled, this version will use configurations from global settings</value>
+  </data>
+  <data name="Settings_MemoryAllocation.Header" xml:space="preserve">
+    <value>Memory Allocation</value>
+  </data>
+  <data name="Settings_MemoryAllocation.Description" xml:space="preserve">
+    <value>Configure memory settings for game runtime</value>
+  </data>
+  <data name="Settings_AutoMemory.Header" xml:space="preserve">
+    <value>Auto Allocate Memory</value>
+  </data>
+  <data name="Settings_InitialHeap.Header" xml:space="preserve">
+    <value>Initial Heap Memory</value>
+  </data>
+  <data name="Settings_InitialHeap.Description" xml:space="preserve">
+    <value>Initial memory allocated when game starts (GB)</value>
+  </data>
+  <data name="Settings_MaxHeap.Header" xml:space="preserve">
+    <value>Maximum Heap Memory</value>
+  </data>
+  <data name="Settings_MaxHeap.Description" xml:space="preserve">
+    <value>Maximum memory allowed during game runtime (GB)</value>
+  </data>
+  <data name="Settings_JavaSettings.Header" xml:space="preserve">
+    <value>Java Settings</value>
+  </data>
+  <data name="Settings_JavaSettings.Description" xml:space="preserve">
+    <value>Configure Java runtime for the game</value>
+  </data>
+  <data name="VersionSettings_JavaPathCard.Header" xml:space="preserve">
+    <value>Java Path</value>
+  </data>
+  <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
+    <value>Specify Java executable path</value>
+  </data>
+  <data name="Settings_Resolution.Header" xml:space="preserve">
+    <value>Launch Resolution</value>
+  </data>
+  <data name="Settings_Resolution.Description" xml:space="preserve">
+    <value>Set window size when game launches</value>
+  </data>
+  <data name="Settings_WindowWidth.Header" xml:space="preserve">
+    <value>Window Width</value>
+  </data>
+  <data name="Settings_WindowHeight.Header" xml:space="preserve">
+    <value>Window Height</value>
+  </data>
 </root>
