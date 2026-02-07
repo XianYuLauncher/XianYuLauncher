@@ -37,7 +37,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
@@ -56,7 +56,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         Logger.LogInformation("开始安装Optifine: {OptifineVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
@@ -73,7 +73,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
-            progressCallback?.Invoke(5);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
             // 2. 保存版本配置
             // 注意: 对于 OptiFine，modLoaderVersion 就是 OptiFine 版本，因此传递给 optifineVersion 参数
@@ -87,7 +87,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 allowNetwork: true,
                 cancellationToken);
 
-            progressCallback?.Invoke(10);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
             // 4. 下载原版Minecraft JAR到版本目录（支持跳过）
             Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
@@ -99,7 +99,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(35);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
             // 5. 下载Optifine JAR到缓存目录
             Logger.LogInformation("下载Optifine JAR");
@@ -113,7 +113,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 optifineUrl,
                 optifineJarPath,
                 null,
-                status => ReportProgress(progressCallback, status.Percent, 35, 50),
+                status => ReportProgress(progressCallback, status.Percent, 35, 50, (long)status.BytesPerSecond, status.SpeedText),
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -127,7 +127,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                     downloadResult.Exception);
             }
 
-            progressCallback?.Invoke(50);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 50));
 
             // 6. 创建临时目录结构用于Optifine安装器
             Logger.LogInformation("创建临时目录结构");
@@ -171,7 +171,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
             var originalJsonContent = JsonConvert.SerializeObject(originalVersionInfo, Formatting.Indented);
             await File.WriteAllTextAsync(tempJsonPath, originalJsonContent, cancellationToken);
 
-            progressCallback?.Invoke(60);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 60));
 
             // 7. 执行Optifine安装器
             Logger.LogInformation("执行Optifine安装器");
@@ -181,7 +181,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 tempMinecraftDirectory,
                 cancellationToken);
 
-            progressCallback?.Invoke(80);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
             // 8. 复制安装后的文件回正式目录
             Logger.LogInformation("复制安装后的文件");
@@ -195,7 +195,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 Logger.LogInformation("已复制Optifine库文件");
             }
 
-            progressCallback?.Invoke(85);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85));
 
             // 8.2 查找并处理安装后的版本文件
             // Optifine安装器使用标准格式创建版本目录
@@ -234,7 +234,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 await SaveVersionJsonAsync(versionDirectory, versionId, simpleVersionInfo);
             }
 
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
             Logger.LogInformation("Optifine安装完成: {VersionId}", versionId);
             return versionId;

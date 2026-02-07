@@ -318,6 +318,9 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _installStatus = "";
         
+        [ObservableProperty]
+        private string _installSpeed = "";
+        
         // 导航到依赖Mod的命令
         [RelayCommand]
         public void NavigateToDependency(string projectId)
@@ -2785,6 +2788,9 @@ namespace XianYuLauncher.ViewModels
             InstallProgressText = "0%";
             _installCancellationTokenSource = new CancellationTokenSource();
 
+            // 创建 TaskCompletionSource 用于控制弹窗关闭
+            var dialogCloseTcs = new TaskCompletionSource<bool>();
+
             // 启动进度弹窗（异步显示，不阻塞安装流程）
             var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
                 "整合包安装中",
@@ -2793,7 +2799,9 @@ namespace XianYuLauncher.ViewModels
                 () => InstallProgressText,
                 this,
                 primaryButtonText: null,
-                closeButtonText: "取消");
+                closeButtonText: "取消",
+                autoCloseWhen: dialogCloseTcs.Task,
+                getSpeed: () => InstallSpeed);
             
             // 当用户点击取消时，触发取消令牌
             _ = dialogTask.ContinueWith(t =>
@@ -2842,6 +2850,7 @@ namespace XianYuLauncher.ViewModels
                                 {
                                     InstallProgress = status.Percent * 0.3;
                                     InstallProgressText = $"{InstallProgress:F1}%";
+                                    InstallSpeed = status.SpeedText;
                                 });
                             },
                             _installCancellationTokenSource.Token);
@@ -2898,7 +2907,7 @@ namespace XianYuLauncher.ViewModels
                     {
                         // CurseForge 整合包
                         System.Diagnostics.Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
-                        await InstallCurseForgeModpackAsync(extractDir, curseForgeManifestPath, minecraftPath, tempDir);
+                        await InstallCurseForgeModpackAsync(extractDir, curseForgeManifestPath, minecraftPath, tempDir, dialogCloseTcs);
                         return;
                     }
                     
@@ -3000,14 +3009,15 @@ namespace XianYuLauncher.ViewModels
 
                     // 6. 直接下载整合包版本，使用customVersionName参数创建整合包版本目录
                     await _minecraftVersionService.DownloadModLoaderVersionAsync(
-                        minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
+                        minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, status =>
                         {
                             // 更新进度（50%-80%用于版本下载）
                             // 确保在UI线程更新
                             App.MainWindow.DispatcherQueue.TryEnqueue(() => 
                             {
-                                InstallProgress = 50 + (progress / 100) * 30;
+                                InstallProgress = 50 + (status.Percent / 100) * 30;
                                 InstallProgressText = $"{InstallProgress:F1}%";
+                                InstallSpeed = status.SpeedText;
                             });
                         }, _installCancellationTokenSource.Token, modpackVersionId);
 
@@ -3128,6 +3138,7 @@ namespace XianYuLauncher.ViewModels
                     InstallProgressText = "100%";
                     
                     await Task.Delay(500); // 让用户看到100%
+                    dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
                     await ShowMessageAsync($"整合包 '{ModName}' 安装成功！");
                 }
                 finally
@@ -3142,12 +3153,14 @@ namespace XianYuLauncher.ViewModels
             catch (OperationCanceledException)
             {
                 InstallStatus = "安装已取消";
+                dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 InstallStatus = "安装失败！";
                 
+                dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
                 await ShowMessageAsync($"整合包安装失败: {ex.Message}");
             }
             finally
@@ -3336,21 +3349,24 @@ namespace XianYuLauncher.ViewModels
         /// <param name="manifestPath">manifest.json路径</param>
         /// <param name="minecraftPath">Minecraft数据路径</param>
         /// <param name="tempDir">临时目录（用于清理）</param>
-        private async Task InstallCurseForgeModpackAsync(string extractDir, string manifestPath, string minecraftPath, string tempDir)
+        /// <param name="dialogCloseTcs">用于关闭进度弹窗的TaskCompletionSource</param>
+        private async Task InstallCurseForgeModpackAsync(string extractDir, string manifestPath, string minecraftPath, string tempDir, TaskCompletionSource<bool> dialogCloseTcs)
         {
             try
             {
-                // 1. 解析manifest.json
-                string manifestJson = await File.ReadAllTextAsync(manifestPath, _installCancellationTokenSource.Token);
-                var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson, new System.Text.Json.JsonSerializerOptions
+                try
                 {
-                    PropertyNameCaseInsensitive = true
-                });
+                    // 1. 解析manifest.json
+                    string manifestJson = await File.ReadAllTextAsync(manifestPath, _installCancellationTokenSource.Token);
+                    var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson, new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
 
-                if (manifest == null)
-                {
-                    throw new Exception("无法解析CurseForge整合包manifest.json");
-                }
+                    if (manifest == null)
+                    {
+                        throw new Exception("无法解析CurseForge整合包manifest.json");
+                    }
 
                 System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] 名称: {manifest.Name}, 版本: {manifest.Version}");
                 System.Diagnostics.Debug.WriteLine($"[CurseForge整合包] Minecraft版本: {manifest.Minecraft?.Version}");
@@ -3421,10 +3437,11 @@ namespace XianYuLauncher.ViewModels
 
                 // 5. 下载Minecraft版本和ModLoader
                 await _minecraftVersionService.DownloadModLoaderVersionAsync(
-                    minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, progress =>
+                    minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath, status =>
                     {
-                        InstallProgress = 45 + (progress / 100) * 15;
+                        InstallProgress = 45 + (status.Percent / 100) * 15;
                         InstallProgressText = $"{InstallProgress:F1}%";
+                        InstallSpeed = status.SpeedText;
                     }, _installCancellationTokenSource.Token, modpackVersionId);
 
                 InstallStatus = "版本下载完成，正在部署整合包文件...";
@@ -3587,7 +3604,20 @@ namespace XianYuLauncher.ViewModels
                 InstallProgressText = "100%";
 
                 await Task.Delay(500);
+                dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
                 await ShowMessageAsync($"整合包 '{manifest.Name ?? ModName}' 安装成功！");
+                }
+                catch (OperationCanceledException)
+                {
+                    InstallStatus = "安装已取消";
+                    dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
+                    throw; // 重新抛出，让外层处理
+                }
+                catch (Exception)
+                {
+                    dialogCloseTcs.TrySetResult(true); // 关闭进度弹窗
+                    throw; // 重新抛出，让外层处理
+                }
             }
             finally
             {

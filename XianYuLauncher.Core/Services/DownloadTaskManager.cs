@@ -180,12 +180,13 @@ public class DownloadTaskManager : IDownloadTaskManager
             await _minecraftVersionService.DownloadVersionAsync(
                 versionId,
                 targetDirectory,
-                progress =>
+                status =>
                 {
                     if (_currentCts?.IsCancellationRequested == true) return;
                     
-                    task.Progress = Math.Clamp(progress, 0, 100);
-                    task.StatusMessage = $"正在下载 Minecraft {versionId}... {progress:F0}%";
+                    task.Progress = Math.Clamp(status.Percent, 0, 100);
+                    task.StatusMessage = $"正在下载 Minecraft {versionId}... {status.Percent:F0}%";
+                    task.SpeedText = status.SpeedText;
                     OnTaskProgressChanged(task);
                 },
                 customVersionName);
@@ -228,12 +229,13 @@ public class DownloadTaskManager : IDownloadTaskManager
                 modLoaderType,
                 modLoaderVersion,
                 minecraftDirectory,
-                progress =>
+                status =>
                 {
                     if (_currentCts?.IsCancellationRequested == true) return;
                     
-                    task.Progress = Math.Clamp(progress, 0, 100);
-                    task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}... {progress:F0}%";
+                    task.Progress = Math.Clamp(status.Percent, 0, 100);
+                    task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}... {status.Percent:F0}%";
+                    task.SpeedText = status.SpeedText;
                     OnTaskProgressChanged(task);
                 },
                 _currentCts?.Token ?? CancellationToken.None,
@@ -281,12 +283,13 @@ public class DownloadTaskManager : IDownloadTaskManager
                 optifinePatch,
                 versionsDirectory,
                 librariesDirectory,
-                progress =>
+                status =>
                 {
                     if (_currentCts?.IsCancellationRequested == true) return;
                     
-                    task.Progress = Math.Clamp(progress, 0, 100);
-                    task.StatusMessage = $"正在下载 Forge + OptiFine... {progress:F0}%";
+                    task.Progress = Math.Clamp(status.Percent, 0, 100);
+                    task.StatusMessage = $"正在下载 Forge + OptiFine... {status.Percent:F0}%";
+                    task.SpeedText = status.SpeedText;
                     OnTaskProgressChanged(task);
                 },
                 _currentCts?.Token ?? CancellationToken.None,
@@ -442,7 +445,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                         await DownloadFileAsync(
                             dependency.DownloadUrl,
                             dependency.SavePath,
-                            (progress) =>
+                            (progress, speedText) =>
                             {
                                 if (cancellationToken.IsCancellationRequested) return;
                                 
@@ -450,6 +453,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                                 var overallProgress = (completedItems * 100.0 + progress) / totalItems;
                                 task.Progress = Math.Clamp(overallProgress, 0, 100);
                                 task.StatusMessage = $"正在下载前置: {dependency.Name}... {progress:F0}%";
+                                task.SpeedText = speedText;
                                 OnTaskProgressChanged(task);
                             },
                             cancellationToken);
@@ -478,13 +482,14 @@ public class DownloadTaskManager : IDownloadTaskManager
             await DownloadFileAsync(
                 downloadUrl,
                 savePath,
-                (progress) =>
+                (progress, speedText) =>
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     
                     var overallProgress = (completedItems * 100.0 + progress) / totalItems;
                     task.Progress = Math.Clamp(overallProgress, 0, 100);
                     task.StatusMessage = $"正在下载 {resourceName}... {progress:F0}%";
+                    task.SpeedText = speedText;
                     OnTaskProgressChanged(task);
                 },
                 cancellationToken);
@@ -513,7 +518,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private async Task DownloadFileAsync(
         string url,
         string savePath,
-        Action<double> progressCallback,
+        Action<double, string> progressCallback,
         CancellationToken cancellationToken)
     {
         // 验证 URL
@@ -533,7 +538,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             url,
             savePath,
             null,
-            status => progressCallback(status.Percent),
+            status => progressCallback(status.Percent, status.SpeedText),
             cancellationToken);
     }
 
@@ -588,13 +593,14 @@ public class DownloadTaskManager : IDownloadTaskManager
             await DownloadFileAsync(
                 downloadUrl,
                 zipPath,
-                (progress) =>
+                (progress, speedText) =>
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     
                     // 下载进度占0-70%
                     task.Progress = Math.Clamp(progress * 0.7, 0, 70);
                     task.StatusMessage = $"正在下载 {worldName}... {progress:F0}%";
+                    task.SpeedText = speedText;
                     OnTaskProgressChanged(task);
                 },
                 cancellationToken);

@@ -345,29 +345,19 @@ public class UpdateService
         
         try
         {
-            var watch = Stopwatch.StartNew();
-            long lastBytes = 0;
-
             var result = await _downloadManager.DownloadFileAsync(url, savePath, null, status => 
             {
                 if (progressCallback != null)
                 {
-                    double speed = 0;
-                    double elapsed = watch.Elapsed.TotalSeconds;
-                    
-                    if (elapsed > 1.0) {
-                        speed = (status.DownloadedBytes - lastBytes) / elapsed;
-                        watch.Restart();
-                        lastBytes = status.DownloadedBytes;
-                    }
-
                     var info = new DownloadProgressInfo
                     {
                         Progress = status.Percent,
                         BytesDownloaded = status.DownloadedBytes,
                         TotalBytes = status.TotalBytes,
-                        SpeedBytesPerSecond = speed,
-                        EstimatedTimeRemaining = TimeSpan.Zero
+                        SpeedBytesPerSecond = status.BytesPerSecond,
+                        EstimatedTimeRemaining = status.BytesPerSecond > 0 && status.TotalBytes > 0
+                            ? TimeSpan.FromSeconds((status.TotalBytes - status.DownloadedBytes) / status.BytesPerSecond)
+                            : TimeSpan.Zero
                     };
                     progressCallback(info);
                 }

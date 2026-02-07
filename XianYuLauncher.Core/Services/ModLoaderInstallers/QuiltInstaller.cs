@@ -48,7 +48,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
@@ -67,7 +67,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         Logger.LogInformation("开始安装Quilt: {QuiltVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
@@ -80,7 +80,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
-            progressCallback?.Invoke(5);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
             // 2. 获取原版Minecraft版本信息
             Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
@@ -90,13 +90,13 @@ public class QuiltInstaller : ModLoaderInstallerBase
                 allowNetwork: true,
                 cancellationToken);
 
-            progressCallback?.Invoke(10);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
             // 3. 获取Quilt Profile
             Logger.LogInformation("获取Quilt Profile");
             var quiltProfile = await GetQuiltProfileAsync(minecraftVersionId, modLoaderVersion, cancellationToken);
 
-            progressCallback?.Invoke(15);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 15));
 
             // 4. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
@@ -111,7 +111,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 15, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(35);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
             // 6. 下载Quilt库文件
             Logger.LogInformation("下载Quilt库文件");
@@ -122,14 +122,14 @@ public class QuiltInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 35, 80),
                 cancellationToken);
 
-            progressCallback?.Invoke(80);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
             // 7. 生成Quilt版本JSON（与原版合并）
             Logger.LogInformation("生成Quilt版本JSON");
             var quiltVersionJson = MergeVersionInfo(originalVersionInfo, quiltProfile, versionId);
             await SaveVersionJsonAsync(versionDirectory, versionId, quiltVersionJson);
 
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
             Logger.LogInformation("Quilt安装完成: {VersionId}", versionId);
             return versionId;

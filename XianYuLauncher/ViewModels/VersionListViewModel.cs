@@ -1409,8 +1409,9 @@ public partial class VersionListViewModel : ObservableRecipient
             await _minecraftVersionService.EnsureVersionDependenciesAsync(
                 version.Name, 
                 minecraftPath, 
-                progress =>
+                status =>
                 {
+                    var progress = status.Percent;
                     // 根据进度判断当前阶段
                     if (progress < 5)
                         currentStage = "正在处理 ModLoader...";

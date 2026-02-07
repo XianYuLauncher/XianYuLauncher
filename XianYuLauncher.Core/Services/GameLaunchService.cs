@@ -335,11 +335,11 @@ public class GameLaunchService : IGameLaunchService
                 await _minecraftVersionService.EnsureVersionDependenciesAsync(
                     versionName, 
                     minecraftPath, 
-                    progress =>
+                    status =>
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        progressCallback?.Invoke(progress);
-                        statusCallback?.Invoke($"正在准备游戏文件... {progress:F1}%");
+                        progressCallback?.Invoke(status.Percent);
+                        statusCallback?.Invoke($"正在准备游戏文件... {status.Percent:F1}%");
                     },
                     currentHash =>
                     {

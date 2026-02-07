@@ -39,4 +39,9 @@ public class DownloadTaskInfo
     /// 下载的版本名称
     /// </summary>
     public string VersionName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 下载速度文本（如 "5.2 MB/s"）
+    /// </summary>
+    public string SpeedText { get; set; } = string.Empty;
 }

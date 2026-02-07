@@ -170,6 +170,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _downloadProgressText = "0%";
     
+    [ObservableProperty]
+    private string _downloadSpeed = "";
+    
     // 是否已切换到后台下载
     private bool _isBackgroundDownload = false;
 
@@ -200,6 +203,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             {
                 DownloadProgress = taskInfo.Progress;
                 DownloadProgressText = $"{taskInfo.Progress:F1}%";
+                DownloadSpeed = taskInfo.SpeedText;
+                
                 // 移除 StatusMessage 末尾的百分比（如 "正在下载... 50%" -> "正在下载..."）
                 var status = taskInfo.StatusMessage;
                 var lastSpaceIndex = status.LastIndexOf(' ');

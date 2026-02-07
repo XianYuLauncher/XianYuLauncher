@@ -779,22 +779,38 @@ public class DialogService : IDialogService
         System.ComponentModel.INotifyPropertyChanged propertyChanged,
         string? primaryButtonText = null,
         string? closeButtonText = "取消",
-        Task? autoCloseWhen = null)
+        Task? autoCloseWhen = null,
+        Func<string>? getSpeed = null)
     {
         var statusText = new TextBlock { Text = getStatus(), FontSize = 16, TextWrapping = TextWrapping.WrapWholeWords };
         var progressBar = new ProgressBar { Value = getProgress(), Minimum = 0, Maximum = 100, Height = 8, CornerRadius = new CornerRadius(4) };
+        
+        // 进度文本和速度文本放在同一行
+        var progressInfoPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 12 };
         var progressText = new TextBlock
         {
             Text = getProgressText(),
             FontSize = 14,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            HorizontalTextAlignment = TextAlignment.Center
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
         };
+        progressInfoPanel.Children.Add(progressText);
+        
+        TextBlock? speedText = null;
+        if (getSpeed != null)
+        {
+            speedText = new TextBlock
+            {
+                Text = getSpeed(),
+                FontSize = 14,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
+            };
+            progressInfoPanel.Children.Add(speedText);
+        }
 
         var panel = new StackPanel { Spacing = 16, Width = 400 };
         panel.Children.Add(statusText);
         panel.Children.Add(progressBar);
-        panel.Children.Add(progressText);
+        panel.Children.Add(progressInfoPanel);
 
         var dialog = new ContentDialog
         {
@@ -817,6 +833,10 @@ public class DialogService : IDialogService
                 statusText.Text = getStatus();
                 progressBar.Value = getProgress();
                 progressText.Text = getProgressText();
+                if (speedText != null && getSpeed != null)
+                {
+                    speedText.Text = getSpeed();
+                }
             });
         }
 

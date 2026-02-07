@@ -53,7 +53,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
@@ -72,7 +72,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         Logger.LogInformation("开始安装Forge: {ForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
@@ -89,7 +89,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
-            progressCallback?.Invoke(5);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
             // 2. 保存版本配置（提前保存，确保处理器执行前能获取正确的版本信息）
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
@@ -102,7 +102,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 allowNetwork: true,
                 cancellationToken);
 
-            progressCallback?.Invoke(10);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
             // 4. 下载原版Minecraft JAR（支持跳过）
             Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
@@ -114,7 +114,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(35);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
             // 5. 下载Forge Installer
             Logger.LogInformation("下载Forge Installer");
@@ -136,7 +136,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 forgeInstallerUrl,
                 forgeInstallerPath,
                 null, // Forge Installer 没有提供 SHA1
-                status => ReportProgress(progressCallback, status.Percent, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55, (long)status.BytesPerSecond, status.SpeedText),
                 cancellationToken);
 
             // 如果主下载源失败，尝试官方源
@@ -149,7 +149,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                     officialUrl,
                     forgeInstallerPath,
                     null,
-                    status => ReportProgress(progressCallback, status.Percent, 35, 55),
+                    status => ReportProgress(progressCallback, status.Percent, 35, 55, (long)status.BytesPerSecond, status.SpeedText),
                     cancellationToken);
             }
 
@@ -164,7 +164,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                     downloadResult.Exception);
             }
 
-            progressCallback?.Invoke(55);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
             // 6. 解压Forge Installer
             Logger.LogInformation("解压Forge Installer");
@@ -172,7 +172,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(extractedPath);
             
             await ExtractForgeInstallerAsync(forgeInstallerPath, extractedPath, cancellationToken);
-            progressCallback?.Invoke(65);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
             // 7. 读取install_profile.json判断Forge版本类型
             var installProfilePath = Path.Combine(extractedPath, "install_profile.json");
@@ -191,7 +191,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var forgeVersionType = DetermineForgeVersionType(installProfile);
             
             Logger.LogInformation("Forge版本类型: {VersionType}", forgeVersionType);
-            progressCallback?.Invoke(70);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
             // 8. 下载install_profile中的依赖库
             var installProfileLibraries = ParseInstallProfileLibraries(installProfile);
@@ -201,7 +201,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 70, 80),
                 cancellationToken);
 
-            progressCallback?.Invoke(80);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
             // 9. 根据版本类型处理
             VersionInfo? forgeVersionInfo;
@@ -216,7 +216,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                     extractedPath, installProfile, cancellationToken);
             }
 
-            progressCallback?.Invoke(90);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 90));
 
             // 11. 执行处理器（仅新版Forge需要）
             var processors = installProfile["processors"] as JArray;
@@ -243,14 +243,14 @@ public class ForgeInstaller : ModLoaderInstallerBase
                     cancellationToken);
             }
 
-            progressCallback?.Invoke(98);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
             // 12. 合并版本JSON并保存
             var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, forgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
             Logger.LogInformation("Forge安装完成: {VersionId}", versionId);
             return versionId;

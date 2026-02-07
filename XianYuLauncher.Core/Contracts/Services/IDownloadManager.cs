@@ -5,7 +5,39 @@ using System.Threading.Tasks;
 
 namespace XianYuLauncher.Core.Contracts.Services;
 
-public readonly record struct DownloadProgressStatus(long DownloadedBytes, long TotalBytes, double Percent);
+/// <summary>
+/// 下载进度状态
+/// </summary>
+/// <param name="DownloadedBytes">已下载字节数</param>
+/// <param name="TotalBytes">总字节数</param>
+/// <param name="Percent">完成百分比</param>
+/// <param name="BytesPerSecond">下载速度（字节/秒），0表示未计算</param>
+public readonly record struct DownloadProgressStatus(long DownloadedBytes, long TotalBytes, double Percent, double BytesPerSecond = 0)
+{
+    /// <summary>
+    /// 下载速度（KB/s）
+    /// </summary>
+    public double KBytesPerSecond => BytesPerSecond / 1024.0;
+
+    /// <summary>
+    /// 下载速度（MB/s）
+    /// </summary>
+    public double MBytesPerSecond => BytesPerSecond / (1024.0 * 1024.0);
+
+    /// <summary>
+    /// 格式化的速度字符串
+    /// </summary>
+    public string SpeedText
+    {
+        get
+        {
+            if (BytesPerSecond <= 0) return "";
+            if (MBytesPerSecond >= 1.0) return $"{MBytesPerSecond:F2} MB/s";
+            if (KBytesPerSecond >= 1.0) return $"{KBytesPerSecond:F2} KB/s";
+            return $"{BytesPerSecond:F0} B/s";
+        }
+    }
+};
 
 /// <summary>
 /// 下载管理器接口，提供统一的文件下载功能

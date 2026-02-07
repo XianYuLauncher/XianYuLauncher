@@ -265,6 +265,10 @@ public class DownloadManager : IDownloadManager
             var buffer = new byte[81920]; 
             int bytesRead;
             long lastReportTick = 0;
+            long lastSampleTick = Environment.TickCount64;
+            long lastSampleBytes = 0;
+            double emaSpeed = 0;
+            const double Alpha = 0.3; // EMA 平滑系数，越大越灵敏
 
             while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0) {
                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
@@ -272,7 +276,16 @@ public class DownloadManager : IDownloadManager
                 if (totalBytes > 0 && progress != null) {
                     long currentTick = Environment.TickCount64;
                     if (currentTick - lastReportTick > 50 || downloaded == totalBytes) { // 50ms Throttle
-                        progress(new DownloadProgressStatus(downloaded, totalBytes, (double)downloaded / totalBytes * 100));
+                        long elapsedMs = currentTick - lastSampleTick;
+                        if (elapsedMs > 100) { // 至少100ms才采样一次，避免除零和极端值
+                            double instantSpeed = (downloaded - lastSampleBytes) * 1000.0 / elapsedMs;
+                            emaSpeed = emaSpeed == 0 ? instantSpeed : Alpha * instantSpeed + (1 - Alpha) * emaSpeed;
+                            lastSampleTick = currentTick;
+                            lastSampleBytes = downloaded;
+                        }
+                        
+                        var status = new DownloadProgressStatus(downloaded, totalBytes, (double)downloaded / totalBytes * 100, emaSpeed);
+                        progress(status);
                         lastReportTick = currentTick;
                     }
                 }
@@ -302,20 +315,39 @@ public class DownloadManager : IDownloadManager
 
             long totalDownloaded = 0;
             long lastReportTick = 0;
+            long lastSampleTick = Environment.TickCount64;
+            long lastSampleBytes = 0;
+            long emaSpeedBits = BitConverter.DoubleToInt64Bits(0); // EMA 速度，用 long 存储支持 Interlocked
+            const double Alpha = 0.3; // EMA 平滑系数
+            
             await Parallel.ForEachAsync(chunks, new ParallelOptions { MaxDegreeOfParallelism = maxThreads, CancellationToken = ct }, async (chunk, token) => {
                 await DownloadChunkAsync(url, tempPath, chunk.Start, chunk.End, bytesRead => {
                     var newTotal = Interlocked.Add(ref totalDownloaded, bytesRead);
                     if (progress != null) {
-                        // 使用时间节流机制(每50ms一次)，解决UI刷新过快导致的"跳变"感和性能损耗
                         long currentTick = Environment.TickCount64;
                         long lastTick = Interlocked.Read(ref lastReportTick);
                         if (newTotal >= totalBytes || (currentTick - lastTick > 50)) {
-                             // 尝试更新最后报告时间，如果成功则触发回调
                              if (Interlocked.CompareExchange(ref lastReportTick, currentTick, lastTick) == lastTick) {
-                                  progress(new DownloadProgressStatus(newTotal, totalBytes, (double)newTotal / totalBytes * 100));
+                                  long sampleTick = Interlocked.Read(ref lastSampleTick);
+                                  long elapsedMs = currentTick - sampleTick;
+                                  double speed;
+                                  if (elapsedMs > 100) { // 至少100ms才采样
+                                      long sampleBytes = Interlocked.Read(ref lastSampleBytes);
+                                      double instantSpeed = (newTotal - sampleBytes) * 1000.0 / elapsedMs;
+                                      double prevEma = BitConverter.Int64BitsToDouble(Interlocked.Read(ref emaSpeedBits));
+                                      speed = prevEma == 0 ? instantSpeed : Alpha * instantSpeed + (1 - Alpha) * prevEma;
+                                      Interlocked.Exchange(ref lastSampleTick, currentTick);
+                                      Interlocked.Exchange(ref lastSampleBytes, newTotal);
+                                      Interlocked.Exchange(ref emaSpeedBits, BitConverter.DoubleToInt64Bits(speed));
+                                  } else {
+                                      speed = BitConverter.Int64BitsToDouble(Interlocked.Read(ref emaSpeedBits));
+                                  }
+                                  
+                                  var status = new DownloadProgressStatus(newTotal, totalBytes, (double)newTotal / totalBytes * 100, speed);
+                                  progress(status);
                              } else if (newTotal >= totalBytes) {
-                                  // 确保 100% 一定被报告
-                                  progress(new DownloadProgressStatus(newTotal, totalBytes, 100));
+                                  double finalSpeed = BitConverter.Int64BitsToDouble(Interlocked.Read(ref emaSpeedBits));
+                                  progress(new DownloadProgressStatus(newTotal, totalBytes, 100, finalSpeed));
                              }
                         }
                     }

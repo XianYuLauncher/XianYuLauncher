@@ -143,6 +143,7 @@ public interface IDialogService
     /// <param name="primaryButtonText">主按钮文本（如"后台下载"，null 则不显示）</param>
     /// <param name="closeButtonText">关闭按钮文本（如"取消"，null 则不显示）</param>
     /// <param name="autoCloseWhen">当此 Task 完成/失败/取消时自动关闭弹窗（可选）</param>
+    /// <param name="getSpeed">获取下载速度文本（可选）</param>
     /// <returns>Primary=后台下载, Secondary=无, None=取消/关闭</returns>
     Task<ContentDialogResult> ShowObservableProgressDialogAsync(
         string title,
@@ -152,5 +153,6 @@ public interface IDialogService
         System.ComponentModel.INotifyPropertyChanged propertyChanged,
         string? primaryButtonText = null,
         string? closeButtonText = "取消",
-        Task? autoCloseWhen = null);
+        Task? autoCloseWhen = null,
+        Func<string>? getSpeed = null);
 }

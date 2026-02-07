@@ -42,7 +42,7 @@ public interface IModLoaderInstaller
     /// <param name="minecraftVersionId">Minecraft版本ID</param>
     /// <param name="modLoaderVersion">ModLoader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
-    /// <param name="progressCallback">进度回调（0-100）</param>
+    /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称（可选）</param>
     /// <returns>安装后的版本ID</returns>
@@ -50,7 +50,7 @@ public interface IModLoaderInstaller
         string minecraftVersionId, 
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null);
     
@@ -61,7 +61,7 @@ public interface IModLoaderInstaller
     /// <param name="modLoaderVersion">ModLoader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="options">安装选项</param>
-    /// <param name="progressCallback">进度回调（0-100）</param>
+    /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>安装后的版本ID</returns>
     Task<string> InstallAsync(
@@ -69,7 +69,7 @@ public interface IModLoaderInstaller
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default);
     
     /// <summary>

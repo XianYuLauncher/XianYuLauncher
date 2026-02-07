@@ -41,7 +41,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null);
 
@@ -51,7 +51,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         // 默认实现：调用原有方法，子类可以重写以支持更多选项
@@ -329,12 +329,12 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     /// <summary>
     /// 报告进度（带范围映射）
     /// </summary>
-    protected void ReportProgress(Action<double>? progressCallback, double progress, double minProgress, double maxProgress)
+    protected void ReportProgress(Action<DownloadProgressStatus>? progressCallback, double progress, double minProgress, double maxProgress, long bytesPerSecond = 0, string speedText = "")
     {
         if (progressCallback == null) return;
         
         var mappedProgress = minProgress + (progress / 100.0) * (maxProgress - minProgress);
-        progressCallback(mappedProgress);
+        progressCallback(new DownloadProgressStatus(0, 100, mappedProgress, bytesPerSecond));
     }
 
     #endregion

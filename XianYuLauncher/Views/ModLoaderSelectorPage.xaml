@@ -258,8 +258,11 @@
                 <!-- 进度条 -->
                 <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" />
                 
-                <!-- 进度百分比文本（灰色） -->
-                <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" HorizontalTextAlignment="Center" />
+                <!-- 进度信息：百分比 + 速度 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" />
+                    <TextBlock FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Text="{x:Bind ViewModel.DownloadSpeed, Mode=OneWay}" />
+                </StackPanel>
             </StackPanel>
         </ContentDialog>
     </Grid>

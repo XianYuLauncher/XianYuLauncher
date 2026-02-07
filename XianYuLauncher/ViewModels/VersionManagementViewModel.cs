@@ -1589,10 +1589,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         primaryLoader.SelectedVersion!,
                         minecraftDirectory,
                         installOptions,
-                        progress => 
+                        status => 
                         {
                             // 将安装器的进度映射到当前步骤的进度范围
-                            ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
+                            ExtensionInstallProgress = stepStartProgress + (status.Percent / 100.0) * (stepEndProgress - stepStartProgress);
                         });
                     
                     currentStep++;
@@ -1621,9 +1621,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         optifineLoader.SelectedVersion!,
                         minecraftDirectory,
                         optifineOptions,
-                        progress =>
+                        status =>
                         {
-                            ExtensionInstallProgress = stepStartProgress + (progress / 100.0) * (stepEndProgress - stepStartProgress);
+                            ExtensionInstallProgress = stepStartProgress + (status.Percent / 100.0) * (stepEndProgress - stepStartProgress);
                         });
                     
                     currentStep++;

@@ -71,12 +71,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    public async Task DownloadOptifineForgeVersionAsync(string minecraftVersionId, string forgeVersion, string optifineType, string optifinePatch, string versionsDirectory, string librariesDirectory, Action<double> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null)
+    public async Task DownloadOptifineForgeVersionAsync(string minecraftVersionId, string forgeVersion, string optifineType, string optifinePatch, string versionsDirectory, string librariesDirectory, Action<DownloadProgressStatus> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null)
     {
         try
         {
             _logger.LogInformation("开始下载Optifine+Forge版本: OptiFine_{optifineType}_{optifinePatch} + Forge {ForgeVersion} for Minecraft {MinecraftVersion}", optifineType, optifinePatch, forgeVersion, minecraftVersionId);
-            progressCallback?.Invoke(0);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
             string minecraftDirectory = Path.GetDirectoryName(versionsDirectory);
             string optifineForgeVersionId = customVersionName ?? $"forge-{minecraftVersionId}-{forgeVersion}-optifine-{optifineType}-{optifinePatch}";
@@ -88,7 +88,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 minecraftVersionId,
                 forgeVersion,
                 minecraftDirectory,
-                p => progressCallback?.Invoke(p * 0.8), // Forge占80%进度
+                status => progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, status.Percent * 0.8, status.BytesPerSecond)), // Forge占80%进度
                 cancellationToken,
                 optifineForgeVersionId);
             _logger.LogInformation("===== Forge安装完成 ====");
@@ -109,7 +109,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 optifineDownloadUrl,
                 optifineJarPath,
                 null,
-                p => progressCallback?.Invoke(80 + p.Percent * 0.2), // Optifine下载占20%进度
+                status => progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, 80 + status.Percent * 0.2, status.BytesPerSecond)), // Optifine下载占20%进度
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -118,7 +118,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
 
             _logger.LogInformation("===== Optifine JAR下载完成 ====");
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             _logger.LogInformation("Optifine+Forge版本下载安装完成: {VersionId}", optifineForgeVersionId);
         }
         catch (Exception ex)
@@ -496,12 +496,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
     
     // 带有进度回调的重载版本
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<double> progressCallback = null, string customVersionName = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null)
     {
         try
         {
             // 同时获取版本信息对象和原始JSON字符串
-            progressCallback?.Invoke(10); // 10% - 开始获取版本信息
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10)); // 10% - 开始获取版本信息
             string minecraftDirectory = Path.GetDirectoryName(targetDirectory);
             var versionInfoTask = GetVersionInfoAsync(versionId, minecraftDirectory, allowNetwork: true);
             var versionInfoJsonTask = GetVersionInfoJsonAsync(versionId, minecraftDirectory, allowNetwork: true);
@@ -541,7 +541,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR核心文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}, 下载URL: {clientJarUrl}");
             
-            progressCallback?.Invoke(20); // 20% - 开始下载JAR文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 20)); // 20% - 开始下载JAR文件
 
             await _downloadManager.DownloadFileAsync(
                 clientJarUrl,
@@ -551,13 +551,13 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 {
                     // 计算进度（20% - 80%用于JAR下载）
                     double progress = 20 + (status.Percent * 0.6);
-                    progressCallback?.Invoke(progress);
+                    progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, progress, status.BytesPerSecond));
                 },
                 default);
 
-            progressCallback?.Invoke(85); // 85% - 开始验证JAR文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85)); // 85% - 开始验证JAR文件
 
-            progressCallback?.Invoke(95); // 95% - 开始保存JSON文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 95)); // 95% - 开始保存JSON文件
             
             // 保存原始版本JSON文件，使用自定义版本名称（如果提供）
             var jsonPath = Path.Combine(targetDirectory, $"{finalVersionName}.json");
@@ -640,7 +640,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             string settingsJson = System.Text.Json.JsonSerializer.Serialize(versionConfig, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(settingsFilePath, settingsJson);
             
-            progressCallback?.Invoke(100); // 100% - 下载完成
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100)); // 100% - 下载完成
         }
         catch (Exception ex)
         {
@@ -660,7 +660,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="modLoaderVersion">Mod Loader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, string customVersionName = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null)
     {
         await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None, customVersionName);
     }
@@ -675,7 +675,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<double> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null)
     {
         try
         {
@@ -691,8 +691,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 检查并创建launcher_profiles.json文件
             EnsureLauncherProfileJson(minecraftDirectory);
 
-            double progress = 0;
-            progressCallback?.Invoke(progress);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
             // 使用新的安装器
             var installer = _modLoaderInstallerFactory.GetInstaller(modLoaderType);
@@ -715,8 +714,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             _logger.LogInformation("使用新安装器完成 {ModLoaderType} 安装", modLoaderType);
 
-            progress = 100;
-            progressCallback?.Invoke(progress);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
             _logger.LogInformation("Mod Loader版本下载完成: {ModLoaderType} {ModLoaderVersion} for Minecraft {MinecraftVersion}", 
                 modLoaderType, modLoaderVersion, minecraftVersionId);
         }
@@ -905,7 +903,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         throw new NotImplementedException($"{modLoaderType}的下载功能尚未实现");
     }
 
-    public async Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<double> progressCallback = null, bool allowNetwork = true)
+    public async Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<DownloadProgressStatus> progressCallback = null, bool allowNetwork = true)
         {
             try
             {
@@ -915,7 +913,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 if (versionInfo?.Libraries == null || versionInfo.Libraries.Count == 0)
                 {
                     // 如果没有库需要下载，直接报告完成
-                    progressCallback?.Invoke(100);
+                    progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
                     return;
                 }
 
@@ -995,7 +993,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 double progress = totalFilesToCheck > 0 ? (double)existingFiles / totalFilesToCheck * 100 : 100;
                 
                 // 先报告已存在文件的进度
-                progressCallback?.Invoke(progress);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, progress));
                 
                 // 遍历所有需要下载的库
                 foreach (var item in filesToDownload)
@@ -1021,7 +1019,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         if (totalFilesToCheck > 0)
                         {
                             progress = (double)downloadedFiles / totalFilesToCheck * 100;
-                            progressCallback?.Invoke(progress);
+                            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, progress));
                         }
                     }
                     else if ((string)itemDict["Type"] == "Native")
@@ -1043,7 +1041,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         if (totalFilesToCheck > 0)
                         {
                             progress = (double)downloadedFiles / totalFilesToCheck * 100;
-                            progressCallback?.Invoke(progress);
+                            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, progress));
                         }
                     }
                 }
@@ -1424,7 +1422,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     
 
 
-    public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null)
+    public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, Action<string> currentDownloadCallback = null)
     {
         try
         {
@@ -1436,7 +1434,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // - 资源对象下载：55-100%
             
             // 初始化阶段 - 报告0%进度
-            progressCallback?.Invoke(0);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
             
             // 声明需要在多个步骤中使用的变量
             string librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
@@ -1448,10 +1446,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             try
             {
                 currentDownloadCallback?.Invoke("正在下载依赖库...");
-                await DownloadLibrariesAsync(versionId, librariesDirectory, (progress) =>
+                await DownloadLibrariesAsync(versionId, librariesDirectory, (status) =>
                 {
-                    double adjustedProgress = 5 + (progress * 0.4); // 0-100% 映射到 5-45%
-                    progressCallback?.Invoke(adjustedProgress);
+                    double adjustedProgress = 5 + (status.Percent * 0.4); // 0-100% 映射到 5-45%
+                    progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, adjustedProgress, status.BytesPerSecond));
                 }, allowNetwork: true);
             }
             catch (Exception ex)
@@ -1466,7 +1464,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     _logger.LogWarning("网络连接超时，尝试使用本地已有的依赖库: {ExceptionMessage}", ex.Message);
                     // 继续执行，假设所有需要的库都已存在
                     // 更新进度到依赖库阶段完成
-                    progressCallback?.Invoke(45);
+                    progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 45));
                 }
                 else
                 {
@@ -1481,7 +1479,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 await ExtractNativeLibrariesAsync(versionId, librariesDirectory, nativesDirectory);
                 // 报告原生库解压完成
                 double nativeExtractProgress = 45 + (100 * 0.05); // 50%
-                progressCallback?.Invoke(nativeExtractProgress);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, nativeExtractProgress));
             }
             catch (Exception ex)
             {
@@ -1492,10 +1490,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             try
             {
                 currentDownloadCallback?.Invoke("正在处理资源索引...");
-                await EnsureAssetIndexAsync(versionId, minecraftDirectory, (progress) =>
+                await EnsureAssetIndexAsync(versionId, minecraftDirectory, (status) =>
                 {
-                    double adjustedProgress = 50 + (progress * 0.05); // 0-100% 映射到 50-55%
-                    progressCallback?.Invoke(adjustedProgress);
+                    double adjustedProgress = 50 + (status.Percent * 0.05); // 0-100% 映射到 50-55%
+                    progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, adjustedProgress, status.BytesPerSecond));
                 });
             }
             catch (Exception ex)
@@ -1510,7 +1508,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     _logger.LogWarning("网络连接超时，尝试使用本地已有的资源索引: {ExceptionMessage}", ex.Message);
                     // 继续执行，假设资源索引已存在
                     // 更新进度到资源索引阶段完成
-                    progressCallback?.Invoke(55);
+                    progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
                 }
                 else
                 {
@@ -1537,12 +1535,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     };
                 }
                 
-                await DownloadAllAssetObjectsAsync(versionId, minecraftDirectory, (progress) =>
+                await DownloadAllAssetObjectsAsync(versionId, minecraftDirectory, (status) =>
                 {
                     // 只调整整体进度，保留文件大小信息
-                    double adjustedProgress = 55 + (progress * 0.45); // 0-100% 映射到 55-100%
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 资源下载进度: {progress:F1}% -> 整体进度: {adjustedProgress:F1}%");
-                    progressCallback?.Invoke(adjustedProgress);
+                    double adjustedProgress = 55 + (status.Percent * 0.45); // 0-100% 映射到 55-100%
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 资源下载进度: {status.Percent:F1}% -> 整体进度: {adjustedProgress:F1}%");
+                    progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, adjustedProgress, status.BytesPerSecond));
                 }, combinedCallback);
                 
                 _logger.LogInformation("[EnsureDeps] 资源对象下载阶段完成");
@@ -1560,7 +1558,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     _logger.LogWarning("网络连接超时，尝试使用本地已有的资源对象: {ExceptionMessage}", ex.Message);
                     // 继续执行，假设所有需要的资源都已存在
                     // 更新进度到完成
-                    progressCallback?.Invoke(100);
+                    progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
                 }
                 else
                 {
@@ -1581,7 +1579,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
-    public async Task DownloadAllAssetObjectsAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null, Action<string> currentDownloadCallback = null)
+    public async Task DownloadAllAssetObjectsAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, Action<string> currentDownloadCallback = null)
     {
         try
         {
@@ -1635,7 +1633,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             {
                 _logger.LogInformation("[Assets] 资源索引为空，无需下载任何资源");
                 System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 资源索引为空，无需下载任何资源，直接完成");
-                progressCallback?.Invoke(100);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
                 return;
             }
             
@@ -1667,7 +1665,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             {
                 _logger.LogInformation("[Assets] 所有资源文件已存在，无需下载");
                 System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 所有资源文件已存在，无需下载，直接完成");
-                progressCallback?.Invoke(100);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
                 return;
             }
 
@@ -1679,7 +1677,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             double lastReportedProgress = -1.0;
             var lockObj = new object();
             var failedAssets = new List<string>();            // 报告初始进度0%
-            progressCallback?.Invoke(0);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
             using var semaphore = new SemaphoreSlim(maxConcurrency);
             
@@ -1795,7 +1793,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 double currentProgress = totalCount > 0 ? (double)completedCount / totalCount * 100 : 100;
                 if (Math.Abs(currentProgress - lastReportedProgress) >= 0.5) // 每0.5%更新一次
                 {
-                    progressCallback?.Invoke(currentProgress);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, currentProgress));
                     lastReportedProgress = currentProgress;
                 }
             }
@@ -1909,7 +1907,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] Task.WhenAll 完成，准备报告最终进度");
             
             // 确保最终报告100%进度
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
             System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 已报告最终进度 100%");
 
             // 记录完成状态
@@ -2026,7 +2024,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         return File.Exists(assetSavePath);
     }
 
-    public async Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<double> progressCallback = null)
+    public async Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null)
     {
         try
         {
@@ -2077,7 +2075,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             if (needDownload)
             {
                 // 报告资源索引文件下载开始
-                progressCallback?.Invoke(0);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
                 // 获取当前下载源
                 var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
@@ -2098,14 +2096,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     officialAssetIndexUrl,
                     indexFilePath,
                     assetIndexSha1,
-                    progressCallback);
+                    progressCallback != null ? (Action<double>)(p => progressCallback(new DownloadProgressStatus(0, 100, p))) : null);
             }
 
             // 5. 下载后处理
             // 如果索引文件已经存在且有效，直接报告完成
             if (!needDownload)
             {
-                progressCallback?.Invoke(100);
+                progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
             }
             
             if (!File.Exists(indexFilePath))

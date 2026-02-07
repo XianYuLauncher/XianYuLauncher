@@ -52,7 +52,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
@@ -71,7 +71,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         Logger.LogInformation("开始安装NeoForge: {NeoForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
@@ -88,7 +88,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
-            progressCallback?.Invoke(5);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
             // 2. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
@@ -101,7 +101,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 allowNetwork: true,
                 cancellationToken);
 
-            progressCallback?.Invoke(10);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
             // 4. 下载原版Minecraft JAR（支持跳过）
             Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
@@ -113,7 +113,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(35);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
             // 5. 下载NeoForge Installer
             Logger.LogInformation("下载NeoForge Installer");
@@ -135,7 +135,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 neoforgeInstallerUrl,
                 neoforgeInstallerPath,
                 null,
-                status => ReportProgress(progressCallback, status.Percent, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55, (long)status.BytesPerSecond, status.SpeedText),
                 cancellationToken);
 
             // 如果主下载源失败，尝试官方源
@@ -148,7 +148,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                     officialUrl,
                     neoforgeInstallerPath,
                     null,
-                    status => ReportProgress(progressCallback, status.Percent, 35, 55),
+                    status => ReportProgress(progressCallback, status.Percent, 35, 55, (long)status.BytesPerSecond, status.SpeedText),
                     cancellationToken);
             }
 
@@ -163,7 +163,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                     downloadResult.Exception);
             }
 
-            progressCallback?.Invoke(55);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
             // 6. 解压NeoForge Installer
             Logger.LogInformation("解压NeoForge Installer");
@@ -171,7 +171,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(extractedPath);
             
             await ExtractInstallerAsync(neoforgeInstallerPath, extractedPath, cancellationToken);
-            progressCallback?.Invoke(65);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
             // 7. 读取install_profile.json
             var installProfilePath = Path.Combine(extractedPath, "install_profile.json");
@@ -187,7 +187,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             var installProfileContent = await File.ReadAllTextAsync(installProfilePath, cancellationToken);
             var installProfile = JObject.Parse(installProfileContent);
-            progressCallback?.Invoke(70);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
             // 8. 下载install_profile中的依赖库
             var installProfileLibraries = ParseInstallProfileLibraries(installProfile);
@@ -197,7 +197,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 70, 85),
                 cancellationToken);
 
-            progressCallback?.Invoke(85);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85));
 
             // 9. 读取version.json
             var versionJsonPath = Path.Combine(extractedPath, "version.json");
@@ -227,7 +227,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                     cancellationToken);
             }
 
-            progressCallback?.Invoke(90);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 90));
 
             // 10. 执行处理器
             var processors = installProfile["processors"] as JArray;
@@ -254,14 +254,14 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                     cancellationToken);
             }
 
-            progressCallback?.Invoke(98);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
             // 11. 合并版本JSON并保存
             var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, neoforgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
             Logger.LogInformation("NeoForge安装完成: {VersionId}", versionId);
             return versionId;

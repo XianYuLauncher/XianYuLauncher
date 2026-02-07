@@ -45,7 +45,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         string modLoaderVersion,
         string minecraftDirectory,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
         string? customVersionName = null)
     {
@@ -64,7 +64,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         string modLoaderVersion,
         string minecraftDirectory,
         ModLoaderInstallOptions options,
-        Action<double>? progressCallback = null,
+        Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         // Cleanroom仅支持Minecraft 1.12.2
@@ -87,7 +87,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
-            progressCallback?.Invoke(5);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
             // 2. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
@@ -100,7 +100,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 allowNetwork: true,
                 cancellationToken);
 
-            progressCallback?.Invoke(10);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
             // 4. 下载原版Minecraft JAR（支持跳过）
             Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
@@ -112,7 +112,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 10, 35),
                 cancellationToken);
 
-            progressCallback?.Invoke(35);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
             // 5. 下载Cleanroom Installer
             Logger.LogInformation("下载Cleanroom Installer");
@@ -128,7 +128,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 installerUrl,
                 installerPath,
                 null, // Cleanroom Installer 没有提供 SHA1
-                status => ReportProgress(progressCallback, status.Percent, 35, 55),
+                status => ReportProgress(progressCallback, status.Percent, 35, 55, (long)status.BytesPerSecond, status.SpeedText),
                 cancellationToken);
 
             if (!downloadResult.Success)
@@ -142,7 +142,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                     downloadResult.Exception);
             }
 
-            progressCallback?.Invoke(55);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
             // 6. 解压Cleanroom Installer（与Forge流程相同）
             Logger.LogInformation("解压Cleanroom Installer");
@@ -150,7 +150,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(extractedPath);
             
             await ExtractInstallerAsync(installerPath, extractedPath, cancellationToken);
-            progressCallback?.Invoke(65);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
             // 7. 读取install_profile.json（与Forge流程相同）
             Logger.LogInformation("读取 install_profile.json");
@@ -172,7 +172,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             var installProfile = JObject.Parse(installProfileContent);
             Logger.LogInformation("成功解析 install_profile.json");
             
-            progressCallback?.Invoke(70);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
             // 8. 下载install_profile中的依赖库
             Logger.LogInformation("开始解析依赖库列表");
@@ -186,7 +186,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 p => ReportProgress(progressCallback, p, 70, 80),
                 cancellationToken);
 
-            progressCallback?.Invoke(80);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
             // 9. 读取version.json
             Logger.LogInformation("读取 version.json");
@@ -226,7 +226,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             var cleanroomVersionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent) ?? new VersionInfo();
             Logger.LogInformation("成功解析 version.json，MainClass: {MainClass}", cleanroomVersionInfo.MainClass);
 
-            progressCallback?.Invoke(90);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 90));
 
             // 10. 执行处理器（如果有）
             var processors = installProfile["processors"] as JArray;
@@ -259,7 +259,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 Logger.LogInformation("没有需要执行的处理器");
             }
 
-            progressCallback?.Invoke(98);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
             // 11. 合并版本JSON并保存
             Logger.LogInformation("合并版本信息");
@@ -268,7 +268,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             
             Logger.LogInformation("保存版本JSON文件");
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
             Logger.LogInformation("Cleanroom安装完成: {VersionId}", versionId);
             return versionId;
