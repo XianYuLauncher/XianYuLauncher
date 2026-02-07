@@ -60,6 +60,8 @@ namespace XianYuLauncher.Core.Services
 
             if (string.IsNullOrWhiteSpace(endpoint))
             {
+                // 默认值声明：这里是为了防止上层没传地址下来导致报错。
+                // 真正的地址是用户在设置里填的（支持各类兼容 OpenAI 格式的国内模型API），程序运行时会优先取那个。
                 endpoint = "https://api.openai.com/v1/chat/completions";
             }
             else if (!endpoint.EndsWith("/v1/chat/completions") && !endpoint.EndsWith("/chat/completions"))
@@ -187,6 +189,8 @@ namespace XianYuLauncher.Core.Services
 
             if (string.IsNullOrWhiteSpace(endpoint))
             {
+                // 默认值声明：这里是为了防止上层没传地址下来导致报错。
+                // 真正的地址是用户在设置里填的（支持各类兼容 OpenAI 格式的国内模型API），程序运行时会优先取那个。
                 endpoint = "https://api.openai.com/v1/chat/completions";
             }
             else if (!endpoint.EndsWith("/v1/chat/completions") && !endpoint.EndsWith("/chat/completions"))
@@ -526,6 +530,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         private static string NormalizeEndpoint(string endpoint)
         {
+            // 同样只是个兜底的默认值，用户设置优先。
             if (string.IsNullOrWhiteSpace(endpoint))
                 return "https://api.openai.com/v1/chat/completions";
 

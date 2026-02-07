@@ -2210,6 +2210,8 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadAISettingsAsync()
     {
         IsAIAnalysisEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableAIAnalysisKey) ?? false;
+        // 这里只是个默认值嗷，实际上会优先读取用户保存的设置。
+        // 如果用户没设置，才用这个。国内用户会自己填兼容的国内大模型API地址的。
         AiApiEndpoint = await _localSettingsService.ReadSettingAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
         var storedKey = await _localSettingsService.ReadSettingAsync<string>(AIApiKeyKey) ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(storedKey))

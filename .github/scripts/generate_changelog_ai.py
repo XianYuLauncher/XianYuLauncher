@@ -160,6 +160,7 @@ def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
         return None
 
 def main():
+    # 这也是默认值...用的DeepSeek...
     parser = argparse.ArgumentParser(description='Generate Changelog using AI')
     parser.add_argument('--token', required=True, help='AI API Key')
     parser.add_argument('--base-url', default='https://api.openai.com/v1', help='AI API Base URL')
