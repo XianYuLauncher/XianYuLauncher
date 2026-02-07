@@ -112,13 +112,28 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- 空状态占位提示 -->
+                    <StackPanel Grid.Row="0"
+                                HorizontalAlignment="Center" 
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                        <FontIcon Glyph="&#xE7FC;" FontSize="14" Foreground="{ThemeResource TextFillColorDisabledBrush}" />
+                        <TextBlock x:Uid="ErrorAnalysis_NoCrashPlaceholder" 
+                                   Text="没有崩溃内容，因为游戏还没崩溃..." 
+                                   Foreground="{ThemeResource TextFillColorDisabledBrush}" 
+                                   FontSize="14" />
+                    </StackPanel>
+
                     <ListView 
                               Grid.Row="0"
                               ItemsSource="{x:Bind ViewModel.ChatMessages}"
                               SelectionMode="None"
                               IsItemClickEnabled="False"
                               MaxHeight="300"
-                              x:Name="ChatListView">
+                              x:Name="ChatListView"
+                              Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="viewModels:UiChatMessage">
                                 <Grid Margin="0,8">

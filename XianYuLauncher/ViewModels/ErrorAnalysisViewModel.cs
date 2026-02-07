@@ -66,6 +66,9 @@ namespace XianYuLauncher.ViewModels
             _localSettingsService = localSettingsService;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
+            
+            // 监听聊天消息变化，自动更新空状态提示
+            ChatMessages.CollectionChanged += (_, _) => HasChatMessages = ChatMessages.Count > 0;
         }
 
         /// <summary>
@@ -155,6 +158,12 @@ namespace XianYuLauncher.ViewModels
         // Chat Properties
         [ObservableProperty]
         private ObservableCollection<UiChatMessage> _chatMessages = new();
+
+        /// <summary>
+        /// 是否有聊天消息（用于控制空状态占位提示的显示）
+        /// </summary>
+        [ObservableProperty]
+        private bool _hasChatMessages;
 
         [ObservableProperty]
         private string _chatInput = string.Empty;

@@ -40,16 +40,60 @@ namespace XianYuLauncher.Views
             // 订阅ChatMessages集合变化事件
             ViewModel.ChatMessages.CollectionChanged += ChatMessages_CollectionChanged;
 
+            // 监听 HasChatMessages 变化，占位符切换时刷新滚动
+            ViewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(ViewModel.HasChatMessages) && ViewModel.HasChatMessages)
+                {
+                    // 如果 ScrollViewer 还没获取到，等待 ListView 布局完成后再获取
+                    if (_chatScrollViewer == null)
+                    {
+                        void OnLayoutUpdated(object? sender, object args)
+                        {
+                            _chatScrollViewer = FindScrollViewer(ChatListView);
+                            if (_chatScrollViewer != null)
+                            {
+                                ChatListView.LayoutUpdated -= OnLayoutUpdated;
+                                _chatScrollViewer.ViewChanged += ChatScrollViewer_ViewChanged;
+                                
+                                // 立即滚到底部
+                                _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, false);
+                            }
+                        }
+                        
+                        ChatListView.LayoutUpdated += OnLayoutUpdated;
+                    }
+                    else
+                    {
+                        // ScrollViewer 已经有了，直接刷新
+                        System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+                        {
+                            this.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                _chatScrollViewer.UpdateLayout();
+                                _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, false);
+                            });
+                        });
+                    }
+                }
+            };
+
             // 添加键盘快捷键支持
             LogListView.KeyDown += LogListView_KeyDown;
 
             // ChatListView 加载完成后获取内部 ScrollViewer
             ChatListView.Loaded += (_, _) =>
             {
+                System.Diagnostics.Debug.WriteLine("[滚动调试] ChatListView.Loaded 事件触发");
                 _chatScrollViewer = FindScrollViewer(ChatListView);
                 if (_chatScrollViewer != null)
                 {
+                    System.Diagnostics.Debug.WriteLine("[滚动调试] 在 Loaded 事件中成功获取到 ScrollViewer");
                     _chatScrollViewer.ViewChanged += ChatScrollViewer_ViewChanged;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[滚动调试] 在 Loaded 事件中未能获取到 ScrollViewer");
                 }
             };
         }
@@ -59,10 +103,17 @@ namespace XianYuLauncher.Views
         /// </summary>
         private static ScrollViewer? FindScrollViewer(Microsoft.UI.Xaml.DependencyObject parent)
         {
-            for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            int childCount = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent);
+            System.Diagnostics.Debug.WriteLine($"[滚动调试] FindScrollViewer 遍历节点：{parent.GetType().Name}, 子节点数={childCount}");
+            
+            for (int i = 0; i < childCount; i++)
             {
                 var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent, i);
-                if (child is ScrollViewer sv) return sv;
+                if (child is ScrollViewer sv)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[滚动调试] 找到 ScrollViewer！");
+                    return sv;
+                }
                 var result = FindScrollViewer(child);
                 if (result != null) return result;
             }
@@ -81,6 +132,7 @@ namespace XianYuLauncher.Views
             {
                 var distanceFromBottom = _chatScrollViewer.ScrollableHeight - _chatScrollViewer.VerticalOffset;
                 _userIsScrollingChat = distanceFromBottom > 20;
+                System.Diagnostics.Debug.WriteLine($"[滚动调试] 用户滚动结束，距离底部={distanceFromBottom:F1}px, 判定为手动滚动={_userIsScrollingChat}");
             }
         }
         
@@ -220,7 +272,11 @@ namespace XianYuLauncher.Views
             if (e.PropertyName != nameof(UiChatMessage.Content)) return;
 
             // 用户手动滚动了，不自动跟随
-            if (_userIsScrollingChat) return;
+            if (_userIsScrollingChat)
+            {
+                System.Diagnostics.Debug.WriteLine("[滚动调试] 用户正在手动滚动，跳过自动滚动");
+                return;
+            }
 
             if (_isChatScrollPending) return;
 
@@ -241,17 +297,26 @@ namespace XianYuLauncher.Views
                     {
                         if (_chatScrollViewer != null)
                         {
+                            var scrollableHeight = _chatScrollViewer.ScrollableHeight;
+                            var currentOffset = _chatScrollViewer.VerticalOffset;
+                            System.Diagnostics.Debug.WriteLine($"[滚动调试] 自动滚动：当前位置={currentOffset:F1}, 可滚动高度={scrollableHeight:F1}, 距离底部={scrollableHeight - currentOffset:F1}px");
+                            
                             // 使用 ChangeView 滚动到 ScrollableHeight（真正的底部）
-                            _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, true);
+                            _chatScrollViewer.ChangeView(null, scrollableHeight, null, true);
                         }
-                        else if (ChatListView.Items.Count > 0)
+                        else
                         {
-                            // 降级：ScrollViewer 还没拿到时用 ScrollIntoView
-                            ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                            System.Diagnostics.Debug.WriteLine("[滚动调试] ScrollViewer 为 null，使用 ScrollIntoView 降级");
+                            if (ChatListView.Items.Count > 0)
+                            {
+                                // 降级：ScrollViewer 还没拿到时用 ScrollIntoView
+                                ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                            }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[滚动调试] 滚动失败：{ex.Message}");
                     }
                     finally
                     {
