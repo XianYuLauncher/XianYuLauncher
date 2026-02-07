@@ -44,6 +44,15 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 return ("fabric", ParseVersion(fabricLib.Name));
             }
 
+            // 5. Cleanroom (检测放在 Forge 之前，防止误判)
+            // 特征库: com.cleanroommc:cleanroom:0.4.2-alpha
+            var cleanroomLib = manifest.Libraries.FirstOrDefault(l => l.Name.StartsWith("com.cleanroommc:cleanroom"));
+            if (cleanroomLib != null)
+            {
+                _logger?.LogInformation($"[ModLoaderDetector] 命中特征库 (Cleanroom): {cleanroomLib.Name}");
+                return ("cleanroom", ParseVersion(cleanroomLib.Name));
+            }
+
             // 2. Forge (Enhanced Detection)
             // 策略 A: 检查启动参数 (最精准)
             // 新版 Forge (1.13+) 会明确通过参数告诉游戏版本
@@ -99,7 +108,8 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 return ("quilt", ParseVersion(quiltLib.Name));
             }
             
-            // 5. OptiFine (Standalone)
+            // 5. Cleanroom (Moved to top)
+            // 6. OptiFine (Standalone)
             // 这种通常是通过安装器生成的 version.json
             // Maven 格式: optifine:OptiFine:1.21.1_HD_U_J7_pre10
             var optifineLib = manifest.Libraries.FirstOrDefault(l => l.Name.StartsWith("optifine:OptiFine"));
