@@ -14,14 +14,11 @@ public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
     private bool _isExportCancelled = false;
-    private ModDownloadDetailViewModel _modDownloadViewModel;
-    private bool _isInstallDialogOpen = false; // 用于跟踪安装弹窗状态
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
     private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
     
     // 动态创建的弹窗引用
     private ContentDialog? _loadingDialog;
-    private ContentDialog? _modpackInstallDialog;
     private ContentDialog? _completeVersionDialog;
     
     // 弹窗内的控件引用
@@ -29,10 +26,6 @@ public sealed partial class VersionListPage : Page
     private TextBlock? _loadingStatusText;
     private ProgressBar? _loadingProgressBar;
     private TextBlock? _loadingProgressText;
-    
-    private TextBlock? _installStatusText;
-    private ProgressBar? _installProgressBar;
-    private TextBlock? _installProgressText;
     
     private TextBlock? _completeVersionNameText;
     private TextBlock? _completeVersionStageText;
@@ -44,7 +37,6 @@ public sealed partial class VersionListPage : Page
     {
         this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
-        _modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
         InitializeComponent();
         
         // 添加ItemClick事件处理
@@ -64,8 +56,6 @@ public sealed partial class VersionListPage : Page
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
         
-        // 订阅ModDownloadDetailViewModel的属性变化事件
-        _modDownloadViewModel.PropertyChanged += ModDownloadViewModel_PropertyChanged;
     }
     
     /// <summary>
@@ -1473,143 +1463,5 @@ public sealed partial class VersionListPage : Page
         // 资源目录变化处理已移至动态创建的弹窗中
     }
     
-    /// <summary>
-    /// 动态创建并显示整合包安装弹窗
-    /// </summary>
-    private void ShowModpackInstallDialog()
-    {
-        if (_modpackInstallDialog != null || _isInstallDialogOpen) return;
-        
-        _isInstallDialogOpen = true;
-        
-        _modpackInstallDialog = new ContentDialog
-        {
-            XamlRoot = this.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            Title = "整合包安装中",
-            CloseButtonText = "取消",
-            IsPrimaryButtonEnabled = false,
-            IsSecondaryButtonEnabled = false,
-            DefaultButton = ContentDialogButton.None
-        };
-        
-        _modpackInstallDialog.CloseButtonClick += (s, args) =>
-        {
-            // 取消安装
-            if (_modDownloadViewModel != null && _modDownloadViewModel.IsInstalling)
-            {
-                _modDownloadViewModel.CancelInstallCommand.Execute(null);
-            }
-        };
-        
-        var mainStack = new StackPanel { Spacing = 16, Width = 400 };
-        
-        _installStatusText = new TextBlock
-        {
-            FontSize = 16,
-            Text = "正在准备整合包安装...",
-            TextWrapping = TextWrapping.WrapWholeWords
-        };
-        mainStack.Children.Add(_installStatusText);
-        
-        _installProgressBar = new ProgressBar
-        {
-            Value = 0,
-            Minimum = 0,
-            Maximum = 100,
-            Height = 8,
-            CornerRadius = new CornerRadius(4)
-        };
-        mainStack.Children.Add(_installProgressBar);
-        
-        _installProgressText = new TextBlock
-        {
-            FontSize = 14,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            Text = "0%",
-            HorizontalTextAlignment = TextAlignment.Center
-        };
-        mainStack.Children.Add(_installProgressText);
-        
-        _modpackInstallDialog.Content = mainStack;
-        
-        _ = _modpackInstallDialog.ShowAsync();
-    }
-    
-    /// <summary>
-    /// 隐藏整合包安装弹窗
-    /// </summary>
-    private void HideModpackInstallDialog()
-    {
-        if (_modpackInstallDialog != null && _isInstallDialogOpen)
-        {
-            _modpackInstallDialog.Hide();
-            _modpackInstallDialog = null;
-            _installStatusText = null;
-            _installProgressBar = null;
-            _installProgressText = null;
-            _isInstallDialogOpen = false;
-        }
-    }
-    
-    /// <summary>
-    /// ModDownloadDetailViewModel属性变化事件处理
-    /// </summary>
-    private void ModDownloadViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (_modDownloadViewModel == null)
-        {
-            return;
-        }
-        
-        // 处理安装状态变化
-        if (e.PropertyName == nameof(_modDownloadViewModel.IsModpackInstallDialogOpen))
-        {
-            if (_modDownloadViewModel.IsModpackInstallDialogOpen)
-            {
-                // 显示安装弹窗
-                try
-                {
-                    ShowModpackInstallDialog();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"显示安装弹窗失败: {ex.Message}");
-                    _isInstallDialogOpen = false;
-                }
-            }
-            else
-            {
-                // 隐藏安装弹窗
-                try
-                {
-                    HideModpackInstallDialog();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"隐藏安装弹窗失败: {ex.Message}");
-                    _isInstallDialogOpen = false;
-                }
-            }
-        }
-        // 更新安装状态文本
-        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallStatus))
-        {
-            if (_installStatusText != null)
-                _installStatusText.Text = _modDownloadViewModel.InstallStatus;
-        }
-        // 更新安装进度条
-        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgress))
-        {
-            if (_installProgressBar != null)
-                _installProgressBar.Value = _modDownloadViewModel.InstallProgress;
-        }
-        // 更新安装进度文本
-        else if (e.PropertyName == nameof(_modDownloadViewModel.InstallProgressText))
-        {
-            if (_installProgressText != null)
-                _installProgressText.Text = _modDownloadViewModel.InstallProgressText;
-        }
-    }
     #endregion
 }

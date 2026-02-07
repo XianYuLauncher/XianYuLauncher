@@ -29,6 +29,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ITranslationService _translationService;
         private readonly IDownloadTaskManager _downloadTaskManager;
         private readonly IDownloadManager _downloadManager;
+        private readonly IDialogService _dialogService;
 
         [ObservableProperty]
         private string _modId;
@@ -304,15 +305,9 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _downloadProgressText = "0.0%";
 
-        [ObservableProperty]
-        private bool _isDownloadProgressDialogOpen = false;
-
         // 整合包安装相关属性
         [ObservableProperty]
         private bool _isInstalling = false;
-        
-        [ObservableProperty]
-        private bool _isModpackInstallDialogOpen = false;
         
         [ObservableProperty]
         private double _installProgress = 0;
@@ -329,9 +324,6 @@ namespace XianYuLauncher.ViewModels
         {
             if (!string.IsNullOrEmpty(projectId))
             {
-                // 导航前关闭下载弹窗
-                IsDownloadDialogOpen = false;
-                
                 // 获取导航服务
                 var navigationService = App.GetService<INavigationService>();
                 navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, projectId);
@@ -593,12 +585,6 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private ModVersionViewModel _selectedQuickInstallModVersion;
         
-        [ObservableProperty]
-        private bool _isQuickInstallGameVersionDialogOpen = false;
-        
-        [ObservableProperty]
-        private bool _isQuickInstallModVersionDialogOpen = false;
-        
         // 自定义下载路径相关属性
         private string _customDownloadPath;
         public string CustomDownloadPath
@@ -620,35 +606,12 @@ namespace XianYuLauncher.ViewModels
         {
             try
             {
-                // 确保所有其他对话框已关闭
-                IsDownloadDialogOpen = false;
-                IsVersionSelectionDialogOpen = false;
-                IsModpackInstallDialogOpen = false;
-                IsDownloadProgressDialogOpen = false; // 关闭下载进度对话框
                 IsInstalling = false; // 确保安装状态已重置
-                
-                // 等待足够长的时间，确保所有对话框完全关闭
-                // WinUI 3 需要时间来处理 ContentDialog 的关闭事件
-                await Task.Delay(200);
-                
-                // 创建并显示消息对话框
-                ContentDialog dialog = new ContentDialog
-                {
-                    Title = "提示",
-                    Content = message,
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.Close
-                };
-                
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync("提示", message);
             }
             catch (Exception ex)
             {
-                // 如果仍然遇到对话框冲突，记录错误但不崩溃
                 System.Diagnostics.Debug.WriteLine("显示消息对话框失败: " + ex.Message);
-                // 可以考虑使用其他方式显示消息，如状态栏通知
             }
         }
 
@@ -658,7 +621,8 @@ namespace XianYuLauncher.ViewModels
             IMinecraftVersionService minecraftVersionService,
             ITranslationService translationService,
             IDownloadTaskManager downloadTaskManager,
-            IDownloadManager downloadManager)
+            IDownloadManager downloadManager,
+            IDialogService dialogService)
         {
             _modrinthService = modrinthService;
             _curseForgeService = curseForgeService;
@@ -668,6 +632,7 @@ namespace XianYuLauncher.ViewModels
             _translationService = translationService;
             _downloadTaskManager = downloadTaskManager;
             _downloadManager = downloadManager;
+            _dialogService = dialogService;
         }
         
         private readonly ILocalSettingsService _localSettingsService;
@@ -1661,9 +1626,6 @@ namespace XianYuLauncher.ViewModels
 
         // 下载弹窗相关属性
         [ObservableProperty]
-        private bool _isDownloadDialogOpen;
-
-        [ObservableProperty]
         private ModVersionViewModel _selectedModVersion;
 
         [ObservableProperty]
@@ -1680,14 +1642,7 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private InstalledGameVersionViewModel _selectedInstalledVersion;
 
-        // 版本选择弹窗是否打开
-        [ObservableProperty]
-        private bool _isVersionSelectionDialogOpen;
-
         // 存档选择相关属性
-        [ObservableProperty]
-        private bool _isSaveSelectionDialogOpen;
-
         [ObservableProperty]
         private ObservableCollection<string> _saveNames = new ObservableCollection<string>();
 
@@ -1715,14 +1670,12 @@ namespace XianYuLauncher.ViewModels
                 // 根据来源加载依赖详情
                 if (modVersion?.IsCurseForge == true && modVersion.OriginalCurseForgeFile != null)
                 {
-                    // CurseForge来源
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载CurseForge依赖详情，文件ID: {modVersion.OriginalCurseForgeFile.Id}");
                     await LoadCurseForgeDependencyDetailsAsync(modVersion.OriginalCurseForgeFile);
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] CurseForge依赖详情加载完成，共加载 {DependencyProjects.Count} 个前置mod");
                 }
                 else if (modVersion?.OriginalVersion != null)
                 {
-                    // Modrinth来源
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载Modrinth依赖详情，OriginalVersion: {modVersion.OriginalVersion.VersionNumber}");
                     await LoadDependencyDetailsAsync(modVersion.OriginalVersion);
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] Modrinth依赖详情加载完成，共加载 {DependencyProjects.Count} 个前置mod");
@@ -1732,8 +1685,58 @@ namespace XianYuLauncher.ViewModels
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] modVersion没有原始版本信息，跳过依赖加载");
                     DependencyProjects.Clear();
                 }
-                IsDownloadDialogOpen = true;
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载弹窗已打开，依赖项目数量: {DependencyProjects.Count}");
+                
+                // 通过 DialogService 显示下载方式选择弹窗
+                var result = await _dialogService.ShowDownloadMethodDialogAsync(
+                    DownloadDialogTitle,
+                    "请选择下载方式：",
+                    DependencyProjects.Count > 0 ? DependencyProjects.Cast<object>() : null,
+                    IsLoadingDependencies,
+                    projectId => NavigateToDependency(projectId));
+                
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载弹窗结果: {result}，依赖项目数量: {DependencyProjects.Count}");
+                
+                if (result == ContentDialogResult.Primary)
+                {
+                    // 选择版本
+                    await DownloadToSelectedVersionAsync();
+                }
+                else if (result == ContentDialogResult.Secondary)
+                {
+                    // 自定义位置
+                    await HandleCustomLocationDownloadAsync();
+                }
+                // None = 取消，不做任何操作
+            }
+        }
+        
+        /// <summary>
+        /// 处理自定义位置下载（从 code-behind 迁移到 ViewModel）
+        /// </summary>
+        private async Task HandleCustomLocationDownloadAsync()
+        {
+            if (SelectedModVersion == null)
+            {
+                await ShowMessageAsync("请先选择要下载的Mod版本");
+                return;
+            }
+            
+            // 打开文件保存对话框
+            var filePicker = new Windows.Storage.Pickers.FileSavePicker();
+            
+            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
+            
+            filePicker.SuggestedFileName = SelectedModVersion.FileName;
+            filePicker.FileTypeChoices.Add("Mod文件", new[] { ".jar" });
+            
+            var file = await filePicker.PickSaveFileAsync();
+            
+            if (file != null)
+            {
+                string folderPath = Path.GetDirectoryName(file.Path);
+                SetCustomDownloadPath(folderPath);
+                await DownloadModAsync(SelectedModVersion);
             }
         }
         
@@ -1792,67 +1795,69 @@ namespace XianYuLauncher.ViewModels
                 // 获取Minecraft数据路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 
-                // 构建saves目录路径 - 对于模组加载器版本，saves目录在versions目录下的具体版本文件夹内
+                // 构建saves目录路径
                 string savesPath;
                 
-                // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
-                // 如果选择了已安装的版本，使用该版本的路径
                 if (targetVersion != null)
                 {
-                    // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
                     string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
-                    
-                    // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesPath = Path.Combine(versionDir, "saves");
                 }
                 else
                 {
-                    // 默认情况下，使用根目录下的saves文件夹
                     savesPath = Path.Combine(minecraftPath, "saves");
                 }
                 
-                // 检查saves目录是否存在
+                // 收集存档名称
+                var saveNamesList = new List<string>();
                 if (Directory.Exists(savesPath))
                 {
-                    // 获取所有存档目录名称
                     string[] saveDirectories = Directory.GetDirectories(savesPath);
-                    
-                    // 提取存档目录名称并排序
-                    List<string> saveNames = new List<string>();
                     foreach (string saveDir in saveDirectories)
                     {
-                        saveNames.Add(Path.GetFileName(saveDir));
+                        saveNamesList.Add(Path.GetFileName(saveDir));
                     }
-                    
-                    // 按名称排序
-                    saveNames.Sort();
-                    
-                    // 更新SaveNames属性
-                    foreach (string saveName in saveNames)
-                    {
-                        SaveNames.Add(saveName);
-                    }
+                    saveNamesList.Sort();
                 }
                 
-                if (SaveNames.Count == 0)
+                if (saveNamesList.Count == 0)
                 {
                     await ShowMessageAsync("未找到存档，请先启动游戏创建一个世界。");
-                    IsSaveSelectionDialogOpen = false;
                     return;
                 }
                 
-                // 清空之前的选择
-                SelectedSaveName = null;
+                // 更新 SaveNames（保留供其他地方使用）
+                foreach (string saveName in saveNamesList)
+                {
+                    SaveNames.Add(saveName);
+                }
                 
-                // 打开存档选择弹窗
-                IsSaveSelectionDialogOpen = true;
+                // 通过 DialogService 显示存档选择弹窗
+                var selected = await _dialogService.ShowListSelectionDialogAsync(
+                    "选择存档",
+                    "请选择要安装数据包的存档：",
+                    saveNamesList,
+                    s => s,
+                    tip: SaveSelectionTip,
+                    primaryButtonText: "确认",
+                    closeButtonText: "取消");
+                
+                if (selected != null)
+                {
+                    SelectedSaveName = selected;
+                    // 继续下载流程
+                    await CompleteDatapackDownloadAsync();
+                }
+                else
+                {
+                    SelectedSaveName = null;
+                }
             }
             catch (Exception ex)
             {
                 await ShowMessageAsync($"加载存档列表失败: {ex.Message}");
-                IsSaveSelectionDialogOpen = false;
             }
         }
         
@@ -1861,7 +1866,6 @@ namespace XianYuLauncher.ViewModels
         {
             try
             {
-                IsDownloadProgressDialogOpen = true; // 在开始处理下载时打开下载弹窗
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
                 
@@ -1874,7 +1878,6 @@ namespace XianYuLauncher.ViewModels
                 {
                     IsDownloading = false;
                     DownloadStatus = "下载已取消";
-                    IsDownloadProgressDialogOpen = false;
                     return;
                 }
                 
@@ -1883,41 +1886,31 @@ namespace XianYuLauncher.ViewModels
                 
                 // 构建存档文件夹路径
                 string savesDir;
-                
-                // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
-                // 如果选择了已安装的版本，使用该版本的路径
                 if (targetVersion != null)
                 {
-                    // 构建完整的版本路径：.minecraft/versions/{OriginalVersionName}
                     string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
-                    
-                    // 构建saves目录路径：.minecraft/versions/{versionName}/saves
                     savesDir = Path.Combine(versionDir, "saves");
                 }
                 else
                 {
-                    // 默认情况下，使用根目录下的saves文件夹
                     savesDir = Path.Combine(minecraftPath, "saves");
                 }
                 
                 string selectedSaveDir = Path.Combine(savesDir, SelectedSaveName);
                 string targetDir = Path.Combine(selectedSaveDir, "datapacks");
                 
-                // 创建目标文件夹（如果不存在）
                 _fileService.CreateDirectory(targetDir);
                 
-                // 构建完整的文件保存路径
                 string savePath = Path.Combine(targetDir, _currentDownloadingModVersion.FileName);
 
                 // 处理依赖（根据资源类型决定目录）
                 await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, SelectedInstalledVersion);
                 
-                // 执行下载
+                // 执行下载（PerformDownload 内部会通过 DialogService 显示进度弹窗）
                 await PerformDownload(_currentDownloadingModVersion, savePath);
                 
-                // 清空当前正在下载的Mod版本
                 _currentDownloadingModVersion = null;
             }
             catch (Exception ex)
@@ -1953,18 +1946,16 @@ namespace XianYuLauncher.ViewModels
             
             try
             {
-                // 打开下载进度弹窗（如果还没打开的话）
-                IsDownloadProgressDialogOpen = true;
-                // 重置进度（依赖下载完成后，主Mod下载从0开始）
+                // 重置进度
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
+                DownloadStatus = "正在准备下载...";
                 
                 // 订阅下载任务管理器的事件
                 var tcs = new TaskCompletionSource<bool>();
                 
                 void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    // 更新弹窗中的进度
                     DownloadProgress = info.Progress;
                     DownloadProgressText = $"{info.Progress:F1}%";
                     DownloadStatus = info.StatusMessage;
@@ -1991,7 +1982,7 @@ namespace XianYuLauncher.ViewModels
                 
                 try
                 {
-                    // 启动后台下载（依赖已经通过ProcessDependenciesAsync下载完成）
+                    // 启动后台下载
                     await _downloadTaskManager.StartResourceDownloadAsync(
                         ModName,
                         ProjectType,
@@ -1999,22 +1990,30 @@ namespace XianYuLauncher.ViewModels
                         savePath,
                         ModIconUrl);
                     
-                    // 等待下载完成（或用户点击后台下载关闭弹窗）
-                    // 使用一个循环检查弹窗是否关闭
-                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
-                    {
-                        await Task.Delay(100);
-                    }
+                    // 显示进度弹窗（弹窗会自动跟踪属性变化，下载完成时自动关闭）
+                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
+                        "下载中",
+                        () => DownloadStatus,
+                        () => DownloadProgress,
+                        () => DownloadProgressText,
+                        this,
+                        primaryButtonText: "后台下载",
+                        closeButtonText: null,
+                        autoCloseWhen: tcs.Task);
                     
-                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
-                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    if (dialogResult == ContentDialogResult.Primary)
                     {
-                        // 下载继续在后台进行，不需要做任何事
+                        // 用户点击了"后台下载"，切换到后台
+                        StartBackgroundDownload();
                         return;
                     }
                     
-                    // 等待下载完成
-                    await tcs.Task;
+                    // 弹窗已关闭（下载完成自动关闭或用户操作）
+                    if (!tcs.Task.IsCompleted)
+                    {
+                        await tcs.Task;
+                    }
+                    
                     DownloadStatus = "下载完成！";
                 }
                 finally
@@ -2031,11 +2030,6 @@ namespace XianYuLauncher.ViewModels
             catch (Exception ex)
             {
                 throw new Exception($"下载文件失败: {ex.Message}");
-            }
-            finally
-            {
-                // 关闭下载进度弹窗
-                IsDownloadProgressDialogOpen = false;
             }
         }
 
@@ -2222,9 +2216,8 @@ namespace XianYuLauncher.ViewModels
             // 启用 TeachingTip 显示（这样 ShellViewModel 才会打开 TeachingTip）
             _downloadTaskManager.IsTeachingTipEnabled = true;
             
-            // 下载已经在后台运行了，只需要关闭弹窗
+            // 下载已经在后台运行了，弹窗由 DialogService 管理
             // TeachingTip 会自动显示进度（由 ShellViewModel 订阅 DownloadTaskManager 事件）
-            IsDownloadProgressDialogOpen = false;
             
             // 立即打开 TeachingTip（不等待下一次状态变化）
             var shellViewModel = App.GetService<ShellViewModel>();
@@ -2568,9 +2561,26 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public async Task DownloadToSelectedVersionAsync()
         {
-            // 打开版本选择弹窗
+            // 加载已安装的游戏版本
             await LoadInstalledGameVersions(SelectedModVersion);
-            IsVersionSelectionDialogOpen = true;
+            
+            // 通过 DialogService 显示版本选择弹窗
+            var selected = await _dialogService.ShowListSelectionDialogAsync(
+                "选择游戏版本",
+                "请选择要安装的游戏版本：",
+                InstalledGameVersions,
+                v => v.DisplayName,
+                v => v.IsCompatible ? 1.0 : 0.5,
+                VersionSelectionTip,
+                "确认",
+                "取消");
+            
+            if (selected != null)
+            {
+                SelectedInstalledVersion = selected;
+                _currentDownloadingGameVersion = selected;
+                await DownloadModAsync(SelectedModVersion);
+            }
         }
 
         // 自定义位置下载命令
@@ -2593,13 +2603,12 @@ namespace XianYuLauncher.ViewModels
         }
 
         // 确认下载命令（从版本选择弹窗）
+        // 确认下载命令（从版本选择弹窗 - 保留供外部调用）
         [RelayCommand]
         public async Task ConfirmDownloadAsync()
         {
             if (SelectedInstalledVersion != null)
             {
-                IsVersionSelectionDialogOpen = false;
-                // 设置当前操作的版本上下文
                 _currentDownloadingGameVersion = SelectedInstalledVersion;
                 await DownloadModAsync(SelectedModVersion);
             }
@@ -2609,7 +2618,7 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public void CancelVersionSelection()
         {
-            IsVersionSelectionDialogOpen = false;
+            // 版本选择现在由 DialogService 管理，取消操作由弹窗自身处理
         }
 
         // 取消下载命令
@@ -2622,7 +2631,6 @@ namespace XianYuLauncher.ViewModels
             
             SelectedModVersion = null;
             IsDownloading = false;
-            IsDownloadProgressDialogOpen = false; // 关闭下载进度弹窗
             DownloadStatus = "下载已取消";
         }
 
@@ -2633,7 +2641,6 @@ namespace XianYuLauncher.ViewModels
             _installCancellationTokenSource?.Cancel();
             IsInstalling = false;
             InstallStatus = "安装已取消";
-            IsModpackInstallDialogOpen = false;
         }
 
         [RelayCommand]
@@ -2698,7 +2705,6 @@ namespace XianYuLauncher.ViewModels
                 // 非数据包类型，继续常规下载流程
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
-                IsDownloadProgressDialogOpen = true; // 在开始处理依赖之前就打开下载弹窗
                 
                 string savePath;
                 
@@ -2774,11 +2780,29 @@ namespace XianYuLauncher.ViewModels
         public async Task InstallModpackAsync(ModVersionViewModel modVersion)
         {
             IsInstalling = true;
-            IsModpackInstallDialogOpen = true;
             InstallStatus = "正在准备整合包安装...";
             InstallProgress = 0;
             InstallProgressText = "0%";
             _installCancellationTokenSource = new CancellationTokenSource();
+
+            // 启动进度弹窗（异步显示，不阻塞安装流程）
+            var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+                "整合包安装中",
+                () => InstallStatus,
+                () => InstallProgress,
+                () => InstallProgressText,
+                this,
+                primaryButtonText: null,
+                closeButtonText: "取消");
+            
+            // 当用户点击取消时，触发取消令牌
+            _ = dialogTask.ContinueWith(t =>
+            {
+                if (t.Result == ContentDialogResult.None)
+                {
+                    _installCancellationTokenSource?.Cancel();
+                }
+            }, TaskScheduler.Default);
 
             try
             {
@@ -3103,9 +3127,7 @@ namespace XianYuLauncher.ViewModels
                     InstallProgress = 100;
                     InstallProgressText = "100%";
                     
-                    // 先关闭安装弹窗，再显示成功消息
-                    IsModpackInstallDialogOpen = false;
-                    await Task.Delay(100); // 等待弹窗完全关闭
+                    await Task.Delay(500); // 让用户看到100%
                     await ShowMessageAsync($"整合包 '{ModName}' 安装成功！");
                 }
                 finally
@@ -3120,22 +3142,17 @@ namespace XianYuLauncher.ViewModels
             catch (OperationCanceledException)
             {
                 InstallStatus = "安装已取消";
-                IsModpackInstallDialogOpen = false;
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 InstallStatus = "安装失败！";
                 
-                // 先关闭安装弹窗，再显示错误消息
-                IsModpackInstallDialogOpen = false;
-                await Task.Delay(100); // 等待弹窗完全关闭
                 await ShowMessageAsync($"整合包安装失败: {ex.Message}");
             }
             finally
             {
                 IsInstalling = false;
-                IsModpackInstallDialogOpen = false;
                 _installCancellationTokenSource?.Dispose();
                 _installCancellationTokenSource = null;
             }
@@ -3148,7 +3165,6 @@ namespace XianYuLauncher.ViewModels
         public async Task InstallWorldAsync(ModVersionViewModel modVersion)
         {
             IsDownloading = true;
-            IsDownloadProgressDialogOpen = true;
             DownloadStatus = "正在准备下载世界存档...";
             DownloadProgress = 0;
             DownloadProgressText = "0%";
@@ -3160,7 +3176,6 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("未选择要下载的世界版本");
                 }
 
-                // 如果不是使用自定义下载路径，则需要检查是否选择了游戏版本
                 if (!UseCustomDownloadPath && _currentDownloadingGameVersion == null && SelectedInstalledVersion == null)
                 {
                     throw new Exception("未选择要安装的游戏版本");
@@ -3174,9 +3189,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 else
                 {
-                    // 使用当前上下文的游戏版本，如果为空则回退到 UI 选择的版本
                     var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
-
                     string minecraftPath = _fileService.GetMinecraftDataPath();
                     string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
                     savesDir = Path.Combine(versionDir, "saves");
@@ -3188,7 +3201,6 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("下载链接为空，无法下载世界存档");
                 }
 
-                // 检查 URL 有效性并输出日志
                 if (!Uri.TryCreate(modVersion.DownloadUrl, UriKind.Absolute, out Uri? uriResult))
                 {
                     System.Diagnostics.Debug.WriteLine($"[Error] 世界存档下载链接无效: '{modVersion.DownloadUrl}'");
@@ -3197,7 +3209,7 @@ namespace XianYuLauncher.ViewModels
 
                 System.Diagnostics.Debug.WriteLine($"[Info] 准备下载世界存档: {ModName}, URL: {modVersion.DownloadUrl}");
 
-                // 处理依赖（世界类型依赖按资源类型放到版本目录）
+                // 处理依赖
                 var worldDependencyDir = GetDependencyTargetDir(SelectedInstalledVersion, "world");
                 if (!string.IsNullOrEmpty(worldDependencyDir))
                 {
@@ -3213,7 +3225,6 @@ namespace XianYuLauncher.ViewModels
                 
                 void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    // 更新弹窗中的进度
                     DownloadProgress = info.Progress;
                     DownloadProgressText = $"{info.Progress:F1}%";
                     DownloadStatus = info.StatusMessage;
@@ -3222,17 +3233,11 @@ namespace XianYuLauncher.ViewModels
                 void OnStateChanged(object? sender, DownloadTaskInfo info)
                 {
                     if (info.State == DownloadTaskState.Completed)
-                    {
                         tcs.TrySetResult(true);
-                    }
                     else if (info.State == DownloadTaskState.Failed)
-                    {
                         tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    }
                     else if (info.State == DownloadTaskState.Cancelled)
-                    {
                         tcs.TrySetCanceled();
-                    }
                 }
                 
                 _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
@@ -3248,26 +3253,32 @@ namespace XianYuLauncher.ViewModels
                         modVersion.FileName,
                         ModIconUrl);
                     
-                    // 等待下载完成（或用户点击后台下载关闭弹窗）
-                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
-                    {
-                        await Task.Delay(100);
-                    }
+                    // 显示进度弹窗
+                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
+                        "下载中",
+                        () => DownloadStatus,
+                        () => DownloadProgress,
+                        () => DownloadProgressText,
+                        this,
+                        primaryButtonText: "后台下载",
+                        closeButtonText: null,
+                        autoCloseWhen: tcs.Task);
                     
-                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
-                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    if (dialogResult == ContentDialogResult.Primary)
                     {
-                        // 下载继续在后台进行
+                        // 用户点击了"后台下载"
+                        StartBackgroundDownload();
                         IsDownloading = false;
                         return;
                     }
                     
-                    // 等待下载完成
-                    await tcs.Task;
+                    // 弹窗关闭，等待下载完成
+                    if (!tcs.Task.IsCompleted)
+                    {
+                        await tcs.Task;
+                    }
                     
                     DownloadStatus = "世界存档安装完成！";
-                    await Task.Delay(1000);
-                    IsDownloadProgressDialogOpen = false;
                 }
                 finally
                 {
@@ -3278,13 +3289,11 @@ namespace XianYuLauncher.ViewModels
             catch (TaskCanceledException)
             {
                 DownloadStatus = "下载已取消";
-                IsDownloadProgressDialogOpen = false;
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 DownloadStatus = "下载失败！";
-                IsDownloadProgressDialogOpen = false;
                 await ShowMessageAsync($"世界存档安装失败: {ex.Message}");
             }
             finally
@@ -3577,8 +3586,7 @@ namespace XianYuLauncher.ViewModels
                 InstallProgress = 100;
                 InstallProgressText = "100%";
 
-                IsModpackInstallDialogOpen = false;
-                await Task.Delay(100);
+                await Task.Delay(500);
                 await ShowMessageAsync($"整合包 '{manifest.Name ?? ModName}' 安装成功！");
             }
             finally
@@ -3588,7 +3596,6 @@ namespace XianYuLauncher.ViewModels
                     try { Directory.Delete(tempDir, true); } catch { }
                 }
                 IsInstalling = false;
-                IsModpackInstallDialogOpen = false;
             }
         }
 
@@ -3739,8 +3746,26 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
-                // 打开游戏版本选择弹窗
-                IsQuickInstallGameVersionDialogOpen = true;
+                // 通过 DialogService 显示游戏版本选择弹窗
+                var selected = await _dialogService.ShowListSelectionDialogAsync(
+                    "选择游戏版本",
+                    "请选择要安装Mod的游戏版本：",
+                    QuickInstallGameVersions,
+                    v => v.DisplayName,
+                    v => v.IsCompatible ? 1.0 : 0.5,
+                    "灰色版本表示当前Mod不支持该版本",
+                    "下一步",
+                    "取消");
+                
+                if (selected == null)
+                {
+                    return; // 用户取消
+                }
+                
+                SelectedQuickInstallVersion = selected;
+                
+                // 继续到 Mod 版本选择
+                await ShowQuickInstallModVersionSelectionAsync();
             }
             catch (Exception ex)
             {
@@ -3939,8 +3964,24 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
-                // 打开Mod版本选择弹窗
-                IsQuickInstallModVersionDialogOpen = true;
+                // 通过 DialogService 显示 Mod 版本选择弹窗
+                var selected = await _dialogService.ShowModVersionSelectionDialogAsync(
+                    "选择Mod版本",
+                    $"请选择要安装到 {SelectedQuickInstallVersion.DisplayName} 的Mod版本：",
+                    QuickInstallModVersions,
+                    v => v.VersionNumber,
+                    v => string.IsNullOrEmpty(v.VersionType) ? v.VersionType : char.ToUpper(v.VersionType[0]) + v.VersionType[1..],
+                    v => v.ReleaseDate,
+                    v => v.FileName,
+                    v => v.ResourceTypeTag,
+                    "安装",
+                    "取消");
+                
+                if (selected != null)
+                {
+                    SelectedQuickInstallModVersion = selected;
+                    await DownloadModVersionToGameAsync(selected, SelectedQuickInstallVersion);
+                }
             }
             catch (Exception ex)
             {
@@ -4063,36 +4104,25 @@ namespace XianYuLauncher.ViewModels
                 if (isDatapack)
                 {
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到数据包，需要选择存档");
-                    
-                    // 保存当前正在下载的Mod版本和游戏版本
                     _currentDownloadingModVersion = modVersion;
                     _currentDownloadingGameVersion = gameVersion;
-                    
-                    // 打开存档选择弹窗
                     await ShowSaveSelectionDialog();
-                    
-                    // 存档选择后的下载逻辑在 CompleteDatapackDownloadAsync 方法中处理
                     return;
                 }
                 
-                // 世界特殊处理：下载并解压到 saves 目录
+                // 世界特殊处理
                 if (ProjectType == "world")
                 {
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 检测到世界，使用世界安装流程");
-                    
-                    // 设置 _currentDownloadingGameVersion 以便 InstallWorldAsync 使用
                     _currentDownloadingGameVersion = gameVersion;
-                    
-                    // 使用现有的世界安装流程
                     await InstallWorldAsync(modVersion);
                     return;
                 }
                 
-                // 直接构建下载路径，不依赖 SelectedInstalledVersion
+                // 直接构建下载路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
                 
-                // 根据项目类型选择文件夹
                 string targetFolder = ProjectType switch
                 {
                     "resourcepack" => "resourcepacks",
@@ -4106,7 +4136,6 @@ namespace XianYuLauncher.ViewModels
                 
                 System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载路径: {savePath}");
                 System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载URL: {modVersion.DownloadUrl}");
-                System.Diagnostics.Debug.WriteLine($"[QuickInstall] Mod Version JSON: {System.Text.Json.JsonSerializer.Serialize(modVersion)}");
 
                 // 如果URL缺失且是CurseForge资源，尝试手动构造
                 if (string.IsNullOrEmpty(modVersion.DownloadUrl) && modVersion.IsCurseForge && modVersion.OriginalCurseForgeFile != null)
@@ -4127,17 +4156,10 @@ namespace XianYuLauncher.ViewModels
                 if (string.IsNullOrEmpty(modVersion.DownloadUrl))
                 {
                     IsDownloading = false;
-                    IsDownloadProgressDialogOpen = false;
-                    var dialogService = App.GetService<IDialogService>();
-                    if (dialogService != null)
-                    {
-                         await dialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                    }
+                    await _dialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                     return;
                 }
                 
-                // 显示下载进度弹窗
-                IsDownloadProgressDialogOpen = true;
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
                 DownloadProgress = 0;
@@ -4148,7 +4170,7 @@ namespace XianYuLauncher.ViewModels
                 // 设置待后台下载信息
                 SetPendingBackgroundDownload(modVersion, savePath);
                 
-                // 重置进度（依赖下载完成后，主Mod下载从0开始）
+                // 重置进度
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
                 
@@ -4157,7 +4179,6 @@ namespace XianYuLauncher.ViewModels
                 
                 void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    // 更新弹窗中的进度
                     DownloadProgress = info.Progress;
                     DownloadProgressText = $"{info.Progress:F1}%";
                     DownloadStatus = info.StatusMessage;
@@ -4166,17 +4187,11 @@ namespace XianYuLauncher.ViewModels
                 void OnStateChanged(object? sender, DownloadTaskInfo info)
                 {
                     if (info.State == DownloadTaskState.Completed)
-                    {
                         tcs.TrySetResult(true);
-                    }
                     else if (info.State == DownloadTaskState.Failed)
-                    {
                         tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    }
                     else if (info.State == DownloadTaskState.Cancelled)
-                    {
                         tcs.TrySetCanceled();
-                    }
                 }
                 
                 _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
@@ -4184,7 +4199,7 @@ namespace XianYuLauncher.ViewModels
                 
                 try
                 {
-                    // 启动后台下载（依赖已经通过ProcessDependenciesAsync下载完成）
+                    // 启动后台下载
                     await _downloadTaskManager.StartResourceDownloadAsync(
                         ModName,
                         ProjectType,
@@ -4192,27 +4207,32 @@ namespace XianYuLauncher.ViewModels
                         savePath,
                         ModIconUrl);
                     
-                    // 等待下载完成（或用户点击后台下载关闭弹窗）
-                    while (IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
-                    {
-                        await Task.Delay(100);
-                    }
+                    // 显示进度弹窗
+                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
+                        "下载中",
+                        () => DownloadStatus,
+                        () => DownloadProgress,
+                        () => DownloadProgressText,
+                        this,
+                        primaryButtonText: "后台下载",
+                        closeButtonText: null,
+                        autoCloseWhen: tcs.Task);
                     
-                    // 如果弹窗被关闭（用户点击了后台下载），直接返回
-                    if (!IsDownloadProgressDialogOpen && !tcs.Task.IsCompleted)
+                    if (dialogResult == ContentDialogResult.Primary)
                     {
-                        // 下载继续在后台进行
+                        // 用户点击了"后台下载"
+                        StartBackgroundDownload();
                         IsDownloading = false;
                         return;
                     }
                     
-                    // 等待下载完成
-                    await tcs.Task;
+                    // 弹窗关闭，等待下载完成
+                    if (!tcs.Task.IsCompleted)
+                    {
+                        await tcs.Task;
+                    }
                     
-                    // 下载完成
-                    IsDownloadProgressDialogOpen = false;
                     IsDownloading = false;
-                    
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 安装完成: {savePath}");
                 }
                 finally
@@ -4223,7 +4243,6 @@ namespace XianYuLauncher.ViewModels
             }
             catch (TaskCanceledException)
             {
-                IsDownloadProgressDialogOpen = false;
                 IsDownloading = false;
                 await ShowMessageAsync("下载已取消。");
             }
@@ -4231,7 +4250,6 @@ namespace XianYuLauncher.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine($"[ERROR] 一键安装失败: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[ERROR] 堆栈跟踪: {ex.StackTrace}");
-                IsDownloadProgressDialogOpen = false;
                 IsDownloading = false;
                 await ShowMessageAsync($"安装失败: {ex.Message}");
             }

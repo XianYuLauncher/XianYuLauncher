@@ -497,4 +497,351 @@ public class DialogService : IDialogService
             return null;
         }
     }
+
+    // ==================== 资源下载详情页弹窗 ====================
+
+    public async Task<ContentDialogResult> ShowDownloadMethodDialogAsync(
+        string title,
+        string instruction,
+        IEnumerable<object>? dependencyProjects,
+        bool isLoadingDependencies,
+        Action<string>? onDependencyClick)
+    {
+        var panel = new StackPanel { Spacing = 16 };
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+
+        // 前置 Mod 列表
+        var deps = dependencyProjects?.ToList();
+        if (deps != null && deps.Count > 0)
+        {
+            if (isLoadingDependencies)
+            {
+                panel.Children.Add(new ProgressRing
+                {
+                    IsActive = true,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Height = 32, Width = 32,
+                    Margin = new Thickness(0, 8, 0, 8)
+                });
+            }
+            else
+            {
+                var depsPanel = new StackPanel { Spacing = 8 };
+                foreach (dynamic dep in deps)
+                {
+                    string projectId = dep.ProjectId;
+                    string depTitle = dep.Title;
+                    string description = dep.DisplayDescription;
+                    string iconUrl = dep.IconUrl;
+
+                    var cardContent = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 12,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Width = 356
+                    };
+
+                    var iconBorder = new Border { CornerRadius = new CornerRadius(4), Width = 40, Height = 40 };
+                    var iconImage = new Image { Width = 40, Height = 40, Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill };
+                    if (!string.IsNullOrEmpty(iconUrl))
+                        iconImage.Source = new BitmapImage(new Uri(iconUrl));
+                    iconBorder.Child = iconImage;
+                    cardContent.Children.Add(iconBorder);
+
+                    var textPanel = new StackPanel { Orientation = Orientation.Vertical, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Width = 300 };
+                    textPanel.Children.Add(new TextBlock { Text = depTitle, FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+                    textPanel.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.WrapWholeWords });
+                    cardContent.Children.Add(textPanel);
+
+                    var btn = new Button
+                    {
+                        Content = cardContent,
+                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                        CornerRadius = new CornerRadius(8),
+                        Padding = new Thickness(12),
+                        BorderThickness = new Thickness(1),
+                        BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                        Width = 380,
+                        HorizontalAlignment = HorizontalAlignment.Left
+                    };
+                    var capturedId = projectId;
+                    btn.Click += (s, e) => onDependencyClick?.Invoke(capturedId);
+                    depsPanel.Children.Add(btn);
+                }
+                panel.Children.Add(depsPanel);
+            }
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = "选择版本",
+            SecondaryButtonText = "自定义位置",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        return await ShowSafeAsync(dialog);
+    }
+
+    public async Task<T?> ShowListSelectionDialogAsync<T>(
+        string title,
+        string instruction,
+        IEnumerable<T> items,
+        Func<T, string> displayMemberFunc,
+        Func<T, double>? opacityFunc = null,
+        string? tip = null,
+        string primaryButtonText = "确认",
+        string closeButtonText = "取消") where T : class
+    {
+        var panel = new StackPanel { Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            MaxHeight = 300
+        };
+
+        // 构建列表项
+        var itemsList = items.ToList();
+        foreach (var item in itemsList)
+        {
+            var grid = new Grid { Padding = new Thickness(8) };
+            var textBlock = new TextBlock { Text = displayMemberFunc(item) };
+            if (opacityFunc != null)
+                textBlock.Opacity = opacityFunc(item);
+            grid.Children.Add(textBlock);
+            var lvi = new ListViewItem { Content = grid, Tag = item };
+            listView.Items.Add(lvi);
+        }
+
+        panel.Children.Add(listView);
+
+        if (!string.IsNullOrEmpty(tip))
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = tip,
+                FontSize = 12,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            });
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = primaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result == ContentDialogResult.Primary && listView.SelectedItem is ListViewItem selectedLvi)
+        {
+            return selectedLvi.Tag as T;
+        }
+        return null;
+    }
+
+    public async Task<T?> ShowModVersionSelectionDialogAsync<T>(
+        string title,
+        string instruction,
+        IEnumerable<T> items,
+        Func<T, string> versionNumberFunc,
+        Func<T, string> versionTypeFunc,
+        Func<T, string> releaseDateFunc,
+        Func<T, string> fileNameFunc,
+        Func<T, string?>? resourceTypeTagFunc = null,
+        string primaryButtonText = "安装",
+        string closeButtonText = "取消") where T : class
+    {
+        var panel = new StackPanel { Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, TextWrapping = TextWrapping.WrapWholeWords });
+
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            MaxHeight = 400
+        };
+
+        foreach (var item in items)
+        {
+            var card = new Border
+            {
+                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 4, 0, 4)
+            };
+
+            var cardPanel = new StackPanel { Spacing = 4 };
+
+            // 版本号 + 类型标签行
+            var headerRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            headerRow.Children.Add(new TextBlock { Text = versionNumberFunc(item), FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+
+            var typeBadge = new Border
+            {
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 2, 6, 2),
+                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"]
+            };
+            var vt = versionTypeFunc(item);
+            typeBadge.Child = new TextBlock
+            {
+                Text = string.IsNullOrEmpty(vt) ? vt : char.ToUpper(vt[0]) + vt[1..],
+                FontSize = 11,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+            headerRow.Children.Add(typeBadge);
+
+            // 资源类型标签
+            if (resourceTypeTagFunc != null)
+            {
+                var tag = resourceTypeTagFunc(item);
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    var resBadge = new Border
+                    {
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Thickness(6, 2, 6, 2),
+                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+                    };
+                    resBadge.Child = new TextBlock
+                    {
+                        Text = tag,
+                        FontSize = 11,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                        Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"]
+                    };
+                    headerRow.Children.Add(resBadge);
+                }
+            }
+
+            cardPanel.Children.Add(headerRow);
+
+            // 发布日期
+            cardPanel.Children.Add(new TextBlock
+            {
+                Text = $"发布日期: {releaseDateFunc(item)}",
+                FontSize = 12,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            });
+
+            // 文件名
+            cardPanel.Children.Add(new TextBlock
+            {
+                Text = fileNameFunc(item),
+                FontSize = 11,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            card.Child = cardPanel;
+
+            var lvi = new ListViewItem { Content = card, Tag = item, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0), Margin = new Thickness(0, 0, 0, 6) };
+            listView.Items.Add(lvi);
+        }
+
+        panel.Children.Add(listView);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = primaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result == ContentDialogResult.Primary && listView.SelectedItem is ListViewItem selectedLvi)
+        {
+            return selectedLvi.Tag as T;
+        }
+        return null;
+    }
+
+    public async Task<ContentDialogResult> ShowObservableProgressDialogAsync(
+        string title,
+        Func<string> getStatus,
+        Func<double> getProgress,
+        Func<string> getProgressText,
+        System.ComponentModel.INotifyPropertyChanged propertyChanged,
+        string? primaryButtonText = null,
+        string? closeButtonText = "取消",
+        Task? autoCloseWhen = null)
+    {
+        var statusText = new TextBlock { Text = getStatus(), FontSize = 16, TextWrapping = TextWrapping.WrapWholeWords };
+        var progressBar = new ProgressBar { Value = getProgress(), Minimum = 0, Maximum = 100, Height = 8, CornerRadius = new CornerRadius(4) };
+        var progressText = new TextBlock
+        {
+            Text = getProgressText(),
+            FontSize = 14,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+
+        var panel = new StackPanel { Spacing = 16, Width = 400 };
+        panel.Children.Add(statusText);
+        panel.Children.Add(progressBar);
+        panel.Children.Add(progressText);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        if (!string.IsNullOrEmpty(primaryButtonText))
+            dialog.PrimaryButtonText = primaryButtonText;
+        if (!string.IsNullOrEmpty(closeButtonText))
+            dialog.CloseButtonText = closeButtonText;
+
+        // 监听属性变更，更新 UI
+        void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            dialog.DispatcherQueue?.TryEnqueue(() =>
+            {
+                statusText.Text = getStatus();
+                progressBar.Value = getProgress();
+                progressText.Text = getProgressText();
+            });
+        }
+
+        propertyChanged.PropertyChanged += OnPropertyChanged;
+
+        // 当 autoCloseWhen 完成时自动关闭弹窗
+        if (autoCloseWhen != null)
+        {
+            _ = autoCloseWhen.ContinueWith(_ =>
+            {
+                dialog.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    try { dialog.Hide(); }
+                    catch { /* 弹窗可能已关闭 */ }
+                });
+            }, TaskScheduler.Default);
+        }
+
+        try
+        {
+            return await ShowSafeAsync(dialog);
+        }
+        finally
+        {
+            propertyChanged.PropertyChanged -= OnPropertyChanged;
+        }
+    }
 }
