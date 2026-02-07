@@ -22,7 +22,6 @@ public class ModrinthService
     private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FallbackDownloadManager? _fallbackDownloadManager;
-    private readonly OfficialDownloadSource _officialSource = new();
     
     /// <summary>
     /// Modrinth官方API基础URL
@@ -53,11 +52,6 @@ public class ModrinthService
     private IDownloadSource GetModrinthSource() => _downloadSourceFactory.GetModrinthSource();
     
     /// <summary>
-    /// 判断当前是否使用镜像源
-    /// </summary>
-    private bool IsUsingMirror() => GetModrinthSource().Key != "official";
-    
-    /// <summary>
     /// 获取指定下载源对应的User-Agent
     /// </summary>
     private string GetUserAgent(IDownloadSource source = null)
@@ -86,143 +80,72 @@ public class ModrinthService
     }
     
     /// <summary>
-    /// 转换Modrinth API URL到当前下载源
+    /// 通过 FallbackDownloadManager 发送 GET 请求（社区资源回退）
+    /// 如果 FallbackDownloadManager 不可用，回退到直接请求
     /// </summary>
-    private string TransformApiUrl(string originalUrl)
+    /// <param name="originalUrl">官方源 URL</param>
+    /// <param name="resourceType">资源类型（modrinth_api / modrinth_cdn）</param>
+    private async Task<HttpResponseMessage> SendWithFallbackAsync(string originalUrl, string resourceType = "modrinth_api")
     {
-        var source = GetModrinthSource();
-        var transformedUrl = source.TransformModrinthApiUrl(originalUrl);
-        if (transformedUrl != originalUrl)
+        if (_fallbackDownloadManager != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService] API URL转换: {originalUrl} -> {transformedUrl}");
+            var result = await _fallbackDownloadManager.SendGetForCommunityAsync(
+                originalUrl,
+                resourceType,
+                ConfigureModrinthRequest);
+
+            if (!result.Success)
+                throw new HttpRequestException($"所有源请求失败: {result.ErrorMessage}");
+
+            return result.Response!;
         }
-        return transformedUrl;
-    }
-    
-    /// <summary>
-    /// 转换Modrinth CDN URL到当前下载源
-    /// </summary>
-    private string TransformCdnUrl(string originalUrl)
-    {
+
+        // 无 FallbackDownloadManager 时直接请求
         var source = GetModrinthSource();
-        var transformedUrl = source.TransformModrinthCdnUrl(originalUrl);
-        if (transformedUrl != originalUrl)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService] CDN URL转换: {originalUrl} -> {transformedUrl}");
-        }
-        return transformedUrl;
-    }
-    
-    /// <summary>
-    /// 获取Modrinth API基础URL
-    /// </summary>
-    private string GetApiBaseUrl() => GetModrinthSource().GetModrinthApiBaseUrl();
-    
-    /// <summary>
-    /// 带回退的HTTP GET请求（镜像失败自动回退到官方源）
-    /// </summary>
-    private async Task<HttpResponseMessage> SendWithFallbackAsync(string originalUrl, bool isApiUrl = true)
-    {
-        var source = GetModrinthSource();
-        var transformedUrl = isApiUrl ? source.TransformModrinthApiUrl(originalUrl) : source.TransformModrinthCdnUrl(originalUrl);
-        
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 请求URL: {transformedUrl}");
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] User-Agent: {GetUserAgent(source)}");
-        
+        var transformedUrl = resourceType == "modrinth_cdn"
+            ? source.TransformModrinthCdnUrl(originalUrl)
+            : source.TransformModrinthApiUrl(originalUrl);
         using var request = CreateRequest(HttpMethod.Get, transformedUrl, source);
-        
-        try
-        {
-            var response = await _httpClient.SendAsync(request);
-            
-            // 如果是镜像源且请求失败（404/5xx），回退到官方源
-            if (IsUsingMirror() && !response.IsSuccessStatusCode && ShouldFallback(response.StatusCode))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像源请求失败({response.StatusCode})，回退到官方源");
-                return await FallbackToOfficialAsync(originalUrl);
-            }
-            
-            return response;
-        }
-        catch (HttpRequestException ex)
-        {
-            // 网络错误时也回退
-            if (IsUsingMirror())
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像源网络错误({ex.Message})，回退到官方源");
-                return await FallbackToOfficialAsync(originalUrl);
-            }
-            throw;
-        }
-        catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
-        {
-            // 超时时也回退
-            if (IsUsingMirror())
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像源超时，回退到官方源");
-                return await FallbackToOfficialAsync(originalUrl);
-            }
-            throw;
-        }
+        return await _httpClient.SendAsync(request);
     }
-    
+
     /// <summary>
-    /// 判断是否应该回退到官方源
+    /// 通过 FallbackDownloadManager 发送 POST 请求（社区资源回退）
     /// </summary>
-    private static bool ShouldFallback(System.Net.HttpStatusCode statusCode)
+    private async Task<HttpResponseMessage> PostWithFallbackAsync(string originalUrl, Func<HttpContent> contentFactory)
     {
-        return statusCode == System.Net.HttpStatusCode.NotFound ||
-               (int)statusCode >= 500;
-    }
-    
-    /// <summary>
-    /// 回退到官方源请求
-    /// </summary>
-    private async Task<HttpResponseMessage> FallbackToOfficialAsync(string originalUrl)
-    {
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 使用官方源: {originalUrl}");
-        using var fallbackRequest = CreateRequest(HttpMethod.Get, originalUrl, _officialSource);
-        return await _httpClient.SendAsync(fallbackRequest);
-    }
-    
-    /// <summary>
-    /// 带回退的HTTP POST请求
-    /// </summary>
-    private async Task<HttpResponseMessage> PostWithFallbackAsync(string originalUrl, HttpContent content)
-    {
+        if (_fallbackDownloadManager != null)
+        {
+            var result = await _fallbackDownloadManager.SendPostForCommunityAsync(
+                originalUrl,
+                "modrinth_api",
+                contentFactory,
+                ConfigureModrinthRequest);
+
+            if (!result.Success)
+                throw new HttpRequestException($"所有源POST请求失败: {result.ErrorMessage}");
+
+            return result.Response!;
+        }
+
+        // 无 FallbackDownloadManager 时直接请求
         var source = GetModrinthSource();
         var transformedUrl = source.TransformModrinthApiUrl(originalUrl);
-        
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] POST请求URL: {transformedUrl}");
-        
         var request = CreateRequest(HttpMethod.Post, transformedUrl, source);
-        request.Content = content;
-        
-        try
+        request.Content = contentFactory();
+        return await _httpClient.SendAsync(request);
+    }
+
+    /// <summary>
+    /// 配置 Modrinth 请求的 Headers（User-Agent）
+    /// 供 FallbackDownloadManager 的 configureRequest 回调使用
+    /// </summary>
+    private void ConfigureModrinthRequest(HttpRequestMessage request, IDownloadSource source)
+    {
+        var ua = GetUserAgent(source);
+        if (!string.IsNullOrEmpty(ua))
         {
-            var response = await _httpClient.SendAsync(request);
-            
-            if (IsUsingMirror() && !response.IsSuccessStatusCode && ShouldFallback(response.StatusCode))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像源POST失败({response.StatusCode})，回退到官方源");
-                var fallbackRequest = CreateRequest(HttpMethod.Post, originalUrl, _officialSource);
-                // 需要重新创建content，因为原content可能已被消费
-                fallbackRequest.Content = content;
-                return await _httpClient.SendAsync(fallbackRequest);
-            }
-            
-            return response;
-        }
-        catch (HttpRequestException ex)
-        {
-            if (IsUsingMirror())
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像源POST网络错误，回退到官方源");
-                var fallbackRequest = CreateRequest(HttpMethod.Post, originalUrl, _officialSource);
-                fallbackRequest.Content = content;
-                return await _httpClient.SendAsync(fallbackRequest);
-            }
-            throw;
+            request.Headers.Add("User-Agent", ua);
         }
     }
 
@@ -435,12 +358,7 @@ public class ModrinthService
           {
               string url = $"{OfficialApiBaseUrl}/v2/team/{Uri.EscapeDataString(teamId)}/members";
               
-              // 创建请求并设置 User-Agent
-              using var request = new HttpRequestMessage(HttpMethod.Get, url);
-              request.Headers.Add("User-Agent", GetUserAgent());
-              
-              // 发送请求
-              var response = await _httpClient.SendAsync(request);
+              var response = await SendWithFallbackAsync(url);
               response.EnsureSuccessStatusCode();
               
               var content = await response.Content.ReadAsStringAsync();
@@ -566,14 +484,10 @@ public class ModrinthService
             System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
 
             // 使用带回退的POST请求
-            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            var response = await PostWithFallbackAsync(url, content);
+            var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
             
             // 获取完整响应内容
             responseContent = await response.Content.ReadAsStringAsync();
-
-            // 输出调试信息，显示响应内容
-            System.Diagnostics.Debug.WriteLine($"Modrinth API Response: {responseContent}");
 
             // 确保响应成功
             response.EnsureSuccessStatusCode();
@@ -649,8 +563,7 @@ public class ModrinthService
                 System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
 
                 // 使用带回退的POST请求
-                var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-                var response = await PostWithFallbackAsync(url, content);
+                var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
                 
                 // 获取完整响应内容
                 responseContent = await response.Content.ReadAsStringAsync();
@@ -685,6 +598,45 @@ public class ModrinthService
                 // 处理其他异常
                 System.Diagnostics.Debug.WriteLine($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
                 throw new Exception($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 批量检查版本文件更新（POST /v2/version_files/update）
+        /// </summary>
+        /// <param name="hashes">当前文件的哈希值列表</param>
+        /// <param name="loaders">加载器类型列表</param>
+        /// <param name="gameVersions">游戏版本列表</param>
+        /// <param name="algorithm">哈希算法，默认为sha1</param>
+        /// <returns>哈希值到最新版本信息的映射</returns>
+        public async Task<Dictionary<string, ModrinthVersion>?> UpdateVersionFilesAsync(
+            List<string> hashes,
+            string[] loaders,
+            string[] gameVersions,
+            string algorithm = "sha1")
+        {
+            try
+            {
+                string url = $"{OfficialApiBaseUrl}/v2/version_files/update";
+                var requestBody = new
+                {
+                    hashes = hashes,
+                    algorithm = algorithm,
+                    loaders = loaders,
+                    game_versions = gameVersions
+                };
+                string jsonBody = JsonSerializer.Serialize(requestBody);
+
+                var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(content);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 批量检查更新失败: {ex.Message}");
+                return null;
             }
         }
         
@@ -980,9 +932,8 @@ public class ModrinthService
                         System.Diagnostics.Debug.WriteLine($"  - 文件不存在，准备下载");
                     }
                     
-                    // 下载依赖（转换CDN URL）
+                    // 下载依赖
                     string downloadUrl = primaryFile.Url.AbsoluteUri;
-                    downloadUrl = TransformCdnUrl(downloadUrl);
                     System.Diagnostics.Debug.WriteLine($"  - 开始下载：{downloadUrl}");
                     bool downloadSuccess = await DownloadFileAsync(
                         downloadUrl, 
@@ -1102,14 +1053,14 @@ public class ModrinthService
                 return false;
             }
 
-            string downloadUrl = TransformCdnUrl(file.Url.AbsoluteUri);
+            string downloadUrl = file.Url.AbsoluteUri;
             return await DownloadFileAsync(downloadUrl, destinationPath, progressCallback, cancellationToken);
         }
         
         /// <summary>
-        /// 下载文件
+        /// 下载文件（通过 FallbackDownloadManager 自动回退）
         /// </summary>
-        /// <param name="downloadUrl">下载URL（已转换的镜像URL或原始CDN URL）</param>
+        /// <param name="downloadUrl">下载URL（官方CDN URL 或已转换的镜像URL）</param>
         /// <param name="destinationPath">保存路径</param>
         /// <param name="progressCallback">进度回调</param>
         /// <param name="cancellationToken">取消令牌</param>
@@ -1123,8 +1074,6 @@ public class ModrinthService
             try
             {
                 string fileName = Path.GetFileName(destinationPath);
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始下载文件: {downloadUrl}");
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 目标路径: {destinationPath}");
                 
                 // 更新当前下载项
                 progressCallback?.Invoke(fileName, 0);
@@ -1136,19 +1085,16 @@ public class ModrinthService
                     Directory.CreateDirectory(parentDir);
                 }
                 
-                // 如果有 FallbackDownloadManager，使用它来下载（支持自动回退）
+                // 还原为官方CDN URL（FallbackDownloadManager 会自动转换到合适的源）
+                string originalUrl = downloadUrl;
+                if (downloadUrl.Contains("mcimirror.top"))
+                {
+                    originalUrl = downloadUrl.Replace("https://mod.mcimirror.top", "https://cdn.modrinth.com");
+                }
+                
                 if (_fallbackDownloadManager != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 使用 FallbackDownloadManager 下载");
-                    
-                    // 还原为官方CDN URL（FallbackDownloadManager 会自动转换）
-                    string originalUrl = downloadUrl;
-                    if (downloadUrl.Contains("mcimirror.top"))
-                    {
-                        originalUrl = downloadUrl.Replace("https://mod.mcimirror.top", "https://cdn.modrinth.com");
-                    }
-                    
-                    var result = await _fallbackDownloadManager.DownloadFileWithFallbackAsync(
+                    var result = await _fallbackDownloadManager.DownloadFileForCommunityAsync(
                         originalUrl,
                         destinationPath,
                         "modrinth_cdn",
@@ -1157,110 +1103,59 @@ public class ModrinthService
                     
                     if (result.Success)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件下载完成: {destinationPath} (使用源: {result.UsedSourceKey})");
                         progressCallback?.Invoke(fileName, 100);
                         return true;
                     }
                     else
                     {
                         System.Diagnostics.Debug.WriteLine($"[ModrinthService] 下载失败: {result.ErrorMessage}");
-                        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 尝试过的源: {string.Join(", ", result.AttemptedSources)}");
                         return false;
                     }
                 }
                 
-                // 回退到原有的下载逻辑（兼容没有 FallbackDownloadManager 的情况）
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 使用原有下载逻辑");
-                return await DownloadFileWithLegacyFallbackAsync(downloadUrl, destinationPath, progressCallback, cancellationToken);
+                // 无 FallbackDownloadManager 时直接请求官方CDN
+                using var request = CreateRequest(HttpMethod.Get, originalUrl);
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                
+                long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                long downloadedBytes = 0;
+                
+                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
+                using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                        downloadedBytes += bytesRead;
+                        
+                        if (totalBytes > 0)
+                        {
+                            double progress = (double)downloadedBytes / totalBytes * 100;
+                            progressCallback?.Invoke(fileName, Math.Round(progress, 2));
+                        }
+                    }
+                }
+                
+                progressCallback?.Invoke(fileName, 100);
+                return true;
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件下载已取消: {destinationPath}");
                 return false;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 下载文件失败: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常类型: {ex.GetType().FullName}");
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 return false;
             }
         }
         
-        /// <summary>
-        /// 使用原有逻辑下载文件（兼容模式）
-        /// </summary>
-        private async Task<bool> DownloadFileWithLegacyFallbackAsync(
-            string downloadUrl, 
-            string destinationPath, 
-            Action<string, double>? progressCallback = null,
-            CancellationToken cancellationToken = default)
-        {
-            string fileName = Path.GetFileName(destinationPath);
-            
-            // 尝试下载（带回退）
-            HttpResponseMessage response = null;
-            bool usedFallback = false;
-            
-            try
-            {
-                using var request = CreateRequest(HttpMethod.Get, downloadUrl);
-                response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                
-                // 如果是镜像URL且失败，回退到官方CDN
-                if (!response.IsSuccessStatusCode && ShouldFallback(response.StatusCode) && downloadUrl.Contains("mcimirror.top"))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像下载失败({response.StatusCode})，回退到官方CDN");
-                    response.Dispose();
-                    
-                    // 还原为官方CDN URL
-                    string officialUrl = downloadUrl.Replace("https://mod.mcimirror.top", "https://cdn.modrinth.com");
-                    using var fallbackRequest = CreateRequest(HttpMethod.Get, officialUrl, _officialSource);
-                    response = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    usedFallback = true;
-                }
-            }
-            catch (HttpRequestException ex) when (downloadUrl.Contains("mcimirror.top"))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 镜像下载网络错误，回退到官方CDN: {ex.Message}");
-                string officialUrl = downloadUrl.Replace("https://mod.mcimirror.top", "https://cdn.modrinth.com");
-                using var fallbackRequest = CreateRequest(HttpMethod.Get, officialUrl, _officialSource);
-                response = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                usedFallback = true;
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP响应状态: {response.StatusCode}{(usedFallback ? " (已回退)" : "")}");
-            response.EnsureSuccessStatusCode();
-            
-            long totalBytes = response.Content.Headers.ContentLength ?? 0;
-            long downloadedBytes = 0;
-            
-            using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-            using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-            {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                
-                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                    downloadedBytes += bytesRead;
-                    
-                    if (totalBytes > 0)
-                    {
-                        double progress = (double)downloadedBytes / totalBytes * 100;
-                        progressCallback?.Invoke(fileName, Math.Round(progress, 2));
-                    }
-                }
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService] 文件下载完成: {destinationPath}");
-            progressCallback?.Invoke(fileName, 100);
-            
-            return true;
-        }
+
         
         /// <summary>
         /// 计算文件的SHA1哈希值

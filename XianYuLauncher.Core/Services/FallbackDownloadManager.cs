@@ -259,125 +259,9 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
-        var attemptedSources = new List<string>();
-        var errors = new List<string>();
-
         var primarySource = _sourceFactory.GetDefaultSource();
-        var sourcesToTry = GetSourceOrder(primarySource.Key);
-        
-        // 只用 logger，不用 Debug.WriteLine
-        _logger?.LogDebug("回退顺序: {Sources}", string.Join(" -> ", sourcesToTry));
-        System.Diagnostics.Debug.WriteLine($"[Fallback] 回退顺序: {string.Join(" -> ", sourcesToTry)}");
-
-        foreach (var sourceKey in sourcesToTry)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var source = _sourceFactory.GetSource(sourceKey);
-            
-            // 使用 URL 生成函数获取 URL
-            string? url;
-            try
-            {
-                url = urlGenerator(source);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "源 {Source} URL生成失败", sourceKey);
-                continue;
-            }
-            
-            // 如果返回 null，表示该源不支持，跳过
-            if (string.IsNullOrEmpty(url))
-            {
-                _logger?.LogDebug("源 {Source} 不支持，跳过", sourceKey);
-                continue;
-            }
-            
-            attemptedSources.Add(sourceKey);
-            _logger?.LogDebug("尝试 {Source}: {Url}", sourceKey, url);
-            System.Diagnostics.Debug.WriteLine($"[Fallback] 尝试 {sourceKey}: {url}");
-
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                configureRequest?.Invoke(request, source);
-                
-                // 输出详细的请求信息
-                System.Diagnostics.Debug.WriteLine($"[Fallback] ===== 请求详情 =====");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] Method: {request.Method}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] RequestUri: {request.RequestUri}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] Headers:");
-                foreach (var header in request.Headers)
-                {
-                    string valueStr = string.Join(", ", header.Value);
-                    if (header.Key.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0 || 
-                        header.Key.IndexOf("auth", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        header.Key.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        valueStr = "******";
-                    }
-                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {valueStr}");
-                }
-                System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient BaseAddress: {_httpClient.BaseAddress}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient Timeout: {_httpClient.Timeout}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] HttpClient DefaultRequestHeaders:");
-                foreach (var header in _httpClient.DefaultRequestHeaders)
-                {
-                    string valueStr = string.Join(", ", header.Value);
-                    if (header.Key.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0 || 
-                        header.Key.IndexOf("auth", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        header.Key.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        valueStr = "******";
-                    }
-                    System.Diagnostics.Debug.WriteLine($"[Fallback]   {header.Key}: {valueStr}");
-                }
-                System.Diagnostics.Debug.WriteLine($"[Fallback] ======================");
-
-                var response = await _httpClient.SendAsync(request, cancellationToken);
-
-                // 成功或不应该回退的状态码
-                if (response.IsSuccessStatusCode || !ShouldFallbackOnStatusCode(response.StatusCode))
-                {
-                    _logger?.LogInformation("源 {Source} 成功 (HTTP {StatusCode})", sourceKey, (int)response.StatusCode);
-                    System.Diagnostics.Debug.WriteLine($"[Fallback] 源 {sourceKey} 成功 (HTTP {(int)response.StatusCode})");
-                    return FallbackHttpResult.Succeeded(response, sourceKey, url, attemptedSources);
-                }
-
-                // 失败，记录错误并尝试下一个源
-                var errorMsg = $"HTTP {(int)response.StatusCode}";
-                errors.Add($"[{sourceKey}] {errorMsg}");
-                _logger?.LogWarning("源 {Source} 失败: {Error}，尝试下一个", sourceKey, errorMsg);
-                System.Diagnostics.Debug.WriteLine($"[Fallback] 源 {sourceKey} 失败: {errorMsg}，尝试下一个");
-                response.Dispose();
-
-                if (!AutoFallbackEnabled) break;
-            }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
-            {
-                errors.Add($"[{sourceKey}] {ex.Message}");
-                _logger?.LogWarning("源 {Source} 失败: {Error}，尝试下一个", sourceKey, ex.Message);
-                System.Diagnostics.Debug.WriteLine($"[Fallback] 源 {sourceKey} 异常: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] 异常类型: {ex.GetType().FullName}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] InnerException: {ex.InnerException?.Message}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] InnerException类型: {ex.InnerException?.GetType().FullName}");
-                if (!AutoFallbackEnabled) break;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"[{sourceKey}] {ex.Message}");
-                _logger?.LogError(ex, "源 {Source} 不可恢复错误，停止回退", sourceKey);
-                System.Diagnostics.Debug.WriteLine($"[Fallback] 源 {sourceKey} 不可恢复错误: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] 异常类型: {ex.GetType().FullName}");
-                System.Diagnostics.Debug.WriteLine($"[Fallback] InnerException: {ex.InnerException?.Message}");
-                break; // 不可回退的错误
-            }
-        }
-
-        _logger?.LogError("所有源都失败: {Errors}", string.Join("; ", errors));
-        System.Diagnostics.Debug.WriteLine($"[Fallback] 所有源都失败!");
-        return FallbackHttpResult.Failed(string.Join("; ", errors), attemptedSources);
+        return await SendGetWithFallbackCoreAsync(
+            urlGenerator, configureRequest, GetSourceOrder(primarySource.Key), cancellationToken);
     }
 
     /// <summary>
@@ -390,11 +274,228 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
+        var primarySource = _sourceFactory.GetDefaultSource();
+        return await SendPostWithFallbackCoreAsync(
+            originalUrl, resourceType, contentFactory, configureRequest,
+            GetSourceOrder(primarySource.Key), cancellationToken);
+    }
+
+    #endregion
+
+    #region 核心请求方法（供游戏资源和社区资源共用）
+
+    /// <summary>
+    /// GET 请求核心实现，接受指定的源顺序列表
+    /// </summary>
+    private async Task<FallbackHttpResult> SendGetWithFallbackCoreAsync(
+        Func<IDownloadSource, string?> urlGenerator,
+        Action<HttpRequestMessage, IDownloadSource>? configureRequest,
+        List<string> sourcesToTry,
+        CancellationToken cancellationToken)
+    {
         var attemptedSources = new List<string>();
         var errors = new List<string>();
 
-        var primarySource = _sourceFactory.GetDefaultSource();
-        var sourcesToTry = GetSourceOrder(primarySource.Key);
+        _logger?.LogDebug("回退顺序: {Sources}", string.Join(" -> ", sourcesToTry));
+
+        foreach (var sourceKey in sourcesToTry)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var source = _sourceFactory.GetSource(sourceKey);
+
+            // 使用 URL 生成函数获取 URL
+            string? url;
+            try
+            {
+                url = urlGenerator(source);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "源 {Source} URL生成失败", sourceKey);
+                continue;
+            }
+
+            // 如果返回 null，表示该源不支持，跳过
+            if (string.IsNullOrEmpty(url))
+            {
+                _logger?.LogDebug("源 {Source} 不支持，跳过", sourceKey);
+                continue;
+            }
+
+            attemptedSources.Add(sourceKey);
+            _logger?.LogDebug("尝试 {Source}: {Url}", sourceKey, url);
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                configureRequest?.Invoke(request, source);
+
+                var response = await _httpClient.SendAsync(request, cancellationToken);
+
+                if (response.IsSuccessStatusCode || !ShouldFallbackOnStatusCode(response.StatusCode))
+                {
+                    _logger?.LogInformation("源 {Source} 成功 (HTTP {StatusCode})", sourceKey, (int)response.StatusCode);
+                    return FallbackHttpResult.Succeeded(response, sourceKey, url, attemptedSources);
+                }
+
+                var errorMsg = $"HTTP {(int)response.StatusCode}";
+                errors.Add($"[{sourceKey}] {errorMsg}");
+                _logger?.LogWarning("源 {Source} 失败: {Error}，尝试下一个", sourceKey, errorMsg);
+                response.Dispose();
+
+                if (!AutoFallbackEnabled) break;
+            }
+            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            {
+                errors.Add($"[{sourceKey}] {ex.Message}");
+                _logger?.LogWarning("源 {Source} 失败: {Error}，尝试下一个", sourceKey, ex.Message);
+                if (!AutoFallbackEnabled) break;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"[{sourceKey}] {ex.Message}");
+                _logger?.LogError(ex, "源 {Source} 不可恢复错误，停止回退", sourceKey);
+                break;
+            }
+        }
+
+        _logger?.LogError("所有源都失败: {Errors}", string.Join("; ", errors));
+        return FallbackHttpResult.Failed(string.Join("; ", errors), attemptedSources);
+    }
+
+    /// <summary>
+    /// POST 请求核心实现，接受指定的源顺序列表
+    /// </summary>
+    private async Task<FallbackHttpResult> SendPostWithFallbackCoreAsync(
+        string originalUrl,
+        string resourceType,
+        Func<HttpContent> contentFactory,
+        Action<HttpRequestMessage, IDownloadSource>? configureRequest,
+        List<string> sourcesToTry,
+        CancellationToken cancellationToken)
+    {
+        var attemptedSources = new List<string>();
+        var errors = new List<string>();
+
+        _logger?.LogDebug("POST 回退顺序: {Sources}", string.Join(" -> ", sourcesToTry));
+
+        foreach (var sourceKey in sourcesToTry)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var source = _sourceFactory.GetSource(sourceKey);
+            var transformedUrl = TransformUrl(originalUrl, source, resourceType);
+
+            if (string.IsNullOrEmpty(transformedUrl))
+            {
+                _logger?.LogDebug("源 {Source} 不支持，跳过", sourceKey);
+                continue;
+            }
+
+            attemptedSources.Add(sourceKey);
+            _logger?.LogDebug("POST 尝试 {Source}: {Url}", sourceKey, transformedUrl);
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, transformedUrl);
+                request.Content = contentFactory();
+                configureRequest?.Invoke(request, source);
+
+                var response = await _httpClient.SendAsync(request, cancellationToken);
+
+                if (response.IsSuccessStatusCode || !ShouldFallbackOnStatusCode(response.StatusCode))
+                {
+                    _logger?.LogInformation("POST 源 {Source} 成功 (HTTP {StatusCode})", sourceKey, (int)response.StatusCode);
+                    return FallbackHttpResult.Succeeded(response, sourceKey, transformedUrl, attemptedSources);
+                }
+
+                var errorMsg = $"HTTP {(int)response.StatusCode}";
+                errors.Add($"[{sourceKey}] {errorMsg}");
+                _logger?.LogWarning("POST 源 {Source} 失败: {Error}，尝试下一个", sourceKey, errorMsg);
+                response.Dispose();
+
+                if (!AutoFallbackEnabled) break;
+            }
+            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            {
+                errors.Add($"[{sourceKey}] {ex.Message}");
+                _logger?.LogWarning("POST 源 {Source} 失败: {Error}，尝试下一个", sourceKey, ex.Message);
+                if (!AutoFallbackEnabled) break;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"[{sourceKey}] {ex.Message}");
+                _logger?.LogError(ex, "POST 源 {Source} 不可恢复错误，停止回退", sourceKey);
+                break;
+            }
+        }
+
+        _logger?.LogError("POST 所有源都失败: {Errors}", string.Join("; ", errors));
+        return FallbackHttpResult.Failed(string.Join("; ", errors), attemptedSources);
+    }
+
+    #endregion
+
+    #region 社区资源专用方法（Modrinth / CurseForge，使用社区下载源作为主源）
+
+    /// <summary>
+    /// 社区资源 GET 请求（使用 Modrinth/CurseForge 专用下载源作为主源）
+    /// </summary>
+    public async Task<FallbackHttpResult> SendGetForCommunityAsync(
+        string originalUrl,
+        string resourceType,
+        Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendGetForCommunityAsync(
+            source => TransformUrl(originalUrl, source, resourceType),
+            configureRequest,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// 社区资源 GET 请求（URL 生成器版本）
+    /// </summary>
+    public async Task<FallbackHttpResult> SendGetForCommunityAsync(
+        Func<IDownloadSource, string?> urlGenerator,
+        Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
+        CancellationToken cancellationToken = default)
+    {
+        var sourcesToTry = GetCommunitySourceOrder();
+        return await SendGetWithFallbackCoreAsync(urlGenerator, configureRequest, sourcesToTry, cancellationToken);
+    }
+
+    /// <summary>
+    /// 社区资源 POST 请求
+    /// </summary>
+    public async Task<FallbackHttpResult> SendPostForCommunityAsync(
+        string originalUrl,
+        string resourceType,
+        Func<HttpContent> contentFactory,
+        Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendPostWithFallbackCoreAsync(
+            originalUrl, resourceType, contentFactory, configureRequest,
+            GetCommunitySourceOrder(), cancellationToken);
+    }
+
+    /// <summary>
+    /// 社区资源文件下载（使用社区下载源作为主源）
+    /// </summary>
+    public async Task<FallbackDownloadResult> DownloadFileForCommunityAsync(
+        string originalUrl,
+        string targetPath,
+        string resourceType,
+        Action<double>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        var attemptedSources = new List<string>();
+        var errors = new List<string>();
+        var sourcesToTry = GetCommunitySourceOrder();
+
+        _logger?.LogDebug("社区资源下载 {Url}，回退顺序: {Sources}", originalUrl, string.Join(" -> ", sourcesToTry));
 
         foreach (var sourceKey in sourcesToTry)
         {
@@ -404,39 +505,26 @@ public class FallbackDownloadManager
             attemptedSources.Add(sourceKey);
 
             var transformedUrl = TransformUrl(originalUrl, source, resourceType);
-            _logger?.LogDebug("POST 尝试源 {Source}: {Url}", sourceKey, transformedUrl);
+            _logger?.LogDebug("尝试源 {Source}: {Url}", sourceKey, transformedUrl);
 
-            try
+            var result = await TryDownloadWithRetryAsync(
+                transformedUrl, targetPath, null, progressCallback, cancellationToken);
+
+            if (result.Success)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, transformedUrl);
-                request.Content = contentFactory(); // 每次重新创建 content
-                configureRequest?.Invoke(request, source);
-
-                var response = await _httpClient.SendAsync(request, cancellationToken);
-
-                if (response.IsSuccessStatusCode || !ShouldFallbackOnStatusCode(response.StatusCode))
-                {
-                    return FallbackHttpResult.Succeeded(response, sourceKey, transformedUrl, attemptedSources);
-                }
-
-                errors.Add($"[{sourceKey}] HTTP {(int)response.StatusCode}");
-                response.Dispose();
-
-                if (!AutoFallbackEnabled) break;
+                _logger?.LogInformation("社区资源下载成功，使用源: {Source}", sourceKey);
+                return FallbackDownloadResult.Succeeded(targetPath, originalUrl, sourceKey, attemptedSources);
             }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
-            {
-                errors.Add($"[{sourceKey}] {ex.Message}");
-                if (!AutoFallbackEnabled) break;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"[{sourceKey}] {ex.Message}");
-                break;
-            }
+
+            errors.Add($"[{sourceKey}] {result.ErrorMessage}");
+            _logger?.LogWarning("源 {Source} 下载失败: {Error}", sourceKey, result.ErrorMessage);
+
+            if (!ShouldFallback(result) || !AutoFallbackEnabled) break;
         }
 
-        return FallbackHttpResult.Failed(string.Join("; ", errors), attemptedSources);
+        var allErrors = string.Join("; ", errors);
+        _logger?.LogError("社区资源所有源都失败: {Errors}", allErrors);
+        return FallbackDownloadResult.Failed(originalUrl, allErrors, attemptedSources);
     }
 
     #endregion
@@ -447,6 +535,10 @@ public class FallbackDownloadManager
     /// <summary>
     /// 获取源的尝试顺序（主源在前，其他源按固定顺序）
     /// </summary>
+    /// <summary>
+    /// 获取回退源顺序：主源优先，其余按 FallbackOrder 追加
+    /// </summary>
+    /// <param name="primarySourceKey">主源标识（用户选择的下载源）</param>
     private List<string> GetSourceOrder(string primarySourceKey)
     {
         var order = new List<string> { primarySourceKey };
@@ -460,6 +552,16 @@ public class FallbackDownloadManager
         }
         
         return order;
+    }
+
+    /// <summary>
+    /// 获取社区资源（Modrinth/CurseForge）的回退源顺序
+    /// 使用 Modrinth 专用下载源作为主源
+    /// </summary>
+    private List<string> GetCommunitySourceOrder()
+    {
+        var primarySource = _sourceFactory.GetModrinthSource();
+        return GetSourceOrder(primarySource.Key);
     }
 
     /// <summary>

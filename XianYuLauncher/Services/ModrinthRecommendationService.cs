@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Services;
@@ -17,6 +18,7 @@ namespace XianYuLauncher.Services;
 public class ModrinthRecommendationService
 {
     private readonly IFileService _fileService;
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
     private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     
@@ -24,30 +26,24 @@ public class ModrinthRecommendationService
     private const string CacheFileName = "modrinth_recommendation_cache.json";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(1);
     
-    public ModrinthRecommendationService(IFileService fileService, DownloadSourceFactory downloadSourceFactory = null)
+    public ModrinthRecommendationService(
+        IFileService fileService, 
+        DownloadSourceFactory downloadSourceFactory = null,
+        FallbackDownloadManager? fallbackDownloadManager = null)
     {
         _fileService = fileService;
         _downloadSourceFactory = downloadSourceFactory ?? new DownloadSourceFactory();
+        _fallbackDownloadManager = fallbackDownloadManager;
         _httpClient = new HttpClient();
-        // 不在构造函数中设置固定UA，而是在请求时动态设置
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
-    }
-    
-    /// <summary>
-    /// 获取转换后的 API URL
-    /// </summary>
-    private string GetApiUrl()
-    {
-        var source = _downloadSourceFactory.GetModrinthSource();
-        return source.TransformModrinthApiUrl(OfficialApiUrl);
     }
     
     /// <summary>
     /// 获取当前下载源对应的User-Agent
     /// </summary>
-    private string GetUserAgent()
+    private string GetUserAgent(IDownloadSource? source = null)
     {
-        var source = _downloadSourceFactory.GetModrinthSource();
+        source ??= _downloadSourceFactory.GetModrinthSource();
         if (source.RequiresModrinthUserAgent)
         {
             var ua = source.GetModrinthUserAgent();
@@ -60,13 +56,16 @@ public class ModrinthRecommendationService
     }
     
     /// <summary>
-    /// 创建带有正确User-Agent的HttpRequestMessage
+    /// 配置 Modrinth 请求的 Headers（User-Agent）
+    /// 供 FallbackDownloadManager 的 configureRequest 回调使用
     /// </summary>
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url)
+    private void ConfigureModrinthRequest(HttpRequestMessage request, IDownloadSource source)
     {
-        var request = new HttpRequestMessage(method, url);
-        request.Headers.Add("User-Agent", GetUserAgent());
-        return request;
+        var ua = GetUserAgent(source);
+        if (!string.IsNullOrEmpty(ua))
+        {
+            request.Headers.Add("User-Agent", ua);
+        }
     }
     
     /// <summary>
@@ -111,16 +110,34 @@ public class ModrinthRecommendationService
             }
         }
         
-        // 从 API 获取
+        // 从 API 获取（通过 FallbackDownloadManager 自动回退）
         try
         {
-            var apiUrl = GetApiUrl();
-            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 正在从 API 获取: {apiUrl}");
-            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] User-Agent: {GetUserAgent()}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 正在从 API 获取（官方URL: {OfficialApiUrl}）");
             
-            // 使用CreateRequest确保正确的User-Agent
-            using var request = CreateRequest(HttpMethod.Get, apiUrl);
-            var httpResponse = await _httpClient.SendAsync(request);
+            HttpResponseMessage httpResponse;
+            
+            if (_fallbackDownloadManager != null)
+            {
+                var result = await _fallbackDownloadManager.SendGetForCommunityAsync(
+                    OfficialApiUrl,
+                    "modrinth_api",
+                    ConfigureModrinthRequest);
+                
+                if (!result.Success)
+                    throw new HttpRequestException($"所有源请求失败: {result.ErrorMessage}");
+                
+                httpResponse = result.Response!;
+                System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 使用源: {result.UsedSourceKey}");
+            }
+            else
+            {
+                // 无 FallbackDownloadManager 时直接请求官方API
+                using var request = new HttpRequestMessage(HttpMethod.Get, OfficialApiUrl);
+                ConfigureModrinthRequest(request, _downloadSourceFactory.GetModrinthSource());
+                httpResponse = await _httpClient.SendAsync(request);
+            }
+            
             httpResponse.EnsureSuccessStatusCode();
             var response = await httpResponse.Content.ReadAsStringAsync();
             var projects = JsonConvert.DeserializeObject<List<ModrinthRandomProject>>(response);

@@ -417,73 +417,53 @@ public partial class VersionManagementViewModel
         var result = new ModUpdateResult();
         try
         {
-            var requestBody = new
-            {
-                hashes = hashes,
-                algorithm = "sha1",
-                loaders = new[] { "minecraft" }, // Resource packs just need minecraft loader usually
-                game_versions = new[] { gameVersion }
-            };
+            // 通过 ModrinthService 调用 POST /version_files/update（带回退）
+            // 资源包只需要 minecraft loader
+            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
+                hashes,
+                new[] { "minecraft" },
+                new[] { gameVersion });
             
-            using (var httpClient = new System.Net.Http.HttpClient())
+            if (updateInfo != null && updateInfo.Count > 0)
             {
-                httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
-                string apiUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files/update");
-                var content = new System.Net.Http.StringContent(
-                    System.Text.Json.JsonSerializer.Serialize(requestBody),
-                    System.Text.Encoding.UTF8,
-                    "application/json");
-                
-                var response = await httpClient.PostAsync(apiUrl, content);
-                if (response.IsSuccessStatusCode)
+                foreach (var kvp in updateInfo)
                 {
-                    string responseContent = await response.Content.ReadAsStringAsync();
-                    var updateInfo = System.Text.Json.JsonSerializer.Deserialize<
-                        System.Collections.Generic.Dictionary<string, ModrinthUpdateInfo>
-                    >(responseContent);
+                    string hash = kvp.Key;
+                    var info = kvp.Value;
                     
-                    if (updateInfo != null && updateInfo.Count > 0)
+                    if (filePathMap.TryGetValue(hash, out string filePath))
                     {
-                        foreach (var kvp in updateInfo)
+                        result.ProcessedMods.Add(filePath);
+                        bool needsUpdate = true;
+                        if (info.Files != null && info.Files.Count > 0)
                         {
-                            string hash = kvp.Key;
-                            ModrinthUpdateInfo info = kvp.Value;
-                            
-                            if (filePathMap.TryGetValue(hash, out string filePath))
+                            var primaryFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                            if (primaryFile.Hashes.TryGetValue("sha1", out string newSha1))
                             {
-                                result.ProcessedMods.Add(filePath);
-                                bool needsUpdate = true;
-                                if (info.files != null && info.files.Count > 0)
+                                string currentSha1 = CalculateSHA1(filePath);
+                                if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                    if (primaryFile.hashes.TryGetValue("sha1", out string newSha1))
-                                    {
-                                        string currentSha1 = CalculateSHA1(filePath);
-                                        if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            needsUpdate = false;
-                                            result.UpToDateCount++;
-                                        }
-                                    }
+                                    needsUpdate = false;
+                                    result.UpToDateCount++;
                                 }
+                            }
+                        }
+                        
+                        if (needsUpdate)
+                        {
+                            var primaryFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                            if (!string.IsNullOrEmpty(primaryFile.Url?.ToString()) && !string.IsNullOrEmpty(primaryFile.Filename))
+                            {
+                                string tempFilePath = Path.Combine(savePath, $"{primaryFile.Filename}.tmp");
+                                string finalFilePath = Path.Combine(savePath, primaryFile.Filename);
                                 
-                                if (needsUpdate)
+                                bool downloadSuccess = await DownloadModAsync(primaryFile.Url.ToString(), tempFilePath);
+                                if (downloadSuccess)
                                 {
-                                    var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                    if (!string.IsNullOrEmpty(primaryFile.url) && !string.IsNullOrEmpty(primaryFile.filename))
-                                    {
-                                        string tempFilePath = Path.Combine(savePath, $"{primaryFile.filename}.tmp");
-                                        string finalFilePath = Path.Combine(savePath, primaryFile.filename);
-                                        
-                                        bool downloadSuccess = await DownloadModAsync(primaryFile.url, tempFilePath);
-                                        if (downloadSuccess)
-                                        {
-                                            if (File.Exists(filePath)) File.Delete(filePath);
-                                            if (File.Exists(finalFilePath)) File.Delete(finalFilePath);
-                                            File.Move(tempFilePath, finalFilePath);
-                                            result.UpdatedCount++;
-                                        }
-                                    }
+                                    if (File.Exists(filePath)) File.Delete(filePath);
+                                    if (File.Exists(finalFilePath)) File.Delete(finalFilePath);
+                                    File.Move(tempFilePath, finalFilePath);
+                                    result.UpdatedCount++;
                                 }
                             }
                         }

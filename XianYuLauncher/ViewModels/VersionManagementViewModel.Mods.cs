@@ -290,7 +290,7 @@ public partial class VersionManagementViewModel
         }
 
         /// <summary>
-        /// 从Modrinth API获取mod图标URL
+        /// 从Modrinth API获取mod图标URL（通过 ModrinthService 走 FallbackDownloadManager）
         /// </summary>
         /// <param name="filePath">mod文件路径</param>
         /// <param name="cancellationToken">取消令牌</param>
@@ -305,70 +305,22 @@ public partial class VersionManagementViewModel
                 string sha1Hash = CalculateSHA1(filePath);
                 System.Diagnostics.Debug.WriteLine($"计算SHA1哈希值: {sha1Hash}");
 
-                // 构建请求体
-                var requestBody = new
+                // 通过 ModrinthService 调用 POST /version_files（带回退）
+                var versionMap = await _modrinthService.GetVersionFilesByHashesAsync(new List<string> { sha1Hash });
+                
+                if (versionMap != null && versionMap.TryGetValue(sha1Hash, out var versionInfo) && versionInfo != null)
                 {
-                    hashes = new[] { sha1Hash },
-                    algorithm = "sha1"
-                };
-
-                // 调用Modrinth API的POST /version_files端点
-                using (var httpClient = new System.Net.Http.HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
+                    string projectId = versionInfo.ProjectId;
+                    System.Diagnostics.Debug.WriteLine($"获取到project_id: {projectId}");
                     
-                    string versionFilesUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files");
-                    var content = new System.Net.Http.StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(requestBody),
-                        System.Text.Encoding.UTF8,
-                        "application/json");
+                    cancellationToken.ThrowIfCancellationRequested();
                     
-                    System.Diagnostics.Debug.WriteLine($"调用Modrinth API: {versionFilesUrl}");
-                    var response = await httpClient.PostAsync(versionFilesUrl, content, cancellationToken);
-                    
-                    if (response.IsSuccessStatusCode)
+                    // 通过 ModrinthService 获取项目详情（带回退）
+                    var projectDetail = await _modrinthService.GetProjectDetailAsync(projectId);
+                    if (projectDetail != null && !string.IsNullOrEmpty(projectDetail.IconUrl?.ToString()))
                     {
-                        string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                        System.Diagnostics.Debug.WriteLine($"API响应: {responseContent}");
-                        
-                        // 解析响应
-                        var versionResponse = System.Text.Json.JsonSerializer.Deserialize<
-                            System.Collections.Generic.Dictionary<string, VersionInfo>
-                        >(responseContent);
-                        
-                        if (versionResponse != null && versionResponse.ContainsKey(sha1Hash))
-                        {
-                            VersionInfo versionInfo = versionResponse[sha1Hash];
-                            string projectId = versionInfo.project_id;
-                            
-                            System.Diagnostics.Debug.WriteLine($"获取到project_id: {projectId}");
-                            
-                            cancellationToken.ThrowIfCancellationRequested();
-                            
-                            // 调用Modrinth API的GET /project/{id}端点
-                            string projectUrl = TransformModrinthApiUrl($"https://api.modrinth.com/v2/project/{projectId}");
-                            System.Diagnostics.Debug.WriteLine($"调用Modrinth API获取项目信息: {projectUrl}");
-                            var projectResponse = await httpClient.GetAsync(projectUrl, cancellationToken);
-                            
-                            if (projectResponse.IsSuccessStatusCode)
-                            {
-                                string projectContent = await projectResponse.Content.ReadAsStringAsync(cancellationToken);
-                                System.Diagnostics.Debug.WriteLine($"项目API响应: {projectContent}");
-                                
-                                // 解析项目响应
-                                var projectInfo = System.Text.Json.JsonSerializer.Deserialize<ProjectInfo>(projectContent);
-                                
-                                if (projectInfo != null && !string.IsNullOrEmpty(projectInfo.icon_url))
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"获取到icon_url: {projectInfo.icon_url}");
-                                    return projectInfo.icon_url;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"API调用失败: {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine($"获取到icon_url: {projectDetail.IconUrl}");
+                        return projectDetail.IconUrl.ToString();
                     }
                 }
             }
@@ -439,22 +391,6 @@ public partial class VersionManagementViewModel
                 System.Diagnostics.Debug.WriteLine($"保存Modrinth图标失败: {ex.Message}");
                 return null;
             }
-        }
-
-        /// <summary>
-        /// 版本信息类，用于解析Modrinth API响应
-        /// </summary>
-        private class VersionInfo
-        {
-            public string project_id { get; set; }
-        }
-
-        /// <summary>
-        /// 项目信息类，用于解析Modrinth API响应
-        /// </summary>
-        private class ProjectInfo
-        {
-            public string icon_url { get; set; }
         }
 
         /// <summary>
@@ -1332,48 +1268,8 @@ public partial class VersionManagementViewModel
             }
         }
         
-        // Modrinth更新信息数据模型
-        private class ModrinthUpdateInfo
-        {
-            public string name { get; set; }
-            public string version_number { get; set; }
-            public string changelog { get; set; }
-            public List<ModrinthDependency> dependencies { get; set; }
-            public List<string> game_versions { get; set; }
-            public string version_type { get; set; }
-            public List<string> loaders { get; set; }
-            public bool featured { get; set; }
-            public string status { get; set; }
-            public string requested_status { get; set; }
-            public string id { get; set; }
-            public string project_id { get; set; }
-            public string author_id { get; set; }
-            public string date_published { get; set; }
-            public int downloads { get; set; }
-            public string changelog_url { get; set; }
-            public List<ModrinthFile> files { get; set; }
-        }
-        
-        // Modrinth依赖数据模型
-        private class ModrinthDependency
-        {
-            public string version_id { get; set; }
-            public string project_id { get; set; }
-            public string file_name { get; set; }
-        }
-        
-        // Modrinth文件数据模型
-        private class ModrinthFile
-        {
-            public Dictionary<string, string> hashes { get; set; }
-            public string url { get; set; }
-            public string filename { get; set; }
-            public bool primary { get; set; }
-            public long size { get; set; }
-        }
-        
         /// <summary>
-        /// 尝试通过 Modrinth 更新 Mod
+        /// 尝试通过 Modrinth 更新 Mod（通过 ModrinthService 走 FallbackDownloadManager）
         /// </summary>
         /// <returns>更新结果</returns>
         private async Task<ModUpdateResult> TryUpdateModsViaModrinthAsync(
@@ -1387,136 +1283,87 @@ public partial class VersionManagementViewModel
             
             try
             {
-                // 构建API请求
-                var requestBody = new
-                {
-                    hashes = modHashes,
-                    algorithm = "sha1",
-                    loaders = new[] { modLoader },
-                    game_versions = new[] { gameVersion }
-                };
-                
                 System.Diagnostics.Debug.WriteLine($"[Modrinth] 请求更新信息，Mod数量: {modHashes.Count}");
                 
-                // 调用Modrinth API
-                using (var httpClient = new System.Net.Http.HttpClient())
+                // 通过 ModrinthService 调用 POST /version_files/update（带回退）
+                var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
+                    modHashes,
+                    new[] { modLoader },
+                    new[] { gameVersion });
+                
+                if (updateInfo != null && updateInfo.Count > 0)
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 找到 {updateInfo.Count} 个Mod的更新信息");
                     
-                    string apiUrl = TransformModrinthApiUrl("https://api.modrinth.com/v2/version_files/update");
-                    var content = new System.Net.Http.StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(requestBody),
-                        System.Text.Encoding.UTF8,
-                        "application/json");
-                    
-                    var response = await httpClient.PostAsync(apiUrl, content);
-                    if (response.IsSuccessStatusCode)
+                    foreach (var kvp in updateInfo)
                     {
-                        string responseContent = await response.Content.ReadAsStringAsync();
-                        System.Diagnostics.Debug.WriteLine($"[Modrinth] API响应成功");
+                        string hash = kvp.Key;
+                        var info = kvp.Value;
                         
-                        // 解析响应
-                        var updateInfo = System.Text.Json.JsonSerializer.Deserialize<
-                            System.Collections.Generic.Dictionary<string, ModrinthUpdateInfo>
-                        >(responseContent);
-                        
-                        if (updateInfo != null && updateInfo.Count > 0)
+                        if (modFilePathMap.TryGetValue(hash, out string modFilePath))
                         {
-                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 找到 {updateInfo.Count} 个Mod的更新信息");
+                            result.ProcessedMods.Add(modFilePath);
                             
-                            // 处理每个Mod的更新
-                            foreach (var kvp in updateInfo)
+                            bool needsUpdate = true;
+                            
+                            if (info.Files != null && info.Files.Count > 0)
                             {
-                                string hash = kvp.Key;
-                                ModrinthUpdateInfo info = kvp.Value;
-                                
-                                if (modFilePathMap.TryGetValue(hash, out string modFilePath))
+                                var primaryFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                                if (primaryFile.Hashes.TryGetValue("sha1", out string newSha1))
                                 {
-                                    result.ProcessedMods.Add(modFilePath);
-                                    
-                                    // 检查是否需要更新
-                                    bool needsUpdate = true;
-                                    
-                                    // 检查是否已有相同SHA1的Mod
-                                    if (info.files != null && info.files.Count > 0)
+                                    string currentSha1 = CalculateSHA1(modFilePath);
+                                    if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                        if (primaryFile.hashes.TryGetValue("sha1", out string newSha1))
-                                        {
-                                            // 计算当前Mod的SHA1
-                                            string currentSha1 = CalculateSHA1(modFilePath);
-                                            if (currentSha1.Equals(newSha1, StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"[Modrinth] Mod {Path.GetFileName(modFilePath)} 已经是最新版本");
-                                                needsUpdate = false;
-                                                result.UpToDateCount++;
-                                            }
-                                        }
+                                        System.Diagnostics.Debug.WriteLine($"[Modrinth] Mod {Path.GetFileName(modFilePath)} 已经是最新版本");
+                                        needsUpdate = false;
+                                        result.UpToDateCount++;
                                     }
+                                }
+                            }
+                            
+                            if (needsUpdate)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新Mod: {Path.GetFileName(modFilePath)}");
+                                
+                                var primaryFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                                if (!string.IsNullOrEmpty(primaryFile.Url?.ToString()) && !string.IsNullOrEmpty(primaryFile.Filename))
+                                {
+                                    string tempFilePath = Path.Combine(modsPath, $"{primaryFile.Filename}.tmp");
+                                    string finalFilePath = Path.Combine(modsPath, primaryFile.Filename);
                                     
-                                    if (needsUpdate)
+                                    bool downloadSuccess = await DownloadModAsync(primaryFile.Url.ToString(), tempFilePath);
+                                    if (downloadSuccess)
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新Mod: {Path.GetFileName(modFilePath)}");
-                                        
-                                        // 获取主要文件
-                                        var primaryFile = info.files.FirstOrDefault(f => f.primary) ?? info.files[0];
-                                        if (!string.IsNullOrEmpty(primaryFile.url) && !string.IsNullOrEmpty(primaryFile.filename))
+                                        // 处理依赖关系
+                                        if (info.Dependencies != null && info.Dependencies.Count > 0)
                                         {
-                                            // 临时文件路径
-                                            string tempFilePath = Path.Combine(modsPath, $"{primaryFile.filename}.tmp");
-                                            // 最终文件路径
-                                            string finalFilePath = Path.Combine(modsPath, primaryFile.filename);
-                                            
-                                            // 下载最新版本
-                                            bool downloadSuccess = await DownloadModAsync(primaryFile.url, tempFilePath);
-                                            if (downloadSuccess)
-                                            {
-                                                // 处理依赖关系
-                                                if (info.dependencies != null && info.dependencies.Count > 0)
-                                                {
-                                                    // 转换依赖类型
-                                                    var coreDependencies = info.dependencies.Select(dep => new Core.Models.Dependency
-                                                    {
-                                                        VersionId = dep.version_id,
-                                                        ProjectId = dep.project_id,
-                                                        FileName = dep.file_name
-                                                    }).ToList();
-                                                    await ProcessDependenciesAsync(coreDependencies, modsPath);
-                                                }
-                                                
-                                                // 删除旧Mod文件
-                                                if (File.Exists(modFilePath))
-                                                {
-                                                    File.Delete(modFilePath);
-                                                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除旧Mod文件: {modFilePath}");
-                                                }
-                                                
-                                                // 重命名临时文件为最终文件名
-                                                // 先检查目标文件是否已存在，如果存在则删除
-                                                if (File.Exists(finalFilePath))
-                                                {
-                                                    File.Delete(finalFilePath);
-                                                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除已存在的目标文件: {finalFilePath}");
-                                                }
-                                                File.Move(tempFilePath, finalFilePath);
-                                                System.Diagnostics.Debug.WriteLine($"[Modrinth] 已更新Mod: {finalFilePath}");
-                                                
-                                                result.UpdatedCount++;
-                                            }
+                                            await ProcessDependenciesAsync(info.Dependencies, modsPath);
                                         }
+                                        
+                                        if (File.Exists(modFilePath))
+                                        {
+                                            File.Delete(modFilePath);
+                                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除旧Mod文件: {modFilePath}");
+                                        }
+                                        
+                                        if (File.Exists(finalFilePath))
+                                        {
+                                            File.Delete(finalFilePath);
+                                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除已存在的目标文件: {finalFilePath}");
+                                        }
+                                        File.Move(tempFilePath, finalFilePath);
+                                        System.Diagnostics.Debug.WriteLine($"[Modrinth] 已更新Mod: {finalFilePath}");
+                                        
+                                        result.UpdatedCount++;
                                     }
                                 }
                             }
                         }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 没有找到任何Mod的更新信息");
-                        }
                     }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Modrinth] API调用失败: {response.StatusCode}");
-                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 没有找到任何Mod的更新信息");
                 }
             }
             catch (Exception ex)
@@ -1807,45 +1654,6 @@ public partial class VersionManagementViewModel
             {
                 System.Diagnostics.Debug.WriteLine($"下载Mod失败: {ex.Message}");
                 return false;
-            }
-        }
-        
-        /// <summary>
-        /// 获取Mod版本信息
-        /// </summary>
-        /// <param name="versionId">版本ID</param>
-        /// <returns>版本信息</returns>
-        private async Task<ModrinthUpdateInfo> GetModrinthVersionInfoAsync(string versionId)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"获取Mod版本信息: {versionId}");
-                
-                using (var httpClient = new System.Net.Http.HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", GetModrinthUserAgent());
-                    
-                    string apiUrl = TransformModrinthApiUrl($"https://api.modrinth.com/v2/version/{versionId}");
-                    var response = await httpClient.GetAsync(apiUrl);
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string responseContent = await response.Content.ReadAsStringAsync();
-                        System.Diagnostics.Debug.WriteLine($"版本信息响应: {responseContent}");
-                        
-                        return System.Text.Json.JsonSerializer.Deserialize<ModrinthUpdateInfo>(responseContent);
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"获取版本信息失败: {response.StatusCode}");
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"获取版本信息失败: {ex.Message}");
-                return null;
             }
         }
         

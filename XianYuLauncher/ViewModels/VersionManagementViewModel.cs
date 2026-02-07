@@ -40,39 +40,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionInfoService _versionInfoService;
     
     /// <summary>
-    /// 转换 Modrinth API URL 到当前下载源
-    /// </summary>
-    private string TransformModrinthApiUrl(string originalUrl)
-    {
-        return _downloadSourceFactory?.GetModrinthSource()?.TransformModrinthApiUrl(originalUrl) ?? originalUrl;
-    }
-    
-    /// <summary>
-    /// 获取当前下载源对应的User-Agent
-    /// </summary>
-    private string GetModrinthUserAgent()
-    {
-        var source = _downloadSourceFactory?.GetModrinthSource();
-        if (source != null && source.RequiresModrinthUserAgent)
-        {
-            var ua = source.GetModrinthUserAgent();
-            if (!string.IsNullOrEmpty(ua))
-            {
-                return ua;
-            }
-        }
-        return XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent();
-    }
-    
-    /// <summary>
-    /// 转换 Modrinth CDN URL 到当前下载源
-    /// </summary>
-    private string TransformModrinthCdnUrl(string originalUrl)
-    {
-        return _downloadSourceFactory?.GetModrinthSource()?.TransformModrinthCdnUrl(originalUrl) ?? originalUrl;
-    }
-    
-    /// <summary>
     /// 已安装版本列表
     /// </summary>
     private List<VersionListViewModel.VersionInfoItem> _installedVersions = new();

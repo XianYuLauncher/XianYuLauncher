@@ -296,14 +296,12 @@ public partial class App : Application
             services.AddSingleton<OptifineService>();
             
             // Mod Info Service (获取 Mod 描述信息)
-            services.AddHttpClient<ModInfoService>();
             services.AddSingleton<ModInfoService>(sp =>
             {
-                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(nameof(ModInfoService));
+                var modrinthService = sp.GetRequiredService<ModrinthService>();
                 var translationService = sp.GetRequiredService<ITranslationService>();
                 var curseForgeService = sp.GetRequiredService<CurseForgeService>();
-                return new ModInfoService(httpClient, translationService, curseForgeService);
+                return new ModInfoService(modrinthService, translationService, curseForgeService);
             });
             
             // AuthlibInjector Service

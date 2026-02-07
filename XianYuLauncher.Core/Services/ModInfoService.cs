@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
@@ -62,9 +61,9 @@ public class ModMetadata
 /// </summary>
 public class ModInfoService
 {
-    private readonly HttpClient _httpClient;
     private readonly ITranslationService _translationService;
     private readonly CurseForgeService _curseForgeService;
+    private readonly ModrinthService _modrinthService;
     
     // 内存缓存
     private readonly Dictionary<string, ModMetadata?> _memoryCache = new();
@@ -83,11 +82,11 @@ public class ModInfoService
     );
     
     public ModInfoService(
-        HttpClient httpClient,
+        ModrinthService modrinthService,
         ITranslationService translationService,
         CurseForgeService curseForgeService)
     {
-        _httpClient = httpClient;
+        _modrinthService = modrinthService;
         _translationService = translationService;
         _curseForgeService = curseForgeService;
         
@@ -190,54 +189,33 @@ public class ModInfoService
     }
     
     /// <summary>
-    /// 从 Modrinth 通过 SHA1 获取 Mod 信息
+    /// 从 Modrinth 通过 SHA1 获取 Mod 信息（通过 ModrinthService 走 FallbackDownloadManager）
     /// </summary>
     private async Task<ModMetadata?> GetModrinthInfoBySHA1Async(string sha1, CancellationToken cancellationToken)
     {
         try
         {
-            // 获取版本信息
-            var versionUrl = $"https://api.modrinth.com/v2/version_file/{sha1}?algorithm=sha1";
-            using var versionRequest = new HttpRequestMessage(HttpMethod.Get, versionUrl);
-            versionRequest.Headers.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
-            
-            var versionResponse = await _httpClient.SendAsync(versionRequest, cancellationToken);
-            if (!versionResponse.IsSuccessStatusCode)
+            // 通过 ModrinthService 获取版本文件信息（带回退）
+            var versionInfo = await _modrinthService.GetVersionFileByHashAsync(sha1);
+            if (versionInfo == null || string.IsNullOrEmpty(versionInfo.ProjectId))
             {
                 return null;
             }
             
-            var versionJson = await versionResponse.Content.ReadAsStringAsync(cancellationToken);
-            using var versionDoc = JsonDocument.Parse(versionJson);
-            var projectId = versionDoc.RootElement.GetProperty("project_id").GetString();
-            
-            if (string.IsNullOrEmpty(projectId))
+            // 通过 ModrinthService 获取项目详情（带回退）
+            var projectDetail = await _modrinthService.GetProjectDetailAsync(versionInfo.ProjectId);
+            if (projectDetail == null)
             {
                 return null;
             }
-            
-            // 获取项目详情
-            var projectUrl = $"https://api.modrinth.com/v2/project/{projectId}";
-            using var projectRequest = new HttpRequestMessage(HttpMethod.Get, projectUrl);
-            projectRequest.Headers.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
-            
-            var projectResponse = await _httpClient.SendAsync(projectRequest, cancellationToken);
-            if (!projectResponse.IsSuccessStatusCode)
-            {
-                return null;
-            }
-            
-            var projectJson = await projectResponse.Content.ReadAsStringAsync(cancellationToken);
-            using var projectDoc = JsonDocument.Parse(projectJson);
-            var root = projectDoc.RootElement;
             
             return new ModMetadata
             {
-                Name = root.TryGetProperty("title", out var title) ? title.GetString() : null,
-                Description = root.TryGetProperty("description", out var desc) ? desc.GetString() : null,
-                IconUrl = root.TryGetProperty("icon_url", out var icon) ? icon.GetString() : null,
+                Name = projectDetail.Title,
+                Description = projectDetail.Description,
+                IconUrl = projectDetail.IconUrl?.ToString(),
                 Source = "Modrinth",
-                ProjectId = projectId
+                ProjectId = versionInfo.ProjectId
             };
         }
         catch
