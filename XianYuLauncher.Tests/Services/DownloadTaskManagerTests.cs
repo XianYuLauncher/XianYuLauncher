@@ -69,7 +69,7 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
@@ -92,7 +92,7 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
             .Returns(async () => await Task.Delay(5000)); // 模拟长时间下载
 
@@ -115,7 +115,7 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
@@ -141,7 +141,7 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
             .ThrowsAsync(new Exception("下载失败"));
 
@@ -168,7 +168,7 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
             .Returns(async () => await Task.Delay(5000));
 
@@ -201,14 +201,14 @@ public class DownloadTaskManagerTests
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>()))
-            .Callback<string, string, Action<double>, string>((_, _, callback, _) =>
+            .Callback<string, string, Action<DownloadProgressStatus>, string>((_, _, callback, _) =>
             {
-                callback?.Invoke(25);
-                callback?.Invoke(50);
-                callback?.Invoke(75);
-                callback?.Invoke(100);
+                callback?.Invoke(new DownloadProgressStatus(0, 0, 25));
+                callback?.Invoke(new DownloadProgressStatus(0, 0, 50));
+                callback?.Invoke(new DownloadProgressStatus(0, 0, 75));
+                callback?.Invoke(new DownloadProgressStatus(0, 0, 100));
             })
             .Returns(Task.CompletedTask);
 
@@ -245,7 +245,7 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<Action<double>>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>(),
                 It.IsAny<string>()))
             .Returns(Task.CompletedTask);
