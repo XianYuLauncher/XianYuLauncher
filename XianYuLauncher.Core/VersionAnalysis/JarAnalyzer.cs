@@ -61,13 +61,8 @@ namespace XianYuLauncher.Core.VersionAnalysis
                                 string json = reader.ReadToEnd();
                                 var info = JsonConvert.DeserializeObject<JarVersionInfo>(json);
                                 
-                                // version.json 中的 'name' 字段通常是 "1.20.1" 这种版本号
-                                if (!string.IsNullOrEmpty(info?.Name))
-                                {
-                                    _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到版本: {info.Name}");
-                                    return info.Name;
-                                }
-                                // 在旧版本中可能是 id
+                                // 严格使用 'id' 字段，它是标准的版本标识 (如 "26.1-snapshot-1")
+                                // 'name' 字段 (如 "26.1 Snapshot 1") 大多是显示用途，包含空格等非标准字符，不可用于逻辑判断
                                 if (!string.IsNullOrEmpty(info?.Id))
                                 {
                                     _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到ID: {info.Id}");
