@@ -2544,7 +2544,7 @@
     <value>网络</value>
   </data>
   <data name="Settings_AISection.Text" xml:space="preserve">
-    <value>智能分析</value>
+    <value>AI 分析</value>
   </data>
   <data name="Settings_AboutSection.Text" xml:space="preserve">
     <value>关于</value>
@@ -2652,6 +2652,12 @@
   <data name="Settings_DownloadThreadCount.Description" xml:space="preserve">
     <value>同时下载资源文件的数量，数值越大下载越快</value>
   </data>
+  <data name="Settings_DownloadShardCount.Header" xml:space="preserve">
+    <value>核心文件分片数</value>
+  </data>
+  <data name="Settings_DownloadShardCount.Description" xml:space="preserve">
+    <value>单个大文件的分片并发下载数量</value>
+  </data>
   <data name="Settings_CacheManagement.Header" xml:space="preserve">
     <value>缓存管理</value>
   </data>
@@ -2693,5 +2699,59 @@
   </data>
   <data name="Settings_OpenLogDirectory.Description" xml:space="preserve">
     <value>查看启动器运行日志，用于排查问题</value>
+  </data>
+  <data name="VersionManagerPage_MemorySettingMode.Text" xml:space="preserve">
+    <value>内存设置模式</value>
+  </data>
+  <data name="VersionManagerPage_MemoryFollowGlobal.Content" xml:space="preserve">
+    <value>跟随全局设置</value>
+  </data>
+  <data name="VersionManagerPage_MemoryCustom.Content" xml:space="preserve">
+    <value>自定义</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionSettingMode.Text" xml:space="preserve">
+    <value>分辨率设置模式</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionFollowGlobal.Content" xml:space="preserve">
+    <value>跟随全局设置</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionCustom.Content" xml:space="preserve">
+    <value>自定义</value>
+  </data>
+  <data name="Settings_GlobalMemory.Header" xml:space="preserve">
+    <value>全局内存分配</value>
+  </data>
+  <data name="Settings_GlobalMemory.Description" xml:space="preserve">
+    <value>设置所有版本的默认内存分配，版本可单独覆盖</value>
+  </data>
+  <data name="Settings_GlobalAutoMemory.OnContent" xml:space="preserve">
+    <value>自动分配</value>
+  </data>
+  <data name="Settings_GlobalAutoMemory.OffContent" xml:space="preserve">
+    <value>手动设置</value>
+  </data>
+  <data name="Settings_GlobalInitialHeap.Header" xml:space="preserve">
+    <value>初始堆内存</value>
+  </data>
+  <data name="Settings_GlobalInitialHeap.Description" xml:space="preserve">
+    <value>游戏启动时分配的初始内存（GB）</value>
+  </data>
+  <data name="Settings_GlobalMaxHeap.Header" xml:space="preserve">
+    <value>最大堆内存</value>
+  </data>
+  <data name="Settings_GlobalMaxHeap.Description" xml:space="preserve">
+    <value>游戏运行时允许使用的最大内存（GB）</value>
+  </data>
+  <data name="Settings_GlobalResolution.Header" xml:space="preserve">
+    <value>全局启动分辨率</value>
+  </data>
+  <data name="Settings_GlobalResolution.Description" xml:space="preserve">
+    <value>设置所有版本的默认启动窗口大小，版本可单独覆盖</value>
+  </data>
+  <data name="Settings_GlobalWindowWidth.Header" xml:space="preserve">
+    <value>窗口宽度</value>
+  </data>
+  <data name="Settings_GlobalWindowHeight.Header" xml:space="preserve">
+    <value>窗口高度</value>
   </data>
 </root>

@@ -2640,6 +2640,12 @@ Continue downloading?</value>
   <data name="Settings_DownloadThreadCount.Description" xml:space="preserve">
     <value>Number of concurrent downloads, higher is faster</value>
   </data>
+  <data name="Settings_DownloadShardCount.Header" xml:space="preserve">
+    <value>File Shard Count</value>
+  </data>
+  <data name="Settings_DownloadShardCount.Description" xml:space="preserve">
+    <value>Number of concurrent shards for downloading large files</value>
+  </data>
   <data name="Settings_CacheManagement.Header" xml:space="preserve">
     <value>Cache Management</value>
   </data>
@@ -2681,5 +2687,59 @@ Continue downloading?</value>
   </data>
   <data name="Settings_OpenLogDirectory.Description" xml:space="preserve">
     <value>View launcher logs for troubleshooting</value>
+  </data>
+  <data name="VersionManagerPage_MemorySettingMode.Text" xml:space="preserve">
+    <value>Memory Setting Mode</value>
+  </data>
+  <data name="VersionManagerPage_MemoryFollowGlobal.Content" xml:space="preserve">
+    <value>Follow Global Settings</value>
+  </data>
+  <data name="VersionManagerPage_MemoryCustom.Content" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionSettingMode.Text" xml:space="preserve">
+    <value>Resolution Setting Mode</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionFollowGlobal.Content" xml:space="preserve">
+    <value>Follow Global Settings</value>
+  </data>
+  <data name="VersionManagerPage_ResolutionCustom.Content" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Settings_GlobalMemory.Header" xml:space="preserve">
+    <value>Global Memory Allocation</value>
+  </data>
+  <data name="Settings_GlobalMemory.Description" xml:space="preserve">
+    <value>Set default memory allocation for all versions, can be overridden per version</value>
+  </data>
+  <data name="Settings_GlobalAutoMemory.OnContent" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Settings_GlobalAutoMemory.OffContent" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="Settings_GlobalInitialHeap.Header" xml:space="preserve">
+    <value>Initial Heap Memory</value>
+  </data>
+  <data name="Settings_GlobalInitialHeap.Description" xml:space="preserve">
+    <value>Initial memory allocated when game starts (GB)</value>
+  </data>
+  <data name="Settings_GlobalMaxHeap.Header" xml:space="preserve">
+    <value>Maximum Heap Memory</value>
+  </data>
+  <data name="Settings_GlobalMaxHeap.Description" xml:space="preserve">
+    <value>Maximum memory the game can use (GB)</value>
+  </data>
+  <data name="Settings_GlobalResolution.Header" xml:space="preserve">
+    <value>Global Launch Resolution</value>
+  </data>
+  <data name="Settings_GlobalResolution.Description" xml:space="preserve">
+    <value>Set default launch window size for all versions, can be overridden per version</value>
+  </data>
+  <data name="Settings_GlobalWindowWidth.Header" xml:space="preserve">
+    <value>Window Width</value>
+  </data>
+  <data name="Settings_GlobalWindowHeight.Header" xml:space="preserve">
+    <value>Window Height</value>
   </data>
 </root>

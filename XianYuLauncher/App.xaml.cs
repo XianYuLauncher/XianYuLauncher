@@ -170,6 +170,7 @@ public partial class App : Application
             services.AddSingleton<ICrashAnalyzer, CrashAnalyzer>();
             services.AddSingleton<IProfileManager, ProfileManager>();
             services.AddSingleton<IVersionConfigService, VersionConfigService>();
+            services.AddSingleton<ILaunchSettingsResolver, LaunchSettingsResolver>();
             services.AddSingleton<IRegionValidator, RegionValidator>();
             services.AddSingleton<TerracottaService>();
             services.AddSingleton<ITokenRefreshService>(sp =>

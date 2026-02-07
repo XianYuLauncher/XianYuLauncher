@@ -103,6 +103,13 @@ public partial class SettingsViewModel : ObservableRecipient
         private const string LanguageKey = "Language";
     private const string MinecraftPathKey = "MinecraftPath";
     
+    // 全局启动设置 Key
+    private const string GlobalAutoMemoryKey = "GlobalAutoMemoryAllocation";
+    private const string GlobalInitialHeapKey = "GlobalInitialHeapMemory";
+    private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
+    private const string GlobalWindowWidthKey = "GlobalWindowWidth";
+    private const string GlobalWindowHeightKey = "GlobalWindowHeight";
+    
     // AI Analysis Settings keys
     private const string EnableAIAnalysisKey = "EnableAIAnalysis";
     private const string AIApiEndpointKey = "AIApiEndpoint";
@@ -534,6 +541,40 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _enableTelemetry = true;
 
+    #region 全局启动设置
+    
+    /// <summary>
+    /// 全局：是否自动分配内存
+    /// </summary>
+    [ObservableProperty]
+    private bool _globalAutoMemoryAllocation = true;
+    
+    /// <summary>
+    /// 全局：初始堆内存（GB）
+    /// </summary>
+    [ObservableProperty]
+    private double _globalInitialHeapMemory = 6.0;
+    
+    /// <summary>
+    /// 全局：最大堆内存（GB）
+    /// </summary>
+    [ObservableProperty]
+    private double _globalMaximumHeapMemory = 12.0;
+    
+    /// <summary>
+    /// 全局：窗口宽度
+    /// </summary>
+    [ObservableProperty]
+    private int _globalWindowWidth = 1280;
+    
+    /// <summary>
+    /// 全局：窗口高度
+    /// </summary>
+    [ObservableProperty]
+    private int _globalWindowHeight = 720;
+    
+    #endregion
+
     /// <summary>
     /// 允许发送匿名遥测数据设置键
     /// </summary>
@@ -781,6 +822,8 @@ public partial class SettingsViewModel : ObservableRecipient
         RefreshCacheSizeInfo();
         // 加载自动检查更新设置
         LoadAutoUpdateCheckModeAsync().ConfigureAwait(false);
+        // 加载全局启动设置
+        LoadGlobalLaunchSettingsAsync().ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1319,6 +1362,47 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         _localSettingsService.SaveSettingAsync(EnableTelemetryKey, value).ConfigureAwait(false);
     }
+    
+    #region 全局启动设置加载/保存
+    
+    /// <summary>
+    /// 加载全局启动设置
+    /// </summary>
+    private async Task LoadGlobalLaunchSettingsAsync()
+    {
+        GlobalAutoMemoryAllocation = await _localSettingsService.ReadSettingAsync<bool?>(GlobalAutoMemoryKey) ?? true;
+        GlobalInitialHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
+        GlobalMaximumHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
+        GlobalWindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
+        GlobalWindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
+    }
+    
+    partial void OnGlobalAutoMemoryAllocationChanged(bool value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalAutoMemoryKey, value).ConfigureAwait(false);
+    }
+    
+    partial void OnGlobalInitialHeapMemoryChanged(double value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalInitialHeapKey, value).ConfigureAwait(false);
+    }
+    
+    partial void OnGlobalMaximumHeapMemoryChanged(double value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalMaxHeapKey, value).ConfigureAwait(false);
+    }
+    
+    partial void OnGlobalWindowWidthChanged(int value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalWindowWidthKey, value).ConfigureAwait(false);
+    }
+    
+    partial void OnGlobalWindowHeightChanged(int value)
+    {
+        _localSettingsService.SaveSettingAsync(GlobalWindowHeightKey, value).ConfigureAwait(false);
+    }
+    
+    #endregion
     
     /// <summary>
     /// 加载材质类型设置

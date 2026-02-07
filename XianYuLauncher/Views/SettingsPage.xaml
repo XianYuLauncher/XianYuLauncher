@@ -301,6 +301,41 @@
                     <ToggleSwitch IsOn="{x:Bind ViewModel.EnableVersionIsolation, Mode=TwoWay}" />
                 </controls:SettingsCard>
 
+                <!-- 全局内存分配 -->
+                <controls:SettingsExpander x:Uid="Settings_GlobalMemory" Header="全局内存分配" Description="设置所有版本的默认内存分配，版本可单独覆盖">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xEEA0;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <ToggleSwitch x:Uid="Settings_GlobalAutoMemory" IsOn="{x:Bind ViewModel.GlobalAutoMemoryAllocation, Mode=TwoWay}" />
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_GlobalInitialHeap" Header="初始堆内存" Description="游戏启动时分配的初始内存（GB）">
+                            <NumberBox Value="{x:Bind ViewModel.GlobalInitialHeapMemory, Mode=TwoWay}" Minimum="1" Maximum="64" SpinButtonPlacementMode="Compact" SmallChange="0.5" Width="120"
+                                       IsEnabled="{x:Bind ViewModel.GlobalAutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_GlobalMaxHeap" Header="最大堆内存" Description="游戏运行时允许使用的最大内存（GB）">
+                            <NumberBox Value="{x:Bind ViewModel.GlobalMaximumHeapMemory, Mode=TwoWay}" Minimum="1" Maximum="64" SpinButtonPlacementMode="Compact" SmallChange="0.5" Width="120"
+                                       IsEnabled="{x:Bind ViewModel.GlobalAutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
+                <!-- 全局启动分辨率 -->
+                <controls:SettingsExpander x:Uid="Settings_GlobalResolution" Header="全局启动分辨率" Description="设置所有版本的默认启动窗口大小，版本可单独覆盖">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE740;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_GlobalWindowWidth" Header="窗口宽度">
+                            <NumberBox Value="{x:Bind ViewModel.GlobalWindowWidth, Mode=TwoWay}" Minimum="800" Maximum="4096" SpinButtonPlacementMode="Compact" SmallChange="1" Width="120" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_GlobalWindowHeight" Header="窗口高度">
+                            <NumberBox Value="{x:Bind ViewModel.GlobalWindowHeight, Mode=TwoWay}" Minimum="600" Maximum="2160" SpinButtonPlacementMode="Compact" SmallChange="1" Width="120" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
                 <!-- 实时日志 -->
                 <controls:SettingsCard x:Uid="Settings_RealTimeLogs" Header="启动游戏实时日志" Description="开启后，启动游戏成功后会自动打开实时日志页面">
                     <controls:SettingsCard.HeaderIcon>
@@ -485,7 +520,7 @@
                 </controls:SettingsCard>
 
                 <!-- 下载分片数 -->
-                <controls:SettingsCard Header="核心文件分片数" Description="单个大文件的分片并发下载数量">
+                <controls:SettingsCard x:Uid="Settings_DownloadShardCount" Header="核心文件分片数" Description="单个大文件的分片并发下载数量">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE8CB;" />
                     </controls:SettingsCard.HeaderIcon>
@@ -520,8 +555,8 @@
                     </controls:SettingsExpander.Items>
                 </controls:SettingsExpander>
 
-                <!-- ==================== 智能分析 ==================== -->
-                <TextBlock x:Uid="Settings_AISection" Text="智能分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <!-- ==================== AI 分析 ==================== -->
+                <TextBlock x:Uid="Settings_AISection" Text="AI 分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- AI 分析设置 -->
                 <controls:SettingsExpander x:Uid="Settings_AI_CrashAnalysis" Header="AI 崩溃分析" Description="启用后可使用第三方 AI 服务分析崩溃日志" IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}">

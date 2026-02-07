@@ -126,6 +126,12 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["UseGlobalJavaSetting"] != null && jObject["UseGlobalJavaSetting"].Type == JTokenType.Boolean)
                     config.UseGlobalJavaSetting = jObject["UseGlobalJavaSetting"].Value<bool>();
                 
+                if (jObject["OverrideMemory"] != null && jObject["OverrideMemory"].Type == JTokenType.Boolean)
+                    config.OverrideMemory = jObject["OverrideMemory"].Value<bool>();
+                
+                if (jObject["OverrideResolution"] != null && jObject["OverrideResolution"].Type == JTokenType.Boolean)
+                    config.OverrideResolution = jObject["OverrideResolution"].Value<bool>();
+                
                 // 处理 WindowWidth - 可能是 "Auto" 字符串或整数
                 if (jObject["WindowWidth"] != null)
                 {

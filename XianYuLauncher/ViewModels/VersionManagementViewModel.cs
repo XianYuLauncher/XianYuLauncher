@@ -673,6 +673,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private bool _autoMemoryAllocation = true;
     
     /// <summary>
+    /// 是否覆盖全局内存设置
+    /// </summary>
+    [ObservableProperty]
+    private bool _overrideMemory = false;
+    
+    /// <summary>
     /// 初始堆内存（GB）
     /// </summary>
     [ObservableProperty]
@@ -695,6 +701,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string _javaPath = string.Empty;
+    
+    /// <summary>
+    /// 是否覆盖全局分辨率设置
+    /// </summary>
+    [ObservableProperty]
+    private bool _overrideResolution = false;
     
     /// <summary>
     /// 启动窗口宽度
@@ -810,6 +822,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
+    partial void OnOverrideMemoryChanged(bool value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
     partial void OnInitialHeapMemoryChanged(double value)
     {
         SaveSettingsAsync().ConfigureAwait(false);
@@ -821,6 +838,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     partial void OnJavaPathChanged(string value)
+    {
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
+    
+    partial void OnOverrideResolutionChanged(bool value)
     {
         SaveSettingsAsync().ConfigureAwait(false);
     }
@@ -968,11 +990,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (versionConfig != null && versionConfig.MinecraftVersion != "Unknown")
             {
                 // 1. 更新 ViewModel 基础配置属性
+                OverrideMemory = versionConfig.OverrideMemory;
                 AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
                 InitialHeapMemory = versionConfig.InitialHeapMemory;
                 MaximumHeapMemory = versionConfig.MaximumHeapMemory;
                 UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
                 JavaPath = versionConfig.JavaPath;
+                OverrideResolution = versionConfig.OverrideResolution;
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
                     
@@ -1024,11 +1048,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (versionConfig != null)
             {
                 // 1. 更新 ViewModel 基础配置属性
+                OverrideMemory = versionConfig.OverrideMemory;
                 AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
                 InitialHeapMemory = versionConfig.InitialHeapMemory;
                 MaximumHeapMemory = versionConfig.MaximumHeapMemory;
                 UseGlobalJavaSetting = versionConfig.UseGlobalJavaSetting;
                 JavaPath = versionConfig.JavaPath;
+                OverrideResolution = versionConfig.OverrideResolution;
                 WindowWidth = versionConfig.WindowWidth;
                 WindowHeight = versionConfig.WindowHeight;
                 
@@ -1669,10 +1695,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             
             config.OptifineVersion = optifineLoader?.SelectedVersion;
+            config.OverrideMemory = OverrideMemory;
             config.AutoMemoryAllocation = AutoMemoryAllocation;
             config.InitialHeapMemory = InitialHeapMemory;
             config.MaximumHeapMemory = MaximumHeapMemory;
             config.JavaPath = JavaPath;
+            config.UseGlobalJavaSetting = UseGlobalJavaSetting;
+            config.OverrideResolution = OverrideResolution;
             config.WindowWidth = WindowWidth;
             config.WindowHeight = WindowHeight;
             
@@ -1769,10 +1798,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             
             // 更新设置对象
+            settings.OverrideMemory = OverrideMemory;
             settings.AutoMemoryAllocation = AutoMemoryAllocation;
             settings.InitialHeapMemory = InitialHeapMemory;
             settings.MaximumHeapMemory = MaximumHeapMemory;
             settings.JavaPath = JavaPath;
+            settings.OverrideResolution = OverrideResolution;
             settings.WindowWidth = WindowWidth;
             settings.WindowHeight = WindowHeight;
             

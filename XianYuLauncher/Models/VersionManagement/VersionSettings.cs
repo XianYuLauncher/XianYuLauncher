@@ -31,6 +31,11 @@ public class VersionSettings
     public DateTime CreatedAt { get; set; }
     
     /// <summary>
+    /// 是否覆盖全局内存设置（false = 跟随全局）
+    /// </summary>
+    public bool OverrideMemory { get; set; } = false;
+    
+    /// <summary>
     /// 是否自动分配内存
     /// </summary>
     public bool AutoMemoryAllocation { get; set; } = true;
@@ -54,6 +59,11 @@ public class VersionSettings
     /// 是否使用全局Java设置
     /// </summary>
     public bool UseGlobalJavaSetting { get; set; } = true;
+    
+    /// <summary>
+    /// 是否覆盖全局分辨率设置（false = 跟随全局）
+    /// </summary>
+    public bool OverrideResolution { get; set; } = false;
     
     /// <summary>
     /// 启动窗口宽度

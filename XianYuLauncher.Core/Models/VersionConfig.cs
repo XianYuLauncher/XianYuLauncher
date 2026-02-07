@@ -33,17 +33,22 @@ public class VersionConfig
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     
     /// <summary>
-    /// 是否自动分配内存
+    /// 是否覆盖全局内存设置（false = 跟随全局）
+    /// </summary>
+    public bool OverrideMemory { get; set; } = false;
+    
+    /// <summary>
+    /// 是否自动分配内存（仅在 OverrideMemory=true 时生效）
     /// </summary>
     public bool AutoMemoryAllocation { get; set; } = true;
     
     /// <summary>
-    /// 初始堆内存（GB）
+    /// 初始堆内存（GB）（仅在 OverrideMemory=true 时生效）
     /// </summary>
     public double InitialHeapMemory { get; set; } = 6.0;
     
     /// <summary>
-    /// 最大堆内存（GB）
+    /// 最大堆内存（GB）（仅在 OverrideMemory=true 时生效）
     /// </summary>
     public double MaximumHeapMemory { get; set; } = 12.0;
     
@@ -53,17 +58,22 @@ public class VersionConfig
     public string JavaPath { get; set; } = string.Empty;
     
     /// <summary>
-    /// 是否使用全局Java设置
+    /// 是否使用全局Java设置（兼容旧版，等同于 !OverrideJava）
     /// </summary>
     public bool UseGlobalJavaSetting { get; set; } = true;
     
     /// <summary>
-    /// 窗口宽度
+    /// 是否覆盖全局分辨率设置（false = 跟随全局）
+    /// </summary>
+    public bool OverrideResolution { get; set; } = false;
+    
+    /// <summary>
+    /// 窗口宽度（仅在 OverrideResolution=true 时生效）
     /// </summary>
     public int WindowWidth { get; set; } = 1280;
     
     /// <summary>
-    /// 窗口高度
+    /// 窗口高度（仅在 OverrideResolution=true 时生效）
     /// </summary>
     public int WindowHeight { get; set; } = 720;
     

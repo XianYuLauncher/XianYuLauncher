@@ -17,6 +17,7 @@ public class GameLaunchService : IGameLaunchService
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoService _versionInfoService;
+    private readonly ILaunchSettingsResolver _launchSettingsResolver;
     private readonly ILogger<GameLaunchService> _logger;
     
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
@@ -34,6 +35,7 @@ public class GameLaunchService : IGameLaunchService
         ILocalSettingsService localSettingsService,
         IMinecraftVersionService minecraftVersionService,
         IVersionInfoService versionInfoService,
+        ILaunchSettingsResolver launchSettingsResolver,
         ILogger<GameLaunchService> logger)
     {
         _javaRuntimeService = javaRuntimeService;
@@ -42,6 +44,7 @@ public class GameLaunchService : IGameLaunchService
         _localSettingsService = localSettingsService;
         _minecraftVersionService = minecraftVersionService;
         _versionInfoService = versionInfoService;
+        _launchSettingsResolver = launchSettingsResolver;
         _logger = logger;
     }
     
@@ -117,23 +120,16 @@ public class GameLaunchService : IGameLaunchService
                  throw new InvalidOperationException("无法获取主启动类 (MainClass)，请检查版本文件完整性");
             }
             
-            // 6. 加载版本配置
+            // 6. 加载版本配置并通过 Resolver 合并全局/版本设置
             var config = await _versionConfigService.LoadConfigAsync(versionName);
-            _windowWidth = config.WindowWidth;
-            _windowHeight = config.WindowHeight;
-            
-            // 7. 选择 Java 运行时
             int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
+            var effectiveSettings = await _launchSettingsResolver.ResolveAsync(config, requiredJavaVersion);
             
-            string? javaPath;
-            if (!config.UseGlobalJavaSetting && !string.IsNullOrEmpty(config.JavaPath))
-            {
-                javaPath = config.JavaPath;
-            }
-            else
-            {
-                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, config.JavaPath);
-            }
+            _windowWidth = effectiveSettings.WindowWidth;
+            _windowHeight = effectiveSettings.WindowHeight;
+            
+            // 7. 使用解析后的 Java 路径
+            string? javaPath = effectiveSettings.JavaPath;
             
             if (string.IsNullOrEmpty(javaPath))
             {
@@ -142,7 +138,7 @@ public class GameLaunchService : IGameLaunchService
             
             // 8. 构建启动参数
             var launchArgs = await BuildLaunchArgumentsAsync(
-                versionInfo, profile, config, versionName, versionDir, gameDir,
+                versionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
                 jarPath, librariesPath, assetsPath, javaPath, minecraftPath, null);
             
             // 9. 生成完整命令
@@ -296,18 +292,20 @@ public class GameLaunchService : IGameLaunchService
                 return new GameLaunchResult { Success = false, ErrorMessage = "无法获取主类信息" };
             }
             
-            // 8. 加载版本配置
+            // 8. 加载版本配置并通过 Resolver 合并全局/版本设置
             _logger.LogInformation("步骤 8: 加载版本配置");
             var config = await _versionConfigService.LoadConfigAsync(versionName);
-            _windowWidth = config.WindowWidth;
-            _windowHeight = config.WindowHeight;
-            _logger.LogInformation("版本配置加载完成，窗口大小: {Width}x{Height}", _windowWidth, _windowHeight);
-            
-            // 9. 选择 Java 运行时
-            _logger.LogInformation("步骤 9: 选择 Java 运行时");
-            statusCallback?.Invoke("正在查找Java运行时环境...");
             int requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
             _logger.LogInformation("需要 Java 版本: {RequiredVersion}", requiredJavaVersion);
+            
+            var effectiveSettings = await _launchSettingsResolver.ResolveAsync(config, requiredJavaVersion);
+            _windowWidth = effectiveSettings.WindowWidth;
+            _windowHeight = effectiveSettings.WindowHeight;
+            _logger.LogInformation("版本配置加载完成，窗口大小: {Width}x{Height}", _windowWidth, _windowHeight);
+            
+            // 9. 选择 Java 运行时（优先使用临时覆盖路径）
+            _logger.LogInformation("步骤 9: 选择 Java 运行时");
+            statusCallback?.Invoke("正在查找Java运行时环境...");
             
             string? javaPath;
             if (!string.IsNullOrEmpty(overrideJavaPath) && File.Exists(overrideJavaPath))
@@ -315,15 +313,10 @@ public class GameLaunchService : IGameLaunchService
                 _logger.LogInformation("使用临时 Java 覆盖路径: {JavaPath}", overrideJavaPath);
                 javaPath = overrideJavaPath;
             }
-            else if (!config.UseGlobalJavaSetting && !string.IsNullOrEmpty(config.JavaPath))
-            {
-                _logger.LogInformation("使用版本专用 Java: {JavaPath}", config.JavaPath);
-                javaPath = config.JavaPath;
-            }
             else
             {
-                _logger.LogInformation("使用全局 Java 设置");
-                javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion, config.JavaPath);
+                javaPath = effectiveSettings.JavaPath;
+                _logger.LogInformation("使用解析后的 Java 路径: {JavaPath}", javaPath);
             }
             
             if (string.IsNullOrEmpty(javaPath))
@@ -365,7 +358,7 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("步骤 11: 构建启动参数");
             statusCallback?.Invoke("正在构建启动参数...");
             var launchArgs = await BuildLaunchArgumentsAsync(
-                versionInfo, profile, config, versionName, versionDir, gameDir,
+                versionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
                 jarPath, librariesPath, assetsPath, javaPath, minecraftPath, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
             _logger.LogInformation("启动参数构建完成，共 {Count} 个参数", launchArgs.Count);
             
@@ -447,6 +440,7 @@ public class GameLaunchService : IGameLaunchService
         VersionInfo versionInfo,
         MinecraftProfile profile,
         VersionConfig config,
+        EffectiveLaunchSettings effectiveSettings,
         string versionName,
         string versionDir,
         string gameDir,
@@ -483,11 +477,11 @@ public class GameLaunchService : IGameLaunchService
         args.Add("-Dlog4j2.formatMsgNoLookups=true");
         args.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
         
-        // 内存参数
-        if (!config.AutoMemoryAllocation)
+        // 内存参数（使用合并后的 EffectiveLaunchSettings）
+        if (!effectiveSettings.AutoMemoryAllocation)
         {
-            args.Add(GetHeapParam("-Xms", config.InitialHeapMemory));
-            args.Add(GetHeapParam("-Xmx", config.MaximumHeapMemory));
+            args.Add(GetHeapParam("-Xms", effectiveSettings.InitialHeapMemory));
+            args.Add(GetHeapParam("-Xmx", effectiveSettings.MaximumHeapMemory));
         }
         
         // 构建 Classpath

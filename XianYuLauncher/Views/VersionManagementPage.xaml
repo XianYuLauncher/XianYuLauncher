@@ -775,6 +775,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -786,13 +787,29 @@
                                 <!-- 标题 -->
                                 <TextBlock Grid.Row="0" Grid.ColumnSpan="4" x:Uid="VersionManagerPage_MemoryAllocationTitle" FontSize="16" FontWeight="Bold" Margin="0,0,0,16" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                 
+                                <!-- 内存设置模式 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" x:Uid="VersionManagerPage_MemorySettingMode" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
+                                    <RadioButton 
+                                        x:Uid="VersionManagerPage_MemoryFollowGlobal"
+                                        GroupName="MemorySettingMode" 
+                                        IsChecked="{Binding OverrideMemory, Mode=TwoWay, Converter={StaticResource BoolNegationConverter}}" 
+                                        VerticalAlignment="Center" />
+                                    <RadioButton 
+                                        x:Uid="VersionManagerPage_MemoryCustom"
+                                        GroupName="MemorySettingMode" 
+                                        IsChecked="{Binding OverrideMemory, Mode=TwoWay}" 
+                                        VerticalAlignment="Center" />
+                                </StackPanel>
+                                
                                 <!-- 自动分配开关 -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" x:Uid="VersionManagerPage_AutoMemoryAllocation" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
-                                <ToggleSwitch x:Uid="VersionManagerPage_AutoMemoryToggle" Grid.Row="1" Grid.Column="1" IsOn="{Binding AutoMemoryAllocation, Mode=TwoWay}" Margin="0,0,16,16" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" x:Uid="VersionManagerPage_AutoMemoryAllocation" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <ToggleSwitch x:Uid="VersionManagerPage_AutoMemoryToggle" Grid.Row="2" Grid.Column="1" IsOn="{Binding AutoMemoryAllocation, Mode=TwoWay}" Margin="0,0,16,16"
+                                              IsEnabled="{Binding OverrideMemory, Mode=OneWay}" />
                                 
                                 <!-- 初始堆内存 -->
-                                <TextBlock Grid.Row="2" Grid.Column="0" x:Uid="VersionManagerPage_InitialHeapMemory" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
-                                <NumberBox Grid.Row="2" Grid.Column="1" 
+                                <TextBlock Grid.Row="3" Grid.Column="0" x:Uid="VersionManagerPage_InitialHeapMemory" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="3" Grid.Column="1" 
                                            Value="{Binding InitialHeapMemory, Mode=TwoWay}" 
                                            Minimum="1" 
                                            Maximum="64" 
@@ -800,12 +817,12 @@
                                            HorizontalAlignment="Stretch" 
                                            Margin="0,0,16,16" 
                                            PlaceholderText="6.0"
-                                           IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" x:Uid="VersionManagerPage_GBUnit" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                           IsEnabled="{Binding OverrideMemory, Mode=OneWay}" />
+                                <TextBlock Grid.Row="3" Grid.Column="2" x:Uid="VersionManagerPage_GBUnit" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
                                 
                                 <!-- 最大堆内存 -->
-                                <TextBlock Grid.Row="3" Grid.Column="0" x:Uid="VersionManagerPage_MaximumHeapMemory" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
-                                <NumberBox Grid.Row="3" Grid.Column="1" 
+                                <TextBlock Grid.Row="4" Grid.Column="0" x:Uid="VersionManagerPage_MaximumHeapMemory" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="4" Grid.Column="1" 
                                            Value="{Binding MaximumHeapMemory, Mode=TwoWay}" 
                                            Minimum="1" 
                                            Maximum="64" 
@@ -813,8 +830,8 @@
                                            HorizontalAlignment="Stretch" 
                                            Margin="0,0,16,0" 
                                            PlaceholderText="12.0"
-                                           IsEnabled="{Binding AutoMemoryAllocation, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
-                                <TextBlock Grid.Row="3" Grid.Column="2" Text="GB" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                           IsEnabled="{Binding OverrideMemory, Mode=OneWay}" />
+                                <TextBlock Grid.Row="4" Grid.Column="2" Text="GB" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
                             </Grid>
                             
                             <!-- Java设置 -->
@@ -876,6 +893,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -889,15 +907,32 @@
                                 <!-- 标题 -->
                                 <TextBlock Grid.Row="0" Grid.ColumnSpan="6" x:Uid="VersionManagerPage_ResolutionSettingTitle" FontSize="16" FontWeight="Bold" Margin="0,0,0,16" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                 
+                                <!-- 分辨率设置模式 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" x:Uid="VersionManagerPage_ResolutionSettingMode" VerticalAlignment="Center" Margin="0,0,16,16" Style="{StaticResource BodyTextStyle}" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
+                                    <RadioButton 
+                                        x:Uid="VersionManagerPage_ResolutionFollowGlobal"
+                                        GroupName="ResolutionSettingMode" 
+                                        IsChecked="{Binding OverrideResolution, Mode=TwoWay, Converter={StaticResource BoolNegationConverter}}" 
+                                        VerticalAlignment="Center" />
+                                    <RadioButton 
+                                        x:Uid="VersionManagerPage_ResolutionCustom"
+                                        GroupName="ResolutionSettingMode" 
+                                        IsChecked="{Binding OverrideResolution, Mode=TwoWay}" 
+                                        VerticalAlignment="Center" />
+                                </StackPanel>
+                                
                                 <!-- 宽度 -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" x:Uid="VersionManagerPage_Width" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
-                                <NumberBox Grid.Row="1" Grid.Column="1" Value="{Binding WindowWidth, Mode=TwoWay}" Minimum="800" Maximum="4096" Width="120" Margin="0,0,8,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" x:Uid="VersionManagerPage_PxUnit" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" x:Uid="VersionManagerPage_Width" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="2" Grid.Column="1" Value="{Binding WindowWidth, Mode=TwoWay}" Minimum="800" Maximum="4096" Width="120" Margin="0,0,8,0"
+                                           IsEnabled="{Binding OverrideResolution, Mode=OneWay}" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" x:Uid="VersionManagerPage_PxUnit" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource BodyTextStyle}" />
                                 
                                 <!-- 高度 -->
-                                <TextBlock Grid.Row="1" Grid.Column="3" x:Uid="VersionManagerPage_Height" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
-                                <NumberBox Grid.Row="1" Grid.Column="4" Value="{Binding WindowHeight, Mode=TwoWay}" Minimum="600" Maximum="2160" Width="120" Margin="0,0,8,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="5" x:Uid="VersionManagerPage_PxUnit" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" />
+                                <TextBlock Grid.Row="2" Grid.Column="3" x:Uid="VersionManagerPage_Height" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource BodyTextStyle}" />
+                                <NumberBox Grid.Row="2" Grid.Column="4" Value="{Binding WindowHeight, Mode=TwoWay}" Minimum="600" Maximum="2160" Width="120" Margin="0,0,8,0"
+                                           IsEnabled="{Binding OverrideResolution, Mode=OneWay}" />
+                                <TextBlock Grid.Row="2" Grid.Column="5" x:Uid="VersionManagerPage_PxUnit" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" />
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
