@@ -34,29 +34,49 @@ public static class SecretsService
     {
         try
         {
-            // 尝试从应用目录读取 secrets.json
             var appDir = AppContext.BaseDirectory;
-            var secretsPath = Path.Combine(appDir, "secrets.json");
             
+            // 1. 尝试加载处理后的配置文件
+            var encPath = Path.Combine(appDir, "secrets.enc");
+            if (File.Exists(encPath))
+            {
+                try
+                {
+                    var data = File.ReadAllText(encPath);
+                    var decoded = XianYuLauncher.Core.Helpers.SecretProtector.Decrypt(data);
+                    var config = JsonSerializer.Deserialize<SecretsConfig>(decoded);
+                    if (config != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SecretsService] 配置加载成功");
+                        return config;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SecretsService] 配置处理失败: {ex.Message}");
+                }
+            }
+            
+            // 2. 降级：尝试读取原始配置文件（开发模式）
+            var secretsPath = Path.Combine(appDir, "secrets.json");
             if (File.Exists(secretsPath))
             {
                 var json = File.ReadAllText(secretsPath);
                 var config = JsonSerializer.Deserialize<SecretsConfig>(json);
                 if (config != null)
                 {
-                    System.Diagnostics.Debug.WriteLine("[SecretsService] 成功加载 secrets.json");
+                    System.Diagnostics.Debug.WriteLine("[SecretsService] 使用开发配置");
                     return config;
                 }
             }
             
-            System.Diagnostics.Debug.WriteLine("[SecretsService] secrets.json 不存在，使用空配置");
+            System.Diagnostics.Debug.WriteLine("[SecretsService] 未找到配置文件");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SecretsService] 加载配置失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[SecretsService] 配置加载异常: {ex.Message}");
         }
         
-        // 返回空配置
         return new SecretsConfig();
     }
 

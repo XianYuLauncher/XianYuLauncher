@@ -42,9 +42,11 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    # 2. 还原 secrets.json
-    - name: Restore secrets.json
+    # 2. 准备应用配置
+    - name: Prepare Application Config
       shell: powershell
+      env:
+        AES_ENCRYPTION_KEY: ${{ secrets.AES_ENCRYPTION_KEY }}
       run: |
         $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
         if ([string]::IsNullOrWhiteSpace($secretJson)) {
@@ -52,8 +54,13 @@ jobs:
         }
         # 确保目录存在
         New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
+        # 保存配置文件
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
-        Write-Host "secrets.json restored."
+        Write-Host "Configuration file prepared."
+        
+        # 处理配置文件
+        .\.github\scripts\prepare-config.ps1
+        Write-Host "Configuration processing completed."
 
     # 3. 准备证书 (Base64 -> PFX)
     - name: Prepare Certificate

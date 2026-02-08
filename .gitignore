@@ -232,6 +232,8 @@ _pkginfo.txt
 # Secrets configuration (contains API keys)
 secrets.json
 !secrets.example.json
+# config
+!secrets.enc
 
 # Visual Studio cache files
 # files ending in .cache can be ignored
@@ -372,7 +374,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Tools
+# Tools - 整个目录忽略（包含敏感工具和数据）
 Tools/
 # mod_data
 XianYuLauncher/Assets/mod_data.txt
