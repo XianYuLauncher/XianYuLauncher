@@ -1,7 +1,7 @@
 # ========================================
-# CI - 配置文件预处理脚本
+# CI - Configuration Preprocessing Script
 # ========================================
-# 用途：处理应用配置文件格式转换
+# Purpose: Process application configuration file format conversion
 
 param(
     [string]$InputFile = "XianYuLauncher\secrets.json",
@@ -9,24 +9,24 @@ param(
     [string]$ConfigKey = $env:AES_ENCRYPTION_KEY
 )
 
-Write-Host "CI: 正在处理配置文件 ..."
+Write-Host "CI: Processing configuration file ..."
 
-# 检查输入文件
+# Check input file
 if (-not (Test-Path $InputFile)) {
-    Write-Error "找不到配置文件 $InputFile"
+    Write-Error "Configuration file not found: $InputFile"
     exit 1
 }
 
-# 检查处理密钥
+# Check processing key
 if ([string]::IsNullOrWhiteSpace($ConfigKey)) {
-    Write-Error "配置处理密钥未设置"
+    Write-Error "Configuration processing key not set"
     exit 1
 }
 
-# 读取配置
+# Read configuration
 $configData = Get-Content $InputFile -Raw -Encoding UTF8
 
-# 处理配置数据
+# Process configuration data
 try {
     $processor = [System.Security.Cryptography.Aes]::Create()
     $processor.KeySize = 256
@@ -40,16 +40,16 @@ try {
     $processedData = [Convert]::ToBase64String($outputBytes)
     $processedData | Out-File -FilePath $OutputFile -Encoding UTF8 -NoNewline
     
-    Write-Host "✓ 配置处理完成: $OutputFile"
+    Write-Host "Configuration processing completed: $OutputFile"
     
-    # 清理临时文件
+    # Clean up temporary files
     Remove-Item $InputFile -Force
-    Write-Host "✓ 已清理临时文件: $InputFile"
+    Write-Host "Temporary file cleaned: $InputFile"
     
     $transformer.Dispose()
     $processor.Dispose()
 }
 catch {
-    Write-Error "配置处理失败: $_"
+    Write-Error "Configuration processing failed: $_"
     exit 1
 }
