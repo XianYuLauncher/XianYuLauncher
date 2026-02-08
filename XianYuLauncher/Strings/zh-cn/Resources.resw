@@ -538,7 +538,7 @@
     <value>安装 Dev 通道版本</value>
   </data>
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
-    <value>最终用户协议(EULA)</value>
+    <value>最终用户协议</value>
   </data>
   <data name="联机Page_Title.Text" xml:space="preserve">
     <value>Terracotta 陶瓦联机</value>

@@ -538,7 +538,7 @@
     <value>Install Dev Channel Version</value>
   </data>
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
-    <value>End User License Agreement (EULA)</value>
+    <value>EULA</value>
   </data>
   <data name="联机Page_Title.Text" xml:space="preserve">
     <value>Terracotta | 陶瓦联机</value>
