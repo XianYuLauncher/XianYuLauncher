@@ -186,6 +186,18 @@
   <data name="Settings_LanguageDescription.Text" xml:space="preserve">
     <value>选择应用语言，更改后需要重启应用才能生效</value>
   </data>
+  <data name="Settings_LanguageChanged_Title" xml:space="preserve">
+    <value>语言设置已更新</value>
+  </data>
+  <data name="Settings_LanguageChanged_Content" xml:space="preserve">
+    <value>语言设置已成功保存，应用将在重启后生效。是否立即重启应用？</value>
+  </data>
+  <data name="Settings_LanguageChanged_RestartNow" xml:space="preserve">
+    <value>立即重启</value>
+  </data>
+  <data name="Settings_LanguageChanged_RestartLater" xml:space="preserve">
+    <value>稍后重启</value>
+  </data>
   <data name="Settings_JavaTitle.Text" xml:space="preserve">
     <value>Java设置</value>
   </data>

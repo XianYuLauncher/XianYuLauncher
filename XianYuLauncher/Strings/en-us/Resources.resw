@@ -186,6 +186,18 @@
   <data name="Settings_LanguageDescription.Text" xml:space="preserve">
     <value>Select app language. Changes will take effect after restarting the app.</value>
   </data>
+  <data name="Settings_LanguageChanged_Title" xml:space="preserve">
+    <value>Language Updated</value>
+  </data>
+  <data name="Settings_LanguageChanged_Content" xml:space="preserve">
+    <value>Language settings have been saved successfully. The app needs to restart for changes to take effect. Restart now?</value>
+  </data>
+  <data name="Settings_LanguageChanged_RestartNow" xml:space="preserve">
+    <value>Restart Now</value>
+  </data>
+  <data name="Settings_LanguageChanged_RestartLater" xml:space="preserve">
+    <value>Later</value>
+  </data>
   <data name="Settings_JavaTitle.Text" xml:space="preserve">
     <value>Java Settings</value>
   </data>

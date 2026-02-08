@@ -823,13 +823,15 @@ public partial class SettingsViewModel : ObservableRecipient
                     Language = param;
                     await _languageSelectorService.SetLanguageAsync(param);
                     
-                    // 显示语言切换成功提示，需要重启应用
+                    // WinUI 3 限制：运行时无法刷新 x:Uid 资源绑定，必须重启应用
+                    var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
+                    
                     var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
                     {
-                        Title = "语言设置已更新",
-                        Content = "语言设置已成功保存，应用将在重启后生效。是否立即重启应用？",
-                        PrimaryButtonText = "立即重启",
-                        CloseButtonText = "稍后重启",
+                        Title = resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                        Content = resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                        PrimaryButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                        CloseButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartLater"),
                         DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary
                     };
                     
@@ -838,9 +840,13 @@ public partial class SettingsViewModel : ObservableRecipient
                     
                     if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
                     {
-                        // 立即重启应用
-                        System.Diagnostics.Process.Start(AppContext.BaseDirectory + AppDomain.CurrentDomain.FriendlyName);
-                        App.MainWindow.Close();
+                        // 重启应用
+                        var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                        if (!string.IsNullOrEmpty(exePath))
+                        {
+                            System.Diagnostics.Process.Start(exePath);
+                            App.MainWindow.Close();
+                        }
                     }
                 }
             });
