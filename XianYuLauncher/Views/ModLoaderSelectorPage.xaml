@@ -261,7 +261,7 @@
                 <!-- 进度信息：百分比 + 速度 -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
                     <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadProgressText, Mode=OneWay}" />
-                    <TextBlock FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Text="{x:Bind ViewModel.DownloadSpeed, Mode=OneWay}" />
+                    <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}" Text="{x:Bind ViewModel.DownloadSpeed, Mode=OneWay}" />
                 </StackPanel>
             </StackPanel>
         </ContentDialog>
