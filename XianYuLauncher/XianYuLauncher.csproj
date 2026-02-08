@@ -71,6 +71,9 @@
     <None Update="secrets.json" Condition="Exists('secrets.json')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="secrets.enc" Condition="Exists('secrets.enc')">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="plugins\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
