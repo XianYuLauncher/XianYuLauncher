@@ -341,6 +341,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 IsLoggingIn = true;
+                LoginStatus = "正在准备登录...";
                 
                 // 1. 询问用户选择登录方式
                 var selectionDialog = new ContentDialog
