@@ -35,6 +35,9 @@
         <!-- 主要内容区域 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Spacing="4" Padding="0,0,16,20">
+                <StackPanel.ChildrenTransitions>
+                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                </StackPanel.ChildrenTransitions>
                 <animations:Implicit.ShowAnimations>
                     <animations:TranslationAnimation Duration="0:0:0.35" From="0, 40, 0" To="0" EasingMode="EaseOut" />
                     <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />

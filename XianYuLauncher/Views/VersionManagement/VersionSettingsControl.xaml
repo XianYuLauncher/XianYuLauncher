@@ -32,6 +32,9 @@
         
         <ScrollViewer Grid.Row="0" Margin="0,16,0,0" Padding="0,0,12,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Spacing="4" Padding="0,0,0,24">
+                <StackPanel.ChildrenTransitions>
+                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                </StackPanel.ChildrenTransitions>
                 
                 <!-- 当前加载器信息 -->
                 <TextBlock x:Uid="Settings_CurrentLoaderSection" Text="当前加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
