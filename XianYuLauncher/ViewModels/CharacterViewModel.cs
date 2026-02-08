@@ -340,10 +340,7 @@ namespace XianYuLauncher.ViewModels
         {
             try
             {
-                IsLoggingIn = true;
-                LoginStatus = "正在准备登录...";
-                
-                // 1. 询问用户选择登录方式
+                // 1. 询问用户选择登录方式（此时不显示加载环）
                 var selectionDialog = new ContentDialog
                 {
                     Title = "选择登录方式",
@@ -368,9 +365,12 @@ namespace XianYuLauncher.ViewModels
 
                 if (selectionResult == ContentDialogResult.None)
                 {
-                    IsLoggingIn = false;
+                    // 用户取消，不需要设置 IsLoggingIn
                     return;
                 }
+
+                // 2. 用户选择后，才开始显示加载状态
+                IsLoggingIn = true;
 
                 if (selectionResult == ContentDialogResult.Primary)
                 {
