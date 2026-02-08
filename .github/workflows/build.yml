@@ -42,7 +42,7 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    # 2. 准备应用配置
+    # 2. Prepare Application Config
     - name: Prepare Application Config
       shell: powershell
       env:
@@ -50,17 +50,14 @@ jobs:
       run: |
         $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
         if ([string]::IsNullOrWhiteSpace($secretJson)) {
-            Write-Warning "APP_SECRETS_JSON is possibly empty or not set."
+            Write-Warning "Configuration data not set"
         }
-        # 确保目录存在
         New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
-        # 保存配置文件
         $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
-        Write-Host "Configuration file prepared."
+        Write-Host "Configuration prepared"
         
-        # 处理配置文件
         .\.github\scripts\prepare-config.ps1
-        Write-Host "Configuration processing completed."
+        Write-Host "Configuration ready"
 
     # 3. 准备证书 (Base64 -> PFX)
     - name: Prepare Certificate

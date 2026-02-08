@@ -9,17 +9,17 @@ param(
     [string]$ConfigKey = $env:AES_ENCRYPTION_KEY
 )
 
-Write-Host "CI: Processing configuration file ..."
+Write-Host "Processing application configuration..."
 
 # Check input file
 if (-not (Test-Path $InputFile)) {
-    Write-Error "Configuration file not found: $InputFile"
+    Write-Error "Configuration file not found"
     exit 1
 }
 
 # Check processing key
 if ([string]::IsNullOrWhiteSpace($ConfigKey)) {
-    Write-Error "Configuration processing key not set"
+    Write-Error "Configuration key not set"
     exit 1
 }
 
@@ -40,11 +40,11 @@ try {
     $processedData = [Convert]::ToBase64String($outputBytes)
     $processedData | Out-File -FilePath $OutputFile -Encoding UTF8 -NoNewline
     
-    Write-Host "Configuration processing completed: $OutputFile"
+    Write-Host "Configuration processed successfully"
     
     # Clean up temporary files
     Remove-Item $InputFile -Force
-    Write-Host "Temporary file cleaned: $InputFile"
+    Write-Host "Temporary files cleaned"
     
     $transformer.Dispose()
     $processor.Dispose()
