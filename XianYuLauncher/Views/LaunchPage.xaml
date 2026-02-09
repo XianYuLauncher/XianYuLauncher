@@ -5,11 +5,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     mc:Ignorable="d">
-
-    <Page.DataContext>
-        <viewModels:LaunchViewModel />
-    </Page.DataContext>
 
     <Page.Resources>
         <Style x:Key="SelectionRowStyle" TargetType="Button">
@@ -29,7 +26,10 @@
             HorizontalScrollBarVisibility="Disabled"
             Padding="40,36,40,24">
             
-            <StackPanel Spacing="24" Width="420" HorizontalAlignment="Left">
+            <StackPanel x:Name="MainContentPanel" Spacing="24" Width="420" HorizontalAlignment="Left">
+                <StackPanel.ChildrenTransitions>
+                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                </StackPanel.ChildrenTransitions>
                 <!-- 页面标题 -->
                 <StackPanel Spacing="4">
                     <TextBlock 
@@ -181,13 +181,23 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 新闻/公告卡片 -->
+                <!-- 新闻/公告卡片
+                     注意：此卡片包含异步加载的数据（LatestMinecraftNews、RecommendedModTitle），
+                     在 Release 模式下 RepositionThemeTransition 对它的位移动画会概率性失效（WinUI 3 已知问题）。
+                     通过 Composition 层的 OffsetAnimation 作为兜底，确保位移始终平滑。
+                     参考：CommunityToolkit.WinUI.Animations 的 Implicit.Animations -->
                 <Border 
+                    x:Name="NewsCard"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="16">
+                    <!-- Composition 层位移动画兜底，防止 RepositionThemeTransition 偶发失效
+                         强迫症,不要改Duration="0:0:0:3"与EasingMode="EaseOut"与EasingType=Default,这是FluentDesign标准值!!! -->
+                    <animations:Implicit.Animations>
+                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
+                    </animations:Implicit.Animations>
                     <StackPanel Spacing="12">
                         <Grid>
                             <Grid.ColumnDefinitions>

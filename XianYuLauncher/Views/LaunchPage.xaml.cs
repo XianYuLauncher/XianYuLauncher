@@ -101,6 +101,8 @@ public sealed partial class LaunchPage : Page
         // 对于正版玩家，会先显示缓存头像，然后后台静默刷新
         LoadAvatar();
         
+        // 预热完毕（已移除无效的预热逻辑）
+
         // 订阅SelectedProfile变化事件，确保头像在角色切换时自动更新
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
