@@ -26,12 +26,15 @@
             HorizontalScrollBarVisibility="Disabled"
             Padding="40,36,40,24">
             
+            <!-- 不使用 RepositionThemeTransition，改为给每个需要平移动画的 child 单独加 Implicit OffsetAnimation。
+                 这样进度条（不加 OffsetAnimation）在 Collapsed→Visible 时不会飞入，
+                 同时也彻底规避了 RepositionThemeTransition 在 Release 模式下对异步数据控件的概率性失效问题。 -->
             <StackPanel x:Name="MainContentPanel" Spacing="24" Width="420" HorizontalAlignment="Left">
-                <StackPanel.ChildrenTransitions>
-                    <RepositionThemeTransition IsStaggeringEnabled="False" />
-                </StackPanel.ChildrenTransitions>
                 <!-- 页面标题 -->
                 <StackPanel Spacing="4">
+                    <animations:Implicit.Animations>
+                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
+                    </animations:Implicit.Animations>
                     <TextBlock 
                         Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" 
                         FontSize="{x:Bind ViewModel.PageTitleFontSize, Mode=OneWay}"
@@ -50,6 +53,9 @@
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="4">
+                    <animations:Implicit.Animations>
+                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
+                    </animations:Implicit.Animations>
                     <StackPanel>
                         <!-- 版本选择行 -->
                         <Grid>
@@ -181,11 +187,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 新闻/公告卡片
-                     注意：此卡片包含异步加载的数据（LatestMinecraftNews、RecommendedModTitle），
-                     在 Release 模式下 RepositionThemeTransition 对它的位移动画会概率性失效（WinUI 3 已知问题）。
-                     通过 Composition 层的 OffsetAnimation 作为兜底，确保位移始终平滑。
-                     参考：CommunityToolkit.WinUI.Animations 的 Implicit.Animations -->
+                <!-- 新闻/公告卡片 -->
                 <Border 
                     x:Name="NewsCard"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -193,8 +195,6 @@
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="16">
-                    <!-- Composition 层位移动画兜底，防止 RepositionThemeTransition 偶发失效
-                         强迫症,不要改Duration="0:0:0:3"与EasingMode="EaseOut"与EasingType=Default,这是FluentDesign标准值!!! -->
                     <animations:Implicit.Animations>
                         <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
                     </animations:Implicit.Animations>
@@ -296,6 +296,9 @@
                     HorizontalAlignment="Stretch" 
                     Height="44"
                     CornerRadius="6">
+                    <animations:Implicit.Animations>
+                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
+                    </animations:Implicit.Animations>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon 
                             FontFamily="{StaticResource SymbolThemeFontFamily}" 
