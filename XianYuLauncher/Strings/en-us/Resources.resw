@@ -1021,6 +1021,12 @@ Continue downloading?</value>
   <data name="ModDownloadDetailPage_DescriptionTitle.Text" xml:space="preserve">
     <value>Description</value>
   </data>
+  <data name="ModDownloadDetailPage_ViewFullDescription" xml:space="preserve">
+    <value>View full description</value>
+  </data>
+  <data name="ModDownloadDetailPage_CollapseDescription" xml:space="preserve">
+    <value>Collapse description</value>
+  </data>
   <data name="ModDownloadDetailPage_ReleaseDateText.Text" xml:space="preserve">
     <value>Release Date: </value>
   </data>

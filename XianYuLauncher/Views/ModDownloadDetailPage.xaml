@@ -8,6 +8,7 @@
       xmlns:viewModels="using:XianYuLauncher.ViewModels"
       xmlns:local="using:XianYuLauncher.Views"
       xmlns:helpers="using:XianYuLauncher.Helpers"
+      xmlns:animations="using:CommunityToolkit.WinUI.Animations"
       mc:Ignorable="d"
       NavigationCacheMode="Required">
 
@@ -68,6 +69,9 @@
         
         <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollMode="Enabled" Margin="0,48,0,0">
             <StackPanel Spacing="16" Padding="16">
+                <StackPanel.ChildrenTransitions>
+                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                </StackPanel.ChildrenTransitions>
                 
                 <!-- Mod基本信息 -->
                 <StackPanel Spacing="8">
@@ -132,37 +136,55 @@
                 </StackPanel>
 
                 <!-- Mod描述 -->
-        <StackPanel Spacing="8">
-            <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
+                <StackPanel Spacing="8">
+                    <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
                       
-                      <!-- 简短描述 (默认显示) -->
-                      <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" 
-                                 FontSize="14" 
-                                 TextWrapping="WrapWholeWords"
-                                 Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                    <!-- 简短描述 (始终显示) -->
+                    <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" 
+                               FontSize="14" 
+                               TextWrapping="WrapWholeWords" />
                       
-                      <!-- 查看更多链接 -->
-                      <HyperlinkButton Content="查看完整描述" 
-                                       Command="{x:Bind ViewModel.ToggleFullDescriptionCommand}" 
-                                       HorizontalAlignment="Left"
-                                       Padding="0"
-                                       Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                    <!-- 展开/收起按钮 -->
+                    <HyperlinkButton x:Name="ToggleDescriptionButton"
+                                     HorizontalAlignment="Left"
+                                     Padding="0"
+                                     Click="ToggleDescriptionButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <FontIcon x:Name="ToggleDescriptionIcon" 
+                                      Glyph="&#xE70D;" 
+                                      FontSize="12" 
+                                      VerticalAlignment="Center"
+                                      RenderTransformOrigin="0.5,0.5">
+                                <FontIcon.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
+                            <TextBlock x:Name="ToggleDescriptionText" 
+                                       x:Uid="ModDownloadDetailPage_ViewFullDescription"
+                                       Text="查看完整描述" 
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </HyperlinkButton>
 
-                      <!-- 完整描述 (点击展开) -->
-                      <StackPanel Visibility="{x:Bind ViewModel.IsFullDescriptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                          <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}" 
-                                                Background="Transparent" 
-                                                TextWrapping="Wrap" 
-                                                FontSize="14"
-                                                IsTextSelectionEnabled="True"/>
-                          
-                          <HyperlinkButton Content="收起描述" 
-                                           Command="{x:Bind ViewModel.ToggleFullDescriptionCommand}" 
-                                           HorizontalAlignment="Left" 
-                                           Padding="0"
-                                           Margin="0,8,0,0" />
-                      </StackPanel>
-                  </StackPanel>
+                    <!-- 完整描述容器 (Composition 动画) -->
+                    <StackPanel x:Name="FullDescriptionContainer" 
+                                Visibility="Collapsed"
+                                HorizontalAlignment="Stretch">
+                        <animations:Implicit.ShowAnimations>
+                            <animations:TranslationAnimation Duration="0:0:0.35" From="0, -20, 0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                            <animations:OpacityAnimation Duration="0:0:0.25" From="0" To="1.0" EasingMode="EaseOut" EasingType="Circle" />
+                        </animations:Implicit.ShowAnimations>
+                        <animations:Implicit.HideAnimations>
+                            <animations:TranslationAnimation Duration="0:0:0.2" From="0" To="0, -10, 0" EasingMode="EaseOut" EasingType="Circle" />
+                            <animations:OpacityAnimation Duration="0:0:0.15" From="1.0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                        </animations:Implicit.HideAnimations>
+                        <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}" 
+                                              Background="Transparent" 
+                                              TextWrapping="Wrap" 
+                                              FontSize="14"
+                                              IsTextSelectionEnabled="True"/>
+                    </StackPanel>
+                </StackPanel>
                   
                 <StackPanel Spacing="8">
                     <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />

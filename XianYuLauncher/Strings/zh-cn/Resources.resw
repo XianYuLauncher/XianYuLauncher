@@ -1021,6 +1021,12 @@
   <data name="ModDownloadDetailPage_DescriptionTitle.Text" xml:space="preserve">
     <value>描述</value>
   </data>
+  <data name="ModDownloadDetailPage_ViewFullDescription" xml:space="preserve">
+    <value>查看完整描述</value>
+  </data>
+  <data name="ModDownloadDetailPage_CollapseDescription" xml:space="preserve">
+    <value>收起描述</value>
+  </data>
   <data name="ModDownloadDetailPage_ReleaseDateText.Text" xml:space="preserve">
     <value>发布日期: </value>
   </data>
