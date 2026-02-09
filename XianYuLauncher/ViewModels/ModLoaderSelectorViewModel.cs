@@ -1150,34 +1150,54 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     return;
                 }
                 
-                // 处理Optifine与Forge同时选择的特殊情况
-                if (IsOptifineSelected && SelectedModLoader == "Forge")
+                // 构建加载器选择列表（支持多加载器组合）
+                var modLoaderSelections = new List<XianYuLauncher.Core.Models.ModLoaderSelection>();
+                
+                // 添加主加载器（Forge、Fabric 等）
+                if (!string.IsNullOrEmpty(SelectedModLoader))
                 {
-                    // 查找当前选择的Optifine版本对应的完整信息
+                    modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
+                    {
+                        Type = SelectedModLoader,
+                        Version = modLoaderVersionToDownload,
+                        InstallOrder = 1,
+                        IsAddon = false
+                    });
+                }
+                
+                // 添加 OptiFine（如果选中）
+                if (IsOptifineSelected)
+                {
                     var optifineItem = ModLoaderItems.FirstOrDefault(item => item.Name == "Optifine");
                     if (optifineItem != null && !string.IsNullOrEmpty(SelectedOptifineVersion))
                     {
                         var optifineInfo = optifineItem.GetOptifineVersionInfo(SelectedOptifineVersion);
                         if (optifineInfo != null && optifineInfo.FullVersion != null)
                         {
-                            // 使用专门的Optifine+Forge下载方法
-                            await _downloadTaskManager.StartOptifineForgeDownloadAsync(
-                                SelectedMinecraftVersion,
-                                modLoaderVersionToDownload,
-                                optifineInfo.FullVersion.Type,
-                                optifineInfo.FullVersion.Patch,
-                                VersionName);
+                            modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
+                            {
+                                Type = "OptiFine",
+                                Version = $"{optifineInfo.FullVersion.Type}:{optifineInfo.FullVersion.Patch}",
+                                InstallOrder = 2,
+                                IsAddon = true
+                            });
                         }
                     }
                 }
+                
+                // 使用新的多加载器下载方法
+                if (modLoaderSelections.Count > 0)
+                {
+                    await _downloadTaskManager.StartMultiModLoaderDownloadAsync(
+                        SelectedMinecraftVersion,
+                        modLoaderSelections,
+                        VersionName);
+                }
                 else
                 {
-                    // 下载其他ModLoader（包括单独的Optifine）
-                    await _downloadTaskManager.StartModLoaderDownloadAsync(
-                        SelectedMinecraftVersion,
-                        modLoaderToDownload,
-                        modLoaderVersionToDownload,
-                        VersionName);
+                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
+                    IsDownloadDialogOpen = false;
+                    return;
                 }
             }
             
