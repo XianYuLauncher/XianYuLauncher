@@ -274,10 +274,10 @@
     <value>XianYuLauncher 是一个非官方的 Minecraft 启动器，与 Mojang Studios、Microsoft 及其中中国大陆代理公司无任何从属关系或官方合作关联。</value>
   </data>
   <data name="TutorialPage_Title.Text" xml:space="preserve">
-    <value>新手教程</value>
+    <value>开始</value>
   </data>
   <data name="TutorialPage_Subtitle.Text" xml:space="preserve">
-    <value>请完成以下设置，以便正常运行Minecraft</value>
+    <value>完成以下设置以开始使用</value>
   </data>
   <data name="TutorialPage_StepText.Text" xml:space="preserve">
     <value>步骤 1/3</value>

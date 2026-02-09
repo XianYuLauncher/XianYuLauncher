@@ -19,6 +19,7 @@ namespace XianYuLauncher.Views
         public TutorialPageViewModel ViewModel { get; }
         private readonly HttpClient _httpClient = new HttpClient();
         private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
+        private int _previousPageIndex = 0;
 
         public TutorialPage()
         {
@@ -52,28 +53,68 @@ namespace XianYuLauncher.Views
 
         private void SwitchPageVisibility(int pageIndex)
         {
+            // 步骤3内部有 HideAnimations，需要先置透明避免残影
+            ProfileSettingsPanel.Opacity = 0;
+
             // 隐藏所有页面
             PathSettingsPanel.Visibility = Visibility.Collapsed;
             JavaSettingsPanel.Visibility = Visibility.Collapsed;
             ProfileSettingsPanel.Visibility = Visibility.Collapsed;
 
-            // 显示当前页面
-            switch (pageIndex)
+            // 判断方向：下一步从右滑入，上一步从左滑入
+            bool isForward = pageIndex > _previousPageIndex;
+            _previousPageIndex = pageIndex;
+
+            // 显示当前页面并播放方向感知动画
+            StackPanel targetPanel = pageIndex switch
             {
-                case 0:
-                    PathSettingsPanel.Visibility = Visibility.Visible;
-                    break;
-                case 1:
-                    JavaSettingsPanel.Visibility = Visibility.Visible;
-                    break;
-                case 2:
-                    ProfileSettingsPanel.Visibility = Visibility.Visible;
-                    // 同步 Segmented 控件的选中状态
-                    SyncLoginTypeSegmented();
-                    // 处理角色头像
-                    _ = ProcessAvatarAsync();
-                    break;
+                0 => PathSettingsPanel,
+                1 => JavaSettingsPanel,
+                2 => ProfileSettingsPanel,
+                _ => PathSettingsPanel
+            };
+
+            if (pageIndex == 2)
+            {
+                ProfileSettingsPanel.Opacity = 1;
             }
+
+            targetPanel.Visibility = Visibility.Visible;
+            PlaySlideAnimation(targetPanel, isForward);
+
+            if (pageIndex == 2)
+            {
+                // 同步 Segmented 控件的选中状态
+                SyncLoginTypeSegmented();
+                // 处理角色头像
+                _ = ProcessAvatarAsync();
+            }
+        }
+
+        /// <summary>
+        /// 播放方向感知的滑入动画
+        /// </summary>
+        private void PlaySlideAnimation(UIElement target, bool isForward)
+        {
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(target);
+            var compositor = visual.Compositor;
+
+            // 下一步从右侧滑入(+80)，上一步从左侧滑入(-80)
+            float offsetX = isForward ? 80f : -80f;
+
+            var offsetAnimation = compositor.CreateVector3KeyFrameAnimation();
+            offsetAnimation.InsertKeyFrame(0f, new System.Numerics.Vector3(offsetX, 0, 0));
+            offsetAnimation.InsertKeyFrame(1f, new System.Numerics.Vector3(0, 0, 0), compositor.CreateCubicBezierEasingFunction(
+                new System.Numerics.Vector2(0.1f, 0.9f), new System.Numerics.Vector2(0.2f, 1f)));
+            offsetAnimation.Duration = TimeSpan.FromMilliseconds(350);
+
+            var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
+            opacityAnimation.InsertKeyFrame(0f, 0f);
+            opacityAnimation.InsertKeyFrame(1f, 1f);
+            opacityAnimation.Duration = TimeSpan.FromMilliseconds(250);
+
+            visual.StartAnimation("Offset", offsetAnimation);
+            visual.StartAnimation("Opacity", opacityAnimation);
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Navigation;
 
 using Windows.System;
 
@@ -30,6 +31,9 @@ public sealed partial class ShellPage : Page
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
+
+        // 监听导航事件，教程页隐藏侧边栏
+        NavigationFrame.Navigated += OnFrameNavigated;
 
         // Set the title bar icon by updating /Assets/WindowIcon.ico.
         // A custom title bar is required for full window theme and Mica support.
@@ -220,6 +224,23 @@ public sealed partial class ShellPage : Page
             // 设置 NavigationView 背景为半透明以透出光效
             NavigationViewControl.Background = new SolidColorBrush(
                 Microsoft.UI.Colors.Transparent);
+        }
+    }
+
+    /// <summary>
+    /// 导航事件：教程页隐藏侧边栏，离开时恢复
+    /// </summary>
+    private void OnFrameNavigated(object sender, NavigationEventArgs e)
+    {
+        var isTutorial = e.SourcePageType == typeof(TutorialPage);
+        NavigationViewControl.IsPaneVisible = !isTutorial;
+        NavigationViewControl.IsBackButtonVisible = isTutorial 
+            ? NavigationViewBackButtonVisible.Collapsed 
+            : NavigationViewBackButtonVisible.Visible;
+        NavigationViewControl.AlwaysShowHeader = !isTutorial;
+        if (isTutorial)
+        {
+            NavigationViewControl.Header = null;
         }
     }
 

@@ -10,10 +10,13 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:ui="using:CommunityToolkit.WinUI"
+    xmlns:xaml="using:Microsoft.UI.Xaml"
     mc:Ignorable="d">
 
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
+        <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
         <local:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
 
         <!-- 登录区域切换动画 -->
@@ -29,7 +32,7 @@
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding" Value="16" />
             <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
@@ -48,8 +51,8 @@
 
         <!-- 1. Header Area -->
         <StackPanel Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock x:Uid="TutorialPage_Title" Text="欢迎使用 XianYuLauncher" Style="{ThemeResource TitleTextBlockStyle}" FontSize="32" />
-            <TextBlock x:Uid="TutorialPage_Subtitle" Text="简单几步，配置您的专属世界" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,4,0,0" Opacity="0.6" />
+            <TextBlock x:Uid="TutorialPage_Title" Text="开始" Style="{ThemeResource TitleTextBlockStyle}" FontSize="32" />
+            <TextBlock x:Uid="TutorialPage_Subtitle" Text="完成以下设置以开始使用" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,4,0,0" Opacity="0.6" />
         </StackPanel>
 
         <!-- 2. Progress Area -->
@@ -75,7 +78,81 @@
             <Grid>
                 <!-- Page 1: Game Path -->
                 <StackPanel x:Name="PathSettingsPanel">
-                    <TextBlock x:Uid="TutorialPage_BasicSettings_Title" Text="基础设置" Style="{StaticResource SectionTitleStyle}"/>
+                    <!-- 个性化 -->
+                    <TextBlock x:Uid="TutorialPage_PersonalizationSection_Title" Text="个性化" Style="{StaticResource SectionTitleStyle}"/>
+
+                    <!-- 主题选择 -->
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0">
+                        <controls:SettingsCard
+                            x:Uid="TutorialPage_ThemeSettings"
+                            Header="主题" 
+                            Description="选择应用的外观主题">
+                            <controls:SettingsCard.HeaderIcon>
+                                <FontIcon Glyph="&#xE790;" />
+                            </controls:SettingsCard.HeaderIcon>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <RadioButton x:Uid="TutorialPage_Theme_Light" Content="浅色" 
+                                             IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="TutorialTheme">
+                                    <RadioButton.CommandParameter><xaml:ElementTheme>Light</xaml:ElementTheme></RadioButton.CommandParameter>
+                                </RadioButton>
+                                <RadioButton x:Uid="TutorialPage_Theme_Dark" Content="深色" 
+                                             IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="TutorialTheme">
+                                    <RadioButton.CommandParameter><xaml:ElementTheme>Dark</xaml:ElementTheme></RadioButton.CommandParameter>
+                                </RadioButton>
+                                <RadioButton x:Uid="TutorialPage_Theme_Default" Content="跟随系统" 
+                                             IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Default, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchThemeCommand}" GroupName="TutorialTheme">
+                                    <RadioButton.CommandParameter><xaml:ElementTheme>Default</xaml:ElementTheme></RadioButton.CommandParameter>
+                                </RadioButton>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </Border>
+
+                    <!-- 窗口材质 -->
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0">
+                        <controls:SettingsCard
+                            x:Uid="TutorialPage_WindowMaterial"
+                            Header="窗口材质" 
+                            Description="选择窗口背景效果">
+                            <controls:SettingsCard.HeaderIcon>
+                                <FontIcon Glyph="&#xE771;" />
+                            </controls:SettingsCard.HeaderIcon>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}" 
+                                      SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}" 
+                                      MinWidth="160">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={StaticResource MaterialTypeToLocalizedStringConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </controls:SettingsCard>
+                    </Border>
+
+                    <!-- 语言选择 -->
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0">
+                        <controls:SettingsCard
+                            x:Uid="TutorialPage_LanguageSettings"
+                            Header="语言" 
+                            Description="选择应用的显示语言">
+                            <controls:SettingsCard.HeaderIcon>
+                                <FontIcon Glyph="&#xF2B7;" />
+                            </controls:SettingsCard.HeaderIcon>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <RadioButton x:Uid="TutorialPage_Language_Chinese" Content="简体中文" 
+                                             IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=zh-CN, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="zh-CN" GroupName="TutorialLanguage" />
+                                <RadioButton x:Uid="TutorialPage_Language_English" Content="English" 
+                                             IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=en-US, Mode=OneWay}"
+                                             Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="en-US" GroupName="TutorialLanguage" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </Border>
+
+                    <!-- 游戏设置 -->
+                    <TextBlock x:Uid="TutorialPage_GameSettings_Title" Text="游戏设置" Style="{StaticResource SectionTitleStyle}" Margin="0,12,0,12"/>
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel Spacing="12">
                             <TextBlock x:Uid="TutorialPage_MinecraftPathTitle" Text="Minecraft 游戏目录" Style="{ThemeResource BodyStrongTextBlockStyle}" />
@@ -106,6 +183,18 @@
                                 </Button>
                             </Grid>
                         </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0">
+                        <controls:SettingsCard 
+                            x:Uid="TutorialPage_VersionIsolation"
+                            Header="启用版本隔离" 
+                            Description="每个版本使用独立目录，Mod 互不干扰（推荐开启）">
+                            <controls:SettingsCard.HeaderIcon>
+                                <FontIcon Glyph="&#xE74C;" />
+                            </controls:SettingsCard.HeaderIcon>
+                            <ToggleSwitch IsOn="{x:Bind ViewModel.EnableVersionIsolation, Mode=TwoWay}" />
+                        </controls:SettingsCard>
                     </Border>
                 </StackPanel>
 

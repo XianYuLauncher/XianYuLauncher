@@ -31,6 +31,9 @@ namespace XianYuLauncher.ViewModels
         private readonly AuthlibInjectorService _authlibInjectorService;
         private readonly IDialogService _dialogService;
         private readonly IJavaDownloadService _javaDownloadService;
+        private readonly IThemeSelectorService _themeSelectorService;
+        private readonly ILanguageSelectorService _languageSelectorService;
+        private readonly MaterialService _materialService;
 
         // 页面导航相关属性
         [ObservableProperty]
@@ -45,6 +48,103 @@ namespace XianYuLauncher.ViewModels
         // Minecraft路径设置
         [ObservableProperty]
         private string _minecraftPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ".minecraft");
+
+        // 版本隔离
+        [ObservableProperty]
+        private bool _enableVersionIsolation = true;
+
+        partial void OnEnableVersionIsolationChanged(bool value)
+        {
+            _localSettingsService.SaveSettingAsync("EnableVersionIsolation", value).ConfigureAwait(false);
+        }
+
+        // 主题设置
+        [ObservableProperty]
+        private ElementTheme _elementTheme;
+
+        // 语言设置
+        [ObservableProperty]
+        private string _language = "zh-CN";
+
+        [RelayCommand]
+        private async Task SwitchTheme(ElementTheme theme)
+        {
+            if (ElementTheme != theme)
+            {
+                ElementTheme = theme;
+                await _themeSelectorService.SetThemeAsync(theme);
+            }
+        }
+
+        [RelayCommand]
+        private async Task SwitchLanguage(string lang)
+        {
+            if (Language != lang)
+            {
+                Language = lang;
+                await _languageSelectorService.SetLanguageAsync(lang);
+
+                // WinUI 3 限制：运行时无法刷新 x:Uid，必须重启
+                var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
+                var dialog = new ContentDialog
+                {
+                    Title = resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                    Content = resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                    PrimaryButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                    CloseButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartLater"),
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                };
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        System.Diagnostics.Process.Start(exePath);
+                        App.MainWindow.Close();
+                    }
+                }
+            }
+        }
+
+        // 材质设置
+        [ObservableProperty]
+        private MaterialType _materialType = MaterialType.Mica;
+
+        // 材质类型列表
+        public List<MaterialType> MaterialTypes => Enum.GetValues<MaterialType>().ToList();
+
+        // 初始化标志，避免加载时触发应用材质
+        private bool _isInitializingMaterial = true;
+
+        partial void OnMaterialTypeChanged(MaterialType value)
+        {
+            try
+            {
+                _materialService.SaveMaterialTypeAsync(value).ConfigureAwait(false);
+
+                if (!_isInitializingMaterial)
+                {
+                    var window = App.MainWindow;
+                    if (window != null)
+                    {
+                        _materialService.ApplyMaterialToWindow(window, value);
+                        _materialService.OnBackgroundChanged(value, null);
+                    }
+                }
+                else
+                {
+                    _isInitializingMaterial = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"切换窗口材质失败: {ex.Message}");
+            }
+        }
 
         // Java设置相关属性
         [ObservableProperty]
@@ -1009,6 +1109,10 @@ namespace XianYuLauncher.ViewModels
                 {
                     MinecraftPath = savedMinecraftPath;
                 }
+
+                // 加载版本隔离设置
+                var isolationValue = await _localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation");
+                EnableVersionIsolation = isolationValue ?? true;
                 
                 // 异步加载Java设置
                 var javaSelectionModeStr = await _localSettingsService.ReadSettingAsync<string>("JavaSelectionMode");
@@ -1019,6 +1123,22 @@ namespace XianYuLauncher.ViewModels
             {
                 // 处理异常，避免页面卡死
                 System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}");
+            }
+        }
+
+        private async Task LoadMaterialTypeAsync()
+        {
+            try
+            {
+                var savedType = await _materialService.LoadMaterialTypeAsync();
+                _materialType = savedType;
+                OnPropertyChanged(nameof(MaterialType));
+                _isInitializingMaterial = false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载材质设置失败: {ex.Message}");
+                _isInitializingMaterial = false;
             }
         }
 
@@ -1033,7 +1153,10 @@ namespace XianYuLauncher.ViewModels
             IProfileManager profileManager,
             AuthlibInjectorService authlibInjectorService,
             IDialogService dialogService,
-            IJavaDownloadService javaDownloadService)
+            IJavaDownloadService javaDownloadService,
+            IThemeSelectorService themeSelectorService,
+            ILanguageSelectorService languageSelectorService,
+            MaterialService materialService)
         {
             _localSettingsService = localSettingsService;
             _minecraftVersionService = minecraftVersionService;
@@ -1045,7 +1168,16 @@ namespace XianYuLauncher.ViewModels
             _authlibInjectorService = authlibInjectorService;
             _dialogService = dialogService;
             _javaDownloadService = javaDownloadService;
-            
+            _themeSelectorService = themeSelectorService;
+            _languageSelectorService = languageSelectorService;
+            _materialService = materialService;
+
+            // 初始化主题和语言
+            _elementTheme = _themeSelectorService.Theme;
+            _language = _languageSelectorService.Language;
+
+            // 异步加载材质设置
+            _ = LoadMaterialTypeAsync();
             // 异步加载现有设置，避免阻塞UI线程
             _ = LoadSettingsAsync();
             
