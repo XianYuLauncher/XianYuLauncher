@@ -90,13 +90,11 @@ public class DownloadTaskManager : IDownloadTaskManager
     }
 
     /// <summary>
-    /// 启动 Optifine+Forge 版本下载
+    /// 启动多加载器组合版本下载（新）
     /// </summary>
-    public Task StartOptifineForgeDownloadAsync(
+    public Task StartMultiModLoaderDownloadAsync(
         string minecraftVersion,
-        string forgeVersion,
-        string optifineType,
-        string optifinePatch,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName)
     {
         if (HasActiveDownload)
@@ -105,15 +103,52 @@ public class DownloadTaskManager : IDownloadTaskManager
             throw new InvalidOperationException("已有下载任务正在进行中");
         }
 
+        var selections = modLoaderSelections.ToList();
         var taskName = string.IsNullOrEmpty(customVersionName)
-            ? $"Forge {forgeVersion} + OptiFine {optifineType}_{optifinePatch}"
+            ? string.Join(" + ", selections.Select(s => s.Type))
             : customVersionName;
         var task = CreateTask(taskName, customVersionName);
 
         // 在后台执行下载，方法立即返回
-        _ = ExecuteOptifineForgeDownloadAsync(minecraftVersion, forgeVersion, optifineType, optifinePatch, customVersionName, task);
+        _ = ExecuteMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName, task);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 启动 Optifine+Forge 版本下载（已废弃，内部调用新方法）
+    /// </summary>
+    [Obsolete("请使用 StartMultiModLoaderDownloadAsync 代替")]
+    public Task StartOptifineForgeDownloadAsync(
+        string minecraftVersion,
+        string forgeVersion,
+        string optifineType,
+        string optifinePatch,
+        string customVersionName)
+    {
+        _logger.LogInformation("调用旧版 StartOptifineForgeDownloadAsync，将转发到新方法");
+
+        // 构建多加载器选择列表
+        var selections = new List<ModLoaderSelection>
+        {
+            new ModLoaderSelection
+            {
+                Type = "Forge",
+                Version = forgeVersion,
+                InstallOrder = 1,
+                IsAddon = false
+            },
+            new ModLoaderSelection
+            {
+                Type = "OptiFine",
+                Version = $"{optifineType}:{optifinePatch}",
+                InstallOrder = 2,
+                IsAddon = true
+            }
+        };
+
+        // 调用新方法
+        return StartMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName);
     }
 
     /// <summary>
@@ -747,5 +782,52 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
 
         return Path.Combine(parentDir, $"{baseName}_{counter}");
+    }
+
+    private async Task ExecuteMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        List<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        DownloadTaskInfo task)
+    {
+        try
+        {
+            var minecraftDirectory = _fileService.GetMinecraftDataPath();
+
+            task.StatusMessage = $"正在下载 {string.Join(" + ", modLoaderSelections.Select(s => s.Type))}...";
+            OnTaskProgressChanged(task);
+
+            await _minecraftVersionService.DownloadMultiModLoaderVersionAsync(
+                minecraftVersion,
+                modLoaderSelections,
+                minecraftDirectory,
+                status =>
+                {
+                    if (_currentCts?.IsCancellationRequested == true) return;
+                    
+                    task.Progress = Math.Clamp(status.Percent, 0, 100);
+                    task.StatusMessage = $"正在下载 {string.Join(" + ", modLoaderSelections.Select(s => s.Type))}... {status.Percent:F0}%";
+                    task.SpeedText = status.SpeedText;
+                    OnTaskProgressChanged(task);
+                },
+                _currentCts?.Token ?? CancellationToken.None,
+                customVersionName);
+
+            if (_currentCts?.IsCancellationRequested == true)
+            {
+                return;
+            }
+
+            CompleteTask(task, true);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
+            FailTask(task, ex.Message);
+        }
     }
 }

@@ -22,7 +22,17 @@ public interface IMinecraftVersionService
     Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null);
     Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, System.Threading.CancellationToken cancellationToken = default, string customVersionName = null);
     
-    // Optifine+Forge组合下载方法
+    // 多加载器组合安装方法（新）
+    Task DownloadMultiModLoaderVersionAsync(
+        string minecraftVersionId,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
+        string minecraftDirectory,
+        Action<DownloadProgressStatus> progressCallback = null,
+        CancellationToken cancellationToken = default,
+        string? customVersionName = null);
+    
+    // Optifine+Forge组合下载方法（已废弃，保留用于向后兼容）
+    [Obsolete("请使用 DownloadMultiModLoaderVersionAsync 代替")]
     Task DownloadOptifineForgeVersionAsync(string minecraftVersionId, string forgeVersion, string optifineType, string optifinePatch, string versionsDirectory, string librariesDirectory, Action<DownloadProgressStatus> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null);
     
     // 获取已安装的Minecraft版本
