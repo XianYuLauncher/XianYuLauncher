@@ -2345,10 +2345,10 @@
     <value>账户登录</value>
   </data>
   <data name="TutorialPage_LoginType_Microsoft.Content" xml:space="preserve">
-    <value>微软账号</value>
+    <value>微软登录</value>
   </data>
   <data name="TutorialPage_LoginType_Offline.Content" xml:space="preserve">
-    <value>离线模式</value>
+    <value>离线登录</value>
   </data>
   <data name="TutorialPage_LoginType_External.Content" xml:space="preserve">
     <value>外置登录</value>

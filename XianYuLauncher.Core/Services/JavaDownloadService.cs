@@ -171,15 +171,22 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task<JavaRuntimeManifest> FetchMainManifestAsync(CancellationToken token)
     {
-        string bmclapiUrl = ManifestUrl.Replace("piston-meta.mojang.com", "bmclapi2.bangbang93.com");
+        // 读取用户下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        
+        // 使用下载源转换清单 URL
+        string url = downloadSource.GetResourceUrl("java_runtime", ManifestUrl);
         
         try
         {
-            var json = await _downloadManager.DownloadStringAsync(bmclapiUrl, token);
+            var json = await _downloadManager.DownloadStringAsync(url, token);
             return JsonConvert.DeserializeObject<JavaRuntimeManifest>(json);
         }
+        catch (OperationCanceledException) { throw; }
         catch
         {
+            // 回退到官方源
             var json = await _downloadManager.DownloadStringAsync(ManifestUrl, token);
             return JsonConvert.DeserializeObject<JavaRuntimeManifest>(json);
         }
@@ -199,15 +206,21 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task<JavaRuntimeFileManifest> FetchFileManifestAsync(string url, CancellationToken token)
     {
-        string bmclapiUrl = url.Replace("piston-meta.mojang.com", "bmclapi2.bangbang93.com");
+        // 读取用户下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        
+        string transformedUrl = downloadSource.GetResourceUrl("java_runtime", url);
 
         try
         {
-            var json = await _downloadManager.DownloadStringAsync(bmclapiUrl, token);
+            var json = await _downloadManager.DownloadStringAsync(transformedUrl, token);
             return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
         }
+        catch (OperationCanceledException) { throw; }
         catch
         {
+            // 回退到官方源
             var json = await _downloadManager.DownloadStringAsync(url, token);
             return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
         }
@@ -215,6 +228,10 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string> statusCallback, CancellationToken token)
     {
+        // 读取用户下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        
         var filesToDownload = manifest.Files.Where(f => f.Value.Type == "file").ToList();
         var downloadTasks = new List<DownloadTask>();
         
@@ -234,10 +251,8 @@ public class JavaDownloadService : IJavaDownloadService
                 }
             }
 
-            // 构建下载任务
-            // 使用 BMCLAPI 镜像 URL
-            string downloadUrl = fileInfo.Downloads.Raw.Url.Replace("piston-meta.mojang.com", "bmclapi2.bangbang93.com")
-                                                           .Replace("piston-data.mojang.com", "bmclapi2.bangbang93.com");
+            // 使用下载源转换 URL
+            string downloadUrl = downloadSource.GetResourceUrl("java_runtime", fileInfo.Downloads.Raw.Url);
 
             downloadTasks.Add(new DownloadTask
             {

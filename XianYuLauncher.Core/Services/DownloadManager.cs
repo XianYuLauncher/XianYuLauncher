@@ -121,7 +121,9 @@ public class DownloadManager : IDownloadManager
             }
             catch (OperationCanceledException)
             {
-                throw;
+                // 用户取消，返回取消结果而不是抛异常，避免 Debug 模式下 VS 中断
+                CleanupFile(targetPath);
+                return DownloadResult.Failed(url, "下载已取消", null, retryCount);
             }
             catch (Exception ex)
             {
@@ -160,41 +162,43 @@ public class DownloadManager : IDownloadManager
         long totalEstimatedSize = taskList.Sum(t => t.ExpectedSize ?? 0);
         long totalDownloadedSize = 0;
 
-        await Parallel.ForEachAsync(taskList, new ParallelOptions 
-        { 
-            MaxDegreeOfParallelism = threadCount,
-            CancellationToken = cancellationToken 
-        }, async (task, ct) =>
+        try
         {
-            // 对于批量下载，我们主要关心文件完成数进度
-            // 如果需要精确的字节进度，需要汇总所有并行任务的实时字节变化，这将非常复杂且消耗资源
-            // 这里我们采用 "文件个数完成进度" 和 "预估字节进度" 混合模式
-            // 或者简单点：ProgressStatus.DownloadedBytes = CompletedCount, TotalBytes = TotalCount
-            
-            // 重要修复：在批量下载模式下，强制单个文件的下载不进行分片（或限制为1），避免 32并发 x 32分片 = 1000+连接数 导致的 429 错误
-            var result = await DownloadFileInternalAsync(
-                task.Url,
-                task.TargetPath,
-                task.ExpectedSha1,
-                null, // 不监听单个文件进度
-                1,    // 强制单文件并发数为1 (禁用内部分片并发)
-                ct);
-
-            results.Enqueue(result);
-            
-            var newCompleted = Interlocked.Increment(ref completedCount);
-            
-            // 使用 Count 作为 progress 的 byte 字段 (hacky but standard practice for batch files without size info)
-            // 但如果 caller 期待的是字节怎么办？
-            // 接口定义是 DownloadProgressStatus(long DownloadedBytes, long TotalBytes, double Percent)
-            
-            if (totalEstimatedSize > 0 && task.ExpectedSize.HasValue)
+            await Parallel.ForEachAsync(taskList, new ParallelOptions 
+            { 
+                MaxDegreeOfParallelism = threadCount,
+                CancellationToken = cancellationToken 
+            }, async (task, ct) =>
             {
-                Interlocked.Add(ref totalDownloadedSize, task.ExpectedSize.Value);
-            }
-            
-            progressCallback?.Invoke(new DownloadProgressStatus(newCompleted, totalCount, (double)newCompleted / totalCount * 100));
-        });
+                // 如果已取消，直接返回
+                if (ct.IsCancellationRequested) return;
+                
+                // 重要修复：在批量下载模式下，强制单个文件的下载不进行分片（或限制为1），避免 32并发 x 32分片 = 1000+连接数 导致的 429 错误
+                var result = await DownloadFileInternalAsync(
+                    task.Url,
+                    task.TargetPath,
+                    task.ExpectedSha1,
+                    null, // 不监听单个文件进度
+                    1,    // 强制单文件并发数为1 (禁用内部分片并发)
+                    ct);
+
+                results.Enqueue(result);
+                
+                var newCompleted = Interlocked.Increment(ref completedCount);
+                
+                if (totalEstimatedSize > 0 && task.ExpectedSize.HasValue)
+                {
+                    Interlocked.Add(ref totalDownloadedSize, task.ExpectedSize.Value);
+                }
+                
+                progressCallback?.Invoke(new DownloadProgressStatus(newCompleted, totalCount, (double)newCompleted / totalCount * 100));
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Parallel.ForEachAsync 在 CancellationToken 取消时会抛出此异常，静默处理
+            _logger.LogInformation("批量下载已取消");
+        }
 
         return results.ToList();
     }

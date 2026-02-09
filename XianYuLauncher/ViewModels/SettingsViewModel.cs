@@ -2002,36 +2002,48 @@ public partial class SettingsViewModel : ObservableRecipient
 
     private async Task InstallJavaFromSettingsAsync(JavaVersionDownloadOption option)
     {
-        await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+        try
         {
-            try
+            await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
             {
-                // 下载并安装
-                await _javaDownloadService.DownloadAndInstallJavaAsync(
-                    option.Component, 
-                    p => progress.Report(p), 
-                    s => status.Report(s), 
-                    token);
-                
-                status.Report("安装完成，正在刷新环境...");
-                
-                // 刷新全系统 Java 检测（这会自动更新列表并保存到 Settings）
-                await _javaRuntimeService.DetectJavaVersionsAsync(true);
-                
-                // 重新加载 ViewModel 的列表
-                App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                try
                 {
-                     JavaVersions.Clear();
-                     await LoadJavaVersionsAsync();
-                });
-                
-                await Task.Delay(1000);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"安装失败: {ex.Message}", ex);
-            }
-        });
+                    // 下载并安装
+                    await _javaDownloadService.DownloadAndInstallJavaAsync(
+                        option.Component, 
+                        p => progress.Report(p), 
+                        s => status.Report(s), 
+                        token);
+                    
+                    status.Report("安装完成，正在刷新环境...");
+                    
+                    // 刷新全系统 Java 检测（这会自动更新列表并保存到 Settings）
+                    await _javaRuntimeService.DetectJavaVersionsAsync(true);
+                    
+                    // 重新加载 ViewModel 的列表
+                    App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                    {
+                         JavaVersions.Clear();
+                         await LoadJavaVersionsAsync();
+                    });
+                    
+                    await Task.Delay(1000);
+                }
+                catch (OperationCanceledException)
+                {
+                    // 用户取消，直接向上抛出让 ShowProgressDialogAsync 处理
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"安装失败: {ex.Message}", ex);
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // 用户取消操作，静默处理（TaskCanceledException 是其子类）
+        }
     }
 
     // 注意：以下Java扫描方法已被JavaRuntimeService替代

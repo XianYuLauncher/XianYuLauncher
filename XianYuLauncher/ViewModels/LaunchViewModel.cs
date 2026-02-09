@@ -135,6 +135,10 @@ public partial class LaunchViewModel : ObservableRecipient
                 await _javaRuntimeService.DetectJavaVersionsAsync(true);
                 await Task.Delay(1000);
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 throw new Exception($"下载流程异常: {ex.Message}", ex);

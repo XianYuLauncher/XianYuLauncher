@@ -7,11 +7,24 @@
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:local="using:XianYuLauncher.Views"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:ui="using:CommunityToolkit.WinUI"
     mc:Ignorable="d">
 
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
         <local:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
+
+        <!-- 登录区域切换动画 -->
+        <animations:ImplicitAnimationSet x:Name="LoginShowTransitions">
+            <animations:OffsetAnimation EasingMode="EaseOut" From="0,24,0" To="0" Duration="0:0:0.4" />
+            <animations:OpacityAnimation EasingMode="EaseOut" From="0" To="1" Duration="0:0:0.2" />
+        </animations:ImplicitAnimationSet>
+        <animations:ImplicitAnimationSet x:Name="LoginHideTransitions">
+            <animations:OffsetAnimation EasingMode="EaseOut" From="0" To="0,24,0" Duration="0:0:0.2" />
+            <animations:OpacityAnimation EasingMode="EaseOut" From="1" To="0" Duration="0:0:0.1" />
+        </animations:ImplicitAnimationSet>
         <Style x:Key="CardBorderStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -263,37 +276,35 @@
                             <TextBlock Text="{x:Bind ViewModel.LoginStatus, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
-                    
-                    <Border Style="{StaticResource CardBorderStyle}">
-                        <StackPanel Spacing="16">
-                            <StackPanel Orientation="Horizontal" Spacing="24">
-                                <RadioButton
-                                    x:Uid="TutorialPage_LoginType_Microsoft"
-                                    Content="微软账号"
-                                    GroupName="LoginType"
-                                    IsChecked="{x:Bind ViewModel.IsMicrosoftLogin, Mode=TwoWay}"
-                                    Command="{x:Bind ViewModel.SwitchLoginTypeCommand}"
-                                    CommandParameter="Microsoft"/>
-                                <RadioButton
-                                    x:Uid="TutorialPage_LoginType_Offline"
-                                    Content="离线模式"
-                                    GroupName="LoginType"
-                                    IsChecked="{x:Bind ViewModel.IsOfflineLogin, Mode=TwoWay}"
-                                    IsEnabled="{x:Bind ViewModel.IsOfflineLoginAllowed, Mode=OneWay}"
-                                    Command="{x:Bind ViewModel.SwitchLoginTypeCommand}"
-                                    CommandParameter="Offline"/>
-                                <RadioButton
-                                    x:Uid="TutorialPage_LoginType_External"
-                                    Content="外置登录"
-                                    GroupName="LoginType"
-                                    IsChecked="{x:Bind ViewModel.IsExternalLogin, Mode=TwoWay}"
-                                    IsEnabled="{x:Bind ViewModel.IsOfflineLoginAllowed, Mode=OneWay}"
-                                    Command="{x:Bind ViewModel.SwitchLoginTypeCommand}"
-                                    CommandParameter="External"/>
-                            </StackPanel>
 
-                            <!-- Microsoft Login Area -->
-                            <Grid Visibility="{x:Bind ViewModel.IsMicrosoftLogin, Mode=OneWay}">
+                    <!-- 登录方式选择 - Segmented 控件 -->
+                    <controls:Segmented 
+                        x:Name="LoginTypeSegmented"
+                        Margin="0,0,0,16"
+                        HorizontalAlignment="Stretch"
+                        SelectionChanged="LoginTypeSegmented_SelectionChanged">
+                        <controls:SegmentedItem x:Uid="TutorialPage_LoginType_Microsoft" Content="微软登录" Tag="Microsoft">
+                            <controls:SegmentedItem.Icon>
+                                <PathIcon Data="M0,0 h5 v5 h-5 Z M6,0 h5 v5 h-5 Z M0,6 h5 v5 h-5 Z M6,6 h5 v5 h-5 Z" />
+                            </controls:SegmentedItem.Icon>
+                        </controls:SegmentedItem>
+                        <controls:SegmentedItem x:Uid="TutorialPage_LoginType_Offline" Content="离线登录" Tag="Offline"
+                            IsEnabled="{x:Bind ViewModel.IsOfflineLoginAllowed, Mode=OneWay}"
+                            Icon="{ui:FontIcon Glyph=&#xE77B;}" />
+                        <controls:SegmentedItem x:Uid="TutorialPage_LoginType_External" Content="外置登录" Tag="External"
+                            IsEnabled="{x:Bind ViewModel.IsOfflineLoginAllowed, Mode=OneWay}"
+                            Icon="{ui:FontIcon Glyph=&#xE774;}" />
+                    </controls:Segmented>
+
+                    <!-- 登录区域 - 使用 SwitchPresenter 配合动画切换 -->
+                    <controls:SwitchPresenter 
+                        Value="{Binding SelectedItem.Tag, ElementName=LoginTypeSegmented}">
+
+                        <!-- 微软登录 -->
+                        <controls:Case Value="Microsoft">
+                            <Border Style="{StaticResource CardBorderStyle}"
+                                    animations:Implicit.ShowAnimations="{StaticResource LoginShowTransitions}"
+                                    animations:Implicit.HideAnimations="{StaticResource LoginHideTransitions}">
                                 <StackPanel Spacing="12">
                                     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="4" Padding="12">
                                         <Grid.ColumnDefinitions>
@@ -308,13 +319,11 @@
                                             <TextBlock Text="{x:Bind ViewModel.ProfileName, Mode=OneWay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
                                         </StackPanel>
                                     </Grid>
-
                                     <Button 
                                         Command="{x:Bind ViewModel.MicrosoftLoginCommand}" 
                                         IsEnabled="{x:Bind ViewModel.IsNotLoggingIn, Mode=OneWay}"
                                         HorizontalAlignment="Stretch" Style="{ThemeResource AccentButtonStyle}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <!-- Microsoft Logo Path (Scaled to ~11x11) -->
                                             <PathIcon Data="M0,0 h5 v5 h-5 Z M6,0 h5 v5 h-5 Z M0,6 h5 v5 h-5 Z M6,6 h5 v5 h-5 Z"
                                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" 
                                                       VerticalAlignment="Center" />
@@ -322,65 +331,16 @@
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
-                            </Grid>
+                            </Border>
+                        </controls:Case>
 
-                            <!-- External Login Area -->
-                            <Grid Visibility="{x:Bind ViewModel.IsExternalLogin, Mode=OneWay}">
+                        <!-- 离线模式 -->
+                        <controls:Case Value="Offline">
+                            <Border Style="{StaticResource CardBorderStyle}"
+                                    animations:Implicit.ShowAnimations="{StaticResource LoginShowTransitions}"
+                                    animations:Implicit.HideAnimations="{StaticResource LoginHideTransitions}">
                                 <StackPanel Spacing="12">
-                                     <!-- 登录成功后的卡片展示 -->
-                                     <Grid Visibility="{x:Bind ViewModel.IsExternalLoggedIn, Mode=OneWay}" 
-                                           Background="{ThemeResource LayerFillColorDefaultBrush}" 
-                                           CornerRadius="4" 
-                                           Padding="12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="48" Height="48" CornerRadius="4" Margin="0,0,16,0">
-                                            <!-- 注意：这里复用了 MicrosoftProfileAvatar 以简化，
-                                                 实际上 View 代码会根据 ProfileName 更新它。
-                                                 如果需要显示外置特定的头像控件，需要新建。
-                                                 目前的 View 代码是根据 CurrentPageIndex 或 ProfileName 变化来更新。
-                                            -->
-                                            <Image x:Name="ExternalProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock x:Uid="TutorialPage_ExternalAccount_Label" Text="外置账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
-                                            <TextBlock Text="{x:Bind ViewModel.ProfileName, Mode=OneWay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                                        </StackPanel>
-                                     </Grid>
-                                
-                                     <!-- 登录表单，仅在未登录时显示 -->
-                                     <StackPanel Visibility="{x:Bind ViewModel.IsExternalFormVisible, Mode=OneWay}" Spacing="12">
-                                         <TextBox 
-                                             x:Uid="TutorialPage_ExternalAuthServer"
-                                             Text="{x:Bind ViewModel.ExternalAuthServer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                         
-                                         <TextBox 
-                                             x:Uid="TutorialPage_ExternalUsername"
-                                             Text="{x:Bind ViewModel.ExternalUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                         
-                                         <PasswordBox 
-                                             x:Uid="TutorialPage_ExternalPassword"
-                                             Password="{x:Bind ViewModel.ExternalPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                     </StackPanel>
-
-                                    <!-- 按钮：未登录时显示登录，登录后禁用或变为重新登录(这里简单处理，登录成功后按钮状态需调整) -->
-                                    <Button 
-                                        Command="{x:Bind ViewModel.ExternalLoginCommand}" 
-                                        IsEnabled="{x:Bind ViewModel.IsExternalLoginButtonEnabled, Mode=OneWay}"
-                                        Content="{x:Bind ViewModel.IsExternalLoggedIn, Mode=OneWay, Converter={StaticResource ExternalLoginButtonTextConverter}}"
-                                        HorizontalAlignment="Stretch" 
-                                        Style="{ThemeResource AccentButtonStyle}">
-                                        <!-- 由于使用了 Content 绑定，这里不再使用内部 StackPanel -->
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Offline Login Area -->
-                            <Grid Visibility="{x:Bind ViewModel.IsOfflineLogin, Mode=OneWay}">
-                                <StackPanel Spacing="12">
-                                     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="4" Padding="12">
+                                    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="4" Padding="12">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
@@ -396,9 +356,54 @@
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                            </Border>
+                        </controls:Case>
+
+                        <!-- 外置登录 -->
+                        <controls:Case Value="External">
+                            <Border Style="{StaticResource CardBorderStyle}"
+                                    animations:Implicit.ShowAnimations="{StaticResource LoginShowTransitions}"
+                                    animations:Implicit.HideAnimations="{StaticResource LoginHideTransitions}">
+                                <StackPanel Spacing="12">
+                                    <!-- 登录成功后的卡片展示 -->
+                                    <Grid Visibility="{x:Bind ViewModel.IsExternalLoggedIn, Mode=OneWay}" 
+                                          Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                                          CornerRadius="4" 
+                                          Padding="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="48" Height="48" CornerRadius="4" Margin="0,0,16,0">
+                                            <Image x:Name="ExternalProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock x:Uid="TutorialPage_ExternalAccount_Label" Text="外置账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                            <TextBlock Text="{x:Bind ViewModel.ProfileName, Mode=OneWay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <!-- 登录表单 -->
+                                    <StackPanel Visibility="{x:Bind ViewModel.IsExternalFormVisible, Mode=OneWay}" Spacing="12">
+                                        <TextBox 
+                                            x:Uid="TutorialPage_ExternalAuthServer"
+                                            Text="{x:Bind ViewModel.ExternalAuthServer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox 
+                                            x:Uid="TutorialPage_ExternalUsername"
+                                            Text="{x:Bind ViewModel.ExternalUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <PasswordBox 
+                                            x:Uid="TutorialPage_ExternalPassword"
+                                            Password="{x:Bind ViewModel.ExternalPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <Button 
+                                        Command="{x:Bind ViewModel.ExternalLoginCommand}" 
+                                        IsEnabled="{x:Bind ViewModel.IsExternalLoginButtonEnabled, Mode=OneWay}"
+                                        Content="{x:Bind ViewModel.IsExternalLoggedIn, Mode=OneWay, Converter={StaticResource ExternalLoginButtonTextConverter}}"
+                                        HorizontalAlignment="Stretch" 
+                                        Style="{ThemeResource AccentButtonStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </controls:Case>
+                    </controls:SwitchPresenter>
                 </StackPanel>
             </Grid>
 

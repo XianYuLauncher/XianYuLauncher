@@ -2327,10 +2327,10 @@ Continue downloading?</value>
     <value>Account Login</value>
   </data>
   <data name="TutorialPage_LoginType_Microsoft.Content" xml:space="preserve">
-    <value>Microsoft Account</value>
+    <value>Microsoft Login</value>
   </data>
   <data name="TutorialPage_LoginType_Offline.Content" xml:space="preserve">
-    <value>Offline Mode</value>
+    <value>Offline Login</value>
   </data>
   <data name="TutorialPage_LoginType_External.Content" xml:space="preserve">
     <value>External Login</value>

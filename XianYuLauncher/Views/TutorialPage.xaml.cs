@@ -68,9 +68,45 @@ namespace XianYuLauncher.Views
                     break;
                 case 2:
                     ProfileSettingsPanel.Visibility = Visibility.Visible;
+                    // 同步 Segmented 控件的选中状态
+                    SyncLoginTypeSegmented();
                     // 处理角色头像
                     _ = ProcessAvatarAsync();
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 同步 Segmented 控件的选中项与 ViewModel 状态
+        /// </summary>
+        private void SyncLoginTypeSegmented()
+        {
+            if (LoginTypeSegmented == null) return;
+            
+            string targetTag = ViewModel.IsMicrosoftLogin ? "Microsoft" 
+                             : ViewModel.IsOfflineLogin ? "Offline" 
+                             : "External";
+            
+            for (int i = 0; i < LoginTypeSegmented.Items.Count; i++)
+            {
+                if (LoginTypeSegmented.Items[i] is CommunityToolkit.WinUI.Controls.SegmentedItem item 
+                    && item.Tag?.ToString() == targetTag)
+                {
+                    LoginTypeSegmented.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Segmented 控件选择变化时切换登录方式
+        /// </summary>
+        private void LoginTypeSegmented_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LoginTypeSegmented.SelectedItem is CommunityToolkit.WinUI.Controls.SegmentedItem selectedItem 
+                && selectedItem.Tag is string loginType)
+            {
+                ViewModel.SwitchLoginTypeCommand.Execute(loginType);
             }
         }
 

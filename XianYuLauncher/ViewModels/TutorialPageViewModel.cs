@@ -581,6 +581,10 @@ namespace XianYuLauncher.ViewModels
                     
                     await Task.Delay(1000);
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     throw new Exception($"安装失败: {ex.Message}", ex);

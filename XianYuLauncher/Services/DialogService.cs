@@ -223,6 +223,7 @@ public class DialogService : IDialogService
         };
 
         var cts = new CancellationTokenSource();
+        Task? backgroundWork = null;
         
         dialog.CloseButtonClick += (s, e) => 
         {
@@ -240,7 +241,7 @@ public class DialogService : IDialogService
 
         dialog.Opened += (s, e) =>
         {
-            _ = Task.Run(async () =>
+            backgroundWork = Task.Run(async () =>
             {
                 try
                 {
@@ -264,6 +265,19 @@ public class DialogService : IDialogService
         };
 
         await ShowSafeAsync(dialog);
+        
+        // dialog 关闭后，等待后台任务真正完成，确保所有异常都被观察到
+        if (backgroundWork != null)
+        {
+            try
+            {
+                await backgroundWork;
+            }
+            catch
+            {
+                // 所有异常已在 Task.Run 内部处理过，这里兜底防止未观察异常
+            }
+        }
     }
 
     public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
