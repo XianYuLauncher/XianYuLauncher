@@ -14,21 +14,16 @@ namespace XianYuLauncher.ViewModels;
 public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
-    private readonly FabricService _fabricService;
-    private readonly QuiltService _quiltService;
-    private readonly IFileService _fileService;
-    private readonly NeoForgeService _neoForgeService;
-    private readonly ForgeService _forgeService;
-    private readonly OptifineService _optifineService;
-    private readonly CleanroomService _cleanroomService;
-    private readonly LegacyFabricService _legacyFabricService;
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IModLoaderVersionLoaderService _versionLoaderService;
+    private readonly IModLoaderVersionNameService _versionNameService;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
 
     [ObservableProperty]
     private ObservableCollection<ModLoaderItem> _modLoaderItems = new();
+
 
     [ObservableProperty]
     private ModLoaderItem? _selectedModLoaderItem;
@@ -83,15 +78,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     // 计算属性：是否选择了非NeoForge
     public bool IsNotNeoForgeSelected => !string.IsNullOrEmpty(SelectedModLoader) && SelectedModLoader != "NeoForge";
 
-    [ObservableProperty]
-    private Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
-
-    [ObservableProperty]
-    private Dictionary<string, FabricLoaderVersion> _legacyFabricVersionMap = new();
-    
-    [ObservableProperty]
-    private Dictionary<string, QuiltLoaderVersion> _quiltVersionMap = new();
-    
     // 自定义版本名称
     [ObservableProperty]
     private string _versionName = "";
@@ -99,6 +85,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     // 版本名称验证相关
     [ObservableProperty]
     private bool _isVersionNameValid = true;
+
     
     [ObservableProperty]
     private string _versionNameErrorMessage = "";
@@ -130,28 +117,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     /// </summary>
     private void ValidateVersionName()
     {
-        if (string.IsNullOrWhiteSpace(VersionName))
-        {
-            IsVersionNameValid = false;
-            VersionNameErrorMessage = "ModLoaderSelector_VersionNameError_Empty".GetLocalized();
-            return;
-        }
-        
-        // 检查版本目录是否已存在
-        string minecraftDirectory = _fileService.GetMinecraftDataPath();
-        string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
-        string versionDirectory = Path.Combine(versionsDirectory, VersionName);
-        
-        if (Directory.Exists(versionDirectory))
-        {
-            IsVersionNameValid = false;
-            VersionNameErrorMessage = string.Format("ModLoaderSelector_VersionNameError_Exists".GetLocalized(), VersionName);
-        }
-        else
-        {
-            IsVersionNameValid = true;
-            VersionNameErrorMessage = "";
-        }
+        var result = _versionNameService.ValidateVersionName(VersionName);
+        IsVersionNameValid = result.IsValid;
+        VersionNameErrorMessage = result.ErrorMessage;
     }
     
     // 用于管理异步加载任务的CancellationTokenSource
@@ -179,15 +147,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     public ModLoaderSelectorViewModel()
     {
         _navigationService = App.GetService<INavigationService>();
-        _fabricService = App.GetService<FabricService>();
-        _quiltService = App.GetService<QuiltService>();
-        _fileService = App.GetService<IFileService>();
-        _neoForgeService = App.GetService<NeoForgeService>();
-        _forgeService = App.GetService<ForgeService>();
-        _optifineService = App.GetService<OptifineService>();
-        _cleanroomService = App.GetService<CleanroomService>();
-        _legacyFabricService = App.GetService<LegacyFabricService>();
         _downloadTaskManager = App.GetService<IDownloadTaskManager>();
+        _versionLoaderService = App.GetService<IModLoaderVersionLoaderService>();
+        _versionNameService = App.GetService<IModLoaderVersionNameService>();
         
         // 订阅下载事件以更新弹窗进度
         _downloadTaskManager.TaskProgressChanged += OnDownloadProgressChanged;
@@ -452,9 +414,30 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     {
                         IsOptifineSelected = true;
                         SelectedOptifineVersion = item.SelectedVersion;
+                        
+                        // 互斥逻辑：如果当前选中的是Fabric/Quilt等不兼容的，则取消选中它们
+                        if (SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
+                        {
+                            SelectedModLoaderItem.IsSelected = false;
+                            SelectedModLoaderItem = null;
+                        }
                     }
                     else
                     {
+                        // 互斥逻辑：如果选中的是 NeoForge/Fabric 等非 Forge 加载器，且 Optifine 已被选中，则取消 Optifine
+                        if (item.Name != "Forge" && IsOptifineSelected)
+                        {
+                            IsOptifineSelected = false;
+                            SelectedOptifineVersion = null;
+                            
+                            // 确保 UI 上的 Optifine 状态同步更新
+                            var optifineItem = ModLoaderItems.FirstOrDefault(x => x.Name == "Optifine");
+                            if (optifineItem != null)
+                            {
+                                optifineItem.IsSelected = false;
+                            }
+                        }
+                        
                         SelectedModLoaderItem = item;
                     }
                     await ExpandModLoaderAsync(item);
@@ -482,6 +465,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 切换Optifine选择状态
             IsOptifineSelected = !IsOptifineSelected;
             modLoaderItem.IsSelected = IsOptifineSelected;
+
+            // 如果选择了Optifine，检查当前选中的ModLoader是否兼容
+            // 目前逻辑：Optifine只能独立安装，或者作为Forge的组件安装
+            if (IsOptifineSelected && SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
+            {
+                // 如果当前选中的是Fabric/Quilt等不兼容的，则取消选中它们
+                SelectedModLoaderItem.IsSelected = false;
+                SelectedModLoaderItem = null;
+                
+                // 更新计算属性
+                OnPropertyChanged(nameof(IsNeoForgeSelected));
+                OnPropertyChanged(nameof(IsNotNeoForgeSelected));
+            }
             
             // 如果选中了Optifine，保存选中的版本
             if (IsOptifineSelected)
@@ -500,8 +496,17 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 取消之前的选择
             foreach (var item in ModLoaderItems)
             {
-                // 不取消Optifine的选择，除非选择了其他Optifine
-                if (item.Name != "Optifine")
+                // 处理 Optifine 的兼容性：仅当新选择的是 Forge 时才保留 Optifine
+                if (item.Name == "Optifine")
+                {
+                    if (modLoaderItem.Name != "Forge")
+                    {
+                        item.IsSelected = false;
+                        IsOptifineSelected = false;
+                        SelectedOptifineVersion = null;
+                    }
+                }
+                else
                 {
                     item.IsSelected = false;
                 }
@@ -528,108 +533,12 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     /// </summary>
     private void UpdateVersionName()
     {
-        if (string.IsNullOrEmpty(SelectedModLoader))
-        {
-            // 没有选择ModLoader
-            if (IsOptifineSelected && !string.IsNullOrEmpty(SelectedOptifineVersion))
-            {
-                // 只选择了Optifine
-                VersionName = $"{SelectedMinecraftVersion}-OptiFine_{SelectedOptifineVersion}";
-            }
-            else
-            {
-                // 没有选择任何ModLoader
-                VersionName = SelectedMinecraftVersion;
-            }
-            return;
-        }
-        
-        switch (SelectedModLoader)
-        {
-            case "Fabric":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-fabric-{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-fabric";
-                }
-                break;
-            case "LegacyFabric":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-legacyfabric-{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-legacyfabric";
-                }
-                break;
-            case "NeoForge":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-neoforge-{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-neoforge";
-                }
-                break;
-            case "Forge":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    string baseVersionName = $"{SelectedMinecraftVersion}-forge-{SelectedModLoaderVersion}";
-                    
-                    // 如果同时选择了Optifine，添加Optifine信息
-                    if (IsOptifineSelected && !string.IsNullOrEmpty(SelectedOptifineVersion))
-                    {
-                        VersionName = $"{baseVersionName}-OptiFine_{SelectedOptifineVersion}";
-                    }
-                    else
-                    {
-                        VersionName = baseVersionName;
-                    }
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-forge";
-                }
-                break;
-            case "Quilt":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-quilt-{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-quilt";
-                }
-                break;
-            case "Optifine":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-OptiFine_{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-OptiFine";
-                }
-                break;
-            case "Cleanroom":
-                if (!string.IsNullOrEmpty(SelectedModLoaderVersion))
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-cleanroom-{SelectedModLoaderVersion}";
-                }
-                else
-                {
-                    VersionName = $"{SelectedMinecraftVersion}-cleanroom";
-                }
-                break;
-            default:
-                VersionName = SelectedMinecraftVersion;
-                break;
-        }
+        VersionName = _versionNameService.GenerateVersionName(
+            SelectedMinecraftVersion,
+            SelectedModLoader,
+            SelectedModLoaderVersion,
+            IsOptifineSelected,
+            SelectedOptifineVersion);
     }
 
     [RelayCommand]
@@ -661,30 +570,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             modLoaderItem.Versions.Clear();
             modLoaderItem.SelectedVersion = null;
             
-            // 加载对应mod loader的版本
-            switch (modLoaderItem.Name)
+            // 使用统一的服务加载版本
+            var versions = await _versionLoaderService.LoadVersionsAsync(modLoaderItem.Name, SelectedMinecraftVersion, cts.Token);
+            
+            // 更新版本列表
+            foreach (var version in versions)
             {
-                case "Forge":
-                    await LoadForgeVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "Fabric":
-                    await LoadFabricVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "LegacyFabric":
-                    await LoadLegacyFabricVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "NeoForge":
-                    await LoadNeoForgeVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "Quilt":
-                    await LoadQuiltVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "Optifine":
-                    await LoadOptifineVersionsAsync(modLoaderItem, cts.Token);
-                    break;
-                case "Cleanroom":
-                    await LoadCleanroomVersionsAsync(modLoaderItem, cts.Token);
-                    break;
+                modLoaderItem.Versions.Add(version);
             }
             
             // 设置已加载状态
@@ -724,368 +616,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
     }
 
-    /// <summary>
-    /// 从Fabric API获取实际的Fabric版本列表
-    /// </summary>
-    private async Task LoadFabricVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        try
-        {
-            List<FabricLoaderVersion> fabricVersions = await _fabricService.GetFabricLoaderVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 将版本添加到对应mod loader的列表中，并保存映射关系
-            foreach (var version in fabricVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                string displayVersion = version.Loader.Version;
-                modLoaderItem.Versions.Add(displayVersion);
-                FabricVersionMap[displayVersion] = version;
-            }
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，不处理
-        }
-        catch (Exception ex)
-        {
-            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
-            if (SelectedModLoader == "Fabric")
-            {
-                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                {
-                    // 输出debug信息
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Fabric版本列表失败 (404): {ex.Message}");
-                }
-                else
-                {
-                    // 其他错误，显示弹窗
-                    await ShowMessageAsync($"获取Fabric版本列表失败: {ex.Message}");
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 从Legacy Fabric API获取实际的Legacy Fabric版本列表
-    /// </summary>
-    private async Task LoadLegacyFabricVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        try
-        {
-            List<FabricLoaderVersion> fabricVersions = await _legacyFabricService.GetLegacyFabricLoaderVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 将版本添加到对应mod loader的列表中，并保存映射关系
-            foreach (var version in fabricVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                string displayVersion = version.Loader.Version;
-                modLoaderItem.Versions.Add(displayVersion);
-                // 使用独立的映射表，或者确保key唯一。这里使用专门的LegacyFabricVersionMap
-                LegacyFabricVersionMap[displayVersion] = version;
-            }
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，不处理
-        }
-        catch (Exception ex)
-        {
-            // Legacy Fabric 获取失败通常是因为该版本不支持，直接忽略错误不弹窗，只记录日志
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Legacy Fabric版本列表失败: {ex.Message}");
-        }
-    }
     
-    /// <summary>
-    /// 从NeoForge API获取实际的NeoForge版本列表
-    /// </summary>
-    /// <summary>
-    /// 从Quilt API获取实际的Quilt版本列表
-    /// </summary>
-    private async Task LoadQuiltVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        try
-        {
-            List<QuiltLoaderVersion> quiltVersions = await _quiltService.GetQuiltLoaderVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 将版本添加到对应mod loader的列表中，并保存映射关系
-            foreach (var version in quiltVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                string displayVersion = version.Loader.Version;
-                modLoaderItem.Versions.Add(displayVersion);
-                QuiltVersionMap[displayVersion] = version;
-            }
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，不处理
-        }
-        catch (Exception ex)
-        {
-            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
-            if (SelectedModLoader == "Quilt")
-            {
-                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                {
-                    // 输出debug信息
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Quilt版本列表失败 (404): {ex.Message}");
-                }
-                else
-                {
-                    // 其他错误，显示弹窗
-                    await ShowMessageAsync($"获取Quilt版本列表失败: {ex.Message}");
-                }
-            }
-        }
-    }
     
-    private async Task LoadNeoForgeVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        try
-        {
-            Console.WriteLine($"正在填充NeoForge版本列表到UI...");
-            List<string> neoForgeVersions = await _neoForgeService.GetNeoForgeVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 将版本添加到对应mod loader的列表中
-            foreach (var version in neoForgeVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                modLoaderItem.Versions.Add(version);
-            }
-            
-            Console.WriteLine($"NeoForge版本列表填充完成，共{modLoaderItem.Versions.Count}个版本");
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，不处理
-            Console.WriteLine($"NeoForge版本加载任务被取消");
-        }
-        catch (Exception ex)
-        {
-            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
-            if (SelectedModLoader == "NeoForge")
-            {
-                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                {
-                    // 输出debug信息
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取NeoForge版本列表失败 (404): {ex.Message}");
-                }
-                else
-                {
-                    // 其他错误，显示弹窗
-                    await ShowMessageAsync($"获取NeoForge版本列表失败: {ex.Message}");
-                }
-            }
-        }
-    }
     
-    /// <summary>
-    /// 从Forge API获取实际的Forge版本列表
-    /// </summary>
-    private async Task LoadForgeVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        try
-        {
-            Console.WriteLine($"正在填充Forge版本列表到UI...");
-            List<string> forgeVersions = await _forgeService.GetForgeVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 将版本添加到对应mod loader的列表中
-            foreach (var version in forgeVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                modLoaderItem.Versions.Add(version);
-            }
-            
-            Console.WriteLine($"Forge版本列表填充完成，共{modLoaderItem.Versions.Count}个版本");
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，不处理
-            Console.WriteLine($"Forge版本加载任务被取消");
-        }
-        catch (Exception ex)
-        {
-            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
-            if (SelectedModLoader == "Forge")
-            {
-                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                {
-                    // 输出debug信息
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Forge版本列表失败 (404): {ex.Message}");
-                }
-                else
-                {
-                    // 其他错误，显示弹窗
-                    await ShowMessageAsync($"获取Forge版本列表失败: {ex.Message}");
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 加载Optifine版本列表
-    /// </summary>
-    /// <param name="modLoaderItem">ModLoader项</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    private async Task LoadOptifineVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        if (modLoaderItem.Name != "Optifine") return;
-        
-        try
-        {
-            // 添加Debug输出，显示开始加载Optifine版本列表
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载Optifine版本列表，Minecraft版本: {SelectedMinecraftVersion}");
-            
-            // 调用OptifineService获取Optifine版本列表
-            List<OptifineVersion> optifineVersions = await _optifineService.GetOptifineVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 添加Debug输出，显示获取到的Optifine版本数量
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {optifineVersions.Count} 个Optifine版本");
-            
-            // 清空现有的版本列表和版本信息
-            modLoaderItem.Versions.Clear();
-            modLoaderItem.ClearOptifineVersionInfo();
-            
-            // 将Optifine版本转换为字符串列表并添加到modLoaderItem.Versions中
-            foreach (var version in optifineVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                // 使用Type_Patch格式作为版本名
-                string optifineVersionName = $"{version.Type}_{version.Patch}";
-                
-                // 创建OptifineVersionInfo对象，保存完整版本信息
-                var optifineVersionInfo = new OptifineVersionInfo
-                {
-                    VersionName = optifineVersionName,
-                    CompatibleForgeVersion = version.Forge,
-                    FullVersion = version
-                };
-                
-                // 添加到版本列表
-                modLoaderItem.Versions.Add(optifineVersionName);
-                // 保存完整版本信息
-                modLoaderItem.AddOptifineVersionInfo(optifineVersionInfo);
-                
-                // 添加Debug输出，显示添加的Optifine版本和兼容信息
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 添加Optifine版本: {optifineVersionName}，兼容Forge版本: {version.Forge}");
-            }
-            
-            // 添加Debug输出，显示填充完成
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine版本列表填充完成，共 {modLoaderItem.Versions.Count} 个版本");
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 默认选择第一个Optifine版本: {modLoaderItem.SelectedVersion}");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 任务被取消，添加Debug输出
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine版本加载任务被取消");
-        }
-        catch (Exception ex)
-        {
-            // 只有当当前选择的ModLoader仍然是Optifine时才显示错误
-            if (SelectedModLoader == "Optifine")
-            {
-                System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Optifine版本列表失败: {ex.Message}");
-                // 不显示错误消息，因为Optifine不是必须的
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 加载Cleanroom版本列表
-    /// </summary>
-    /// <param name="modLoaderItem">ModLoader项</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    private async Task LoadCleanroomVersionsAsync(ModLoaderItem modLoaderItem, CancellationToken cancellationToken)
-    {
-        if (modLoaderItem.Name != "Cleanroom") return;
-        
-        try
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 开始加载Cleanroom版本列表，Minecraft版本: {SelectedMinecraftVersion}");
-            
-            // 调用CleanroomService获取Cleanroom版本列表
-            List<string> cleanroomVersions = await _cleanroomService.GetCleanroomVersionsAsync(SelectedMinecraftVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {cleanroomVersions.Count} 个Cleanroom版本");
-            
-            // 将版本添加到对应mod loader的列表中
-            foreach (var version in cleanroomVersions)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                modLoaderItem.Versions.Add(version);
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom版本列表填充完成，共 {modLoaderItem.Versions.Count} 个版本");
-            
-            // 如果有版本，默认选择第一个
-            if (modLoaderItem.Versions.Count > 0)
-            {
-                modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 默认选择第一个Cleanroom版本: {modLoaderItem.SelectedVersion}");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom版本加载任务被取消");
-        }
-        catch (Exception ex)
-        {
-            if (SelectedModLoader == "Cleanroom")
-            {
-                if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取Cleanroom版本列表失败 (404): {ex.Message}");
-                }
-                else
-                {
-                    await ShowMessageAsync($"获取Cleanroom版本列表失败: {ex.Message}");
-                }
-            }
-        }
-    }
 
     [RelayCommand]
     private void Cancel()
@@ -1130,10 +663,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 {
                     modLoaderToDownload = "Optifine";
                     // 查找当前选择的Optifine版本对应的完整信息
-                    var optifineItem = ModLoaderItems.FirstOrDefault(item => item.Name == "Optifine");
-                    if (optifineItem != null && !string.IsNullOrEmpty(SelectedOptifineVersion))
+                    if (!string.IsNullOrEmpty(SelectedOptifineVersion))
                     {
-                        var optifineInfo = optifineItem.GetOptifineVersionInfo(SelectedOptifineVersion);
+                        var optifineInfo = _versionLoaderService.GetOptifineVersionInfo(SelectedOptifineVersion);
                         if (optifineInfo != null && optifineInfo.FullVersion != null)
                         {
                             // 使用特殊格式传递type和patch值，格式为"type:patch"
@@ -1168,10 +700,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 // 添加 OptiFine（如果选中）
                 if (IsOptifineSelected)
                 {
-                    var optifineItem = ModLoaderItems.FirstOrDefault(item => item.Name == "Optifine");
-                    if (optifineItem != null && !string.IsNullOrEmpty(SelectedOptifineVersion))
+                    if (!string.IsNullOrEmpty(SelectedOptifineVersion))
                     {
-                        var optifineInfo = optifineItem.GetOptifineVersionInfo(SelectedOptifineVersion);
+                        var optifineInfo = _versionLoaderService.GetOptifineVersionInfo(SelectedOptifineVersion);
                         if (optifineInfo != null && optifineInfo.FullVersion != null)
                         {
                             modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
