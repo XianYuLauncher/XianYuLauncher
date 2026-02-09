@@ -1071,10 +1071,17 @@ namespace XianYuLauncher.ViewModels
             // 保存Minecraft路径
             _localSettingsService.SaveSettingAsync("MinecraftPath", MinecraftPath);
             
-            // 保存Java版本列表
+            // 保存Java版本列表（映射回 Core.Models.JavaVersion 格式，与 SettingsViewModel 保持一致）
             if (JavaVersions.Count > 0)
             {
-                _localSettingsService.SaveSettingAsync("JavaVersions", JavaVersions.ToList());
+                var coreVersions = JavaVersions.Select(info => new XianYuLauncher.Core.Models.JavaVersion
+                {
+                    Path = info.Path,
+                    FullVersion = info.Version,
+                    MajorVersion = info.MajorVersion,
+                    IsJDK = info.IsJDK
+                }).ToList();
+                _localSettingsService.SaveSettingAsync("JavaVersions", coreVersions);
             }
             
             // 保存Java设置 - 保存枚举的整数值而不是字符串

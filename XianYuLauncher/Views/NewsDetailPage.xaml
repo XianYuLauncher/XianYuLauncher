@@ -46,9 +46,6 @@
             Padding="40,24,40,24"
             VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Center">
-                <StackPanel.ChildrenTransitions>
-                    <RepositionThemeTransition IsStaggeringEnabled="False" />
-                </StackPanel.ChildrenTransitions>
                 <!-- 头图 -->
                 <Border 
                     x:Name="ImageBorder"
