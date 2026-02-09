@@ -187,10 +187,11 @@ public sealed partial class ShellPage : Page
     /// <summary>
     /// 应用背景设置
     /// </summary>
-    private void ApplyBackground(MaterialType materialType, string? backgroundPath)
+    private async void ApplyBackground(MaterialType materialType, string? backgroundPath)
     {
         // 1. 重置所有状态
         BackgroundImage.Visibility = Visibility.Collapsed;
+        BackgroundBlurOverlay.Visibility = Visibility.Collapsed;
         MotionBg.Visibility = Visibility.Collapsed;
         AcrylicOverlay.Visibility = Visibility.Collapsed;
         NavigationViewControl.Background = null;
@@ -204,6 +205,11 @@ public sealed partial class ShellPage : Page
                 var bitmap = new BitmapImage(new Uri(backgroundPath));
                 BackgroundImage.Source = bitmap;
                 BackgroundImage.Visibility = Visibility.Visible;
+                
+                // 加载并应用模糊强度
+                var blurAmount = await _materialService.LoadBackgroundBlurAmountAsync();
+                BackgroundBlurBrush.Amount = blurAmount;
+                BackgroundBlurOverlay.Visibility = Visibility.Visible;
                 
                 // 设置 NavigationView 背景为半透明以显示底层图片
                 NavigationViewControl.Background = new SolidColorBrush(

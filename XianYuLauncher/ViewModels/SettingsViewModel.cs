@@ -245,6 +245,12 @@ public partial class SettingsViewModel : ObservableRecipient
     private string _backgroundImagePath = string.Empty;
     
     /// <summary>
+    /// 背景模糊强度（0.0-100.0）
+    /// </summary>
+    [ObservableProperty]
+    private double _backgroundBlurAmount = 30.0;
+    
+    /// <summary>
     /// 是否使用自定义背景
     /// </summary>
     public bool IsCustomBackground => MaterialType == XianYuLauncher.Core.Services.MaterialType.CustomBackground;
@@ -389,6 +395,9 @@ public partial class SettingsViewModel : ObservableRecipient
     
     // 标志位：是否是初始化加载背景图片路径
     private bool _isInitializingBackgroundPath = true;
+    
+    // 标志位：是否是初始化加载背景模糊强度
+    private bool _isInitializingBlurAmount = true;
     
     /// <summary>
     /// 当前应用语言
@@ -1523,6 +1532,10 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         var path = await _materialService.LoadBackgroundImagePathAsync();
         BackgroundImagePath = path ?? string.Empty;
+        
+        // 同时加载背景模糊强度
+        var blurAmount = await _materialService.LoadBackgroundBlurAmountAsync();
+        BackgroundBlurAmount = blurAmount;
     }
     
     /// <summary>
@@ -1601,6 +1614,30 @@ public partial class SettingsViewModel : ObservableRecipient
         catch (Exception ex)
         {
             Console.WriteLine($"保存背景图片路径失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 当背景模糊强度变化时保存并应用
+    /// </summary>
+    partial void OnBackgroundBlurAmountChanged(double value)
+    {
+        try
+        {
+            // 只有当不是初始化加载时，才保存并触发背景变更
+            if (!_isInitializingBlurAmount)
+            {
+                _materialService.SaveBackgroundBlurAmountAsync(value).ConfigureAwait(false);
+            }
+            else
+            {
+                // 初始化完成，重置标志位
+                _isInitializingBlurAmount = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"保存背景模糊强度失败: {ex.Message}");
         }
     }
     

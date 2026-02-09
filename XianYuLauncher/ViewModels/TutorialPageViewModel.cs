@@ -114,6 +114,10 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private MaterialType _materialType = MaterialType.Mica;
 
+        // 背景模糊强度（0.0-100.0）
+        [ObservableProperty]
+        private double _backgroundBlurAmount = 30.0;
+
         // 材质类型列表
         public List<MaterialType> MaterialTypes => Enum.GetValues<MaterialType>().ToList();
 
@@ -143,6 +147,18 @@ namespace XianYuLauncher.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"切换窗口材质失败: {ex.Message}");
+            }
+        }
+
+        partial void OnBackgroundBlurAmountChanged(double value)
+        {
+            try
+            {
+                _materialService.SaveBackgroundBlurAmountAsync(value).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存背景模糊强度失败: {ex.Message}");
             }
         }
 
@@ -1140,6 +1156,11 @@ namespace XianYuLauncher.ViewModels
                 var savedType = await _materialService.LoadMaterialTypeAsync();
                 _materialType = savedType;
                 OnPropertyChanged(nameof(MaterialType));
+                
+                // 加载背景模糊强度
+                var blurAmount = await _materialService.LoadBackgroundBlurAmountAsync();
+                BackgroundBlurAmount = blurAmount;
+                
                 _isInitializingMaterial = false;
             }
             catch (Exception ex)

@@ -414,6 +414,14 @@
                                 <Button Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
                             </StackPanel>
                         </controls:SettingsCard>
+                        <!-- 背景模糊强度 -->
+                        <controls:SettingsCard Header="模糊强度" Description="调整背景图片的模糊程度"
+                                               Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Slider Minimum="0" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.BackgroundBlurAmount, Mode=TwoWay}" Width="200" />
+                                <TextBlock Text="{x:Bind ViewModel.BackgroundBlurAmount, Mode=OneWay}" VerticalAlignment="Center" MinWidth="30" />
+                            </StackPanel>
+                        </controls:SettingsCard>
                         <!-- 流光设置 -->
                         <controls:SettingsCard Header="流光速度" Description="调整流光背景的移动速度"
                                                Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">

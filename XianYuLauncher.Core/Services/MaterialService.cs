@@ -51,6 +51,7 @@ namespace XianYuLauncher.Core.Services
         private const string BackgroundImagePathKey = "BackgroundImagePath";
         private const string MotionSpeedKey = "MotionSpeed";
         private const string MotionColorsKey = "MotionColors"; // format: "hex1;hex2;hex3;hex4;hex5"
+        private const string BackgroundBlurAmountKey = "BackgroundBlurAmount";
         
         /// <summary>
         /// 背景设置变更事件
@@ -132,6 +133,22 @@ namespace XianYuLauncher.Core.Services
             var colorsStr = string.Join(";", colors);
             await _localSettingsService.SaveSettingAsync(MotionColorsKey, colorsStr);
             MotionSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public async Task<double> LoadBackgroundBlurAmountAsync()
+        {
+            var val = await _localSettingsService.ReadSettingAsync<double?>(BackgroundBlurAmountKey);
+            return val ?? 30.0; // 默认值 30.0
+        }
+
+        public async Task SaveBackgroundBlurAmountAsync(double amount)
+        {
+            await _localSettingsService.SaveSettingAsync(BackgroundBlurAmountKey, amount);
+            BackgroundChanged?.Invoke(this, new BackgroundChangedEventArgs
+            {
+                MaterialType = await LoadMaterialTypeAsync(),
+                BackgroundImagePath = await LoadBackgroundImagePathAsync()
+            });
         }
 
         /// <summary>

@@ -8,6 +8,7 @@
     xmlns:behaviors="using:XianYuLauncher.Behaviors"
     xmlns:controls="using:XianYuLauncher.Controls"
     xmlns:i="using:Microsoft.Xaml.Interactivity"
+    xmlns:media="using:CommunityToolkit.WinUI.Media"
     Loaded="OnLoaded">
 
     <Page.Resources>
@@ -46,6 +47,15 @@
                Stretch="UniformToFill"
                Visibility="Collapsed"
                Canvas.ZIndex="-1" />
+        
+        <!-- 背景图片模糊层 -->
+        <Border x:Name="BackgroundBlurOverlay"
+                Canvas.ZIndex="-1"
+                Visibility="Collapsed">
+            <Border.Background>
+                <media:BackdropBlurBrush x:Name="BackgroundBlurBrush" Amount="5" />
+            </Border.Background>
+        </Border>
         <Grid x:Name="AppTitleBar"
               Canvas.ZIndex="1"
               Height="48"

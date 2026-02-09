@@ -17,6 +17,7 @@
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
         <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
         <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
+        <helpers:MaterialTypeToCustomBackgroundVisibilityConverter x:Key="MaterialTypeToCustomBackgroundVisibilityConverter" />
         <local:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
 
         <!-- 登录区域切换动画 -->
@@ -128,6 +129,22 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
+                        </controls:SettingsCard>
+                    </Border>
+
+                    <!-- 背景模糊强度（仅在自定义背景时显示） -->
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0"
+                            Visibility="{x:Bind ViewModel.MaterialType, Converter={StaticResource MaterialTypeToCustomBackgroundVisibilityConverter}, Mode=OneWay}">
+                        <controls:SettingsCard
+                            Header="模糊强度" 
+                            Description="调整背景图片的模糊程度">
+                            <controls:SettingsCard.HeaderIcon>
+                                <FontIcon Glyph="&#xE91B;" />
+                            </controls:SettingsCard.HeaderIcon>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Slider Minimum="0" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.BackgroundBlurAmount, Mode=TwoWay}" Width="200" />
+                                <TextBlock Text="{x:Bind ViewModel.BackgroundBlurAmount, Mode=OneWay}" VerticalAlignment="Center" MinWidth="30" />
+                            </StackPanel>
                         </controls:SettingsCard>
                     </Border>
 
