@@ -47,16 +47,61 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             
-                            <!-- 图标 -->
-                            <Grid Grid.Column="0" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <!-- 图标区域：支持多图标叠加 -->
+                            <Grid Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
                                 <!-- 原版图标 -->
-                                <FontIcon Glyph="&#xE946;" FontSize="16" 
+                                <FontIcon Glyph="&#xE946;" FontSize="16" Width="32" Height="32"
                                           Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                <!-- 非原版加载器图标 -->
-                                <Image Source="{Binding CurrentLoaderIconUrl, Mode=OneWay}" 
-                                       Width="20" Height="20"
-                                       Stretch="Uniform"
-                                       Visibility="{Binding IsVanillaLoader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                <!-- 单加载器图标（大尺寸） -->
+                                <ItemsRepeater ItemsSource="{Binding CurrentLoaderIcons, Mode=OneWay}"
+                                               Visibility="{Binding HasMultipleLoaders, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Orientation="Horizontal" Spacing="0" />
+                                    </ItemsRepeater.Layout>
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="models:LoaderIconInfo">
+                                            <Grid Width="32" Height="32"
+                                                  ToolTipService.ToolTip="{x:Bind Name}">
+                                                <Image Source="{x:Bind IconUrl}" 
+                                                       Width="24" Height="24"
+                                                       Stretch="Uniform"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                                <!-- 多加载器图标（紧凑堆叠） -->
+                                <ItemsRepeater ItemsSource="{Binding CurrentLoaderIcons, Mode=OneWay}"
+                                               Visibility="{Binding HasMultipleLoaders, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Orientation="Horizontal" Spacing="-8" />
+                                    </ItemsRepeater.Layout>
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="models:LoaderIconInfo">
+                                            <Grid Width="32" Height="32"
+                                                  ToolTipService.ToolTip="{x:Bind Name}"
+                                                  PointerEntered="LoaderIcon_PointerEntered"
+                                                  PointerExited="LoaderIcon_PointerExited"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                                <Grid.RenderTransform>
+                                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                                </Grid.RenderTransform>
+                                                <Border Width="30" Height="30" CornerRadius="15"
+                                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                        BorderThickness="1.5"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <Image Source="{x:Bind IconUrl}" 
+                                                           Width="18" Height="18"
+                                                           Stretch="Uniform"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
                             </Grid>
                             
                             <!-- 文字信息 -->

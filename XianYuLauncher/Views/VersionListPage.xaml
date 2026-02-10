@@ -358,22 +358,34 @@
                                     FontSize="18" 
                                     Margin="0,0,8,0"/>
                                 
-                                <!-- 版本类型标签 -->
-                                <Border 
+                                <!-- 版本类型标签（支持多标签） -->
+                                <ItemsControl 
                                     Grid.Row="0" Grid.Column="1"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    CornerRadius="8"
-                                    Padding="12,4,12,4"
-                                    HorizontalAlignment="Right"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1">
-                                    <TextBlock 
-                                        Text="{Binding Type}" 
-                                        Style="{StaticResource BodyTextStyle}" 
-                                        Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" 
-                                        FontWeight="SemiBold" 
-                                        FontSize="12" />
-                                </Border>
+                                    ItemsSource="{Binding LoaderTags}"
+                                    HorizontalAlignment="Right">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border 
+                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                CornerRadius="8"
+                                                Padding="12,4,12,4"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1">
+                                                <TextBlock 
+                                                    Text="{Binding}" 
+                                                    Style="{StaticResource BodyTextStyle}" 
+                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" 
+                                                    FontWeight="SemiBold" 
+                                                    FontSize="12" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                                 
                                 <!-- 版本号 -->
                                 <TextBlock 

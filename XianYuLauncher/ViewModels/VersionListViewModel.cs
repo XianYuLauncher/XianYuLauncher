@@ -42,6 +42,11 @@ public partial class VersionListViewModel : ObservableRecipient
         public string Type { get; set; } = string.Empty;
 
         /// <summary>
+        /// 加载器标签列表（支持多加载器组合显示）
+        /// </summary>
+        public List<string> LoaderTags { get; set; } = new();
+
+        /// <summary>
         /// 安装日期
         /// </summary>
         public DateTime InstallDate { get; set; }
@@ -223,21 +228,57 @@ public partial class VersionListViewModel : ObservableRecipient
                     {
                         versionNumber = versionConfig.MinecraftVersion;
                         
+                        // 构建多加载器标签列表
+                        var loaderTags = new List<string>();
+                        
                         if (!string.IsNullOrEmpty(versionConfig.ModLoaderType) && versionConfig.ModLoaderType != "vanilla")
                         {
-                            if (versionConfig.ModLoaderType.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase))
+                            string mainLoader = versionConfig.ModLoaderType switch
                             {
-                                type = "LegacyFabric";
-                            }
-                            else if (versionConfig.ModLoaderType.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
-                            {
-                                type = "NeoForge";
-                            }
-                            else
-                            {
-                                type = char.ToUpper(versionConfig.ModLoaderType[0]) + versionConfig.ModLoaderType.Substring(1).ToLower();
-                            }
+                                var t when t.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase) => "LegacyFabric",
+                                var t when t.Equals("neoforge", StringComparison.OrdinalIgnoreCase) => "NeoForge",
+                                var t when t.Equals("liteloader", StringComparison.OrdinalIgnoreCase) => "LiteLoader",
+                                var t => char.ToUpper(t[0]) + t.Substring(1).ToLower()
+                            };
+                            loaderTags.Add(mainLoader);
+                            type = mainLoader;
                         }
+                        
+                        // 附加加载器标签
+                        if (!string.IsNullOrEmpty(versionConfig.OptifineVersion) &&
+                            !loaderTags.Any(l => l.Equals("Optifine", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            loaderTags.Add("OptiFine");
+                        }
+                        if (!string.IsNullOrEmpty(versionConfig.LiteLoaderVersion) &&
+                            !loaderTags.Any(l => l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            loaderTags.Add("LiteLoader");
+                        }
+                        
+                        if (loaderTags.Count > 0)
+                        {
+                            type = loaderTags[0]; // Type 保留主加载器用于兼容
+                        }
+                        else
+                        {
+                            // 原版也显示 Release 标签
+                            loaderTags.Add("Release");
+                        }
+                        
+                        // 创建版本信息项（提前创建以设置 LoaderTags）
+                        var versionItemWithTags = new VersionInfoItem
+                        {
+                            Name = versionName,
+                            Type = type,
+                            LoaderTags = loaderTags,
+                            InstallDate = installDate,
+                            VersionNumber = versionNumber,
+                            Path = versionDir,
+                            IsValid = isValidVersion
+                        };
+                        versionItems.Add(versionItemWithTags);
+                        continue; // 跳过后面的默认创建
                     }
                     else
                     {
@@ -264,6 +305,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 {
                     Name = versionName,
                     Type = type,
+                    LoaderTags = new List<string> { type },
                     InstallDate = installDate,
                     VersionNumber = versionNumber,
                     Path = versionDir,

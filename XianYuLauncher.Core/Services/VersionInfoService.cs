@@ -141,6 +141,16 @@ public class VersionInfoService : IVersionInfoService
             result.LaunchCount = legacyConfig.LaunchCount;
             result.TotalPlayTimeSeconds = legacyConfig.TotalPlayTimeSeconds;
             result.LastLaunchTime = legacyConfig.LastLaunchTime;
+            
+            // 迁移附加加载器版本（深度分析无法自动检测这些，必须从缓存保留）
+            if (string.IsNullOrEmpty(result.OptifineVersion) && !string.IsNullOrEmpty(legacyConfig.OptifineVersion))
+            {
+                result.OptifineVersion = legacyConfig.OptifineVersion;
+            }
+            if (string.IsNullOrEmpty(result.LiteLoaderVersion) && !string.IsNullOrEmpty(legacyConfig.LiteLoaderVersion))
+            {
+                result.LiteLoaderVersion = legacyConfig.LiteLoaderVersion;
+            }
 
             // 如果分析失败，才使用旧配置的版本信息兜底
             if (result.MinecraftVersion == "Unknown" && !string.IsNullOrEmpty(legacyConfig.MinecraftVersion))
@@ -664,7 +674,8 @@ public class VersionInfoService : IVersionInfoService
                     ModLoaderType = config.ModLoaderType ?? "vanilla",
                     ModLoaderVersion = config.ModLoaderVersion ?? string.Empty,
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
-                    OptifineVersion = config.OptifineVersion ?? string.Empty,
+                    OptifineVersion = config.OptifineVersion ?? existingConfig?.OptifineVersion ?? string.Empty,
+                    LiteLoaderVersion = config.LiteLoaderVersion ?? existingConfig?.LiteLoaderVersion,
                     CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
                     
                     // 使用传入的 config 中的设置（因为 config 已经融合了 legacyConfig 的用户设置）
@@ -766,7 +777,8 @@ public class VersionInfoService : IVersionInfoService
                     ModLoaderType = config.ModLoaderType ?? "vanilla",
                     ModLoaderVersion = config.ModLoaderVersion ?? string.Empty,
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
-                    OptifineVersion = config.OptifineVersion ?? string.Empty,
+                    OptifineVersion = config.OptifineVersion ?? existingConfig?.OptifineVersion ?? string.Empty,
+                    LiteLoaderVersion = config.LiteLoaderVersion ?? existingConfig?.LiteLoaderVersion,
                     CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
                     
                     // 使用传入的 config 中的设置（因为 config 已经融合了 legacyConfig 的用户设置）

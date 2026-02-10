@@ -1745,10 +1745,14 @@ public partial class VersionManagementViewModel
                 {
                     if (Directory.Exists(modsPath))
                     {
-                        // 获取所有mod文件（.jar和.jar.disabled）
+                        // 获取所有mod文件（.jar、.jar.disabled、.litemod、.litemod.disabled）
                         var modFiles = Directory
-                            .GetFiles(modsPath, "*.jar*")
-                            .Where(modFile => modFile.EndsWith(".jar") || modFile.EndsWith(".jar.disabled"));
+                            .GetFiles(modsPath)
+                            .Where(modFile => 
+                                modFile.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || 
+                                modFile.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase) ||
+                                modFile.EndsWith(".litemod", StringComparison.OrdinalIgnoreCase) ||
+                                modFile.EndsWith(".litemod.disabled", StringComparison.OrdinalIgnoreCase));
                     
                         // 使用 LINQ 将文件路径映射为 ModInfo 对象列表
                         result = modFiles

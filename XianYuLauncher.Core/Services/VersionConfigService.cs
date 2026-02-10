@@ -111,6 +111,9 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["OptifineVersion"] != null)
                     config.OptifineVersion = jObject["OptifineVersion"]?.ToString();
                 
+                if (jObject["LiteLoaderVersion"] != null)
+                    config.LiteLoaderVersion = jObject["LiteLoaderVersion"]?.ToString();
+                
                 if (jObject["AutoMemoryAllocation"] != null && jObject["AutoMemoryAllocation"].Type == JTokenType.Boolean)
                     config.AutoMemoryAllocation = jObject["AutoMemoryAllocation"].Value<bool>();
                 

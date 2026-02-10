@@ -1912,11 +1912,113 @@ namespace XianYuLauncher.ViewModels
                 
                 string savePath = Path.Combine(targetDir, _currentDownloadingModVersion.FileName);
 
-                // 处理依赖（根据资源类型决定目录）
-                await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, SelectedInstalledVersion);
+                // 如果URL缺失且是CurseForge资源，尝试手动构造
+                if (string.IsNullOrEmpty(_currentDownloadingModVersion.DownloadUrl) && 
+                    _currentDownloadingModVersion.IsCurseForge && 
+                    _currentDownloadingModVersion.OriginalCurseForgeFile != null)
+                {
+                    try 
+                    {
+                        _currentDownloadingModVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
+                            _currentDownloadingModVersion.OriginalCurseForgeFile.Id,
+                            _currentDownloadingModVersion.OriginalCurseForgeFile.FileName ?? _currentDownloadingModVersion.FileName);
+                        System.Diagnostics.Debug.WriteLine($"[CompleteDatapackDownloadAsync] 手动构造下载URL: {_currentDownloadingModVersion.DownloadUrl}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CompleteDatapackDownloadAsync] 构造URL失败: {ex.Message}");
+                    }
+                }
+
+                // 设置待后台下载信息
+                SetPendingBackgroundDownload(_currentDownloadingModVersion, savePath);
                 
-                // 执行下载（PerformDownload 内部会通过 DialogService 显示进度弹窗）
-                await PerformDownload(_currentDownloadingModVersion, savePath);
+                // 提前创建 TCS 用于控制弹窗
+                var tcs = new TaskCompletionSource<bool>();
+                bool isBackgroundDownload = false;
+                
+                // 订阅下载任务管理器的事件
+                void OnProgressChanged(object? sender, DownloadTaskInfo info)
+                {
+                    DownloadProgress = info.Progress;
+                    DownloadProgressText = $"{info.Progress:F1}%";
+                    DownloadStatus = info.StatusMessage;
+                }
+                
+                void OnStateChanged(object? sender, DownloadTaskInfo info)
+                {
+                    if (info.State == DownloadTaskState.Completed)
+                    {
+                        tcs.TrySetResult(true);
+                    }
+                    else if (info.State == DownloadTaskState.Failed)
+                    {
+                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
+                    }
+                    else if (info.State == DownloadTaskState.Cancelled)
+                    {
+                        tcs.TrySetCanceled();
+                    }
+                }
+                
+                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                _downloadTaskManager.TaskStateChanged += OnStateChanged;
+                
+                try
+                {
+                    // 显示进度弹窗（在依赖下载之前）
+                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+                        "下载中",
+                        () => DownloadStatus,
+                        () => DownloadProgress,
+                        () => DownloadProgressText,
+                        this,
+                        primaryButtonText: "后台下载",
+                        closeButtonText: null,
+                        autoCloseWhen: tcs.Task);
+                    
+                    // 处理后台下载按钮
+                    _ = dialogTask.ContinueWith(t =>
+                    {
+                        if (t.Result == ContentDialogResult.Primary)
+                        {
+                            // 用户点击了"后台下载"
+                            isBackgroundDownload = true;
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                StartBackgroundDownload();
+                            });
+                        }
+                    }, TaskScheduler.Default);
+                    
+                    // 先下载依赖
+                    await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, targetVersion);
+                    
+                    // 再下载主资源
+                    await _downloadTaskManager.StartResourceDownloadAsync(
+                        ModName,
+                        ProjectType,
+                        _currentDownloadingModVersion.DownloadUrl,
+                        savePath,
+                        ModIconUrl);
+                    
+                    // 等待下载完成
+                    if (!tcs.Task.IsCompleted)
+                    {
+                        await tcs.Task;
+                    }
+                    
+                    // 如果不是后台下载，显示完成状态
+                    if (!isBackgroundDownload)
+                    {
+                        DownloadStatus = "下载完成！";
+                    }
+                }
+                finally
+                {
+                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
+                }
                 
                 _currentDownloadingModVersion = null;
             }
@@ -1926,6 +2028,10 @@ namespace XianYuLauncher.ViewModels
                 DownloadStatus = $"下载失败: {ex.Message}";
                 await ShowMessageAsync($"下载失败: {ex.Message}");
                 _currentDownloadingModVersion = null;
+            }
+            finally
+            {
+                IsDownloading = false;
             }
         }
         
@@ -2363,6 +2469,26 @@ namespace XianYuLauncher.ViewModels
                         {
                             loaderType = "NeoForge";
                         }
+                        else if (installedVersion.Contains("liteloader"))
+                        {
+                            loaderType = "LiteLoader";
+                        }
+                    }
+                    
+                    // 4. 收集所有加载器（主加载器 + 附加加载器）
+                    var gameLoaders = new List<string> { loaderType };
+                    
+                    // 检查附加加载器（OptiFine、LiteLoader）
+                    if (versionConfig != null)
+                    {
+                        if (!string.IsNullOrEmpty(versionConfig.OptifineVersion))
+                        {
+                            gameLoaders.Add("OptiFine");
+                        }
+                        if (!string.IsNullOrEmpty(versionConfig.LiteLoaderVersion))
+                        {
+                            gameLoaders.Add("LiteLoader");
+                        }
                     }
                     
                     // 检查版本是否兼容
@@ -2394,45 +2520,30 @@ namespace XianYuLauncher.ViewModels
                     // 2. 如果Mod有特定加载器要求，则必须匹配
                     if (supportedLoaders != null && supportedLoaders.Count > 0)
                     {
-                        // 检查已安装版本的加载器是否在Mod支持的加载器列表中
-                        // 注意：需要处理大小写
-                        string formattedLoaderType;
-                        if (loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                        // 检查游戏的任一加载器是否在Mod支持的加载器列表中
+                        // 这样 Forge+LiteLoader 版本可以同时兼容 Forge Mod 和 LiteLoader Mod
+                        isCompatible = gameLoaders.Any(gameLoader =>
                         {
-                            formattedLoaderType = "LegacyFabric";
-                        }
-                        else if (loaderType.Equals("NeoForge", StringComparison.OrdinalIgnoreCase))
-                        {
-                            formattedLoaderType = "NeoForge";
-                        }
-                        else if (loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
-                        {
-                            formattedLoaderType = "LiteLoader";
-                        }
-                        else
-                        {
-                            formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
-                        }
-                        
-                        // 特别处理 LegacyFabric: 需要匹配 "LegacyFabric" 或 "legacy-fabric" (Modrinth ID)
-                        if (loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                        {
-                            isCompatible = supportedLoaders.Any(l => 
-                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
-                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
-                        }
-                        // 特别处理 LiteLoader: 需要匹配 "LiteLoader" 或 "liteloader" (Modrinth ID)
-                        else if (loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
-                        {
-                            isCompatible = supportedLoaders.Any(l => 
-                                l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) || 
-                                l.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
-                        }
-                        else
-                        {
-                            // 使用不区分大小写的比较来检查加载器兼容性
-                            isCompatible = supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
-                        }
+                            // 特别处理 LegacyFabric
+                            if (gameLoader.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return supportedLoaders.Any(l => 
+                                    l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
+                                    l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
+                            }
+                            // 特别处理 LiteLoader
+                            else if (gameLoader.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return supportedLoaders.Any(l => 
+                                    l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) || 
+                                    l.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+                            }
+                            else
+                            {
+                                // 使用不区分大小写的比较来检查加载器兼容性
+                                return supportedLoaders.Any(l => l.Equals(gameLoader, StringComparison.OrdinalIgnoreCase));
+                            }
+                        });
                     }
                     else
                     {
@@ -2779,13 +2890,96 @@ namespace XianYuLauncher.ViewModels
                 }
 
                 var dependenciesTargetDir = Path.GetDirectoryName(savePath);
-                if (!string.IsNullOrEmpty(dependenciesTargetDir))
+                
+                // 提前创建 TCS 用于控制弹窗
+                var tcs = new TaskCompletionSource<bool>();
+                bool isBackgroundDownload = false;
+                
+                // 订阅下载任务管理器的事件（仅用于主 Mod 下载）
+                void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
-                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
+                    DownloadProgress = info.Progress;
+                    DownloadProgressText = $"{info.Progress:F1}%";
+                    DownloadStatus = info.StatusMessage;
                 }
                 
-                // 执行主Mod下载
-                await PerformDownload(modVersion, savePath);
+                void OnStateChanged(object? sender, DownloadTaskInfo info)
+                {
+                    if (info.State == DownloadTaskState.Completed)
+                    {
+                        tcs.TrySetResult(true);
+                    }
+                    else if (info.State == DownloadTaskState.Failed)
+                    {
+                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
+                    }
+                    else if (info.State == DownloadTaskState.Cancelled)
+                    {
+                        tcs.TrySetCanceled();
+                    }
+                }
+                
+                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                _downloadTaskManager.TaskStateChanged += OnStateChanged;
+                
+                try
+                {
+                    // 显示进度弹窗（在依赖下载之前）
+                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+                        "下载中",
+                        () => DownloadStatus,
+                        () => DownloadProgress,
+                        () => DownloadProgressText,
+                        this,
+                        primaryButtonText: "后台下载",
+                        closeButtonText: null,
+                        autoCloseWhen: tcs.Task);
+                    
+                    // 处理后台下载按钮
+                    _ = dialogTask.ContinueWith(t =>
+                    {
+                        if (t.Result == ContentDialogResult.Primary)
+                        {
+                            // 用户点击了"后台下载"
+                            isBackgroundDownload = true;
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                StartBackgroundDownload();
+                            });
+                        }
+                    }, TaskScheduler.Default);
+                    
+                    // 先下载依赖
+                    if (!string.IsNullOrEmpty(dependenciesTargetDir))
+                    {
+                        await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
+                    }
+                    
+                    // 再下载主 Mod
+                    await _downloadTaskManager.StartResourceDownloadAsync(
+                        ModName,
+                        ProjectType,
+                        modVersion.DownloadUrl,
+                        savePath,
+                        ModIconUrl);
+                    
+                    // 等待下载完成
+                    if (!tcs.Task.IsCompleted)
+                    {
+                        await tcs.Task;
+                    }
+                    
+                    // 如果不是后台下载，显示完成状态
+                    if (!isBackgroundDownload)
+                    {
+                        DownloadStatus = "下载完成！";
+                    }
+                }
+                finally
+                {
+                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
+                }
             }
             catch (Exception ex)
             {
@@ -3885,6 +4079,16 @@ namespace XianYuLauncher.ViewModels
                         System.Diagnostics.Debug.WriteLine($"[QuickInstall]   游戏版本: {gameVersion}");
                         System.Diagnostics.Debug.WriteLine($"[QuickInstall]   加载器类型: {loaderType}");
                         System.Diagnostics.Debug.WriteLine($"[QuickInstall]   加载器版本: {loaderVersion}");
+                        
+                        // 检查附加加载器（OptiFine、LiteLoader）
+                        if (!string.IsNullOrEmpty(versionConfig.OptifineVersion))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   附加: OptiFine {versionConfig.OptifineVersion}");
+                        }
+                        if (!string.IsNullOrEmpty(versionConfig.LiteLoaderVersion))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   附加: LiteLoader {versionConfig.LiteLoaderVersion}");
+                        }
                     }
                     else
                     {
@@ -3944,10 +4148,24 @@ namespace XianYuLauncher.ViewModels
                     // 游戏通用类型：这些类型的游戏版本只兼容通用资源，不兼容特定加载器的Mod
                     var gameUniversalTypes = new[] { "vanilla", "minecraft" };
                     
+                    // 收集当前游戏版本的所有加载器（主加载器 + 附加加载器）
+                    var gameLoaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { loaderType };
+                    if (versionConfig != null)
+                    {
+                        if (!string.IsNullOrEmpty(versionConfig.OptifineVersion))
+                        {
+                            gameLoaders.Add("optifine");
+                        }
+                        if (!string.IsNullOrEmpty(versionConfig.LiteLoaderVersion))
+                        {
+                            gameLoaders.Add("liteloader");
+                        }
+                    }
+                    
                     // 加载器匹配逻辑：
                     // 1. 如果资源支持的加载器包含通用类型 → 兼容所有游戏版本
                     // 2. 如果游戏版本的加载器是通用类型 → 只兼容通用资源（检查资源是否也是通用类型）
-                    // 3. 否则，检查游戏版本的加载器是否在资源支持的加载器列表中（精确匹配）
+                    // 3. 否则，检查游戏版本的任一加载器是否在资源支持的加载器列表中（精确匹配）
                     bool resourceHasUniversalLoader = supportedLoaders.Any(l => 
                         resourceUniversalTypes.Any(u => u.Equals(l, StringComparison.OrdinalIgnoreCase)));
                     bool gameHasUniversalLoader = gameUniversalTypes.Any(u => 
@@ -3966,14 +4184,15 @@ namespace XianYuLauncher.ViewModels
                     }
                     else
                     {
-                        // 都不是通用类型 → 精确匹配加载器
-                        loaderMatch = supportedLoaders.Contains(loaderType);
+                        // 都不是通用类型 → 检查游戏的任一加载器是否匹配资源支持的加载器
+                        loaderMatch = gameLoaders.Any(gl => supportedLoaders.Contains(gl));
                     }
                     
                     bool isCompatible = gameVersionMatch && loaderMatch;
                     
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 游戏版本匹配: {gameVersionMatch} (查找 '{gameVersion}')");
-                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 加载器匹配: {loaderMatch} (游戏加载器: '{loaderType}', 资源支持通用: {resourceHasUniversalLoader}, 游戏是通用: {gameHasUniversalLoader})");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 游戏加载器: {string.Join(", ", gameLoaders)}");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 加载器匹配: {loaderMatch} (资源支持通用: {resourceHasUniversalLoader}, 游戏是通用: {gameHasUniversalLoader})");
                     System.Diagnostics.Debug.WriteLine($"[QuickInstall] 最终兼容性: {isCompatible}");
                     
                     QuickInstallGameVersions.Add(new InstalledGameVersionViewModel
@@ -3982,7 +4201,8 @@ namespace XianYuLauncher.ViewModels
                         LoaderType = loaderType,
                         LoaderVersion = loaderVersion,
                         IsCompatible = isCompatible,
-                        OriginalVersionName = version
+                        OriginalVersionName = version,
+                        AllLoaders = gameLoaders.ToList()
                     });
                 }
                 
@@ -4049,9 +4269,10 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 var selectedGameVersion = SelectedQuickInstallVersion.GameVersion;
-                var selectedLoader = SelectedQuickInstallVersion.LoaderType.ToLower();
+                var selectedLoaders = SelectedQuickInstallVersion.AllLoaders ?? new List<string> { SelectedQuickInstallVersion.LoaderType };
                 
-                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 开始加载Mod版本，游戏版本: {selectedGameVersion}, 加载器: {selectedLoader}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 开始加载Mod版本，游戏版本: {selectedGameVersion}");
+                System.Diagnostics.Debug.WriteLine($"[QuickInstall] 游戏支持的加载器: {string.Join(", ", selectedLoaders)}");
                 
                 // 定义已知的Mod加载器类型（这些需要精确匹配加载器）
                 var knownModLoaders = new[] { "fabric", "forge", "neoforge", "quilt", "liteloader" };
@@ -4079,9 +4300,9 @@ namespace XianYuLauncher.ViewModels
                         
                         if (isKnownModLoader)
                         {
-                            // 已知Mod加载器：需要精确匹配加载器
-                            shouldInclude = loaderName.Equals(selectedLoader, StringComparison.OrdinalIgnoreCase);
-                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   {(shouldInclude ? "✅" : "❌")} 已知Mod加载器，需要精确匹配: {shouldInclude}");
+                            // 已知Mod加载器：检查游戏的任一加载器是否匹配
+                            shouldInclude = selectedLoaders.Any(gl => gl.Equals(loaderName, StringComparison.OrdinalIgnoreCase));
+                            System.Diagnostics.Debug.WriteLine($"[QuickInstall]   {(shouldInclude ? "✅" : "❌")} 已知Mod加载器，匹配结果: {shouldInclude}");
                         }
                         else
                         {
@@ -4214,18 +4435,14 @@ namespace XianYuLauncher.ViewModels
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
                 
-                await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
-                
                 // 设置待后台下载信息
                 SetPendingBackgroundDownload(modVersion, savePath);
                 
-                // 重置进度
-                DownloadProgress = 0;
-                DownloadProgressText = "0.0%";
+                // 提前创建 TCS 用于控制弹窗
+                var tcs = new TaskCompletionSource<bool>();
+                bool isBackgroundDownload = false;
                 
                 // 订阅下载任务管理器的事件
-                var tcs = new TaskCompletionSource<bool>();
-                
                 void OnProgressChanged(object? sender, DownloadTaskInfo info)
                 {
                     DownloadProgress = info.Progress;
@@ -4248,16 +4465,8 @@ namespace XianYuLauncher.ViewModels
                 
                 try
                 {
-                    // 启动后台下载
-                    await _downloadTaskManager.StartResourceDownloadAsync(
-                        ModName,
-                        ProjectType,
-                        modVersion.DownloadUrl,
-                        savePath,
-                        ModIconUrl);
-                    
-                    // 显示进度弹窗
-                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
+                    // 显示进度弹窗（在依赖下载之前）
+                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
                         "下载中",
                         () => DownloadStatus,
                         () => DownloadProgress,
@@ -4267,15 +4476,32 @@ namespace XianYuLauncher.ViewModels
                         closeButtonText: null,
                         autoCloseWhen: tcs.Task);
                     
-                    if (dialogResult == ContentDialogResult.Primary)
+                    // 处理后台下载按钮
+                    _ = dialogTask.ContinueWith(t =>
                     {
-                        // 用户点击了"后台下载"
-                        StartBackgroundDownload();
-                        IsDownloading = false;
-                        return;
-                    }
+                        if (t.Result == ContentDialogResult.Primary)
+                        {
+                            // 用户点击了"后台下载"
+                            isBackgroundDownload = true;
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                StartBackgroundDownload();
+                            });
+                        }
+                    }, TaskScheduler.Default);
                     
-                    // 弹窗关闭，等待下载完成
+                    // 先下载依赖
+                    await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
+                    
+                    // 再下载主资源
+                    await _downloadTaskManager.StartResourceDownloadAsync(
+                        ModName,
+                        ProjectType,
+                        modVersion.DownloadUrl,
+                        savePath,
+                        ModIconUrl);
+                    
+                    // 等待下载完成
                     if (!tcs.Task.IsCompleted)
                     {
                         await tcs.Task;
@@ -4322,6 +4548,12 @@ namespace XianYuLauncher.ViewModels
 
         [ObservableProperty]
         private string _originalVersionName;
+        
+        /// <summary>
+        /// 所有加载器列表（包括主加载器和附加加载器如 OptiFine、LiteLoader）
+        /// </summary>
+        [ObservableProperty]
+        private List<string> _allLoaders = new();
 
         public string DisplayName => $"{OriginalVersionName}";
     }

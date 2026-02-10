@@ -419,10 +419,21 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _currentLoaderVersion = string.Empty;
     
     /// <summary>
-    /// 当前加载器图标URL
+    /// 当前加载器图标URL（主加载器）
     /// </summary>
     [ObservableProperty]
     private string? _currentLoaderIconUrl;
+    
+    /// <summary>
+    /// 当前安装的所有加载器图标列表（用于多图标叠加显示）
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<LoaderIconInfo> _currentLoaderIcons = new();
+    
+    /// <summary>
+    /// 是否有多个加载器图标（用于切换单图标/多图标显示模式）
+    /// </summary>
+    public bool HasMultipleLoaders => CurrentLoaderIcons.Count > 1;
     
     /// <summary>
     /// 是否为原版（用于控制图标显示）
@@ -888,41 +899,60 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     public void OnLoaderVersionSelected(LoaderItemViewModel loader)
     {
         System.Diagnostics.Debug.WriteLine($"[DEBUG] OnLoaderVersionSelected: {loader.Name} - {loader.SelectedVersion}");
-        
+
         // 如果选择了版本，需要处理互斥逻辑
         if (!string.IsNullOrEmpty(loader.SelectedVersion))
         {
-            // 获取当前选择的加载器类型
             string currentLoaderType = loader.LoaderType.ToLower();
-            
-            // 清除其他互斥的加载器选择
-            // 规则：只有 Forge 和 Optifine 可以同时选择，其他都互斥
+
+            // 可共存组合（与 ModLoaderSelectorViewModel 保持一致）：
+            // - Forge + OptiFine 可以共存
+            // - Forge + LiteLoader 可以共存
+            // - Forge + OptiFine + LiteLoader 三者可以共存
+            // - OptiFine + LiteLoader（无 Forge）互斥
+            // - 其他加载器之间互斥
+
+            // 定义可共存的加载器组
+            var forgeGroup = new HashSet<string> { "forge", "optifine", "liteloader" };
+
             foreach (var otherLoader in AvailableLoaders)
             {
-                if (otherLoader == loader)
+                if (otherLoader == loader || string.IsNullOrEmpty(otherLoader.SelectedVersion))
                     continue;
-                
+
                 string otherLoaderType = otherLoader.LoaderType.ToLower();
-                
-                // 检查是否需要清除
-                bool shouldClear = false;
-                
-                if (currentLoaderType == "forge" && otherLoaderType == "optifine")
+                bool shouldClear;
+
+                // 如果两者都在 forgeGroup 中，需要进一步判断
+                if (forgeGroup.Contains(currentLoaderType) && forgeGroup.Contains(otherLoaderType))
                 {
-                    // Forge 和 Optifine 可以共存
-                    shouldClear = false;
+                    // 检查是否有 Forge 被选中（当前选的或已选的其他加载器中）
+                    bool hasForge = currentLoaderType == "forge" 
+                        || otherLoaderType == "forge"
+                        || AvailableLoaders.Any(l => l != loader && l != otherLoader 
+                            && l.LoaderType.Equals("forge", StringComparison.OrdinalIgnoreCase) 
+                            && !string.IsNullOrEmpty(l.SelectedVersion));
+
+                    if (hasForge)
+                    {
+                        // 有 Forge 时，Forge/OptiFine/LiteLoader 三者可以共存
+                        shouldClear = false;
+                    }
+                    else
+                    {
+                        // 无 Forge 时，OptiFine 和 LiteLoader 互斥
+                        bool isOptifineVsLiteLoader = 
+                            (currentLoaderType == "optifine" && otherLoaderType == "liteloader") ||
+                            (currentLoaderType == "liteloader" && otherLoaderType == "optifine");
+                        shouldClear = isOptifineVsLiteLoader;
+                    }
                 }
-                else if (currentLoaderType == "optifine" && otherLoaderType == "forge")
+                else
                 {
-                    // Optifine 和 Forge 可以共存
-                    shouldClear = false;
-                }
-                else if (!string.IsNullOrEmpty(otherLoader.SelectedVersion))
-                {
-                    // 其他情况都互斥
+                    // 不在同一组，互斥
                     shouldClear = true;
                 }
-                
+
                 if (shouldClear)
                 {
                     System.Diagnostics.Debug.WriteLine($"[DEBUG] 清除互斥的加载器选择: {otherLoader.Name}");
@@ -932,6 +962,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
         }
     }
+
     
     /// <summary>
     /// 当Minecraft路径变化时触发
@@ -1158,6 +1189,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     private void UpdateCurrentLoaderInfo(VersionSettings? settings)
     {
+        CurrentLoaderIcons.Clear();
+        
         if (settings == null || string.IsNullOrEmpty(settings.ModLoaderType) || settings.ModLoaderType == "vanilla")
         {
             CurrentLoaderDisplayName = "VersionManagement_Vanilla".GetLocalized();
@@ -1184,22 +1217,72 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
         CurrentLoaderVersion = settings.ModLoaderVersion ?? string.Empty;
         
-        // 设置对应的图标URL
-        CurrentLoaderIconUrl = settings.ModLoaderType switch
+        // 设置主加载器图标URL
+        CurrentLoaderIconUrl = GetLoaderIconUrl(settings.ModLoaderType);
+        
+        // 构建多图标列表
+        // 1. 主加载器
+        if (CurrentLoaderIconUrl != null)
         {
-            "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
-            "legacyfabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
-            "LegacyFabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
-            "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
-            "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
-            "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
-            "cleanroom" => "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
-            "optifine" => "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
-            "liteloader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
-            "LiteLoader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
-            _ => null
-        };
+            CurrentLoaderIcons.Add(new LoaderIconInfo
+            {
+                Name = CurrentLoaderDisplayName,
+                IconUrl = CurrentLoaderIconUrl,
+                Version = settings.ModLoaderVersion ?? string.Empty
+            });
+        }
+        
+        // 2. OptiFine（附加）
+        if (!string.IsNullOrEmpty(settings.OptifineVersion) && 
+            !settings.ModLoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase))
+        {
+            CurrentLoaderIcons.Add(new LoaderIconInfo
+            {
+                Name = "OptiFine",
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+                Version = settings.OptifineVersion
+            });
+        }
+        
+        // 3. LiteLoader（附加）
+        if (!string.IsNullOrEmpty(settings.LiteLoaderVersion) && 
+            !settings.ModLoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase) &&
+            !settings.ModLoaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+        {
+            CurrentLoaderIcons.Add(new LoaderIconInfo
+            {
+                Name = "LiteLoader",
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+                Version = settings.LiteLoaderVersion
+            });
+        }
+        
+        // 更新组合显示名称
+        if (CurrentLoaderIcons.Count > 1)
+        {
+            CurrentLoaderDisplayName = string.Join(" + ", CurrentLoaderIcons.Select(i => i.Name));
+        }
+        
+        OnPropertyChanged(nameof(HasMultipleLoaders));
     }
+    
+    /// <summary>
+    /// 根据加载器类型获取图标URL
+    /// </summary>
+    private static string? GetLoaderIconUrl(string loaderType) => loaderType switch
+    {
+        "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+        "legacyfabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+        "LegacyFabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+        "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
+        "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
+        "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
+        "cleanroom" => "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
+        "optifine" => "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+        "liteloader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+        "LiteLoader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+        _ => null
+    };
     
     /// <summary>
     /// 判断版本是否低于 1.14
@@ -1625,9 +1708,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             string versionDirectory = SelectedVersion.Path;
             string versionId = SelectedVersion.Name;
             
-            // 确定主加载器和Optifine
-            var primaryLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() != "optifine");
+            // 确定主加载器、Optifine 和 LiteLoader
+            var primaryLoader = selectedLoaders.FirstOrDefault(l => 
+                l.LoaderType.ToLower() != "optifine" && l.LoaderType.ToLower() != "liteloader");
             var optifineLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() == "optifine");
+            var liteLoaderLoader = selectedLoaders.FirstOrDefault(l => l.LoaderType.ToLower() == "liteloader");
             
             // 检查配置变更，避免不必要的重新安装
             bool needsReinstall = true;
@@ -1638,17 +1723,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 string targetType = primaryLoader?.LoaderType.ToLower() ?? "vanilla";
                 string targetVersion = primaryLoader?.SelectedVersion ?? string.Empty;
                 string? targetOptifine = optifineLoader?.SelectedVersion;
+                string? targetLiteLoader = liteLoaderLoader?.SelectedVersion;
                 
                 string currentType = string.IsNullOrEmpty(currentConfig.ModLoaderType) ? "vanilla" : currentConfig.ModLoaderType.ToLower();
                 string currentVersion = currentConfig.ModLoaderVersion ?? string.Empty;
                 string? currentOptifine = currentConfig.OptifineVersion;
+                string? currentLiteLoader = currentConfig.LiteLoaderVersion;
                 
                 bool isLoaderSame = string.Equals(targetType, currentType, StringComparison.OrdinalIgnoreCase) && 
                                     string.Equals(targetVersion, currentVersion, StringComparison.OrdinalIgnoreCase);
                                     
                 bool isOptifineSame = string.Equals(targetOptifine ?? string.Empty, currentOptifine ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+                bool isLiteLoaderSame = string.Equals(targetLiteLoader ?? string.Empty, currentLiteLoader ?? string.Empty, StringComparison.OrdinalIgnoreCase);
                 
-                if (isLoaderSame && isOptifineSame)
+                if (isLoaderSame && isOptifineSame && isLiteLoaderSame)
                 {
                     needsReinstall = false;
                 }
@@ -1662,6 +1750,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             int totalSteps = 2; // 下载JSON + 保存配置
             if (primaryLoader != null) totalSteps++;
             if (optifineLoader != null) totalSteps++;
+            if (liteLoaderLoader != null) totalSteps++;
             int currentStep = 0;
             
             if (needsReinstall)
@@ -1742,9 +1831,40 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     currentStep++;
                     ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
                 }
+
+                // 步骤4：安装 LiteLoader（如果有）
+                // LiteLoader 以 Addon 模式安装在 Forge 之后，或独立安装
+                if (liteLoaderLoader != null)
+                {
+                    ExtensionInstallStatus = $"正在安装 LiteLoader {liteLoaderLoader.SelectedVersion}...";
+                    
+                    var liteLoaderInstaller = _modLoaderInstallerFactory.GetInstaller("liteloader");
+                    var liteLoaderOptions = new ModLoaderInstallOptions
+                    {
+                        SkipJarDownload = true,
+                        CustomVersionName = versionId,
+                        OverwriteExisting = true
+                    };
+                    
+                    double stepStartProgress = (double)currentStep / totalSteps * 100;
+                    double stepEndProgress = (double)(currentStep + 1) / totalSteps * 100;
+                    
+                    await liteLoaderInstaller.InstallAsync(
+                        minecraftVersion,
+                        liteLoaderLoader.SelectedVersion!,
+                        minecraftDirectory,
+                        liteLoaderOptions,
+                        status =>
+                        {
+                            ExtensionInstallProgress = stepStartProgress + (status.Percent / 100.0) * (stepEndProgress - stepStartProgress);
+                        });
+                    
+                    currentStep++;
+                    ExtensionInstallProgress = (double)currentStep / totalSteps * 100;
+                }
             }
             
-            // 步骤4：保存配置文件
+            // 保存配置文件
             ExtensionInstallStatus = "正在保存配置...";
             
             string settingsFilePath = GetSettingsFilePath();
@@ -1775,6 +1895,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
             
             config.OptifineVersion = optifineLoader?.SelectedVersion;
+            config.LiteLoaderVersion = liteLoaderLoader?.SelectedVersion;
             config.OverrideMemory = OverrideMemory;
             config.AutoMemoryAllocation = AutoMemoryAllocation;
             config.InitialHeapMemory = InitialHeapMemory;
@@ -1796,7 +1917,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 ModLoaderType = config.ModLoaderType,
                 ModLoaderVersion = config.ModLoaderVersion,
-                MinecraftVersion = config.MinecraftVersion
+                MinecraftVersion = config.MinecraftVersion,
+                OptifineVersion = config.OptifineVersion,
+                LiteLoaderVersion = config.LiteLoaderVersion
             });
             
             foreach (var loader in AvailableLoaders)
