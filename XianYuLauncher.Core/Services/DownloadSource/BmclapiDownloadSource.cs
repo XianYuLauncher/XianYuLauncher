@@ -358,4 +358,9 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         return "https://bmclapi.bangbang93.com/maven/com/mumfrey/liteloader/versions.json";
     }
+
+    public string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null)
+    {
+        return "https://bmclapi2.bangbang93.com/maven/" + relativePath;
+    }
 }

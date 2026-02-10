@@ -85,6 +85,9 @@ public class LiteLoaderArtifact
 
     [JsonPropertyName("build")]
     public string Build { get; set; }
+
+    [JsonIgnore]
+    public string? BaseUrl { get; set; }
 }
 
 public class LiteLoaderLibrary

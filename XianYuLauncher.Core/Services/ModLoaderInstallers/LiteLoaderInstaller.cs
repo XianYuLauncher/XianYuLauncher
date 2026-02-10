@@ -158,16 +158,8 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             version, 
             fileName);
 
-        // 确定下载 URL（优先使用 BMCLAPI）
-        string downloadUrl;
-        if (source.Name == "BMCLAPI")
-        {
-            downloadUrl = $"https://bmclapi2.bangbang93.com/maven/{relativePath}";
-        }
-        else
-        {
-            downloadUrl = $"http://repo.mumfrey.com/content/repositories/snapshots/{relativePath}";
-        }
+        // 确定下载 URL
+        string downloadUrl = source.GetLiteLoaderJarUrl(relativePath, artifact.BaseUrl);
 
         // 下载 LiteLoader JAR
         if (!File.Exists(localLibraryPath) || options.OverwriteExisting)

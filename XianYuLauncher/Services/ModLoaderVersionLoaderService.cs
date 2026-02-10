@@ -267,7 +267,10 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
                 }
             }
             
-            return artifacts.Select(a => a.Version).ToList();
+            return artifacts.Select(a => a.Version)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct()
+                .ToList();
         }
         catch (Exception ex)
         {

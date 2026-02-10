@@ -380,7 +380,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
     }
 
-    private async void LoadModLoaders()
+    private void LoadModLoaders()
     {
         // 清空现有列表
         ModLoaderItems.Clear();

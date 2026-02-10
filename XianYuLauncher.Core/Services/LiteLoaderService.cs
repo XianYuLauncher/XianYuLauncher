@@ -18,6 +18,14 @@ public class LiteLoaderService
 
     private const string SUPPORTED_VERSIONS_LOG = "1.5.2, 1.6.2, 1.6.4, 1.7.2, 1.7.10, 1.8, 1.8.9, 1.9, 1.9.4, 1.10, 1.10.2, 1.11, 1.11.2, 1.12, 1.12.1, 1.12.2";
 
+    private static readonly HashSet<string> _supportedVersions;
+
+    static LiteLoaderService()
+    {
+        _supportedVersions = new HashSet<string>(
+            SUPPORTED_VERSIONS_LOG.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries));
+    }
+
     public LiteLoaderService(
         HttpClient httpClient,
         DownloadSourceFactory downloadSourceFactory,
@@ -34,10 +42,7 @@ public class LiteLoaderService
     public bool IsLiteLoaderSupported(string minecraftVersion)
     {
         if (string.IsNullOrEmpty(minecraftVersion)) return false;
-        var supported = SUPPORTED_VERSIONS_LOG.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
-        // 使用 HashSet 提高查找效率
-        var supportedSet = new HashSet<string>(supported);
-        return supportedSet.Contains(minecraftVersion);
+        return _supportedVersions.Contains(minecraftVersion);
     }
 
     /// <summary>
@@ -88,6 +93,7 @@ public class LiteLoaderService
             if (mcVersion.Snapshots?.Artifacts != null && 
                 mcVersion.Snapshots.Artifacts.TryGetValue("latest", out var snapshotArtifact))
             {
+                snapshotArtifact.BaseUrl = mcVersion.Repo?.Url;
                 // 注意：不合并 Snapshots.Libraries，这些是开发用的库，启动器不需要
                 // 只使用 artifact 自己的 Libraries
                 results.Add(snapshotArtifact);
@@ -97,6 +103,7 @@ public class LiteLoaderService
             if (mcVersion.Artefacts?.Artifacts != null &&
                 mcVersion.Artefacts.Artifacts.TryGetValue("latest", out var releaseArtifact))
             {
+                releaseArtifact.BaseUrl = mcVersion.Repo?.Url;
                 // 同样不合并外部 libraries
                 results.Add(releaseArtifact);
             }

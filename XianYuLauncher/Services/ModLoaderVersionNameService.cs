@@ -44,7 +44,7 @@ public class ModLoaderVersionNameService : IModLoaderVersionNameService
         // 3. 添加 LiteLoader 部分
         if (isLiteLoaderSelected && !string.IsNullOrEmpty(liteLoaderVersion))
         {
-            baseName += $"-LiteLoader{liteLoaderVersion}";
+            baseName += $"-LiteLoader-{liteLoaderVersion}";
         }
 
         return baseName;
