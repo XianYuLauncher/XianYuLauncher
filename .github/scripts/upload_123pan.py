@@ -118,7 +118,20 @@ def upload_complete(token, upload_url, preupload_id):
     }
     
     resp = requests.post(url, headers=headers, json=data)
-    result = resp.json()
+    
+    # 增强错误处理：先检查状态码和响应内容
+    if resp.status_code != 200:
+        print(f"Error: HTTP {resp.status_code}")
+        print(f"Response Text: {resp.text[:500]}")  # 打印前500字符
+        raise Exception(f"完成上传失败: HTTP {resp.status_code}")
+    
+    # 尝试解析 JSON
+    try:
+        result = resp.json()
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to parse JSON response")
+        print(f"Response Text: {resp.text[:500]}")
+        raise Exception(f"完成上传返回非JSON响应: {e}")
     
     if result.get("code") != 0:
         raise Exception(f"完成上传失败: {result}")
