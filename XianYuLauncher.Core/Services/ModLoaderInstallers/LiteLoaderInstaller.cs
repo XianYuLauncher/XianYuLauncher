@@ -104,13 +104,28 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
-        // 5. 获取原版Minecraft版本信息
-        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 获取原版Minecraft版本信息: {minecraftVersionId}");
-        var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
-            minecraftVersionId,
-            minecraftDirectory,
-            allowNetwork: true,
-            cancellationToken);
+        // 5. 获取版本信息（Addon 模式读取现有版本，独立模式读取原版）
+        VersionInfo baseVersionInfo;
+        if (isAddonMode)
+        {
+            // Addon 模式：读取已存在的版本 JSON（如 Forge 的）
+            System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] Addon 模式：读取现有版本 JSON: {versionId}");
+            baseVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
+                versionId,
+                minecraftDirectory,
+                allowNetwork: false, // 不从网络获取，必须使用本地已存在的
+                cancellationToken);
+        }
+        else
+        {
+            // 独立模式：读取原版 Minecraft 版本信息
+            System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 独立模式：读取原版 Minecraft 版本信息: {minecraftVersionId}");
+            baseVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
+                minecraftVersionId,
+                minecraftDirectory,
+                allowNetwork: true,
+                cancellationToken);
+        }
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
@@ -121,7 +136,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
-                originalVersionInfo,
+                baseVersionInfo,
                 options.SkipJarDownload,
                 p => ReportProgress(progressCallback, p, 10, 30),
                 cancellationToken);
@@ -201,7 +216,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         // 9. 生成/合并版本JSON
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 生成版本JSON");
-        var mergedVersionInfo = MergeLiteLoaderVersionInfo(originalVersionInfo, artifact, versionId, isAddonMode);
+        var mergedVersionInfo = MergeLiteLoaderVersionInfo(baseVersionInfo, artifact, versionId, isAddonMode);
         
         var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
         await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
@@ -213,10 +228,10 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     }
     
     /// <summary>
-    /// 合并原版和 LiteLoader 版本信息
+    /// 合并基础版本（原版或 Forge 等）和 LiteLoader 版本信息
     /// </summary>
     private VersionInfo MergeLiteLoaderVersionInfo(
-        VersionInfo original, 
+        VersionInfo baseVersion, 
         LiteLoaderArtifact artifact, 
         string versionId,
         bool isAddonMode)
@@ -246,23 +261,23 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             }
         }
         
-        // 参数合并逻辑：根据原版格式决定
+        // 参数合并逻辑：根据基础版本格式决定
         Arguments? mergedArguments = null;
         string? mergedMinecraftArguments = null;
 
-        if (!string.IsNullOrEmpty(original.MinecraftArguments))
+        if (!string.IsNullOrEmpty(baseVersion.MinecraftArguments))
         {
-            // 原版使用旧版格式（minecraftArguments）
-            mergedMinecraftArguments = $"{original.MinecraftArguments} --tweakClass {tweakClass}";
+            // 基础版本使用旧版格式（minecraftArguments）
+            mergedMinecraftArguments = $"{baseVersion.MinecraftArguments} --tweakClass {tweakClass}";
             mergedArguments = null;
         }
-        else if (original.Arguments != null)
+        else if (baseVersion.Arguments != null)
         {
-            // 原版使用新版格式（arguments）
+            // 基础版本使用新版格式（arguments）
             mergedArguments = new Arguments
             {
-                Game = new List<object>(original.Arguments.Game ?? new List<object>()),
-                Jvm = original.Arguments.Jvm != null ? new List<object>(original.Arguments.Jvm) : null
+                Game = new List<object>(baseVersion.Arguments.Game ?? new List<object>()),
+                Jvm = baseVersion.Arguments.Jvm != null ? new List<object>(baseVersion.Arguments.Jvm) : null
             };
             
             // 添加 tweakClass 参数
@@ -273,7 +288,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         }
         else
         {
-            // 原版没有参数，创建新的
+            // 基础版本没有参数，创建新的
             mergedArguments = new Arguments
             {
                 Game = new List<object> { "--tweakClass", tweakClass }
@@ -284,25 +299,25 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         var merged = new VersionInfo
         {
             Id = versionId,
-            Type = original.Type,
+            Type = baseVersion.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = original.ReleaseTime,
-            Url = original.Url,
-            InheritsFrom = original.Id, // 继承原版
-            MainClass = isAddonMode ? original.MainClass : mainClass, // Addon 模式保持原 mainClass
-            AssetIndex = original.AssetIndex,
-            Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            Downloads = original.Downloads,
-            JavaVersion = original.JavaVersion,
+            ReleaseTime = baseVersion.ReleaseTime,
+            Url = baseVersion.Url,
+            InheritsFrom = baseVersion.InheritsFrom ?? baseVersion.Id, // 保持继承链
+            MainClass = isAddonMode ? baseVersion.MainClass : mainClass, // Addon 模式保持原 mainClass
+            AssetIndex = baseVersion.AssetIndex,
+            Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,
+            Downloads = baseVersion.Downloads,
+            JavaVersion = baseVersion.JavaVersion,
             Arguments = mergedArguments,
             MinecraftArguments = mergedMinecraftArguments,
             Libraries = new List<Library>()
         };
 
-        // 添加原版库
-        if (original.Libraries != null)
+        // 添加基础版本的库
+        if (baseVersion.Libraries != null)
         {
-            merged.Libraries.AddRange(original.Libraries);
+            merged.Libraries.AddRange(baseVersion.Libraries);
         }
 
         // 添加 LiteLoader 库

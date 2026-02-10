@@ -93,9 +93,22 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     partial void OnIsLiteLoaderSelectedChanged(bool oldValue, bool newValue)
     {
-        if (newValue && LiteLoaderVersions.Count == 0)
+        if (newValue)
         {
-            _ = LoadLiteLoaderVersionsAsync();
+            // LiteLoader 只能与 Forge 和 OptiFine 组合
+            if (SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
+            {
+                // 取消不兼容的加载器
+                SelectedModLoaderItem.IsSelected = false;
+                SelectedModLoaderItem = null;
+                OnPropertyChanged(nameof(IsNeoForgeSelected));
+                OnPropertyChanged(nameof(IsNotNeoForgeSelected));
+            }
+            
+            if (LiteLoaderVersions.Count == 0)
+            {
+                _ = LoadLiteLoaderVersionsAsync();
+            }
         }
         UpdateVersionName();
     }
@@ -601,6 +614,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 {
                     item.IsSelected = false;
                 }
+            }
+            
+            // 处理 LiteLoader 的兼容性：仅当新选择的是 Forge 时才保留 LiteLoader
+            if (IsLiteLoaderSelected && modLoaderItem.Name != "Forge")
+            {
+                IsLiteLoaderSelected = false;
+                SelectedLiteLoaderVersion = null;
             }
             
             // 选择当前mod loader
