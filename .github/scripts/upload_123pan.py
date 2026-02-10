@@ -105,9 +105,9 @@ def upload_slice(token, upload_url, preupload_id, slice_no, slice_md5, slice_dat
              return
         raise Exception(f"上传分片 {slice_no} 失败: {result}")
 
-def upload_complete(token, upload_url, preupload_id):
-    """完成上传"""
-    url = f"{upload_url}/upload/v2/file/upload_complete"
+def upload_complete(token, preupload_id):
+    """完成上传 - 注意：此接口使用 API 域名，不是上传域名"""
+    url = f"{API_DOMAIN}/upload/v2/file/upload_complete"
     headers = {
         "Authorization": f"Bearer {token}",
         "Platform": PLATFORM,
@@ -228,7 +228,7 @@ def main():
             
             # 完成上传
             print("Finalizing Upload...")
-            file_id = upload_complete(token, upload_host, preupload_id)
+            file_id = upload_complete(token, preupload_id)
             print("Success: Upload Completed!")
 
         # 4. 获取直链
