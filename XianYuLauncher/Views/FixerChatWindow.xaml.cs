@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.ViewModels;
 
@@ -14,6 +15,7 @@ public sealed partial class FixerChatWindow : WindowEx
 {
     private readonly ErrorAnalysisViewModel _viewModel;
     private readonly MaterialService _materialService;
+    private readonly IThemeSelectorService _themeSelectorService;
 
     public FixerChatWindow()
     {
@@ -36,11 +38,26 @@ public sealed partial class FixerChatWindow : WindowEx
         _materialService.BackgroundChanged += OnBackgroundChanged;
         _materialService.MotionSettingsChanged += OnMotionSettingsChanged;
 
+        // 应用主题设置（跟随主窗口）
+        _themeSelectorService = App.GetService<IThemeSelectorService>();
+        ApplyTheme();
+
         // 初始加载材质
         LoadBackgroundAsync();
 
         // 导航到聊天页面
         ContentFrame.Navigate(typeof(FixerChatPage));
+    }
+
+    /// <summary>
+    /// 应用主题设置（从 ThemeSelectorService 同步）
+    /// </summary>
+    private void ApplyTheme()
+    {
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.RequestedTheme = _themeSelectorService.Theme;
+        }
     }
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
