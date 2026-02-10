@@ -311,4 +311,9 @@ public class OfficialDownloadSource : IDownloadSource
     {
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
     }
+
+    public string GetLiteLoaderVersionsUrl()
+    {
+        return "http://dl.liteloader.com/versions/versions.json";
+    }
 }

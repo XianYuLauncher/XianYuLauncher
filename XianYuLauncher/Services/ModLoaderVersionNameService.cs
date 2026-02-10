@@ -14,7 +14,7 @@ public class ModLoaderVersionNameService : IModLoaderVersionNameService
         _fileService = fileService;
     }
 
-    public string GenerateVersionName(string minecraftVersion, string? modLoaderType, string? modLoaderVersion, bool isOptifineSelected, string? optifineVersion)
+    public string GenerateVersionName(string minecraftVersion, string? modLoaderType, string? modLoaderVersion, bool isOptifineSelected, string? optifineVersion, bool isLiteLoaderSelected, string? liteLoaderVersion)
     {
         if (string.IsNullOrEmpty(minecraftVersion))
         {
@@ -39,6 +39,12 @@ public class ModLoaderVersionNameService : IModLoaderVersionNameService
         if (isOptifineSelected && !string.IsNullOrEmpty(optifineVersion))
         {
             baseName += $"-Optifine-{optifineVersion}";
+        }
+        
+        // 3. 添加 LiteLoader 部分
+        if (isLiteLoaderSelected && !string.IsNullOrEmpty(liteLoaderVersion))
+        {
+            baseName += $"-LiteLoader{liteLoaderVersion}";
         }
 
         return baseName;

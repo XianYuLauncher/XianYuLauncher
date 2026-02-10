@@ -82,6 +82,7 @@ public class LibraryManager : ILibraryManager
             cancellationToken.ThrowIfCancellationRequested();
 
             // 添加主库文件下载任务
+            // TODO: 当 Downloads.Artifact 为空时，尝试从 libraries.minecraft.net 构建默认 URL（适配其他启动器）
             if (library.Downloads?.Artifact != null && !string.IsNullOrEmpty(library.Downloads.Artifact.Url))
             {
                 var libraryPath = GetLibraryPath(library.Name, librariesDirectory);

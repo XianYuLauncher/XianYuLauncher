@@ -39,7 +39,37 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string? _selectedOptifineVersion;
+
+    /// <summary>
+    /// 是否支持 LiteLoader (根据 MC 版本动态决定)
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLiteLoaderSupported = false;
+
+    /// <summary>
+    /// LiteLoader 版本列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _liteLoaderVersions = new();
+
+    /// <summary>
+    /// 是否选中 LiteLoader
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLiteLoaderSelected = false;
+
+    /// <summary>
+    /// 选中的 LiteLoader 版本
+    /// </summary>
+    [ObservableProperty]
+    private string? _selectedLiteLoaderVersion;
     
+    /// <summary>
+    /// 是否正在加载 LiteLoader 版本
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLiteLoaderLoading = false;
+
     /// <summary>
     /// 当SelectedModLoaderItem变化时触发
     /// </summary>
@@ -58,6 +88,20 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     partial void OnIsOptifineSelectedChanged(bool oldValue, bool newValue)
     {
         // 更新版本名称
+        UpdateVersionName();
+    }
+
+    partial void OnIsLiteLoaderSelectedChanged(bool oldValue, bool newValue)
+    {
+        if (newValue && LiteLoaderVersions.Count == 0)
+        {
+            _ = LoadLiteLoaderVersionsAsync();
+        }
+        UpdateVersionName();
+    }
+    
+    partial void OnSelectedLiteLoaderVersionChanged(string? oldValue, string? newValue)
+    {
         UpdateVersionName();
     }
     
@@ -318,15 +362,30 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         {
             SelectedMinecraftVersion = version;
             VersionName = SelectedMinecraftVersion; // 初始化版本名称
+            
             LoadModLoaders();
         }
     }
 
-    private void LoadModLoaders()
+    private async void LoadModLoaders()
     {
         // 清空现有列表
         ModLoaderItems.Clear();
         
+        IsLiteLoaderSupported = false;
+        LiteLoaderVersions.Clear();
+        IsLiteLoaderSelected = false;
+        
+        // 检查LiteLoader支持（实际上应该使用更高效的同步检查，这里暂且使用 Service 调用）
+        // 更好的方式是 LiteLoaderService 提供 IsSupported(mcVersion) 方法
+        // 这里我们假设 Service 已经注册
+        var liteLoaderService = App.GetService<LiteLoaderService>();
+        if (liteLoaderService.IsLiteLoaderSupported(SelectedMinecraftVersion))
+        {
+            IsLiteLoaderSupported = true;
+            // 不再自动加载，改为在展开时加载 (Lazy Loading)
+        }
+
         // 创建mod loader项并添加到列表
             var forgeItem = new ModLoaderItem("Forge");
             var fabricItem = new ModLoaderItem("Fabric");
@@ -395,6 +454,38 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             return false;
         }
         return false;
+    }
+
+    private async Task LoadLiteLoaderVersionsAsync()
+    {
+        try
+        {
+            IsLiteLoaderLoading = true;
+            // 通过统一的 Loader Service 加载 LiteLoader
+            var versions = await _versionLoaderService.LoadVersionsAsync("liteloader", SelectedMinecraftVersion, CancellationToken.None);
+            
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                LiteLoaderVersions.Clear();
+                foreach (var v in versions)
+                {
+                    LiteLoaderVersions.Add(v);
+                }
+                
+                if (LiteLoaderVersions.Count > 0)
+                {
+                    SelectedLiteLoaderVersion = LiteLoaderVersions[0];
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading LiteLoader versions: {ex.Message}");
+        }
+        finally
+        {
+            IsLiteLoaderLoading = false;
+        }
     }
 
     /// <summary>
@@ -538,7 +629,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             SelectedModLoader,
             SelectedModLoaderVersion,
             IsOptifineSelected,
-            SelectedOptifineVersion);
+            SelectedOptifineVersion,
+            IsLiteLoaderSelected,
+            SelectedLiteLoaderVersion);
     }
 
     [RelayCommand]
@@ -648,9 +741,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             IsDownloadDialogOpen = true;
             
             // 下载逻辑 - 使用 DownloadTaskManager
-            if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected)
+            if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
             {
-                // 下载原版Minecraft
+                // 下载原版Minecraft（没有选择任何加载器）
                 await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName);
             }
             else
@@ -658,7 +751,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 string modLoaderToDownload = SelectedModLoader ?? string.Empty;
                 string modLoaderVersionToDownload = SelectedModLoaderVersion ?? string.Empty;
                 
-                // 处理Optifine单独选择的情况
+                // 处理 Optifine 单独选择的情况
                 if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
                 {
                     modLoaderToDownload = "Optifine";
@@ -673,12 +766,24 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         }
                     }
                 }
+                // 处理 LiteLoader 单独选择的情况
+                else if (IsLiteLoaderSelected && string.IsNullOrEmpty(SelectedModLoader))
+                {
+                    modLoaderToDownload = "LiteLoader";
+                    modLoaderVersionToDownload = SelectedLiteLoaderVersion ?? string.Empty;
+                }
                 
                 // 检查版本是否已选择
                 if (string.IsNullOrEmpty(modLoaderVersionToDownload))
                 {
-                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
+                    // 先关闭下载弹窗
                     IsDownloadDialogOpen = false;
+                    
+                    // 等待一下确保弹窗关闭
+                    await Task.Delay(100);
+                    
+                    // 再显示错误消息
+                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     return;
                 }
                 
@@ -716,9 +821,31 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     }
                 }
                 
+                // 添加 LiteLoader (如果选中)
+                if (IsLiteLoaderSelected && !string.IsNullOrEmpty(SelectedLiteLoaderVersion))
+                {
+                    // 判断是否作为 Addon 安装：如果有主加载器则为 Addon，否则为独立安装
+                    bool isLiteLoaderAddon = !string.IsNullOrEmpty(SelectedModLoader);
+                    
+                    modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
+                    {
+                        Type = "LiteLoader",
+                        Version = SelectedLiteLoaderVersion,
+                        InstallOrder = isLiteLoaderAddon ? 3 : 1, // Addon 时排在后面，独立时排第一
+                        IsAddon = isLiteLoaderAddon
+                    });
+                }
+                
                 // 使用新的多加载器下载方法
                 if (modLoaderSelections.Count > 0)
                 {
+                    // 添加调试日志
+                    System.Diagnostics.Debug.WriteLine($"[ModLoaderSelector] 开始下载，加载器数量: {modLoaderSelections.Count}");
+                    foreach (var sel in modLoaderSelections)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - {sel.Type} {sel.Version} (Order: {sel.InstallOrder}, IsAddon: {sel.IsAddon})");
+                    }
+                    
                     await _downloadTaskManager.StartMultiModLoaderDownloadAsync(
                         SelectedMinecraftVersion,
                         modLoaderSelections,
@@ -726,8 +853,14 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 }
                 else
                 {
-                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
+                    // 先关闭下载弹窗
                     IsDownloadDialogOpen = false;
+                    
+                    // 等待一下确保弹窗关闭
+                    await Task.Delay(100);
+                    
+                    // 再显示错误消息
+                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     return;
                 }
             }
@@ -736,7 +869,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
+            // 先关闭下载弹窗
             IsDownloadDialogOpen = false;
+            
+            // 等待一下确保弹窗关闭
+            await Task.Delay(100);
+            
+            // 再显示错误消息
             await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
         }
     }

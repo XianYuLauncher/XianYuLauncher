@@ -21,12 +21,14 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
     private readonly OptifineService _optifineService;
     private readonly CleanroomService _cleanroomService;
     private readonly LegacyFabricService _legacyFabricService;
+    private readonly LiteLoaderService _liteLoaderService;
 
     // 缓存完整的版本信息对象，用于后续安装
     private readonly Dictionary<string, FabricLoaderVersion> _fabricVersionMap = new();
     private readonly Dictionary<string, QuiltLoaderVersion> _quiltVersionMap = new();
     private readonly Dictionary<string, OptifineVersionInfo> _optifineVersionMap = new();
     private readonly Dictionary<string, FabricLoaderVersion> _legacyFabricVersionMap = new();
+    private readonly Dictionary<string, LiteLoaderArtifact> _liteLoaderVersionMap = new();
 
     public ModLoaderVersionLoaderService(
         ILogger<ModLoaderVersionLoaderService> logger,
@@ -36,7 +38,8 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
         QuiltService quiltService,
         OptifineService optifineService,
         CleanroomService cleanroomService,
-        LegacyFabricService legacyFabricService)
+        LegacyFabricService legacyFabricService,
+        LiteLoaderService liteLoaderService)
     {
         _logger = logger;
         _fabricService = fabricService;
@@ -46,6 +49,7 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
         _optifineService = optifineService;
         _cleanroomService = cleanroomService;
         _legacyFabricService = legacyFabricService;
+        _liteLoaderService = liteLoaderService;
     }
 
     public async Task<List<string>> LoadVersionsAsync(string modLoaderType, string minecraftVersion, CancellationToken cancellationToken)
@@ -61,6 +65,7 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
                 "quilt" => await LoadQuiltVersionsAsync(minecraftVersion, cancellationToken),
                 "cleanroom" => await LoadCleanroomVersionsAsync(minecraftVersion, cancellationToken),
                 "optifine" => await LoadOptifineVersionsAsync(minecraftVersion, cancellationToken),
+                "liteloader" => await LoadLiteLoaderVersionsAsync(minecraftVersion, cancellationToken),
                 _ => new List<string>()
             };
         }
@@ -244,6 +249,33 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
         }
     }
 
+    private async Task<List<string>> LoadLiteLoaderVersionsAsync(string mcVersion, CancellationToken token)
+    {
+        try
+        {
+            var artifacts = await _liteLoaderService.GetLiteLoaderArtifactsAsync(mcVersion, token);
+            
+            lock (_liteLoaderVersionMap)
+            {
+                _liteLoaderVersionMap.Clear();
+                foreach (var artifact in artifacts)
+                {
+                    if (!string.IsNullOrEmpty(artifact.Version))
+                    {
+                        _liteLoaderVersionMap[artifact.Version] = artifact;
+                    }
+                }
+            }
+            
+            return artifacts.Select(a => a.Version).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load LiteLoader versions for MC {Version}", mcVersion);
+            return new List<string>();
+        }
+    }
+
     public FabricLoaderVersion? GetFabricVersionInfo(string version)
     {
         lock (_fabricVersionMap)
@@ -273,6 +305,14 @@ public class ModLoaderVersionLoaderService : IModLoaderVersionLoaderService
         lock (_optifineVersionMap)
         {
             return _optifineVersionMap.TryGetValue(version, out var v) ? v : null;
+        }
+    }
+
+    public LiteLoaderArtifact? GetLiteLoaderVersionInfo(string version)
+    {
+        lock (_liteLoaderVersionMap)
+        {
+            return _liteLoaderVersionMap.TryGetValue(version, out var v) ? v : null;
         }
     }
 }

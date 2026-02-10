@@ -172,6 +172,9 @@ public class McimDownloadSource : IDownloadSource
 
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
         => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+
+    public string GetLiteLoaderVersionsUrl()
+        => "https://bmclapi.bangbang93.com/maven/com/mumfrey/liteloader/versions.json";
     
     public string GetLibraryUrl(string libraryName, string originalUrl = null) => originalUrl ?? string.Empty;
     

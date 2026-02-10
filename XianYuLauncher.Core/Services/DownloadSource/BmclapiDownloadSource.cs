@@ -353,4 +353,9 @@ public class BmclapiDownloadSource : IDownloadSource
         // BMCLAPI 暂不支持 Legacy Fabric，回退到官方源
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
     }
+
+    public string GetLiteLoaderVersionsUrl()
+    {
+        return "https://bmclapi.bangbang93.com/maven/com/mumfrey/liteloader/versions.json";
+    }
 }
