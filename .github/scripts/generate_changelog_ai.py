@@ -68,7 +68,7 @@ def get_git_commits(last_tag, current_ref):
         return ""
 
 def get_previous_tag(current_tag):
-    """尝试获取上一个 Tag"""
+    """尝试获取上一个 Tag，正式版跳过所有 dev/beta tag"""
     try:
         # 获取按时间排序的所有 tag
         cmd = ["git", "tag", "--sort=-creatordate"]
@@ -80,16 +80,35 @@ def get_previous_tag(current_tag):
         
         if not tags:
             return None
-            
+        
+        # 判断当前 tag 是否为正式版（不包含 -dev, -beta 等后缀）
+        is_stable = current_tag and '-' not in current_tag
+        
         # 如果当前 tag 在列表中，找它后面那个
         if current_tag in tags:
             idx = tags.index(current_tag)
-            if idx + 1 < len(tags):
-                return tags[idx + 1]
+            
+            # 如果是正式版，跳过所有 dev/beta tag，找上一个正式版
+            if is_stable:
+                for i in range(idx + 1, len(tags)):
+                    if '-' not in tags[i]:  # 找到第一个不含 - 的 tag（正式版）
+                        return tags[i]
+                return None  # 没找到上一个正式版
+            else:
+                # dev/beta 版本，直接返回下一个 tag
+                if idx + 1 < len(tags):
+                    return tags[idx + 1]
         
-        # 如果找不到或者当前 tag 是最新的且列表里有其他 tag，返回第二个（第一个是当前）
+        # 如果找不到或者当前 tag 是最新的且列表里有其他 tag
         if len(tags) > 1 and tags[0] == current_tag:
-            return tags[1]
+            if is_stable:
+                # 正式版，找第一个不含 - 的
+                for tag in tags[1:]:
+                    if '-' not in tag:
+                        return tag
+                return None
+            else:
+                return tags[1]
         elif len(tags) > 0 and tags[0] != current_tag:
              return tags[0] 
              
