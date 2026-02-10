@@ -106,8 +106,14 @@ public class OptifineInstaller : ModLoaderInstallerBase
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "optifine");
             Directory.CreateDirectory(cacheDirectory);
             
-            optifineJarPath = Path.Combine(cacheDirectory, $"OptiFine_{minecraftVersionId}_{modLoaderVersion}.jar");
+            // 文件名中不能包含冒号，将冒号替换为下划线
+            var safeModLoaderVersion = modLoaderVersion.Replace(":", "_");
+            optifineJarPath = Path.Combine(cacheDirectory, $"OptiFine_{minecraftVersionId}_{safeModLoaderVersion}.jar");
             var optifineUrl = GetOptifineDownloadUrl(minecraftVersionId, modLoaderVersion);
+            
+            Logger.LogInformation("OptiFine 下载 URL: {Url}", optifineUrl);
+            System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] OptiFine 下载 URL: {optifineUrl}");
+            System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] modLoaderVersion: {modLoaderVersion}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 optifineUrl,
@@ -198,14 +204,32 @@ public class OptifineInstaller : ModLoaderInstallerBase
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85));
 
             // 8.2 查找并处理安装后的版本文件
-            // Optifine安装器使用标准格式创建版本目录
-            var standardOptifineVersionId = $"{minecraftVersionId}-OptiFine_{modLoaderVersion.Replace("_", "_")}";
-            var installedVersionDir = Path.Combine(tempVersionsDirectory, standardOptifineVersionId);
+            // Optifine安装器生成的版本目录名可能包含冒号，需要尝试多种格式
+            var possibleVersionIds = new[]
+            {
+                $"{minecraftVersionId}-OptiFine_{modLoaderVersion}",  // 1.12.2-OptiFine_HD_U:C5
+                $"{minecraftVersionId}-OptiFine_{modLoaderVersion.Replace(":", "_")}"  // 1.12.2-OptiFine_HD_U_C5
+            };
             
-            if (Directory.Exists(installedVersionDir))
+            string? installedVersionDir = null;
+            string? actualVersionId = null;
+            
+            foreach (var possibleId in possibleVersionIds)
+            {
+                var testDir = Path.Combine(tempVersionsDirectory, possibleId);
+                if (Directory.Exists(testDir))
+                {
+                    installedVersionDir = testDir;
+                    actualVersionId = possibleId;
+                    Logger.LogInformation("找到Optifine安装后的版本目录: {Dir}", installedVersionDir);
+                    break;
+                }
+            }
+            
+            if (installedVersionDir != null && actualVersionId != null)
             {
                 // 复制JAR文件
-                var installedJarPath = Path.Combine(installedVersionDir, $"{standardOptifineVersionId}.jar");
+                var installedJarPath = Path.Combine(installedVersionDir, $"{actualVersionId}.jar");
                 var destJarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
                 if (File.Exists(installedJarPath))
                 {
@@ -214,21 +238,28 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 }
                 
                 // 读取并合并JSON
-                var installedJsonPath = Path.Combine(installedVersionDir, $"{standardOptifineVersionId}.json");
+                var installedJsonPath = Path.Combine(installedVersionDir, $"{actualVersionId}.json");
                 if (File.Exists(installedJsonPath))
                 {
                     var installedJsonContent = await File.ReadAllTextAsync(installedJsonPath, cancellationToken);
                     var installedVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(installedJsonContent);
                     
+                    Logger.LogInformation("OptiFine 安装器生成的 mainClass: {MainClass}", installedVersionInfo?.MainClass ?? "null");
+                    System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] OptiFine mainClass: {installedVersionInfo?.MainClass ?? "null"}");
+                    
                     // 合并版本信息
                     var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, installedVersionInfo, versionId);
+                    
+                    Logger.LogInformation("合并后的 mainClass: {MainClass}", mergedVersionInfo.MainClass);
+                    System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] 合并后 mainClass: {mergedVersionInfo.MainClass}");
+                    
                     await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
                     Logger.LogInformation("已合并并保存版本JSON");
                 }
             }
             else
             {
-                Logger.LogWarning("未找到Optifine安装后的版本目录: {Dir}", installedVersionDir);
+                Logger.LogWarning("未找到Optifine安装后的版本目录，尝试的路径: {Paths}", string.Join(", ", possibleVersionIds.Select(id => Path.Combine(tempVersionsDirectory, id))));
                 // 回退：使用简单合并
                 var simpleVersionInfo = CreateSimpleOptifineVersionInfo(versionId, minecraftVersionId, modLoaderVersion, originalVersionInfo);
                 await SaveVersionJsonAsync(versionDirectory, versionId, simpleVersionInfo);
@@ -288,17 +319,37 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
     private string GetOptifineDownloadUrl(string minecraftVersionId, string optifineVersion)
     {
-        // optifineVersion 格式为 "HD_U_J7_pre10"，需要拆分为 type 和 patch
-        // 下载URL格式: /optifine/{mcVersion}/{type}/{patch}
-        var lastUnderscoreIndex = optifineVersion.LastIndexOf('_');
-        if (lastUnderscoreIndex > 0)
+        // optifineVersion 格式可能是：
+        // 1. "HD_U:C5" (UI 层传递的格式，Type:Patch)
+        // 2. "HD_U_C5" (旧格式，Type_Patch)
+        
+        string type, patch;
+        
+        // 检查是否包含冒号（新格式）
+        if (optifineVersion.Contains(':'))
         {
-            var type = optifineVersion.Substring(0, lastUnderscoreIndex);
-            var patch = optifineVersion.Substring(lastUnderscoreIndex + 1);
-            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{type}/{patch}";
+            var parts = optifineVersion.Split(':');
+            type = parts[0];  // HD_U
+            patch = parts[1]; // C5
+        }
+        else
+        {
+            // 旧格式：HD_U_C5，需要拆分为 type 和 patch
+            var lastUnderscoreIndex = optifineVersion.LastIndexOf('_');
+            if (lastUnderscoreIndex > 0)
+            {
+                type = optifineVersion.Substring(0, lastUnderscoreIndex);
+                patch = optifineVersion.Substring(lastUnderscoreIndex + 1);
+            }
+            else
+            {
+                // 无法解析，直接使用原始格式
+                return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineVersion}";
+            }
         }
         
-        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineVersion}";
+        // 下载URL格式: /optifine/{mcVersion}/{type}/{patch}
+        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{type}/{patch}";
     }
 
     private async Task ExecuteOptifineInstallerAsync(

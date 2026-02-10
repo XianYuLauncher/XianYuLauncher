@@ -124,7 +124,7 @@ public partial class MinecraftVersionService
     }
 
     /// <summary>
-    /// 作为附加组件安装（如 OptiFine 作为 Mod 安装到 Forge，或 LiteLoader 作为 Tweaker 安装）
+    /// 作为附加组件安装（如 OptiFine 作为 Mod 安装到 Forge，或作为 Tweaker 安装到 LiteLoader）
     /// </summary>
     private async Task InstallAsAddonAsync(
         ModLoaderSelection selection,
@@ -136,13 +136,50 @@ public partial class MinecraftVersionService
     {
         if (selection.Type.Equals("OptiFine", StringComparison.OrdinalIgnoreCase))
         {
-            await InstallOptifineAsModAsync(
-                minecraftVersionId,
-                selection.Version,
-                targetVersionId,
-                minecraftDirectory,
-                progressCallback,
-                cancellationToken);
+            // 检测基础加载器类型
+            var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            var versionDirectory = Path.Combine(versionsDirectory, targetVersionId);
+            var versionJsonPath = Path.Combine(versionDirectory, $"{targetVersionId}.json");
+            
+            bool isForgeBase = false;
+            if (File.Exists(versionJsonPath))
+            {
+                var jsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
+                // 检测是否为 Forge（包含 FMLTweaker 或 forge 库）
+                isForgeBase = jsonContent.Contains("FMLTweaker") || 
+                              jsonContent.Contains("net.minecraftforge:forge") ||
+                              jsonContent.Contains("com.cleanroommc:cleanroom");
+            }
+            
+            if (isForgeBase)
+            {
+                // Forge 环境：OptiFine 作为 Mod 安装
+                await InstallOptifineAsModAsync(
+                    minecraftVersionId,
+                    selection.Version,
+                    targetVersionId,
+                    minecraftDirectory,
+                    progressCallback,
+                    cancellationToken);
+            }
+            else
+            {
+                // 非 Forge 环境（如 LiteLoader）：OptiFine 使用注入安装
+                var installer = _modLoaderInstallerFactory.GetInstaller(selection.Type);
+                var options = new ModLoaderInstallOptions
+                {
+                    CustomVersionName = targetVersionId, // 指定现有版本，触发 Addon 模式
+                    OverwriteExisting = false
+                };
+                
+                await installer.InstallAsync(
+                    minecraftVersionId,
+                    selection.Version,
+                    minecraftDirectory,
+                    options,
+                    progressCallback,
+                    cancellationToken);
+            }
         }
         else if (selection.Type.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
         {
