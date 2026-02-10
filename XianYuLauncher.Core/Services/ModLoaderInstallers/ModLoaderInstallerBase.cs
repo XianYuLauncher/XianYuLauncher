@@ -109,7 +109,8 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string versionDirectory,
         string minecraftVersionId,
         string modLoaderVersion,
-        string? optifineVersion = null)
+        string? optifineVersion = null,
+        string? liteLoaderVersion = null)
     {
         var configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
         
@@ -119,6 +120,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             ModLoaderVersion = modLoaderVersion,
             MinecraftVersion = minecraftVersionId,
             OptifineVersion = optifineVersion,
+            LiteLoaderVersion = liteLoaderVersion,
             CreatedAt = DateTime.Now
         };
 

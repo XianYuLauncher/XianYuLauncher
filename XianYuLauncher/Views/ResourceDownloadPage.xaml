@@ -515,6 +515,7 @@
                                         <ComboBoxItem Content="Quilt" Tag="quilt" />
                                         <ComboBoxItem Content="Bolt" Tag="bolt" Visibility="Collapsed"/>
                                         <ComboBoxItem Content="Legacy Fabric" Tag="legacy-fabric" />
+                                        <ComboBoxItem Content="LiteLoader" Tag="liteloader" />
                                     </ComboBox>
 
                                     <!-- Version Filter -->

@@ -2352,7 +2352,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     curseForgeTotalHits = cachedData.TotalHits;
                     System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
                 }
-                else if (SelectedLoader != "legacy-fabric")
+                else if (SelectedLoader != "legacy-fabric" && SelectedLoader != "liteloader")
                 {
                     try
                     {
@@ -2672,8 +2672,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 try
                 {
                     // 映射加载器类型
-                    // 特别注意：Legacy Fabric 不被 CurseForge 支持，如果选中则必须跳过 CurseForge 搜索
-                    if (SelectedLoader == "legacy-fabric")
+                    // 特别注意：Legacy Fabric 和 LiteLoader 不被 CurseForge 支持，如果选中则必须跳过 CurseForge 搜索
+                    if (SelectedLoader == "legacy-fabric" || SelectedLoader == "liteloader")
                     {
                         // 显式跳过CurseForge
                         curseForgeTotalHits = 0;

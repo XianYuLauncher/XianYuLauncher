@@ -30,6 +30,8 @@ public class ModLoaderToIconConverter : IValueConverter
                     return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
                 case "NeoForge":
                     return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
+                case "LiteLoader":
+                    return "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico";
                 default:
                     return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png"; // 默认返回Fabric图标
             }

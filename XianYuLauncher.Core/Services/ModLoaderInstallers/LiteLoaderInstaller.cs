@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -103,8 +104,59 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
+        
+        // 5. 保存版本配置
+        if (isAddonMode)
+        {
+            // Addon 模式：读取现有配置，保留 ModLoaderType 和 ModLoaderVersion，只添加 LiteLoaderVersion
+            var existingConfigPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+            if (File.Exists(existingConfigPath))
+            {
+                try
+                {
+                    var existingConfigContent = await File.ReadAllTextAsync(existingConfigPath, cancellationToken);
+                    var existingConfig = JsonConvert.DeserializeObject<VersionConfig>(existingConfigContent);
+                    if (existingConfig != null)
+                    {
+                        // 保留原有的 ModLoaderType 和 ModLoaderVersion（如 Forge），只添加 LiteLoaderVersion
+                        existingConfig.LiteLoaderVersion = modLoaderVersion;
+                        var jsonContent = JsonConvert.SerializeObject(existingConfig, Formatting.Indented);
+                        await File.WriteAllTextAsync(existingConfigPath, jsonContent, cancellationToken);
+                        Logger.LogInformation("已更新版本配置，添加 LiteLoaderVersion: {ConfigPath}", existingConfigPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "读取现有配置文件失败，将创建新配置");
+                    // 如果读取失败，回退到创建新配置
+                    await SaveVersionConfigAsync(
+                        versionDirectory, 
+                        minecraftVersionId, 
+                        "LiteLoader",
+                        liteLoaderVersion: modLoaderVersion);
+                }
+            }
+            else
+            {
+                // 配置文件不存在，创建新配置（理论上不应该发生）
+                await SaveVersionConfigAsync(
+                    versionDirectory, 
+                    minecraftVersionId, 
+                    "LiteLoader",
+                    liteLoaderVersion: modLoaderVersion);
+            }
+        }
+        else
+        {
+            // 独立模式：ModLoaderType 为 LiteLoader
+            await SaveVersionConfigAsync(
+                versionDirectory, 
+                minecraftVersionId, 
+                "LiteLoader",
+                liteLoaderVersion: modLoaderVersion);
+        }
 
-        // 5. 获取版本信息（Addon 模式读取现有版本，独立模式读取原版）
+        // 6. 获取版本信息（Addon 模式读取现有版本，独立模式读取原版）
         VersionInfo baseVersionInfo;
         if (isAddonMode)
         {

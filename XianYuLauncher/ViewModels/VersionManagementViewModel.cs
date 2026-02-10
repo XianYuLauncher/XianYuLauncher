@@ -706,6 +706,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly QuiltService _quiltService;
     private readonly OptifineService _optifineService;
     private readonly CleanroomService _cleanroomService;
+    private readonly LiteLoaderService _liteLoaderService;
     private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IDownloadManager _downloadManager;
@@ -751,6 +752,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         QuiltService quiltService,
         OptifineService optifineService,
         CleanroomService cleanroomService,
+        LiteLoaderService liteLoaderService,
         IModLoaderInstallerFactory modLoaderInstallerFactory,
         IVersionInfoManager versionInfoManager,
         IVersionInfoService versionInfoService,
@@ -774,6 +776,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _quiltService = quiltService;
         _optifineService = optifineService;
         _cleanroomService = cleanroomService;
+        _liteLoaderService = liteLoaderService;
         _modLoaderInstallerFactory = modLoaderInstallerFactory;
         _versionInfoManager = versionInfoManager;
         _downloadManager = downloadManager;
@@ -1053,7 +1056,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     MinecraftVersion = versionConfig.MinecraftVersion,
                     ModLoaderType = versionConfig.ModLoaderType,
                     ModLoaderVersion = versionConfig.ModLoaderVersion,
-                    OptifineVersion = versionConfig.OptifineVersion
+                    OptifineVersion = versionConfig.OptifineVersion,
+                    LiteLoaderVersion = versionConfig.LiteLoaderVersion
                 };
                     
                 UpdateCurrentLoaderInfo(uiSettings);
@@ -1116,7 +1120,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     MinecraftVersion = versionConfig.MinecraftVersion,
                     ModLoaderType = versionConfig.ModLoaderType,
                     ModLoaderVersion = versionConfig.ModLoaderVersion,
-                    OptifineVersion = versionConfig.OptifineVersion
+                    OptifineVersion = versionConfig.OptifineVersion,
+                    LiteLoaderVersion = versionConfig.LiteLoaderVersion
                 };
                 
                 UpdateCurrentLoaderInfo(uiSettings);
@@ -1173,6 +1178,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             "quilt" => "Quilt",
             "cleanroom" => "Cleanroom",
             "optifine" => "OptiFine",
+            "liteloader" => "LiteLoader",
+            "LiteLoader" => "LiteLoader",
             _ => settings.ModLoaderType
         };
         CurrentLoaderVersion = settings.ModLoaderVersion ?? string.Empty;
@@ -1188,6 +1195,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
             "cleanroom" => "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
             "optifine" => "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+            "liteloader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+            "LiteLoader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
             _ => null
         };
     }
@@ -1296,6 +1305,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             });
         }
 
+        // LiteLoader 支持 1.5.2 ~ 1.12.2，使用与 Legacy Fabric 相同的版本判断
+        if (IsVersionBelow1_14(minecraftVersion))
+        {
+            AvailableLoaders.Add(new LoaderItemViewModel
+            {
+                Name = "LiteLoader",
+                LoaderType = "liteloader",
+                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+                IsInstalled = IsLoaderInstalled("liteloader")
+            });
+        }
+
         // 尝试读取设置以恢复选中状态
         VersionSettings? settings = null;
         try
@@ -1329,6 +1350,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 {
                     shouldSetup = true;
                     targetVersion = settings.OptifineVersion;
+                }
+                // LiteLoader特殊检查
+                else if (loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(settings.LiteLoaderVersion))
+                {
+                    shouldSetup = true;
+                    targetVersion = settings.LiteLoaderVersion;
                 }
             }
             else if (loader.IsInstalled)
@@ -1467,6 +1494,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 "quilt" => await GetQuiltVersionsAsync(minecraftVersion),
                 "optifine" => await GetOptifineVersionsAsync(minecraftVersion),
                 "cleanroom" => await GetCleanroomVersionsAsync(minecraftVersion),
+                "liteloader" => await GetLiteLoaderVersionsAsync(minecraftVersion),
                 _ => new List<string>()
             };
             
@@ -1522,6 +1550,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         var result = await _cleanroomService.GetCleanroomVersionsAsync(minecraftVersion);
         return result;
+    }
+
+    private async Task<List<string>> GetLiteLoaderVersionsAsync(string minecraftVersion)
+    {
+        var artifacts = await _liteLoaderService.GetLiteLoaderArtifactsAsync(minecraftVersion);
+        return artifacts.Select(a => a.Version).Where(v => !string.IsNullOrEmpty(v)).ToList();
     }
     
     /// <summary>
@@ -1988,6 +2022,23 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 }
             }
         }
+        else if (lowerVersionName.Contains("liteloader"))
+        {
+            settings.ModLoaderType = "LiteLoader";
+            var parts = versionName.Split(new[] { '-', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                settings.MinecraftVersion = parts[0];
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    if (parts[i].ToLowerInvariant().Contains("liteloader") && i + 1 < parts.Length)
+                    {
+                        settings.LiteLoaderVersion = parts[i + 1];
+                        break;
+                    }
+                }
+            }
+        }
         else
         {
             // 原版Minecraft版本
@@ -2446,6 +2497,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 return "NeoForge";
             }
+            if (versionConfig.ModLoaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+            {
+                return "LiteLoader";
+            }
             return versionConfig.ModLoaderType.ToLower();
         }
 
@@ -2461,6 +2516,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         if (versionName.Contains("forge", StringComparison.OrdinalIgnoreCase)) return "forge";
         if (versionName.Contains("neoforge", StringComparison.OrdinalIgnoreCase)) return "neoforge";
         if (versionName.Contains("quilt", StringComparison.OrdinalIgnoreCase)) return "quilt";
+        if (versionName.Contains("liteloader", StringComparison.OrdinalIgnoreCase)) return "LiteLoader";
 
         // 默认
         return "fabric";

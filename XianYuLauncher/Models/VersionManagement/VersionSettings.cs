@@ -21,6 +21,11 @@ public class VersionSettings
     public string? OptifineVersion { get; set; }
 
     /// <summary>
+    /// LiteLoader版本号（如果安装了LiteLoader）
+    /// </summary>
+    public string? LiteLoaderVersion { get; set; }
+
+    /// <summary>
     /// Minecraft版本号
     /// </summary>
     public string MinecraftVersion { get; set; }

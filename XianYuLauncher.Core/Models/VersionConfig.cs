@@ -28,6 +28,11 @@ public class VersionConfig
     public string? OptifineVersion { get; set; }
     
     /// <summary>
+    /// LiteLoader版本号（如果安装了LiteLoader）
+    /// </summary>
+    public string? LiteLoaderVersion { get; set; }
+    
+    /// <summary>
     /// 配置文件创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.Now;

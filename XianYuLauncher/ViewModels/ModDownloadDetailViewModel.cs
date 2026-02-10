@@ -936,6 +936,10 @@ namespace XianYuLauncher.ViewModels
                                 {
                                      loaderNameCache[loader] = "LegacyFabric";
                                 }
+                                else if (loader.Equals("liteloader", StringComparison.OrdinalIgnoreCase))
+                                {
+                                     loaderNameCache[loader] = "LiteLoader";
+                                }
                                 else if (loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
                                 {
                                      loaderNameCache[loader] = "NeoForge";
@@ -2401,6 +2405,10 @@ namespace XianYuLauncher.ViewModels
                         {
                             formattedLoaderType = "NeoForge";
                         }
+                        else if (loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+                        {
+                            formattedLoaderType = "LiteLoader";
+                        }
                         else
                         {
                             formattedLoaderType = char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower();
@@ -2412,6 +2420,13 @@ namespace XianYuLauncher.ViewModels
                             isCompatible = supportedLoaders.Any(l => 
                                 l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
                                 l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
+                        }
+                        // 特别处理 LiteLoader: 需要匹配 "LiteLoader" 或 "liteloader" (Modrinth ID)
+                        else if (loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+                        {
+                            isCompatible = supportedLoaders.Any(l => 
+                                l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) || 
+                                l.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
                         }
                         else
                         {
@@ -2536,6 +2551,10 @@ namespace XianYuLauncher.ViewModels
                             ? supportedLoaders.Any(l =>
                                 l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) ||
                                 l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
+                            : loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase)
+                            ? supportedLoaders.Any(l =>
+                                l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) ||
+                                l.Equals("liteloader", StringComparison.OrdinalIgnoreCase))
                             : supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
                     }
                     else
