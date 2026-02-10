@@ -311,4 +311,18 @@ public class OfficialDownloadSource : IDownloadSource
     {
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
     }
+
+    public string GetLiteLoaderVersionsUrl()
+    {
+        return "http://dl.liteloader.com/versions/versions.json";
+    }
+
+    public string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null)
+    {
+        if (!string.IsNullOrEmpty(originalBaseUrl))
+        {
+            return (originalBaseUrl.EndsWith("/") ? originalBaseUrl : originalBaseUrl + "/") + relativePath;
+        }
+        return "https://repo.mumfrey.com/content/repositories/snapshots/" + relativePath;
+    }
 }

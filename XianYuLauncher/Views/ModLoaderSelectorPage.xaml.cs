@@ -79,6 +79,15 @@ public sealed partial class ModLoaderSelectorPage : Page
     }
     
     /// <summary>
+    /// 取消选择LiteLoader事件处理
+    /// </summary>
+    private void CancelLiteLoader_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        ViewModel.IsLiteLoaderSelected = false;
+        ViewModel.SelectedLiteLoaderVersion = null;
+    }
+    
+    /// <summary>
     /// Optifine兼容信息文本块加载事件处理
     /// </summary>
     private void CompatibleInfoTextBlock_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

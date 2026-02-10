@@ -146,6 +146,7 @@ public partial class App : Application
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.OptifineInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.CleanroomInstaller>();
             services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.LegacyFabricInstaller>();
+            services.AddSingleton<IModLoaderInstaller, XianYuLauncher.Core.Services.ModLoaderInstallers.LiteLoaderInstaller>();
             services.AddSingleton<IModLoaderInstallerFactory, XianYuLauncher.Core.Services.ModLoaderInstallers.ModLoaderInstallerFactory>();
             
             services.AddSingleton<IMinecraftVersionService, MinecraftVersionService>(sp =>
@@ -215,6 +216,17 @@ public partial class App : Application
                 var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
                 var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
                 return new LegacyFabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
+            });
+
+            // LiteLoader Service
+            services.AddHttpClient<LiteLoaderService>();
+            services.AddSingleton<LiteLoaderService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(LiteLoaderService));
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                return new LiteLoaderService(httpClient, downloadSourceFactory, fallbackDownloadManager);
             });
             
             // Quilt Service

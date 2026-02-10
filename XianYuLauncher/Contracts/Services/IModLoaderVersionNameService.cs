@@ -10,8 +10,10 @@ public interface IModLoaderVersionNameService
     /// <param name="modLoaderVersion">ModLoader 版本</param>
     /// <param name="isOptifineSelected">是否选择了 OptiFine</param>
     /// <param name="optifineVersion">OptiFine 版本</param>
+    /// <param name="isLiteLoaderSelected">是否选择了 LiteLoader</param>
+    /// <param name="liteLoaderVersion">LiteLoader 版本</param>
     /// <returns>生成的版本名称</returns>
-    string GenerateVersionName(string minecraftVersion, string? modLoaderType, string? modLoaderVersion, bool isOptifineSelected, string? optifineVersion);
+    string GenerateVersionName(string minecraftVersion, string? modLoaderType, string? modLoaderVersion, bool isOptifineSelected, string? optifineVersion, bool isLiteLoaderSelected, string? liteLoaderVersion);
 
     /// <summary>
     /// 验证版本名称是否合法（检查是否为空、是否已存在等）

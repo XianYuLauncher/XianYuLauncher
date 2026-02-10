@@ -10,7 +10,7 @@ public interface IModLoaderVersionLoaderService
     /// <summary>
     /// 加载指定 ModLoader 类型和 Minecraft 版本的可用版本列表
     /// </summary>
-    /// <param name="modLoaderType">ModLoader 类型 (forge, fabric, neoforge, quilt, cleanroom, optifine, legacyfabric)</param>
+    /// <param name="modLoaderType">ModLoader 类型 (forge, fabric, neoforge, quilt, cleanroom, optifine, legacyfabric, liteloader)</param>
     /// <param name="minecraftVersion">Minecraft 版本号</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>版本号字符串列表</returns>
@@ -35,4 +35,9 @@ public interface IModLoaderVersionLoaderService
     /// 获取缓存的 LegacyFabric 版本详细信息
     /// </summary>
     FabricLoaderVersion? GetLegacyFabricVersionInfo(string version);
+
+    /// <summary>
+    /// 获取缓存的 LiteLoader 版本详细信息
+    /// </summary>
+    LiteLoaderArtifact? GetLiteLoaderVersionInfo(string version);
 }

@@ -201,7 +201,21 @@ public interface IDownloadSource
     /// <param name="modLoaderVersion">Legacy Fabric版本号</param>
     /// <returns>Legacy Fabric完整配置URL</returns>
     string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion);
-    
+
+    /// <summary>
+    /// 获取LiteLoader版本列表URL
+    /// </summary>
+    /// <returns>LiteLoader版本列表URL</returns>
+    string GetLiteLoaderVersionsUrl();
+
+    /// <summary>
+    /// 获取LiteLoader Maven jar下载URL
+    /// </summary>
+    /// <param name="relativePath">Maven相对路径</param>
+    /// <param name="originalBaseUrl">原始BaseUrl (Repo Url)</param>
+    /// <returns>下载URL</returns>
+    string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null);
+
     /// <summary>
     /// 获取依赖库下载URL
     /// </summary>

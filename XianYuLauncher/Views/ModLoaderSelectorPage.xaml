@@ -84,7 +84,7 @@
             
             <!-- Mod Loader Expander列表 -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch">
-                <Grid HorizontalAlignment="Stretch">
+                <StackPanel Spacing="12">
                     <!-- 每个Mod Loader作为一个Expander -->
                     <ItemsRepeater ItemsSource="{x:Bind ViewModel.ModLoaderItems, Mode=OneWay}" 
                                   HorizontalAlignment="Stretch">
@@ -223,7 +223,118 @@
                             </DataTemplate>
                         </ItemsRepeater.ItemTemplate>
                     </ItemsRepeater>
-                </Grid>
+                    
+                    <!-- LiteLoader Expander -->
+                    <Expander 
+                        x:Name="LiteLoaderExpander"
+                        IsExpanded="{x:Bind ViewModel.IsLiteLoaderSelected, Mode=TwoWay}"
+                        Visibility="{x:Bind ViewModel.IsLiteLoaderSupported, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="0"
+                        RequestedTheme="Default"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch">
+                        <Expander.Header>
+                            <!-- Expander头部 -->
+                            <Grid 
+                                Padding="16,12" 
+                                CornerRadius="8 8 0 0"
+                                HorizontalAlignment="Stretch">
+                                <Grid.Background>
+                                    <SolidColorBrush Color="Transparent" />
+                                </Grid.Background>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Grid.Column="0">
+                                    <TextBlock 
+                                        Text="LiteLoader" 
+                                        FontSize="16" 
+                                        FontWeight="{x:Bind ViewModel.IsLiteLoaderSelected, Mode=OneWay, Converter={StaticResource BoolToFontWeightConverter}}"
+                                        VerticalAlignment="Center" 
+                                        HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="1"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    Margin="-8,0,0,0"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    Foreground="{ThemeResource TextFillColorSecondary}"
+                                    Click="CancelLiteLoader_Click"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.IsLiteLoaderSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    ToolTipService.ToolTip="取消选择">
+                                    <FontIcon Glyph="&#xE711;" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Button>
+                                </Grid>
+                        </Expander.Header>
+                        
+                        <!-- Expander内容 -->
+                        <Grid Padding="16,12" MinHeight="100" HorizontalAlignment="Stretch">
+                            <ProgressRing
+                                    IsActive="{x:Bind ViewModel.IsLiteLoaderLoading, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.IsLiteLoaderLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Width="48"
+                                    Height="48" />
+
+                            <ListView
+                                ItemsSource="{x:Bind ViewModel.LiteLoaderVersions, Mode=OneWay}"
+                                SelectedItem="{x:Bind ViewModel.SelectedLiteLoaderVersion, Mode=TwoWay}"
+                                SelectionMode="Single"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Visibility="{x:Bind ViewModel.IsLiteLoaderLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                MaxHeight="200"
+                                Width="Auto">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <Border Padding="12,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="6" Margin="0,4,0,4" HorizontalAlignment="Stretch">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                                                    <!-- LiteLoader图标 -->
+                                                    <Image 
+                                                        Source="ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico" 
+                                                        Width="20" 
+                                                        Height="20" 
+                                                        Margin="0,0,12,0" 
+                                                        VerticalAlignment="Center"
+                                                        Stretch="UniformToFill" 
+                                                        Visibility="Visible"/>
+                                                    <!-- 内容区域 -->
+                                                    <Grid HorizontalAlignment="Stretch">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        
+                                                        <!-- 版本号 -->
+                                                        <TextBlock 
+                                                            Grid.Column="0" 
+                                                            Text="{x:Bind}" 
+                                                            FontSize="15" 
+                                                            VerticalAlignment="Center" 
+                                                            HorizontalAlignment="Left" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </Expander>
+                </StackPanel>
             </ScrollViewer>
         </Grid>
 

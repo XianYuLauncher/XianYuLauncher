@@ -124,7 +124,7 @@ public partial class MinecraftVersionService
     }
 
     /// <summary>
-    /// 作为附加组件安装（如 OptiFine 作为 Mod 安装到 Forge）
+    /// 作为附加组件安装（如 OptiFine 作为 Mod 安装到 Forge，或 LiteLoader 作为 Tweaker 安装）
     /// </summary>
     private async Task InstallAsAddonAsync(
         ModLoaderSelection selection,
@@ -141,6 +141,24 @@ public partial class MinecraftVersionService
                 selection.Version,
                 targetVersionId,
                 minecraftDirectory,
+                progressCallback,
+                cancellationToken);
+        }
+        else if (selection.Type.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+        {
+            // LiteLoader 作为 Addon 安装时，使用安装器的 Addon 模式
+            var installer = _modLoaderInstallerFactory.GetInstaller(selection.Type);
+            var options = new ModLoaderInstallOptions
+            {
+                CustomVersionName = targetVersionId, // 指定现有版本，触发 Addon 模式
+                OverwriteExisting = false
+            };
+            
+            await installer.InstallAsync(
+                minecraftVersionId,
+                selection.Version,
+                minecraftDirectory,
+                options,
                 progressCallback,
                 cancellationToken);
         }
