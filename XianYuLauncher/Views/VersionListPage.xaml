@@ -123,29 +123,53 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             
-            <!-- 状态信息 -->
-            <TextBlock 
-                Text="{Binding StatusMessage, Mode=OneWay}" 
-                Style="{StaticResource BodyTextStyle}" 
-                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+            <!-- 搜索框 -->
+            <AutoSuggestBox
+                x:Uid="VersionListPage_SearchBox"
+                QueryIcon="Find"
+                PlaceholderText="搜索版本..."
+                Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
                 VerticalAlignment="Center" />
+
+            <!-- 加载器筛选 -->
+            <ComboBox
+                Grid.Column="1"
+                x:Uid="VersionListPage_LoaderFilter"
+                MinWidth="100"
+                Margin="8,0,0,0"
+                SelectedValue="{Binding SelectedLoaderFilter, Mode=TwoWay}"
+                SelectedValuePath="Tag"
+                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                VerticalAlignment="Center">
+                <ComboBoxItem x:Uid="VersionListPage_AllLoaders" Content="全部" Tag="all" IsSelected="True" />
+                <ComboBoxItem Content="Release" Tag="Release" />
+                <ComboBoxItem Content="Forge" Tag="Forge" />
+                <ComboBoxItem Content="Fabric" Tag="Fabric" />
+                <ComboBoxItem Content="NeoForge" Tag="NeoForge" />
+                <ComboBoxItem Content="Quilt" Tag="Quilt" />
+                <ComboBoxItem Content="OptiFine" Tag="OptiFine" />
+                <ComboBoxItem Content="LiteLoader" Tag="LiteLoader" />
+                <ComboBoxItem Content="LegacyFabric" Tag="LegacyFabric" />
+            </ComboBox>
             
             <!-- 导入整合包按钮 -->
             <Button 
-                Grid.Column="1"
+                Grid.Column="2"
                 x:Uid="VersionListPage_ImportModpackButton"
                 Content="导入整合包"
                 Command="{Binding ImportModpackCommand}"
                 IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
                 Style="{StaticResource DefaultButtonStyle}"
                 HorizontalAlignment="Right"
-                Margin="0,0,8,0" />            
+                Margin="8,0,8,0" />            
             
             <!-- 刷新按钮 -->
             <Button 
-                Grid.Column="2"
+                Grid.Column="3"
                 x:Uid="VersionListPage_RefreshButton"
                 Command="{Binding LoadVersionsCommand}"
                 IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
@@ -203,7 +227,7 @@
                 <ListView
                     x:Name="VersionsListView"
                     SelectionMode="Single"
-                    ItemsSource="{Binding Versions, Mode=OneWay}"
+                    ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
                     IsItemClickEnabled="True"
                     CanReorderItems="False"
                     AllowDrop="False"

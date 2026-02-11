@@ -1114,6 +1114,12 @@
   <data name="VersionListPage_RefreshButton.Content" xml:space="preserve">
     <value>刷新列表</value>
   </data>
+  <data name="VersionListPage_SearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索版本...</value>
+  </data>
+  <data name="VersionListPage_AllLoaders.Content" xml:space="preserve">
+    <value>全部</value>
+  </data>
   <data name="VersionListPage_OpenFolderMenuItem.Text" xml:space="preserve">
     <value>打开文件夹</value>
   </data>

@@ -1114,6 +1114,12 @@ Continue downloading?</value>
   <data name="VersionListPage_RefreshButton.Content" xml:space="preserve">
     <value>Refresh List</value>
   </data>
+  <data name="VersionListPage_SearchBox.PlaceholderText" xml:space="preserve">
+    <value>Search versions...</value>
+  </data>
+  <data name="VersionListPage_AllLoaders.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
   <data name="VersionListPage_OpenFolderMenuItem.Text" xml:space="preserve">
     <value>Open Folder</value>
   </data>

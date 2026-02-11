@@ -86,11 +86,29 @@ public partial class VersionListViewModel : ObservableRecipient
     [ObservableProperty]
     private ObservableCollection<VersionInfoItem> _versions = new();
 
+    /// <summary>
+    /// 筛选后的版本列表（绑定到 UI）
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<VersionInfoItem> _filteredVersions = new();
+
     [ObservableProperty]
     private bool _isLoading = false;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    /// <summary>
+    /// 搜索文本
+    /// </summary>
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    /// <summary>
+    /// 选中的加载器筛选
+    /// </summary>
+    [ObservableProperty]
+    private string _selectedLoaderFilter = "all";
 
     /// <summary>
     /// 导出数据选项列表
@@ -165,6 +183,35 @@ public partial class VersionListViewModel : ObservableRecipient
         };
         
         InitializeAsync().ConfigureAwait(false);
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSelectedLoaderFilterChanged(string value) => ApplyFilter();
+
+    /// <summary>
+    /// 根据搜索文本和加载器筛选条件过滤版本列表
+    /// </summary>
+    private void ApplyFilter()
+    {
+        var filtered = Versions.AsEnumerable();
+
+        // 搜索文本筛选（匹配名称或版本号）
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var keyword = SearchText.Trim();
+            filtered = filtered.Where(v =>
+                v.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                v.VersionNumber.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // 加载器筛选
+        if (!string.IsNullOrEmpty(SelectedLoaderFilter) && SelectedLoaderFilter != "all")
+        {
+            filtered = filtered.Where(v =>
+                v.LoaderTags.Any(t => t.Equals(SelectedLoaderFilter, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        FilteredVersions = new ObservableCollection<VersionInfoItem>(filtered);
     }
     
     /// <summary>
@@ -322,9 +369,12 @@ public partial class VersionListViewModel : ObservableRecipient
             }
 
             // 按安装日期降序排序
-        Versions = new ObservableCollection<VersionInfoItem>(Versions.OrderByDescending(v => v.InstallDate));
+            Versions = new ObservableCollection<VersionInfoItem>(Versions.OrderByDescending(v => v.InstallDate));
 
-        StatusMessage = Versions.Count > 0 ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}" : "VersionListPage_NoVersionsFoundText".GetLocalized();
+            // 应用筛选
+            ApplyFilter();
+
+            StatusMessage = Versions.Count > 0 ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}" : "VersionListPage_NoVersionsFoundText".GetLocalized();
     }
     catch (Exception ex)
     {
