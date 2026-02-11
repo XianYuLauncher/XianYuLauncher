@@ -482,6 +482,19 @@
                     </ComboBox>
                 </controls:SettingsCard>
 
+                <!-- 导航栏风格 -->
+                <controls:SettingsCard x:Uid="Settings_NavigationStyle" Header="导航栏风格" Description="调整导航栏的显示位置">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE700;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton x:Uid="Settings_NavigationStyle_Left" Content="侧边" IsChecked="{x:Bind ViewModel.NavigationStyle, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=Left, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchNavigationStyleCommand}" CommandParameter="Left" GroupName="NavigationStyle" />
+                        <RadioButton x:Uid="Settings_NavigationStyle_Top" Content="顶部" IsChecked="{x:Bind ViewModel.NavigationStyle, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=Top, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.SwitchNavigationStyleCommand}" CommandParameter="Top" GroupName="NavigationStyle" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
 
                 <!-- ==================== 网络 ==================== -->
                 <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />

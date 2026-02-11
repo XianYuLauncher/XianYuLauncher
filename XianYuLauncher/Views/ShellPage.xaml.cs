@@ -60,6 +60,9 @@ public sealed partial class ShellPage : Page
         
         // 初始化时加载背景设置
         LoadBackgroundAsync();
+        
+        // 加载导航栏风格设置
+        LoadNavigationStyleAsync();
     }
     
     /// <summary>
@@ -248,6 +251,23 @@ public sealed partial class ShellPage : Page
         {
             NavigationViewControl.Header = null;
         }
+        
+        // 订阅设置页的导航栏风格变更事件
+        if (e.SourcePageType == typeof(SettingsPage))
+        {
+            if (NavigationFrame.Content is SettingsPage settingsPage)
+            {
+                settingsPage.ViewModel.NavigationStyleChanged -= OnNavigationStyleChanged;
+                settingsPage.ViewModel.NavigationStyleChanged += OnNavigationStyleChanged;
+            }
+            
+            // Top 模式下，NavigationView 内置 Settings 项的 Content 为空，
+            // 导致 Header 绑定拿不到值，需要手动补上
+            if (NavigationViewControl.PaneDisplayMode == NavigationViewPaneDisplayMode.Top)
+            {
+                NavigationViewControl.Header = "Shell_Settings".GetLocalized();
+            }
+        }
     }
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -265,6 +285,13 @@ public sealed partial class ShellPage : Page
 
     private void NavigationViewControl_DisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
     {
+        // Top 模式下不需要为侧边栏调整标题栏左边距
+        if (sender.PaneDisplayMode == NavigationViewPaneDisplayMode.Top)
+        {
+            AppTitleBar.Margin = new Thickness(0, AppTitleBar.Margin.Top, AppTitleBar.Margin.Right, AppTitleBar.Margin.Bottom);
+            return;
+        }
+        
         AppTitleBar.Margin = new Thickness()
         {
             Left = sender.CompactPaneLength * (sender.DisplayMode == NavigationViewDisplayMode.Minimal ? 2 : 1),
@@ -303,5 +330,54 @@ public sealed partial class ShellPage : Page
     private void DownloadTeachingTip_CloseButtonClick(TeachingTip sender, object args)
     {
         ViewModel.CancelDownloadCommand.Execute(null);
+    }
+    
+    /// <summary>
+    /// 加载导航栏风格设置
+    /// </summary>
+    private async void LoadNavigationStyleAsync()
+    {
+        try
+        {
+            var localSettings = App.GetService<ILocalSettingsService>();
+            var style = await localSettings.ReadSettingAsync<string>("NavigationStyle");
+            ApplyNavigationStyle(style ?? "Left");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载导航栏风格失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 应用导航栏风格
+    /// </summary>
+    private void ApplyNavigationStyle(string style)
+    {
+        if (style == "Top")
+        {
+            NavigationViewControl.PaneDisplayMode = NavigationViewPaneDisplayMode.Top;
+            // 顶部模式：标题栏需要留出空间，导航栏在标题栏下方
+            NavigationViewControl.Margin = new Thickness(0, 48, 0, 0);
+            
+            // Top 模式下 Settings 项的 Content 为空，如果当前在设置页需要手动补 Header
+            if (NavigationFrame.Content is SettingsPage)
+            {
+                NavigationViewControl.Header = "Shell_Settings".GetLocalized();
+            }
+        }
+        else
+        {
+            NavigationViewControl.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
+            NavigationViewControl.Margin = new Thickness(0);
+        }
+    }
+    
+    /// <summary>
+    /// 监听设置页导航栏风格变更
+    /// </summary>
+    private void OnNavigationStyleChanged(object? sender, string style)
+    {
+        DispatcherQueue.TryEnqueue(() => ApplyNavigationStyle(style));
     }
 }

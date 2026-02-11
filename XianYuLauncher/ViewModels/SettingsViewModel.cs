@@ -322,6 +322,55 @@ public partial class SettingsViewModel : ObservableRecipient
     /* Removed SaveMotionSetting(string key, object value) */
     
     /// <summary>
+    /// 导航栏风格设置键
+    /// </summary>
+    private const string NavigationStyleKey = "NavigationStyle";
+    
+    /// <summary>
+    /// 导航栏风格：Left（侧边）或 Top（顶部）
+    /// </summary>
+    [ObservableProperty]
+    private string _navigationStyle = "Left";
+    
+    // 标志位：是否是初始化加载导航栏风格
+    private bool _isInitializingNavigationStyle = true;
+    
+    /// <summary>
+    /// 导航栏风格变更事件
+    /// </summary>
+    public event EventHandler<string>? NavigationStyleChanged;
+    
+    partial void OnNavigationStyleChanged(string value)
+    {
+        if (!_isInitializingNavigationStyle)
+        {
+            _localSettingsService.SaveSettingAsync(NavigationStyleKey, value).ConfigureAwait(false);
+            NavigationStyleChanged?.Invoke(this, value);
+        }
+        else
+        {
+            _isInitializingNavigationStyle = false;
+        }
+    }
+    
+    /// <summary>
+    /// 切换导航栏风格命令
+    /// </summary>
+    public ICommand SwitchNavigationStyleCommand
+    {
+        get;
+    }
+    
+    /// <summary>
+    /// 加载导航栏风格设置
+    /// </summary>
+    private async Task LoadNavigationStyleAsync()
+    {
+        var saved = await _localSettingsService.ReadSettingAsync<string>(NavigationStyleKey);
+        NavigationStyle = saved ?? "Left";
+    }
+    
+    /// <summary>
     /// 字体设置键
     /// </summary>
     private const string FontFamilyKey = "FontFamily";
@@ -861,6 +910,15 @@ public partial class SettingsViewModel : ObservableRecipient
                 }
             });
 
+        SwitchNavigationStyleCommand = new RelayCommand<string>(
+            (param) =>
+            {
+                if (param != null && NavigationStyle != param)
+                {
+                    NavigationStyle = param;
+                }
+            });
+
         // 初始化鸣谢人员列表
         AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>
         {
@@ -909,6 +967,8 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadEnableRealTimeLogsAsync().ConfigureAwait(false);
         // 加载字体设置
         LoadFontFamilyAsync().ConfigureAwait(false);
+        // 加载导航栏风格设置
+        LoadNavigationStyleAsync().ConfigureAwait(false);
         // 加载缓存大小信息
         RefreshCacheSizeInfo();
         // 加载自动检查更新设置

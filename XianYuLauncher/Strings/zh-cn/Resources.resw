@@ -141,6 +141,9 @@
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>联机</value>
   </data>
+  <data name="Shell_Settings" xml:space="preserve">
+    <value>设置</value>
+  </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>
   </data>
@@ -2882,5 +2885,17 @@
   </data>
   <data name="SettingsPage_AfdianLink.Content" xml:space="preserve">
     <value>赞助</value>
+  </data>
+  <data name="Settings_NavigationStyle.Header" xml:space="preserve">
+    <value>导航栏风格</value>
+  </data>
+  <data name="Settings_NavigationStyle.Description" xml:space="preserve">
+    <value>调整导航栏的显示位置</value>
+  </data>
+  <data name="Settings_NavigationStyle_Left.Content" xml:space="preserve">
+    <value>侧边</value>
+  </data>
+  <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
+    <value>顶部</value>
   </data>
 </root>

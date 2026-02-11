@@ -141,6 +141,9 @@
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>Multiplayer</value>
   </data>
+  <data name="Shell_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>
   </data>
@@ -2870,5 +2873,17 @@ Continue downloading?</value>
   </data>
   <data name="SettingsPage_AfdianLink.Content" xml:space="preserve">
     <value>Sponsor</value>
+  </data>
+  <data name="Settings_NavigationStyle.Header" xml:space="preserve">
+    <value>Navigation Style</value>
+  </data>
+  <data name="Settings_NavigationStyle.Description" xml:space="preserve">
+    <value>Adjust the navigation bar position</value>
+  </data>
+  <data name="Settings_NavigationStyle_Left.Content" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
+    <value>Top</value>
   </data>
 </root>
