@@ -331,7 +331,9 @@ public class FallbackDownloadManager
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 configureRequest?.Invoke(request, source);
 
+                _logger?.LogDebug("[{Source}] 发送请求到: {Url}", sourceKey, url);
                 var response = await _httpClient.SendAsync(request, cancellationToken);
+                _logger?.LogDebug("[{Source}] 响应状态: {StatusCode}", sourceKey, (int)response.StatusCode);
 
                 if (response.IsSuccessStatusCode || !ShouldFallbackOnStatusCode(response.StatusCode))
                 {
@@ -594,12 +596,39 @@ public class FallbackDownloadManager
 
     /// <summary>
     /// 获取社区资源（Modrinth/CurseForge）的回退源顺序
-    /// 使用 Modrinth 专用下载源作为主源
+    /// 优先使用启用的 MCIM 类型自定义源，否则使用 Modrinth 专用下载源
     /// </summary>
     private List<string> GetCommunitySourceOrder()
     {
-        var primarySource = _sourceFactory.GetModrinthSource();
-        return GetSourceOrder(primarySource.Key);
+        var allSources = _sourceFactory.GetAllSources();
+        
+        // 查找启用的 MCIM 类型自定义源，按优先级降序排序
+        var mcimCustomSources = allSources
+            .Where(kvp => kvp.Value is CustomDownloadSource customSource)
+            .Select(kvp => new { Key = kvp.Key, Source = (CustomDownloadSource)kvp.Value })
+            .OrderByDescending(s => s.Source.Priority)
+            .ToList();
+        
+        // 如果有启用的 MCIM 类型自定义源，使用优先级最高的作为主源
+        string primarySourceKey;
+        if (mcimCustomSources.Any())
+        {
+            primarySourceKey = mcimCustomSources.First().Key;
+            _logger?.LogDebug("[社区资源] 使用自定义源作为主源: {Source} (Priority={Priority})", 
+                primarySourceKey, mcimCustomSources.First().Source.Priority);
+        }
+        else
+        {
+            // 否则使用设置页选择的 Modrinth 专用下载源
+            var primarySource = _sourceFactory.GetModrinthSource();
+            primarySourceKey = primarySource.Key;
+            _logger?.LogDebug("[社区资源] 使用 Modrinth 设置源作为主源: {Source}", primarySourceKey);
+        }
+        
+        var order = GetSourceOrder(primarySourceKey);
+        _logger?.LogDebug("[社区资源] 回退顺序: {Order}", string.Join(" -> ", order));
+        
+        return order;
     }
 
     /// <summary>
@@ -607,7 +636,7 @@ public class FallbackDownloadManager
     /// </summary>
     private string TransformUrl(string originalUrl, IDownloadSource source, string resourceType)
     {
-        return resourceType.ToLowerInvariant() switch
+        var transformed = resourceType.ToLowerInvariant() switch
         {
             "modrinth_api" => source.TransformModrinthApiUrl(originalUrl),
             "modrinth_cdn" => source.TransformModrinthCdnUrl(originalUrl),
@@ -619,10 +648,13 @@ public class FallbackDownloadManager
             "asset" => source.GetResourceUrl("asset", originalUrl),
             "quilt_meta" => TransformQuiltMetaUrl(originalUrl, source),
             "fabric_meta" => TransformFabricMetaUrl(originalUrl, source),
-            "forge_bmclapi" => TransformForgeBmclapiUrl(originalUrl, source),
-            "neoforge_bmclapi" => TransformNeoForgeBmclapiUrl(originalUrl, source),
             _ => originalUrl // 不支持的类型，使用原始URL
         };
+        
+        _logger?.LogDebug("[URL转换] 源={Source}, 类型={Type}, 原始={Original}, 转换后={Transformed}", 
+            source.Key, resourceType, originalUrl, transformed);
+        
+        return transformed;
     }
     
     /// <summary>
@@ -659,34 +691,6 @@ public class FallbackDownloadManager
         return originalUrl;
     }
     
-    /// <summary>
-    /// 转换 Forge BMCLAPI URL
-    /// </summary>
-    private string TransformForgeBmclapiUrl(string originalUrl, IDownloadSource source)
-    {
-        // BMCLAPI Forge 版本列表 URL
-        if (source.Key == "bmclapi")
-        {
-            return "https://bmclapi2.bangbang93.com/forge/minecraft";
-        }
-        // 官方源没有统一的 Forge 版本列表 API，返回原始 URL
-        return originalUrl;
-    }
-    
-    /// <summary>
-    /// 转换 NeoForge BMCLAPI URL
-    /// </summary>
-    private string TransformNeoForgeBmclapiUrl(string originalUrl, IDownloadSource source)
-    {
-        // BMCLAPI NeoForge 版本列表 URL
-        if (source.Key == "bmclapi")
-        {
-            return "https://bmclapi2.bangbang93.com/neoforge/list";
-        }
-        // 官方源没有统一的 NeoForge 版本列表 API，返回原始 URL
-        return originalUrl;
-    }
-
     /// <summary>
     /// 带重试的下载尝试
     /// </summary>

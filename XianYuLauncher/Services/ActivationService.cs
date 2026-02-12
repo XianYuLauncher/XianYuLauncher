@@ -103,46 +103,89 @@ public class ActivationService : IActivationService
     {
         try
         {
-            // 初始化通用下载源
-            var savedSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+            // 优先读取新配置键 GameResourceSource（游戏资源下载源）
+            var gameResourceSource = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
             string sourceKey;
 
-            if (!string.IsNullOrEmpty(savedSource))
+            if (!string.IsNullOrEmpty(gameResourceSource))
             {
-                sourceKey = savedSource.ToLowerInvariant();
+                // 使用新配置键的值（支持自定义源）
+                sourceKey = gameResourceSource;
+                Serilog.Log.Information($"[ActivationService] 使用新配置键 GameResourceSource: {sourceKey}");
             }
             else
             {
-                // 首次运行，根据地区自动选择
-                var region = System.Globalization.RegionInfo.CurrentRegion;
-                var culture = System.Globalization.CultureInfo.CurrentCulture;
+                // 兼容旧配置键 DownloadSource
+                var savedSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
                 
-                if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+                if (!string.IsNullOrEmpty(savedSource))
                 {
-                    sourceKey = "bmclapi";
+                    sourceKey = savedSource.ToLowerInvariant();
+                    Serilog.Log.Information($"[ActivationService] 使用旧配置键 DownloadSource: {sourceKey}");
                 }
                 else
                 {
-                    sourceKey = "official";
+                    // 首次运行，根据地区自动选择
+                    var region = System.Globalization.RegionInfo.CurrentRegion;
+                    var culture = System.Globalization.CultureInfo.CurrentCulture;
+                    
+                    if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+                    {
+                        sourceKey = "bmclapi";
+                    }
+                    else
+                    {
+                        sourceKey = "official";
+                    }
+                    Serilog.Log.Information($"[ActivationService] 首次运行，根据地区自动选择: {sourceKey} (Region: {region.Name})");
                 }
-                Serilog.Log.Information($"[ActivationService] First run detected. Auto-selected download source: {sourceKey} (Region: {region.Name})");
+            }
+
+            // 检查下载源是否存在，如果不存在则回退到 official
+            var allSources = _downloadSourceFactory.GetAllSources();
+            if (!allSources.ContainsKey(sourceKey))
+            {
+                Serilog.Log.Warning($"[ActivationService] 下载源 {sourceKey} 不存在，回退到 official");
+                sourceKey = "official";
             }
 
             _downloadSourceFactory.SetDefaultSource(sourceKey);
-            Serilog.Log.Information($"[ActivationService] Download source initialized to: {sourceKey}");
+            Serilog.Log.Information($"[ActivationService] 游戏资源下载源已设置为: {sourceKey}");
 
-            // 初始化Modrinth源
-            var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
-            if (!string.IsNullOrEmpty(savedModrinthSource))
+            // 优先读取新配置键 CommunityResourceSource（社区资源下载源）
+            var communityResourceSource = await _localSettingsService.ReadSettingAsync<string>("CommunityResourceSource");
+            
+            if (!string.IsNullOrEmpty(communityResourceSource))
             {
-                var modrinthKey = savedModrinthSource.ToLowerInvariant();
-                _downloadSourceFactory.SetModrinthSource(modrinthKey);
-                Serilog.Log.Information($"[ActivationService] Modrinth source initialized to: {modrinthKey}");
+                // 使用新配置键的值（支持自定义源）
+                if (allSources.ContainsKey(communityResourceSource))
+                {
+                    _downloadSourceFactory.SetModrinthSource(communityResourceSource);
+                    Serilog.Log.Information($"[ActivationService] 社区资源下载源已设置为: {communityResourceSource}");
+                }
+                else
+                {
+                    Serilog.Log.Warning($"[ActivationService] 社区资源源 {communityResourceSource} 不存在，使用默认值");
+                }
+            }
+            else
+            {
+                // 兼容旧配置键 ModrinthDownloadSource
+                var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
+                if (!string.IsNullOrEmpty(savedModrinthSource))
+                {
+                    var modrinthKey = savedModrinthSource.ToLowerInvariant();
+                    if (allSources.ContainsKey(modrinthKey))
+                    {
+                        _downloadSourceFactory.SetModrinthSource(modrinthKey);
+                        Serilog.Log.Information($"[ActivationService] 使用旧配置键设置社区资源源: {modrinthKey}");
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "[ActivationService] Failed to initialize download sources.");
+            Serilog.Log.Error(ex, "[ActivationService] 初始化下载源失败");
         }
     }
 

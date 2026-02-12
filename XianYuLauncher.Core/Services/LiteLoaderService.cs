@@ -56,7 +56,8 @@ public class LiteLoaderService
                     source => source.GetLiteLoaderVersionsUrl(),
                     (request, source) =>
                     {
-                        if (source.Name == "BMCLAPI")
+                        // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
+                        if (source.RequiresBmclapiUserAgent())
                         {
                             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                         }

@@ -87,13 +87,21 @@ public class ModrinthService
     /// <param name="resourceType">资源类型（modrinth_api / modrinth_cdn）</param>
     private async Task<HttpResponseMessage> SendWithFallbackAsync(string originalUrl, string resourceType = "modrinth_api")
     {
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] SendWithFallbackAsync 开始");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 原始URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 资源类型: {resourceType}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] FallbackDownloadManager 是否可用: {_fallbackDownloadManager != null}");
+        
         if (_fallbackDownloadManager != null)
         {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] 使用 FallbackDownloadManager 发送请求");
             var result = await _fallbackDownloadManager.SendGetForCommunityAsync(
                 originalUrl,
                 resourceType,
                 ConfigureModrinthRequest);
 
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService] Fallback 结果: Success={result.Success}, UsedSource={result.UsedSourceKey}");
+            
             if (!result.Success)
                 throw new HttpRequestException($"所有源请求失败: {result.ErrorMessage}");
 
@@ -101,10 +109,12 @@ public class ModrinthService
         }
 
         // 无 FallbackDownloadManager 时直接请求
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] FallbackDownloadManager 不可用，直接请求");
         var source = GetModrinthSource();
         var transformedUrl = resourceType == "modrinth_cdn"
             ? source.TransformModrinthCdnUrl(originalUrl)
             : source.TransformModrinthApiUrl(originalUrl);
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 转换后URL: {transformedUrl}");
         using var request = CreateRequest(HttpMethod.Get, transformedUrl, source);
         return await _httpClient.SendAsync(request);
     }

@@ -1743,31 +1743,67 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 return;
             }
             
-            // 加载 Minecraft 下载源配置
-            var savedDownloadSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
-            if (!string.IsNullOrEmpty(savedDownloadSource))
+            // 加载游戏资源下载源配置（新版）
+            var savedGameSource = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
+            if (!string.IsNullOrEmpty(savedGameSource))
             {
-                string sourceKey = savedDownloadSource.ToLower() switch
+                try
                 {
-                    "bmclapi" => "bmclapi",
-                    "mcim" => "mcim",
-                    _ => "official"
-                };
-                factory.SetDefaultSource(sourceKey);
-                System.Diagnostics.Debug.WriteLine($"[下载源配置] Minecraft下载源已设置为: {sourceKey}");
+                    factory.SetDefaultSource(savedGameSource);
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 游戏资源源已设置为: {savedGameSource}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置游戏资源源失败: {ex.Message}，回退到 official");
+                    factory.SetDefaultSource("official");
+                }
+            }
+            else
+            {
+                // 兼容旧版配置
+                var savedDownloadSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+                if (!string.IsNullOrEmpty(savedDownloadSource))
+                {
+                    string sourceKey = savedDownloadSource.ToLower() switch
+                    {
+                        "bmclapi" => "bmclapi",
+                        "mcim" => "mcim",
+                        _ => "official"
+                    };
+                    factory.SetDefaultSource(sourceKey);
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Minecraft下载源已设置为: {sourceKey} (旧版配置)");
+                }
             }
             
-            // 加载 Modrinth 下载源配置
-            var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
-            if (!string.IsNullOrEmpty(savedModrinthSource))
+            // 加载社区资源下载源配置（新版）
+            var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>("CommunityResourceSource");
+            if (!string.IsNullOrEmpty(savedCommunitySource))
             {
-                string sourceKey = savedModrinthSource.ToLower() switch
+                try
                 {
-                    "mcim" => "mcim",
-                    _ => "official"
-                };
-                factory.SetModrinthSource(sourceKey);
-                System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth下载源已设置为: {sourceKey}");
+                    factory.SetModrinthSource(savedCommunitySource);
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 社区资源源已设置为: {savedCommunitySource}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置社区资源源失败: {ex.Message}，回退到 official");
+                    factory.SetModrinthSource("official");
+                }
+            }
+            else
+            {
+                // 兼容旧版配置
+                var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
+                if (!string.IsNullOrEmpty(savedModrinthSource))
+                {
+                    string sourceKey = savedModrinthSource.ToLower() switch
+                    {
+                        "mcim" => "mcim",
+                        _ => "official"
+                    };
+                    factory.SetModrinthSource(sourceKey);
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth下载源已设置为: {sourceKey} (旧版配置)");
+                }
             }
         }
         catch (Exception ex)

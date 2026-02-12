@@ -130,96 +130,42 @@ public partial class SettingsViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string _aiModel = "gpt-3.5-turbo";
-    private const string DownloadSourceKey = "DownloadSource";
-    private const string VersionListSourceKey = "VersionListSource";
-    private const string ModrinthDownloadSourceKey = "ModrinthDownloadSource";
     
     /// <summary>
-    /// 下载源枚举
+    /// 下载源项（用于下拉框显示）
     /// </summary>
-    public enum DownloadSourceType
+    public class DownloadSourceItem
     {
-        /// <summary>
-        /// 官方源
-        /// </summary>
-        Official,
-        /// <summary>
-        /// BMCLAPI源
-        /// </summary>
-        BMCLAPI
+        public string Key { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public bool IsCustom { get; set; }
+        
+        public override string ToString() => DisplayName;
     }
     
     /// <summary>
-    /// Modrinth下载源枚举
-    /// </summary>
-    public enum ModrinthDownloadSourceType
-    {
-        /// <summary>
-        /// 官方源
-        /// </summary>
-        Official,
-        /// <summary>
-        /// MCIM镜像源
-        /// </summary>
-        MCIM
-    }
-    
-    /// <summary>
-    /// 下载源
+    /// 游戏资源下载源列表（MC本体、ModLoader、版本列表）
     /// </summary>
     [ObservableProperty]
-    private DownloadSourceType _downloadSource = DownloadSourceType.Official;
+    private ObservableCollection<DownloadSourceItem> _gameResourceSources = new ObservableCollection<DownloadSourceItem>();
     
     /// <summary>
-    /// Modrinth下载源
+    /// 社区资源下载源列表（Modrinth、CurseForge）
     /// </summary>
     [ObservableProperty]
-    private ModrinthDownloadSourceType _modrinthDownloadSource = ModrinthDownloadSourceType.Official;
+    private ObservableCollection<DownloadSourceItem> _communityResourceSources = new ObservableCollection<DownloadSourceItem>();
     
     /// <summary>
-    /// 下载源选择命令
-    /// </summary>
-    public ICommand SwitchDownloadSourceCommand
-    {
-        get;
-    }
-    
-    /// <summary>
-    /// Modrinth下载源选择命令
-    /// </summary>
-    public ICommand SwitchModrinthDownloadSourceCommand
-    {
-        get;
-    }
-    
-    /// <summary>
-    /// 版本列表源枚举
-    /// </summary>
-    public enum VersionListSourceType
-    {
-        /// <summary>
-        /// 官方源
-        /// </summary>
-        Official,
-        /// <summary>
-        /// BMCLAPI源
-        /// </summary>
-        BMCLAPI
-    }
-    
-    /// <summary>
-    /// 版本列表源
+    /// 当前选中的游戏资源下载源
     /// </summary>
     [ObservableProperty]
-    private VersionListSourceType _versionListSource = VersionListSourceType.Official;
+    private DownloadSourceItem? _selectedGameResourceSource;
     
     /// <summary>
-    /// 版本列表源选择命令
+    /// 当前选中的社区资源下载源
     /// </summary>
-    public ICommand SwitchVersionListSourceCommand
-    {
-        get;
-    }
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCommunityResourceSource;
     
     /// <summary>
     /// 材质类型
@@ -859,33 +805,6 @@ public partial class SettingsViewModel : ObservableRecipient
                 }
             });
         
-        SwitchDownloadSourceCommand = new RelayCommand<string>(
-            (param) =>
-            {
-                if (Enum.TryParse<DownloadSourceType>(param, out var source) && DownloadSource != source)
-                {
-                    DownloadSource = source;
-                }
-            });
-        
-        SwitchModrinthDownloadSourceCommand = new RelayCommand<string>(
-            (param) =>
-            {
-                if (Enum.TryParse<ModrinthDownloadSourceType>(param, out var source) && ModrinthDownloadSource != source)
-                {
-                    ModrinthDownloadSource = source;
-                }
-            });
-        
-        SwitchVersionListSourceCommand = new RelayCommand<string>(
-            (param) =>
-            {
-                if (Enum.TryParse<VersionListSourceType>(param, out var source) && VersionListSource != source)
-                {
-                    VersionListSource = source;
-                }
-            });
-        
         SwitchLanguageCommand = new RelayCommand<string>(
             async (param) =>
             {
@@ -957,12 +876,6 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadMinecraftPathsAsync().ConfigureAwait(false);
         // Load AI Settings
         LoadAISettingsAsync().ConfigureAwait(false);
-        // 加载下载源设置
-        LoadDownloadSourceAsync().ConfigureAwait(false);
-        // 加载Modrinth下载源设置
-        LoadModrinthDownloadSourceAsync().ConfigureAwait(false);
-        // 加载版本列表源设置
-        LoadVersionListSourceAsync().ConfigureAwait(false);
         // 加载材质类型设置
         LoadMaterialTypeAsync().ConfigureAwait(false);
         // 加载背景图片路径
@@ -987,253 +900,20 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadAutoUpdateCheckModeAsync().ConfigureAwait(false);
         // 加载全局启动设置
         LoadGlobalLaunchSettingsAsync().ConfigureAwait(false);
-        // 加载自定义下载源列表
+        // 加载下载源设置（新版）
         Task.Run(async () =>
         {
             try
             {
-                Log.Information("[Settings] 构造函数中开始加载自定义下载源列表");
-                await LoadCustomSourcesAsync();
-                Log.Information("[Settings] 构造函数中加载自定义下载源列表完成");
+                Log.Information("[Settings] 开始加载下载源设置");
+                await LoadDownloadSourcesAsync();
+                Log.Information("[Settings] 下载源设置加载完成");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Settings] 构造函数中加载自定义下载源列表失败");
+                Log.Error(ex, "[Settings] 加载下载源设置失败");
             }
         });
-    }
-    
-    /// <summary>
-    /// 加载下载源设置
-    /// </summary>
-    private async Task LoadDownloadSourceAsync()
-    {
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] === 开始加载下载源设置 ===");
-        
-        // 检查是否有保存的设置
-        var savedValue = await _localSettingsService.ReadSettingAsync<string>(DownloadSourceKey);
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 读取到的保存值: '{savedValue ?? "null"}'");
-        
-        if (string.IsNullOrEmpty(savedValue))
-        {
-            // 首次启动，根据地区设置默认值
-            var defaultSource = GetDefaultDownloadSourceByRegion();
-            DownloadSource = defaultSource;
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源首次初始化，地区检测默认值: {defaultSource}");
-        }
-        else
-        {
-            // 已有保存的设置，使用保存的值
-            if (Enum.TryParse<DownloadSourceType>(savedValue, out var source))
-            {
-                DownloadSource = source;
-            }
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源加载已保存设置: {DownloadSource}");
-        }
-
-        // 确保初始化时也同步到 Factory
-        try
-        {
-            var sourceKey = DownloadSource.ToString().ToLowerInvariant();
-            _downloadSourceFactory.SetDefaultSource(sourceKey);
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 初始化全局下载源工厂配置: {sourceKey}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 初始化全局下载源失败: {ex.Message}");
-        }
-    }
-    
-    /// <summary>
-    /// 根据地区获取默认下载源
-    /// </summary>
-    private DownloadSourceType GetDefaultDownloadSourceByRegion()
-    {
-        var region = System.Globalization.RegionInfo.CurrentRegion;
-        var culture = System.Globalization.CultureInfo.CurrentCulture;
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 地区检测 - Region: {region.Name}, Culture: {culture.Name}");
-        
-        // 中国大陆用户默认使用BMCLAPI
-        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，默认使用BMCLAPI");
-            return DownloadSourceType.BMCLAPI;
-        }
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，默认使用官方源");
-        return DownloadSourceType.Official;
-    }
-    
-    /// <summary>
-    /// 当下载源变化时保存
-    /// </summary>
-    partial void OnDownloadSourceChanged(DownloadSourceType value)
-    {
-        // 保存为字符串，方便后续判断是否有保存过
-        _localSettingsService.SaveSettingAsync(DownloadSourceKey, value.ToString()).ConfigureAwait(false);
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 下载源已保存: {value}");
-
-        // 同步更新 DownloadSourceFactory 的默认源
-        try
-        {
-            var sourceKey = value.ToString().ToLowerInvariant();
-            _downloadSourceFactory.SetDefaultSource(sourceKey);
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 已更新全局下载源工厂配置: {sourceKey}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 更新全局下载源失败: {ex.Message}");
-        }
-    }
-    
-    /// <summary>
-    /// 加载Modrinth下载源设置
-    /// </summary>
-    private async Task LoadModrinthDownloadSourceAsync()
-    {
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] === 开始加载Modrinth下载源设置 ===");
-        
-        // 检查是否有保存的设置
-        var savedValue = await _localSettingsService.ReadSettingAsync<string>(ModrinthDownloadSourceKey);
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 读取到的保存值: '{savedValue ?? "null"}'");
-        
-        if (string.IsNullOrEmpty(savedValue))
-        {
-            // 首次启动，根据地区设置默认值
-            var defaultSource = GetDefaultModrinthDownloadSourceByRegion();
-            ModrinthDownloadSource = defaultSource;
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源首次初始化，地区检测默认值: {defaultSource}");
-        }
-        else
-        {
-            // 已有保存的设置，使用保存的值
-            if (Enum.TryParse<ModrinthDownloadSourceType>(savedValue, out var source))
-            {
-                ModrinthDownloadSource = source;
-            }
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源加载已保存设置: {ModrinthDownloadSource}");
-        }
-        
-        // 同步到下载源工厂
-        UpdateModrinthDownloadSourceFactory(ModrinthDownloadSource);
-    }
-    
-    /// <summary>
-    /// 根据地区获取默认Modrinth下载源
-    /// </summary>
-    private ModrinthDownloadSourceType GetDefaultModrinthDownloadSourceByRegion()
-    {
-        var region = System.Globalization.RegionInfo.CurrentRegion;
-        var culture = System.Globalization.CultureInfo.CurrentCulture;
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth地区检测 - Region: {region.Name}, Culture: {culture.Name}");
-        
-        // 中国大陆用户默认使用MCIM镜像
-        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，Modrinth默认使用MCIM镜像");
-            return ModrinthDownloadSourceType.MCIM;
-        }
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，Modrinth默认使用官方源");
-        return ModrinthDownloadSourceType.Official;
-    }
-    
-    /// <summary>
-    /// 当Modrinth下载源变化时保存
-    /// </summary>
-    partial void OnModrinthDownloadSourceChanged(ModrinthDownloadSourceType value)
-    {
-        // 保存为字符串，方便后续判断是否有保存过
-        _localSettingsService.SaveSettingAsync(ModrinthDownloadSourceKey, value.ToString()).ConfigureAwait(false);
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源已保存: {value}");
-        // 同步到下载源工厂
-        UpdateModrinthDownloadSourceFactory(value);
-    }
-    
-    /// <summary>
-    /// 更新下载源工厂中的Modrinth下载源设置
-    /// </summary>
-    private void UpdateModrinthDownloadSourceFactory(ModrinthDownloadSourceType sourceType)
-    {
-        var factory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
-        if (factory != null)
-        {
-            string sourceKey = sourceType switch
-            {
-                ModrinthDownloadSourceType.MCIM => "mcim",
-                _ => "official"
-            };
-            factory.SetModrinthSource(sourceKey);
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] Modrinth下载源已更新为: {sourceKey}");
-        }
-    }
-    
-    /// <summary>
-    /// 加载版本列表源设置
-    /// </summary>
-    private async Task LoadVersionListSourceAsync()
-    {
-        // 检查是否有保存的设置，对于Enum类型，LocalSettingsService如果不存会返回默认值(0/Official)
-        // 但我们需要区分"未设置(首次启动)"和"用户设置过Official"
-        // 由于ReadSettingAsync泛型如果不传默认值会返回default(T)，这里我们先尝试读取字符串判断是否存在
-        
-        var savedValue = await _localSettingsService.ReadSettingAsync<string>(VersionListSourceKey);
-        
-        if (string.IsNullOrEmpty(savedValue))
-        {
-            // 首次启动，根据地区设置默认值
-            var defaultSource = GetDefaultVersionListSourceByRegion();
-            VersionListSource = defaultSource;
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源首次初始化，地区检测默认值: {defaultSource}");
-        }
-        else
-        {
-             // 兼容旧的存储方式（可能是直接存的int），尝试转为Enum
-             // 如果是新保存的字符串方式，Enum.TryParse也能处理
-             if (Enum.TryParse<VersionListSourceType>(savedValue, out var source))
-             {
-                 VersionListSource = source;
-             }
-             // 兜底：如果是旧版直接存的数字
-             else if (int.TryParse(savedValue, out var intSource))
-             {
-                 VersionListSource = (VersionListSourceType)intSource;
-             }
-             
-             System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源加载已保存设置: {VersionListSource}");
-        }
-    }
-    
-    /// <summary>
-    /// 根据地区获取默认版本列表源
-    /// </summary>
-    private VersionListSourceType GetDefaultVersionListSourceByRegion()
-    {
-        var region = System.Globalization.RegionInfo.CurrentRegion;
-        var culture = System.Globalization.CultureInfo.CurrentCulture;
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 版本列表源地区检测 - Region: {region.Name}, Culture: {culture.Name}");
-        
-        // 中国大陆用户默认使用BMCLAPI
-        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检测到中国大陆地区，版本列表源默认使用BMCLAPI");
-            return VersionListSourceType.BMCLAPI;
-        }
-        
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 非中国大陆地区，版本列表源默认使用官方源");
-        return VersionListSourceType.Official;
-    }
-    
-    /// <summary>
-    /// 当版本列表源变化时保存
-    /// </summary>
-    partial void OnVersionListSourceChanged(VersionListSourceType value)
-    {
-        // 保存为字符串，保持与其他源设置一致，并方便区分"未设置"状态
-        _localSettingsService.SaveSettingAsync(VersionListSourceKey, value.ToString()).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -3061,7 +2741,355 @@ public partial class SettingsViewModel : ObservableRecipient
     
     #endregion
     
-    #region 自定义下载源管理
+    #region 下载源管理（新版统一管理）
+    
+    private const string GameResourceSourceKey = "GameResourceSource";
+    private const string CommunityResourceSourceKey = "CommunityResourceSource";
+    
+    /// <summary>
+    /// 加载下载源设置（新版）
+    /// </summary>
+    private async Task LoadDownloadSourcesAsync()
+    {
+        // 1. 加载自定义源配置
+        await _customSourceManager.LoadConfigurationAsync();
+        
+        // 2. 构建游戏资源源列表（BMCLAPI 类型：MC本体、ModLoader、版本列表）
+        await BuildGameResourceSourcesAsync();
+        
+        // 3. 构建社区资源源列表（MCIM 类型：Modrinth、CurseForge）
+        await BuildCommunityResourceSourcesAsync();
+        
+        // 4. 加载用户选择的源
+        await LoadSelectedSourcesAsync();
+    }
+    
+    /// <summary>
+    /// 构建游戏资源源列表
+    /// </summary>
+    private async Task BuildGameResourceSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var sources = new List<DownloadSourceItem>
+            {
+                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
+                new DownloadSourceItem { Key = "bmclapi", DisplayName = "BMCLAPI 镜像", IsCustom = false }
+            };
+            
+            // 添加官方资源类型的自定义源
+            var customSources = _customSourceManager.GetAllSources()
+                .Where(s => s.Enabled && s.Template.Equals("official", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.Priority);
+            
+            foreach (var customSource in customSources)
+            {
+                sources.Add(new DownloadSourceItem
+                {
+                    Key = customSource.Key,
+                    DisplayName = $"{customSource.Name} (自定义)",
+                    IsCustom = true
+                });
+            }
+            
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                GameResourceSources.Clear();
+                foreach (var source in sources)
+                {
+                    GameResourceSources.Add(source);
+                }
+                Log.Information($"[Settings] 已加载 {GameResourceSources.Count} 个游戏资源源");
+            });
+        });
+    }
+    
+    /// <summary>
+    /// 构建社区资源源列表
+    /// </summary>
+    private async Task BuildCommunityResourceSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var sources = new List<DownloadSourceItem>
+            {
+                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
+                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
+            };
+            
+            // 添加社区资源类型的自定义源
+            var customSources = _customSourceManager.GetAllSources()
+                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.Priority);
+            
+            foreach (var customSource in customSources)
+            {
+                sources.Add(new DownloadSourceItem
+                {
+                    Key = customSource.Key,
+                    DisplayName = $"{customSource.Name} (自定义)",
+                    IsCustom = true
+                });
+            }
+            
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                CommunityResourceSources.Clear();
+                foreach (var source in sources)
+                {
+                    CommunityResourceSources.Add(source);
+                }
+                Log.Information($"[Settings] 已加载 {CommunityResourceSources.Count} 个社区资源源");
+            });
+        });
+    }
+    
+    /// <summary>
+    /// 加载用户选择的源
+    /// </summary>
+    private async Task LoadSelectedSourcesAsync()
+    {
+        // 读取保存的游戏资源源
+        var savedGameSource = await _localSettingsService.ReadSettingAsync<string>(GameResourceSourceKey);
+        if (string.IsNullOrEmpty(savedGameSource))
+        {
+            // 首次启动，根据地区设置默认值
+            savedGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        
+        Log.Information($"[Settings] 读取到保存的游戏资源源: {savedGameSource}");
+        
+        // 读取保存的社区资源源
+        var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>(CommunityResourceSourceKey);
+        if (string.IsNullOrEmpty(savedCommunitySource))
+        {
+            // 首次启动，根据地区设置默认值
+            savedCommunitySource = GetDefaultSourceKeyByRegion("mcim", "official");
+        }
+        
+        Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
+        
+        // 在 UI 线程上设置选中项
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            SelectedGameResourceSource = GameResourceSources.FirstOrDefault(s => s.Key == savedGameSource) 
+                ?? GameResourceSources.FirstOrDefault();
+            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource) 
+                ?? CommunityResourceSources.FirstOrDefault();
+            
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key})");
+            
+            // 同步到 DownloadSourceFactory
+            if (SelectedGameResourceSource != null)
+            {
+                try
+                {
+                    _downloadSourceFactory.SetDefaultSource(SelectedGameResourceSource.Key);
+                    Log.Information($"[Settings] 已同步游戏资源源到 DownloadSourceFactory: {SelectedGameResourceSource.Key}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"[Settings] 同步游戏资源源到 DownloadSourceFactory 失败: {SelectedGameResourceSource.Key}");
+                }
+            }
+            if (SelectedCommunityResourceSource != null)
+            {
+                try
+                {
+                    _downloadSourceFactory.SetModrinthSource(SelectedCommunityResourceSource.Key);
+                    Log.Information($"[Settings] 已同步社区资源源到 DownloadSourceFactory: {SelectedCommunityResourceSource.Key}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"[Settings] 同步社区资源源到 DownloadSourceFactory 失败: {SelectedCommunityResourceSource.Key}");
+                }
+            }
+        });
+    }
+    
+    /// <summary>
+    /// 根据地区获取默认源 Key
+    /// </summary>
+    private string GetDefaultSourceKeyByRegion(string cnDefault, string otherDefault)
+    {
+        var region = System.Globalization.RegionInfo.CurrentRegion;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        
+        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+        {
+            return cnDefault;
+        }
+        
+        return otherDefault;
+    }
+    
+    /// <summary>
+    /// 当游戏资源源选择变化时
+    /// </summary>
+    partial void OnSelectedGameResourceSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        
+        Log.Information($"[Settings] 游戏资源源选择变化: {value.DisplayName} ({value.Key})");
+        
+        // 保存选择
+        _localSettingsService.SaveSettingAsync(GameResourceSourceKey, value.Key).ConfigureAwait(false);
+        
+        // 同步到 DownloadSourceFactory
+        try
+        {
+            _downloadSourceFactory.SetDefaultSource(value.Key);
+            Log.Information($"[Settings] 游戏资源源已切换为: {value.DisplayName} ({value.Key})");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"[Settings] 设置默认下载源失败: {value.Key}");
+        }
+    }
+    
+    /// <summary>
+    /// 当社区资源源选择变化时
+    /// </summary>
+    partial void OnSelectedCommunityResourceSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        
+        // 保存选择
+        _localSettingsService.SaveSettingAsync(CommunityResourceSourceKey, value.Key).ConfigureAwait(false);
+        
+        // 同步到 DownloadSourceFactory
+        _downloadSourceFactory.SetModrinthSource(value.Key);
+        
+        Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
+    }
+    
+    /// <summary>
+    /// 添加自定义游戏资源源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task AddGameResourceSourceAsync()
+    {
+        await AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType.Official);
+    }
+    
+    /// <summary>
+    /// 添加自定义社区资源源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task AddCommunityResourceSourceAsync()
+    {
+        await AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType.Community);
+    }
+    
+    /// <summary>
+    /// <summary>
+    /// 添加自定义源（指定模板类型）
+    /// </summary>
+    private async Task AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType template)
+    {
+        try
+        {
+            // 首先显示免责声明
+            var disclaimerDialog = new ContentDialog
+            {
+                Title = "重要提示",
+                Content = new TextBlock
+                {
+                    Text = "请仅添加您信任的下载源。\n\n" +
+                           "使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
+                    TextWrapping = TextWrapping.Wrap
+                },
+                PrimaryButtonText = "我已了解，继续添加",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            var disclaimerResult = await disclaimerDialog.ShowAsync();
+            if (disclaimerResult != ContentDialogResult.Primary)
+            {
+                return; // 用户取消
+            }
+            
+            var templateName = template == DownloadSourceTemplateType.Official ? "官方资源" : "社区资源";
+            
+            // 创建添加对话框
+            var dialog = new ContentDialog
+            {
+                Title = $"添加自定义{(template == DownloadSourceTemplateType.Official ? "游戏资源" : "社区资源")}源",
+                PrimaryButtonText = "保存",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            // 创建输入表单
+            var stackPanel = new StackPanel { Spacing = 12 };
+            
+            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
+            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
+            var templateText = new TextBlock 
+            { 
+                Text = $"模板类型: {templateName}",
+                Opacity = 0.7,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            var priorityBox = new NumberBox 
+            { 
+                Header = "优先级（数值越大优先级越高）",
+                Value = 100,
+                Minimum = 1,
+                Maximum = 1000,
+                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
+            };
+            
+            stackPanel.Children.Add(nameBox);
+            stackPanel.Children.Add(urlBox);
+            stackPanel.Children.Add(templateText);
+            stackPanel.Children.Add(priorityBox);
+            
+            dialog.Content = stackPanel;
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                var name = nameBox.Text?.Trim();
+                var baseUrl = urlBox.Text?.Trim();
+                var priority = (int)priorityBox.Value;
+                
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
+                {
+                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    return;
+                }
+                
+                var addResult = await _customSourceManager.AddSourceAsync(name, baseUrl, template, true, priority);
+                
+                if (addResult.Success)
+                {
+                    // 重新加载下载源列表
+                    await LoadDownloadSourcesAsync();
+                    Log.Information($"[Settings] 成功添加自定义下载源: {name}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("添加失败", addResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 添加自定义下载源失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"添加失败: {ex.Message}");
+        }
+    }
+    
+    #endregion
+    
+    #region 自定义下载源管理（旧版，保留用于兼容）
     
     /// <summary>
     /// 加载自定义下载源列表
@@ -3160,8 +3188,8 @@ public partial class SettingsViewModel : ObservableRecipient
                 var name = nameBox.Text?.Trim();
                 var baseUrl = urlBox.Text?.Trim();
                 var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Bmclapi 
-                    : DownloadSourceTemplateType.Mcim;
+                    ? DownloadSourceTemplateType.Official 
+                    : DownloadSourceTemplateType.Community;
                 var priority = (int)priorityBox.Value;
                 var enabled = enabledSwitch.IsOn;
                 
@@ -3221,8 +3249,8 @@ public partial class SettingsViewModel : ObservableRecipient
             var templateCombo = new ComboBox 
             { 
                 Header = "模板类型",
-                ItemsSource = new[] { "BMCLAPI (官方资源)", "MCIM (社区资源)" },
-                SelectedIndex = source.Template == DownloadSourceTemplateType.Bmclapi ? 0 : 1
+                ItemsSource = new[] { "官方资源", "社区资源" },
+                SelectedIndex = source.Template == DownloadSourceTemplateType.Official ? 0 : 1
             };
             var priorityBox = new NumberBox 
             { 
@@ -3249,8 +3277,8 @@ public partial class SettingsViewModel : ObservableRecipient
                 var name = nameBox.Text?.Trim();
                 var baseUrl = urlBox.Text?.Trim();
                 var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Bmclapi 
-                    : DownloadSourceTemplateType.Mcim;
+                    ? DownloadSourceTemplateType.Official 
+                    : DownloadSourceTemplateType.Community;
                 var priority = (int)priorityBox.Value;
                 var enabled = enabledSwitch.IsOn;
                 
@@ -3424,7 +3452,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var configPath = Path.Combine(AppEnvironment.SafeAppDataPath, "custom_sources.json");
+            var configPath = Path.Combine(AppEnvironment.SafeAppDataPath, "CustomSources", "custom_sources.json");
             var folderPath = Path.GetDirectoryName(configPath);
             
             if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
@@ -3440,7 +3468,34 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 导入配置命令
+    /// 打开自定义源配置文件夹命令
+    /// </summary>
+    [RelayCommand]
+    private void OpenCustomSourceConfigFile()
+    {
+        try
+        {
+            var configFolder = Path.Combine(AppEnvironment.SafeAppDataPath, "CustomSources");
+            
+            // 确保文件夹存在
+            if (!Directory.Exists(configFolder))
+            {
+                Directory.CreateDirectory(configFolder);
+                Log.Information($"[Settings] 创建自定义源配置文件夹: {configFolder}");
+            }
+            
+            // 打开文件夹
+            Process.Start("explorer.exe", configFolder);
+            Log.Information($"[Settings] 打开自定义源配置文件夹: {configFolder}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 打开自定义源配置文件夹失败");
+        }
+    }
+    
+    /// <summary>
+    /// 导入配置命令（导入单个源配置文件）
     /// </summary>
     [RelayCommand]
     private async Task ImportConfigAsync()
@@ -3458,35 +3513,13 @@ public partial class SettingsViewModel : ObservableRecipient
             var file = await openPicker.PickSingleFileAsync();
             if (file != null)
             {
-                // 显示冲突解决策略选择对话框
-                var strategyDialog = new ContentDialog
-                {
-                    Title = "导入配置",
-                    Content = "如果导入的配置与现有配置冲突，应该如何处理？",
-                    PrimaryButtonText = "覆盖",
-                    SecondaryButtonText = "跳过",
-                    CloseButtonText = "重命名",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-                
-                var strategyResult = await strategyDialog.ShowAsync();
-                
-                ConflictResolutionStrategy strategy = strategyResult switch
-                {
-                    ContentDialogResult.Primary => ConflictResolutionStrategy.Overwrite,
-                    ContentDialogResult.Secondary => ConflictResolutionStrategy.Skip,
-                    _ => ConflictResolutionStrategy.Rename
-                };
-                
-                var importResult = await _customSourceManager.ImportConfigurationAsync(file.Path, strategy);
+                var importResult = await _customSourceManager.ImportSourceAsync(file.Path);
                 
                 if (importResult.Success)
                 {
                     // 刷新列表
-                    await LoadCustomSourcesAsync();
-                    await _dialogService.ShowMessageDialogAsync("导入成功", "配置已成功导入");
+                    await LoadDownloadSourcesAsync();
+                    await _dialogService.ShowMessageDialogAsync("导入成功", $"已成功导入自定义源: {importResult.Data?.Name}");
                     Log.Information($"[Settings] 成功导入配置: {file.Path}");
                 }
                 else
@@ -3503,16 +3536,22 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 导出配置命令
+    /// 导出配置命令（导出单个源配置文件）
     /// </summary>
     [RelayCommand]
-    private async Task ExportConfigAsync()
+    private async Task ExportConfigAsync(CustomSourceViewModel? source)
     {
         try
         {
+            if (source == null)
+            {
+                await _dialogService.ShowMessageDialogAsync("错误", "请先选择要导出的源");
+                return;
+            }
+            
             var savePicker = new FileSavePicker();
             savePicker.FileTypeChoices.Add("JSON 文件", new List<string> { ".json" });
-            savePicker.SuggestedFileName = "custom_sources";
+            savePicker.SuggestedFileName = $"{source.Key}.json";
             savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
             
             var window = App.MainWindow;
@@ -3522,7 +3561,7 @@ public partial class SettingsViewModel : ObservableRecipient
             var file = await savePicker.PickSaveFileAsync();
             if (file != null)
             {
-                var exportResult = await _customSourceManager.ExportConfigurationAsync(file.Path);
+                var exportResult = await _customSourceManager.ExportSourceAsync(source.Key, file.Path);
                 
                 if (exportResult.Success)
                 {

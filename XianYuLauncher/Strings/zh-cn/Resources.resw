@@ -1819,9 +1819,6 @@
   <data name="Settings_ExportConfig.Content" xml:space="preserve">
     <value>导出</value>
   </data>
-  <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
-    <value>打开文件夹</value>
-  </data>
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>每次启动弹窗</value>
   </data>
@@ -2921,5 +2918,26 @@
   </data>
   <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
     <value>顶部</value>
+  </data>
+  <data name="Settings_GameResourceSource.Header" xml:space="preserve">
+    <value>游戏资源下载源</value>
+  </data>
+  <data name="Settings_GameResourceSource.Description" xml:space="preserve">
+    <value>MC本体、ModLoader、版本列表的下载源</value>
+  </data>
+  <data name="Settings_CommunityResourceSource.Header" xml:space="preserve">
+    <value>社区资源下载源</value>
+  </data>
+  <data name="Settings_CommunityResourceSource.Description" xml:space="preserve">
+    <value>Modrinth、CurseForge 资源的下载源</value>
+  </data>
+  <data name="Settings_OpenCustomSourceConfig.Header" xml:space="preserve">
+    <value>自定义源配置</value>
+  </data>
+  <data name="Settings_OpenCustomSourceConfig.Description" xml:space="preserve">
+    <value>打开配置文件夹，可手动添加或管理配置文件</value>
+  </data>
+  <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
+    <value>打开配置文件夹</value>
   </data>
 </root>

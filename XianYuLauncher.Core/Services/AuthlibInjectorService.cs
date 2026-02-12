@@ -67,23 +67,29 @@ namespace XianYuLauncher.Core.Services
             
             try
             {
-                // 1. 获取当前下载源设置
-                var downloadSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "BMCLAPI";
-                _logger.LogInformation("[AuthlibInjector] 当前下载源设置: {DownloadSource}", downloadSource);
-                
-                // 2. 构建API URL
-                string apiUrl = downloadSource switch
+                // 1. 获取当前下载源设置（优先读取新配置键）
+                var downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
+                if (string.IsNullOrEmpty(downloadSourceKey))
                 {
-                    "BMCLAPI" => "https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json",
-                    "Official" => "https://authlib-injector.yushi.moe/artifact/latest.json",
-                    _ => "https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json"
-                };
+                    // 兼容旧配置键
+                    downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "bmclapi";
+                }
+                _logger.LogInformation("[AuthlibInjector] 当前下载源设置: {DownloadSource}", downloadSourceKey);
+                
+                // 2. 判断是否使用 BMCLAPI 类型的源（通过 key 或 URL 判断）
+                bool isBmclapiType = downloadSourceKey.ToLowerInvariant().Contains("bmclapi") || 
+                                     downloadSourceKey.ToLowerInvariant() == "bmclapi";
+                
+                // 3. 构建API URL
+                string apiUrl = isBmclapiType
+                    ? "https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json"
+                    : "https://authlib-injector.yushi.moe/artifact/latest.json";
                 
                 _logger.LogInformation("[AuthlibInjector] 使用 API URL: {ApiUrl}", apiUrl);
                 
-                // 3. 获取最新版本信息
+                // 4. 获取最新版本信息
                 _logger.LogDebug("[AuthlibInjector] 正在获取最新版本信息...");
-                var latestInfo = await GetLatestAuthlibInjectorInfo(apiUrl, downloadSource == "BMCLAPI");
+                var latestInfo = await GetLatestAuthlibInjectorInfo(apiUrl, isBmclapiType);
                 if (latestInfo == null)
                 {
                     _logger.LogWarning("[AuthlibInjector] 获取最新版本信息失败，尝试使用本地缓存");
@@ -136,7 +142,7 @@ namespace XianYuLauncher.Core.Services
                 if (needsUpdate)
                 {
                     _logger.LogInformation("[AuthlibInjector] 开始下载最新版本...");
-                    await DownloadAuthlibInjectorAsync(latestInfo.download_url, localJarPath, downloadSource == "BMCLAPI");
+                    await DownloadAuthlibInjectorAsync(latestInfo.download_url, localJarPath, isBmclapiType);
                     
                     // 验证下载的文件
                     if (!File.Exists(localJarPath))

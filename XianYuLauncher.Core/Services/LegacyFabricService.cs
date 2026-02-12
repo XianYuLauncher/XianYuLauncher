@@ -48,8 +48,8 @@ public class LegacyFabricService
                     source => source.GetLegacyFabricVersionsUrl(minecraftVersion),
                     (request, source) =>
                     {
-                        // 为 BMCLAPI 添加 User-Agent
-                        if (source.Name == "BMCLAPI")
+                        // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
+                        if (source.RequiresBmclapiUserAgent())
                         {
                             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                         }
@@ -115,9 +115,9 @@ public class LegacyFabricService
         
         System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
         
-        // 创建请求消息，为BMCLAPI请求添加User-Agent
+        // 创建请求消息，为 BMCLAPI 类型的源添加 User-Agent
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        if (downloadSource.Name == "BMCLAPI")
+        if (downloadSource.RequiresBmclapiUserAgent(url))
         {
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
@@ -125,10 +125,10 @@ public class LegacyFabricService
         // 发送HTTP请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
-        // 检查是否为BMCLAPI且返回404
-        if (downloadSource.Name == "BMCLAPI" && response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        // 检查是否为 BMCLAPI 类型的源且返回404
+        if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] BMCLAPI返回404，切换到官方源");
+            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] BMCLAPI 类型源返回404，切换到官方源");
             
             var officialSource = _downloadSourceFactory.GetSource("official");
             string officialUrl = officialSource.GetLegacyFabricVersionsUrl(minecraftVersion);

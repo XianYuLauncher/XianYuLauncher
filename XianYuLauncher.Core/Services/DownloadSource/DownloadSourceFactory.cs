@@ -98,10 +98,13 @@ public class DownloadSourceFactory
         
         if (!_sources.ContainsKey(key))
         {
+            System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] 错误：尝试设置不存在的下载源为默认源: {key}");
+            System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] 当前已注册的源: {string.Join(", ", _sources.Keys)}");
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
         }
         
         _defaultSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] 默认下载源已设置为: {key} ({_sources[key].Name})");
     }
     
     /// <summary>

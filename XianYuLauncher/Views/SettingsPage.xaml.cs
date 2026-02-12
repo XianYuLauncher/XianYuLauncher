@@ -104,6 +104,11 @@ public sealed partial class SettingsPage : Page
         await ViewModel.OpenLogDirectoryCommand.ExecuteAsync(null);
     }
 
+    private void OpenCustomSourceConfigFolder_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenCustomSourceConfigFileCommand.Execute(null);
+    }
+
     private async void OpenSourceLink_Click(object sender, RoutedEventArgs e)
     {
         if (sender is CommunityToolkit.WinUI.Controls.SettingsCard card && card.Tag is string url)

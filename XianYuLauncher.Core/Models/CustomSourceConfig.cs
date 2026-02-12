@@ -53,7 +53,7 @@ public class CustomSource
     /// 模板类型
     /// </summary>
     [JsonProperty("template")]
-    public string Template { get; set; } = "bmclapi";
+    public string Template { get; set; } = "official";
 
     /// <summary>
     /// 优先级（数值越大优先级越高）
@@ -74,14 +74,14 @@ public class CustomSource
 public enum DownloadSourceTemplateType
 {
     /// <summary>
-    /// BMCLAPI 模板（官方资源）
+    /// 官方资源模板（MC本体、ModLoader、版本列表等）
     /// </summary>
-    Bmclapi,
+    Official,
 
     /// <summary>
-    /// MCIM 模板（社区资源）
+    /// 社区资源模板（Modrinth、CurseForge等）
     /// </summary>
-    Mcim
+    Community
 }
 
 /// <summary>

@@ -9,13 +9,14 @@ namespace XianYuLauncher.Core.Services;
 /// <summary>
 /// 自定义下载源管理器
 /// 负责自定义下载源的生命周期管理、配置持久化和验证
+/// 新架构：每个源一个独立 JSON 文件，自动扫描文件夹
 /// </summary>
 public class CustomSourceManager
 {
     private readonly DownloadSourceFactory _sourceFactory;
     private readonly ILogger<CustomSourceManager>? _logger;
-    private readonly string _configFilePath;
-    private CustomSourceConfig _config;
+    private readonly string _sourcesDirectory;
+    private readonly Dictionary<string, CustomSource> _sources = new();
 
     /// <summary>
     /// 构造函数
@@ -28,120 +29,178 @@ public class CustomSourceManager
     {
         _sourceFactory = sourceFactory ?? throw new ArgumentNullException(nameof(sourceFactory));
         _logger = logger;
-        _configFilePath = Path.Combine(AppEnvironment.SafeAppDataPath, "custom_sources.json");
-        _config = new CustomSourceConfig();
+        _sourcesDirectory = Path.Combine(AppEnvironment.SafeAppDataPath, "CustomSources");
+        
+        // 确保目录存在
+        if (!Directory.Exists(_sourcesDirectory))
+        {
+            Directory.CreateDirectory(_sourcesDirectory);
+            _logger?.LogInformation("创建自定义源目录: {Directory}", _sourcesDirectory);
+        }
     }
 
     /// <summary>
-    /// 加载配置文件
+    /// 加载所有自定义源配置（扫描文件夹）
     /// </summary>
     public async Task LoadConfigurationAsync()
     {
         try
         {
-            if (!File.Exists(_configFilePath))
+            _sources.Clear();
+            
+            // 扫描所有 .json 文件
+            var jsonFiles = Directory.GetFiles(_sourcesDirectory, "*.json", SearchOption.TopDirectoryOnly);
+            
+            if (jsonFiles.Length == 0)
             {
-                _logger?.LogInformation("配置文件不存在，创建默认配置: {ConfigPath}", _configFilePath);
-                await CreateDefaultConfigurationAsync();
+                _logger?.LogInformation("未找到自定义源配置文件");
+                await CreateExampleConfigurationsAsync();
                 return;
             }
 
-            var json = await File.ReadAllTextAsync(_configFilePath);
-            var config = JsonConvert.DeserializeObject<CustomSourceConfig>(json);
+            _logger?.LogInformation("开始扫描自定义源配置文件，共 {Count} 个", jsonFiles.Length);
 
-            if (config == null)
+            foreach (var filePath in jsonFiles)
             {
-                _logger?.LogError("配置文件解析失败，重置为默认配置");
-                await CreateDefaultConfigurationAsync();
-                return;
+                try
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(filePath);
+                    var json = await File.ReadAllTextAsync(filePath);
+                    var source = JsonConvert.DeserializeObject<CustomSource>(json);
+
+                    if (source == null)
+                    {
+                        _logger?.LogWarning("配置文件解析失败，跳过: {FileName}", fileName);
+                        continue;
+                    }
+
+                    // 使用文件名作为 key（覆盖 JSON 中的 key）
+                    source.Key = fileName;
+
+                    // 验证必填字段
+                    if (string.IsNullOrWhiteSpace(source.Name) || 
+                        string.IsNullOrWhiteSpace(source.BaseUrl) || 
+                        string.IsNullOrWhiteSpace(source.Template))
+                    {
+                        _logger?.LogWarning("配置文件缺少必填字段，跳过: {FileName}", fileName);
+                        continue;
+                    }
+
+                    // 添加到字典
+                    _sources[fileName] = source;
+
+                    // 如果启用，注册到工厂
+                    if (source.Enabled)
+                    {
+                        RegisterSourceToFactory(source);
+                    }
+
+                    _logger?.LogInformation("成功加载自定义源: {Name} ({Key}), 启用: {Enabled}", 
+                        source.Name, fileName, source.Enabled);
+                }
+                catch (JsonException ex)
+                {
+                    _logger?.LogError(ex, "JSON 解析失败，跳过文件: {FilePath}", filePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "加载配置文件失败，跳过: {FilePath}", filePath);
+                }
             }
 
-            _config = config;
-            _logger?.LogInformation("成功加载配置文件，共 {Count} 个自定义源", _config.Sources.Count);
-
-            // 注册所有启用的自定义源到工厂
-            foreach (var source in _config.Sources.Where(s => s.Enabled))
-            {
-                RegisterSourceToFactory(source);
-            }
-        }
-        catch (JsonException ex)
-        {
-            _logger?.LogError(ex, "配置文件 JSON 解析失败，重置为默认配置");
-            await CreateDefaultConfigurationAsync();
+            _logger?.LogInformation("自定义源加载完成，共 {Count} 个有效源", _sources.Count);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "加载配置文件时发生错误");
+            _logger?.LogError(ex, "扫描自定义源目录时发生错误");
             throw;
         }
     }
 
     /// <summary>
-    /// 保存配置文件
+    /// 保存单个源配置到文件
     /// </summary>
-    public async Task SaveConfigurationAsync()
+    private async Task SaveSourceAsync(string key, CustomSource source)
     {
         try
         {
-            // 确保目录存在
-            var directory = Path.GetDirectoryName(_configFilePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            var json = JsonConvert.SerializeObject(_config, Formatting.Indented);
-            await File.WriteAllTextAsync(_configFilePath, json);
-            _logger?.LogInformation("配置文件已保存: {ConfigPath}", _configFilePath);
+            var filePath = Path.Combine(_sourcesDirectory, $"{key}.json");
+            var json = JsonConvert.SerializeObject(source, Formatting.Indented);
+            await File.WriteAllTextAsync(filePath, json);
+            _logger?.LogInformation("配置文件已保存: {FilePath}", filePath);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "保存配置文件时发生错误");
+            _logger?.LogError(ex, "保存配置文件失败: {Key}", key);
             throw;
         }
     }
 
     /// <summary>
-    /// 创建默认配置文件（包含两个禁用的模板示例）
+    /// 删除源配置文件
     /// </summary>
-    private async Task CreateDefaultConfigurationAsync()
+    private void DeleteSourceFile(string key)
     {
-        _config = new CustomSourceConfig
+        try
         {
-            Version = "1.0",
-            Sources = new List<CustomSource>
+            var filePath = Path.Combine(_sourcesDirectory, $"{key}.json");
+            if (File.Exists(filePath))
             {
-                new CustomSource
-                {
-                    Key = "example-bmclapi",
-                    Name = "示例：BMCLAPI 镜像站",
-                    Enabled = false,
-                    BaseUrl = "https://bmclapi2.bangbang93.com",
-                    Template = "bmclapi",
-                    Priority = 100,
-                    Overrides = null
-                },
-                new CustomSource
-                {
-                    Key = "example-mcim",
-                    Name = "示例：MCIM 镜像站",
-                    Enabled = false,
-                    BaseUrl = "https://mod.mcimirror.top",
-                    Template = "mcim",
-                    Priority = 100,
-                    Overrides = null
-                }
+                File.Delete(filePath);
+                _logger?.LogInformation("配置文件已删除: {FilePath}", filePath);
             }
-        };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "删除配置文件失败: {Key}", key);
+            throw;
+        }
+    }
 
-        await SaveConfigurationAsync();
+    /// <summary>
+    /// 创建示例配置文件（禁用状态）
+    /// </summary>
+    private async Task CreateExampleConfigurationsAsync()
+    {
+        try
+        {
+            // 示例 1: 官方资源镜像
+            var officialExample = new CustomSource
+            {
+                Key = "example-official",
+                Name = "示例：官方资源镜像站",
+                Enabled = false,
+                BaseUrl = "https://bmclapi2.bangbang93.com",
+                Template = "official",
+                Priority = 100,
+                Overrides = null
+            };
+            await SaveSourceAsync("example-official", officialExample);
+
+            // 示例 2: 社区资源镜像
+            var communityExample = new CustomSource
+            {
+                Key = "example-community",
+                Name = "示例：社区资源镜像站",
+                Enabled = false,
+                BaseUrl = "https://mod.mcimirror.top",
+                Template = "community",
+                Priority = 100,
+                Overrides = null
+            };
+            await SaveSourceAsync("example-community", communityExample);
+
+            _logger?.LogInformation("已创建示例配置文件");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "创建示例配置文件失败");
+        }
     }
 
     /// <summary>
     /// 将自定义源注册到下载源工厂
     /// </summary>
-    /// <param name="source">自定义源配置</param>
     private void RegisterSourceToFactory(CustomSource source)
     {
         try
@@ -180,12 +239,6 @@ public class CustomSourceManager
     /// <summary>
     /// 验证自定义源配置
     /// </summary>
-    /// <param name="name">源名称</param>
-    /// <param name="baseUrl">基础 URL</param>
-    /// <param name="template">模板类型</param>
-    /// <param name="priority">优先级</param>
-    /// <param name="excludeKey">排除的 key（用于更新时跳过自身）</param>
-    /// <returns>验证结果</returns>
     private Result ValidateSource(
         string name, 
         string baseUrl, 
@@ -199,15 +252,8 @@ public class CustomSourceManager
             return Result.Fail("源名称不能为空");
         }
 
-        // 验证名称不包含非法字符
-        var invalidChars = Path.GetInvalidFileNameChars();
-        if (name.Any(c => invalidChars.Contains(c)))
-        {
-            return Result.Fail("源名称包含非法字符");
-        }
-
         // 验证名称不与现有源冲突（排除自身）
-        var existingSource = _config.Sources.FirstOrDefault(s => 
+        var existingSource = _sources.Values.FirstOrDefault(s => 
             s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && 
             s.Key != excludeKey);
         if (existingSource != null)
@@ -249,14 +295,36 @@ public class CustomSourceManager
     }
 
     /// <summary>
+    /// 生成唯一的文件名（key）
+    /// </summary>
+    private string GenerateUniqueKey(string baseName)
+    {
+        // 移除非法字符
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var safeName = string.Join("_", baseName.Split(invalidChars));
+        
+        // 转换为小写并替换空格
+        safeName = safeName.ToLowerInvariant().Replace(" ", "-");
+        
+        // 如果不存在冲突，直接返回
+        if (!_sources.ContainsKey(safeName))
+        {
+            return safeName;
+        }
+        
+        // 存在冲突，添加数字后缀
+        var counter = 1;
+        while (_sources.ContainsKey($"{safeName}-{counter}"))
+        {
+            counter++;
+        }
+        
+        return $"{safeName}-{counter}";
+    }
+
+    /// <summary>
     /// 添加自定义下载源
     /// </summary>
-    /// <param name="name">源名称</param>
-    /// <param name="baseUrl">基础 URL</param>
-    /// <param name="template">模板类型</param>
-    /// <param name="enabled">是否启用</param>
-    /// <param name="priority">优先级</param>
-    /// <returns>添加结果</returns>
     public async Task<Result<CustomSource>> AddSourceAsync(
         string name,
         string baseUrl,
@@ -273,8 +341,8 @@ public class CustomSourceManager
                 return Result<CustomSource>.Fail(validationResult.ErrorMessage!);
             }
 
-            // 生成唯一 key
-            var key = $"custom-{Guid.NewGuid():N}";
+            // 生成唯一 key（基于名称）
+            var key = GenerateUniqueKey(name);
 
             // 创建自定义源对象
             var source = new CustomSource
@@ -288,17 +356,17 @@ public class CustomSourceManager
                 Overrides = null
             };
 
-            // 添加到配置
-            _config.Sources.Add(source);
+            // 保存到文件
+            await SaveSourceAsync(key, source);
+
+            // 添加到内存字典
+            _sources[key] = source;
 
             // 如果启用，注册到工厂
             if (enabled)
             {
                 RegisterSourceToFactory(source);
             }
-
-            // 保存配置
-            await SaveConfigurationAsync();
 
             _logger?.LogInformation("成功添加自定义下载源: {Name} ({Key})", name, key);
             return Result<CustomSource>.Ok(source);
@@ -313,13 +381,6 @@ public class CustomSourceManager
     /// <summary>
     /// 更新自定义下载源
     /// </summary>
-    /// <param name="key">源标识</param>
-    /// <param name="name">新名称</param>
-    /// <param name="baseUrl">新基础 URL</param>
-    /// <param name="template">新模板类型</param>
-    /// <param name="enabled">是否启用</param>
-    /// <param name="priority">新优先级</param>
-    /// <returns>更新结果</returns>
     public async Task<Result> UpdateSourceAsync(
         string key,
         string name,
@@ -331,8 +392,7 @@ public class CustomSourceManager
         try
         {
             // 查找源
-            var source = _config.Sources.FirstOrDefault(s => s.Key == key);
-            if (source == null)
+            if (!_sources.TryGetValue(key, out var source))
             {
                 return Result.Fail($"未找到标识为 '{key}' 的自定义源");
             }
@@ -357,14 +417,14 @@ public class CustomSourceManager
             source.Enabled = enabled;
             source.Priority = priority;
 
+            // 保存到文件
+            await SaveSourceAsync(key, source);
+
             // 如果启用，重新注册
             if (enabled)
             {
                 RegisterSourceToFactory(source);
             }
-
-            // 保存配置
-            await SaveConfigurationAsync();
 
             _logger?.LogInformation("成功更新自定义下载源: {Name} ({Key})", name, key);
             return Result.Ok();
@@ -379,21 +439,12 @@ public class CustomSourceManager
     /// <summary>
     /// 删除自定义下载源
     /// </summary>
-    /// <param name="key">源标识</param>
-    /// <returns>删除结果</returns>
     public async Task<Result> DeleteSourceAsync(string key)
     {
         try
         {
-            // 验证不是内置源
-            if (key == "official" || key == "bmclapi" || key == "mcim")
-            {
-                return Result.Fail("不能删除内置下载源");
-            }
-
             // 查找源
-            var source = _config.Sources.FirstOrDefault(s => s.Key == key);
-            if (source == null)
+            if (!_sources.TryGetValue(key, out var source))
             {
                 return Result.Fail($"未找到标识为 '{key}' 的自定义源");
             }
@@ -401,11 +452,11 @@ public class CustomSourceManager
             // 从工厂注销
             _sourceFactory.UnregisterSource(key);
 
-            // 从配置移除
-            _config.Sources.Remove(source);
+            // 删除文件
+            DeleteSourceFile(key);
 
-            // 保存配置
-            await SaveConfigurationAsync();
+            // 从内存移除
+            _sources.Remove(key);
 
             _logger?.LogInformation("成功删除自定义下载源: {Name} ({Key})", source.Name, key);
             return Result.Ok();
@@ -420,16 +471,12 @@ public class CustomSourceManager
     /// <summary>
     /// 切换下载源启用状态
     /// </summary>
-    /// <param name="key">源标识</param>
-    /// <param name="enabled">是否启用</param>
-    /// <returns>切换结果</returns>
     public async Task<Result> ToggleSourceAsync(string key, bool enabled)
     {
         try
         {
             // 查找源
-            var source = _config.Sources.FirstOrDefault(s => s.Key == key);
-            if (source == null)
+            if (!_sources.TryGetValue(key, out var source))
             {
                 return Result.Fail($"未找到标识为 '{key}' 的自定义源");
             }
@@ -454,8 +501,8 @@ public class CustomSourceManager
                 _sourceFactory.UnregisterSource(key);
             }
 
-            // 保存配置
-            await SaveConfigurationAsync();
+            // 保存到文件
+            await SaveSourceAsync(key, source);
 
             _logger?.LogInformation("成功切换自定义下载源状态: {Name} ({Key}) -> {Enabled}", 
                 source.Name, key, enabled);
@@ -471,26 +518,94 @@ public class CustomSourceManager
     /// <summary>
     /// 获取所有自定义下载源
     /// </summary>
-    /// <returns>自定义源列表</returns>
     public IReadOnlyList<CustomSource> GetAllSources()
     {
-        _logger?.LogInformation("GetAllSources 被调用，当前配置中有 {Count} 个源", _config.Sources.Count);
-        foreach (var source in _config.Sources)
-        {
-            _logger?.LogInformation("  - {Name} (Key={Key}, Enabled={Enabled})", source.Name, source.Key, source.Enabled);
-        }
-        return _config.Sources.AsReadOnly();
+        return _sources.Values.ToList().AsReadOnly();
     }
 
     /// <summary>
-    /// 导出配置
+    /// 导入单个源配置文件
     /// </summary>
-    /// <param name="targetPath">目标文件路径</param>
-    /// <returns>导出结果</returns>
-    public async Task<Result<string>> ExportConfigurationAsync(string targetPath)
+    public async Task<Result<CustomSource>> ImportSourceAsync(string sourcePath)
     {
         try
         {
+            if (!File.Exists(sourcePath))
+            {
+                return Result<CustomSource>.Fail("配置文件不存在");
+            }
+
+            var json = await File.ReadAllTextAsync(sourcePath);
+            var source = JsonConvert.DeserializeObject<CustomSource>(json);
+
+            if (source == null)
+            {
+                return Result<CustomSource>.Fail("配置文件格式无效");
+            }
+
+            // 验证必填字段
+            if (string.IsNullOrWhiteSpace(source.Name) || 
+                string.IsNullOrWhiteSpace(source.BaseUrl) || 
+                string.IsNullOrWhiteSpace(source.Template))
+            {
+                return Result<CustomSource>.Fail("配置文件缺少必填字段");
+            }
+
+            // 解析模板类型
+            if (!Enum.TryParse<DownloadSourceTemplateType>(source.Template, true, out var templateType))
+            {
+                return Result<CustomSource>.Fail($"无效的模板类型: {source.Template}");
+            }
+
+            // 生成新的 key（避免冲突）
+            var key = GenerateUniqueKey(source.Name);
+            source.Key = key;
+
+            // 如果名称冲突，添加后缀
+            if (_sources.Values.Any(s => s.Name.Equals(source.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                source.Name = $"{source.Name} (导入)";
+            }
+
+            // 保存到文件
+            await SaveSourceAsync(key, source);
+
+            // 添加到内存
+            _sources[key] = source;
+
+            // 如果启用，注册到工厂
+            if (source.Enabled)
+            {
+                RegisterSourceToFactory(source);
+            }
+
+            _logger?.LogInformation("成功导入自定义源: {Name} ({Key})", source.Name, key);
+            return Result<CustomSource>.Ok(source);
+        }
+        catch (JsonException ex)
+        {
+            _logger?.LogError(ex, "导入配置失败: JSON 解析错误");
+            return Result<CustomSource>.Fail("配置文件格式无效");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "导入配置失败");
+            return Result<CustomSource>.Fail($"导入失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 导出单个源配置
+    /// </summary>
+    public async Task<Result<string>> ExportSourceAsync(string key, string targetPath)
+    {
+        try
+        {
+            if (!_sources.TryGetValue(key, out var source))
+            {
+                return Result<string>.Fail($"未找到标识为 '{key}' 的自定义源");
+            }
+
             // 确保目录存在
             var directory = Path.GetDirectoryName(targetPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -498,7 +613,7 @@ public class CustomSourceManager
                 Directory.CreateDirectory(directory);
             }
 
-            var json = JsonConvert.SerializeObject(_config, Formatting.Indented);
+            var json = JsonConvert.SerializeObject(source, Formatting.Indented);
             await File.WriteAllTextAsync(targetPath, json);
 
             _logger?.LogInformation("成功导出配置到: {TargetPath}", targetPath);
@@ -512,96 +627,15 @@ public class CustomSourceManager
     }
 
     /// <summary>
-    /// 导入配置
+    /// 刷新配置（重新扫描文件夹）
     /// </summary>
-    /// <param name="sourcePath">源文件路径</param>
-    /// <param name="strategy">冲突解决策略</param>
-    /// <returns>导入结果</returns>
-    public async Task<Result> ImportConfigurationAsync(
-        string sourcePath,
-        ConflictResolutionStrategy strategy)
+    public async Task RefreshAsync()
     {
-        try
-        {
-            if (!File.Exists(sourcePath))
-            {
-                return Result.Fail("配置文件不存在");
-            }
-
-            var json = await File.ReadAllTextAsync(sourcePath);
-            var importConfig = JsonConvert.DeserializeObject<CustomSourceConfig>(json);
-
-            if (importConfig == null)
-            {
-                return Result.Fail("配置文件格式无效");
-            }
-
-            // 检查版本兼容性
-            if (importConfig.Version != _config.Version)
-            {
-                _logger?.LogWarning("配置文件版本不匹配: {ImportVersion} vs {CurrentVersion}", 
-                    importConfig.Version, _config.Version);
-            }
-
-            var importedCount = 0;
-            var skippedCount = 0;
-
-            foreach (var importSource in importConfig.Sources)
-            {
-                var existingSource = _config.Sources.FirstOrDefault(s => s.Key == importSource.Key);
-
-                if (existingSource != null)
-                {
-                    // 处理冲突
-                    switch (strategy)
-                    {
-                        case ConflictResolutionStrategy.Skip:
-                            skippedCount++;
-                            continue;
-
-                        case ConflictResolutionStrategy.Overwrite:
-                            _config.Sources.Remove(existingSource);
-                            _config.Sources.Add(importSource);
-                            importedCount++;
-                            break;
-
-                        case ConflictResolutionStrategy.Rename:
-                            importSource.Key = $"custom-{Guid.NewGuid():N}";
-                            importSource.Name = $"{importSource.Name} (导入)";
-                            _config.Sources.Add(importSource);
-                            importedCount++;
-                            break;
-                    }
-                }
-                else
-                {
-                    _config.Sources.Add(importSource);
-                    importedCount++;
-                }
-
-                // 如果启用，注册到工厂
-                if (importSource.Enabled)
-                {
-                    RegisterSourceToFactory(importSource);
-                }
-            }
-
-            // 保存配置
-            await SaveConfigurationAsync();
-
-            _logger?.LogInformation("成功导入配置: 导入 {ImportedCount} 个，跳过 {SkippedCount} 个", 
-                importedCount, skippedCount);
-            return Result.Ok();
-        }
-        catch (JsonException ex)
-        {
-            _logger?.LogError(ex, "导入配置失败: JSON 解析错误");
-            return Result.Fail("配置文件格式无效");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "导入配置失败");
-            return Result.Fail($"导入失败: {ex.Message}");
-        }
+        await LoadConfigurationAsync();
     }
+
+    /// <summary>
+    /// 获取配置文件夹路径
+    /// </summary>
+    public string GetSourcesDirectory() => _sourcesDirectory;
 }

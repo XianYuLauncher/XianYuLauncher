@@ -1801,9 +1801,6 @@ Continue downloading?</value>
   <data name="Settings_ExportConfig.Content" xml:space="preserve">
     <value>Export</value>
   </data>
-  <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
-    <value>Open Folder</value>
-  </data>
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>Show popup on every launch</value>
   </data>
@@ -2909,5 +2906,26 @@ Continue downloading?</value>
   </data>
   <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
     <value>Top</value>
+  </data>
+  <data name="Settings_GameResourceSource.Header" xml:space="preserve">
+    <value>Game Resource Source</value>
+  </data>
+  <data name="Settings_GameResourceSource.Description" xml:space="preserve">
+    <value>Download source for MC, ModLoader, and version list</value>
+  </data>
+  <data name="Settings_CommunityResourceSource.Header" xml:space="preserve">
+    <value>Community Resource Source</value>
+  </data>
+  <data name="Settings_CommunityResourceSource.Description" xml:space="preserve">
+    <value>Download source for Modrinth and CurseForge resources</value>
+  </data>
+  <data name="Settings_OpenCustomSourceConfig.Header" xml:space="preserve">
+    <value>Custom Source Configuration</value>
+  </data>
+  <data name="Settings_OpenCustomSourceConfig.Description" xml:space="preserve">
+    <value>Open configuration folder to manually add or manage config files</value>
+  </data>
+  <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
+    <value>Open Config Folder</value>
   </data>
 </root>

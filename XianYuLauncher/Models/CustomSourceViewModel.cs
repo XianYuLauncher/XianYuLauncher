@@ -49,8 +49,8 @@ public partial class CustomSourceViewModel : ObservableObject
     /// </summary>
     public string TemplateDisplayName => Template switch
     {
-        DownloadSourceTemplateType.Bmclapi => "BMCLAPI (官方资源)",
-        DownloadSourceTemplateType.Mcim => "MCIM (社区资源)",
+        DownloadSourceTemplateType.Official => "官方资源",
+        DownloadSourceTemplateType.Community => "社区资源",
         _ => Template.ToString()
     };
 

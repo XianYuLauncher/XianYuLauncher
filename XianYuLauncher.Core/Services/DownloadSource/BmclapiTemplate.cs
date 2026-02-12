@@ -7,8 +7,8 @@ namespace XianYuLauncher.Core.Services.DownloadSource;
 /// </summary>
 public class BmclapiTemplate : DownloadSourceTemplate
 {
-    public override string TemplateName => "BMCLAPI";
-    public override DownloadSourceTemplateType TemplateType => DownloadSourceTemplateType.Bmclapi;
+    public override string TemplateName => "Official";
+    public override DownloadSourceTemplateType TemplateType => DownloadSourceTemplateType.Official;
 
     // Minecraft 官方资源
     public override string GetVersionManifestUrl()

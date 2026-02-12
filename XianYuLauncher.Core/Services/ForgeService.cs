@@ -66,8 +66,8 @@ public class ForgeService
                     source => source.GetForgeVersionsUrl(minecraftVersion),
                     (request, source) =>
                     {
-                        // 为 BMCLAPI 添加 User-Agent
-                        if (source.Name == "BMCLAPI")
+                        // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
+                        if (source.RequiresBmclapiUserAgent())
                         {
                             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                         }
@@ -78,16 +78,27 @@ public class ForgeService
                     result.Response.EnsureSuccessStatusCode();
                     string content = await result.Response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"[ForgeService] 成功获取 Forge 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
+                    System.Diagnostics.Debug.WriteLine($"[ForgeService] 响应内容前100字符: {(content.Length > 100 ? content.Substring(0, 100) : content)}");
                     
-                    // 根据源类型解析响应
-                    if (result.UsedSourceKey == "bmclapi")
+                    // 根据响应内容格式判断如何解析（而不是根据源类型）
+                    // JSON 格式以 [ 或 { 开头，XML 格式以 < 开头
+                    var trimmedContent = content.TrimStart();
+                    if (trimmedContent.StartsWith("[") || trimmedContent.StartsWith("{"))
                     {
+                        // JSON 格式（BMCLAPI 或其镜像）
+                        System.Diagnostics.Debug.WriteLine($"[ForgeService] 检测到 JSON 格式响应，使用 BMCLAPI 解析器");
                         return ParseBmclapiForgeResponse(content);
+                    }
+                    else if (trimmedContent.StartsWith("<"))
+                    {
+                        // XML 格式（官方源）
+                        System.Diagnostics.Debug.WriteLine($"[ForgeService] 检测到 XML 格式响应，使用官方源解析器");
+                        return ParseOfficialForgeResponse(content, minecraftVersion);
                     }
                     else
                     {
-                        // 官方源返回 XML
-                        return ParseOfficialForgeResponse(content, minecraftVersion);
+                        System.Diagnostics.Debug.WriteLine($"[ForgeService] 无法识别的响应格式");
+                        throw new Exception($"无法识别的响应格式，内容开头: {(trimmedContent.Length > 50 ? trimmedContent.Substring(0, 50) : trimmedContent)}");
                     }
                 }
                 else
@@ -163,9 +174,9 @@ public class ForgeService
         
         System.Diagnostics.Debug.WriteLine($"[ForgeService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
         
-        // 创建请求消息，为BMCLAPI请求添加User-Agent
+        // 创建请求消息，为 BMCLAPI 类型的源添加 User-Agent
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        if (downloadSource.Name == "BMCLAPI")
+        if (downloadSource.RequiresBmclapiUserAgent(url))
         {
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
@@ -176,14 +187,19 @@ public class ForgeService
         // 确保响应成功
         response.EnsureSuccessStatusCode();
         
-        // 根据下载源类型处理响应
-        if (downloadSource.Name == "BMCLAPI")
+        // 读取响应内容并根据格式判断如何解析
+        string content = await response.Content.ReadAsStringAsync();
+        var trimmedContent = content.TrimStart();
+        
+        if (trimmedContent.StartsWith("[") || trimmedContent.StartsWith("{"))
         {
-            return await HandleBmclapiResponseAsync(response);
+            // JSON 格式（BMCLAPI 或其镜像）
+            return ParseBmclapiForgeResponse(content);
         }
         else
         {
-            return await HandleOfficialResponseAsync(response, minecraftVersion);
+            // XML 格式（官方源）
+            return ParseOfficialForgeResponse(content, minecraftVersion);
         }
     }
     

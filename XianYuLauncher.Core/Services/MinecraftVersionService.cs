@@ -134,8 +134,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     source => source.GetVersionManifestUrl(),
                     (request, source) =>
                     {
-                        // 为 BMCLAPI 添加 User-Agent
-                        if (source.Name == "BMCLAPI")
+                        // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
+                        if (source.RequiresBmclapiUserAgent())
                         {
                             request.Headers.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                         }

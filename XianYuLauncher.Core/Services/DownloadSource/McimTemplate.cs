@@ -8,8 +8,8 @@ namespace XianYuLauncher.Core.Services.DownloadSource;
 /// </summary>
 public class McimTemplate : DownloadSourceTemplate
 {
-    public override string TemplateName => "MCIM";
-    public override DownloadSourceTemplateType TemplateType => DownloadSourceTemplateType.Mcim;
+    public override string TemplateName => "Community";
+    public override DownloadSourceTemplateType TemplateType => DownloadSourceTemplateType.Community;
 
     // Minecraft 官方资源（MCIM 不支持，返回官方源）
     public override string GetVersionManifestUrl()

@@ -9,8 +9,8 @@ public static class TemplateFactory
 {
     private static readonly Dictionary<DownloadSourceTemplateType, DownloadSourceTemplate> _templates = new()
     {
-        { DownloadSourceTemplateType.Bmclapi, new BmclapiTemplate() },
-        { DownloadSourceTemplateType.Mcim, new McimTemplate() }
+        { DownloadSourceTemplateType.Official, new BmclapiTemplate() },
+        { DownloadSourceTemplateType.Community, new McimTemplate() }
     };
 
     /// <summary>
