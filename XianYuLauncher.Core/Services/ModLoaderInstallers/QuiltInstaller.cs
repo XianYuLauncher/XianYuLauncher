@@ -36,8 +36,9 @@ public class QuiltInstaller : ModLoaderInstallerBase
         IVersionInfoManager versionInfoManager,
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<QuiltInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;

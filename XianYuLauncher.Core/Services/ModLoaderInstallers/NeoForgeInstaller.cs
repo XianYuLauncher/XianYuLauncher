@@ -39,8 +39,9 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         IProcessorExecutor processorExecutor,
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<NeoForgeInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;

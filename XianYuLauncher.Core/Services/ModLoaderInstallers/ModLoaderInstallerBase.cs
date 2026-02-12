@@ -19,6 +19,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     protected readonly IDownloadManager DownloadManager;
     protected readonly ILibraryManager LibraryManager;
     protected readonly IVersionInfoManager VersionInfoManager;
+    protected readonly IJavaRuntimeService JavaRuntimeService;
     protected readonly ILogger Logger;
 
     /// <inheritdoc/>
@@ -28,11 +29,13 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
+        IJavaRuntimeService javaRuntimeService,
         ILogger logger)
     {
         DownloadManager = downloadManager;
         LibraryManager = libraryManager;
         VersionInfoManager = versionInfoManager;
+        JavaRuntimeService = javaRuntimeService;
         Logger = logger;
     }
 

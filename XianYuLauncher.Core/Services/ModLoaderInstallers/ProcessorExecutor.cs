@@ -47,6 +47,7 @@ public class ProcessorExecutor : IProcessorExecutor
     private readonly ILibraryManager _libraryManager;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IJavaRuntimeService _javaRuntimeService;
     private readonly ILogger<ProcessorExecutor> _logger;
 
     public ProcessorExecutor(
@@ -54,12 +55,14 @@ public class ProcessorExecutor : IProcessorExecutor
         ILibraryManager libraryManager,
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<ProcessorExecutor> logger)
     {
         _downloadManager = downloadManager;
         _libraryManager = libraryManager;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _javaRuntimeService = javaRuntimeService;
         _logger = logger;
     }
 
@@ -199,7 +202,7 @@ public class ProcessorExecutor : IProcessorExecutor
 
             // 执行Java命令
             await ExecuteJavaCommandAsync(
-                mainClass, fullClassPath, processedArgs, librariesDirectory, modLoaderType, jar, cancellationToken);
+                mainClass, fullClassPath, processedArgs, librariesDirectory, modLoaderType, jar, versionConfig, cancellationToken);
         }
         catch (ProcessorExecutionException)
         {
@@ -560,6 +563,7 @@ public class ProcessorExecutor : IProcessorExecutor
         string librariesDirectory,
         string modLoaderType,
         string processorJar,
+        VersionConfig versionConfig,
         CancellationToken cancellationToken)
     {
         string classPathSeparator = Path.PathSeparator.ToString();
@@ -569,7 +573,7 @@ public class ProcessorExecutor : IProcessorExecutor
         javaArgs.AddRange(args);
 
         // 查找Java可执行文件
-        string javaPath = FindJavaPath();
+        string javaPath = await FindJavaPathAsync(versionConfig);
 
         var processStartInfo = new ProcessStartInfo
         {
@@ -622,17 +626,78 @@ public class ProcessorExecutor : IProcessorExecutor
         _logger.LogInformation("处理器执行完成");
     }
 
-    private string FindJavaPath()
+    private async Task<string> FindJavaPathAsync(VersionConfig versionConfig)
     {
+        // 从 MinecraftVersion 推断所需的 Java 版本
+        // 这是一个简化的逻辑，实际应该从 VersionInfo 中获取
+        int requiredJavaVersion = InferJavaVersionFromMinecraft(versionConfig.MinecraftVersion);
+        
+        // 使用 Java 运行时服务选择最佳 Java
+        string? javaPath = await _javaRuntimeService.SelectBestJavaAsync(requiredJavaVersion);
+        
+        if (!string.IsNullOrEmpty(javaPath))
+        {
+            _logger.LogInformation("使用 Java 路径: {JavaPath} (版本要求: {RequiredVersion})", javaPath, requiredJavaVersion);
+            return javaPath;
+        }
+        
+        // 回退：尝试从 JAVA_HOME 获取
         string? javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (!string.IsNullOrEmpty(javaHome))
         {
             string javaExe = Path.Combine(javaHome, "bin", "java.exe");
             if (File.Exists(javaExe))
             {
+                _logger.LogWarning("未找到匹配的 Java 版本，使用 JAVA_HOME: {JavaPath}", javaExe);
                 return javaExe;
             }
         }
+        
+        // 最后回退：使用系统 PATH 中的 java
+        _logger.LogWarning("未找到匹配的 Java 版本，使用系统默认 java 命令");
         return "java";
+    }
+    
+    /// <summary>
+    /// 根据 Minecraft 版本推断所需的 Java 版本
+    /// </summary>
+    private int InferJavaVersionFromMinecraft(string? minecraftVersion)
+    {
+        if (string.IsNullOrEmpty(minecraftVersion))
+        {
+            return 8; // 默认 Java 8
+        }
+        
+        // 解析版本号
+        var parts = minecraftVersion.Split('.');
+        if (parts.Length < 2 || !int.TryParse(parts[1], out int minor))
+        {
+            return 8;
+        }
+        
+        // 1.17+ 需要 Java 16
+        if (minor >= 17)
+        {
+            return 17;
+        }
+        
+        // 1.18+ 需要 Java 17
+        if (minor >= 18)
+        {
+            return 17;
+        }
+        
+        // 1.20.5+ 需要 Java 21
+        if (minor >= 20)
+        {
+            if (parts.Length >= 3 && int.TryParse(parts[2], out int patch) && patch >= 5)
+            {
+                return 21;
+            }
+            return 17;
+        }
+        
+        // 其他版本使用 Java 8
+        return 8;
     }
 }

@@ -34,8 +34,9 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
         IProcessorExecutor processorExecutor,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<CleanroomInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
     }

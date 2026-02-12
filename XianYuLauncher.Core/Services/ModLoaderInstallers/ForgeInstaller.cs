@@ -40,8 +40,9 @@ public class ForgeInstaller : ModLoaderInstallerBase
         IProcessorExecutor processorExecutor,
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<ForgeInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;

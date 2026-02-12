@@ -30,8 +30,9 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         LiteLoaderService liteLoaderService,
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<LiteLoaderInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _liteLoaderService = liteLoaderService;
         _downloadSourceFactory = downloadSourceFactory;

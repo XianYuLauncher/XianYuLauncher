@@ -27,8 +27,9 @@ public class OptifineInstaller : ModLoaderInstallerBase
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
+        IJavaRuntimeService javaRuntimeService,
         ILogger<OptifineInstaller> logger)
-        : base(downloadManager, libraryManager, versionInfoManager, logger)
+        : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
     }
 
@@ -185,6 +186,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 optifineJarPath,
                 tempDirectoryParent,
                 tempMinecraftDirectory,
+                originalVersionInfo,
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
@@ -356,10 +358,11 @@ public class OptifineInstaller : ModLoaderInstallerBase
         string optifineJarPath,
         string workingDirectory,
         string tempMinecraftDirectory,
+        VersionInfo originalVersionInfo,
         CancellationToken cancellationToken)
     {
         // 查找Java
-        var javaPath = FindJavaPath();
+        var javaPath = await FindJavaPathAsync(originalVersionInfo);
         
         var processStartInfo = new ProcessStartInfo
         {
@@ -416,20 +419,34 @@ public class OptifineInstaller : ModLoaderInstallerBase
         Logger.LogInformation("Optifine安装器执行成功");
     }
 
-    private string FindJavaPath()
+    private async Task<string> FindJavaPathAsync(VersionInfo versionInfo)
     {
-        // 尝试从JAVA_HOME获取
+        // 获取所需的 Java 版本
+        int requiredJavaVersion = versionInfo.JavaVersion?.MajorVersion ?? 8;
+        
+        // 使用 Java 运行时服务选择最佳 Java
+        string? javaPath = await JavaRuntimeService.SelectBestJavaAsync(requiredJavaVersion);
+        
+        if (!string.IsNullOrEmpty(javaPath))
+        {
+            Logger.LogInformation("使用 Java 路径: {JavaPath} (版本要求: {RequiredVersion})", javaPath, requiredJavaVersion);
+            return javaPath;
+        }
+        
+        // 回退：尝试从 JAVA_HOME 获取
         var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (!string.IsNullOrEmpty(javaHome))
         {
             var javaExe = Path.Combine(javaHome, "bin", "java.exe");
             if (File.Exists(javaExe))
             {
+                Logger.LogWarning("未找到匹配的 Java 版本，使用 JAVA_HOME: {JavaPath}", javaExe);
                 return javaExe;
             }
         }
         
-        // 使用系统默认java
+        // 最后回退：使用系统 PATH 中的 java
+        Logger.LogWarning("未找到匹配的 Java 版本，使用系统默认 java 命令");
         return "java";
     }
 
