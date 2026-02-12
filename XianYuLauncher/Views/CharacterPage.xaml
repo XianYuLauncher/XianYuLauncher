@@ -57,14 +57,12 @@
                 <TextBlock 
                     x:Uid="ProfilePage_Title" 
                     Text="角色管理" 
-                    Style="{StaticResource TitleTextBlockStyle}" 
-                    FontSize="40" 
-                    FontWeight="Bold" 
-                    Margin="0,0,0,8" />
+                    Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock 
                     x:Uid="ProfilePage_Subtitle" 
                     Text="管理您的Minecraft角色" 
                     Style="{StaticResource SubtitleTextBlockStyle}" 
+                    Margin="0,8,0,0"
                     Opacity="0.7" />
             </StackPanel>
 

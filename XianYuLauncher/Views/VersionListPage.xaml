@@ -104,7 +104,7 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="40,60,40,20">
+    <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -112,8 +112,8 @@
         </Grid.RowDefinitions>
 
         <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,32">
-            <TextBlock x:Uid="VersionListPage_Title" Style="{StaticResource PageTitleStyle}" FontSize="36" FontWeight="Bold" />
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock x:Uid="VersionListPage_Title" Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Uid="VersionListPage_Subtitle" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
         </StackPanel>
 

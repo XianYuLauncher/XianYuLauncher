@@ -28,7 +28,7 @@
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock x:Name="PageTitle" x:Uid="SettingsPage_Title" Text="设置" Style="{ThemeResource TitleTextBlockStyle}" FontSize="36" FontWeight="Bold" />
+            <TextBlock x:Name="PageTitle" x:Uid="SettingsPage_Title" Text="设置" Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Name="PageSubtitle" x:Uid="SettingsPage_Subtitle" Text="配置启动器设置" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,8,0,0" Opacity="0.7" />
         </StackPanel>
 

@@ -165,7 +165,7 @@
 
             <!-- 标题区域 -->
             <StackPanel Grid.Column="0">
-                <TextBlock x:Name="PageTitle" x:Uid="ResourceDownloadPage_PageTitle" Text="资源下载" Style="{StaticResource PageTitleStyle}" FontSize="36" FontWeight="Bold" />
+                <TextBlock x:Name="PageTitle" x:Uid="ResourceDownloadPage_PageTitle" Text="资源下载" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock x:Name="PageSubtitle" x:Uid="ResourceDownloadPage_PageSubtitle" Text="下载和管理Minecraft资源" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
             </StackPanel>
 
