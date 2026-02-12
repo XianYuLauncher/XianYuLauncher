@@ -41,6 +41,27 @@ public class DownloadSourceFactory
     }
     
     /// <summary>
+    /// 注销下载源
+    /// </summary>
+    /// <param name="key">下载源标识</param>
+    /// <returns>是否成功注销</returns>
+    public bool UnregisterSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+        
+        // 不允许注销内置源
+        if (key == "official" || key == "bmclapi" || key == "mcim")
+        {
+            return false;
+        }
+        
+        return _sources.Remove(key);
+    }
+    
+    /// <summary>
     /// 获取指定标识的下载源
     /// </summary>
     /// <param name="key">下载源标识</param>

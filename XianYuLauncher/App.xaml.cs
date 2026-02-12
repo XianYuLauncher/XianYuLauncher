@@ -112,6 +112,7 @@ public partial class App : Application
             services.AddSingleton<ILogSanitizerService, LogSanitizerService>();
             services.AddSingleton<IGameHistoryService, GameHistoryService>();
             services.AddSingleton<DownloadSourceFactory>();
+            services.AddSingleton<CustomSourceManager>(); // 自定义下载源管理器
             services.AddSingleton<IDownloadManager, DownloadManager>();
             
             // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）
@@ -392,6 +393,21 @@ public partial class App : Application
     {
         base.OnLaunched(args);
         Log.Information("应用程序启动");
+        
+        // 加载自定义下载源配置（异步，不阻塞启动）
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var customSourceManager = App.GetService<CustomSourceManager>();
+                await customSourceManager.LoadConfigurationAsync();
+                Log.Information("自定义下载源配置加载完成");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "加载自定义下载源配置失败");
+            }
+        });
         
         // 🔒 启动时自动检测并迁移明文token（异步，不阻塞启动）
         _ = Task.Run(async () =>

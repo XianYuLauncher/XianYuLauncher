@@ -1804,6 +1804,24 @@
   <data name="Settings_CommunityDownloadSourceDescription.Text" xml:space="preserve">
     <value>选择Modrinth和CurseForge资源（Mod、资源包、整合包等）的下载源，MCIM镜像可加速国内下载</value>
   </data>
+  <data name="Settings_CustomDownloadSources.Header" xml:space="preserve">
+    <value>自定义下载源</value>
+  </data>
+  <data name="Settings_CustomDownloadSources.Description" xml:space="preserve">
+    <value>添加和管理自定义镜像站</value>
+  </data>
+  <data name="Settings_AddCustomSource.Content" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Settings_ImportConfig.Content" xml:space="preserve">
+    <value>导入</value>
+  </data>
+  <data name="Settings_ExportConfig.Content" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
   <data name="Settings_AutoUpdateCheck_Always.Content" xml:space="preserve">
     <value>每次启动弹窗</value>
   </data>

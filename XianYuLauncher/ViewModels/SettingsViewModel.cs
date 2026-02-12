@@ -24,6 +24,8 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
 using XianYuLauncher.Views;
+using XianYuLauncher.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -784,6 +786,14 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _isLoadingSponsors = false;
 
+    private readonly CustomSourceManager _customSourceManager;
+    
+    /// <summary>
+    /// 自定义下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<CustomSourceViewModel> _customSources = new ObservableCollection<CustomSourceViewModel>();
+
     public SettingsViewModel(
         IThemeSelectorService themeSelectorService, 
         ILocalSettingsService localSettingsService, 
@@ -798,6 +808,7 @@ public partial class SettingsViewModel : ObservableRecipient
         IJavaDownloadService javaDownloadService,
         IDialogService dialogService,
         DownloadSourceFactory downloadSourceFactory,
+        CustomSourceManager customSourceManager,
         IAfdianService? afdianService = null)
     {
         _themeSelectorService = themeSelectorService;
@@ -813,6 +824,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
         _downloadSourceFactory = downloadSourceFactory;
+        _customSourceManager = customSourceManager;
         _afdianService = afdianService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
@@ -975,6 +987,20 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadAutoUpdateCheckModeAsync().ConfigureAwait(false);
         // 加载全局启动设置
         LoadGlobalLaunchSettingsAsync().ConfigureAwait(false);
+        // 加载自定义下载源列表
+        Task.Run(async () =>
+        {
+            try
+            {
+                Log.Information("[Settings] 构造函数中开始加载自定义下载源列表");
+                await LoadCustomSourcesAsync();
+                Log.Information("[Settings] 构造函数中加载自定义下载源列表完成");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[Settings] 构造函数中加载自定义下载源列表失败");
+            }
+        });
     }
     
     /// <summary>
@@ -3034,4 +3060,488 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     #endregion
+    
+    #region 自定义下载源管理
+    
+    /// <summary>
+    /// 加载自定义下载源列表
+    /// </summary>
+    private async Task LoadCustomSourcesAsync()
+    {
+        try
+        {
+            Log.Information("[Settings] 开始加载自定义下载源列表...");
+            Log.Information($"[Settings] _customSourceManager 是否为 null: {_customSourceManager == null}");
+            
+            if (_customSourceManager == null)
+            {
+                Log.Error("[Settings] _customSourceManager 为 null，无法加载自定义源列表");
+                return;
+            }
+            
+            await Task.Run(() =>
+            {
+                Log.Information("[Settings] 开始调用 GetAllSources()");
+                var sources = _customSourceManager.GetAllSources();
+                Log.Information($"[Settings] 从 CustomSourceManager 获取到 {sources.Count} 个源");
+                
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    Log.Information("[Settings] 开始清空并填充 CustomSources 集合");
+                    CustomSources.Clear();
+                    foreach (var source in sources)
+                    {
+                        var vm = CustomSourceViewModel.FromCoreModel(source);
+                        Log.Information($"[Settings] 添加源到列表: {vm.Name}, Enabled={vm.Enabled}, Key={vm.Key}");
+                        CustomSources.Add(vm);
+                    }
+                    Log.Information($"[Settings] 已加载 {CustomSources.Count} 个自定义下载源到 UI");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 加载自定义下载源列表失败");
+        }
+    }
+    
+    /// <summary>
+    /// 添加自定义下载源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task AddCustomSourceAsync()
+    {
+        try
+        {
+            // 创建添加对话框
+            var dialog = new ContentDialog
+            {
+                Title = "添加自定义下载源",
+                PrimaryButtonText = "保存",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            // 创建输入表单
+            var stackPanel = new StackPanel { Spacing = 12 };
+            
+            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
+            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
+            var templateCombo = new ComboBox 
+            { 
+                Header = "模板类型",
+                ItemsSource = new[] { "BMCLAPI (官方资源)", "MCIM (社区资源)" },
+                SelectedIndex = 0
+            };
+            var priorityBox = new NumberBox 
+            { 
+                Header = "优先级",
+                Value = 100,
+                Minimum = 1,
+                Maximum = 1000,
+                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
+            };
+            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = true };
+            
+            stackPanel.Children.Add(nameBox);
+            stackPanel.Children.Add(urlBox);
+            stackPanel.Children.Add(templateCombo);
+            stackPanel.Children.Add(priorityBox);
+            stackPanel.Children.Add(enabledSwitch);
+            
+            dialog.Content = stackPanel;
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                var name = nameBox.Text?.Trim();
+                var baseUrl = urlBox.Text?.Trim();
+                var template = templateCombo.SelectedIndex == 0 
+                    ? DownloadSourceTemplateType.Bmclapi 
+                    : DownloadSourceTemplateType.Mcim;
+                var priority = (int)priorityBox.Value;
+                var enabled = enabledSwitch.IsOn;
+                
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
+                {
+                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    return;
+                }
+                
+                var addResult = await _customSourceManager.AddSourceAsync(name, baseUrl, template, enabled, priority);
+                
+                if (addResult.Success)
+                {
+                    // 刷新列表
+                    await LoadCustomSourcesAsync();
+                    Log.Information($"[Settings] 成功添加自定义下载源: {name}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("添加失败", addResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 添加自定义下载源失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"添加失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 编辑自定义下载源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task EditCustomSourceAsync(CustomSourceViewModel? source)
+    {
+        if (source == null) return;
+        
+        try
+        {
+            // 创建编辑对话框
+            var dialog = new ContentDialog
+            {
+                Title = "编辑自定义下载源",
+                PrimaryButtonText = "保存",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            // 创建输入表单（预填充当前值）
+            var stackPanel = new StackPanel { Spacing = 12 };
+            
+            var nameBox = new TextBox { Text = source.Name, Header = "源名称" };
+            var urlBox = new TextBox { Text = source.BaseUrl, Header = "Base URL" };
+            var templateCombo = new ComboBox 
+            { 
+                Header = "模板类型",
+                ItemsSource = new[] { "BMCLAPI (官方资源)", "MCIM (社区资源)" },
+                SelectedIndex = source.Template == DownloadSourceTemplateType.Bmclapi ? 0 : 1
+            };
+            var priorityBox = new NumberBox 
+            { 
+                Header = "优先级",
+                Value = source.Priority,
+                Minimum = 1,
+                Maximum = 1000,
+                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
+            };
+            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = source.Enabled };
+            
+            stackPanel.Children.Add(nameBox);
+            stackPanel.Children.Add(urlBox);
+            stackPanel.Children.Add(templateCombo);
+            stackPanel.Children.Add(priorityBox);
+            stackPanel.Children.Add(enabledSwitch);
+            
+            dialog.Content = stackPanel;
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                var name = nameBox.Text?.Trim();
+                var baseUrl = urlBox.Text?.Trim();
+                var template = templateCombo.SelectedIndex == 0 
+                    ? DownloadSourceTemplateType.Bmclapi 
+                    : DownloadSourceTemplateType.Mcim;
+                var priority = (int)priorityBox.Value;
+                var enabled = enabledSwitch.IsOn;
+                
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
+                {
+                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    return;
+                }
+                
+                var updateResult = await _customSourceManager.UpdateSourceAsync(
+                    source.Key, name, baseUrl, template, enabled, priority);
+                
+                if (updateResult.Success)
+                {
+                    // 刷新列表
+                    await LoadCustomSourcesAsync();
+                    Log.Information($"[Settings] 成功更新自定义下载源: {name}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("更新失败", updateResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 编辑自定义下载源失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"编辑失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 删除自定义下载源命令
+    /// </summary>
+    [RelayCommand]
+    private async Task DeleteCustomSourceAsync(CustomSourceViewModel? source)
+    {
+        if (source == null) return;
+        
+        try
+        {
+            // 显示确认对话框
+            var confirmDialog = new ContentDialog
+            {
+                Title = "确认删除",
+                Content = $"确定要删除下载源 \"{source.Name}\" 吗？",
+                PrimaryButtonText = "删除",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            var result = await confirmDialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                var deleteResult = await _customSourceManager.DeleteSourceAsync(source.Key);
+                
+                if (deleteResult.Success)
+                {
+                    // 刷新列表
+                    await LoadCustomSourcesAsync();
+                    Log.Information($"[Settings] 成功删除自定义下载源: {source.Name}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("删除失败", deleteResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 删除自定义下载源失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"删除失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 刷新自定义下载源列表命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshCustomSourcesAsync()
+    {
+        Log.Information("[Settings] RefreshCustomSourcesAsync 命令被调用");
+        System.Diagnostics.Debug.WriteLine("[Settings] RefreshCustomSourcesAsync 命令被调用");
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("[Settings] 准备调用 LoadCustomSourcesAsync");
+            await LoadCustomSourcesAsync();
+            System.Diagnostics.Debug.WriteLine("[Settings] LoadCustomSourcesAsync 调用完成");
+            Log.Information("[Settings] RefreshCustomSourcesAsync 完成");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Settings] RefreshCustomSourcesAsync 失败: {ex.Message}");
+            Log.Error(ex, "[Settings] RefreshCustomSourcesAsync 失败");
+        }
+    }
+    
+    /// <summary>
+    /// 切换自定义下载源启用状态命令（带返回值，供 UI 事件使用）
+    /// </summary>
+    public async Task<bool> ToggleCustomSourceWithResultAsync(string key, bool enabled)
+    {
+        try
+        {
+            Log.Information($"[Settings] 开始切换自定义下载源状态: Key={key}, Enabled={enabled}");
+            
+            var toggleResult = await _customSourceManager.ToggleSourceAsync(key, enabled);
+            
+            if (!toggleResult.Success)
+            {
+                Log.Error($"[Settings] 切换失败: {toggleResult.ErrorMessage}");
+                await _dialogService.ShowMessageDialogAsync("操作失败", toggleResult.ErrorMessage ?? "未知错误");
+                return false;
+            }
+            
+            Log.Information($"[Settings] 已{(enabled ? "启用" : "禁用")}自定义下载源: {key}");
+            
+            // 不要刷新整个列表！只更新当前项的 Enabled 状态
+            // UI 已经通过 TwoWay 绑定自动更新了
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 切换自定义下载源状态失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 切换自定义下载源启用状态命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleCustomSourceAsync(CustomSourceViewModel? source)
+    {
+        if (source == null) return;
+        
+        try
+        {
+            var toggleResult = await _customSourceManager.ToggleSourceAsync(source.Key, source.Enabled);
+            
+            if (!toggleResult.Success)
+            {
+                // 如果失败，恢复原状态
+                source.Enabled = !source.Enabled;
+                await _dialogService.ShowMessageDialogAsync("操作失败", toggleResult.ErrorMessage ?? "未知错误");
+            }
+            else
+            {
+                Log.Information($"[Settings] 已{(source.Enabled ? "启用" : "禁用")}自定义下载源: {source.Name}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // 如果失败，恢复原状态
+            source.Enabled = !source.Enabled;
+            Log.Error(ex, "[Settings] 切换自定义下载源状态失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 打开配置文件夹命令
+    /// </summary>
+    [RelayCommand]
+    private void OpenConfigFolder()
+    {
+        try
+        {
+            var configPath = Path.Combine(AppEnvironment.SafeAppDataPath, "custom_sources.json");
+            var folderPath = Path.GetDirectoryName(configPath);
+            
+            if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
+            {
+                Process.Start("explorer.exe", folderPath);
+                Log.Information($"[Settings] 打开配置文件夹: {folderPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 打开配置文件夹失败");
+        }
+    }
+    
+    /// <summary>
+    /// 导入配置命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportConfigAsync()
+    {
+        try
+        {
+            var openPicker = new FileOpenPicker();
+            openPicker.FileTypeFilter.Add(".json");
+            openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
+            
+            var file = await openPicker.PickSingleFileAsync();
+            if (file != null)
+            {
+                // 显示冲突解决策略选择对话框
+                var strategyDialog = new ContentDialog
+                {
+                    Title = "导入配置",
+                    Content = "如果导入的配置与现有配置冲突，应该如何处理？",
+                    PrimaryButtonText = "覆盖",
+                    SecondaryButtonText = "跳过",
+                    CloseButtonText = "重命名",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                };
+                
+                var strategyResult = await strategyDialog.ShowAsync();
+                
+                ConflictResolutionStrategy strategy = strategyResult switch
+                {
+                    ContentDialogResult.Primary => ConflictResolutionStrategy.Overwrite,
+                    ContentDialogResult.Secondary => ConflictResolutionStrategy.Skip,
+                    _ => ConflictResolutionStrategy.Rename
+                };
+                
+                var importResult = await _customSourceManager.ImportConfigurationAsync(file.Path, strategy);
+                
+                if (importResult.Success)
+                {
+                    // 刷新列表
+                    await LoadCustomSourcesAsync();
+                    await _dialogService.ShowMessageDialogAsync("导入成功", "配置已成功导入");
+                    Log.Information($"[Settings] 成功导入配置: {file.Path}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("导入失败", importResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 导入配置失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"导入失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 导出配置命令
+    /// </summary>
+    [RelayCommand]
+    private async Task ExportConfigAsync()
+    {
+        try
+        {
+            var savePicker = new FileSavePicker();
+            savePicker.FileTypeChoices.Add("JSON 文件", new List<string> { ".json" });
+            savePicker.SuggestedFileName = "custom_sources";
+            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+            
+            var file = await savePicker.PickSaveFileAsync();
+            if (file != null)
+            {
+                var exportResult = await _customSourceManager.ExportConfigurationAsync(file.Path);
+                
+                if (exportResult.Success)
+                {
+                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {file.Path}");
+                    Log.Information($"[Settings] 成功导出配置: {file.Path}");
+                }
+                else
+                {
+                    await _dialogService.ShowMessageDialogAsync("导出失败", exportResult.ErrorMessage ?? "未知错误");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 导出配置失败");
+            await _dialogService.ShowMessageDialogAsync("错误", $"导出失败: {ex.Message}");
+        }
+    }
+    
+    #endregion
 }
+

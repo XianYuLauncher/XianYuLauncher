@@ -533,25 +533,63 @@ public class FallbackDownloadManager
     #region 辅助方法
 
     /// <summary>
-    /// 获取源的尝试顺序（主源在前，其他源按固定顺序）
-    /// </summary>
-    /// <summary>
-    /// 获取回退源顺序：主源优先，其余按 FallbackOrder 追加
+    /// 获取回退源顺序：主源优先，其余按优先级降序排列
+    /// 自定义源按 Priority 排序，内置源按固定顺序
     /// </summary>
     /// <param name="primarySourceKey">主源标识（用户选择的下载源）</param>
     private List<string> GetSourceOrder(string primarySourceKey)
     {
         var order = new List<string> { primarySourceKey };
+        var allSources = _sourceFactory.GetAllSources();
         
-        foreach (var key in FallbackOrder)
-        {
-            if (key != primarySourceKey && _sourceFactory.GetAllSources().ContainsKey(key))
-            {
-                order.Add(key);
-            }
-        }
+        // 收集所有其他源（排除主源）
+        var otherSources = allSources
+            .Where(kvp => kvp.Key != primarySourceKey)
+            .Select(kvp => new { Key = kvp.Key, Source = kvp.Value })
+            .ToList();
+        
+        // 分离自定义源和内置源
+        var customSources = otherSources
+            .Where(s => s.Source is CustomDownloadSource)
+            .Cast<dynamic>()
+            .ToList();
+        
+        var builtInSources = otherSources
+            .Where(s => s.Source is not CustomDownloadSource)
+            .Select(s => s.Key)
+            .ToList();
+        
+        // 自定义源按优先级降序排序
+        var sortedCustomSources = customSources
+            .OrderByDescending(s => GetSourcePriority(s.Key))
+            .Select(s => (string)s.Key)
+            .ToList();
+        
+        // 内置源按固定顺序
+        var sortedBuiltInSources = FallbackOrder
+            .Where(key => builtInSources.Contains(key))
+            .ToList();
+        
+        // 合并：主源 -> 自定义源（按优先级） -> 内置源（按固定顺序）
+        order.AddRange(sortedCustomSources);
+        order.AddRange(sortedBuiltInSources);
         
         return order;
+    }
+    
+    /// <summary>
+    /// 获取自定义源的优先级（用于排序）
+    /// </summary>
+    /// <param name="sourceKey">源标识</param>
+    /// <returns>优先级值，默认 100</returns>
+    private int GetSourcePriority(string sourceKey)
+    {
+        var source = _sourceFactory.GetSource(sourceKey);
+        if (source is CustomDownloadSource customSource)
+        {
+            return customSource.Priority;
+        }
+        return 0;
     }
 
     /// <summary>
