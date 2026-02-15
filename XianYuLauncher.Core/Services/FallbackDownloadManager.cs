@@ -325,6 +325,7 @@ public class FallbackDownloadManager
 
             attemptedSources.Add(sourceKey);
             _logger?.LogDebug("尝试 {Source}: {Url}", sourceKey, url);
+            _logger?.LogInformation("[社区资源] 实际请求URL: {Url} (源: {Source})", url, sourceKey);
 
             try
             {
@@ -596,34 +597,16 @@ public class FallbackDownloadManager
 
     /// <summary>
     /// 获取社区资源（Modrinth/CurseForge）的回退源顺序
-    /// 优先使用启用的 MCIM 类型自定义源，否则使用 Modrinth 专用下载源
+    /// 使用用户在设置页选择的社区资源源作为主源
     /// </summary>
     private List<string> GetCommunitySourceOrder()
     {
-        var allSources = _sourceFactory.GetAllSources();
+        // 始终使用用户在设置页选择的社区资源源作为主源
+        var primarySource = _sourceFactory.GetModrinthSource();
+        var primarySourceKey = primarySource.Key;
         
-        // 查找启用的 MCIM 类型自定义源，按优先级降序排序
-        var mcimCustomSources = allSources
-            .Where(kvp => kvp.Value is CustomDownloadSource customSource)
-            .Select(kvp => new { Key = kvp.Key, Source = (CustomDownloadSource)kvp.Value })
-            .OrderByDescending(s => s.Source.Priority)
-            .ToList();
-        
-        // 如果有启用的 MCIM 类型自定义源，使用优先级最高的作为主源
-        string primarySourceKey;
-        if (mcimCustomSources.Any())
-        {
-            primarySourceKey = mcimCustomSources.First().Key;
-            _logger?.LogDebug("[社区资源] 使用自定义源作为主源: {Source} (Priority={Priority})", 
-                primarySourceKey, mcimCustomSources.First().Source.Priority);
-        }
-        else
-        {
-            // 否则使用设置页选择的 Modrinth 专用下载源
-            var primarySource = _sourceFactory.GetModrinthSource();
-            primarySourceKey = primarySource.Key;
-            _logger?.LogDebug("[社区资源] 使用 Modrinth 设置源作为主源: {Source}", primarySourceKey);
-        }
+        _logger?.LogDebug("[社区资源] 使用用户选择的社区资源源作为主源: {Source} ({Name})", 
+            primarySourceKey, primarySource.Name);
         
         var order = GetSourceOrder(primarySourceKey);
         _logger?.LogDebug("[社区资源] 回退顺序: {Order}", string.Join(" -> ", order));

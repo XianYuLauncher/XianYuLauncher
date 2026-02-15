@@ -66,7 +66,8 @@ public class TranslationService : ITranslationService
             // 使用静态语言字段而不是 CultureInfo，避免跨程序集的文化信息不同步问题
             bool isChinese = _currentLanguage.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
             
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 当前语言设置: {_currentLanguage}, 是否为中文: {isChinese}");
+            // 注释掉频繁输出的日志
+            // System.Diagnostics.Debug.WriteLine($"[翻译服务] 当前语言设置: {_currentLanguage}, 是否为中文: {isChinese}");
             
             return isChinese;
         }

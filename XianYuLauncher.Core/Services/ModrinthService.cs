@@ -101,6 +101,10 @@ public class ModrinthService
                 ConfigureModrinthRequest);
 
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] Fallback 结果: Success={result.Success}, UsedSource={result.UsedSourceKey}");
+            if (result.Success && result.UsedUrl != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际请求URL: {result.UsedUrl}");
+            }
             
             if (!result.Success)
                 throw new HttpRequestException($"所有源请求失败: {result.ErrorMessage}");
