@@ -717,6 +717,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 
                 // 从列表中移除
                 Versions.Remove(version);
+                FilteredVersions.Remove(version);
                 
                 // 更新状态信息
                 StatusMessage = $"{"VersionListPage_VersionDeletedText".GetLocalized()} {version.Name}";
