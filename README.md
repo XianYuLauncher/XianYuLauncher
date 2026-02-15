@@ -19,7 +19,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 ## ✨ Features
 
 ### 🎮 Game Management
-- **Smart Version Management**: One-click installation for Minecraft Vanilla, Forge, Fabric, Legacy Fabric, NeoForge, Quilt, Optifine, Cleanroom (Experimental).
+- **Smart Version Management**: One-click installation for Minecraft Vanilla, Forge, Fabric, Legacy Fabric, NeoForge, Quilt, Optifine, Cleanroom, LiteLoader.
 - **Version Isolation**: Independent directories for each version, keeping Mods separate and interference-free.
 - **World Management System**: World overview, Data Pack management, one-click world launch.
 - **Server Management**: Add/manage servers, real-time status detection (MOTD, online players, latency), one-click instance launch and join server.

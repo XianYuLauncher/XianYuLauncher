@@ -19,7 +19,7 @@
 ## ✨ 功能特性
 
 ### 🎮 游戏管理
-- **智能版本管理**：一键安装 Minecraft 原版、Forge、Fabric、Legacy Fabric、NeoForge、Quilt、Optifine、Cleanroom（实验性）
+- **智能版本管理**：一键安装 Minecraft 原版、Forge、Fabric、Legacy Fabric、NeoForge、Quilt、Optifine、Cleanroom、LiteLoader
 - **版本隔离**：每个版本独立目录，Mod 互不干扰
 - **世界管理系统**：世界概览、数据包管理、一键启动存档
 - **服务器管理**：添加/管理服务器、实时状态检测（MOTD、在线人数、延迟）、一键启动实例并加入服务器
