@@ -22,3 +22,9 @@
 ### Code Style
 *   **语言**：中文回复。
 *   **代码**：遵循 C# 10/11+ 标准，优先使用异步编程 (async/await)，严格处理 Nullable，保持代码简洁。 WinUI 3 相关代码需考虑线程安全（UI Thread）。
+
+### UI Design
+*   **风格**：现代、简洁、用户友好。遵循 Fluent Design 规范，确保界面现代、原生 Windows Apps 风格，可适当使用 Community Toolkit，但一切，先询问开发者。
+
+### Build
+msbuild XianYuLauncher/XianYuLauncher.csproj -p:Configuration=Debug -p:Platform=x64 -p:WarningLevel=0 -clp:ErrorsOnly

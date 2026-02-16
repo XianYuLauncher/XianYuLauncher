@@ -365,6 +365,42 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
+    public async Task<string?> GetClientJarDownloadUrlAsync(string versionId, bool allowNetwork = true)
+    {
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return null;
+        }
+
+        var versionInfo = await GetVersionInfoAsync(versionId, allowNetwork: allowNetwork);
+        if (versionInfo?.Downloads?.Client?.Url is not string clientUrl)
+        {
+            return null;
+        }
+
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        return downloadSource.GetClientJarUrl(versionId, clientUrl);
+    }
+
+    public async Task<string?> GetServerJarDownloadUrlAsync(string versionId, bool allowNetwork = true)
+    {
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return null;
+        }
+
+        var versionInfo = await GetVersionInfoAsync(versionId, allowNetwork: allowNetwork);
+        if (versionInfo?.Downloads?.Server?.Url is not string serverUrl)
+        {
+            return null;
+        }
+
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        return downloadSource.GetResourceUrl("server", serverUrl);
+    }
+
     public async Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true)
     {
         try

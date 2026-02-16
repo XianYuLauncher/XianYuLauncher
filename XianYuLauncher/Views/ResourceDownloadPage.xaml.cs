@@ -340,6 +340,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
+    private async void DownloadClient_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is VersionEntry version)
+        {
+            await ViewModel.DownloadClientJarCommand.ExecuteAsync(version);
+        }
+    }
+
+    private async void DownloadServer_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is VersionEntry version)
+        {
+            await ViewModel.DownloadServerJarCommand.ExecuteAsync(version);
+        }
+    }
+
     private async void ModSearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == Windows.System.VirtualKey.Enter && ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引

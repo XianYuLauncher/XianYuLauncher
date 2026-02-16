@@ -115,6 +115,23 @@ public class DownloadTaskManager : IDownloadTaskManager
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
+    public Task StartFileDownloadAsync(string url, string targetPath, string description)
+    {
+        if (HasActiveDownload)
+        {
+            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
+            throw new InvalidOperationException("已有下载任务正在进行中");
+        }
+
+        var fileName = Path.GetFileName(targetPath);
+        var task = CreateTask(description, fileName);
+
+        _ = ExecuteFileDownloadAsync(url, targetPath, description, task);
+        
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// 启动 Optifine+Forge 版本下载（已废弃，内部调用新方法）
     /// </summary>
@@ -199,6 +216,65 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
+    private async Task ExecuteFileDownloadAsync(string url, string targetPath, string description, DownloadTaskInfo task)
+    {
+        try 
+        {
+            task.StatusMessage = $"正在下载 {description}...";
+            OnTaskProgressChanged(task);
+            
+            var result = await _downloadManager.DownloadFileAsync(
+                url,
+                targetPath,
+                expectedSha1: null,
+                progressCallback: (status) => 
+                {
+                    if (_currentCts?.IsCancellationRequested == true) return;
+                    
+                    task.Progress = Math.Clamp(status.Percent, 0, 100);
+                    task.StatusMessage = $"{description} - {status.Percent:F1}% {FormatSize(status.DownloadedBytes)}/{FormatSize(status.TotalBytes)}";
+                    task.SpeedText = status.SpeedText;
+                    OnTaskProgressChanged(task);
+                },
+                cancellationToken: _currentCts?.Token ?? CancellationToken.None);
+
+            if (_currentCts?.IsCancellationRequested == true)
+            {
+               return;     
+            }
+            
+            if (result.Success)
+            {
+               CompleteTask(task, true);
+            }
+            else 
+            {
+               FailTask(task, result.ErrorMessage ?? "未知错误");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
+        }
+         catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
+            FailTask(task, ex.Message);
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
 
     private async Task ExecuteVanillaDownloadAsync(string versionId, string customVersionName, DownloadTaskInfo task)
     {

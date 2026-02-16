@@ -75,6 +75,14 @@ public interface IDownloadTaskManager
         string customVersionName);
 
     /// <summary>
+    /// 启动通用文件下载
+    /// </summary>
+    /// <param name="url">下载URL</param>
+    /// <param name="targetPath">保存路径</param>
+    /// <param name="description">任务描述（如：下载服务端 server.jar）</param>
+    Task StartFileDownloadAsync(string url, string targetPath, string description);
+
+    /// <summary>
     /// 取消当前下载
     /// </summary>
     void CancelCurrentDownload();

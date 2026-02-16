@@ -30,6 +30,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly ModrinthCacheService _modrinthCacheService;
     private readonly CurseForgeCacheService _curseForgeCacheService;
     private readonly ITranslationService _translationService;
+    private readonly IDialogService _dialogService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -1645,7 +1647,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IFileService fileService,
         ModrinthCacheService modrinthCacheService,
         CurseForgeCacheService curseForgeCacheService,
-        ITranslationService translationService)
+        ITranslationService translationService,
+        IDialogService dialogService,
+        IDownloadTaskManager downloadTaskManager)
     {
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
@@ -1657,6 +1661,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _modrinthCacheService = modrinthCacheService;
         _curseForgeCacheService = curseForgeCacheService;
         _translationService = translationService;
+        _dialogService = dialogService;
+        _downloadTaskManager = downloadTaskManager;
 
         // Load saved favorites
         LoadFavorites();
@@ -2253,6 +2259,128 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DownloadClientJarAsync(object parameter)
+    {
+        string versionId = string.Empty;
+        
+        if (parameter is Core.Models.VersionEntry versionEntry)
+        {
+            versionId = versionEntry.Id;
+        }
+        else if (parameter is string stringId)
+        {
+            versionId = stringId;
+        }
+        
+        if (string.IsNullOrEmpty(versionId))
+        {
+            return;
+        }
+
+        try
+        {
+            var mappedClientUrl = await _minecraftVersionService.GetClientJarDownloadUrlAsync(versionId);
+
+            if (string.IsNullOrWhiteSpace(mappedClientUrl))
+            {
+                await _dialogService.ShowMessageDialogAsync("错误", "该版本没有客户端下载链接");
+                return;
+            }
+
+            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
+            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
+            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { ".jar" });
+            savePicker.SuggestedFileName = $"client-{versionId}.jar";
+
+            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, windowHandle);
+
+            var file = await savePicker.PickSaveFileAsync();
+            if (file == null) return;
+
+            try 
+            {
+                await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}");
+                
+                // 启用 TeachingTip 提示用户查看下载进度
+                _downloadTaskManager.IsTeachingTipEnabled = true;
+            }
+            catch (InvalidOperationException)
+            {
+                await _dialogService.ShowMessageDialogAsync("提示", "当前已有下载任务正在进行，请等待其完成后再试。");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowMessageDialogAsync("下载失败", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DownloadServerJarAsync(object parameter)
+    {
+        string versionId = string.Empty;
+        
+        if (parameter is Core.Models.VersionEntry versionEntry)
+        {
+            versionId = versionEntry.Id;
+        }
+        else if (parameter is string stringId)
+        {
+            versionId = stringId;
+        }
+        
+        if (string.IsNullOrEmpty(versionId))
+        {
+            return;
+        }
+
+        try
+        {
+            // 1. 获取服务端下载链接（由 Service 层完成下载源映射）
+            var mappedServerUrl = await _minecraftVersionService.GetServerJarDownloadUrlAsync(versionId);
+
+            if (string.IsNullOrWhiteSpace(mappedServerUrl))
+            {
+                await _dialogService.ShowMessageDialogAsync("错误", "该版本没有服务端下载链接");
+                return;
+            }
+
+            // 2. 选择保存位置
+            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
+            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
+            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { ".jar" });
+            savePicker.SuggestedFileName = $"server-{versionId}.jar";
+
+            // WinUI 3 Window handle 
+            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, windowHandle);
+
+            var file = await savePicker.PickSaveFileAsync();
+            if (file == null) return;
+
+            // 3. 启动后台下载
+            try 
+            {
+                await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}");
+                
+                // 启用 TeachingTip 提示用户查看下载进度
+                _downloadTaskManager.IsTeachingTipEnabled = true;
+                
+                // 不再显示阻塞式弹窗，由全局下载管理器接管
+            }
+            catch (InvalidOperationException)
+            {
+                await _dialogService.ShowMessageDialogAsync("提示", "当前已有下载任务正在进行，请等待其完成后再试。");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowMessageDialogAsync("下载失败", ex.Message);
         }
     }
 

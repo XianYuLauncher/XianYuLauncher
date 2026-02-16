@@ -2103,46 +2103,27 @@ namespace XianYuLauncher.ViewModels
                         savePath,
                         ModIconUrl);
                     
-                    // 显示进度弹窗（弹窗会自动跟踪属性变化，下载完成时自动关闭）
-                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
-                        "下载中",
-                        () => DownloadStatus,
-                        () => DownloadProgress,
-                        () => DownloadProgressText,
-                        this,
-                        primaryButtonText: "后台下载",
-                        closeButtonText: null,
-                        autoCloseWhen: tcs.Task);
-                    
-                    if (dialogResult == ContentDialogResult.Primary)
+                    // 启用 TeachingTip 提示用户查看下载进度
+                    _downloadTaskManager.IsTeachingTipEnabled = true;
+
+                    // 通知 ShellViewModel 打开 TeachingTip
+                    var shellViewModel = App.GetService<ShellViewModel>();
+                    if (shellViewModel != null)
                     {
-                        // 用户点击了"后台下载"，切换到后台
-                        StartBackgroundDownload();
-                        return;
+                        shellViewModel.IsDownloadTeachingTipOpen = true;
                     }
-                    
-                    // 弹窗已关闭（下载完成自动关闭或用户操作）
-                    if (!tcs.Task.IsCompleted)
-                    {
-                        await tcs.Task;
-                    }
-                    
-                    DownloadStatus = "下载完成！";
                 }
                 finally
                 {
+                    // 移除事件监听，因为 DownloadTaskManager 会管理生命周期
                     _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
                     _downloadTaskManager.TaskStateChanged -= OnStateChanged;
                 }
             }
-            catch (TaskCanceledException)
-            {
-                DownloadStatus = "下载已取消";
-                throw new OperationCanceledException();
-            }
             catch (Exception ex)
             {
-                throw new Exception($"下载文件失败: {ex.Message}");
+                // 如果启动失败，抛出异常
+                throw new Exception($"启动下载失败: {ex.Message}");
             }
         }
 
@@ -2919,67 +2900,45 @@ namespace XianYuLauncher.ViewModels
                     }
                 }
                 
-                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
-                _downloadTaskManager.TaskStateChanged += OnStateChanged;
-                
-                try
-                {
-                    // 显示进度弹窗（在依赖下载之前）
-                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
-                        "下载中",
-                        () => DownloadStatus,
-                        () => DownloadProgress,
-                        () => DownloadProgressText,
-                        this,
-                        primaryButtonText: "后台下载",
-                        closeButtonText: null,
-                        autoCloseWhen: tcs.Task);
-                    
-                    // 处理后台下载按钮
-                    _ = dialogTask.ContinueWith(t =>
+                    _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
+                    _downloadTaskManager.TaskStateChanged += OnStateChanged;
+
+                    // 启用 TeachingTip 提示
+                    _downloadTaskManager.IsTeachingTipEnabled = true;
+
+                    // 通知 ShellViewModel 打开 TeachingTip
+                    var shellViewModel = App.GetService<ShellViewModel>();
+                    if (shellViewModel != null)
                     {
-                        if (t.Result == ContentDialogResult.Primary)
+                        // 设置初始状态，避免空白
+                        shellViewModel.DownloadTaskName = ModName;
+                        shellViewModel.DownloadStatusMessage = "正在解析前置依赖...";
+                        shellViewModel.DownloadProgress = 0;
+
+                        shellViewModel.IsDownloadTeachingTipOpen = true;
+                    }
+
+                    try
+                    {
+                        // 先下载依赖
+                        if (!string.IsNullOrEmpty(dependenciesTargetDir))
                         {
-                            // 用户点击了"后台下载"
-                            isBackgroundDownload = true;
-                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                            {
-                                StartBackgroundDownload();
-                            });
+                            await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
                         }
-                    }, TaskScheduler.Default);
-                    
-                    // 先下载依赖
-                    if (!string.IsNullOrEmpty(dependenciesTargetDir))
-                    {
-                        await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
+                        
+                        // 再下载主 Mod
+                        await _downloadTaskManager.StartResourceDownloadAsync(
+                            ModName,
+                            ProjectType,
+                            modVersion.DownloadUrl,
+                            savePath,
+                            ModIconUrl);
                     }
-                    
-                    // 再下载主 Mod
-                    await _downloadTaskManager.StartResourceDownloadAsync(
-                        ModName,
-                        ProjectType,
-                        modVersion.DownloadUrl,
-                        savePath,
-                        ModIconUrl);
-                    
-                    // 等待下载完成
-                    if (!tcs.Task.IsCompleted)
+                    finally
                     {
-                        await tcs.Task;
+                        _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
+                        _downloadTaskManager.TaskStateChanged -= OnStateChanged;
                     }
-                    
-                    // 如果不是后台下载，显示完成状态
-                    if (!isBackgroundDownload)
-                    {
-                        DownloadStatus = "下载完成！";
-                    }
-                }
-                finally
-                {
-                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
-                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
-                }
             }
             catch (Exception ex)
             {
@@ -4463,52 +4422,39 @@ namespace XianYuLauncher.ViewModels
                 _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
                 _downloadTaskManager.TaskStateChanged += OnStateChanged;
                 
+                // 启用 TeachingTip 提示（确保在处理依赖时也能显示提示）
+                _downloadTaskManager.IsTeachingTipEnabled = true;
+                
+                // 通知 ShellViewModel 打开 TeachingTip
+                var shellViewModel = App.GetService<ShellViewModel>();
+                if (shellViewModel != null)
+                {
+                    // 设置初始状态，避免空白
+                    shellViewModel.DownloadTaskName = ModName;
+                    shellViewModel.DownloadStatusMessage = "正在解析前置依赖...";
+                    shellViewModel.DownloadProgress = 0;
+
+                    shellViewModel.IsDownloadTeachingTipOpen = true;
+                }
+
                 try
                 {
-                    // 显示进度弹窗（在依赖下载之前）
-                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
-                        "下载中",
-                        () => DownloadStatus,
-                        () => DownloadProgress,
-                        () => DownloadProgressText,
-                        this,
-                        primaryButtonText: "后台下载",
-                        closeButtonText: null,
-                        autoCloseWhen: tcs.Task);
-                    
-                    // 处理后台下载按钮
-                    _ = dialogTask.ContinueWith(t =>
-                    {
-                        if (t.Result == ContentDialogResult.Primary)
-                        {
-                            // 用户点击了"后台下载"
-                            isBackgroundDownload = true;
-                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                            {
-                                StartBackgroundDownload();
-                            });
-                        }
-                    }, TaskScheduler.Default);
-                    
                     // 先下载依赖
+                    // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
+                    // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
                     await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
                     
-                    // 再下载主资源
+                    // 启动主资源下载任务
                     await _downloadTaskManager.StartResourceDownloadAsync(
                         ModName,
                         ProjectType,
                         modVersion.DownloadUrl,
                         savePath,
                         ModIconUrl);
-                    
-                    // 等待下载完成
-                    if (!tcs.Task.IsCompleted)
-                    {
-                        await tcs.Task;
-                    }
+
                     
                     IsDownloading = false;
-                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 安装完成: {savePath}");
+                    System.Diagnostics.Debug.WriteLine($"[QuickInstall] 下载任务已启动: {savePath}");
                 }
                 finally
                 {

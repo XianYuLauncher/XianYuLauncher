@@ -756,13 +756,17 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             }
             
             // 初始化下载状态
-            _isBackgroundDownload = false;
-            DownloadStatus = "ModLoaderSelectionPage_PreparingDownloadText".GetLocalized();
-            DownloadProgress = 0;
-            DownloadProgressText = "0%";
+            _isBackgroundDownload = true;
             
-            // 显示下载弹窗
-            IsDownloadDialogOpen = true;
+            // 启用 TeachingTip 显示
+            _downloadTaskManager.IsTeachingTipEnabled = true;
+            
+            // 通知 ShellViewModel 打开 TeachingTip
+            var shellViewModel = App.GetService<ShellViewModel>();
+            if (shellViewModel != null)
+            {
+                shellViewModel.IsDownloadTeachingTipOpen = true;
+            }
             
             // 下载逻辑 - 使用 DownloadTaskManager
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
@@ -886,29 +890,15 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 }
                 else
                 {
-                    // 先关闭下载弹窗
-                    IsDownloadDialogOpen = false;
-                    
-                    // 等待一下确保弹窗关闭
-                    await Task.Delay(100);
-                    
-                    // 再显示错误消息
                     await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     return;
                 }
             }
-            
-            // 注意：不再立即返回，弹窗会保持打开直到下载完成或用户点击后台下载
+            // 返回上一页
+            _navigationService.GoBack();
         }
         catch (Exception ex)
         {
-            // 先关闭下载弹窗
-            IsDownloadDialogOpen = false;
-            
-            // 等待一下确保弹窗关闭
-            await Task.Delay(100);
-            
-            // 再显示错误消息
             await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
         }
     }

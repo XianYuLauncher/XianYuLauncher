@@ -9,6 +9,8 @@ public interface IMinecraftVersionService
 {
     Task<VersionManifest> GetVersionManifestAsync();
     Task<VersionInfo> GetVersionInfoAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
+    Task<string?> GetClientJarDownloadUrlAsync(string versionId, bool allowNetwork = true);
+    Task<string?> GetServerJarDownloadUrlAsync(string versionId, bool allowNetwork = true);
     Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
     Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null);
     Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null);
