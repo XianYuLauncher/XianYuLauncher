@@ -1154,8 +1154,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 var savedType = await _materialService.LoadMaterialTypeAsync();
-                _materialType = savedType;
-                OnPropertyChanged(nameof(MaterialType));
+                MaterialType = savedType;
                 
                 // 加载背景模糊强度
                 var blurAmount = await _materialService.LoadBackgroundBlurAmountAsync();

@@ -1716,18 +1716,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var savedModrinthEnabled = await _localSettingsService.ReadSettingAsync<bool?>(IsModrinthEnabledKey);
             if (savedModrinthEnabled.HasValue)
             {
-                _isModrinthEnabled = savedModrinthEnabled.Value;
-                OnPropertyChanged(nameof(IsModrinthEnabled));
+                IsModrinthEnabled = savedModrinthEnabled.Value;
             }
             
             var savedCurseForgeEnabled = await _localSettingsService.ReadSettingAsync<bool?>(IsCurseForgeEnabledKey);
             if (savedCurseForgeEnabled.HasValue)
             {
-                _isCurseForgeEnabled = savedCurseForgeEnabled.Value;
-                OnPropertyChanged(nameof(IsCurseForgeEnabled));
+                IsCurseForgeEnabled = savedCurseForgeEnabled.Value;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[平台选择] 加载设置: Modrinth={_isModrinthEnabled}, CurseForge={_isCurseForgeEnabled}");
+            System.Diagnostics.Debug.WriteLine($"[平台选择] 加载设置: Modrinth={IsModrinthEnabled}, CurseForge={IsCurseForgeEnabled}");
         }
         catch (Exception ex)
         {

@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.UI;
-using Windows.UI.Core;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
@@ -29,11 +28,6 @@ public sealed partial class MultiplayerLobbyPage : Page
         {
             // 使用主题资源，适配深色模式
             border.Background = (SolidColorBrush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-            // 设置手型光标
-            if (Window.Current != null)
-            {
-                Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(Windows.UI.Core.CoreCursorType.Hand, 0);
-            }
         }
     }
 
@@ -45,11 +39,6 @@ public sealed partial class MultiplayerLobbyPage : Page
         if (sender is Border border)
         {
             border.Background = new SolidColorBrush(Colors.Transparent);
-            // 恢复默认光标
-            if (Window.Current != null)
-            {
-                Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(Windows.UI.Core.CoreCursorType.Arrow, 0);
-            }
         }
     }
 
