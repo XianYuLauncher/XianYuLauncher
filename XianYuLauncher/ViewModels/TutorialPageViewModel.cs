@@ -1014,16 +1014,48 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            var errorDialog = new ContentDialog
+            try
             {
-                Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
-                Content = errorMessage,
-                CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            await errorDialog.ShowAsync();
+                var errorDialog = new ContentDialog
+                {
+                    Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
+                    Content = errorMessage,
+                    CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
+                };
+                await errorDialog.ShowAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+            {
+                // 已经有对话框打开，记录日志但不崩溃
+                System.Diagnostics.Debug.WriteLine($"[TutorialPage] 无法显示错误对话框，已有对话框打开: {errorMessage}");
+                
+                // 使用 DispatcherQueue 延迟显示
+                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+                {
+                    await Task.Delay(500); // 等待当前对话框关闭
+                    try
+                    {
+                        var retryDialog = new ContentDialog
+                        {
+                            Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
+                            Content = errorMessage,
+                            CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
+                            XamlRoot = App.MainWindow.Content.XamlRoot,
+                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                            DefaultButton = ContentDialogButton.None
+                        };
+                        await retryDialog.ShowAsync();
+                    }
+                    catch
+                    {
+                        // 仍然失败，放弃显示对话框
+                        System.Diagnostics.Debug.WriteLine($"[TutorialPage] 延迟显示错误对话框仍然失败: {errorMessage}");
+                    }
+                });
+            }
         }
 
         /// <summary>
@@ -1031,43 +1063,84 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowMinecraftPurchaseDialogAsync()
         {
-            var dialog = new ContentDialog
+            try
             {
-                Title = "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
-                Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
-                PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
-                CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
+                var dialog = new ContentDialog
+                {
+                    Title = "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
+                    Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
+                    PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
+                    CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    DefaultButton = ContentDialogButton.None
+                };
 
-            // 处理前往按钮点击事件
-            dialog.PrimaryButtonClick += async (sender, args) =>
-            {
-                try
+                // 处理前往按钮点击事件
+                dialog.PrimaryButtonClick += async (sender, args) =>
                 {
-                    // 打开Minecraft购买链接
-                    var purchaseUri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
-                    await Windows.System.Launcher.LaunchUriAsync(purchaseUri);
-                }
-                catch (Exception)
-                {
-                    // 无法打开链接时显示提示
-                    var errorDialog = new ContentDialog
+                    try
                     {
-                        Title = "TutorialPage_CannotOpenLinkDialog_Title".GetLocalized(),
-                        Content = "TutorialPage_CannotOpenLinkDialog_Content".GetLocalized(),
-                        CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    await errorDialog.ShowAsync();
-                }
-            };
+                        // 打开Minecraft购买链接
+                        var purchaseUri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
+                        await Windows.System.Launcher.LaunchUriAsync(purchaseUri);
+                    }
+                    catch (Exception)
+                    {
+                        // 无法打开链接时显示提示
+                        try
+                        {
+                            var errorDialog = new ContentDialog
+                            {
+                                Title = "TutorialPage_CannotOpenLinkDialog_Title".GetLocalized(),
+                                Content = "TutorialPage_CannotOpenLinkDialog_Content".GetLocalized(),
+                                CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
+                                XamlRoot = App.MainWindow.Content.XamlRoot,
+                                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                                DefaultButton = ContentDialogButton.None
+                            };
+                            await errorDialog.ShowAsync();
+                        }
+                        catch (System.Runtime.InteropServices.COMException)
+                        {
+                            // 对话框冲突，忽略
+                            System.Diagnostics.Debug.WriteLine("[TutorialPage] 无法显示错误对话框（链接打开失败）");
+                        }
+                    }
+                };
 
-            await dialog.ShowAsync();
+                await dialog.ShowAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+            {
+                // 已经有对话框打开，记录日志但不崩溃
+                System.Diagnostics.Debug.WriteLine("[TutorialPage] 无法显示购买提示对话框，已有对话框打开");
+                
+                // 使用 DispatcherQueue 延迟显示
+                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+                {
+                    await Task.Delay(500); // 等待当前对话框关闭
+                    try
+                    {
+                        var retryDialog = new ContentDialog
+                        {
+                            Title = "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
+                            Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
+                            PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
+                            CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
+                            XamlRoot = App.MainWindow.Content.XamlRoot,
+                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                            DefaultButton = ContentDialogButton.None
+                        };
+                        await retryDialog.ShowAsync();
+                    }
+                    catch
+                    {
+                        // 仍然失败，放弃显示对话框
+                        System.Diagnostics.Debug.WriteLine("[TutorialPage] 延迟显示购买提示对话框仍然失败");
+                    }
+                });
+            }
         }
 
         // 辅助方法

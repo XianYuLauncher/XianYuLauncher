@@ -539,46 +539,87 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowMinecraftPurchaseDialogAsync()
         {
-            var dialog = new ContentDialog
+            try
             {
-                Title = "账户未购买Minecraft",
-                Content = "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
-                PrimaryButtonText = "购买Minecraft",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 设置XamlRoot，确保弹窗能正确显示
-            dialog.XamlRoot = App.MainWindow.Content.XamlRoot;
-            
-            // 处理主按钮点击事件（购买Minecraft）
-            dialog.PrimaryButtonClick += async (sender, args) =>
-            {
-                try
+                var dialog = new ContentDialog
                 {
-                    // 打开Minecraft购买链接
-                    var uri = new Uri("https://www.xbox.com/zh-CN/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj?ocid=storeforweb");
-                    await Windows.System.Launcher.LaunchUriAsync(uri);
-                }
-                catch (Exception ex)
+                    Title = "账户未购买Minecraft",
+                    Content = "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
+                    PrimaryButtonText = "购买Minecraft",
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.Close,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                };
+                
+                // 设置XamlRoot，确保弹窗能正确显示
+                dialog.XamlRoot = App.MainWindow.Content.XamlRoot;
+                
+                // 处理主按钮点击事件（购买Minecraft）
+                dialog.PrimaryButtonClick += async (sender, args) =>
                 {
-                    // 处理打开链接失败的情况
-                    var errorDialog = new ContentDialog
+                    try
                     {
-                        Title = "打开链接失败",
-                        Content = "无法打开购买链接，请手动访问该网址。",
-                        CloseButtonText = "确定",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    await errorDialog.ShowAsync();
-                }
-            };
-            
-            // 显示弹窗
-            await dialog.ShowAsync();
+                        // 打开Minecraft购买链接
+                        var uri = new Uri("https://www.xbox.com/zh-CN/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj?ocid=storeforweb");
+                        await Windows.System.Launcher.LaunchUriAsync(uri);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 处理打开链接失败的情况
+                        try
+                        {
+                            var errorDialog = new ContentDialog
+                            {
+                                Title = "打开链接失败",
+                                Content = "无法打开购买链接，请手动访问该网址。",
+                                CloseButtonText = "确定",
+                                XamlRoot = App.MainWindow.Content.XamlRoot,
+                                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                                DefaultButton = ContentDialogButton.None
+                            };
+                            await errorDialog.ShowAsync();
+                        }
+                        catch (System.Runtime.InteropServices.COMException)
+                        {
+                            // 对话框冲突，忽略
+                            System.Diagnostics.Debug.WriteLine("[CharacterViewModel] 无法显示错误对话框（链接打开失败）");
+                        }
+                    }
+                };
+                
+                // 显示弹窗
+                await dialog.ShowAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+            {
+                // 已经有对话框打开，记录日志但不崩溃
+                System.Diagnostics.Debug.WriteLine("[CharacterViewModel] 无法显示购买提示对话框，已有对话框打开");
+                
+                // 使用 DispatcherQueue 延迟显示
+                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+                {
+                    await Task.Delay(500); // 等待当前对话框关闭
+                    try
+                    {
+                        var retryDialog = new ContentDialog
+                        {
+                            Title = "账户未购买Minecraft",
+                            Content = "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
+                            PrimaryButtonText = "购买Minecraft",
+                            CloseButtonText = "取消",
+                            DefaultButton = ContentDialogButton.Close,
+                            XamlRoot = App.MainWindow.Content.XamlRoot,
+                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                        };
+                        await retryDialog.ShowAsync();
+                    }
+                    catch
+                    {
+                        // 仍然失败，放弃显示对话框
+                        System.Diagnostics.Debug.WriteLine("[CharacterViewModel] 延迟显示购买提示对话框仍然失败");
+                    }
+                });
+            }
             
             // 重置登录状态
             LoginStatus = "登录已取消";
@@ -636,17 +677,49 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            var dialog = new ContentDialog
+            try
             {
-                Title = "登录失败",
-                Content = errorMessage,
-                CloseButtonText = "确定",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            await dialog.ShowAsync();
+                var dialog = new ContentDialog
+                {
+                    Title = "登录失败",
+                    Content = errorMessage,
+                    CloseButtonText = "确定",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = App.MainWindow.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                };
+                
+                await dialog.ShowAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+            {
+                // 已经有对话框打开，记录日志但不崩溃
+                System.Diagnostics.Debug.WriteLine($"[CharacterViewModel] 无法显示错误对话框，已有对话框打开: {errorMessage}");
+                
+                // 使用 DispatcherQueue 延迟显示
+                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+                {
+                    await Task.Delay(500); // 等待当前对话框关闭
+                    try
+                    {
+                        var retryDialog = new ContentDialog
+                        {
+                            Title = "登录失败",
+                            Content = errorMessage,
+                            CloseButtonText = "确定",
+                            DefaultButton = ContentDialogButton.Close,
+                            XamlRoot = App.MainWindow.Content.XamlRoot,
+                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                        };
+                        await retryDialog.ShowAsync();
+                    }
+                    catch
+                    {
+                        // 仍然失败，放弃显示对话框
+                        System.Diagnostics.Debug.WriteLine($"[CharacterViewModel] 延迟显示错误对话框仍然失败: {errorMessage}");
+                    }
+                });
+            }
             
             // 重置登录状态
             LoginStatus = "登录已取消";
