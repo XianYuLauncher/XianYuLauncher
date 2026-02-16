@@ -149,10 +149,6 @@ namespace XianYuLauncher.ViewModels
 
             _aiAnalysisCts?.Dispose();
             _aiAnalysisCts = null;
-
-            _isToolBlockActive = false;
-            _toolTagCarry = string.Empty;
-            _toolBlockBuffer.Clear();
         }
 
         // Chat Properties
@@ -279,6 +275,9 @@ namespace XianYuLauncher.ViewModels
                         break;
                     case "deletemod":
                         await ExecuteDeleteModAsync(_currentFixAction.Parameters);
+                        break;
+                    case "togglemod":
+                        await ExecuteToggleModAsync(_currentFixAction.Parameters);
                         break;
                     default:
                         break;
@@ -862,23 +861,6 @@ namespace XianYuLauncher.ViewModels
         }
     }
 
-    private const string ToolStartTag = "<TOOL_CALLS>";
-    private const string ToolEndTag = "</TOOL_CALLS>";
-    private bool _isToolBlockActive;
-    private string _toolTagCarry = string.Empty;
-    private readonly StringBuilder _toolBlockBuffer = new();
-
-    private const string ChatSystemPromptTemplate = 
-        "You are an expert Minecraft technical support agent. " +
-        "Analyze the following Minecraft crash log and explain in simple localized language ({0}) what caused the crash and how to fix it. " +
-        "Be concise and reference specific mods or config files if they are responsible. " +
-        "\n\n" +
-        "If you need to suggest actionable fixes, output a JSON array inside <TOOL_CALLS>...</TOOL_CALLS> at the END of your reply. " +
-        "Each item should follow: {{\"type\": string, \"buttonText\": string, \"parameters\": {{ ... }} }}. " +
-        "Available types: searchModrinthProject, deleteMod, switchJavaForVersion. " +
-        "Parameters: searchModrinthProject => {{query, projectType?, loader?}}; deleteMod => {{modId}}; switchJavaForVersion => {{}}. " +
-        "Do not include any other keys in tool objects.";
-
     [RelayCommand]
     private async Task SendMessage()
     {
@@ -1086,7 +1068,13 @@ namespace XianYuLauncher.ViewModels
             "and perform fix actions (search mods, toggle mods, switch Java). " +
             "Use query tools FIRST to gather information before suggesting fixes. " +
             "For destructive actions (delete/toggle mods), always explain what you're doing and why. " +
-            "For search actions (searchModrinthProject), prefer using the tool so the user gets a direct download link.";
+            "For search actions (searchModrinthProject), prefer using the tool so the user gets a direct download link.\n\n" +
+            "CRITICAL RULES:\n" +
+            "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
+            "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
+            "3. The 'searchModrinthProject' tool is stricterly for searching MODS, SHADERS, or RESOURCE PACKS. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
+            "4. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
+            "5. For 'toggleMod' or 'deleteMod', you MUST inform the user that a button has been created for them to confirm the action.";
     }
 
 
@@ -1339,22 +1327,56 @@ namespace XianYuLauncher.ViewModels
             return "请提供 Mod 文件名。";
 
         fileName = Path.GetFileName(fileName);
-        var filePath = await FindModFileByIdAsync(fileName);
-
-        // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
-        if (string.IsNullOrWhiteSpace(filePath))
+        var parameters = new Dictionary<string, string>
         {
-            var altName = enabled
-                ? fileName + ".disabled"  // 要启用，找 .disabled 文件
-                : fileName.EndsWith(".disabled") ? fileName : fileName; // 要禁用，找 .jar 文件
-            filePath = await FindModFileByIdAsync(altName);
-        }
+            ["fileName"] = fileName,
+            ["enabled"] = enabled.ToString()
+        };
 
-        if (string.IsNullOrWhiteSpace(filePath))
-            return $"未找到 Mod 文件: {fileName}";
-
+        // 设置修复按钮让用户确认
+        await EnqueueOnUiAsync(() =>
+        {
+            ResetFixActionState();
+            _currentFixAction = new CrashFixAction
+            {
+                Type = "toggleMod",
+                ButtonText = $"{(enabled ? "启用" : "禁用")} {fileName}",
+                Parameters = parameters
+            };
+            FixButtonText = _currentFixAction.ButtonText;
+            HasFixAction = true;
+        });
+        
+        return $"已准备{(enabled ? "启用" : "禁用")} Mod \"{fileName}\"，用户可点击按钮确认执行操作。";
+    }
+    
+    private async Task ExecuteToggleModAsync(Dictionary<string, string> parameters)
+    {
+        var fileName = parameters["fileName"];
+        var enabled = bool.Parse(parameters["enabled"]);
+        
         try
         {
+            // 查找文件逻辑
+            var filePath = await FindModFileByIdAsync(fileName);
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
+                var altName = enabled
+                    ? fileName + ".disabled"  // 要启用，找 .disabled 文件
+                    : (fileName.EndsWith(".disabled") ? fileName : fileName); // 要禁用，找 .jar 文件
+                filePath = await FindModFileByIdAsync(altName);
+            }
+
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n失败: 未找到 Mod 文件 {fileName}";
+                });
+                return;
+            }
+
             var currentName = Path.GetFileName(filePath);
             var dir = Path.GetDirectoryName(filePath)!;
             string newName;
@@ -1378,16 +1400,28 @@ namespace XianYuLauncher.ViewModels
             {
                 var newPath = Path.Combine(dir, newName);
                 File.Move(filePath, newPath);
-                return $"已{(enabled ? "启用" : "禁用")} Mod: {currentName} → {newName}";
+                
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n成功: 已{(enabled ? "启用" : "禁用")} Mod {currentName} → {newName}";
+                    HasFixAction = false; // 操作完成后隐藏按钮
+                });
             }
             else
             {
-                return $"Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
+                await EnqueueOnUiAsync(() =>
+                {
+                    AiAnalysisResult += $"\n\n提示: Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
+                    HasFixAction = false;
+                });
             }
         }
         catch (Exception ex)
         {
-            return $"切换 Mod 状态失败: {ex.Message}";
+            await EnqueueOnUiAsync(() =>
+            {
+                 AiAnalysisResult += $"\n\n操作失败: {ex.Message}";
+            });
         }
     }
 
@@ -1460,10 +1494,35 @@ namespace XianYuLauncher.ViewModels
                     });
 
                     var sanitizedLog = await _logSanitizerService.SanitizeAsync(FullLog);
+
+                    // 补充启动参数，帮助 AI 诊断 JVM 参数或库路径问题
+                    if (!string.IsNullOrWhiteSpace(_launchCommand))
+                    {
+                        var sanitizedCmd = await _logSanitizerService.SanitizeAsync(_launchCommand);
+                        sanitizedLog = $"=== Launch Command ===\n{sanitizedCmd}\n\n=== Game Log ===\n{sanitizedLog}";
+                    }
+
                     if (sanitizedLog.Length > 15000)
                     {
-                        sanitizedLog = sanitizedLog.Substring(sanitizedLog.Length - 15000);
-                        sanitizedLog = "[...Log Truncated...] " + sanitizedLog;
+                        // 保留启动参数（如果在头部）和最后的日志
+                        // 注意：简单截断可能会切掉启动参数，这里做一个智能处理
+                        // 如果加上启动参数超长了，优先保留启动参数和最近的日志
+                        
+                        int keepHeadResponse = 2000; // 保留头部 2000 字符（通常包含启动参数）
+                        int keepTailResponse = 13000; // 保留尾部 13000 字符
+
+                        if (sanitizedLog.Length > (keepHeadResponse + keepTailResponse))
+                        {
+                            string head = sanitizedLog.Substring(0, keepHeadResponse);
+                            string tail = sanitizedLog.Substring(sanitizedLog.Length - keepTailResponse);
+                            sanitizedLog = head + "\n\n[...Log Truncated (Middle)...]\n\n" + tail;
+                        }
+                        else
+                        {
+                             // 稍微超长一点点，直接切尾部（兼容旧逻辑）
+                             sanitizedLog = sanitizedLog.Substring(sanitizedLog.Length - 15000);
+                             sanitizedLog = "[...Log Truncated...] " + sanitizedLog;
+                        }
                     }
 
                     await EnqueueOnUiAsync(() =>
@@ -1643,229 +1702,6 @@ namespace XianYuLauncher.ViewModels
         }
     }
 
-    private string TryApplyToolCallsFromAiResponse(string fullText)
-    {
-        var startIndex = fullText.IndexOf(ToolStartTag, StringComparison.OrdinalIgnoreCase);
-        var endIndex = fullText.IndexOf(ToolEndTag, StringComparison.OrdinalIgnoreCase);
-        if (startIndex < 0 || endIndex < 0 || endIndex <= startIndex)
-        {
-            return fullText;
-        }
-
-        var jsonStart = startIndex + ToolStartTag.Length;
-        var jsonText = fullText.Substring(jsonStart, endIndex - jsonStart).Trim();
-        if (jsonText.Contains("```") )
-        {
-            var fenceStart = jsonText.IndexOf("```", StringComparison.OrdinalIgnoreCase);
-            var fenceEnd = jsonText.LastIndexOf("```", StringComparison.OrdinalIgnoreCase);
-            if (fenceStart >= 0 && fenceEnd > fenceStart)
-            {
-                var innerStart = jsonText.IndexOf('\n', fenceStart + 3);
-                if (innerStart < 0)
-                {
-                    innerStart = fenceStart + 3;
-                }
-                var inner = jsonText.Substring(innerStart, fenceEnd - innerStart).Trim();
-                jsonText = inner;
-            }
-            else
-            {
-                jsonText = jsonText.Replace("```", string.Empty).Trim();
-            }
-        }
-        if (string.IsNullOrWhiteSpace(jsonText))
-        {
-            return fullText;
-        }
-
-        try
-        {
-            var array = JArray.Parse(jsonText);
-            var actions = new List<CrashFixAction>();
-
-            foreach (var item in array)
-            {
-                var type = item["type"]?.ToString() ?? string.Empty;
-                var buttonText = item["buttonText"]?.ToString() ?? string.Empty;
-                var parameters = new Dictionary<string, string>();
-
-                var paramObj = item["parameters"] as JObject;
-                if (paramObj != null)
-                {
-                    foreach (var prop in paramObj.Properties())
-                    {
-                        parameters[prop.Name] = prop.Value?.ToString() ?? string.Empty;
-                    }
-                }
-
-                if (type.Trim().Equals("deleteMod", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!parameters.ContainsKey("modId") && parameters.TryGetValue("modFile", out var modFile))
-                    {
-                        parameters["modId"] = modFile;
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(type) && !string.IsNullOrWhiteSpace(buttonText))
-                {
-                    actions.Add(new CrashFixAction
-                    {
-                        Type = type,
-                        ButtonText = buttonText,
-                        Parameters = parameters
-                    });
-                }
-            }
-
-            if (actions.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[AI] ToolCalls received: {actions.Count}");
-
-                _ = EnqueueOnUiAsync(() =>
-                {
-                    ResetFixActionState();
-
-                    _currentFixAction = actions[0];
-                    FixButtonText = actions[0].ButtonText;
-                    HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
-
-                    if (actions.Count > 1)
-                    {
-                        _secondaryFixAction = actions[1];
-                        SecondaryFixButtonText = actions[1].ButtonText;
-                        HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
-                    }
-                });
-
-                var codeBlockStart = fullText.LastIndexOf("```", startIndex, StringComparison.OrdinalIgnoreCase);
-                var codeBlockEnd = fullText.IndexOf("```", endIndex + ToolEndTag.Length, StringComparison.OrdinalIgnoreCase);
-
-                string cleaned;
-                if (codeBlockStart >= 0 && codeBlockEnd > endIndex)
-                {
-                    var beforeBlock = fullText.Substring(0, codeBlockStart).TrimEnd();
-                    var afterBlock = fullText.Substring(codeBlockEnd + 3).TrimStart();
-                    cleaned = string.IsNullOrEmpty(beforeBlock)
-                        ? afterBlock
-                        : string.IsNullOrEmpty(afterBlock)
-                            ? beforeBlock
-                            : beforeBlock + "\n\n" + afterBlock;
-                }
-                else
-                {
-                    var before = fullText.Substring(0, startIndex).TrimEnd();
-                    var after = fullText.Substring(endIndex + ToolEndTag.Length).TrimStart();
-                    cleaned = string.IsNullOrEmpty(before)
-                        ? after
-                        : string.IsNullOrEmpty(after)
-                            ? before
-                            : before + "\n\n" + after;
-                }
-
-                return cleaned;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"AI ToolCall 解析失败: {ex.Message}");
-            return fullText;
-        }
-
-        var fallbackBefore = fullText.Substring(0, startIndex).TrimEnd();
-        var fallbackAfter = fullText.Substring(endIndex + ToolEndTag.Length).TrimStart();
-        if (string.IsNullOrEmpty(fallbackBefore))
-        {
-            return fallbackAfter;
-        }
-
-        if (string.IsNullOrEmpty(fallbackAfter))
-        {
-            return fallbackBefore;
-        }
-
-        return fallbackBefore + "\n\n" + fallbackAfter;
-    }
-
-    private string ConsumeToolBlockAndGetVisibleText(string chunk)
-    {
-        var data = _toolTagCarry + chunk;
-        _toolTagCarry = string.Empty;
-
-        var output = new StringBuilder();
-        var index = 0;
-        
-        while (index < data.Length)
-        {
-            if (!_isToolBlockActive)
-            {
-                var start = data.IndexOf(ToolStartTag, index, StringComparison.OrdinalIgnoreCase);
-                if (start < 0)
-                {
-                    // Tag not found in this chunk.
-                    // Check if the END of the data matches a PREFIX of the start tag.
-                    var remaining = data.Substring(index);
-                    int keepCount = 0;
-                    
-                    // Only buffer if we have a partial match at the end
-                    for (int i = 1; i < ToolStartTag.Length && i <= remaining.Length; i++)
-                    {
-                        var suffix = remaining.Substring(remaining.Length - i);
-                        if (ToolStartTag.StartsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                        {
-                            keepCount = i;
-                        }
-                    }
-
-                    if (remaining.Length > keepCount)
-                    {
-                        output.Append(remaining.Substring(0, remaining.Length - keepCount));
-                    }
-                    
-                    _toolTagCarry = remaining.Substring(remaining.Length - keepCount);
-                    break;
-                }
-
-                output.Append(data.Substring(index, start - index));
-                _isToolBlockActive = true;
-                index = start + ToolStartTag.Length;
-            }
-            else
-            {
-                var end = data.IndexOf(ToolEndTag, index, StringComparison.OrdinalIgnoreCase);
-                if (end < 0)
-                {
-                    // End tag not found.
-                    // Check if the END of the data matches a PREFIX of the end tag.
-                    var remaining = data.Substring(index);
-                    int keepCount = 0;
-                    
-                    for (int i = 1; i < ToolEndTag.Length && i <= remaining.Length; i++)
-                    {
-                        var suffix = remaining.Substring(remaining.Length - i);
-                        if (ToolEndTag.StartsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                        {
-                            keepCount = i;
-                        }
-                    }
-
-                    if (remaining.Length > keepCount)
-                    {
-                        _toolBlockBuffer.Append(remaining.Substring(0, remaining.Length - keepCount));
-                    }
-                    
-                    _toolTagCarry = remaining.Substring(remaining.Length - keepCount);
-                    break;
-                }
-
-                _toolBlockBuffer.Append(data.Substring(index, end - index));
-                _isToolBlockActive = false;
-                index = end + ToolEndTag.Length;
-            }
-        }
-
-        return output.ToString();
-    }
-    
     /// <summary>
     /// 设置启动命令（用于实时日志模式）
     /// </summary>
