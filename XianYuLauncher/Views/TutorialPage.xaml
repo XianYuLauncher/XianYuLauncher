@@ -426,14 +426,13 @@
                                         </StackPanel>
                                     </Grid>
                                     <Button 
+                                        x:Name="MicrosoftLoginButton"
                                         Command="{x:Bind ViewModel.MicrosoftLoginCommand}" 
                                         IsEnabled="{x:Bind ViewModel.IsNotLoggingIn, Mode=OneWay}"
                                         HorizontalAlignment="Stretch" Style="{ThemeResource AccentButtonStyle}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <PathIcon Data="M0,0 h5 v5 h-5 Z M6,0 h5 v5 h-5 Z M0,6 h5 v5 h-5 Z M6,6 h5 v5 h-5 Z"
-                                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" 
-                                                      VerticalAlignment="Center" />
-                                            <TextBlock x:Uid="TutorialPage_BeforeLogin_Button" Text="开始登录"/>
+                                            <FontIcon Glyph="&#xE77B;" />
+                                            <TextBlock x:Name="MicrosoftLoginButtonText" x:Uid="TutorialPage_BeforeLogin_Button" Text="开始登录"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
