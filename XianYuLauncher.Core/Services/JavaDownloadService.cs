@@ -35,6 +35,29 @@ public class JavaDownloadService : IJavaDownloadService
         _localSettingsService = localSettingsService;
     }
 
+    /// <inheritdoc/>
+    public string GetManualDownloadUrl(string versionRequirement)
+    {
+        var downloadUrl = "https://www.java.com/zh-CN/download/";
+
+        if (string.IsNullOrWhiteSpace(versionRequirement))
+        {
+            return downloadUrl;
+        }
+
+        if (versionRequirement.Contains("17", StringComparison.OrdinalIgnoreCase))
+        {
+            return "https://www.oracle.com/cn/java/technologies/downloads/#java17";
+        }
+
+        if (versionRequirement.Contains("21", StringComparison.OrdinalIgnoreCase))
+        {
+            return "https://www.oracle.com/cn/java/technologies/downloads/#java21";
+        }
+
+        return downloadUrl;
+    }
+
     public async Task<List<JavaVersionDownloadOption>> GetAvailableJavaVersionsAsync(CancellationToken cancellationToken = default)
     {
         string platformKey = GetPlatformKey();

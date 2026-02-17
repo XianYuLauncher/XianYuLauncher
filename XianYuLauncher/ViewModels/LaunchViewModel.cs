@@ -31,15 +31,6 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class LaunchViewModel : ObservableRecipient
 {
-    // Win32 API 用于隐藏控制台窗口
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetConsoleWindow();
-    
-    private const int SW_HIDE = 0;
-    
     // 分辨率设置字段
     private int _windowWidth = 1280;
     private int _windowHeight = 720;
@@ -81,16 +72,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// </summary>
     private async Task OpenJavaDownloadUrlAsync(string requiredVersion)
     {
-        string downloadUrl = "https://www.java.com/zh-CN/download/";
-        
-        if (requiredVersion.Contains("17"))
-        {
-            downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java17";
-        }
-        else if (requiredVersion.Contains("21"))
-        {
-            downloadUrl = "https://www.oracle.com/cn/java/technologies/downloads/#java21";
-        }
+        string downloadUrl = _javaDownloadService.GetManualDownloadUrl(requiredVersion);
             
         try
         {

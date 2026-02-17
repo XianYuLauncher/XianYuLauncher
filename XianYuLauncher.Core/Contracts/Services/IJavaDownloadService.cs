@@ -31,6 +31,13 @@ public class JavaVersionDownloadOption
 public interface IJavaDownloadService
 {
     /// <summary>
+    /// 获取 Java 官网下载地址（用于手动下载提示）
+    /// </summary>
+    /// <param name="versionRequirement">需要的 Java 版本（例如 "17", "21"）</param>
+    /// <returns>下载页面 URL</returns>
+    string GetManualDownloadUrl(string versionRequirement);
+
+    /// <summary>
     /// 获取当前平台可供下载的 Java 版本列表
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
