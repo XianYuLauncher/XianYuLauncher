@@ -492,18 +492,6 @@ public partial class WorldManagementViewModel
             });
         }
     }
-    
-    
-    /// <summary>
-    /// 尝试联网获取数据包翻译（已废弃，由 TryLoadDataPackMetadataAsync 替代）
-    /// </summary>
-    [Obsolete("Use TryLoadDataPackMetadataAsync instead")]
-    private async Task TryLoadDataPackTranslationAsync(DataPackInfo dataPack, CancellationToken cancellationToken)
-    {
-        // 此方法已被 TryLoadDataPackMetadataAsync 替代
-        await Task.CompletedTask;
-    }
-    
     /// <summary>
     /// 读取 pack.mcmeta 文件
     /// </summary>

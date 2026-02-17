@@ -371,60 +371,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
-    private async Task ExecuteOptifineForgeDownloadAsync(
-        string minecraftVersion,
-        string forgeVersion,
-        string optifineType,
-        string optifinePatch,
-        string customVersionName,
-        DownloadTaskInfo task)
-    {
-        try
-        {
-            var minecraftDirectory = _fileService.GetMinecraftDataPath();
-            var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
-            var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
-
-            task.StatusMessage = $"正在下载 Forge {forgeVersion} + OptiFine...";
-            OnTaskProgressChanged(task);
-
-            await _minecraftVersionService.DownloadOptifineForgeVersionAsync(
-                minecraftVersion,
-                forgeVersion,
-                optifineType,
-                optifinePatch,
-                versionsDirectory,
-                librariesDirectory,
-                status =>
-                {
-                    if (_currentCts?.IsCancellationRequested == true) return;
-                    
-                    task.Progress = Math.Clamp(status.Percent, 0, 100);
-                    task.StatusMessage = $"正在下载 Forge + OptiFine... {status.Percent:F0}%";
-                    task.SpeedText = status.SpeedText;
-                    OnTaskProgressChanged(task);
-                },
-                _currentCts?.Token ?? CancellationToken.None,
-                customVersionName);
-
-            if (_currentCts?.IsCancellationRequested == true)
-            {
-                return;
-            }
-
-            CompleteTask(task, true);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
-            FailTask(task, ex.Message);
-        }
-    }
-
     private void CompleteTask(DownloadTaskInfo task, bool success)
     {
         lock (_lock)

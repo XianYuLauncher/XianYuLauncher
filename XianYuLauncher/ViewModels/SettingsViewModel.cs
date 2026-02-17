@@ -1993,18 +1993,6 @@ public partial class SettingsViewModel : ObservableRecipient
         return _javaRuntimeService.TryParseJavaVersion(javaVersionString, out majorVersion);
     }
     
-    /// <summary>
-    /// 加载保存的选中Java版本
-    /// </summary>
-    private async Task LoadSelectedJavaVersionAsync()
-    {
-        var selectedJavaPath = await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey);
-        if (!string.IsNullOrEmpty(selectedJavaPath))
-        {
-            SelectedJavaVersion = JavaVersions.FirstOrDefault(j => j.Path.Equals(selectedJavaPath, StringComparison.OrdinalIgnoreCase));
-        }
-    }
-    
     partial void OnSelectedJavaVersionChanged(JavaVersionInfo? value)
     {
         if (value != null)
@@ -2147,20 +2135,6 @@ public partial class SettingsViewModel : ObservableRecipient
         if (!string.IsNullOrEmpty(path))
         {
             JavaPath = path;
-        }
-    }
-    
-    private async Task LoadMinecraftPathAsync()
-    {
-        var path = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathKey);
-        if (!string.IsNullOrEmpty(path))
-        {
-            MinecraftPath = path;
-        }
-        else
-        {
-            // 如果没有保存的路径，使用默认路径
-            MinecraftPath = _fileService.GetMinecraftDataPath();
         }
     }
     

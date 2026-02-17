@@ -631,14 +631,6 @@ public sealed partial class VersionListPage : Page
     }
 
     /// <summary>
-    /// 导出整合包弹窗确认按钮点击事件处理
-    /// </summary>
-    private async void ExportModpackDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        await ExportModpackDialog_PrimaryButtonClick_Logic();
-    }
-    
-    /// <summary>
     /// 导出整合包确认按钮逻辑（从原事件处理中提取）
     /// </summary>
     private async Task ExportModpackDialog_PrimaryButtonClick_Logic()
@@ -1380,44 +1372,6 @@ public sealed partial class VersionListPage : Page
 
     /// <summary>
     #region 资源目录复选框事件处理
-    /// <summary>
-    /// 资源目录总复选框点击事件处理（全选）
-    /// </summary>
-    private void ResourceAll_Checked(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 全选所有资源目录
-            foreach (var dir in viewModel.ResourceDirectories)
-            {
-                dir.IsSelected = true;
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 资源目录总复选框点击事件处理（取消全选）
-    /// </summary>
-    private void ResourceAll_Unchecked(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 取消选择所有资源目录
-            foreach (var dir in viewModel.ResourceDirectories)
-            {
-                dir.IsSelected = false;
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 资源目录总复选框不确定状态事件处理
-    /// </summary>
-    private void ResourceAll_Indeterminate(object sender, RoutedEventArgs e)
-    {
-        // 不确定状态由子复选框自动设置，无需额外处理
-    }
-    
     /// <summary>
     /// 资源目录子复选框选中事件处理
     /// </summary>

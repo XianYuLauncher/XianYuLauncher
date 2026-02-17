@@ -356,14 +356,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private async void ModSearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == Windows.System.VirtualKey.Enter && ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
-        {
-            await ViewModel.SearchModsCommand.ExecuteAsync(null);
-        }
-    }
-
     private async void ModListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is ModrinthProject mod)

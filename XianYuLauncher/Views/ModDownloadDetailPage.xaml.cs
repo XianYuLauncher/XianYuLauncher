@@ -70,14 +70,6 @@ namespace XianYuLauncher.Views
             }
         }
 
-        private void GameVersionButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is GameVersionViewModel viewModel)
-            {
-                viewModel.IsExpanded = !viewModel.IsExpanded;
-            }
-        }
-
         private void AuthorButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             AuthorTextBlock.TextDecorations = Windows.UI.Text.TextDecorations.Underline;
