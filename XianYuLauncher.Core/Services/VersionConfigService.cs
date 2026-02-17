@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -69,7 +70,7 @@ public class VersionConfigService : IVersionConfigService
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var configPath = Path.Combine(minecraftPath, "versions", versionName, "XianYuL.cfg");
+            var configPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName, "XianYuL.cfg");
             
             if (!File.Exists(configPath))
             {
@@ -226,7 +227,7 @@ public class VersionConfigService : IVersionConfigService
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var versionDir = Path.Combine(minecraftPath, "versions", versionName);
+            var versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
             
             if (!Directory.Exists(versionDir))
             {

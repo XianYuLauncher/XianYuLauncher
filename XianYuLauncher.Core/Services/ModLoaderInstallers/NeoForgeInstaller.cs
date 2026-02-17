@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -87,7 +88,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             // 1. 生成版本ID和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
-            var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
+            var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 

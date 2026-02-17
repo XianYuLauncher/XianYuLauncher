@@ -100,9 +100,9 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         
         // 4. 生成版本ID和创建目录
         var versionId = options.CustomVersionName ?? $"{minecraftVersionId}-LiteLoader-{modLoaderVersion}";
-        var versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+        var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
-        var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
+        var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
         
@@ -428,7 +428,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         if (string.IsNullOrEmpty(options.CustomVersionName)) return false;
         
         // 检查版本 JSON 是否已存在
-        var versionJsonPath = Path.Combine(minecraftDirectory, "versions", options.CustomVersionName, $"{options.CustomVersionName}.json");
+        var versionJsonPath = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, options.CustomVersionName, $"{options.CustomVersionName}.json");
         return File.Exists(versionJsonPath);
     }
 }

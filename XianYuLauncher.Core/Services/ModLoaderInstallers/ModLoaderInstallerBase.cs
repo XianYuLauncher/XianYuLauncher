@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
@@ -76,7 +77,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     public virtual bool IsInstalled(string minecraftVersionId, string modLoaderVersion, string minecraftDirectory)
     {
         var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, null);
-        var versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+        var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         var jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
         return File.Exists(jsonPath);
     }
@@ -100,7 +101,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     /// </summary>
     protected string CreateVersionDirectory(string minecraftDirectory, string versionId)
     {
-        var versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+        var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
         return versionDirectory;
     }

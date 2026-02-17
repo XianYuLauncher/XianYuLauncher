@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Models;
 using System.Linq;
@@ -193,7 +194,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             // 初始化目录变量（使用与GetInstalledVersionsAsync相同的默认路径）
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
-            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
+            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions);
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
             
@@ -410,7 +411,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             // 先尝试从配置文件读取 (使用异步版本)
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
-            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
+            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions);
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             
             VersionConfig config = await ReadVersionConfigAsync(versionId, versionDirectory);
@@ -483,7 +484,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             // 设置默认Minecraft目录（使用程序路径下的.minecraft）
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
-            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, "versions");
+            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions);
             
             // 检查版本目录是否存在
             if (!Directory.Exists(versionsDirectory))
@@ -710,8 +711,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 modLoaderType, modLoaderVersion, minecraftVersionId);
 
             // 创建必要的目录
-            string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
-            string librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
+            string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
+            string librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
             Directory.CreateDirectory(versionsDirectory);
             Directory.CreateDirectory(librariesDirectory);
             
@@ -1464,8 +1465,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
             
             // 声明需要在多个步骤中使用的变量
-            string librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
-            string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            string librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
+            string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
             string versionDirectory = Path.Combine(versionsDirectory, versionId);
             string nativesDirectory = Path.Combine(versionDirectory, $"{versionId}-natives");
             
@@ -1625,9 +1626,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 下载线程数: {maxConcurrency}");
 
             // 1. 目录结构验证和创建
-            string assetsDirectory = Path.Combine(minecraftDirectory, "assets");
-            string indexesDirectory = Path.Combine(assetsDirectory, "indexes");
-            string objectsDirectory = Path.Combine(assetsDirectory, "objects");
+            string assetsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets);
+            string indexesDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Indexes);
+            string objectsDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Objects);
 
             // 创建必要的目录
             Directory.CreateDirectory(objectsDirectory);
@@ -2056,9 +2057,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         try
         {
             // 1. 目录结构验证和创建
-            string assetsDirectory = Path.Combine(minecraftDirectory, "assets");
-            string indexesDirectory = Path.Combine(assetsDirectory, "indexes");
-            string objectsDirectory = Path.Combine(assetsDirectory, "objects");
+            string assetsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets);
+            string indexesDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Indexes);
+            string objectsDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Objects);
 
             // 创建必要的目录
             Directory.CreateDirectory(minecraftDirectory);

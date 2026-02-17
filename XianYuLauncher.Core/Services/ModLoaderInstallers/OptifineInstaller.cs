@@ -72,7 +72,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
             // 1. 生成版本ID和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
-            var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
+            var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
@@ -140,8 +140,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Logger.LogInformation("创建临时目录结构");
             var tempDirectoryParent = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "optifine_install");
             tempMinecraftDirectory = Path.Combine(tempDirectoryParent, ".minecraft");
-            var tempVersionsDirectory = Path.Combine(tempMinecraftDirectory, "versions");
-            var tempLibrariesDirectory = Path.Combine(tempMinecraftDirectory, "libraries");
+            var tempVersionsDirectory = Path.Combine(tempMinecraftDirectory, MinecraftPathConsts.Versions);
+            var tempLibrariesDirectory = Path.Combine(tempMinecraftDirectory, MinecraftPathConsts.Libraries);
             
             // 清理并创建目录
             if (Directory.Exists(tempMinecraftDirectory))

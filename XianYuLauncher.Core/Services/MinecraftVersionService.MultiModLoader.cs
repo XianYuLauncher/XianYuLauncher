@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -137,7 +138,7 @@ public partial class MinecraftVersionService
         if (selection.Type.Equals("OptiFine", StringComparison.OrdinalIgnoreCase))
         {
             // 检测基础加载器类型
-            var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
             var versionDirectory = Path.Combine(versionsDirectory, targetVersionId);
             var versionJsonPath = Path.Combine(versionDirectory, $"{targetVersionId}.json");
             
@@ -218,9 +219,9 @@ public partial class MinecraftVersionService
     {
         _logger.LogInformation("将 OptiFine 作为 Mod 安装到版本: {VersionId}", targetVersionId);
 
-        var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+        var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
         var versionDirectory = Path.Combine(versionsDirectory, targetVersionId);
-        var modsDirectory = Path.Combine(versionDirectory, "mods");
+        var modsDirectory = Path.Combine(versionDirectory, MinecraftPathConsts.Mods);
         Directory.CreateDirectory(modsDirectory);
 
         // 解析 OptiFine 版本格式（如 "HD_U:I5"）

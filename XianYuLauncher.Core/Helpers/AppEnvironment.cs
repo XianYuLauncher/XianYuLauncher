@@ -88,7 +88,7 @@ public static class AppEnvironment
     {
         get
         {
-            var logPath = Path.Combine(SafeAppDataPath, "logs");
+            var logPath = Path.Combine(SafeAppDataPath, MinecraftPathConsts.Logs);
             if (!Directory.Exists(logPath))
             {
                 Directory.CreateDirectory(logPath);

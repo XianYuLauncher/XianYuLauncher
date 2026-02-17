@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -181,7 +182,7 @@ public class VersionInfoManager : IVersionInfoManager
             return Task.FromResult(installedVersions);
         }
 
-        var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+        var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
         if (!Directory.Exists(versionsDirectory))
         {
             _logger.LogInformation("版本目录不存在: {VersionsDirectory}", versionsDirectory);
@@ -203,7 +204,7 @@ public class VersionInfoManager : IVersionInfoManager
     /// <inheritdoc/>
     public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory)
     {
-        var versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+        var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         var configPath = Path.Combine(versionDirectory, VersionConfigFileName);
 
         if (!File.Exists(configPath))
@@ -228,7 +229,7 @@ public class VersionInfoManager : IVersionInfoManager
     /// <inheritdoc/>
     public async Task SaveVersionConfigAsync(string versionId, string minecraftDirectory, VersionConfig config)
     {
-        var versionDirectory = Path.Combine(minecraftDirectory, "versions", versionId);
+        var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
 
         var configPath = Path.Combine(versionDirectory, VersionConfigFileName);
@@ -304,7 +305,7 @@ public class VersionInfoManager : IVersionInfoManager
     /// </summary>
     private static string GetVersionJsonPath(string versionId, string minecraftDirectory)
     {
-        return Path.Combine(minecraftDirectory, "versions", versionId, $"{versionId}.json");
+        return Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId, $"{versionId}.json");
     }
 
     /// <summary>

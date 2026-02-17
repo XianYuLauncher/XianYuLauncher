@@ -80,18 +80,18 @@ public class GameLaunchService : IGameLaunchService
             
             // 2. 获取路径
             string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionsDir = Path.Combine(minecraftPath, "versions");
+            string versionsDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             string versionDir = Path.Combine(versionsDir, versionName);
             string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
             string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
-            string librariesPath = Path.Combine(minecraftPath, "libraries");
-            string assetsPath = Path.Combine(minecraftPath, "assets");
+            string librariesPath = Path.Combine(minecraftPath, MinecraftPathConsts.Libraries);
+            string assetsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Assets);
             
             // 3. 检查版本隔离设置
             bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
             bool enableVersionIsolation = versionIsolationValue ?? true;
             string gameDir = enableVersionIsolation 
-                ? Path.Combine(minecraftPath, "versions", versionName) 
+                ? Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName) 
                 : minecraftPath;
             
             // 4. 检查必要文件
@@ -212,12 +212,12 @@ public class GameLaunchService : IGameLaunchService
             string minecraftPath = _fileService.GetMinecraftDataPath();
             _logger.LogInformation("Minecraft 根目录: {MinecraftPath}", minecraftPath);
             
-            string versionsDir = Path.Combine(minecraftPath, "versions");
+            string versionsDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             string versionDir = Path.Combine(versionsDir, versionName);
             string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
             string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
-            string librariesPath = Path.Combine(minecraftPath, "libraries");
-            string assetsPath = Path.Combine(minecraftPath, "assets");
+            string librariesPath = Path.Combine(minecraftPath, MinecraftPathConsts.Libraries);
+            string assetsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Assets);
             
             _logger.LogInformation("版本目录: {VersionDir}", versionDir);
             _logger.LogInformation("JAR 路径: {JarPath}", jarPath);
@@ -230,7 +230,7 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("版本隔离: {EnableVersionIsolation}", enableVersionIsolation);
             
             string gameDir = enableVersionIsolation 
-                ? Path.Combine(minecraftPath, "versions", versionName) 
+                ? Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName) 
                 : minecraftPath;
             _logger.LogInformation("游戏目录: {GameDir}", gameDir);
             
@@ -900,7 +900,7 @@ public class GameLaunchService : IGameLaunchService
         // 1. 优先使用统一版本信息服务判断
         try
         {
-            string versionDirectory = Path.Combine(minecraftPath, "versions", versionName);
+            string versionDirectory = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
             var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(versionName, versionDirectory);
             
             if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -56,9 +57,9 @@ public class AssetManager : IAssetManager
         }
 
         // 创建必要的目录
-        var assetsDirectory = Path.Combine(minecraftDirectory, "assets");
-        var indexesDirectory = Path.Combine(assetsDirectory, "indexes");
-        var objectsDirectory = Path.Combine(assetsDirectory, "objects");
+        var assetsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets);
+        var indexesDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Indexes);
+        var objectsDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Objects);
         
         Directory.CreateDirectory(indexesDirectory);
         Directory.CreateDirectory(objectsDirectory);
@@ -108,9 +109,9 @@ public class AssetManager : IAssetManager
         Action<string>? currentDownloadCallback = null,
         CancellationToken cancellationToken = default)
     {
-        var assetsDirectory = Path.Combine(minecraftDirectory, "assets");
-        var indexesDirectory = Path.Combine(assetsDirectory, "indexes");
-        var objectsDirectory = Path.Combine(assetsDirectory, "objects");
+        var assetsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets);
+        var indexesDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Indexes);
+        var objectsDirectory = Path.Combine(assetsDirectory, MinecraftPathConsts.Objects);
 
         // 确保目录存在
         Directory.CreateDirectory(objectsDirectory);
@@ -227,7 +228,7 @@ public class AssetManager : IAssetManager
     /// <inheritdoc/>
     public async Task<AssetIndexJson?> GetAssetIndexAsync(string assetIndexId, string minecraftDirectory)
     {
-        var indexFilePath = Path.Combine(minecraftDirectory, "assets", "indexes", $"{assetIndexId}.json");
+        var indexFilePath = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets, MinecraftPathConsts.Indexes, $"{assetIndexId}.json");
 
         if (!File.Exists(indexFilePath))
         {
@@ -257,7 +258,7 @@ public class AssetManager : IAssetManager
             return 0;
         }
 
-        var objectsDirectory = Path.Combine(minecraftDirectory, "assets", "objects");
+        var objectsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Assets, MinecraftPathConsts.Objects);
         var missingCount = 0;
 
         foreach (var (_, assetMeta) in assetIndex.Objects)
@@ -348,7 +349,7 @@ public class AssetManager : IAssetManager
     /// </summary>
     private async Task<string?> GetAssetIndexIdFromVersionAsync(string versionId, string minecraftDirectory)
     {
-        var versionJsonPath = Path.Combine(minecraftDirectory, "versions", versionId, $"{versionId}.json");
+        var versionJsonPath = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId, $"{versionId}.json");
         
         if (!File.Exists(versionJsonPath))
         {

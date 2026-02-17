@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -281,7 +282,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         try
         {
             var minecraftDirectory = _fileService.GetMinecraftDataPath();
-            var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
             var finalVersionName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
             var targetDirectory = Path.Combine(versionsDirectory, finalVersionName);
 
@@ -381,8 +382,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         try
         {
             var minecraftDirectory = _fileService.GetMinecraftDataPath();
-            var versionsDirectory = Path.Combine(minecraftDirectory, "versions");
-            var librariesDirectory = Path.Combine(minecraftDirectory, "libraries");
+            var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
+            var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
             task.StatusMessage = $"正在下载 Forge {forgeVersion} + OptiFine...";
             OnTaskProgressChanged(task);
