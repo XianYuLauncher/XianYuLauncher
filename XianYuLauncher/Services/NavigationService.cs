@@ -2,8 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
@@ -72,18 +70,7 @@ public class NavigationService : INavigationService
         if (CanGoBack)
         {
             var vmBeforeNavigation = _frame.GetPageViewModel();
-            if (IsTopNavigationMode())
-            {
-                _frame.GoBack(new SlideNavigationTransitionInfo
-                {
-                    Effect = SlideNavigationTransitionEffect.FromLeft
-                });
-            }
-            else
-            {
-                _frame.GoBack();
-            }
-
+            _frame.GoBack();
             if (vmBeforeNavigation is INavigationAware navigationAware)
             {
                 navigationAware.OnNavigatedFrom();
@@ -105,12 +92,7 @@ public class NavigationService : INavigationService
             {
                 _frame.Tag = clearNavigation;
                 var vmBeforeNavigation = _frame.GetPageViewModel();
-                var navigated = IsTopNavigationMode()
-                    ? _frame.Navigate(pageType, parameter, new SlideNavigationTransitionInfo
-                    {
-                        Effect = SlideNavigationTransitionEffect.FromRight
-                    })
-                    : _frame.Navigate(pageType, parameter);
+                var navigated = _frame.Navigate(pageType, parameter);
                 if (navigated)
                 {
                     _lastParameterUsed = parameter;
@@ -159,26 +141,5 @@ public class NavigationService : INavigationService
 
             Navigated?.Invoke(sender, e);
         }
-    }
-
-    private bool IsTopNavigationMode()
-    {
-        if (_frame == null)
-        {
-            return false;
-        }
-
-        DependencyObject? current = _frame;
-        while (current != null)
-        {
-            if (current is NavigationView navigationView)
-            {
-                return navigationView.PaneDisplayMode == NavigationViewPaneDisplayMode.Top;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
-        }
-
-        return false;
     }
 }
