@@ -56,17 +56,6 @@ public sealed partial class ModLoaderSelectorPage : Page
     }
     
     /// <summary>
-    /// ModLoader项点击事件处理，用于选择ModLoader并加载版本列表
-    /// </summary>
-    private async void ModLoaderItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
-    {
-        if (sender is Microsoft.UI.Xaml.Controls.Border border && border.DataContext is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
-        {
-            await ViewModel.SelectModLoaderCommand.ExecuteAsync(modLoaderItem);
-        }
-    }
-    
-    /// <summary>
     /// 取消选择ModLoader事件处理
     /// </summary>
     private void CancelModLoader_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

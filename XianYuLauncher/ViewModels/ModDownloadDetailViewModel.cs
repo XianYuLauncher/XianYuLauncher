@@ -2299,9 +2299,6 @@ namespace XianYuLauncher.ViewModels
         // 世界下载专用字段
         private string _pendingBackgroundDownloadSavesDirectory;
         private string _pendingBackgroundDownloadFileName;
-        // 标识是否正在切换到后台下载（用于区分用户取消和切换后台）
-        private bool _isSwitchingToBackground = false;
-
         /// <summary>
         /// 启动后台下载（关闭弹窗，下载继续在后台进行，通过 TeachingTip 显示进度）
         /// </summary>
@@ -3862,26 +3859,6 @@ namespace XianYuLauncher.ViewModels
             };
             
             return $"https://modrinth.com/{typeSegment}/{slug}";
-        }
-        
-        /// <summary>
-        /// 生成 CurseForge 平台 URL
-        /// </summary>
-        private string GenerateCurseForgeUrl(string projectType, string slug)
-        {
-            // CurseForge URL 格式: https://www.curseforge.com/minecraft/{类型段}/{slug}
-            string typeSegment = projectType switch
-            {
-                "mod" => "mc-mods",
-                "resourcepack" => "texture-packs",
-                "datapack" => "data-packs",
-                "world" => "worlds",
-                "shader" or "shaderpack" => "shaders",
-                "modpack" => "modpacks",
-                _ => "mc-mods"
-            };
-            
-            return $"https://www.curseforge.com/minecraft/{typeSegment}/{slug}";
         }
         
         /// <summary>

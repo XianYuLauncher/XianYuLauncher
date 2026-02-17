@@ -759,15 +759,4 @@ public sealed partial class LaunchPage : Page
             return null;
         }
     }
-
-
-
-    /// <summary>
-    /// 将BitmapImage转换为SoftwareBitmap
-    /// </summary>
-    private async Task<Windows.Graphics.Imaging.SoftwareBitmap> GetSoftwareBitmapFromBitmapImage(BitmapImage bitmapImage)
-    {
-        // 简化实现，暂时不转换
-        return null;
-    }
 }
