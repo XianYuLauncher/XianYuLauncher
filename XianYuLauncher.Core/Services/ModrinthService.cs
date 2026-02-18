@@ -761,6 +761,7 @@ public class ModrinthService
             if (checkProjectId)
             {
                 existingProjectIdsByPath = new Dictionary<string, Dictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
+                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 已启用 ProjectID 去重检测");
             }
             
             for (int i = 0; i < dependencies.Count; i++)
@@ -876,19 +877,27 @@ public class ModrinthService
                     {
                         if (existingProjectIdsByPath != null && !existingProjectIdsByPath.TryGetValue(dependencyDestinationPath, out existingProjectIds))
                         {
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 为路径构建本地项目索引: {dependencyDestinationPath}");
                             existingProjectIds = await GetExistingModProjectIdsAsync(dependencyDestinationPath, cancellationToken);
                             existingProjectIdsByPath[dependencyDestinationPath] = existingProjectIds;
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 本地项目索引构建完成: 路径={dependencyDestinationPath}, 项目数={existingProjectIds?.Count ?? 0}");
                         }
                     }
                     
-                    // 新增：检查项目ID是否已存在
+                    string? existingProjectFilePath = null;
+                    bool skipByProjectHashMatch = false;
+
+                    // 新增：检查项目ID是否已存在（命中后比较 hash，一致跳过；不一致走替换）
                     if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
                     {
-                        if (existingProjectIds.ContainsKey(depVersionInfo.ProjectId))
+                        if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string localFilePath))
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 跳过：项目 {depVersionInfo.ProjectId} 已存在 ({existingProjectIds[depVersionInfo.ProjectId]})");
-                            processedCount++;
-                            continue;
+                            existingProjectFilePath = localFilePath;
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 命中 ProjectID: 依赖项目={depVersionInfo.ProjectId}, 本地文件={localFilePath}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 未命中，将继续走文件/SHA1检测: 依赖项目={depVersionInfo.ProjectId}");
                         }
                     }
                     
@@ -905,6 +914,34 @@ public class ModrinthService
                     if (string.IsNullOrEmpty(primaryFile.Filename))
                     {
                         System.Diagnostics.Debug.WriteLine($"  - 跳过：文件名为空");
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(existingProjectFilePath))
+                    {
+                        if (File.Exists(existingProjectFilePath) &&
+                            primaryFile.Hashes.TryGetValue("sha1", out string targetSha1))
+                        {
+                            string localSha1 = CalculateSHA1(existingProjectFilePath);
+                            if (localSha1.Equals(targetSha1, StringComparison.OrdinalIgnoreCase))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 命中且 hash 一致，跳过下载: 项目={depVersionInfo.ProjectId}");
+                                processedCount++;
+                                skipByProjectHashMatch = true;
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 命中但 hash 不一致，将下载新版本并替换旧文件: 项目={depVersionInfo.ProjectId}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 命中但无法比较 hash，将继续下载: 项目={depVersionInfo.ProjectId}");
+                        }
+                    }
+
+                    if (skipByProjectHashMatch)
+                    {
                         continue;
                     }
                     
@@ -958,6 +995,25 @@ public class ModrinthService
                     if (downloadSuccess)
                     {
                         System.Diagnostics.Debug.WriteLine($"  - 下载成功");
+
+                        if (!string.IsNullOrEmpty(depVersionInfo.ProjectId) && existingProjectIds != null)
+                        {
+                            existingProjectIds[depVersionInfo.ProjectId] = filePath;
+                        }
+
+                        if (!string.IsNullOrEmpty(existingProjectFilePath) &&
+                            !existingProjectFilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase) &&
+                            File.Exists(existingProjectFilePath))
+                        {
+                            try
+                            {
+                                File.Delete(existingProjectFilePath);
+                            }
+                            catch (Exception ex)
+                            {
+                                Serilog.Log.Warning("依赖替换完成，但旧文件删除失败: {OldFilePath}, {ErrorMessage}", existingProjectFilePath, ex.Message);
+                            }
+                        }
                         
                         // 处理依赖的依赖（递归）
                         if (depVersionInfo.Dependencies != null && depVersionInfo.Dependencies.Count > 0)
@@ -1001,16 +1057,35 @@ public class ModrinthService
         /// <returns>项目ID到文件路径的映射</returns>
         private async Task<Dictionary<string, string>?> GetExistingModProjectIdsAsync(string destinationPath, CancellationToken cancellationToken = default)
         {
-            // 计算现有文件的SHA1
-            var existingFiles = Directory.GetFiles(destinationPath, "*.jar", SearchOption.TopDirectoryOnly);
+            if (!Directory.Exists(destinationPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 目标路径不存在，无法建立索引: {destinationPath}");
+                return null;
+            }
+
+            var existingFiles = Directory.GetFiles(destinationPath, "*", SearchOption.TopDirectoryOnly)
+                .Where(file => file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
+                               file.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 扫描到候选文件数: {existingFiles.Count}, 路径={destinationPath}");
+
             var hashes = new List<string>();
-            var hashToFilePath = new Dictionary<string, string>();
-            
+            var hashToFilePath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var uniqueHashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var file in existingFiles)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 try
                 {
                     string hash = CalculateSHA1(file);
+                    if (string.IsNullOrEmpty(hash) || !uniqueHashes.Add(hash))
+                    {
+                        continue;
+                    }
+
                     hashes.Add(hash);
                     hashToFilePath[hash] = file;
                 }
@@ -1019,33 +1094,65 @@ public class ModrinthService
                     System.Diagnostics.Debug.WriteLine($"计算文件哈希失败: {file}, {ex.Message}");
                 }
             }
-            
+
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 哈希计算完成: 唯一Hash数={hashes.Count}");
+
             if (hashes.Count == 0)
             {
+                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 无可用Hash，返回空索引");
                 return null;
             }
-            
-            // 批量获取项目ID
+
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var unresolvedHashes = new HashSet<string>(hashes, StringComparer.OrdinalIgnoreCase);
+
             try
             {
                 var versionMap = await GetVersionFilesByHashesAsync(hashes, "sha1");
-                var result = new Dictionary<string, string>();
-                
+                int batchResolvedCount = 0;
+
                 foreach (var kvp in versionMap)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    unresolvedHashes.Remove(kvp.Key);
                     if (!string.IsNullOrEmpty(kvp.Value.ProjectId) && hashToFilePath.TryGetValue(kvp.Key, out string filePath))
                     {
                         result[kvp.Value.ProjectId] = filePath;
+                        batchResolvedCount++;
                     }
                 }
-                
-                return result;
+
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 批量反查完成: 命中项目={batchResolvedCount}, 待补查Hash={unresolvedHashes.Count}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"批量获取项目ID失败: {ex.Message}");
-                return null;
             }
+
+            int singleResolvedCount = 0;
+            foreach (var hash in unresolvedHashes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    var versionInfo = await GetVersionFileByHashAsync(hash, "sha1");
+                    if (!string.IsNullOrEmpty(versionInfo?.ProjectId) && hashToFilePath.TryGetValue(hash, out string filePath))
+                    {
+                        result[versionInfo.ProjectId] = filePath;
+                        singleResolvedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"单文件获取项目ID失败: {hash}, {ex.Message}");
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 单文件补查完成: 命中项目={singleResolvedCount}, 最终项目总数={result.Count}");
+
+            return result;
         }
 
         /// <summary>
