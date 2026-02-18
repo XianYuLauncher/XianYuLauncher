@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
@@ -167,88 +168,6 @@ namespace XianYuLauncher.ViewModels
         public void ToggleFullDescription()
         {
             IsFullDescriptionVisible = !IsFullDescriptionVisible;
-        }
-
-        /// <summary>
-        /// 预处理Mod描述，将HTML标签转换为Markdown
-        /// </summary>
-        private string PreprocessDescription(string description)
-        {
-            if (string.IsNullOrEmpty(description))
-                return string.Empty;
-
-            try
-            {
-                // 0. 解码 HTML 实体 (如 &lt; &gt; &nbsp;)
-                description = System.Net.WebUtility.HtmlDecode(description);
-
-                // 1. 标题: <h1 ...>Title</h1> -> # Title
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description,
-                    @"<h([1-6])(?: [^>]*)?>(.*?)</h\1>",
-                    m => "\n" + new string('#', int.Parse(m.Groups[1].Value)) + " " + m.Groups[2].Value + "\n",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-
-                // 2. 粗体: <strong>, <b> -> **
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description, 
-                    @"<(?:strong|b)(?: [^>]*)?>(.*?)</(?:strong|b)>", 
-                    "**$1**", 
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-
-                // 3. 斜体: <em>, <i> -> *
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description, 
-                    @"<(?:em|i)(?: [^>]*)?>(.*?)</(?:em|i)>", 
-                    "*$1*", 
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-
-                // 4. 链接: <a href="url">text</a> -> [text](url)
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description,
-                    @"<a\s+(?:[^>]*?\s+)?href\s*=\s*([""'])(.*?)\1[^>]*>(.*?)</a>",
-                    "[$3]($2)",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-
-                // 5. 图片: <img src="url"> -> ![](url)
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description, 
-                    @"<img\s+(?:[^>]*?\s+)?src\s*=\s*([""'])(.*?)\1.*?>", 
-                    "![]($2)", 
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-                
-                // 处理残留的闭合标签
-                description = description.Replace("</img>", "");
-
-                // 6. 列表
-                description = description.Replace("<li>", "\n- ").Replace("</li>", "");
-                description = description.Replace("<ul>", "\n").Replace("</ul>", "\n");
-                description = description.Replace("<ol>", "\n").Replace("</ol>", "\n");
-
-                // 7. 段落和换行
-                description = description.Replace("<p>", "").Replace("</p>", "\n\n");
-                description = description.Replace("<br>", "\n").Replace("<br/>", "\n").Replace("<br />", "\n");
-
-                // 8. 引用: <blockquote> -> >
-                description = System.Text.RegularExpressions.Regex.Replace(description, @"<blockquote(?: [^>]*)?>", "\n> ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                description = description.Replace("</blockquote>", "\n\n");
-                
-                // 9. 分割线: <hr> -> ---
-                description = System.Text.RegularExpressions.Regex.Replace(description, @"<hr(?: [^>]*)?/?>", "\n---\n", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-                // 10. 移除其他常见的容器/格式标签，保留内容 (div, span, center, font, table结构)
-                description = System.Text.RegularExpressions.Regex.Replace(
-                    description, 
-                    @"</?(?:div|span|center|font|tbody|tr|td|table|thead|th)[^>]*>", 
-                    "", 
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Markdown Preprocess] Error: {ex.Message}");
-            }
-
-            return description;
         }
 
         /// <summary>
@@ -641,32 +560,6 @@ namespace XianYuLauncher.ViewModels
         
         private readonly ILocalSettingsService _localSettingsService;
         
-        /// <summary>
-        /// 判断是否为快照版本（包括 snapshot、pre、rc、周快照如 25w13a）
-        /// </summary>
-        private static bool IsSnapshotVersion(string version)
-        {
-            if (string.IsNullOrEmpty(version)) return false;
-            
-            var lowerVersion = version.ToLowerInvariant();
-            
-            // 检查是否包含 snapshot、pre、rc
-            if (lowerVersion.Contains("snapshot") || 
-                lowerVersion.Contains("-pre") || 
-                lowerVersion.Contains("-rc"))
-            {
-                return true;
-            }
-            
-            // 检查周快照格式：如 25w13a、24w10a（数字+w+数字+字母）
-            if (System.Text.RegularExpressions.Regex.IsMatch(lowerVersion, @"^\d{2}w\d{1,2}[a-z]$"))
-            {
-                return true;
-            }
-            
-            return false;
-        }
-        
         // 语义化版本号比较器
         private static class SemanticVersionComparer
         {
@@ -752,7 +645,7 @@ namespace XianYuLauncher.ViewModels
                 // 更新ViewModel属性
                 ModName = _translationService.GetTranslatedName(projectDetail.Slug, projectDetail.Title);
                 ModDescriptionOriginal = projectDetail.Description;
-                ModDescriptionBody = PreprocessDescription(projectDetail.Body); // 完整描述（Markdown格式，预处理HTML）
+                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(projectDetail.Body); // 完整描述（Markdown格式，预处理HTML）
                 IsFullDescriptionVisible = false; // 默认折叠
                 ModDescriptionTranslated = string.Empty; // 先清空翻译
                 
@@ -820,7 +713,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 生成平台 URL
-                PlatformUrl = GenerateModrinthUrl(ProjectType, projectDetail.Slug);
+                PlatformUrl = ModResourcePathHelper.GenerateModrinthUrl(ProjectType, projectDetail.Slug);
                 
                 // 更新支持的加载器/标签
                 SupportedLoaders.Clear();
@@ -921,7 +814,7 @@ namespace XianYuLauncher.ViewModels
                         // 如果启用了隐藏快照版本，过滤掉快照版本
                         if (hideSnapshots)
                         {
-                            gameVersionsInOrder = gameVersionsInOrder.Where(v => !IsSnapshotVersion(v));
+                            gameVersionsInOrder = gameVersionsInOrder.Where(v => !ModVersionClassifierHelper.IsSnapshotVersion(v));
                         }
                         
                         var gameVersionsList = gameVersionsInOrder.ToList();
@@ -1063,7 +956,7 @@ namespace XianYuLauncher.ViewModels
             // 更新ViewModel属性
             ModName = _translationService.GetTranslatedName(modDetail.Slug, modDetail.Name);
             ModDescriptionOriginal = modDetail.Summary;
-            ModDescriptionBody = PreprocessDescription(modDetail.Description); // CurseForge的完整描述（HTML格式，转换为Markdown）
+                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(modDetail.Description); // CurseForge的完整描述（HTML格式，转换为Markdown）
             IsFullDescriptionVisible = false; // 默认折叠
             ModDescriptionTranslated = string.Empty; // 先清空翻译
             
@@ -1330,7 +1223,7 @@ namespace XianYuLauncher.ViewModels
             if (hideSnapshots)
             {
                 filesByGameVersion = filesByGameVersion
-                    .Where(g => !IsSnapshotVersion(g.Key))
+                    .Where(g => !ModVersionClassifierHelper.IsSnapshotVersion(g.Key))
                     .ToList();
             }
             
@@ -1434,7 +1327,7 @@ namespace XianYuLauncher.ViewModels
                         DownloadUrl = file.DownloadUrl,
                         FileName = file.FileName,
                         Loaders = new List<string> { loaderName },
-                        VersionType = GetVersionType(file.ReleaseType),
+                        VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(file.ReleaseType),
                         GameVersion = gameVersion,
                         IconUrl = ModIconUrl,
                         OriginalCurseForgeFile = file // 保存原始CurseForge文件信息用于获取依赖
@@ -1488,7 +1381,7 @@ namespace XianYuLauncher.ViewModels
                             DownloadUrl = f.DownloadUrl,
                             FileName = f.FileName,
                             Loaders = new List<string> { loaderName },
-                            VersionType = GetVersionType(f.ReleaseType),
+                            VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(f.ReleaseType),
                             GameVersion = existingViewModel.GameVersion,
                             IconUrl = ModIconUrl,
                             OriginalCurseForgeFile = f
@@ -1547,7 +1440,7 @@ namespace XianYuLauncher.ViewModels
                             DownloadUrl = file.DownloadUrl,
                             FileName = file.FileName,
                             Loaders = new List<string> { loaderName },
-                            VersionType = GetVersionType(file.ReleaseType),
+                            VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(file.ReleaseType),
                             GameVersion = existingViewModel.GameVersion,
                             IconUrl = ModIconUrl,
                             OriginalCurseForgeFile = file // 保存原始CurseForge文件信息用于获取依赖
@@ -1618,20 +1511,6 @@ namespace XianYuLauncher.ViewModels
             }
         }
         
-        /// <summary>
-        /// 将CurseForge的ReleaseType转换为版本类型
-        /// </summary>
-        private string GetVersionType(int releaseType)
-        {
-            return releaseType switch
-            {
-                1 => "release",    // Release
-                2 => "beta",       // Beta
-                3 => "alpha",      // Alpha
-                _ => "release"
-            };
-        }
-
         // 下载弹窗相关属性
         [ObservableProperty]
         private ModVersionViewModel _selectedModVersion;
@@ -2143,7 +2022,7 @@ namespace XianYuLauncher.ViewModels
             }
 
             // 非Mod资源：仅在有加载器时才处理依赖
-            var projectType = NormalizeProjectType(ProjectType);
+            var projectType = ModResourcePathHelper.NormalizeProjectType(ProjectType);
             if (projectType != "mod")
             {
                 var loaderType = gameVersion?.LoaderType?.ToLower();
@@ -2171,19 +2050,19 @@ namespace XianYuLauncher.ViewModels
                 try
                 {
                     var detail = await _modrinthService.GetProjectDetailAsync(projectId);
-                    string dependencyProjectType = NormalizeProjectType(detail?.ProjectType);
-                    return GetDependencyTargetDir(gameVersion, dependencyProjectType);
+                    string dependencyProjectType = ModResourcePathHelper.NormalizeProjectType(detail?.ProjectType);
+                    return ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), gameVersion?.OriginalVersionName, dependencyProjectType);
                 }
                 catch
                 {
-                    return GetDependencyTargetDir(gameVersion, "mod");
+                    return ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), gameVersion?.OriginalVersionName, "mod");
                 }
             };
 
             Func<CurseForgeModDetail, Task<string>> resolveCurseForgeDependencyTargetAsync = depMod =>
             {
-                string dependencyProjectType = MapCurseForgeClassIdToProjectType(depMod?.ClassId);
-                return Task.FromResult(GetDependencyTargetDir(gameVersion, dependencyProjectType));
+                string dependencyProjectType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(depMod?.ClassId);
+                return Task.FromResult(ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), gameVersion?.OriginalVersionName, dependencyProjectType));
             };
 
             // Modrinth依赖处理
@@ -2242,55 +2121,6 @@ namespace XianYuLauncher.ViewModels
                         resolveDestinationPathAsync: resolveCurseForgeDependencyTargetAsync);
                 }
             }
-        }
-
-        private string GetDependencyTargetDir(InstalledGameVersionViewModel? gameVersion, string projectType)
-        {
-            string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionName = gameVersion?.OriginalVersionName;
-
-            string baseDir = string.IsNullOrEmpty(versionName)
-                ? minecraftPath
-                : Path.Combine(minecraftPath, "versions", versionName);
-
-            string targetFolder = projectType switch
-            {
-                "resourcepack" => "resourcepacks",
-                "shader" => "shaderpacks",
-                "shaderpack" => "shaderpacks",
-                "datapack" => "datapacks",
-                "world" => "mods",
-                _ => "mods"
-            };
-
-            return Path.Combine(baseDir, targetFolder);
-        }
-
-        private static string NormalizeProjectType(string? projectType)
-        {
-            if (string.IsNullOrEmpty(projectType))
-            {
-                return "mod";
-            }
-
-            return projectType.ToLower() switch
-            {
-                "shaderpack" => "shader",
-                _ => projectType.ToLower()
-            };
-        }
-
-        private static string MapCurseForgeClassIdToProjectType(int? classId)
-        {
-            return classId switch
-            {
-                12 => "resourcepack",
-                17 => "world",
-                4471 => "modpack",
-                6552 => "shader",
-                6945 => "datapack",
-                _ => "mod"
-            };
         }
 
         // 当前正在下载的Mod版本和保存路径（用于后台下载）
@@ -2470,66 +2300,12 @@ namespace XianYuLauncher.ViewModels
                         }
                     }
                     
-                    // 检查版本是否兼容
-                bool isCompatible = false;
-                
-                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
-                bool isDatapack = ProjectType == "datapack" || 
-                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
-                
-                // 如果是资源包、光影、数据包或世界，只基于游戏版本号进行兼容性检测
-                if (ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack)
-                {
-                    // 这些类型只基于游戏版本号兼容，不需要检查加载器
-                    // 增加对"Generic"版本的支持
-                    if (!string.IsNullOrEmpty(gameVersion) && 
-                       (supportedGameVersionIds.Contains(gameVersion) || supportedGameVersionIds.Contains("Generic")))
-                    {
-                        isCompatible = true;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(gameVersion) && 
-                        (supportedGameVersionIds.Contains(gameVersion) || supportedGameVersionIds.Contains("Generic")))
-                {
-                    // 获取该Mod版本支持的加载器列表
-                    var supportedLoaders = modVersion.Loaders;
-                    
-                    // 兼容性检查需要同时满足游戏版本和加载器类型
-                    // 1. 如果Mod支持所有加载器（包括原版），则直接兼容
-                    // 2. 如果Mod有特定加载器要求，则必须匹配
-                    if (supportedLoaders != null && supportedLoaders.Count > 0)
-                    {
-                        // 检查游戏的任一加载器是否在Mod支持的加载器列表中
-                        // 这样 Forge+LiteLoader 版本可以同时兼容 Forge Mod 和 LiteLoader Mod
-                        isCompatible = gameLoaders.Any(gameLoader =>
-                        {
-                            // 特别处理 LegacyFabric
-                            if (gameLoader.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return supportedLoaders.Any(l => 
-                                    l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) || 
-                                    l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
-                            }
-                            // 特别处理 LiteLoader
-                            else if (gameLoader.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return supportedLoaders.Any(l => 
-                                    l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) || 
-                                    l.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
-                            }
-                            else
-                            {
-                                // 使用不区分大小写的比较来检查加载器兼容性
-                                return supportedLoaders.Any(l => l.Equals(gameLoader, StringComparison.OrdinalIgnoreCase));
-                            }
-                        });
-                    }
-                    else
-                    {
-                        // 如果Mod没有指定加载器要求，则默认兼容
-                        isCompatible = true;
-                    }
-                }
+                    bool isCompatible = EvaluateCompatibilityForInstalledVersion(
+                        gameVersion,
+                        gameLoaders,
+                        supportedGameVersionIds,
+                        modVersion.Loaders,
+                        modVersion);
                     
                     var versionViewModel = new InstalledGameVersionViewModel
                     {
@@ -2612,47 +2388,14 @@ namespace XianYuLauncher.ViewModels
                     loaderType = "NeoForge";
                 }
                 
-                // 兼容性检查
-                bool isCompatible = false;
-                bool isDatapack = ProjectType == "datapack" || 
-                                 (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
-                
-                // 如果是资源包、光影、数据包或世界，只基于游戏版本号进行兼容性检测
-                if (ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack)
-                {
-                    // 检查游戏版本是否匹配
-                    if (gameVersion == modVersion.GameVersion)
-                    {
-                        isCompatible = true;
-                    }
-                }
-                else
-                {
-                    // 获取该Mod版本支持的加载器列表
-                    var supportedLoaders = modVersion.Loaders;
-                    
-                    if (supportedLoaders != null && supportedLoaders.Count > 0)
-                    {
-                        // 检查加载器是否匹配
-                        string formattedLoaderType = !string.IsNullOrEmpty(loaderType) ? char.ToUpper(loaderType[0]) + loaderType.Substring(1).ToLower() : loaderType;
-
-                        // 特别处理 LegacyFabric: 需要匹配 "LegacyFabric" 或 "legacy-fabric" (Modrinth ID)
-                        isCompatible = loaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase)
-                            ? supportedLoaders.Any(l =>
-                                l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) ||
-                                l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
-                            : loaderType.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase)
-                            ? supportedLoaders.Any(l =>
-                                l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) ||
-                                l.Equals("liteloader", StringComparison.OrdinalIgnoreCase))
-                            : supportedLoaders.Any(l => l.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
-                    }
-                    else
-                    {
-                        // 如果Mod没有指定加载器要求，则默认兼容
-                        isCompatible = true;
-                    }
-                }
+                var supportedGameVersionIds = new HashSet<string> { modVersion.GameVersion };
+                var gameLoaders = new List<string> { loaderType };
+                bool isCompatible = EvaluateCompatibilityForInstalledVersion(
+                    gameVersion,
+                    gameLoaders,
+                    supportedGameVersionIds,
+                    modVersion.Loaders,
+                    modVersion);
                 
                 var versionViewModel = new InstalledGameVersionViewModel
                 {
@@ -3102,7 +2845,7 @@ namespace XianYuLauncher.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[Info] 准备下载世界存档: {ModName}, URL: {modVersion.DownloadUrl}");
 
                 // 处理依赖
-                var worldDependencyDir = GetDependencyTargetDir(SelectedInstalledVersion, "world");
+                var worldDependencyDir = ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), SelectedInstalledVersion?.OriginalVersionName, "world");
                 if (!string.IsNullOrEmpty(worldDependencyDir))
                 {
                     _fileService.CreateDirectory(worldDependencyDir);
@@ -3194,33 +2937,6 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        /// <summary>
-        /// 获取唯一的目录路径（如果目录已存在，则添加 _1, _2 等后缀）
-        /// </summary>
-        /// <param name="parentDir">父目录</param>
-        /// <param name="baseName">基础名称</param>
-        /// <returns>唯一的目录路径</returns>
-        private string GetUniqueDirectoryPath(string parentDir, string baseName)
-        {
-            string targetPath = Path.Combine(parentDir, baseName);
-            
-            if (!Directory.Exists(targetPath))
-            {
-                return targetPath;
-            }
-
-            int counter = 1;
-            while (true)
-            {
-                string newPath = Path.Combine(parentDir, $"{baseName}_{counter}");
-                if (!Directory.Exists(newPath))
-                {
-                    return newPath;
-                }
-                counter++;
-            }
-        }
-
         // InstallCurseForgeModpackAsync 已迁移到 ModpackInstallationService
 
         // CopyDirectory 已迁移到 ModpackInstallationService
@@ -3254,22 +2970,6 @@ namespace XianYuLauncher.ViewModels
                 _installCancellationTokenSource.Dispose();
                 _installCancellationTokenSource = null;
             }
-        }
-        
-        /// <summary>
-        /// 生成 Modrinth 平台 URL
-        /// </summary>
-        private string GenerateModrinthUrl(string projectType, string slug)
-        {
-            // Modrinth URL 格式: https://modrinth.com/{资源类型}/{slug}
-            // shaderpack 需要改为 shader，其它类型不加 s
-            string typeSegment = projectType switch
-            {
-                "shaderpack" => "shader",
-                _ => projectType
-            };
-            
-            return $"https://modrinth.com/{typeSegment}/{slug}";
         }
         
         /// <summary>
@@ -3862,6 +3562,67 @@ namespace XianYuLauncher.ViewModels
                 IsDownloading = false;
                 await ShowMessageAsync($"安装失败: {ex.Message}");
             }
+        }
+
+        private bool EvaluateCompatibilityForInstalledVersion(
+            string gameVersion,
+            IReadOnlyCollection<string> gameLoaders,
+            ISet<string> supportedGameVersionIds,
+            IReadOnlyCollection<string>? supportedLoaders,
+            ModVersionViewModel modVersion)
+        {
+            if (!IsSupportedGameVersion(gameVersion, supportedGameVersionIds))
+            {
+                return false;
+            }
+
+            if (IsVersionOnlyResourceType(modVersion))
+            {
+                return true;
+            }
+
+            if (supportedLoaders is { Count: > 0 })
+            {
+                // 允许主加载器和附加加载器任一匹配资源需求。
+                return gameLoaders.Any(gameLoader => IsLoaderCompatible(gameLoader, supportedLoaders));
+            }
+
+            // 资源未声明加载器要求时，默认仅按游戏版本判断兼容。
+            return true;
+        }
+
+        private bool IsSupportedGameVersion(string gameVersion, ISet<string> supportedGameVersionIds)
+        {
+            return !string.IsNullOrEmpty(gameVersion) &&
+                   (supportedGameVersionIds.Contains(gameVersion) || supportedGameVersionIds.Contains("Generic"));
+        }
+
+        private bool IsVersionOnlyResourceType(ModVersionViewModel modVersion)
+        {
+            bool isDatapack = ProjectType == "datapack" ||
+                              (modVersion.Loaders != null &&
+                               modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
+
+            return ProjectType == "resourcepack" || ProjectType == "shader" || ProjectType == "world" || isDatapack;
+        }
+
+        private static bool IsLoaderCompatible(string gameLoader, IReadOnlyCollection<string> supportedLoaders)
+        {
+            if (gameLoader.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
+            {
+                return supportedLoaders.Any(l =>
+                    l.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase) ||
+                    l.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (gameLoader.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase))
+            {
+                return supportedLoaders.Any(l =>
+                    l.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase) ||
+                    l.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+            }
+
+            return supportedLoaders.Any(l => l.Equals(gameLoader, StringComparison.OrdinalIgnoreCase));
         }
     }
 
