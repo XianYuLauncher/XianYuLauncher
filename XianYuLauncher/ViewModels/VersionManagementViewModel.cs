@@ -26,11 +26,25 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
+using fNbt;
+using Microsoft.UI.Xaml;
+using XianYuLauncher.Core.Helpers; // Ensure Core.Helpers is included for AppEnvironment
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 
 namespace XianYuLauncher.ViewModels;
 
-public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware
+public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware, IVersionManagementContext
 {
+    /// <summary>地图管理子 ViewModel</summary>
+    public MapsViewModel MapsModule { get; private set; } = null!;
+    /// <summary>服务器管理子 ViewModel</summary>
+    public ServersViewModel ServersModule { get; private set; } = null!;
+    /// <summary>光影管理子 ViewModel</summary>
+    public ShadersViewModel ShadersModule { get; private set; } = null!;
+    /// <summary>资源包管理子 ViewModel</summary>
+    public ResourcePacksViewModel ResourcePacksModule { get; private set; } = null!;
+    /// <summary>Mod管理子 ViewModel</summary>
+    public ModsViewModel ModsModule { get; private set; } = null!;
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
@@ -57,27 +71,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _minecraftPath = string.Empty;
 
     /// <summary>
-    /// mod列表
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<ModInfo> _mods = new();
-    
-    /// <summary>
-    /// mod列表是否为空
-    /// </summary>
-    public bool IsModListEmpty => Mods.Count == 0;
-
-    /// <summary>
-    /// 资源转移类型枚举
-    /// </summary>
-    public enum ResourceMoveType
-    {
-        Mod,
-        Shader,
-        ResourcePack
-    }
-
-    /// <summary>
     /// 当前正在进行的资源转移类型
     /// </summary>
     [ObservableProperty]
@@ -98,13 +91,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         switch (CurrentResourceMoveType)
         {
             case ResourceMoveType.Mod:
-                await ConfirmMoveModsAsync();
+                await ModsModule.ConfirmMoveModsAsync();
                 break;
             case ResourceMoveType.Shader:
-                await ConfirmMoveShadersAsync();
+                await ShadersModule.ConfirmMoveShadersAsync();
                 break;
             case ResourceMoveType.ResourcePack:
-                await ConfirmMoveResourcePacksAsync();
+                await ResourcePacksModule.ConfirmMoveResourcePacksAsync();
                 break;
         }
     }
@@ -127,39 +120,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         public string SelectAllMenuItemText => IsSelectAll ? "VersionManagerPage_UnselectAllText".GetLocalized() : "VersionManagerPage_SelectAllText".GetLocalized();
 
     /// <summary>
-    /// 光影列表
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<ShaderInfo> _shaders = new();
-    
-    /// <summary>
-    /// 光影列表是否为空
-    /// </summary>
-    public bool IsShaderListEmpty => Shaders.Count == 0;
-
-    /// <summary>
-    /// 资源包列表
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<ResourcePackInfo> _resourcePacks = new();
-    
-    /// <summary>
-    /// 资源包列表是否为空
-    /// </summary>
-    public bool IsResourcePackListEmpty => ResourcePacks.Count == 0;
-
-    /// <summary>
-    /// 地图列表
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<MapInfo> _maps = new();
-    
-    /// <summary>
-    /// 地图列表是否为空
-    /// </summary>
-    public bool IsMapListEmpty => Maps.Count == 0;
-    
-    /// <summary>
     /// 截图列表
     /// </summary>
     [ObservableProperty]
@@ -173,110 +133,21 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     #region 搜索功能相关属性和列表源
     
     // 源列表 (Source Lists)
-    private List<ModInfo> _allMods = new();
-    private List<ShaderInfo> _allShaders = new();
-    private List<ResourcePackInfo> _allResourcePacks = new();
-    private List<MapInfo> _allMaps = new();
     private List<ScreenshotInfo> _allScreenshots = new();
 
     // 搜索文本属性
     [ObservableProperty]
-    private string _modSearchText = string.Empty;
-
-    [ObservableProperty]
-    private string _shaderSearchText = string.Empty;
-
-    [ObservableProperty]
-    private string _resourcePackSearchText = string.Empty;
-
-    [ObservableProperty]
-    private string _mapSearchText = string.Empty;
-
-    [ObservableProperty]
     private string _screenshotSearchText = string.Empty;
 
     // 搜索文本变更监听
-    partial void OnModSearchTextChanged(string value) => FilterMods();
-    partial void OnShaderSearchTextChanged(string value) => FilterShaders();
-    partial void OnResourcePackSearchTextChanged(string value) => FilterResourcePacks();
-    partial void OnMapSearchTextChanged(string value) => FilterMaps();
     partial void OnScreenshotSearchTextChanged(string value) => FilterScreenshots();
 
     // 过滤方法
-    private void FilterMods()
-    {
-        if (_allMods.Count == 0 && Mods.Count > 0 && string.IsNullOrEmpty(ModSearchText))
-        {
-             // 首次初始化可能直接赋值了 Mods，这里同步一下
-             _allMods = Mods.ToList();
-        }
-
-        if (string.IsNullOrWhiteSpace(ModSearchText))
-        {
-             if (Mods.Count != _allMods.Count)
-                Mods = new ObservableCollection<ModInfo>(_allMods);
-        }
-        else
-        {
-             var filtered = _allMods.Where(x => x.Name.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) || (x.Description?.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-             Mods = new ObservableCollection<ModInfo>(filtered);
-        }
-        OnPropertyChanged(nameof(IsModListEmpty));
-
-        // 启动描述加载任务 (完全在后台，不阻塞)
-        _ = LoadAllModDescriptionsAsync(Mods);
-    }
-
-    private void FilterShaders()
-    {
-        if (string.IsNullOrWhiteSpace(ShaderSearchText))
-        {
-            if (Shaders.Count != _allShaders.Count)
-                Shaders = new ObservableCollection<ShaderInfo>(_allShaders);
-        }
-        else
-        {
-             var filtered = _allShaders.Where(x => x.Name.Contains(ShaderSearchText, StringComparison.OrdinalIgnoreCase));
-             Shaders = new ObservableCollection<ShaderInfo>(filtered);
-        }
-        OnPropertyChanged(nameof(IsShaderListEmpty));
-    }
-
-    private void FilterResourcePacks()
-    {
-        if (string.IsNullOrWhiteSpace(ResourcePackSearchText))
-        {
-            if (ResourcePacks.Count != _allResourcePacks.Count)
-                ResourcePacks = new ObservableCollection<ResourcePackInfo>(_allResourcePacks);
-        }
-        else
-        {
-             var filtered = _allResourcePacks.Where(x => x.Name.Contains(ResourcePackSearchText, StringComparison.OrdinalIgnoreCase) || (x.Description?.Contains(ResourcePackSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-             ResourcePacks = new ObservableCollection<ResourcePackInfo>(filtered);
-        }
-        OnPropertyChanged(nameof(IsResourcePackListEmpty));
-    }
-
-    private void FilterMaps()
-    {
-        if (string.IsNullOrWhiteSpace(MapSearchText))
-        {
-            if (Maps.Count != _allMaps.Count)
-                Maps = new ObservableCollection<MapInfo>(_allMaps);
-        }
-        else
-        {
-             var filtered = _allMaps.Where(x => x.Name.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) || (x.FileName?.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-             Maps = new ObservableCollection<MapInfo>(filtered);
-        }
-        OnPropertyChanged(nameof(IsMapListEmpty));
-    }
-
     private void FilterScreenshots()
     {
         if (string.IsNullOrWhiteSpace(ScreenshotSearchText))
         {
-            if (Screenshots.Count != _allScreenshots.Count)
+            if (!HasSameFilePathSnapshot(Screenshots, _allScreenshots, screenshot => screenshot.FilePath))
                 Screenshots = new ObservableCollection<ScreenshotInfo>(_allScreenshots);
         }
         else
@@ -286,6 +157,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         OnPropertyChanged(nameof(IsScreenshotListEmpty));
         OnPropertyChanged(nameof(ScreenshotCount));
+    }
+
+    private static bool HasSameFilePathSnapshot<T>(
+        IEnumerable<T> currentItems,
+        IEnumerable<T> sourceItems,
+        Func<T, string> filePathSelector)
+    {
+        HashSet<string> BuildPathSet(IEnumerable<T> items)
+        {
+            return items
+                .Select(filePathSelector)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => path.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var currentSet = BuildPathSet(currentItems);
+        var sourceSet = BuildPathSet(sourceItems);
+        return currentSet.SetEquals(sourceSet);
     }
     
     #endregion
@@ -352,17 +242,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// Mod数量
     /// </summary>
-    public int ModCount => Mods.Count;
+    public int ModCount => ModsModule?.Mods.Count ?? 0;
     
     /// <summary>
     /// 光影数量
     /// </summary>
-    public int ShaderCount => Shaders.Count;
+    public int ShaderCount => ShadersModule?.Shaders.Count ?? 0;
     
     /// <summary>
     /// 资源包数量
     /// </summary>
-    public int ResourcePackCount => ResourcePacks.Count;
+    public int ResourcePackCount => ResourcePacksModule?.ResourcePacks.Count ?? 0;
     
     /// <summary>
     /// 截图数量
@@ -448,56 +338,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private ObservableCollection<LoaderItemViewModel> _availableLoaders = new();
     
     #endregion
-    
-    // 当资源列表变化时，通知空状态属性变化
-    partial void OnModsChanged(ObservableCollection<ModInfo> value)
-    {
-        OnPropertyChanged(nameof(IsModListEmpty));
-        // 为新集合添加事件监听
-        value.CollectionChanged += (sender, e) => {
-            OnPropertyChanged(nameof(IsModListEmpty));
-            // 更新全选状态
-            UpdateSelectAllStatus();
-        };
-        
-        // 初始更新全选状态
-        UpdateSelectAllStatus();
-    }
-    
-    /// <summary>
-    /// 更新全选状态
-    /// </summary>
-    private void UpdateSelectAllStatus()
-    {
-        if (Mods.Count == 0)
-        {
-            IsSelectAll = false;
-            return;
-        }
-        
-        IsSelectAll = Mods.All(mod => mod.IsSelected);
-    }
-    
-    partial void OnShadersChanged(ObservableCollection<ShaderInfo> value)
-    {
-        OnPropertyChanged(nameof(IsShaderListEmpty));
-        // 为新集合添加事件监听
-        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsShaderListEmpty));
-    }
-    
-    partial void OnResourcePacksChanged(ObservableCollection<ResourcePackInfo> value)
-    {
-        OnPropertyChanged(nameof(IsResourcePackListEmpty));
-        // 为新集合添加事件监听
-        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
-    }
-    
-    partial void OnMapsChanged(ObservableCollection<MapInfo> value)
-    {
-        OnPropertyChanged(nameof(IsMapListEmpty));
-        // 为新集合添加事件监听
-        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
-    }
     
     partial void OnScreenshotsChanged(ObservableCollection<ScreenshotInfo> value)
     {
@@ -595,10 +435,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 switch (value)
                 {
                     case 4: // 资源包 Tab
-                        await LoadResourcePackIconsAsync();
+                        await ResourcePacksModule.LoadResourcePackIconsAsync();
                         break;
                     case 6: // 地图 Tab
-                        await LoadMapIconsAsync();
+                        await MapsModule.LoadMapIconsAsync();
                         break;
                 }
             }
@@ -621,28 +461,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         IsResultDialogVisible = false;
     }
-    
-    #region 地图详情对话框相关属性
-    
-    /// <summary>
-    /// 是否显示地图详情对话框
-    /// </summary>
-    [ObservableProperty]
-    private bool _isMapDetailDialogOpen = false;
-    
-    /// <summary>
-    /// 当前选中的地图（用于详情对话框）
-    /// </summary>
-    [ObservableProperty]
-    private MapInfo? _selectedMapForDetail;
-    
-    /// <summary>
-    /// 地图重命名输入框的值
-    /// </summary>
-    [ObservableProperty]
-    private string _mapRenameInput = string.Empty;
-    
-    #endregion
     
     /// <summary>
     /// 是否自动分配内存
@@ -730,6 +548,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 用于取消页面异步操作的令牌源
     /// </summary>
     private CancellationTokenSource? _pageCancellationTokenSource;
+
+    /// <summary>页面级取消令牌（IVersionManagementContext）</summary>
+    public CancellationToken PageCancellationToken
+        => _pageCancellationTokenSource?.Token ?? CancellationToken.None;
+
+    /// <summary>页面动画播放完毕（IVersionManagementContext）</summary>
+    public bool IsPageReady => _isPageReady;
     
     /// <summary>
     /// 是否正在安装扩展
@@ -799,11 +624,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
-        // 监听集合变化事件，用于更新空状态
-        Mods.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsModListEmpty));
-        Shaders.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsShaderListEmpty));
-        ResourcePacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
-        Maps.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
+        // 初始化子 ViewModels
+        MapsModule = new MapsViewModel(this, navigationService, dialogService);
+        ServersModule = new ServersViewModel(this, navigationService, dialogService);
+        ShadersModule = new ShadersViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
+        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
+        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
     }
     
     // 设置文件名称
@@ -2217,13 +2043,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 
                 _ = LoadSettingsAsync(cancellationToken);
                 _ = LoadOverviewDataAsync(cancellationToken);
-                _ = LoadModsListOnlyAsync(cancellationToken);
-                _ = LoadShadersListOnlyAsync(cancellationToken);
-                _ = LoadResourcePacksListOnlyAsync(cancellationToken);
-                _ = LoadMapsListOnlyAsync(cancellationToken);
+                _ = ModsModule.LoadModsListOnlyAsync(cancellationToken);
+                _ = ShadersModule.LoadShadersListOnlyAsync(cancellationToken);
+                _ = ResourcePacksModule.LoadResourcePacksListOnlyAsync(cancellationToken);
+                _ = MapsModule.LoadMapsListOnlyAsync(cancellationToken);
                 _ = LoadScreenshotsAsync(cancellationToken);
                 _ = LoadSavesAsync(cancellationToken);
-                _ = LoadServersAsync(cancellationToken);
+                _ = ServersModule.LoadServersAsync(cancellationToken);
                 
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
@@ -2270,10 +2096,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 {
                     if (!_isPageReady) return;
 
-                    FilterMods();
-                    FilterShaders();
-                    FilterResourcePacks();
-                    FilterMaps();
+                    ModsModule.FilterMods();
+                    ShadersModule.FilterShaders();
+                    ResourcePacksModule.FilterResourcePacks();
+                    MapsModule.FilterMaps();
                 });
             }
             catch (Exception ex)
@@ -2296,55 +2122,23 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     // 使用 SemaphoreSlim 限制并发数量，避免同时发起太多网络请求
                     var semaphore = new System.Threading.SemaphoreSlim(3); // 最多同时3个请求
                     
-                    // 优先加载 Mod 图标（用户最常查看）
-                    var modTasks = new List<Task>();
-                    foreach (var modInfo in Mods)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        modTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => modInfo.Icon = icon, modInfo.FilePath, "mod", true, cancellationToken));
-                    }
-                    
-                    // 等待 Mod 图标加载完成后再加载其他资源
-                    await Task.WhenAll(modTasks);
+                    // 优先加载 Mod 图标（用户最常查看）—— 委托给 ModsModule
+                    await ModsModule.LoadIconsAndDescriptionsAsync(semaphore, cancellationToken);
                     
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    // 加载光影图标和描述
-                    var shaderTasks = new List<Task>();
-                    foreach (var shaderInfo in Shaders)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        // 光影包从 Modrinth/CurseForge 获取图标和描述
-                        shaderTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => shaderInfo.Icon = icon, shaderInfo.FilePath, "shader", true, cancellationToken));
-                        // 加载光影描述
-                        shaderTasks.Add(LoadShaderDescriptionAsync(shaderInfo, cancellationToken));
-                    }
-                    await Task.WhenAll(shaderTasks);
+                    // 加载光影图标和描述 —— 委托给 ShadersModule
+                    await ShadersModule.LoadIconsAndDescriptionsAsync(semaphore, cancellationToken);
                     
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    // 加载资源包图标和描述
-                    var resourcePackTasks = new List<Task>();
-                    foreach (var resourcePackInfo in ResourcePacks)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        // 资源包不从 Modrinth/CurseForge 获取图标，只使用本地图标
-                        resourcePackTasks.Add(LoadResourceIconWithSemaphoreAsync(semaphore, icon => resourcePackInfo.Icon = icon, resourcePackInfo.FilePath, "resourcepack", false, cancellationToken));
-                        // 加载资源包描述（与 Mod 一样从 Modrinth/CurseForge 获取）
-                        resourcePackTasks.Add(LoadResourcePackDescriptionAsync(resourcePackInfo, cancellationToken));
-                    }
-                    await Task.WhenAll(resourcePackTasks);
+                    // 加载资源包图标和描述 —— 委托给 ResourcePacksModule
+                    await ResourcePacksModule.LoadIconsAndDescriptionsAsync(semaphore, cancellationToken);
                     
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    // 最后加载地图图标（本地操作）
-                    var mapTasks = new List<Task>();
-                    foreach (var mapInfo in Maps)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        mapTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
-                    }
-                    await Task.WhenAll(mapTasks);
+                    // 最后加载地图图标（本地操作）—— 委托给 MapsModule
+                    await MapsModule.LoadMapIconsAsync();
                 }
                 catch (OperationCanceledException)
                 {
@@ -2360,7 +2154,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 使用信号量限制并发的图标加载
         /// </summary>
-        private async Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported, CancellationToken cancellationToken = default)
+        public async Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -2647,4 +2441,1078 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     #endregion
 
+
+    #region Merged from VersionManagementViewModel.Common.cs
+    #region 通用方法
+
+    /// <summary>
+    /// 获取版本特定的文件夹路径
+    /// </summary>
+    /// <param name="folderType">文件夹类型</param>
+    /// <returns>版本特定的文件夹路径</returns>
+    public string GetVersionSpecificPath(string folderType)
+    {
+        if (SelectedVersion == null)
+        {
+            return Path.Combine(MinecraftPath, folderType);
+        }
+        
+        switch (folderType)
+        {
+            case "mods":
+            case "shaderpacks":
+            case "resourcepacks":
+            case "datapacks":
+            case "saves":
+                // 这些文件夹都使用版本特定的路径
+                return Path.Combine(SelectedVersion.Path, folderType);
+            case "versions":
+                // 版本文件夹在versions目录下
+                return SelectedVersion.Path;
+            default:
+                // 其他文件夹使用版本特定的路径
+                return Path.Combine(SelectedVersion.Path, folderType);
+        }
+    }
+    
+    /// <summary>
+    /// 异步获取版本特定的文件路径（考虑版本隔离设置）
+    /// </summary>
+    /// <param name="fileName">文件名（如 "servers.dat"）</param>
+    /// <returns>完整的文件路径</returns>
+    public async Task<string> GetVersionSpecificFilePathAsync(string fileName)
+    {
+        var localSettingsService = App.GetService<ILocalSettingsService>();
+        var enableVersionIsolation = (await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation")) ?? true;
+        
+        if (enableVersionIsolation && !string.IsNullOrEmpty(SelectedVersion?.Path))
+        {
+            return Path.Combine(SelectedVersion.Path, fileName);
+        }
+        else
+        {
+            return Path.Combine(MinecraftPath, fileName);
+        }
+    }
+    
+    /// <summary>
+    /// 打开指定文件夹
+    /// </summary>
+    /// <param name="folderPath">文件夹路径</param>
+    private async Task OpenFolderAsync(string folderPath)
+    {
+        try
+        {
+            // 确保文件夹存在
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            var folder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+            await Launcher.LaunchFolderAsync(folder);
+            StatusMessage = $"已打开文件夹: {Path.GetFileName(folderPath)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"打开文件夹失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 打开指定类型的文件夹
+    /// </summary>
+    /// <param name="folderType">文件夹类型</param>
+    private async Task OpenFolderByTypeAsync(string folderType)
+    {
+        string folderPath = GetVersionSpecificPath(folderType);
+        await OpenFolderAsync(folderPath);
+    }
+    
+    /// <summary>
+    /// 加载截图列表
+    /// </summary>
+    private async Task LoadScreenshotsAsync(CancellationToken cancellationToken = default)
+    {
+        if (SelectedVersion == null || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var screenshotsPath = GetVersionSpecificPath("screenshots");
+        if (Directory.Exists(screenshotsPath))
+        {
+            // 获取所有png图片文件
+            var screenshotFiles = Directory.GetFiles(screenshotsPath, "*.png");
+            
+            // 创建新的截图列表，减少CollectionChanged事件触发次数
+            var newScreenshots = new ObservableCollection<ScreenshotInfo>();
+            
+            // 添加所有截图
+            foreach (var screenshotFile in screenshotFiles)
+            {
+                var screenshotInfo = new ScreenshotInfo(screenshotFile);
+                newScreenshots.Add(screenshotInfo);
+            }
+            
+            // 按创建时间倒序排序
+            _allScreenshots = newScreenshots.OrderByDescending(s => s.OriginalCreationTime).ToList();
+            
+            // 应用过滤
+            FilterScreenshots();
+            
+            // 更新随机截图
+            if (Screenshots.Count > 0)
+            {
+                var random = new Random();
+                var index = random.Next(Screenshots.Count);
+                RandomScreenshotPath = Screenshots[index].FilePath;
+                HasRandomScreenshot = true;
+            }
+            else
+            {
+                RandomScreenshotPath = null;
+                HasRandomScreenshot = false;
+            }
+        }
+        else
+        {
+            // 清空截图列表
+            _allScreenshots.Clear();
+            FilterScreenshots();
+            RandomScreenshotPath = null;
+            HasRandomScreenshot = false;
+        }
+    }
+    
+    /// <summary>
+    /// 打开截图文件夹命令
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenScreenshotsFolderAsync()
+    {
+        await OpenFolderByTypeAsync("screenshots");
+    }
+    
+    /// <summary>
+    /// 刷新数据命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshDataAsync()
+    {
+        await LoadVersionDataAsync();
+    }
+    
+    /// <summary>
+    /// 打开当前选中Tab对应的文件夹
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenCurrentFolderAsync()
+    {
+        switch (SelectedTabIndex)
+        {
+            case 2: // Mod管理
+                await ModsModule.OpenModFolderCommand.ExecuteAsync(null);
+                break;
+            case 3: // 光影管理
+                await ShadersModule.OpenShaderFolderCommand.ExecuteAsync(null);
+                break;
+            case 4: // 资源包管理
+                await ResourcePacksModule.OpenResourcePackFolderCommand.ExecuteAsync(null);
+                break;
+            case 5: // 截图管理
+                await OpenScreenshotsFolderAsync();
+                break;
+            case 6: // 地图管理
+                await MapsModule.OpenMapsFolderCommand.ExecuteAsync(null);
+                break;
+            case 0: // 概览
+            case 1: // 版本设置
+            default:
+                // 其他情况默认打开版本根目录
+                if (SelectedVersion != null)
+                {
+                    await OpenFolderAsync(SelectedVersion.Path);
+                }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 删除截图命令
+    /// </summary>
+    /// <param name="screenshot">要删除的截图</param>
+    [RelayCommand]
+    private async Task DeleteScreenshotAsync(ScreenshotInfo screenshot)
+    {
+        if (screenshot == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            // 显示二次确认弹窗
+            var dialog = new ContentDialog
+            {
+                Title = "确认删除",
+                Content = $"确定要删除截图 '{screenshot.Name}' 吗？此操作不可恢复。",
+                PrimaryButtonText = "确定删除",
+                CloseButtonText = "取消",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = App.MainWindow.Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+            
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                // 删除文件
+                if (File.Exists(screenshot.FilePath))
+                {
+                    File.Delete(screenshot.FilePath);
+                }
+                
+                // 从列表中移除
+                Screenshots.Remove(screenshot);
+                
+                StatusMessage = $"已删除截图: {screenshot.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"删除截图失败：{ex.Message}";
+        }
+    }
+    
+    /// <summary>
+    /// 另存为截图命令
+    /// </summary>
+    /// <param name="screenshot">要另存为的截图</param>
+    [RelayCommand]
+    private async Task SaveScreenshotAsAsync(ScreenshotInfo screenshot)
+    {
+        if (screenshot == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            // 创建文件选择器
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
+            picker.FileTypeChoices.Add("PNG图片", new List<string>() { ".png" });
+            picker.SuggestedFileName = screenshot.Name;
+            
+            // 获取窗口句柄
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            
+            // 显示文件选择器
+            var file = await picker.PickSaveFileAsync();
+            if (file != null)
+            {
+                // 复制文件
+                // 使用StorageFile API来复制文件，确保异步操作正确执行
+                var sourceFile = await StorageFile.GetFileFromPathAsync(screenshot.FilePath);
+                await sourceFile.CopyAndReplaceAsync(file);
+                
+                StatusMessage = $"截图已保存至: {file.Path}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存截图失败：{ex.Message}";
+        }
+    }
+
+    #endregion
+    #endregion
+
+    #region Merged from VersionManagementViewModel.DragDrop.cs
+    #region 拖放处理
+    
+    /// <summary>
+    /// 处理拖放文件
+    /// </summary>
+    /// <param name="storageItems">拖放的存储项</param>
+    public async Task HandleDragDropFilesAsync(IReadOnlyList<IStorageItem> storageItems)
+    {
+        if (storageItems == null || storageItems.Count == 0)
+        {
+            return;
+        }
+        
+        if (SelectedVersion == null)
+        {
+            StatusMessage = "请先选择一个版本";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            StatusMessage = "正在处理拖放文件...";
+            
+            int successCount = 0;
+            int errorCount = 0;
+            
+            foreach (var item in storageItems)
+            {
+                if (await ProcessDragDropItemAsync(item))
+                {
+                    successCount++;
+                }
+                else
+                {
+                    errorCount++;
+                }
+            }
+            
+            StatusMessage = $"拖放文件处理完成：成功 {successCount} 个，失败 {errorCount} 个";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"处理拖放文件失败：{ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    
+    /// <summary>
+    /// 处理单个拖放项
+    /// </summary>
+    /// <param name="item">拖放的存储项</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropItemAsync(IStorageItem item)
+    {
+        try
+        {
+            if (item is StorageFile file)
+            {
+                // 处理文件
+                return await ProcessDragDropFileAsync(file);
+            }
+            else if (item is StorageFolder folder)
+            {
+                // 处理文件夹
+                return await ProcessDragDropFolderAsync(folder);
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"处理文件 {item.Name} 失败：{ex.Message}";
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 处理单个拖放文件
+    /// </summary>
+    /// <param name="file">拖放的文件</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropFileAsync(StorageFile file)
+    {
+        string fileExtension = file.FileType.ToLower();
+        string folderType = string.Empty;
+        bool isSupported = false;
+        
+        // 根据当前选中的 Tab 确定目标文件夹，而不是根据文件扩展名
+        folderType = GetFolderTypeBySelectedTab();
+        
+        // 检查文件类型是否支持
+        switch (fileExtension)
+        {
+            case ".jar":
+            case ".zip":
+                isSupported = true;
+                break;
+            default:
+                // 不支持的文件类型
+                StatusMessage = $"不支持的文件类型：{fileExtension}";
+                return false;
+        }
+        
+        if (!isSupported)
+        {
+            StatusMessage = $"不支持的文件类型：{fileExtension}";
+            return false;
+        }
+        
+        // 获取目标文件夹路径
+        string targetFolderPath = GetVersionSpecificPath(folderType);
+        // 确保目标文件夹存在
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+        
+        // 复制文件到目标文件夹
+        string targetFilePath = Path.Combine(targetFolderPath, file.Name);
+        await file.CopyAsync(await StorageFolder.GetFolderFromPathAsync(targetFolderPath), file.Name, NameCollisionOption.ReplaceExisting);
+        
+        // 刷新对应类型的资源列表
+        await RefreshResourceListByFolderType(folderType);
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// 处理单个拖放文件夹
+    /// </summary>
+    /// <param name="folder">拖放的文件夹</param>
+    /// <returns>处理是否成功</returns>
+    private async Task<bool> ProcessDragDropFolderAsync(StorageFolder folder)
+    {
+        // 根据当前选中的Tab确定目标文件夹类型
+        string folderType = GetFolderTypeBySelectedTab();
+        
+        // 获取目标文件夹路径
+        string targetFolderPath = GetVersionSpecificPath(folderType);
+        // 确保目标文件夹存在
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+        
+        // 复制文件夹到目标文件夹
+        string targetFolderFullPath = Path.Combine(targetFolderPath, folder.Name);
+        await CopyFolderAsync(folder, await StorageFolder.GetFolderFromPathAsync(targetFolderPath));
+        
+        // 刷新对应类型的资源列表
+        await RefreshResourceListByFolderType(folderType);
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// 根据当前选中的Tab获取文件夹类型
+    /// </summary>
+    /// <returns>文件夹类型</returns>
+    private string GetFolderTypeBySelectedTab()
+    {
+        switch (SelectedTabIndex)
+        {
+            case 0: // 设置
+                return "mods"; // 设置页面默认使用 mods
+            case 1: // 扩展
+                return "mods"; // 扩展页面默认使用 mods
+            case 2: // Mod管理
+                return "mods";
+            case 3: // 光影管理
+                return "shaderpacks";
+            case 4: // 资源包管理
+                return "resourcepacks";
+            case 5: // 截图管理
+                return "screenshots";
+            case 6: // 地图管理
+                return "saves";
+            default:
+                return "mods"; // 默认使用mods文件夹
+        }
+    }
+    
+    /// <summary>
+    /// 根据文件夹类型刷新对应类型的资源列表
+    /// </summary>
+    /// <param name="folderType">文件夹类型</param>
+    private async Task RefreshResourceListByFolderType(string folderType)
+    {
+        switch (folderType)
+        {
+            case "mods":
+                await ModsModule.ReloadModsWithIconsAsync();
+                break;
+            case "shaderpacks":
+                await ShadersModule.ReloadShadersWithIconsAsync();
+                break;
+            case "resourcepacks":
+                await ResourcePacksModule.ReloadResourcePacksWithIconsAsync();
+                break;
+            case "saves":
+                await MapsModule.LoadMapsAsync();
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 复制文件夹
+    /// </summary>
+    /// <param name="sourceFolder">源文件夹</param>
+    /// <param name="destinationFolder">目标文件夹</param>
+    private async Task CopyFolderAsync(StorageFolder sourceFolder, StorageFolder destinationFolder)
+    {
+        // 创建目标文件夹
+        var targetFolder = await destinationFolder.CreateFolderAsync(sourceFolder.Name, CreationCollisionOption.ReplaceExisting);
+        
+        // 复制文件
+        var files = await sourceFolder.GetFilesAsync();
+        foreach (var file in files)
+        {
+            await file.CopyAsync(targetFolder, file.Name, NameCollisionOption.ReplaceExisting);
+        }
+        
+        // 递归复制子文件夹
+        var subfolders = await sourceFolder.GetFoldersAsync();
+        foreach (var subfolder in subfolders)
+        {
+            await CopyFolderAsync(subfolder, targetFolder);
+        }
+    }
+    
+    #endregion
+    #endregion
+
+    #region 共享基础设施（图标、资源转移、下载、导航）
+
+    #region 共享图标和资源工具方法
+
+    /// <summary>
+    /// 检查本地图标是否存在并返回图标路径
+    /// </summary>
+    private string? GetLocalIconPath(string filePath, string resourceType)
+    {
+        return VersionManagementFileOps.GetLocalIconPath(
+            _fileService.GetLauncherCachePath(),
+            filePath,
+            resourceType);
+    }
+
+    /// <summary>
+    /// 计算文件的SHA1哈希值
+    /// </summary>
+    public string CalculateSHA1(string filePath)
+    {
+        return VersionManagementFileOps.CalculateSha1(filePath);
+    }
+
+        /// <summary>
+        /// 从Modrinth API获取mod图标URL（通过 ModrinthService 走 FallbackDownloadManager）
+        /// </summary>
+        /// <param name="filePath">mod文件路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>图标URL，如果获取失败则返回null</returns>
+        private async Task<string> GetModrinthIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 计算文件的SHA1哈希值
+                string sha1Hash = CalculateSHA1(filePath);
+                System.Diagnostics.Debug.WriteLine($"计算SHA1哈希值: {sha1Hash}");
+
+                // 通过 ModrinthService 调用 POST /version_files（带回退）
+                var versionMap = await _modrinthService.GetVersionFilesByHashesAsync(new List<string> { sha1Hash });
+                
+                if (versionMap != null && versionMap.TryGetValue(sha1Hash, out var versionInfo) && versionInfo != null)
+                {
+                    string projectId = versionInfo.ProjectId;
+                    System.Diagnostics.Debug.WriteLine($"获取到project_id: {projectId}");
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    // 通过 ModrinthService 获取项目详情（带回退）
+                    var projectDetail = await _modrinthService.GetProjectDetailAsync(projectId);
+                    if (projectDetail != null && !string.IsNullOrEmpty(projectDetail.IconUrl?.ToString()))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"获取到icon_url: {projectDetail.IconUrl}");
+                        return projectDetail.IconUrl.ToString();
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"从Modrinth获取图标失败: {ex.Message}");
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 保存Modrinth图标到本地
+        /// </summary>
+        /// <param name="filePath">资源文件路径</param>
+        /// <param name="iconUrl">图标URL</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>本地图标路径，如果保存失败则返回null</returns>
+        private async Task<string> SaveModrinthIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 获取启动器缓存路径
+                string cachePath = _fileService.GetLauncherCachePath();
+                // 构建图标目录路径
+                string iconDir = Path.Combine(cachePath, "icons", resourceType);
+                Directory.CreateDirectory(iconDir);
+                
+                // 获取文件名
+                string fileName = Path.GetFileName(filePath);
+                // 去掉.disabled后缀（如果存在）
+                if (fileName.EndsWith(".disabled"))
+                {
+                    fileName = fileName.Substring(0, fileName.Length - ".disabled".Length);
+                }
+                // 去掉文件扩展名
+                string fileBaseName = Path.GetFileNameWithoutExtension(fileName);
+                
+                // 生成唯一图标文件名
+                string iconFileName = $"modrinth_{fileBaseName}_icon.png";
+                string iconFilePath = Path.Combine(iconDir, iconFileName);
+                
+                // 下载并保存图标（带超时）
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(10); // 10秒超时
+                    System.Diagnostics.Debug.WriteLine($"下载图标: {iconUrl}");
+                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
+                    await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
+                    System.Diagnostics.Debug.WriteLine($"图标保存到本地: {iconFilePath}");
+                    
+                    return iconFilePath;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存Modrinth图标失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从CurseForge API获取mod图标URL
+        /// </summary>
+        /// <param name="filePath">mod文件路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>图标URL，如果获取失败则返回null</returns>
+        private async Task<string> GetCurseForgeIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 计算文件的CurseForge Fingerprint
+                uint fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(filePath);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 计算Fingerprint: {fingerprint}");
+
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 调用CurseForge API查询Fingerprint
+                var result = await _curseForgeService.GetFingerprintMatchesAsync(new List<uint> { fingerprint });
+                
+                if (result?.ExactMatches != null && result.ExactMatches.Count > 0)
+                {
+                    var match = result.ExactMatches[0];
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 找到匹配的Mod ID: {match.Id}");
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    // 获取Mod详情以获取Logo信息
+                    var modDetail = await _curseForgeService.GetModDetailAsync(match.Id);
+                    
+                    if (modDetail?.Logo != null && !string.IsNullOrEmpty(modDetail.Logo.ThumbnailUrl))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 获取到图标URL: {modDetail.Logo.ThumbnailUrl}");
+                        return modDetail.Logo.ThumbnailUrl;
+                    }
+                    else if (modDetail?.Logo != null && !string.IsNullOrEmpty(modDetail.Logo.Url))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 获取到图标URL: {modDetail.Logo.Url}");
+                        return modDetail.Logo.Url;
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 未找到匹配的Mod");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 从CurseForge获取图标失败: {ex.Message}");
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 保存CurseForge图标到本地
+        /// </summary>
+        /// <param name="filePath">资源文件路径</param>
+        /// <param name="iconUrl">图标URL</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>本地图标路径，如果保存失败则返回null</returns>
+        private async Task<string> SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 获取启动器缓存路径
+                string cachePath = _fileService.GetLauncherCachePath();
+                // 构建图标目录路径
+                string iconDir = Path.Combine(cachePath, "icons", resourceType);
+                Directory.CreateDirectory(iconDir);
+                
+                // 获取文件名
+                string fileName = Path.GetFileName(filePath);
+                // 去掉.disabled后缀（如果存在）
+                if (fileName.EndsWith(".disabled"))
+                {
+                    fileName = fileName.Substring(0, fileName.Length - ".disabled".Length);
+                }
+                // 去掉文件扩展名
+                string fileBaseName = Path.GetFileNameWithoutExtension(fileName);
+                
+                // 生成唯一图标文件名
+                string iconFileName = $"curseforge_{fileBaseName}_icon.png";
+                string iconFilePath = Path.Combine(iconDir, iconFileName);
+                
+                // 下载并保存图标（带超时）
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(10); // 10秒超时
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 下载图标: {iconUrl}");
+                    byte[] iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
+                    await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 图标保存到本地: {iconFilePath}");
+                    
+                    return iconFilePath;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // 重新抛出取消异常
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge Icon] 保存CurseForge图标失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 异步加载并更新单个资源的图标
+        /// </summary>
+        /// <param name="iconProperty">图标属性的Action委托</param>
+        /// <param name="filePath">资源文件路径</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="isModrinthSupported">是否支持从Modrinth API获取</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        public async Task LoadResourceIconAsync(Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported = false, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 检查本地图标
+                string localIcon = GetLocalIconPath(filePath, resourceType);
+                if (!string.IsNullOrEmpty(localIcon))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    // 确保在 UI 线程上更新属性
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            // 再次检查是否已取消
+                            if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                            {
+                                return;
+                            }
+                            iconProperty(localIcon);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                        }
+                    });
+                    return;
+                }
+                
+                // 如果支持Modrinth且本地没有图标，尝试从Modrinth API获取
+                if (isModrinthSupported)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    System.Diagnostics.Debug.WriteLine($"本地没有图标，尝试从Modrinth API获取{resourceType}图标: {filePath}");
+                    string iconUrl = await GetModrinthIconUrlAsync(filePath, cancellationToken);
+                    if (!string.IsNullOrEmpty(iconUrl))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        // 保存图标到本地，传递资源类型
+                        string localIconPath = await SaveModrinthIconAsync(filePath, iconUrl, resourceType, cancellationToken);
+                        if (!string.IsNullOrEmpty(localIconPath))
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
+                            // 确保在 UI 线程上更新属性
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                try
+                                {
+                                    // 再次检查是否已取消
+                                    if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                                    {
+                                        return;
+                                    }
+                                    iconProperty(localIconPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                                }
+                            });
+                            return;
+                        }
+                    }
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    // Modrinth 失败，尝试 CurseForge
+                    System.Diagnostics.Debug.WriteLine($"Modrinth未找到图标，尝试从CurseForge API获取{resourceType}图标: {filePath}");
+                    string curseForgeIconUrl = await GetCurseForgeIconUrlAsync(filePath, cancellationToken);
+                    if (!string.IsNullOrEmpty(curseForgeIconUrl))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        // 保存图标到本地，传递资源类型
+                        string localIconPath = await SaveCurseForgeIconAsync(filePath, curseForgeIconUrl, resourceType, cancellationToken);
+                        if (!string.IsNullOrEmpty(localIconPath))
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
+                            // 确保在 UI 线程上更新属性
+                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            {
+                                try
+                                {
+                                    // 再次检查是否已取消
+                                    if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
+                                    {
+                                        return;
+                                    }
+                                    iconProperty(localIconPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"设置图标失败: {ex.Message}");
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 加载{resourceType}图标已取消: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载{resourceType}图标失败: {ex.Message}");
+            }
+        }
+
+    #endregion
+
+    #region 共享资源转移和下载基础设施
+        
+        /// <summary>
+        /// 转移结果列表
+        /// </summary>
+        [ObservableProperty]
+        private List<MoveModResult> _moveResults;
+        
+        /// <summary>
+        /// 是否显示转移结果弹窗
+        /// </summary>
+        [ObservableProperty]
+        private bool _isMoveResultDialogVisible;
+        
+        /// <summary>
+        /// 目标版本列表，用于转移Mod功能
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<TargetVersionInfo> _targetVersions = new();
+        
+        /// <summary>
+        /// 选中的目标版本
+        /// </summary>
+        [ObservableProperty]
+        private TargetVersionInfo _selectedTargetVersion;
+        
+        /// <summary>
+        /// 加载目标版本列表
+        /// </summary>
+        public async Task LoadTargetVersionsAsync()
+        {
+            TargetVersions.Clear();
+            
+            // 获取实际已安装的游戏版本
+            var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+            
+            // 处理每个已安装版本，所有版本都显示为兼容
+            foreach (var installedVersion in installedVersions)
+            {
+                // 创建目标版本信息，所有版本都兼容
+                TargetVersions.Add(new TargetVersionInfo 
+                {
+                    VersionName = installedVersion,
+                    IsCompatible = true
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 下载Mod文件
+        /// </summary>
+        /// <param name="downloadUrl">下载URL</param>
+        /// <param name="destinationPath">保存路径</param>
+        /// <returns>是否下载成功</returns>
+        public async Task<bool> DownloadModAsync(string downloadUrl, string destinationPath)
+        {
+            try
+            {
+                string modName = Path.GetFileName(destinationPath);
+                System.Diagnostics.Debug.WriteLine($"开始下载Mod: {downloadUrl} 到 {destinationPath}");
+                
+                // 更新当前下载项
+                CurrentDownloadItem = modName;
+                
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    // 创建父目录（如果不存在）
+                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? string.Empty);
+                    
+                    // 下载文件
+                    var response = await httpClient.GetAsync(downloadUrl, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                    response.EnsureSuccessStatusCode();
+                    
+                    long totalBytes = response.Content.Headers.ContentLength ?? 0;
+                    long downloadedBytes = 0;
+                    
+                    using (var contentStream = await response.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                    {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead);
+                            downloadedBytes += bytesRead;
+                            
+                            // 计算并报告进度
+                            if (totalBytes > 0)
+                            {
+                                double progress = (double)downloadedBytes / totalBytes * 100;
+                                DownloadProgress = Math.Round(progress, 2);
+                                System.Diagnostics.Debug.WriteLine($"下载进度: {DownloadProgress:F2}% ({downloadedBytes}/{totalBytes} bytes)");
+                            }
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"Mod下载完成: {destinationPath}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"下载Mod失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task RunUiRefreshAsync(Action refreshAction)
+        {
+            var refreshTcs = new TaskCompletionSource<bool>();
+            bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    refreshAction();
+                    refreshTcs.TrySetResult(true);
+                }
+                catch (Exception exception)
+                {
+                    refreshTcs.TrySetException(exception);
+                }
+            });
+
+            if (enqueued)
+            {
+                await refreshTcs.Task;
+                return;
+            }
+
+            refreshAction();
+        }
+
+        /// <summary>获取 Minecraft 数据路径</summary>
+        public string GetMinecraftDataPath() => _fileService.GetMinecraftDataPath();
+
+        /// <summary>获取启动器缓存路径</summary>
+        public string GetLauncherCachePath() => _fileService.GetLauncherCachePath();
+
+        /// <summary>复制目录</summary>
+        public void CopyDirectory(string sourceDir, string destinationDir)
+        {
+            VersionManagementFileOps.CopyDirectory(sourceDir, destinationDir);
+        }
+
+    #endregion
+
+    #region 共享导航命令
+    
+    /// <summary>
+    /// 导航到数据包页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToDataPackPage()
+    {
+        // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页，数据包和资源包共用一个页面）
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+    
+    /// <summary>
+    /// 导航到地图页面命令
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToMapPage()
+    {
+        // 设置ResourceDownloadPage的TargetTabIndex为6（世界下载标签页）
+        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 6;
+        
+        // 导航到ResourceDownloadPage
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+
+    #endregion
+    #endregion
 }
