@@ -1666,6 +1666,8 @@
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                     <MenuFlyoutItem Text="创建快捷方式" Icon="Link" Command="{Binding DataContext.CreateMapShortcutCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutItem Text="重命名" Icon="Rename" Command="{Binding DataContext.RenameMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutItem Text="导出为 ZIP" Icon="Save" Command="{Binding DataContext.ExportMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                     <MenuFlyoutSeparator />
                                                     <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                 </MenuFlyout>
@@ -1673,7 +1675,6 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             
                                             <!-- 地图图标 -->
@@ -1695,17 +1696,6 @@
                                                 </StackPanel>
                                             </StackPanel>
                                             
-                                            <!-- 删除按钮 -->
-                                            <Button 
-                                                Grid.Column="2"
-                                                Content="删除" 
-                                                VerticalAlignment="Center" 
-                                                Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" 
-                                                CommandParameter="{Binding}" 
-                                                Style="{StaticResource DefaultButtonStyle}"
-                                                Height="28" 
-                                                Padding="10,0,10,0" 
-                                                FontSize="11" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
@@ -1851,109 +1841,5 @@
                 HorizontalAlignment="Center"/>
         </ContentDialog>
         
-        <!-- 地图详情对话框 -->
-        <ContentDialog 
-            x:Name="MapDetailDialog"
-            Grid.RowSpan="3"
-            Title="地图详情"
-            CloseButtonText="关闭"
-            DefaultButton="Close"
-            Width="480">
-            <StackPanel Spacing="16">
-                <!-- 地图基本信息 - 使用网格布局更紧凑 -->
-                <Grid RowSpacing="8" ColumnSpacing="16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- 地图名称 -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="地图名称" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedMapForDetail.Name, Mode=OneWay}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" TextWrapping="Wrap" />
-                    
-                    <!-- 地图大小 -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="地图大小" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedMapForDetail.Size, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                    
-                    <!-- 创建时间 -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="创建时间" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedMapForDetail.FormattedCreationTime, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                    
-                    <!-- 最后游玩 -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="最后游玩" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedMapForDetail.FormattedLastPlayedTime, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                </Grid>
-                
-                <!-- 游戏信息 - 紧凑显示 -->
-                <Grid RowSpacing="8" ColumnSpacing="16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- 游戏模式 -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="游戏模式" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedMapForDetail.GameMode, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                    
-                    <!-- 难度 -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="难度" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedMapForDetail.Difficulty, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                    
-                    <!-- 种子 -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="种子" FontSize="13" Foreground="{ThemeResource TextFillColorSecondary}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedMapForDetail.Seed, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                </Grid>
-                
-                <!-- 重命名输入框 -->
-                <TextBox Header="重命名地图" 
-                         Text="{Binding MapRenameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         PlaceholderText="输入新名称" />
-                
-                <!-- 操作按钮 - 使用 CommandBar 样式 -->
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                    <Button Command="{Binding LaunchMapCommand}" 
-                            CommandParameter="{Binding SelectedMapForDetail}"
-                            ToolTipService.ToolTip="启动"
-                            Width="44" Height="36">
-                        <FontIcon Glyph="&#xE768;" FontSize="16" />
-                    </Button>
-
-                    <Button Command="{Binding OpenMapFolderCommand}" 
-                            ToolTipService.ToolTip="打开文件夹"
-                            Width="44" Height="36">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="16" />
-                    </Button>
-                    
-                    <Button Command="{Binding RenameMapCommand}" 
-                            ToolTipService.ToolTip="重命名"
-                            Width="44" Height="36">
-                        <FontIcon Glyph="&#xE8AC;" FontSize="16" />
-                    </Button>
-                    
-                    <Button Command="{Binding ExportMapCommand}" 
-                            ToolTipService.ToolTip="导出为 ZIP"
-                            Width="44" Height="36">
-                        <FontIcon Glyph="&#xE8B5;" FontSize="16" />
-                    </Button>
-                    
-                    <Button Command="{Binding DeleteMapFromDetailCommand}" 
-                            ToolTipService.ToolTip="删除地图"
-                            Width="44" Height="36">
-                        <FontIcon Glyph="&#xE74D;" FontSize="16" />
-                    </Button>
-                </StackPanel>
-            </StackPanel>
-        </ContentDialog>
     </Grid>
 </Page>
