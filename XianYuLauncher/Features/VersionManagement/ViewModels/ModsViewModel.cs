@@ -31,7 +31,6 @@ public partial class ModsViewModel : ObservableObject
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
     private readonly ModInfoService _modInfoService;
-    private readonly IMinecraftVersionService _minecraftVersionService;
 
     private List<ModInfo> _allMods = new();
     private List<ModInfo>? _selectedModsForMove;
@@ -42,8 +41,7 @@ public partial class ModsViewModel : ObservableObject
         IDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService,
-        IMinecraftVersionService minecraftVersionService)
+        ModInfoService modInfoService)
     {
         _context = context;
         _navigationService = navigationService;
@@ -51,7 +49,6 @@ public partial class ModsViewModel : ObservableObject
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _modInfoService = modInfoService;
-        _minecraftVersionService = minecraftVersionService;
 
         Mods.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsModListEmpty));
     }
@@ -279,7 +276,6 @@ public partial class ModsViewModel : ObservableObject
 
             var originalSelectedVersion = _context.SelectedVersion;
 
-            var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
             _context.SelectedVersion = new VersionListViewModel.VersionInfoItem
             {
                 Name = targetVersion,
@@ -601,7 +597,6 @@ public partial class ModsViewModel : ObservableObject
         }
         finally
         {
-            _context.IsLoading = false;
             _context.IsDownloading = false;
             _context.DownloadProgress = 0;
         }

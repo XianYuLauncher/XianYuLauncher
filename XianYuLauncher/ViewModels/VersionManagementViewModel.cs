@@ -629,7 +629,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ServersModule = new ServersViewModel(this, navigationService, dialogService);
         ShadersModule = new ShadersViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
         ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
-        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, minecraftVersionService);
+        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
     }
     
     // 设置文件名称
