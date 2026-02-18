@@ -804,7 +804,7 @@ public sealed partial class VersionManagementPage : Page
     {
         if (e.ClickedItem is MapInfo map)
         {
-            ViewModel.ShowMapDetailCommand.Execute(map);
+            ViewModel.MapsModule.ShowMapDetailCommand.Execute(map);
         }
     }
     

@@ -29,11 +29,16 @@ using XianYuLauncher.Models.VersionManagement;
 using fNbt;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Core.Helpers; // Ensure Core.Helpers is included for AppEnvironment
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 
 namespace XianYuLauncher.ViewModels;
 
-public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware
+public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware, IVersionManagementContext
 {
+    /// <summary>地图管理子 ViewModel</summary>
+    public MapsViewModel MapsModule { get; private set; } = null!;
+    /// <summary>服务器管理子 ViewModel</summary>
+    public ServersViewModel ServersModule { get; private set; } = null!;
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly INavigationService _navigationService;
@@ -152,17 +157,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     public bool IsResourcePackListEmpty => ResourcePacks.Count == 0;
 
     /// <summary>
-    /// 地图列表
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<MapInfo> _maps = new();
-    
-    /// <summary>
-    /// 地图列表是否为空
-    /// </summary>
-    public bool IsMapListEmpty => Maps.Count == 0;
-    
-    /// <summary>
     /// 截图列表
     /// </summary>
     [ObservableProperty]
@@ -179,7 +173,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private List<ModInfo> _allMods = new();
     private List<ShaderInfo> _allShaders = new();
     private List<ResourcePackInfo> _allResourcePacks = new();
-    private List<MapInfo> _allMaps = new();
     private List<ScreenshotInfo> _allScreenshots = new();
 
     // 搜索文本属性
@@ -193,16 +186,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _resourcePackSearchText = string.Empty;
 
     [ObservableProperty]
-    private string _mapSearchText = string.Empty;
-
-    [ObservableProperty]
     private string _screenshotSearchText = string.Empty;
 
     // 搜索文本变更监听
     partial void OnModSearchTextChanged(string value) => FilterMods();
     partial void OnShaderSearchTextChanged(string value) => FilterShaders();
     partial void OnResourcePackSearchTextChanged(string value) => FilterResourcePacks();
-    partial void OnMapSearchTextChanged(string value) => FilterMaps();
     partial void OnScreenshotSearchTextChanged(string value) => FilterScreenshots();
 
     // 过滤方法
@@ -258,21 +247,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
              ResourcePacks = new ObservableCollection<ResourcePackInfo>(filtered);
         }
         OnPropertyChanged(nameof(IsResourcePackListEmpty));
-    }
-
-    private void FilterMaps()
-    {
-        if (string.IsNullOrWhiteSpace(MapSearchText))
-        {
-            if (!HasSameFilePathSnapshot(Maps, _allMaps, map => map.FilePath))
-                Maps = new ObservableCollection<MapInfo>(_allMaps);
-        }
-        else
-        {
-             var filtered = _allMaps.Where(x => x.Name.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) || (x.FileName?.Contains(MapSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-             Maps = new ObservableCollection<MapInfo>(filtered);
-        }
-        OnPropertyChanged(nameof(IsMapListEmpty));
     }
 
     private void FilterScreenshots()
@@ -514,13 +488,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
     }
     
-    partial void OnMapsChanged(ObservableCollection<MapInfo> value)
-    {
-        OnPropertyChanged(nameof(IsMapListEmpty));
-        // 为新集合添加事件监听
-        value.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
-    }
-    
     partial void OnScreenshotsChanged(ObservableCollection<ScreenshotInfo> value)
     {
         OnPropertyChanged(nameof(IsScreenshotListEmpty));
@@ -620,7 +587,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         await LoadResourcePackIconsAsync();
                         break;
                     case 6: // 地图 Tab
-                        await LoadMapIconsAsync();
+                        await MapsModule.LoadMapIconsAsync();
                         break;
                 }
             }
@@ -730,6 +697,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 用于取消页面异步操作的令牌源
     /// </summary>
     private CancellationTokenSource? _pageCancellationTokenSource;
+
+    /// <summary>页面级取消令牌（IVersionManagementContext）</summary>
+    public CancellationToken PageCancellationToken
+        => _pageCancellationTokenSource?.Token ?? CancellationToken.None;
+
+    /// <summary>页面动画播放完毕（IVersionManagementContext）</summary>
+    public bool IsPageReady => _isPageReady;
     
     /// <summary>
     /// 是否正在安装扩展
@@ -803,7 +777,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         Mods.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsModListEmpty));
         Shaders.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsShaderListEmpty));
         ResourcePacks.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsResourcePackListEmpty));
-        Maps.CollectionChanged += (sender, e) => OnPropertyChanged(nameof(IsMapListEmpty));
+        
+        // 初始化子 ViewModels
+        MapsModule = new MapsViewModel(this, navigationService, dialogService);
+        ServersModule = new ServersViewModel(this, navigationService, dialogService);
     }
     
     // 设置文件名称
@@ -2220,10 +2197,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 _ = LoadModsListOnlyAsync(cancellationToken);
                 _ = LoadShadersListOnlyAsync(cancellationToken);
                 _ = LoadResourcePacksListOnlyAsync(cancellationToken);
-                _ = LoadMapsListOnlyAsync(cancellationToken);
+                _ = MapsModule.LoadMapsListOnlyAsync(cancellationToken);
                 _ = LoadScreenshotsAsync(cancellationToken);
                 _ = LoadSavesAsync(cancellationToken);
-                _ = LoadServersAsync(cancellationToken);
+                _ = ServersModule.LoadServersAsync(cancellationToken);
                 
                 // 加载完成后隐藏加载圈，显示页面
                 IsLoading = false;
@@ -2273,7 +2250,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     FilterMods();
                     FilterShaders();
                     FilterResourcePacks();
-                    FilterMaps();
+                    MapsModule.FilterMaps();
                 });
             }
             catch (Exception ex)
@@ -2337,14 +2314,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    // 最后加载地图图标（本地操作）
-                    var mapTasks = new List<Task>();
-                    foreach (var mapInfo in Maps)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        mapTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
-                    }
-                    await Task.WhenAll(mapTasks);
+                    // 最后加载地图图标（本地操作）—— 委托给 MapsModule
+                    await MapsModule.LoadMapIconsAsync();
                 }
                 catch (OperationCanceledException)
                 {
@@ -2656,7 +2627,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     /// <param name="folderType">文件夹类型</param>
     /// <returns>版本特定的文件夹路径</returns>
-    private string GetVersionSpecificPath(string folderType)
+    public string GetVersionSpecificPath(string folderType)
     {
         if (SelectedVersion == null)
         {
@@ -2686,7 +2657,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     /// <param name="fileName">文件名（如 "servers.dat"）</param>
     /// <returns>完整的文件路径</returns>
-    private async Task<string> GetVersionSpecificFilePathAsync(string fileName)
+    public async Task<string> GetVersionSpecificFilePathAsync(string fileName)
     {
         var localSettingsService = App.GetService<ILocalSettingsService>();
         var enableVersionIsolation = (await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation")) ?? true;
@@ -2830,7 +2801,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 await OpenScreenshotsFolderAsync();
                 break;
             case 6: // 地图管理
-                await OpenMapsFolderAsync();
+                await MapsModule.OpenMapsFolderCommand.ExecuteAsync(null);
                 break;
             case 0: // 概览
             case 1: // 版本设置
@@ -3142,7 +3113,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 await LoadResourcePacksAsync();
                 break;
             case "saves":
-                await LoadMapsAsync();
+                await MapsModule.LoadMapsAsync();
                 break;
         }
     }
@@ -3201,449 +3172,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
     }
     
-    /// <summary>
-    /// 延迟加载地图图标（仅在切换到地图 Tab 时调用）
-    /// </summary>
-    private async Task LoadMapIconsAsync()
-    {
-        System.Diagnostics.Debug.WriteLine("[延迟加载] 开始加载地图图标");
-        
-        var loadTasks = new List<Task>();
-        foreach (var mapInfo in Maps)
-        {
-            if (string.IsNullOrEmpty(mapInfo.Icon))
-            {
-                loadTasks.Add(LoadMapIconAsync(mapInfo, mapInfo.FilePath));
-            }
-        }
-        
-        if (loadTasks.Count > 0)
-        {
-            await Task.WhenAll(loadTasks);
-            System.Diagnostics.Debug.WriteLine($"[延迟加载] 完成加载 {loadTasks.Count} 个地图图标");
-        }
-    }
-    
-    #endregion
-    #endregion
-
-    #region Merged from VersionManagementViewModel.Maps.cs
-    #region 地图安装
-
-    /// <summary>
-        /// 异步加载并更新单个地图的图标和世界数据
-        /// </summary>
-        /// <param name="mapInfo">地图信息对象</param>
-        /// <param name="mapFolder">地图文件夹路径</param>
-        private async Task LoadMapIconAsync(MapInfo mapInfo, string mapFolder)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 开始加载地图: {mapInfo.Name}");
-                
-                // 在后台线程执行所有 IO 操作
-                string iconPath = await Task.Run(() =>
-                {
-                    try
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 检查图标: {mapInfo.Name}");
-                        // 地图图标直接从地图文件夹的 icon.png 读取
-                        string path = Path.Combine(mapFolder, "icon.png");
-                        if (File.Exists(path))
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 找到图标: {path}");
-                            return path;
-                        }
-                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程 - 未找到图标: {mapInfo.Name}");
-                        return null;
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 后台线程异常: {ex.Message}");
-                        return null;
-                    }
-                });
-                
-                // 检查是否已取消
-                if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 操作已取消: {mapInfo.Name}");
-                    return;
-                }
-                
-                // 必须在 UI 线程更新属性（因为有数据绑定）
-                if (!string.IsNullOrEmpty(iconPath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 调度到UI线程 - 设置图标: {mapInfo.Name}");
-                    
-                    // 使用 TaskCompletionSource 等待 UI 线程完成更新
-                    var tcs = new TaskCompletionSource<bool>();
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        try
-                        {
-                            // 再次检查是否已取消（双重检查）
-                            if (_pageCancellationTokenSource?.Token.IsCancellationRequested == true)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程 - 操作已取消: {mapInfo.Name}");
-                                tcs.SetCanceled();
-                                return;
-                            }
-                            
-                            mapInfo.Icon = iconPath;
-                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程 - 图标已设置: {mapInfo.Name}");
-                            tcs.SetResult(true);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] UI线程异常: {ex.Message}");
-                            tcs.SetException(ex);
-                        }
-                    });
-                    
-                    await tcs.Task;
-                }
-                
-                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 完成加载地图: {mapInfo.Name}");
-            }
-            catch (OperationCanceledException)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 操作已取消: {mapInfo.Name}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 加载地图图标失败: {mapInfo.Name}, 错误: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[LoadMapIcon] 堆栈: {ex.StackTrace}");
-            }
-        }
-
-        /// <summary>
-        /// 仅加载地图列表，不加载图标
-        /// </summary>
-        private async Task LoadMapsListOnlyAsync(CancellationToken cancellationToken = default)
-        {
-            System.Diagnostics.Debug.WriteLine("[LoadMapsList] 开始加载地图列表");
-            
-            if (SelectedVersion == null || cancellationToken.IsCancellationRequested) { return; }
-
-            var savesPath = GetVersionSpecificPath("saves");
-            
-            // 在后台线程获取地图列表（包括创建对象）
-            var newMapList = await Task.Run(() =>
-            {
-                var list = new List<MapInfo>();
-                try
-                {
-                    if (Directory.Exists(savesPath))
-                    {
-                        var mapFolders = Directory.GetDirectories(savesPath);
-                        var mapInfos = mapFolders.Select(mapFolder =>
-                        {
-                            var mapInfo = new MapInfo(mapFolder);
-                            mapInfo.Icon = null;
-                            
-                            // 启动异步任务加载基本信息
-                            // 使用 ContinueWith 处理异常，避免嵌套 Task.Run
-                            _ = mapInfo.LoadBasicInfoAsync().ContinueWith(t =>
-                            {
-                                if (t.IsFaulted && t.Exception is not null)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] LoadBasicInfoAsync error: {t.Exception}");
-                                }
-                            }, TaskContinuationOptions.OnlyOnFaulted);
-                            
-                            return mapInfo;
-                        });
-                        list.AddRange(mapInfos);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LoadMapsList] Error: {ex.Message}");
-                }
-                return list;
-            });
-            
-            _allMaps = newMapList;
-            
-            if (_isPageReady)
-            {
-                await RunUiRefreshAsync(FilterMaps);
-            }
-        }
-        
-        /// <summary>
-        /// 加载地图列表（不加载图标，图标延迟到 Tab 切换时加载）
-        /// </summary>
-        private async Task LoadMapsAsync()
-        {
-            await LoadMapsListOnlyAsync();
-            // 图标和世界数据加载已移到 OnSelectedTabIndexChanged 中延迟执行
-        }
-
-    /// <summary>
-    /// 打开地图文件夹命令
-    /// </summary>
-    [RelayCommand]
-    private async Task OpenMapsFolderAsync()
-    {
-        await OpenFolderByTypeAsync("saves");
-    }
-    
-    /// <summary>
-    /// 启动地图命令
-    /// </summary>
-    /// <param name="map">要启动的地图</param>
-    [RelayCommand]
-    private void LaunchMap(MapInfo map)
-    {
-        if (map == null || SelectedVersion == null)
-        {
-            return;
-        }
-
-        var param = new LaunchMapParameter
-        {
-            VersionId = SelectedVersion.Name,
-            WorldFolder = map.FileName
-        };
-
-        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName, param);
-    }
-
-    /// <summary>
-    /// 删除地图命令
-    /// </summary>
-    /// <param name="map">要删除的地图</param>
-    [RelayCommand]
-    private async Task DeleteMapAsync(MapInfo map)
-    {
-        if (map == null)
-        {
-            return;
-        }
-        
-        try
-        {
-            // 显示二次确认弹窗
-            var dialog = new ContentDialog
-            {
-                Title = "确认删除",
-                Content = $"确定要删除地图 '{map.Name}' 吗？此操作不可恢复。",
-                PrimaryButtonText = "确定删除",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
-            {
-                // 使用WinRT API删除地图文件夹，更符合UWP/WinUI安全模型
-                await VersionManagementMapOps.DeleteMapDirectoryAsync(map.FilePath);
-                
-                // 从列表中移除
-                Maps.Remove(map);
-                
-                StatusMessage = $"已删除地图: {map.Name}";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"删除地图失败：{ex.Message}";
-        }
-    }
-    
-    /// <summary>
-    /// 显示地图详情命令
-    /// </summary>
-    [RelayCommand]
-    private void ShowMapDetail(MapInfo map)
-    {
-        if (map == null || SelectedVersion == null)
-        {
-            return;
-        }
-
-        // 导航到世界管理页面
-        var param = new WorldManagementParameter
-        {
-            WorldPath = map.FilePath,
-            VersionId = SelectedVersion.Name
-        };
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, param);
-    }
-    
-    /// <summary>
-    /// 重命名地图命令
-    /// </summary>
-    [RelayCommand]
-    private async Task RenameMapAsync(MapInfo map)
-    {
-        if (map == null)
-        {
-            return;
-        }
-        
-        try
-        {
-            var renameTextBox = new TextBox
-            {
-                Header = "重命名地图",
-                Text = map.Name,
-                PlaceholderText = "输入新名称"
-            };
-
-            var renameDialog = new ContentDialog
-            {
-                Title = "重命名地图",
-                Content = renameTextBox,
-                PrimaryButtonText = "确定",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            var dialogResult = await _dialogService.ShowDialogAsync(renameDialog);
-            if (dialogResult != ContentDialogResult.Primary)
-            {
-                return;
-            }
-
-            var newName = renameTextBox.Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(newName))
-            {
-                return;
-            }
-
-            var renameResult = VersionManagementMapOps.RenameMap(map, newName);
-
-            if (renameResult.Status == VersionManagementMapOps.RenameMapStatus.NameExists)
-            {
-                await _dialogService.ShowMessageDialogAsync("重命名失败", "该名称已存在，请使用其他名称。");
-                return;
-            }
-
-            if (renameResult.Status == VersionManagementMapOps.RenameMapStatus.Success)
-            {
-                StatusMessage = $"已重命名地图: {newName}";
-                
-                // 刷新地图列表
-                await LoadMapsAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"重命名地图失败：{ex.Message}";
-        }
-    }
-    
-    /// <summary>
-    /// 导出地图为ZIP命令
-    /// </summary>
-    [RelayCommand]
-    private async Task ExportMapAsync(MapInfo map)
-    {
-        if (map == null)
-        {
-            return;
-        }
-        
-        try
-        {
-            // 创建文件保存对话框
-            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
-            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-            savePicker.FileTypeChoices.Add("ZIP 压缩文件", new List<string>() { ".zip" });
-            savePicker.SuggestedFileName = map.Name;
-            
-            // 获取当前窗口句柄
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-            
-            var file = await savePicker.PickSaveFileAsync();
-            if (file != null)
-            {
-                // 显示进度提示
-                StatusMessage = $"正在导出地图: {map.Name}...";
-
-                await VersionManagementMapOps.ExportMapAsZipAsync(map.FilePath, file.Path);
-                
-                StatusMessage = $"地图已导出到: {file.Path}";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"导出地图失败：{ex.Message}";
-        }
-    }
-
-    /// <summary>
-    /// 创建地图快捷方式命令
-    /// </summary>
-    [RelayCommand]
-    private async Task CreateMapShortcutAsync(MapInfo map)
-    {
-        if (map == null || SelectedVersion == null) return;
-        
-        try
-        {
-            StatusMessage = $"正在创建快捷方式: {map.Name}...";
-
-            var shortcutPath = VersionManagementShortcutOps.BuildMapShortcutPath(map.Name, SelectedVersion.Name);
-            var shortcutName = Path.GetFileNameWithoutExtension(shortcutPath);
-            
-            // Check if shortcut already exists
-            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
-            {
-                try
-                {
-                    var dialogService = App.GetService<IDialogService>();
-                    if (dialogService != null)
-                    {
-                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
-                        if (!result) return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
-                }
-            }
-
-            shortcutName = await VersionManagementShortcutOps.CreateMapShortcutFileAsync(
-                map,
-                SelectedVersion.Name,
-                SelectedVersion.Path);
-            
-            StatusMessage = $"快捷方式已创建: {shortcutName}";
-            
-            // 提示用户
-            try
-            {
-                var dialogService = App.GetService<IDialogService>();
-                if (dialogService != null)
-                {
-                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
-                        $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接进入此存档。");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"显示快捷方式创建提示对话框失败: {ex}");
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"创建快捷方式失败: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"创建地图快捷方式失败: {ex.Message}");
-        }
-    }
-
     #endregion
     #endregion
 
@@ -4946,7 +4474,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
         }
 
-        private async Task RunUiRefreshAsync(Action refreshAction)
+        public async Task RunUiRefreshAsync(Action refreshAction)
         {
             var refreshTcs = new TaskCompletionSource<bool>();
             bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -5812,398 +5340,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
 
     #endregion
-    #endregion
-
-    #region Merged from VersionManagementViewModel.Servers.cs
-    private List<ServerItem> _allServers = new();
-
-    [ObservableProperty]
-    private ObservableCollection<ServerItem> _servers = new();
-
-    [ObservableProperty]
-    private bool _isServerListEmpty = true;
-
-    [ObservableProperty]
-    private string _serverSearchText = string.Empty;
-
-    [RelayCommand]
-    private async Task AddServerAsync()
-    {
-        // 1. 构建对话框内容
-        // 避免直接在XAML定义Popup，使用代码构建简单的 StackPanel + TextBoxes
-        var stackPanel = new Microsoft.UI.Xaml.Controls.StackPanel { Spacing = 12 };
-        
-        var nameInput = new Microsoft.UI.Xaml.Controls.TextBox 
-        { 
-            Header = "服务器名称", 
-            PlaceholderText = "Minecraft Server",
-            Text = "Minecraft Server" 
-        };
-        var addrInput = new Microsoft.UI.Xaml.Controls.TextBox 
-        { 
-            Header = "服务器地址", 
-            PlaceholderText = "例如: 127.0.0.1" 
-        };
-
-        stackPanel.Children.Add(nameInput);
-        stackPanel.Children.Add(addrInput);
-
-        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style,
-            Title = "添加服务器",
-            PrimaryButtonText = "添加",
-            CloseButtonText = "取消",
-            DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary,
-            Content = stackPanel
-        };
-
-        // 2. 显示并等待结果
-        var result = await dialog.ShowAsync();
-
-        if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
-        {
-            string name = nameInput.Text.Trim();
-            string addr = addrInput.Text.Trim();
-
-            if (string.IsNullOrEmpty(name)) name = "Minecraft Server";
-            if (string.IsNullOrEmpty(addr)) return; // 地址必填
-
-            await AddServerToNbtAsync(name, addr);
-        }
-    }
-
-    private async Task AddServerToNbtAsync(string name, string address)
-    {
-        try
-        {
-            // 使用统一的路径获取方法
-            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
-            
-            if (string.IsNullOrEmpty(serversDatPath)) return;
-
-            await Task.Run(() => VersionManagementServerDatOps.AddServer(serversDatPath, name, address));
-
-            // 刷新列表
-            await LoadServersAsync();
-        }
-        catch (Exception ex)
-        {
-            // 简单错误处理，实际可能需要弹窗提示
-            System.Diagnostics.Debug.WriteLine($"Error adding server: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 加载服务器列表
-    /// </summary>
-    public async Task LoadServersAsync(CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested) return;
-
-        try
-        {
-            IsLoading = true;
-            
-            // 获取设置服务和当前状态
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            
-            // 注意：ReadSettingAsync<bool> 如果key不存在可能会返回默认值false，而SettingsViewModel中的默认值是true
-            // 因此这里需要使用 bool? 读取并处理默认情况
-            var enableVersionIsolationSetting = await localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation");
-            var enableVersionIsolation = enableVersionIsolationSetting ?? true;
-            
-            // 捕获和验证路径
-            var currentVersionPath = SelectedVersion?.Path;
-            var currentMinecraftPath = MinecraftPath;
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] LoadServersAsync - 启动");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 设置: EnableVersionIsolation = {enableVersionIsolation} (Raw: {enableVersionIsolationSetting})");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前版本路径: {currentVersionPath}");
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前MC路径: {currentMinecraftPath}");
-
-            // 使用统一的路径获取方法
-            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
-
-            // 在后台线程处理文件读取和解析
-            var servers = await Task.Run(() =>
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 目标路径: {serversDatPath}");
-                
-                if (string.IsNullOrEmpty(serversDatPath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 服务器文件路径为空，不加载服务器列表");
-                    return new List<ServerItem>();
-                }
-
-                List<ServerItem> list = VersionManagementServerDatOps.LoadServers(serversDatPath);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已加载服务器条目: {list.Count}");
-                return list;
-            });
-
-            _allServers = servers;
-            FilterServers();
-
-            // 异步加载图标和状态
-            foreach (var item in _allServers)
-            {
-                await item.DecodeIconAsync();
-                
-                // 在后台刷新服务器状态
-                _ = Task.Run(async () => 
-                {
-                    try
-                    {
-                        string host = item.Address;
-                        int port = 25565;
-                        if (host.Contains(":"))
-                        {
-                            var parts = host.Split(':');
-                            host = parts[0];
-                            if (parts.Length > 1 && int.TryParse(parts[1], out int p)) port = p;
-                        }
-
-                        var (icon, motd, online, max, ping) = await XianYuLauncher.Core.Helpers.ServerStatusFetcher.PingerAsync(host, port);
-                        
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() => 
-                        {
-                            if (ping >= 0)
-                            {
-                                item.UpdateStatus(motd, online, max, ping, icon);
-                            }
-                            else
-                            {
-                                item.Motd = "无法连接";
-                                item.Ping = -1;
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                         System.Diagnostics.Debug.WriteLine($"Error pinging server {item.Name}: {ex.Message}");
-                    }
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"LoadServersAsync Error: {ex.Message}");
-            _allServers.Clear();
-            FilterServers();
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private void FilterServers()
-    {
-        App.MainWindow.DispatcherQueue.TryEnqueue(() => 
-        {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] FilterServers calling. AllServers count: {_allServers.Count}");
-            
-            if (string.IsNullOrWhiteSpace(ServerSearchText))
-            {
-                Servers = new ObservableCollection<ServerItem>(_allServers);
-            }
-            else
-            {
-                var filtered = _allServers.Where(x => 
-                    x.Name.Contains(ServerSearchText, StringComparison.OrdinalIgnoreCase) || 
-                    x.Address.Contains(ServerSearchText, StringComparison.OrdinalIgnoreCase));
-                Servers = new ObservableCollection<ServerItem>(filtered);
-            }
-            
-            IsServerListEmpty = Servers.Count == 0;
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] FilterServers finished. Visible count: {Servers.Count}");
-        });
-    }
-
-    partial void OnServerSearchTextChanged(string value)
-    {
-        FilterServers();
-    }
-
-    [RelayCommand]
-    private void LaunchServer(ServerItem server)
-    {
-        if (server == null)
-        {
-             return;
-        }
-
-        if (SelectedVersion == null)
-        {
-             App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
-             {
-                await new ContentDialog
-                {
-                    Title = "提示",
-                    Content = "请先在版本列表中选择一个版本",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-                }.ShowAsync();
-             });
-             return;
-        }
-
-        string address = server.Address;
-        int? port = null;
-
-        // 解析地址和端口
-        if (!string.IsNullOrEmpty(address) && address.Contains(':'))
-        {
-            var parts = address.Split(':');
-            // 简单处理 IPv4:Port 情况，暂不处理 IPv6 [::]:Port 情况
-            if (parts.Length == 2 && int.TryParse(parts[1], out int p))
-            {
-                address = parts[0];
-                port = p;
-            }
-        }
-
-        var param = new LaunchMapParameter
-        {
-            VersionId = SelectedVersion.Name,
-            ServerAddress = address,
-            ServerPort = port
-        };
-
-        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName, param);
-    }
-
-    [RelayCommand]
-    private async Task DeleteServerAsync(ServerItem server)
-    {
-        if (server == null) return;
-
-        var confirmDialog = new ContentDialog
-        {
-            Title = "删除服务器",
-            Content = $"确定要删除服务器 '{server.Name}' 吗?",
-            PrimaryButtonText = "删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-        };
-
-        var result = await confirmDialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return;
-        
-        try
-        {
-            // 使用统一的路径获取方法
-            string serversDatPath = await GetVersionSpecificFilePathAsync("servers.dat");
-
-            System.Diagnostics.Debug.WriteLine($"[DeleteServer] Target file: {serversDatPath}");
-
-            bool removed = VersionManagementServerDatOps.RemoveServer(
-                serversDatPath,
-                server.Name ?? string.Empty,
-                server.Address ?? string.Empty);
-
-            if (removed)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DeleteServer] Removing server: {server.Name}");
-                
-                App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
-                {
-                    await LoadServersAsync();
-                });
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[DeleteServer] Server not found in NBT list.");
-            }
-        }
-        catch (Exception ex)
-        {
-            await new ContentDialog
-            {
-                Title = "错误",
-                Content = $"删除服务器失败: {ex.Message}",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-            }.ShowAsync();
-        }
-    }
-
-    /// <summary>
-    /// 创建服务器快捷方式命令
-    /// </summary>
-    [RelayCommand]
-    private async Task CreateServerShortcutAsync(ServerItem server)
-    {
-        if (server == null || SelectedVersion == null) return;
-        
-        try
-        {
-            StatusMessage = $"正在创建快捷方式: {server.Name}...";
-
-            var shortcutPath = VersionManagementShortcutOps.BuildServerShortcutPath(server.Name, SelectedVersion.Name);
-            var shortcutName = Path.GetFileNameWithoutExtension(shortcutPath);
-            
-            // Check if shortcut already exists
-            if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
-            {
-                try
-                {
-                    var dialogService = App.GetService<IDialogService>();
-                    if (dialogService != null)
-                    {
-                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
-                        if (!result) return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"显示快捷方式存在提示对话框失败: {ex}");
-                }
-            }
-
-            shortcutName = await VersionManagementShortcutOps.CreateServerShortcutFileAsync(
-                server,
-                SelectedVersion.Name,
-                SelectedVersion.Path);
-            
-            StatusMessage = $"快捷方式已创建: {shortcutName}";
-            
-            // 提示用户
-            App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
-            {
-                await new ContentDialog
-                {
-                    Title = "快捷方式已创建",
-                    Content = $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接连接此服务器。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-                }.ShowAsync();
-            });
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = "创建快捷方式失败";
-            System.Diagnostics.Debug.WriteLine($"创建服务器快捷方式失败: {ex}");
-            
-            // Show user-friendly error message
-            try
-            {
-                var dialogService = App.GetService<IDialogService>();
-                await dialogService?.ShowMessageDialogAsync("创建失败", "创建快捷方式失败，请检查桌面权限或稍后重试。");
-            }
-            catch (Exception dialogEx)
-            {
-                System.Diagnostics.Debug.WriteLine($"显示错误对话框失败: {dialogEx}");
-            }
-        }
-    }
     #endregion
 
     #region Merged from VersionManagementViewModel.Shaders.cs
