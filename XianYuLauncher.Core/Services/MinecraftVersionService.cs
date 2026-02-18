@@ -158,12 +158,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             
             // 回退到原有逻辑（兼容模式）
-            // 获取当前版本列表源设置（字符串类型）
-            var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
-            _logger.LogInformation("当前版本列表源: {VersionListSource}", versionListSource);
+            var downloadSource = _downloadSourceFactory.GetDefaultSource();
+            _logger.LogInformation("当前版本列表源: {DownloadSourceName}", downloadSource.Name);
             
-            // 根据设置获取对应的下载源
-            var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
             var versionManifestUrl = downloadSource.GetVersionManifestUrl();
             _logger.LogInformation("使用版本清单URL: {VersionManifestUrl}", versionManifestUrl);
             
@@ -332,9 +329,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             throw new Exception($"Version {versionId} not found");
                         }
 
-                        // 获取当前版本列表源设置，转换版本信息URL
-                        var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
-                        var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+                        var downloadSource = _downloadSourceFactory.GetDefaultSource();
                         var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                         
                         var response = await _downloadManager.DownloadStringAsync(versionInfoUrl, cts.Token);
@@ -379,8 +374,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             return null;
         }
 
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        var downloadSource = _downloadSourceFactory.GetDefaultSource();
         return downloadSource.GetClientJarUrl(versionId, clientUrl);
     }
 
@@ -397,8 +391,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             return null;
         }
 
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        var downloadSource = _downloadSourceFactory.GetDefaultSource();
         return downloadSource.GetResourceUrl("server", serverUrl);
     }
 
@@ -454,9 +447,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     throw new Exception($"Version {versionId} not found");
                 }
 
-                // 获取当前版本列表源设置，转换版本信息URL
-                var versionListSource = await _localSettingsService.ReadSettingAsync<string>("VersionListSource") ?? "Official";
-                var downloadSource = _downloadSourceFactory.GetSource(versionListSource.ToLower());
+                var downloadSource = _downloadSourceFactory.GetDefaultSource();
                 var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                 
                 // 添加调试信息
@@ -561,9 +552,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 设置64KB缓冲区大小，提高下载速度
             const int bufferSize = 65536;
             
-            // 获取当前配置的下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+            var downloadSource = _downloadSourceFactory.GetDefaultSource();
             
             // 使用下载源获取客户端JAR的下载URL
             var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
@@ -1111,9 +1100,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
         }
 
-        // 获取当前下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        var downloadSource = _downloadSourceFactory.GetDefaultSource();
         
         // 使用下载源获取正确的库文件URL
         string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
@@ -1483,9 +1470,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            // 获取当前下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+            var downloadSource = _downloadSourceFactory.GetDefaultSource();
             _logger.LogInformation("当前assets下载源: {DownloadSource}", downloadSource.Name);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets下载源: {downloadSource.Name}");
 
@@ -1944,9 +1929,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 // 报告资源索引文件下载开始
                 progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
-                // 获取当前下载源
-                var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
-                var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+                var downloadSource = _downloadSourceFactory.GetDefaultSource();
                 
                 // 转换资源索引URL
                 string convertedAssetIndexUrl = downloadSource.GetResourceUrl("asset_index", assetIndexUrl);
