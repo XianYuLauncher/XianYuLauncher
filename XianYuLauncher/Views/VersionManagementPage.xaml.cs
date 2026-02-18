@@ -327,7 +327,7 @@ public sealed partial class VersionManagementPage : Page
             if (VisualTreeHelper.GetParent(toggleSwitch) is FrameworkElement parentElement && parentElement.DataContext is Models.VersionManagement.ModInfo modInfo)
             {
                 // 直接调用ViewModel的方法来处理开关状态变化，传递当前IsOn值
-                await ViewModel.ToggleModEnabledAsync(modInfo, isOn);
+                await ViewModel.ModsModule.ToggleModEnabledAsync(modInfo, isOn);
             }
         }
     }
@@ -508,7 +508,7 @@ public sealed partial class VersionManagementPage : Page
             }
             
             // 关闭其他预览
-            foreach (var pack in ViewModel.ResourcePacks)
+            foreach (var pack in ViewModel.ResourcePacksModule.ResourcePacks)
             {
                 if (pack != resourcePack)
                 {

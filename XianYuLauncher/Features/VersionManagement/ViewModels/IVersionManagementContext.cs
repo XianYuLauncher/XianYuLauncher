@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
@@ -10,7 +11,7 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 public interface IVersionManagementContext
 {
     /// <summary>当前选中版本</summary>
-    VersionListViewModel.VersionInfoItem? SelectedVersion { get; }
+    VersionListViewModel.VersionInfoItem? SelectedVersion { get; set; }
 
     /// <summary>Minecraft 根目录</summary>
     string MinecraftPath { get; }
@@ -35,4 +36,84 @@ public interface IVersionManagementContext
 
     /// <summary>根据版本隔离设置获取文件路径（如 servers.dat）</summary>
     Task<string> GetVersionSpecificFilePathAsync(string fileName);
+
+    #region 下载进度共享状态
+
+    /// <summary>是否正在下载</summary>
+    bool IsDownloading { get; set; }
+
+    /// <summary>下载进度（0-100）</summary>
+    double DownloadProgress { get; set; }
+
+    /// <summary>下载进度弹窗标题</summary>
+    string DownloadProgressDialogTitle { get; set; }
+
+    /// <summary>当前下载的项目名称</summary>
+    string CurrentDownloadItem { get; set; }
+
+    #endregion
+
+    #region 资源转移共享状态
+
+    /// <summary>当前正在进行的资源转移类型</summary>
+    ResourceMoveType CurrentResourceMoveType { get; set; }
+
+    /// <summary>是否显示资源转移对话框</summary>
+    bool IsMoveResourcesDialogVisible { get; set; }
+
+    /// <summary>转移结果列表</summary>
+    List<MoveModResult> MoveResults { get; set; }
+
+    /// <summary>是否显示转移结果弹窗</summary>
+    bool IsMoveResultDialogVisible { get; set; }
+
+    /// <summary>目标版本列表</summary>
+    ObservableCollection<TargetVersionInfo> TargetVersions { get; }
+
+    /// <summary>选中的目标版本</summary>
+    TargetVersionInfo? SelectedTargetVersion { get; }
+
+    /// <summary>加载目标版本列表</summary>
+    Task LoadTargetVersionsAsync();
+
+    #endregion
+
+    #region 更新结果共享状态
+
+    /// <summary>更新结果文本</summary>
+    string UpdateResults { get; set; }
+
+    /// <summary>是否显示结果弹窗</summary>
+    bool IsResultDialogVisible { get; set; }
+
+    #endregion
+
+    #region 共享工具方法
+
+    /// <summary>下载文件到指定路径</summary>
+    Task<bool> DownloadModAsync(string downloadUrl, string destinationPath);
+
+    /// <summary>计算文件的 SHA1 哈希值</summary>
+    string CalculateSHA1(string filePath);
+
+    /// <summary>复制目录</summary>
+    void CopyDirectory(string sourceDir, string destinationDir);
+
+    /// <summary>获取 Minecraft 数据路径</summary>
+    string GetMinecraftDataPath();
+
+    /// <summary>获取启动器缓存路径</summary>
+    string GetLauncherCachePath();
+
+    /// <summary>
+    /// 异步加载并更新单个资源的图标
+    /// </summary>
+    Task LoadResourceIconAsync(Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 使用信号量限制并发的图标加载
+    /// </summary>
+    Task LoadResourceIconWithSemaphoreAsync(System.Threading.SemaphoreSlim semaphore, Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported, CancellationToken cancellationToken);
+
+    #endregion
 }

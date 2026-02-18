@@ -578,7 +578,7 @@
                     <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchModPlaceholder"
-                            Text="{Binding ModSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Text="{Binding ModsModule.ModSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
                             HorizontalAlignment="Stretch" />
                     </Grid>
@@ -588,7 +588,7 @@
                         <!-- Mod列表 -->
                         <ListView 
                             x:Name="ModListView"
-                            ItemsSource="{Binding Mods, Mode=OneWay}"
+                            ItemsSource="{Binding ModsModule.Mods, Mode=OneWay}"
                             SelectionMode="Single"
                             IsItemClickEnabled="False"
                             CanReorderItems="False"
@@ -635,24 +635,24 @@
                                                 <MenuFlyout>
                                                     <!-- 选择模式控制 -->
                                                     <MenuFlyoutItem Text="选择" 
-                                                                    Command="{Binding DataContext.ToggleModSelectionModeCommand, ElementName=ModListView}"
-                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Command="{Binding DataContext.ModsModule.ToggleModSelectionModeCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="取消选择" 
-                                                                    Command="{Binding DataContext.ToggleModSelectionModeCommand, ElementName=ModListView}"
-                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ModsModule.ToggleModSelectionModeCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Cancel" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="全选" 
-                                                                    Command="{Binding DataContext.SelectAllModsCommand, ElementName=ModListView}"
-                                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ModsModule.SelectAllModsCommand, ElementName=ModListView}"
+                                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="SelectAll" />
                                                         </MenuFlyoutItem.Icon>
@@ -660,17 +660,17 @@
                                                     
                                                     <MenuFlyoutSeparator />
                                                     
-                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.UpdateModsCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.ModsModule.UpdateModsCommand, ElementName=ModListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
-                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToModDetailsCommand, ElementName=ModListView}" CommandParameter="{Binding}">
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.ModsModule.NavigateToModDetailsCommand, ElementName=ModListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Go" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
-                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.MoveModsToOtherVersionCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.ModsModule.MoveModsToOtherVersionCommand, ElementName=ModListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -695,7 +695,7 @@
                                             <Grid Grid.Column="0" Width="Auto">
                                                 <CheckBox 
                                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                    Visibility="{Binding DataContext.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}}"
                                                     Margin="0,0,12,0"
                                                     MinWidth="0">
                                                     <animations:Implicit.ShowAnimations>
@@ -780,7 +780,7 @@
                                                 Grid.Column="4"
                                                 x:Uid="VersionManagerPage_DeleteButton"
                                                 VerticalAlignment="Center" 
-                                                Command="{Binding DataContext.DeleteModCommand, ElementName=ModListView}" 
+                                                Command="{Binding DataContext.ModsModule.DeleteModCommand, ElementName=ModListView}" 
                                                 CommandParameter="{Binding}" 
                                                 Style="{StaticResource DefaultButtonStyle}"
                                                 Height="28" 
@@ -794,7 +794,7 @@
                         <!-- 空列表提示 -->
                         <StackPanel 
                             x:Name="ModEmptyPanel"
-                            Visibility="{Binding IsModListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Visibility="{Binding ModsModule.IsModListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
                             HorizontalAlignment="Center" 
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
@@ -827,7 +827,7 @@
                             <Button 
                                 x:Uid="VersionManagerPage_NavigateToModPageButton"
                                 Style="{StaticResource DefaultButtonStyle}" 
-                                Command="{Binding NavigateToModPageCommand}" 
+                                Command="{Binding ModsModule.NavigateToModPageCommand}" 
                                 HorizontalAlignment="Center" 
                                 Margin="0,16,0,0" 
                                 Width="160"/>
@@ -858,7 +858,7 @@
                     <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchShaderPlaceholder"
-                            Text="{Binding ShaderSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Text="{Binding ShadersModule.ShaderSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
                             HorizontalAlignment="Stretch" />
                     </Grid>
@@ -868,7 +868,7 @@
                         <!-- 光影列表 -->
                         <ListView 
                             x:Name="ShaderListView"
-                            ItemsSource="{Binding Shaders, Mode=OneWay}"
+                            ItemsSource="{Binding ShadersModule.Shaders, Mode=OneWay}"
                             SelectionMode="Single"
                             IsItemClickEnabled="False"
                             CanReorderItems="False"
@@ -911,24 +911,24 @@
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="选择" 
-                                                                    Command="{Binding DataContext.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
-                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Command="{Binding DataContext.ShadersModule.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="取消选择" 
-                                                                    Command="{Binding DataContext.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
-                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ShadersModule.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Cancel" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="全选" 
-                                                                    Command="{Binding DataContext.SelectAllShadersCommand, ElementName=ShaderListView}"
-                                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ShadersModule.SelectAllShadersCommand, ElementName=ShaderListView}"
+                                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="SelectAll" />
                                                         </MenuFlyoutItem.Icon>
@@ -936,19 +936,19 @@
                                                     
                                                     <MenuFlyoutSeparator />
 
-                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.UpdateShadersCommand, ElementName=ShaderListView}">
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ShadersModule.UpdateShadersCommand, ElementName=ShaderListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
-                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToShaderDetailsCommand, ElementName=ShaderListView}" CommandParameter="{Binding}">
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.ShadersModule.NavigateToShaderDetailsCommand, ElementName=ShaderListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Go" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
 
-                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.MoveShadersToOtherVersionCommand, ElementName=ShaderListView}">
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ShadersModule.MoveShadersToOtherVersionCommand, ElementName=ShaderListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -968,7 +968,7 @@
                                             <Grid Grid.Column="0" Width="Auto">
                                                 <CheckBox 
                                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                    Visibility="{Binding DataContext.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}}"
                                                     Margin="0,0,12,0"
                                                     MinWidth="0">
                                                     <animations:Implicit.ShowAnimations>
@@ -1040,7 +1040,7 @@
                                                 Grid.Column="3" 
                                                 x:Uid="VersionManagerPage_DeleteButton"
                                                 VerticalAlignment="Center" 
-                                                Command="{Binding DataContext.DeleteShaderCommand, ElementName=ShaderListView}" 
+                                                Command="{Binding DataContext.ShadersModule.DeleteShaderCommand, ElementName=ShaderListView}" 
                                                 CommandParameter="{Binding}" 
                                                 Style="{StaticResource DefaultButtonStyle}"
                                                 Height="28" 
@@ -1054,7 +1054,7 @@
                         <!-- 空列表提示 -->
                         <StackPanel 
                             x:Name="ShaderEmptyPanel"
-                            Visibility="{Binding IsShaderListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Visibility="{Binding ShadersModule.IsShaderListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
                             HorizontalAlignment="Center" 
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
@@ -1087,7 +1087,7 @@
                             <Button 
                                 x:Uid="VersionManagerPage_NavigateToShaderPageButton" 
                                 Style="{StaticResource DefaultButtonStyle}" 
-                                Command="{Binding NavigateToShaderPageCommand}" 
+                                Command="{Binding ShadersModule.NavigateToShaderPageCommand}" 
                                 HorizontalAlignment="Center" 
                                 Margin="0,16,0,0" 
                                 Width="160"/>
@@ -1118,7 +1118,7 @@
                     <Grid Grid.Row="0" Margin="0,20,0,16">
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchResourcePackPlaceholder"
-                            Text="{Binding ResourcePackSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Text="{Binding ResourcePacksModule.ResourcePackSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
                             HorizontalAlignment="Stretch" />
                     </Grid>
@@ -1128,7 +1128,7 @@
                         <!-- 资源包列表 -->
                         <ListView 
                             x:Name="ResourcePackListView"
-                            ItemsSource="{Binding ResourcePacks, Mode=OneWay}"
+                            ItemsSource="{Binding ResourcePacksModule.ResourcePacks, Mode=OneWay}"
                             SelectionMode="Single"
                             IsItemClickEnabled="False"
                             CanReorderItems="False"
@@ -1172,24 +1172,24 @@
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="选择" 
-                                                                    Command="{Binding DataContext.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
-                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Command="{Binding DataContext.ResourcePacksModule.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="取消选择" 
-                                                                    Command="{Binding DataContext.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
-                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ResourcePacksModule.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Cancel" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
                                                     <MenuFlyoutItem Text="全选" 
-                                                                    Command="{Binding DataContext.SelectAllResourcePacksCommand, ElementName=ResourcePackListView}"
-                                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    Command="{Binding DataContext.ResourcePacksModule.SelectAllResourcePacksCommand, ElementName=ResourcePackListView}"
+                                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="SelectAll" />
                                                         </MenuFlyoutItem.Icon>
@@ -1197,19 +1197,19 @@
                                                     
                                                     <MenuFlyoutSeparator />
 
-                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.UpdateResourcePacksCommand, ElementName=ResourcePackListView}">
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ResourcePacksModule.UpdateResourcePacksCommand, ElementName=ResourcePackListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     
-                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.NavigateToResourcePackDetailsCommand, ElementName=ResourcePackListView}" CommandParameter="{Binding}">
+                                                    <MenuFlyoutItem Text="跳转详情页" Command="{Binding DataContext.ResourcePacksModule.NavigateToResourcePackDetailsCommand, ElementName=ResourcePackListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Go" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
 
-                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.MoveResourcePacksToOtherVersionCommand, ElementName=ResourcePackListView}">
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ResourcePacksModule.MoveResourcePacksToOtherVersionCommand, ElementName=ResourcePackListView}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -1227,7 +1227,7 @@
                                             <Grid Grid.Column="0" Width="Auto">
                                                 <CheckBox 
                                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                    Visibility="{Binding DataContext.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}}"
                                                     Margin="0,0,12,0"
                                                     MinWidth="0">
                                                     <animations:Implicit.ShowAnimations>
@@ -1325,7 +1325,7 @@
                                                 Grid.Column="3"
                                                 Content="删除" 
                                                 VerticalAlignment="Center" 
-                                                Command="{Binding DataContext.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 
+                                                Command="{Binding DataContext.ResourcePacksModule.DeleteResourcePackCommand, ElementName=ResourcePackListView}" 
                                                 CommandParameter="{Binding}" 
                                                 Style="{StaticResource DefaultButtonStyle}"
                                                 Height="28" 
@@ -1339,7 +1339,7 @@
                         <!-- 空列表提示 -->
                         <StackPanel 
                             x:Name="ResourcePackEmptyPanel"
-                            Visibility="{Binding IsResourcePackListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Visibility="{Binding ResourcePacksModule.IsResourcePackListEmpty, Converter={StaticResource BoolToVisibilityConverter}}"
                             HorizontalAlignment="Center" 
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
@@ -1373,7 +1373,7 @@
                             <Button 
                                 x:Uid="VersionManagerPage_NavigateToResourcePackPageButton" 
                                 Style="{StaticResource DefaultButtonStyle}" 
-                                Command="{Binding NavigateToResourcePackPageCommand}" 
+                                Command="{Binding ResourcePacksModule.NavigateToResourcePackPageCommand}" 
                                 HorizontalAlignment="Center" 
                                 Margin="0,16,0,0" 
                                 Width="160"/>
