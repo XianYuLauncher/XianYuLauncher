@@ -127,6 +127,7 @@ public partial class App : Application
             });
             
             services.AddSingleton<IDownloadTaskManager, DownloadTaskManager>();
+            services.AddSingleton<IModpackInstallationService, ModpackInstallationService>();
 
             // ModLoader Services (抽离自 ModLoaderSelectorViewModel)
             services.AddSingleton<IModLoaderVersionLoaderService, ModLoaderVersionLoaderService>();
