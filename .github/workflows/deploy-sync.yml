@@ -11,6 +11,11 @@ on:
         description: 'Full version (e.g. 1.4.2.0). Leave empty to auto-append .0'
         required: false
         default: ''
+      skip_123pan:
+        description: 'Skip 123Pan upload (only sync Gitee with GitHub URLs)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   sync_to_123pan:
@@ -66,6 +71,7 @@ jobs:
         run: pip install requests
 
       - name: Upload to 123Pan
+        if: ${{ inputs.skip_123pan != true }}
         env:
           PAN123_CLIENT_ID: ${{ secrets.PAN123_CLIENT_ID }}
           PAN123_CLIENT_SECRET: ${{ secrets.PAN123_CLIENT_SECRET }}
@@ -101,8 +107,8 @@ jobs:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
-          # Pass 123Pan links to the python script
-          cp ../123pan_links.json .
+          # Pass 123Pan links to the python script (may not exist if skipped)
+          cp ../123pan_links.json . 2>/dev/null || echo '{}' > 123pan_links.json
 
           python3 << 'PYEOF'
           import json, os
@@ -140,26 +146,31 @@ jobs:
           # GitHub fallback URLs
           github_base = f"https://github.com/N123999/XianYuLauncher/releases/download/{tag}"
 
-          data["download_mirrors"] = [
-              {
+          mirrors = []
+          
+          pan_x64 = get_link("x64")
+          if pan_x64:
+              mirrors.append({
                   "name": "123Pan (Fast)",
-                  "url": get_link("x64"), # Main button usually uses x64
+                  "url": pan_x64,
                   "arch_urls": {
-                      "x64": get_link("x64"),
+                      "x64": pan_x64,
                       "x86": get_link("x86"),
                       "arm64": get_link("arm64")
                   }
-              },
-              {
-                  "name": "GitHub",
-                  "url": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-                  "arch_urls": {
-                      "x64": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-                      "x86": f"{github_base}/XianYuLauncher_{full_ver}_x86.zip",
-                      "arm64": f"{github_base}/XianYuLauncher_{full_ver}_arm64.zip"
-                  }
+              })
+          
+          mirrors.append({
+              "name": "GitHub",
+              "url": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
+              "arch_urls": {
+                  "x64": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
+                  "x86": f"{github_base}/XianYuLauncher_{full_ver}_x86.zip",
+                  "arm64": f"{github_base}/XianYuLauncher_{full_ver}_arm64.zip"
               }
-          ]
+          })
+          
+          data["download_mirrors"] = mirrors
 
           with open(path, "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
@@ -170,5 +181,10 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add latest_version.json
-          git commit -m "chore: update version to $FULL_VER (123Pan)" || echo "No changes"
+          SKIP_PAN="${{ inputs.skip_123pan }}"
+          if [ "$SKIP_PAN" = "true" ]; then
+            git commit -m "chore: update version to $FULL_VER (GitHub only)" || echo "No changes"
+          else
+            git commit -m "chore: update version to $FULL_VER (123Pan + GitHub)" || echo "No changes"
+          fi
           git push
