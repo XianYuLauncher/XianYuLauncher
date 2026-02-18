@@ -1,9 +1,9 @@
 <Solution>
-  <!-- Solution Configurations -->
   <Configurations>
     <Platform Name="arm64" />
     <Platform Name="x64" />
     <Platform Name="x86" />
+    <Platform Name="AnyCPU" />
   </Configurations>
   <Project Path="XianYuLauncher.Core/XianYuLauncher.Core.csproj">
     <Platform Solution="*|arm64" Project="arm64" />
@@ -21,5 +21,10 @@
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="XianYuLauncher.IntegrationTests/XianYuLauncher.IntegrationTests.csproj">
+    <Platform Solution="*|arm64" Project="AnyCPU" />
+    <Platform Solution="*|x64" Project="AnyCPU" />
+    <Platform Solution="*|x86" Project="AnyCPU" />
   </Project>
 </Solution>
