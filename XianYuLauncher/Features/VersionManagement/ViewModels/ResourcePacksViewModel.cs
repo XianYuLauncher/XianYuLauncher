@@ -367,9 +367,13 @@ public partial class ResourcePacksViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task MoveResourcePacksToOtherVersionAsync()
+    private async Task MoveResourcePacksToOtherVersionAsync(ResourcePackInfo? resourcePack = null)
     {
         var selected = ResourcePacks.Where(rp => rp.IsSelected).ToList();
+        if (selected.Count == 0 && resourcePack != null)
+        {
+            selected.Add(resourcePack);
+        }
         if (selected.Count == 0)
         {
             _context.StatusMessage = "请先选择要转移的资源包";
@@ -504,11 +508,15 @@ public partial class ResourcePacksViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task UpdateResourcePacksAsync()
+    private async Task UpdateResourcePacksAsync(ResourcePackInfo? resourcePack = null)
     {
         try
         {
             var selectedPacks = ResourcePacks.Where(r => r.IsSelected).ToList();
+            if (selectedPacks.Count == 0 && resourcePack != null)
+            {
+                selectedPacks.Add(resourcePack);
+            }
             if (selectedPacks.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的资源包";

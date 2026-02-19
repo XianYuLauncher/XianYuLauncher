@@ -446,11 +446,15 @@ public partial class ModsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task MoveModsToOtherVersionAsync()
+    private async Task MoveModsToOtherVersionAsync(ModInfo? mod = null)
     {
         try
         {
             var selectedMods = Mods.Where(mod => mod.IsSelected).ToList();
+            if (selectedMods.Count == 0 && mod != null)
+            {
+                selectedMods.Add(mod);
+            }
             if (selectedMods.Count == 0)
             {
                 _context.StatusMessage = "请先选择要转移的Mod";
@@ -497,11 +501,15 @@ public partial class ModsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task UpdateModsAsync()
+    private async Task UpdateModsAsync(ModInfo? mod = null)
     {
         try
         {
             var selectedMods = Mods.Where(mod => mod.IsSelected).ToList();
+            if (selectedMods.Count == 0 && mod != null)
+            {
+                selectedMods.Add(mod);
+            }
             if (selectedMods.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的Mod";

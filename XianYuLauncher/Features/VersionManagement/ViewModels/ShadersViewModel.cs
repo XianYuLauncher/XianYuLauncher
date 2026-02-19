@@ -263,9 +263,13 @@ public partial class ShadersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task MoveShadersToOtherVersionAsync()
+    private async Task MoveShadersToOtherVersionAsync(ShaderInfo? shader = null)
     {
         var selectedShaders = Shaders.Where(s => s.IsSelected).ToList();
+        if (selectedShaders.Count == 0 && shader != null)
+        {
+            selectedShaders.Add(shader);
+        }
         if (selectedShaders.Count == 0)
         {
             _context.StatusMessage = "请先选择要转移的光影";
@@ -412,11 +416,15 @@ public partial class ShadersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task UpdateShadersAsync()
+    private async Task UpdateShadersAsync(ShaderInfo? shader = null)
     {
         try
         {
             var selectedShaders = Shaders.Where(s => s.IsSelected).ToList();
+            if (selectedShaders.Count == 0 && shader != null)
+            {
+                selectedShaders.Add(shader);
+            }
             if (selectedShaders.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的光影";

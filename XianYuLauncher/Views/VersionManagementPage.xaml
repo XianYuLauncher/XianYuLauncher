@@ -660,7 +660,7 @@
                                                     
                                                     <MenuFlyoutSeparator />
                                                     
-                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.ModsModule.UpdateModsCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_UpdateModsMenuItem" Command="{Binding DataContext.ModsModule.UpdateModsCommand, ElementName=ModListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
@@ -670,7 +670,7 @@
                                                             <SymbolIcon Symbol="Go" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
-                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.ModsModule.MoveModsToOtherVersionCommand, ElementName=ModListView}">
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_MoveModsMenuItem" Command="{Binding DataContext.ModsModule.MoveModsToOtherVersionCommand, ElementName=ModListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -936,7 +936,7 @@
                                                     
                                                     <MenuFlyoutSeparator />
 
-                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ShadersModule.UpdateShadersCommand, ElementName=ShaderListView}">
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ShadersModule.UpdateShadersCommand, ElementName=ShaderListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
@@ -948,7 +948,7 @@
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
 
-                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ShadersModule.MoveShadersToOtherVersionCommand, ElementName=ShaderListView}">
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ShadersModule.MoveShadersToOtherVersionCommand, ElementName=ShaderListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
@@ -1197,7 +1197,7 @@
                                                     
                                                     <MenuFlyoutSeparator />
 
-                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ResourcePacksModule.UpdateResourcePacksCommand, ElementName=ResourcePackListView}">
+                                                    <MenuFlyoutItem Text="更新" Command="{Binding DataContext.ResourcePacksModule.UpdateResourcePacksCommand, ElementName=ResourcePackListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Refresh" />
                                                         </MenuFlyoutItem.Icon>
@@ -1209,7 +1209,7 @@
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
 
-                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ResourcePacksModule.MoveResourcePacksToOtherVersionCommand, ElementName=ResourcePackListView}">
+                                                    <MenuFlyoutItem Text="转移到其他版本" Command="{Binding DataContext.ResourcePacksModule.MoveResourcePacksToOtherVersionCommand, ElementName=ResourcePackListView}" CommandParameter="{Binding}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="MoveToFolder" />
                                                         </MenuFlyoutItem.Icon>
