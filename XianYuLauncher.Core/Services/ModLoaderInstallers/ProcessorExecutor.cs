@@ -578,7 +578,7 @@ public class ProcessorExecutor : IProcessorExecutor
         var processStartInfo = new ProcessStartInfo
         {
             FileName = javaPath,
-            Arguments = string.Join(" ", javaArgs),
+            Arguments = $"-cp \"{combinedClassPath}\" {mainClass} {string.Join(" ", args)}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -617,7 +617,7 @@ public class ProcessorExecutor : IProcessorExecutor
 
         if (process.ExitCode != 0)
         {
-            string fullCommand = $"{javaPath} {string.Join(" ", javaArgs)}";
+            string fullCommand = $"\"{javaPath}\" {processStartInfo.Arguments}";
             throw new ProcessorExecutionException(
                 $"Java命令执行失败，退出代码: {process.ExitCode}\n错误信息: {errorBuilder}",
                 processorJar, null, process.ExitCode);
