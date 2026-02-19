@@ -12,6 +12,8 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class WorldManagementViewModel
 {
+    private const int MinDataPackLoadingDurationMs = 280;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDataPackEmptyState))]
     private ObservableCollection<DataPackInfo> _dataPacks = new();
@@ -35,6 +37,7 @@ public partial class WorldManagementViewModel
     private async Task LoadDataPacksAsync(CancellationToken cancellationToken)
     {
         System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 开始");
+        var loadStartTime = DateTime.UtcNow;
         
         // 立即设置加载状态，防止空列表提示闪烁
         IsLoadingDataPacks = true;
@@ -52,6 +55,11 @@ public partial class WorldManagementViewModel
                 {
                     DataPacks.Clear();
                     IsDataPackListEmpty = true;
+                });
+
+                await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
                     IsLoadingDataPacks = false;
                 });
                 return;
@@ -124,10 +132,9 @@ public partial class WorldManagementViewModel
                 
                 System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包列表已更新，共 {DataPacks.Count} 个");
             });
-            
-            // 等待一小段时间让列表动画播放
-            await Task.Delay(100, cancellationToken);
-            
+
+            await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
+
             // 关闭加载指示器
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
@@ -145,10 +152,21 @@ public partial class WorldManagementViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 异常: {ex.Message}");
+            await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
             });
+        }
+    }
+
+    private static async Task EnsureDataPackLoadingMinDurationAsync(DateTime startTime, CancellationToken cancellationToken)
+    {
+        var elapsed = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
+        var remain = MinDataPackLoadingDurationMs - elapsed;
+        if (remain > 0)
+        {
+            await Task.Delay(remain, cancellationToken);
         }
     }
     

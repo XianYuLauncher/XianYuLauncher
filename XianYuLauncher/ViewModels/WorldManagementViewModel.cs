@@ -494,10 +494,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
         if (tabIndex == 1 && !_dataPacksLoaded)
         {
             _dataPacksLoaded = true;
-            
-            // 延迟 300ms 等待 Tab 切换动画完成
-            await Task.Delay(300);
-            
+
             if (_cancellationTokenSource != null && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 await LoadDataPacksAsync(_cancellationTokenSource.Token);

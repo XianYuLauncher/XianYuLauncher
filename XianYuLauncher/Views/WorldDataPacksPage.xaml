@@ -129,7 +129,8 @@
         </ListView>
 
         <!-- 空列表提示 -->
-        <StackPanel Visibility="{x:Bind ViewModel.ShowDataPackEmptyState, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+        <StackPanel x:Name="EmptyStatePanel"
+                    Visibility="{x:Bind ViewModel.ShowDataPackEmptyState, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center" 
                     Spacing="16">

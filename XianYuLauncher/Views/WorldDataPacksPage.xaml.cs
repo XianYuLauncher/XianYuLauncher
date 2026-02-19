@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
@@ -12,6 +13,8 @@ public sealed partial class WorldDataPacksPage : Page
     public WorldDataPacksPage()
     {
         InitializeComponent();
+        // 首帧先隐藏空态，避免 x:Bind 尚未拿到 ViewModel 时闪现。
+        EmptyStatePanel.Visibility = Visibility.Collapsed;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -22,6 +25,7 @@ public sealed partial class WorldDataPacksPage : Page
         if (e.Parameter is WorldManagementViewModel viewModel)
         {
             ViewModel = viewModel;
+            Bindings.Update();
         }
     }
 
