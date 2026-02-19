@@ -117,7 +117,7 @@
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Shell_联机" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.MultiplayerViewModel">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe770;"/>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE945;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
