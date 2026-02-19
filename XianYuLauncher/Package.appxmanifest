@@ -13,7 +13,7 @@
   <Identity
     Name="SpiritStudio.XianYuLauncher"
     Publisher="CN=477122EB-593B-4C14-AA43-AD408DEE1452"
-    Version="1.4.3.0" />
+    Version="1.4.4.0" />
 	<!--CN=477122EB-593B-4C14-AA43-AD408DEE1452-->
     
   <mp:PhoneIdentity PhoneProductId="3806cce3-c028-465c-a62f-6b7118f76cba" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
