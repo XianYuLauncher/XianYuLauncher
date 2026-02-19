@@ -18,11 +18,13 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.System;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
 using XianYuLauncher.Services;
 using System.Collections.Specialized;
 using System.Text;
@@ -695,6 +697,33 @@ public partial class LaunchViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private string _recommendedModTitle = "加载中...";
+
+    /// <summary>
+    /// 启动页新闻卡片动态展示集合（最终展示最多3条）
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<LaunchNewsCardDisplayItem> _newsCardItems = new();
+
+    [ObservableProperty]
+    private bool _isNewsTeachingTipOpen;
+
+    [ObservableProperty]
+    private string _newsTeachingTipTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _newsTeachingTipSummary = string.Empty;
+
+    [ObservableProperty]
+    private string _newsTeachingTipImageUrl = string.Empty;
+
+    [ObservableProperty]
+    private ImageSource? _newsTeachingTipImageSource;
+
+    [ObservableProperty]
+    private string _newsTeachingTipLinkUrl = string.Empty;
+
+    [ObservableProperty]
+    private bool _isNewsTeachingTipImageVisible;
     
     /// <summary>
     /// 新闻服务
@@ -705,6 +734,11 @@ public partial class LaunchViewModel : ObservableRecipient
     /// Modrinth 推荐服务
     /// </summary>
     private ModrinthRecommendationService? _recommendationService;
+
+    /// <summary>
+    /// 启动页动态新闻服务
+    /// </summary>
+    private readonly LaunchNewsCardService _launchNewsCardService;
     
     /// <summary>
     /// 下载源工厂
@@ -773,6 +807,7 @@ public partial class LaunchViewModel : ObservableRecipient
         _authlibInjectorService = App.GetService<AuthlibInjectorService>();
         _downloadSourceFactory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
         _fallbackDownloadManager = App.GetService<XianYuLauncher.Core.Services.FallbackDownloadManager>();
+        _launchNewsCardService = App.GetService<LaunchNewsCardService>();
         _javaRuntimeService = App.GetService<IJavaRuntimeService>();
         _javaDownloadService = App.GetService<IJavaDownloadService>();
         _dialogService = App.GetService<IDialogService>();
@@ -1100,8 +1135,100 @@ public partial class LaunchViewModel : ObservableRecipient
         await LoadInstalledVersionsAsync();
         LoadProfiles();
         ShowMinecraftPathInfo();
+        await LoadNewsCardItemsAsync();
+    }
+
+    private async Task LoadNewsCardItemsAsync()
+    {
+        // Phase 1: 先立即显示内置条目，避免卡片区域在异步请求期间出现空白。
+        NewsCardItems = new ObservableCollection<LaunchNewsCardDisplayItem>(GetTop3NewsItems(BuildBuiltInNewsItems()));
+
+        // Phase 2: 后台更新内置动态内容（新闻标题/推荐标题）
         await LoadLatestNewsAsync();
         await LoadRecommendedModAsync();
+
+        var mergedItems = BuildBuiltInNewsItems();
+        NewsCardItems = new ObservableCollection<LaunchNewsCardDisplayItem>(GetTop3NewsItems(mergedItems));
+
+        // Phase 3: 合并云端条目并最终按优先级截断为3条
+        var remoteItems = await _launchNewsCardService.GetRemoteNewsItemsAsync();
+        foreach (var remote in remoteItems)
+        {
+            mergedItems.Add(new LaunchNewsCardDisplayItem
+            {
+                Id = string.IsNullOrWhiteSpace(remote.Id) ? Guid.NewGuid().ToString("N") : remote.Id,
+                Title = remote.Title,
+                Prefix = string.IsNullOrWhiteSpace(remote.Subtitle) ? null : $"{remote.Subtitle} ",
+                Priority = remote.Priority,
+                ActionType = remote.ActionType,
+                ActionTarget = string.IsNullOrWhiteSpace(remote.ActionTarget) ? remote.ActionTargetLegacy : remote.ActionTarget
+            });
+        }
+
+        NewsCardItems = new ObservableCollection<LaunchNewsCardDisplayItem>(GetTop3NewsItems(mergedItems));
+    }
+
+    private List<LaunchNewsCardDisplayItem> BuildBuiltInNewsItems()
+    {
+        return new List<LaunchNewsCardDisplayItem>
+        {
+            new()
+            {
+                Id = "builtin_minecraft_news",
+                Title = string.IsNullOrWhiteSpace(LatestMinecraftNews) ? "加载中..." : LatestMinecraftNews,
+                Priority = 200,
+                ActionType = _latestNewsEntry != null ? "news_detail" : "url",
+                ActionTarget = _latestNewsEntry != null
+                    ? null
+                    : "https://launchercontent.mojang.com/v2/javaPatchNotes.json",
+                ActionPayload = _latestNewsEntry
+            },
+            new()
+            {
+                Id = "builtin_launcher_changelog",
+                Title = "XianYu Launcher 更新日志",
+                Priority = 150,
+                ActionType = "url",
+                ActionTarget = "https://github.com/XianYuLauncher/XianYuLauncher/releases"
+            },
+            new()
+            {
+                Id = "builtin_mod_recommendation",
+                Title = string.IsNullOrWhiteSpace(RecommendedModTitle) ? "加载中..." : RecommendedModTitle,
+                Prefix = "Mod推荐：",
+                Priority = 100,
+                ActionType = _recommendedMod != null ? "mod_detail" : "route",
+                ActionTarget = _recommendedMod != null ? null : typeof(ResourceDownloadViewModel).FullName,
+                ActionPayload = _recommendedMod
+            }
+        };
+    }
+
+    private List<LaunchNewsCardDisplayItem> GetTop3NewsItems(IEnumerable<LaunchNewsCardDisplayItem> items)
+    {
+        var topItems = items
+            .OrderByDescending(i => i.Priority)
+            .ThenBy(i => i.Id, StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        ApplyNewsDotBrushes(topItems);
+        return topItems;
+    }
+
+    private static void ApplyNewsDotBrushes(List<LaunchNewsCardDisplayItem> topItems)
+    {
+        var resources = Application.Current?.Resources;
+        var accentBrush = resources?["AccentFillColorDefaultBrush"] as Brush;
+        var secondaryBrush = resources?["TextFillColorSecondaryBrush"] as Brush;
+
+        for (int i = 0; i < topItems.Count; i++)
+        {
+            // 第一条使用强调色，其余条目使用灰点。
+            topItems[i].DotBrush = i == 0
+                ? accentBrush ?? secondaryBrush
+                : secondaryBrush;
+        }
     }
     
     /// <summary>
@@ -1137,10 +1264,7 @@ public partial class LaunchViewModel : ObservableRecipient
     [RelayCommand]
     private void OpenLatestNews()
     {
-        if (_latestNewsEntry != null)
-        {
-            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, _latestNewsEntry);
-        }
+        HandleNewsClick(_latestNewsEntry);
     }
     
     /// <summary>
@@ -1178,16 +1302,144 @@ public partial class LaunchViewModel : ObservableRecipient
     {
         if (_recommendedMod != null)
         {
-            // 导航到 ModDownloadDetailPage，传递完整元组以确保 ProjectType 被正确识别
+            // 推荐位不强制限定 sourceType，避免 datapack 等资源被误按 mod 规则过滤版本。
              var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string>(
                  new XianYuLauncher.Core.Models.ModrinthProject { 
                      ProjectId = _recommendedMod.Id, 
                      Slug = _recommendedMod.Slug,
                      ProjectType = _recommendedMod.ProjectType
                  }, 
-                 _recommendedMod.ProjectType // 明确传递 ProjectType
+                 null
              );
             _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenNewsCardItemAsync(LaunchNewsCardDisplayItem? item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        var actionType = item.ActionType?.Trim().ToLowerInvariant() ?? string.Empty;
+
+        try
+        {
+            switch (actionType)
+            {
+                case "news_detail":
+                    if (item.ActionPayload is MinecraftNewsEntry entry)
+                    {
+                        HandleNewsClick(entry);
+                    }
+                    break;
+
+                case "mod_detail":
+                    if (item.ActionPayload is ModrinthRandomProject recommended)
+                    {
+                        var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string>(
+                            new XianYuLauncher.Core.Models.ModrinthProject
+                            {
+                                ProjectId = recommended.Id,
+                                Slug = recommended.Slug,
+                                ProjectType = recommended.ProjectType
+                            },
+                            null);
+                        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+                    }
+                    break;
+
+                case "route":
+                    if (!string.IsNullOrWhiteSpace(item.ActionTarget))
+                    {
+                        _navigationService.NavigateTo(item.ActionTarget!);
+                    }
+                    break;
+
+                case "url":
+                default:
+                    if (!string.IsNullOrWhiteSpace(item.ActionTarget) &&
+                        Uri.TryCreate(item.ActionTarget, UriKind.Absolute, out var uri))
+                    {
+                        await Launcher.LaunchUriAsync(uri);
+                    }
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LaunchNewsCard] 打开条目失败: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenNewsTeachingTipLinkAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(NewsTeachingTipLinkUrl) &&
+            Uri.TryCreate(NewsTeachingTipLinkUrl, UriKind.Absolute, out var uri))
+        {
+            await Launcher.LaunchUriAsync(uri);
+        }
+    }
+
+    [RelayCommand]
+    private void CloseNewsTeachingTip()
+    {
+        IsNewsTeachingTipOpen = false;
+    }
+
+    private void HandleNewsClick(MinecraftNewsEntry? entry)
+    {
+        var action = NewsClickRouter.Resolve(entry);
+        if (action.Type == NewsClickActionType.None || action.Entry == null)
+        {
+            return;
+        }
+
+        if (action.Type == NewsClickActionType.NavigateDetail)
+        {
+            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, action.Entry);
+            return;
+        }
+
+        // 活动新闻：展示 TeachingTip
+        var tipImageUrl = action.Entry.NewsPageImage?.Url
+            ?? action.Entry.PlayPageImage?.Url
+            ?? action.Entry.Image?.Url
+            ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(tipImageUrl) && tipImageUrl.StartsWith("/"))
+        {
+            tipImageUrl = $"https://launchercontent.mojang.com{tipImageUrl}";
+        }
+
+        NewsTeachingTipTitle = action.Entry.Title;
+        NewsTeachingTipSummary = string.IsNullOrWhiteSpace(action.Entry.ShortText)
+            ? action.Entry.Category
+            : action.Entry.ShortText;
+        NewsTeachingTipImageUrl = tipImageUrl;
+        NewsTeachingTipImageSource = CreateNewsImageSource(tipImageUrl);
+        NewsTeachingTipLinkUrl = action.Entry.ReadMoreLink;
+        IsNewsTeachingTipImageVisible = NewsTeachingTipImageSource != null;
+        IsNewsTeachingTipOpen = true;
+    }
+
+    private static ImageSource? CreateNewsImageSource(string? tipImageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(tipImageUrl) ||
+            !Uri.TryCreate(tipImageUrl, UriKind.Absolute, out var imageUri))
+        {
+            return null;
+        }
+
+        try
+        {
+            return new BitmapImage(imageUri);
+        }
+        catch
+        {
+            return null;
         }
     }
 

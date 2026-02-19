@@ -328,6 +328,7 @@ public partial class App : Application
             
             // Announcement Service
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
+            services.AddSingleton<LaunchNewsCardService>();
 
             services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
             

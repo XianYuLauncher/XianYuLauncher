@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -253,28 +254,18 @@ public sealed partial class LaunchPage : Page
         _navigationService.NavigateTo(typeof(NewsListViewModel).FullName);
     }
 
-    /// <summary>
-    /// 最新新闻点击事件
-    /// </summary>
-    private void LatestNews_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    private async void NewsCardItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        ViewModel.OpenLatestNewsCommand.Execute(null);
+        if (sender is FrameworkElement element && element.Tag is LaunchNewsCardDisplayItem item)
+        {
+            ActivityNewsTeachingTip.Target = element;
+            await ViewModel.OpenNewsCardItemCommand.ExecuteAsync(item);
+        }
     }
 
-    /// <summary>
-    /// 启动器更新日志点击事件
-    /// </summary>
-    private async void LauncherChangelog_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    private void ActivityNewsTeachingTip_CloseButtonClick(TeachingTip sender, object args)
     {
-        await Windows.System.Launcher.LaunchUriAsync(new Uri("https://github.com/XianYuLauncher/XianYuLauncher/releases"));
-    }
-
-    /// <summary>
-    /// 推荐 Mod 点击事件
-    /// </summary>
-    private void RecommendedMod_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        ViewModel.OpenRecommendedModCommand.Execute(null);
+        ViewModel.CloseNewsTeachingTipCommand.Execute(null);
     }
     
     /// <summary>

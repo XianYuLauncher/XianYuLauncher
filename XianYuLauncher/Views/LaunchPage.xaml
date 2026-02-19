@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:models="using:XianYuLauncher.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     mc:Ignorable="d">
 
@@ -217,72 +218,39 @@
                                 Click="ViewMoreNews_Click" />
                         </Grid>
                         
-                        <!-- 新闻列表 -->
-                        <StackPanel Spacing="8">
-                            <!-- 新闻项 1 - Minecraft 最新（可点击） -->
-                            <Grid 
-                                PointerPressed="LatestNews_PointerPressed"
-                                Background="Transparent">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border 
-                                    Width="6" Height="6" 
-                                    CornerRadius="3" 
-                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,10,0" />
-                                <TextBlock 
-                                    Grid.Column="1"
-                                    Text="{x:Bind ViewModel.LatestMinecraftNews, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                            <!-- 新闻项 2 - 启动器更新日志（可点击） -->
-                            <Grid 
-                                PointerPressed="LauncherChangelog_PointerPressed"
-                                Background="Transparent">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border 
-                                    Width="6" Height="6" 
-                                    CornerRadius="3" 
-                                    Background="{ThemeResource TextFillColorSecondaryBrush}"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,10,0" />
-                                <TextBlock 
-                                    Grid.Column="1"
-                                    x:Uid="LaunchPage_LauncherChangelog"
-                                    Text="XianYu Launcher 更新日志"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                            <!-- 新闻项 3 - Mod 推荐（可点击） -->
-                            <Grid 
-                                PointerPressed="RecommendedMod_PointerPressed"
-                                Background="Transparent">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border 
-                                    Width="6" Height="6" 
-                                    CornerRadius="3" 
-                                    Background="{ThemeResource TextFillColorSecondaryBrush}"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,10,0" />
-                                <TextBlock 
-                                    Grid.Column="1"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    TextTrimming="CharacterEllipsis">
-                                    <Run x:Uid="LaunchPage_ModRecommendation" Text="Mod推荐：" />
-                                    <Run Text="{x:Bind ViewModel.RecommendedModTitle, Mode=OneWay}" />
-                                </TextBlock>
-                            </Grid>
-                        </StackPanel>
+                        <!-- 新闻列表（动态，最多展示3条） -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.NewsCardItems, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:LaunchNewsCardDisplayItem">
+                                    <Grid
+                                        Background="Transparent"
+                                        Tapped="NewsCardItem_Tapped"
+                                        Tag="{Binding}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border
+                                            Width="6"
+                                            Height="6"
+                                            CornerRadius="3"
+                                            Background="{x:Bind DotBrush, Mode=OneWay}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,10,0" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Text="{x:Bind DisplayText, Mode=OneWay}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 
@@ -332,6 +300,51 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+
+        <TeachingTip
+            x:Name="ActivityNewsTeachingTip"
+            Target="{Binding ElementName=NewsCard}"
+            Title="{x:Bind ViewModel.NewsTeachingTipTitle, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsNewsTeachingTipOpen, Mode=TwoWay}"
+            PreferredPlacement="RightTop"
+            IsLightDismissEnabled="True"
+            CloseButtonClick="ActivityNewsTeachingTip_CloseButtonClick">
+            <TeachingTip.Content>
+                <StackPanel Spacing="10" MinWidth="320">
+                    <Border
+                        Visibility="{x:Bind ViewModel.IsNewsTeachingTipImageVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        CornerRadius="8"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        <Image
+                            Source="{x:Bind ViewModel.NewsTeachingTipImageSource, Mode=OneWay}"
+                            Height="140"
+                            Stretch="UniformToFill" />
+                    </Border>
+                    <TextBlock
+                        Text="{x:Bind ViewModel.NewsTeachingTipSummary, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <HyperlinkButton
+                        Content="在浏览器中查看详情"
+                        Command="{x:Bind ViewModel.OpenNewsTeachingTipLinkCommand}"
+                        HorizontalAlignment="Left">
+                        <HyperlinkButton.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding}" />
+                                    <FontIcon
+                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                        Glyph="&#xE8A7;"
+                                        FontSize="12"
+                                        VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </HyperlinkButton.ContentTemplate>
+                    </HyperlinkButton>
+                </StackPanel>
+            </TeachingTip.Content>
+        </TeachingTip>
 
         <!-- 开发版警告 (浮动在底部) -->
         <InfoBar

@@ -781,6 +781,7 @@ namespace XianYuLauncher.ViewModels
                 // 首先获取所有版本信息，使用当前Mod的游戏版本和加载器进行筛选
                 // 对于ModDownloadDetailPage，我们需要获取所有兼容版本，所以不传递特定的筛选条件
                 var allVersions = await _modrinthService.GetProjectVersionsAsync(modId);
+                var unfilteredVersions = allVersions;
                 
                 // 根据来源类型过滤版本
                 if (_sourceType == "mod")
@@ -792,6 +793,13 @@ namespace XianYuLauncher.ViewModels
                 {
                     // 如果来源是数据包页，只保留datapack类型的版本
                     allVersions = allVersions.Where(v => v.Loaders != null && v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
+                }
+
+                // 兼容兜底：若来源过滤导致空版本，则回退到未过滤结果，避免详情页空白。
+                if (allVersions.Count == 0 && unfilteredVersions.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ModDownloadDetail] 来源过滤后无版本，回退到未过滤版本。SourceType={_sourceType}, Total={unfilteredVersions.Count}");
+                    allVersions = unfilteredVersions;
                 }
                 
                 // 预构建加载器名称格式化缓存，避免重复计算
