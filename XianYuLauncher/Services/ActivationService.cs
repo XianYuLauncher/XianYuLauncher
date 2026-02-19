@@ -115,30 +115,19 @@ public class ActivationService : IActivationService
             }
             else
             {
-                // 兼容旧配置键 DownloadSource
-                var savedSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+                // 首次运行，根据地区自动选择
+                var region = System.Globalization.RegionInfo.CurrentRegion;
+                var culture = System.Globalization.CultureInfo.CurrentCulture;
                 
-                if (!string.IsNullOrEmpty(savedSource))
+                if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
                 {
-                    sourceKey = savedSource.ToLowerInvariant();
-                    Serilog.Log.Information($"[ActivationService] 使用旧配置键 DownloadSource: {sourceKey}");
+                    sourceKey = "bmclapi";
                 }
                 else
                 {
-                    // 首次运行，根据地区自动选择
-                    var region = System.Globalization.RegionInfo.CurrentRegion;
-                    var culture = System.Globalization.CultureInfo.CurrentCulture;
-                    
-                    if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
-                    {
-                        sourceKey = "bmclapi";
-                    }
-                    else
-                    {
-                        sourceKey = "official";
-                    }
-                    Serilog.Log.Information($"[ActivationService] 首次运行，根据地区自动选择: {sourceKey} (Region: {region.Name})");
+                    sourceKey = "official";
                 }
+                Serilog.Log.Information($"[ActivationService] 首次运行，根据地区自动选择: {sourceKey} (Region: {region.Name})");
             }
 
             // 检查下载源是否存在，如果不存在则回退到 official
@@ -170,17 +159,7 @@ public class ActivationService : IActivationService
             }
             else
             {
-                // 兼容旧配置键 ModrinthDownloadSource
-                var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
-                if (!string.IsNullOrEmpty(savedModrinthSource))
-                {
-                    var modrinthKey = savedModrinthSource.ToLowerInvariant();
-                    if (allSources.ContainsKey(modrinthKey))
-                    {
-                        _downloadSourceFactory.SetModrinthSource(modrinthKey);
-                        Serilog.Log.Information($"[ActivationService] 使用旧配置键设置社区资源源: {modrinthKey}");
-                    }
-                }
+                Serilog.Log.Information("[ActivationService] 未找到 CommunityResourceSource，保留默认社区资源源设置");
             }
         }
         catch (Exception ex)

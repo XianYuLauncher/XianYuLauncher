@@ -495,7 +495,7 @@ public class ProcessorExecutor : IProcessorExecutor
             : $"{artifactId}-{version}-{classifier}.jar";
 
         // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         
         // 构建官方源URL

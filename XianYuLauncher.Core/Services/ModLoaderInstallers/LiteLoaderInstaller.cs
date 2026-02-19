@@ -76,7 +76,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] CustomVersionName: {options.CustomVersionName}");
         
         // 1. 获取源
-        var sourceKey = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
+        var sourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
         var source = _downloadSourceFactory.GetSource(sourceKey ?? "Official");
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 使用下载源: {source.Name}");
 

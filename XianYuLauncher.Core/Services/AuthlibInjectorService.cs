@@ -67,13 +67,8 @@ namespace XianYuLauncher.Core.Services
             
             try
             {
-                // 1. 获取当前下载源设置（优先读取新配置键）
-                var downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
-                if (string.IsNullOrEmpty(downloadSourceKey))
-                {
-                    // 兼容旧配置键
-                    downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "bmclapi";
-                }
+                // 1. 获取当前下载源设置（统一使用新配置键）
+                var downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "bmclapi";
                 _logger.LogInformation("[AuthlibInjector] 当前下载源设置: {DownloadSource}", downloadSourceKey);
                 
                 // 2. 判断是否使用 BMCLAPI 类型的源（通过 key 或 URL 判断）

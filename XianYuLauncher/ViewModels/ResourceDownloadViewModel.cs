@@ -1764,19 +1764,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             else
             {
-                // 兼容旧版配置
-                var savedDownloadSource = await _localSettingsService.ReadSettingAsync<string>("DownloadSource");
-                if (!string.IsNullOrEmpty(savedDownloadSource))
-                {
-                    string sourceKey = savedDownloadSource.ToLower() switch
-                    {
-                        "bmclapi" => "bmclapi",
-                        "mcim" => "mcim",
-                        _ => "official"
-                    };
-                    factory.SetDefaultSource(sourceKey);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Minecraft下载源已设置为: {sourceKey} (旧版配置)");
-                }
+                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 GameResourceSource，保留当前默认游戏资源源设置");
             }
             
             // 加载社区资源下载源配置（新版）
@@ -1796,18 +1784,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             }
             else
             {
-                // 兼容旧版配置
-                var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthDownloadSource");
-                if (!string.IsNullOrEmpty(savedModrinthSource))
-                {
-                    string sourceKey = savedModrinthSource.ToLower() switch
-                    {
-                        "mcim" => "mcim",
-                        _ => "official"
-                    };
-                    factory.SetModrinthSource(sourceKey);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth下载源已设置为: {sourceKey} (旧版配置)");
-                }
+                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 CommunityResourceSource，保留当前默认社区资源源设置");
             }
         }
         catch (Exception ex)

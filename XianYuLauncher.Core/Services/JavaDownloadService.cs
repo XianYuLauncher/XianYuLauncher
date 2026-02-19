@@ -195,7 +195,7 @@ public class JavaDownloadService : IJavaDownloadService
     private async Task<JavaRuntimeManifest> FetchMainManifestAsync(CancellationToken token)
     {
         // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         
         // 使用下载源转换清单 URL
@@ -230,7 +230,7 @@ public class JavaDownloadService : IJavaDownloadService
     private async Task<JavaRuntimeFileManifest> FetchFileManifestAsync(string url, CancellationToken token)
     {
         // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         
         string transformedUrl = downloadSource.GetResourceUrl("java_runtime", url);
@@ -252,7 +252,7 @@ public class JavaDownloadService : IJavaDownloadService
     private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string> statusCallback, CancellationToken token)
     {
         // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         
         var filesToDownload = manifest.Files.Where(f => f.Value.Type == "file").ToList();

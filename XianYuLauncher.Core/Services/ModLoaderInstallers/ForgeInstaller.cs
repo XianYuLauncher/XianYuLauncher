@@ -126,7 +126,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             forgeInstallerPath = Path.Combine(cacheDirectory, $"forge-{minecraftVersionId}-{modLoaderVersion}-installer.jar");
             
             // 获取当前下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
             var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
             var forgeInstallerUrl = downloadSource.GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             var officialUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
@@ -450,7 +450,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         var downloadTasks = new List<DownloadTask>();
 
         // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
 
         foreach (var library in libraries)

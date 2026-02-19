@@ -187,7 +187,7 @@ public class FabricInstaller : ModLoaderInstallerBase
         CancellationToken cancellationToken)
     {
         // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("DownloadSource") ?? "Official";
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
         var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
         var url = downloadSource.GetFabricProfileUrl(minecraftVersionId, fabricVersion);
         var officialUrl = $"{FabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
