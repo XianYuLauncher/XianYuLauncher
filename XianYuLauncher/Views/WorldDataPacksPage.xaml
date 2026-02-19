@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:XianYuLauncher.Models.VersionManagement"
     xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -15,6 +16,11 @@
     </Page.Resources>
 
     <Grid>
+        <animations:Implicit.ShowAnimations>
+            <animations:TranslationAnimation Duration="0:0:0.45" From="0, 24, 0" To="0" EasingMode="EaseOut" />
+            <animations:OpacityAnimation Duration="0:0:0.45" From="0" To="1.0" />
+        </animations:Implicit.ShowAnimations>
+
         <!-- 数据包列表 -->
         <ListView 
             x:Name="DataPackListView"
@@ -134,6 +140,10 @@
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center" 
                     Spacing="16">
+            <animations:Implicit.ShowAnimations>
+                <animations:TranslationAnimation Duration="0:0:0.35" From="0, 18, 0" To="0" EasingMode="EaseOut" />
+                <animations:OpacityAnimation Duration="0:0:0.35" From="0" To="1.0" />
+            </animations:Implicit.ShowAnimations>
             <FontIcon Glyph="&#xE8B7;" 
                       FontSize="64" 
                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
