@@ -293,6 +293,11 @@ public sealed partial class LaunchPage : Page
     /// </summary>
     private async void LoadAvatar()
     {
+        if (ProfileAvatar == null)
+        {
+            return;
+        }
+
         if (ViewModel.SelectedProfile == null)
         {
             // 没有选中角色时，显示处理过的 Steve 头像
@@ -361,7 +366,10 @@ public sealed partial class LaunchPage : Page
         catch (Exception)
         {
             // 加载失败，使用默认头像
-            ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            if (ProfileAvatar != null)
+            {
+                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            }
             
             // 后台尝试刷新
             _ = RefreshAvatarInBackgroundAsync();
@@ -375,6 +383,17 @@ public sealed partial class LaunchPage : Page
     {
         try
         {
+            if (ProfileAvatar == null)
+            {
+                return;
+            }
+
+            var profile = ViewModel.SelectedProfile;
+            if (profile == null)
+            {
+                return;
+            }
+
             // 显示处理过的史蒂夫头像作为加载状态
             if (_processedSteveAvatar != null)
             {
@@ -399,22 +418,22 @@ public sealed partial class LaunchPage : Page
             }
             
             Uri sessionServerUri;
-            if (ViewModel.SelectedProfile.TokenType == "external" && !string.IsNullOrEmpty(ViewModel.SelectedProfile.AuthServer))
+            if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
             {
                 // 外置登录角色，使用用户提供的认证服务器
-                string authServer = ViewModel.SelectedProfile.AuthServer;
+                string authServer = profile.AuthServer;
                 // 确保认证服务器URL以/结尾
                 if (!authServer.EndsWith("/"))
                 {
                     authServer += "/";
                 }
                 // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
-                sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+                sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
             }
             else
             {
                 // 微软登录角色，使用Mojang API
-                sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+                sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
             }
             
             var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri);
@@ -430,7 +449,10 @@ public sealed partial class LaunchPage : Page
         }
         catch (Exception)
         {
-            ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            if (ProfileAvatar != null)
+            {
+                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+            }
         }
     }
     
@@ -466,7 +488,10 @@ public sealed partial class LaunchPage : Page
                 // 刷新成功，更新UI
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
-                    ProfileAvatar.Source = bitmap;
+                    if (ProfileAvatar != null)
+                    {
+                        ProfileAvatar.Source = bitmap;
+                    }
                 });
             }
         }
@@ -493,6 +518,12 @@ public sealed partial class LaunchPage : Page
                 {
                     var bitmap = new BitmapImage();
                     await bitmap.SetSourceAsync(stream);
+                    // 旧缓存历史上存在 24x24，32x32 显示时会被二次放大导致发糊。
+                    // 遇到低分辨率缓存时触发回源重建，保证启动页清晰度。
+                    if (bitmap.PixelWidth < 32 || bitmap.PixelHeight < 32)
+                    {
+                        return null;
+                    }
                     return bitmap;
                 }
             }
@@ -632,22 +663,22 @@ public sealed partial class LaunchPage : Page
                 }
             }
 
-            // 3. 创建CanvasRenderTarget用于裁剪，使用更高的分辨率（24x24）以便清晰显示像素
+            // 3. 生成 48x48，避免在 32x32 UI 上发生上采样模糊。
             var renderTarget = new CanvasRenderTarget(
                 device,
-                24, // 显示宽度
-                24, // 显示高度
+                48, // 显示宽度
+                48, // 显示高度
                 96 // DPI
             );
 
             // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
             using (var ds = renderTarget.CreateDrawingSession())
             {
-                // 从源图片的(8,8)位置裁剪8x8区域，并放大到24x24
+                // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
                 // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
                 ds.DrawImage(
                     canvasBitmap,
-                    new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小（放大3倍）
+                    new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
                     new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
                     1.0f, // 不透明度
                     CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
@@ -712,11 +743,11 @@ public sealed partial class LaunchPage : Page
                 canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
             }
 
-            // 3. 创建CanvasRenderTarget用于处理，使用合适的分辨率
+            // 3. 生成 48x48，和 CharacterPage 对齐，保证显示清晰。
             var renderTarget = new CanvasRenderTarget(
                 device,
-                24, // 显示宽度
-                24, // 显示高度
+                48, // 显示宽度
+                48, // 显示高度
                 96 // DPI
             );
 
@@ -726,7 +757,7 @@ public sealed partial class LaunchPage : Page
                 // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
                 ds.DrawImage(
                     canvasBitmap,
-                    new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小
+                    new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
                     new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
                     1.0f, // 不透明度
                     CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
