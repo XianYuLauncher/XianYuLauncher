@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace XianYuLauncher.Helpers
@@ -24,12 +25,8 @@ namespace XianYuLauncher.Helpers
             }
 
             // 2. 生成MD5哈希（基础步骤）
-            byte[] hashBytes;
             byte[] inputBytes = Encoding.UTF8.GetBytes("OfflinePlayer:" + username);
-            using (var md5 = System.Security.Cryptography.MD5.Create())
-            {
-                hashBytes = md5.ComputeHash(inputBytes);
-            }
+            var hashBytes = MD5.HashData(inputBytes);
 
             // 3. 关键修正：按Minecraft/UUID v3规则调整字节数组
             // 3.1 调整第6字节：设置Version 3（高4位为0x3）
