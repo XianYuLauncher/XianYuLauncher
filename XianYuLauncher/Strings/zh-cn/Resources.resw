@@ -1738,10 +1738,10 @@
   <data name="LaunchPage_ViewMore.Content" xml:space="preserve">
     <value>查看更多</value>
   </data>
-  <data name="LaunchPage_LauncherChangelog.Text" xml:space="preserve">
+  <data name="LaunchPage_LauncherChangelog" xml:space="preserve">
     <value>XianYu Launcher 更新日志</value>
   </data>
-  <data name="LaunchPage_ModRecommendation.Text" xml:space="preserve">
+  <data name="LaunchPage_ModRecommendation" xml:space="preserve">
     <value>Mod推荐：</value>
   </data>
   <data name="NewsListPage_Title.Text" xml:space="preserve">

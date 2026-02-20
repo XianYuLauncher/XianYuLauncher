@@ -1186,7 +1186,7 @@ public partial class LaunchViewModel : ObservableRecipient
             new()
             {
                 Id = "builtin_launcher_changelog",
-                Title = "XianYu Launcher 更新日志",
+                Title = "LaunchPage_LauncherChangelog".GetLocalized(),
                 Priority = 150,
                 ActionType = "url",
                 ActionTarget = "https://github.com/XianYuLauncher/XianYuLauncher/releases"
@@ -1195,7 +1195,7 @@ public partial class LaunchViewModel : ObservableRecipient
             {
                 Id = "builtin_mod_recommendation",
                 Title = string.IsNullOrWhiteSpace(RecommendedModTitle) ? "加载中..." : RecommendedModTitle,
-                Prefix = "Mod推荐：",
+                Prefix = "LaunchPage_ModRecommendation".GetLocalized(),
                 Priority = 100,
                 ActionType = _recommendedMod != null ? "mod_detail" : "route",
                 ActionTarget = _recommendedMod != null ? null : typeof(ResourceDownloadViewModel).FullName,
