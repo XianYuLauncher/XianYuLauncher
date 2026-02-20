@@ -189,9 +189,11 @@ public class JavaRuntimeService : IJavaRuntimeService
         }
         
         // 检查文件是否存在且是 java.exe 或 javaw.exe
-        var fileName = Path.GetFileName(javaPath).ToLowerInvariant();
-        var isValid = File.Exists(javaPath) && (fileName == "java.exe" || fileName == "javaw.exe");
-        
+        var fileName = Path.GetFileName(javaPath.AsSpan());
+        var isValid = File.Exists(javaPath) &&
+                      (fileName.Equals("java.exe", StringComparison.OrdinalIgnoreCase) 
+                                                || fileName.Equals("javaw.exe", StringComparison.OrdinalIgnoreCase));
+
         return Task.FromResult(isValid);
     }
 
@@ -230,7 +232,7 @@ public class JavaRuntimeService : IJavaRuntimeService
             // 解析版本信息
             if (!string.IsNullOrEmpty(output)) 
             {
-                var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length > 0)
                 {
                     // 尝试从第一行或前几行提取版本信息
