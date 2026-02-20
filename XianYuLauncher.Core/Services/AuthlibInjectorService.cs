@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -320,21 +320,18 @@ namespace XianYuLauncher.Core.Services
         private async Task<bool> VerifyFileChecksumAsync(string filePath, string expectedChecksum)
         {
             _logger.LogDebug("[AuthlibInjector] 开始计算文件 SHA256: {Path}", filePath);
-            
-            using (var sha256 = SHA256.Create())
-            using (var stream = File.OpenRead(filePath))
-            {
-                var hashBytes = await sha256.ComputeHashAsync(stream);
-                var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
+            await using var stream = File.OpenRead(filePath);
+            var hashBytes = await SHA256.HashDataAsync(stream);
+            var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
                 
-                _logger.LogDebug("[AuthlibInjector] 计算得到的 SHA256: {Actual}", actualChecksum);
-                _logger.LogDebug("[AuthlibInjector] 预期的 SHA256: {Expected}", expectedChecksum);
+            _logger.LogDebug("[AuthlibInjector] 计算得到的 SHA256: {Actual}", actualChecksum);
+            _logger.LogDebug("[AuthlibInjector] 预期的 SHA256: {Expected}", expectedChecksum);
                 
-                var isMatch = actualChecksum.Equals(expectedChecksum, StringComparison.OrdinalIgnoreCase);
-                _logger.LogDebug("[AuthlibInjector] SHA256 匹配结果: {IsMatch}", isMatch);
+            var isMatch = actualChecksum.Equals(expectedChecksum, StringComparison.OrdinalIgnoreCase);
+            _logger.LogDebug("[AuthlibInjector] SHA256 匹配结果: {IsMatch}", isMatch);
                 
-                return isMatch;
-            }
+            return isMatch;
         }
         
         /// <summary>

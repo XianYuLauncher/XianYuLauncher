@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 
 namespace XianYuLauncher.Core.Helpers;
@@ -17,15 +17,14 @@ public static class SecretProtector
         var part2 = BuildConfiguration.TargetPlatform;
         var part3 = VersionMetadata.ReleaseYear;
         var part4 = AppMetadata.ComponentSuffix;
-        
+
         var combined = $"{part1}_{part2}_{part3}_{part4}_Key_V1";
-        
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
-        
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
+
         return Convert.ToBase64String(hash);
     }
-    
+
     /// <summary>
     /// 编码配置数据
     /// </summary>
@@ -35,15 +34,15 @@ public static class SecretProtector
         {
             using var aes = Aes.Create();
             aes.KeySize = 256;
-            
+
             var keyBytes = Convert.FromBase64String(GetAppIdentifier());
             aes.Key = keyBytes;
             aes.IV = new byte[16];
-            
+
             using var encryptor = aes.CreateEncryptor();
             var plainBytes = Encoding.UTF8.GetBytes(plainText);
             var cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
-            
+
             return Convert.ToBase64String(cipherBytes);
         }
         catch (Exception ex)
@@ -52,7 +51,7 @@ public static class SecretProtector
             throw;
         }
     }
-    
+
     /// <summary>
     /// 解码配置数据
     /// </summary>
@@ -62,15 +61,15 @@ public static class SecretProtector
         {
             using var aes = Aes.Create();
             aes.KeySize = 256;
-            
+
             var keyBytes = Convert.FromBase64String(GetAppIdentifier());
             aes.Key = keyBytes;
             aes.IV = new byte[16];
-            
+
             using var decryptor = aes.CreateDecryptor();
             var cipherBytes = Convert.FromBase64String(cipherText);
             var plainBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
-            
+
             return Encoding.UTF8.GetString(plainBytes);
         }
         catch (Exception ex)
