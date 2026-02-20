@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -73,10 +73,9 @@ internal static class VersionManagementFileOps
 
     public static string CalculateSha1(string filePath)
     {
-        using SHA1 sha1 = SHA1.Create();
         using FileStream stream = File.OpenRead(filePath);
-        byte[] hashBytes = sha1.ComputeHash(stream);
-        return BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
+        byte[] hashBytes = SHA1.HashData(stream);
+        return Convert.ToHexStringLower(hashBytes);
     }
 
     public static void CopyDirectory(string sourceDirectory, string destinationDirectory)
