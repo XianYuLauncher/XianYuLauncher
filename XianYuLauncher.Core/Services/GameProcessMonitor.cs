@@ -11,7 +11,7 @@ public class GameProcessMonitor : IGameProcessMonitor
 {
     private readonly List<string> _outputLogs = new();
     private readonly List<string> _errorLogs = new();
-    private readonly object _lockObject = new();
+    private readonly Lock _lockObject = new();
     private string _launchCommand = string.Empty;
     private bool _isUserTerminated = false;
     
