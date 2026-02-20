@@ -23,7 +23,7 @@ public static class SecretsService
             {
                 lock (_lock)
                 {
-                    _config ??= LoadConfig();
+                    _config = LoadConfig();
                 }
             }
             return _config;
