@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
+﻿using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -110,7 +104,7 @@ public class CurseForgeService
     /// 根据下载源决定是否添加API Key和User-Agent
     /// 重要：镜像源严禁携带API Key！
     /// </summary>
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource source = null)
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource? source = null)
     {
         source ??= GetCurseForgeSource();
         var request = new HttpRequestMessage(method, url);
@@ -226,7 +220,7 @@ public class CurseForgeService
     /// <returns>搜索结果</returns>
     public async Task<CurseForgeSearchResult> SearchModsAsync(
         string searchFilter = "",
-        string gameVersion = null,
+        string? gameVersion = null,
         int? modLoaderType = null,
         int? categoryId = null,
         int index = 0,
@@ -237,20 +231,20 @@ public class CurseForgeService
         try
         {
             // 构建官方API URL（FallbackDownloadManager 会自动转换）
-            var url = $"{OfficialApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={ModsClassId}";
+            var urlBuild = new StringBuilder($"{OfficialApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={ModsClassId}");
             
             if (!string.IsNullOrEmpty(searchFilter))
-                url += $"&searchFilter={Uri.EscapeDataString(searchFilter)}";
+                urlBuild.Append($"&searchFilter={Uri.EscapeDataString(searchFilter)}");
             if (!string.IsNullOrEmpty(gameVersion))
-                url += $"&gameVersion={Uri.EscapeDataString(gameVersion)}";
+                urlBuild.Append($"&gameVersion={Uri.EscapeDataString(gameVersion)}");
             if (modLoaderType.HasValue)
-                url += $"&modLoaderType={modLoaderType.Value}";
+                urlBuild.Append($"&modLoaderType={modLoaderType.Value}");
             if (categoryId.HasValue)
-                url += $"&categoryId={categoryId.Value}";
+                urlBuild.Append($"&categoryId={categoryId.Value}");
             
-            url += $"&index={index}&pageSize={pageSize}&sortField={sortField}&sortOrder={sortOrder}";
+            urlBuild.Append($"&index={index}&pageSize={pageSize}&sortField={sortField}&sortOrder={sortOrder}");
             
-            var response = await SendGetWithFallbackAsync(url);
+            var response = await SendGetWithFallbackAsync(urlBuild.ToString());
             var json = await response.Content.ReadAsStringAsync();
             response.EnsureSuccessStatusCode();
             
