@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -2998,7 +2998,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="filePath">mod文件路径</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>图标URL，如果获取失败则返回null</returns>
-        private async Task<string> GetModrinthIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
+        private async Task<string>? GetModrinthIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -3047,7 +3047,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="resourceType">资源类型</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>本地图标路径，如果保存失败则返回null</returns>
-        private async Task<string> SaveModrinthIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
+        private async Task<string>? SaveModrinthIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -3102,7 +3102,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="filePath">mod文件路径</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>图标URL，如果获取失败则返回null</returns>
-        private async Task<string> GetCurseForgeIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
+        private async Task<string>? GetCurseForgeIconUrlAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -3163,7 +3163,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <param name="resourceType">资源类型</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>本地图标路径，如果保存失败则返回null</returns>
-        private async Task<string> SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
+        private async Task<string>? SaveCurseForgeIconAsync(string filePath, string iconUrl, string resourceType, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -3258,7 +3258,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     cancellationToken.ThrowIfCancellationRequested();
                     
                     System.Diagnostics.Debug.WriteLine($"本地没有图标，尝试从Modrinth API获取{resourceType}图标: {filePath}");
-                    string iconUrl = await GetModrinthIconUrlAsync(filePath, cancellationToken);
+                    var iconUrl = await GetModrinthIconUrlAsync(filePath, cancellationToken);
                     if (!string.IsNullOrEmpty(iconUrl))
                     {
                         cancellationToken.ThrowIfCancellationRequested();

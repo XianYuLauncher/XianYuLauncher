@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -674,7 +674,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="accessToken">访问令牌</param>
     /// <returns>Xbox Live身份验证响应</returns>
-    private async Task<(XboxLiveAuthResponse, string)> AuthenticateWithXboxLiveAsync(string accessToken)
+    private async Task<(XboxLiveAuthResponse?, string)> AuthenticateWithXboxLiveAsync(string accessToken)
     {
         try
         {
@@ -739,7 +739,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="xblToken">XBL令牌</param>
     /// <returns>XSTS身份验证响应</returns>
-    private async Task<(XstsAuthResponse, string)> AuthorizeWithXstsAsync(string xblToken)
+    private async Task<(XstsAuthResponse?, string)> AuthorizeWithXstsAsync(string xblToken)
     {
         try
         {
@@ -898,7 +898,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <returns>刷新后的令牌响应</returns>
-    public async Task<TokenResponse> RefreshAccessTokenAsync(string refreshToken)
+    public async Task<TokenResponse?> RefreshAccessTokenAsync(string refreshToken)
     {
         try
         {
@@ -1030,7 +1030,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="minecraftToken">Minecraft访问令牌</param>
     /// <returns>玩家档案响应</returns>
-    private async Task<(ProfileResponse, string)> GetProfileAsync(string minecraftToken)
+    private async Task<(ProfileResponse?, string)> GetProfileAsync(string minecraftToken)
     {
         try
         {

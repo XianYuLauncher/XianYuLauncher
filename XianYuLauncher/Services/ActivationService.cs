@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -278,7 +278,7 @@ public class ActivationService : IActivationService
                     // 创建并显示下载进度弹窗
                     var downloadDialog = new ContentDialog
                     {
-                        Title = string.Format("Version {0} 更新", updateInfo.version),
+                        Title = $"Version {updateInfo.version} 更新",
                         Content = new DownloadProgressDialog(updateDialogViewModel),
                         IsPrimaryButtonEnabled = false,
                         CloseButtonText = "取消",
