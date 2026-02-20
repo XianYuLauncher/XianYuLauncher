@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -34,9 +34,13 @@ namespace XianYuLauncher.Core.Helpers
 
                 // DNS Resolution
                 var addresses = await System.Net.Dns.GetHostAddressesAsync(host);
-                if (addresses.Length == 0) return (null, "无法解析域名", 0, 0, -1);
-                var ip = addresses.First(a => a.AddressFamily == AddressFamily.InterNetwork); // Prefer IPv4
-                ip ??= addresses.First();
+                if (addresses.Length == 0)
+                {
+                    return (null, "无法解析域名", 0, 0, -1);
+                }
+
+                var ip = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork); // Prefer IPv4
+                ip ??= addresses[0];
 
                 // 简单计时
                 var sw = System.Diagnostics.Stopwatch.StartNew();
