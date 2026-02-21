@@ -15,6 +15,7 @@ using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Services;
 
+// TODO: 以后会重构相关弹窗创建服务，使弹窗主题跟随启动器内主题。
 public class DialogService : IDialogService
 {
     private XamlRoot _xamlRoot;
