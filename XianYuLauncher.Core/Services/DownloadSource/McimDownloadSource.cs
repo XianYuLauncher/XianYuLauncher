@@ -174,7 +174,7 @@ public class McimDownloadSource : IDownloadSource
         => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
 
     public string GetLiteLoaderVersionsUrl()
-        => "http://dl.liteloader.com/versions/versions.json";
+        => "https://dl.liteloader.com/versions/versions.json";
     
     public string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null)
     {

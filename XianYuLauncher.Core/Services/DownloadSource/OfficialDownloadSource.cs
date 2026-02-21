@@ -314,7 +314,7 @@ public class OfficialDownloadSource : IDownloadSource
 
     public string GetLiteLoaderVersionsUrl()
     {
-        return "http://dl.liteloader.com/versions/versions.json";
+        return "https://dl.liteloader.com/versions/versions.json";
     }
 
     public string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null)
