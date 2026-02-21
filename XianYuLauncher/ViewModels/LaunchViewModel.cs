@@ -1218,16 +1218,9 @@ public partial class LaunchViewModel : ObservableRecipient
 
     private static void ApplyNewsDotBrushes(List<LaunchNewsCardDisplayItem> topItems)
     {
-        var resources = Application.Current?.Resources;
-        var accentBrush = resources?["AccentFillColorDefaultBrush"] as Brush;
-        var secondaryBrush = resources?["TextFillColorSecondaryBrush"] as Brush;
-
         for (int i = 0; i < topItems.Count; i++)
         {
-            // 第一条使用强调色，其余条目使用灰点。
-            topItems[i].DotBrush = i == 0
-                ? accentBrush ?? secondaryBrush
-                : secondaryBrush;
+            topItems[i].IsPrimaryDot = i == 0;
         }
     }
     

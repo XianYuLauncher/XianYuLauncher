@@ -25,7 +25,7 @@ public class LaunchNewsCardDisplayItem
     public object? ActionPayload { get; set; }
 
     /// <summary>
-    /// 新闻项圆点颜色（由 ViewModel 根据最终排序动态决定）
+    /// 是否为首条新闻（首条用强调色圆点）
     /// </summary>
-    public Microsoft.UI.Xaml.Media.Brush? DotBrush { get; set; }
+    public bool IsPrimaryDot { get; set; }
 }

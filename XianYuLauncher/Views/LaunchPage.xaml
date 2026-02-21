@@ -235,13 +235,24 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Border
+                                        <Grid
                                             Width="6"
                                             Height="6"
-                                            CornerRadius="3"
-                                            Background="{x:Bind DotBrush, Mode=OneWay}"
                                             VerticalAlignment="Center"
-                                            Margin="0,0,10,0" />
+                                            Margin="0,0,10,0">
+                                            <Border
+                                                Width="6"
+                                                Height="6"
+                                                CornerRadius="3"
+                                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            <Border
+                                                Width="6"
+                                                Height="6"
+                                                CornerRadius="3"
+                                                Background="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneWay, Converter={StaticResource BoolToVisibilityInverseConverter}}" />
+                                        </Grid>
                                         <TextBlock
                                             Grid.Column="1"
                                             Text="{x:Bind DisplayText, Mode=OneWay}"
