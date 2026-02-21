@@ -547,38 +547,19 @@
                                     </ComboBox>
 
                                     <!-- 类别筛选 -->
-                                    <Button
+                                    <DropDownButton
                                         x:Name="ModCategoryFilterButton"
                                         Grid.Column="3"
                                         MinWidth="110"
                                         Margin="0,0,8,0"
                                         HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Left"
-                                        Click="ModCategoryFilterButton_Click">
-                                        <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
+                                        HorizontalContentAlignment="Left">
+                                        <DropDownButton.Content>
                                             <TextBlock
-                                                Grid.Column="0"
                                                 Text="{Binding SelectedModCategoriesDisplayText, Mode=OneWay}"
                                                 TextTrimming="CharacterEllipsis" />
-                                            <FontIcon
-                                                x:Name="ModCategoryFilterChevronIcon"
-                                                Grid.Column="1"
-                                                Margin="6,0,2,0"
-                                                VerticalAlignment="Center"
-                                                Glyph="&#xE70D;"
-                                                FontSize="12"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Opacity="0.72">
-                                                <FontIcon.RenderTransform>
-                                                    <TranslateTransform x:Name="ModCategoryFilterChevronTranslateTransform" />
-                                                </FontIcon.RenderTransform>
-                                            </FontIcon>
-                                        </Grid>
-                                        <Button.Flyout>
+                                        </DropDownButton.Content>
+                                        <DropDownButton.Flyout>
                                             <Flyout x:Name="ModCategoryFilterFlyout" Placement="Bottom" Opening="ModCategoryFilterFlyout_Opening" Closed="ModCategoryFilterFlyout_Closed">
                                                 <StackPanel Width="360" Spacing="12" Padding="4">
                                                     <TextBlock Text="筛选类型" FontWeight="SemiBold" />
@@ -592,8 +573,8 @@
                                                         SelectionChanged="ModCategoryPickerTokenView_SelectionChanged" />
                                                 </StackPanel>
                                             </Flyout>
-                                        </Button.Flyout>
-                                    </Button>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
 
                                     <!-- TODO: 后续将加载器/类型/版本合并为统一筛选入口。 -->
                                     <!-- TODO: 当前 Flyout + TokenView 仅适配 Mods 页，后续按同一交互同步到光影/资源包/数据包/整合包/世界等资源页。 -->
