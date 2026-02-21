@@ -306,6 +306,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedLoader = "all";
 
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedLoaders = new();
+
+    [ObservableProperty]
+    private string _selectedLoaderDisplayText = "所有加载器";
+
     // 类别筛选属性
     [ObservableProperty]
     private string _selectedModCategory = "all";
@@ -358,6 +364,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string _selectedVersion = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedVersions = new();
+
+    [ObservableProperty]
+    private string _selectedVersionDisplayText = "所有版本";
     
     [ObservableProperty]
     private ObservableCollection<string> _availableVersions = new();
@@ -2525,13 +2537,46 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     // 构建facets参数
                     var facets = new List<List<string>>();
                     
-                    if (SelectedLoader != "all")
+                    // Modrinth 多选加载器逻辑（OR 关系）
+                    if (SelectedLoaders.Count > 0)
                     {
+                        var loaderFacets = new List<string>();
+                        foreach (var loader in SelectedLoaders)
+                        {
+                            if (loader != "all")
+                            {
+                                loaderFacets.Add($"categories:{loader}");
+                            }
+                        }
+                        
+                        if (loaderFacets.Count > 0)
+                        {
+                            facets.Add(loaderFacets);
+                        }
+                    }
+                    else if (SelectedLoader != "all")
+                    {
+                        // 兼容旧的单选逻辑
                         facets.Add(new List<string> { $"categories:{SelectedLoader}" });
                     }
                     
-                    if (!string.IsNullOrEmpty(SelectedVersion))
+                    // Modrinth 多选版本逻辑（OR 关系）
+                    if (SelectedVersions.Count > 0)
                     {
+                        var versionFacets = new List<string>();
+                        foreach (var version in SelectedVersions)
+                        {
+                            versionFacets.Add($"versions:{version}");
+                        }
+                        
+                        if (versionFacets.Count > 0)
+                        {
+                            facets.Add(versionFacets);
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(SelectedVersion))
+                    {
+                         // 兼容旧的单选逻辑
                         facets.Add(new List<string> { $"versions:{SelectedVersion}" });
                     }
 

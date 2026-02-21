@@ -535,7 +535,7 @@
                                                         x:Name="ModLoaderPickerTokenView"
                                                         IsWrapped="True"
                                                         CanRemoveTokens="False"
-                                                        SelectionMode="Single"
+                                                        SelectionMode="Multiple"
                                                         SelectionChanged="ModLoaderPickerTokenView_SelectionChanged" />
 
                                                     <TextBlock Text="筛选类型" FontWeight="SemiBold" />
@@ -554,7 +554,7 @@
                                                         MaxHeight="180"
                                                         IsWrapped="True"
                                                         CanRemoveTokens="False"
-                                                        SelectionMode="Single"
+                                                        SelectionMode="Multiple"
                                                         SelectionChanged="ModVersionPickerTokenView_SelectionChanged" />
                                                 </StackPanel>
                                             </Flyout>

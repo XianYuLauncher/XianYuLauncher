@@ -524,6 +524,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         try
         {
             SafeClearItems(ModLoaderPickerTokenView.Items);
+            SafeClearSelection(ModLoaderPickerTokenView.SelectedItems);
 
             var loaders = new (string Tag, string DisplayName, string Glyph)[]
             {
@@ -535,11 +536,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 ("liteloader", "LiteLoader", "\uE9CE")
             };
 
-            var selectedLoaderTag = string.IsNullOrWhiteSpace(ViewModel.SelectedLoader)
-                ? "all"
-                : ViewModel.SelectedLoader;
+            var selectedTags = new HashSet<string>(ViewModel.SelectedLoaders, StringComparer.OrdinalIgnoreCase);
 
-            TokenItem? selectedToken = null;
             TokenItem? allToken = null;
             foreach (var loader in loaders)
             {
@@ -556,15 +554,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 if (string.Equals(loader.Tag, "all", StringComparison.OrdinalIgnoreCase))
                 {
                     allToken = token;
+                    if (selectedTags.Count == 0 || selectedTags.Contains("all"))
+                    {
+                        ModLoaderPickerTokenView.SelectedItems.Add(token);
+                    }
                 }
-
-                if (string.Equals(loader.Tag, selectedLoaderTag, StringComparison.OrdinalIgnoreCase))
+                else if (selectedTags.Contains(loader.Tag))
                 {
-                    selectedToken = token;
+                    ModLoaderPickerTokenView.SelectedItems.Add(token);
                 }
             }
 
-            ModLoaderPickerTokenView.SelectedItems.Add(selectedToken ?? allToken ?? ModLoaderPickerTokenView.Items.OfType<TokenItem>().First());
+            // 如果没有选中任何项，默认选中“所有”
+            if (ModLoaderPickerTokenView.SelectedItems.Count == 0 && allToken != null)
+            {
+                ModLoaderPickerTokenView.SelectedItems.Add(allToken);
+            }
         }
         finally
         {
@@ -583,6 +588,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         try
         {
             SafeClearItems(ModVersionPickerTokenView.Items);
+            SafeClearSelection(ModVersionPickerTokenView.SelectedItems);
 
             var allToken = new TokenItem
             {
@@ -594,7 +600,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             };
             ModVersionPickerTokenView.Items.Add(allToken);
 
-            TokenItem? selectedToken = null;
+            var selectedTags = new HashSet<string>(ViewModel.SelectedVersions, StringComparer.OrdinalIgnoreCase);
+
+            if (selectedTags.Count == 0 || selectedTags.Contains("all"))
+            {
+                ModVersionPickerTokenView.SelectedItems.Add(allToken);
+            }
+
             foreach (var version in ViewModel.AvailableVersions)
             {
                 if (string.IsNullOrWhiteSpace(version))
@@ -612,13 +624,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 };
                 ModVersionPickerTokenView.Items.Add(token);
 
-                if (string.Equals(ViewModel.SelectedVersion, version, StringComparison.OrdinalIgnoreCase))
+                if (selectedTags.Contains(version))
                 {
-                    selectedToken = token;
+                    ModVersionPickerTokenView.SelectedItems.Add(token);
                 }
             }
-
-            ModVersionPickerTokenView.SelectedItems.Add(selectedToken ?? allToken);
+            
+            // 如果没有选中任何项，默认选中“所有”
+            if (ModVersionPickerTokenView.SelectedItems.Count == 0)
+            {
+                ModVersionPickerTokenView.SelectedItems.Add(allToken);
+            }
         }
         finally
         {
@@ -633,15 +649,23 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             return;
         }
 
-        var selectedToken = ModLoaderPickerTokenView.SelectedItems.OfType<TokenItem>().LastOrDefault();
-        if (selectedToken == null)
-        {
-            ViewModel.SelectedLoader = "all";
-            return;
-        }
-
-        var selectedLoaderTag = selectedToken.Tag?.ToString();
-        ViewModel.SelectedLoader = string.IsNullOrWhiteSpace(selectedLoaderTag) ? "all" : selectedLoaderTag!;
+        // 复用通用的多选逻辑（互斥处理）
+        HandleMultiSelection(
+            ModLoaderPickerTokenView,
+            e,
+            ref _isUpdatingModLoaderTokenViewSelection,
+            (selectedTags) => 
+            {
+                ViewModel.SelectedLoaders.Clear();
+                foreach (var tag in selectedTags)
+                {
+                    ViewModel.SelectedLoaders.Add(tag);
+                }
+                
+                // 兼容旧属性，取第一个选中的（非all）或 all
+                var first = selectedTags.FirstOrDefault(t => t != "all");
+                ViewModel.SelectedLoader = first ?? "all";
+            });
     }
 
     private void ModVersionPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -651,17 +675,93 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             return;
         }
 
-        var selectedToken = ModVersionPickerTokenView.SelectedItems.OfType<TokenItem>().LastOrDefault();
-        if (selectedToken == null)
+        // 复用通用的多选逻辑（互斥处理）
+        HandleMultiSelection(
+            ModVersionPickerTokenView,
+            e,
+            ref _isUpdatingModVersionTokenViewSelection,
+            (selectedTags) => 
+            {
+                ViewModel.SelectedVersions.Clear();
+                foreach (var tag in selectedTags)
+                {
+                    ViewModel.SelectedVersions.Add(tag);
+                }
+                
+                // 兼容旧属性，取第一个选中的（非all）或 empty
+                var first = selectedTags.FirstOrDefault(t => t != "all");
+                ViewModel.SelectedVersion = first ?? string.Empty;
+            });
+    }
+
+    // 通用的多选互斥处理逻辑（All 与 具体项互斥）
+    private void HandleMultiSelection(
+        TokenView tokenView, 
+        SelectionChangedEventArgs e, 
+        ref bool isUpdatingFlag,
+        Action<List<string>> updateViewModelAction)
+    {
+        var selectedTokenTags = tokenView.SelectedItems
+            .OfType<TokenItem>()
+            .Select(item => item.Tag?.ToString())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag!)
+            .ToList();
+
+        var allSelected = selectedTokenTags.Any(tag => string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase));
+        var allToken = tokenView.Items
+            .OfType<TokenItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
+        var allAddedThisTime = e.AddedItems
+            .OfType<TokenItem>()
+            .Any(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
+        var selectedNonAllTags = selectedTokenTags
+            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        isUpdatingFlag = true;
+        try
         {
-            ViewModel.SelectedVersion = string.Empty;
-            return;
+            if (allAddedThisTime)
+            {
+                // 用户显式点了“所有”，强制只保留 all。
+                SafeClearSelection(tokenView.SelectedItems);
+                if (allToken != null)
+                {
+                    tokenView.SelectedItems.Add(allToken);
+                }
+            }
+            else if (allSelected && selectedNonAllTags.Count > 0 && allToken != null)
+            {
+                // 选中具体类别时自动移除 all。
+                tokenView.SelectedItems.Remove(allToken);
+            }
+            else if (!allSelected && selectedNonAllTags.Count == 0 && allToken != null)
+            {
+                // 所有具体项都被取消后，回退到 all。
+                tokenView.SelectedItems.Add(allToken);
+            }
+        }
+        finally
+        {
+            isUpdatingFlag = false;
         }
 
-        var selectedVersionTag = selectedToken.Tag?.ToString();
-        ViewModel.SelectedVersion = string.Equals(selectedVersionTag, "all", StringComparison.OrdinalIgnoreCase)
-            ? string.Empty
-            : (selectedVersionTag ?? string.Empty);
+        // 重新计算最终选中的标签并更新 VM
+        selectedTokenTags = tokenView.SelectedItems
+            .OfType<TokenItem>()
+            .Select(item => item.Tag?.ToString())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag!)
+            .ToList();
+
+        var finalSelectedTags = selectedTokenTags
+            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        updateViewModelAction(finalSelectedTags);
     }
 
     private void RefreshModCategoryTokenPicker()
@@ -825,12 +925,20 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private string GetModFilterSelectionStateKey()
     {
-        var selectedLoader = string.IsNullOrWhiteSpace(ViewModel.SelectedLoader)
+        var selectedLoaders = ViewModel.SelectedLoaders.Count == 0
             ? "all"
-            : ViewModel.SelectedLoader.Trim();
-        var selectedVersion = string.IsNullOrWhiteSpace(ViewModel.SelectedVersion)
+            : string.Join(
+                ",",
+                ViewModel.SelectedLoaders
+                    .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
+
+        var selectedVersions = ViewModel.SelectedVersions.Count == 0
             ? "all"
-            : ViewModel.SelectedVersion.Trim();
+            : string.Join(
+                ",",
+                ViewModel.SelectedVersions
+                    .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
+
         var selectedCategories = ViewModel.SelectedModCategories.Count == 0
             ? "all"
             : string.Join(
@@ -838,7 +946,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 ViewModel.SelectedModCategories
                     .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
 
-        return $"{selectedLoader}|{selectedVersion}|{selectedCategories}";
+        return $"{selectedLoaders}|{selectedVersions}|{selectedCategories}";
     }
 
     /// <summary>
