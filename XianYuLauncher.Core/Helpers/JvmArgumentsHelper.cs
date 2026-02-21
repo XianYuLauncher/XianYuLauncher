@@ -26,16 +26,16 @@ public static class JvmArgumentsHelper
     /// <returns>合并后的参数列表</returns>
     public static List<string> MergeAndDeduplicateArguments(List<string> launcherArgs, string? customArgs)
     {
-        var customArgSet = ParseCustomArguments(customArgs).ToHashSet();
-        if (customArgSet.Count == 0)
+        var customArgArray = ParseCustomArguments(customArgs).Distinct().ToArray();
+        if (customArgArray.Length == 0)
             return launcherArgs;
 
-        var result = new List<string>(launcherArgs.Count + customArgSet.Count);
+        var result = new List<string>(launcherArgs.Count + customArgArray.Length);
 
         // 检测自定义参数中是否包含特定类型的参数
-        bool hasCustomXms = customArgSet.Any(a => a.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase));
-        bool hasCustomXmx = customArgSet.Any(a => a.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase));
-        bool hasCustomGC = customArgSet.Any(a => a.Contains("UseG1GC") || a.Contains("UseZGC") || 
+        bool hasCustomXms = customArgArray.Any(a => a.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase));
+        bool hasCustomXmx = customArgArray.Any(a => a.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase));
+        bool hasCustomGC = customArgArray.Any(a => a.Contains("UseG1GC") || a.Contains("UseZGC") || 
                                                  a.Contains("UseParallelGC") || a.Contains("UseSerialGC") ||
                                                  a.Contains("UseConcMarkSweepGC"));
 
@@ -60,7 +60,7 @@ public static class JvmArgumentsHelper
         }
 
         // 追加自定义参数（优先级最高）
-        result.AddRange(customArgSet);
+        result.AddRange(customArgArray);
 
         return result;
     }
