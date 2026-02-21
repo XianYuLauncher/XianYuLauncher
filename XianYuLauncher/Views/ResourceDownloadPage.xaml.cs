@@ -1,9 +1,14 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Views;
 
 public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {
+    private bool _isUpdatingModCategoryTokenViewSelection = false;
+    private bool _hasModCategorySelectionChangedInFlyout = false;
+    private string _modCategorySelectionSnapshot = string.Empty;
+    private const string DefaultCategoryIconGlyph = "\uE8FD";
+
     // 静态属性，用于存储需要切换的标签页索引
     public static int TargetTabIndex { get; set; } = 0;
     
@@ -442,17 +447,187 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    /// <summary>
-    /// Mod类别筛选变化事件处理程序
-    /// </summary>
-    private async void ModCategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ModCategoryFilterButton_Click(object sender, RoutedEventArgs e)
     {
-        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
-        // 这样可以避免在初始化类别时触发重复搜索
-        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
+        // 留空：由 Button.Flyout 自动打开。
+    }
+
+    private void ModCategoryFilterFlyout_Opening(object sender, object e)
+    {
+        _modCategorySelectionSnapshot = GetModCategorySelectionStateKey();
+        _hasModCategorySelectionChangedInFlyout = false;
+        RefreshModCategoryTokenPicker();
+    }
+
+    private async void ModCategoryFilterFlyout_Closed(object sender, object e)
+    {
+        if (!_hasModCategorySelectionChangedInFlyout)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded)
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
+    }
+
+    private void RefreshModCategoryTokenPicker()
+    {
+        if (ModCategoryPickerTokenView == null)
+        {
+            return;
+        }
+
+        _isUpdatingModCategoryTokenViewSelection = true;
+
+        try
+        {
+            ModCategoryPickerTokenView.Items.Clear();
+            ModCategoryPickerTokenView.SelectedItems.Clear();
+
+            var selectedTags = new HashSet<string>(ViewModel.SelectedModCategories, StringComparer.OrdinalIgnoreCase);
+            foreach (var category in ViewModel.ModCategories)
+            {
+                var token = new TokenItem
+                {
+                    Content = category.DisplayName,
+                    Tag = category.Tag,
+                    Icon = new FontIcon { Glyph = GetCategoryGlyph(category.Tag) },
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Padding = new Thickness(8, 4, 8, 4)
+                };
+
+                ModCategoryPickerTokenView.Items.Add(token);
+
+                if (string.Equals(category.Tag, "all", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (selectedTags.Count == 0)
+                    {
+                        ModCategoryPickerTokenView.SelectedItems.Add(token);
+                    }
+                }
+                else if (selectedTags.Contains(category.Tag))
+                {
+                    ModCategoryPickerTokenView.SelectedItems.Add(token);
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingModCategoryTokenViewSelection = false;
+        }
+    }
+
+    private void ModCategoryPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingModCategoryTokenViewSelection || ModCategoryPickerTokenView == null)
+        {
+            return;
+        }
+
+        var selectedTokenTags = ModCategoryPickerTokenView.SelectedItems
+            .OfType<TokenItem>()
+            .Select(item => item.Tag?.ToString())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag!)
+            .ToList();
+
+        var allSelected = selectedTokenTags.Any(tag => string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase));
+        var allToken = ModCategoryPickerTokenView.Items
+            .OfType<TokenItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
+        var allAddedThisTime = e.AddedItems
+            .OfType<TokenItem>()
+            .Any(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
+        var selectedNonAllTags = selectedTokenTags
+            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _isUpdatingModCategoryTokenViewSelection = true;
+        if (allAddedThisTime)
+        {
+            // 用户显式点了“所有类别”，强制只保留 all。
+            ModCategoryPickerTokenView.SelectedItems.Clear();
+            if (allToken != null)
+            {
+                ModCategoryPickerTokenView.SelectedItems.Add(allToken);
+            }
+        }
+        else if (allSelected && selectedNonAllTags.Count > 0 && allToken != null)
+        {
+            // 选中具体类别时自动移除 all。
+            ModCategoryPickerTokenView.SelectedItems.Remove(allToken);
+        }
+        else if (!allSelected && selectedNonAllTags.Count == 0 && allToken != null)
+        {
+            // 所有具体项都被取消后，回退到 all。
+            ModCategoryPickerTokenView.SelectedItems.Add(allToken);
+        }
+        _isUpdatingModCategoryTokenViewSelection = false;
+
+        selectedTokenTags = ModCategoryPickerTokenView.SelectedItems
+            .OfType<TokenItem>()
+            .Select(item => item.Tag?.ToString())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag!)
+            .ToList();
+
+        var selectedTags = selectedTokenTags
+            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        ViewModel.SetSelectedModCategories(selectedTags);
+        _hasModCategorySelectionChangedInFlyout =
+            !string.Equals(_modCategorySelectionSnapshot, GetModCategorySelectionStateKey(), StringComparison.Ordinal);
+    }
+
+    private static string GetCategoryGlyph(string? categoryTag)
+    {
+        if (string.IsNullOrWhiteSpace(categoryTag))
+        {
+            return DefaultCategoryIconGlyph;
+        }
+
+        return categoryTag.ToLowerInvariant() switch
+        {
+            "all" => "\uE71D",
+            "adventure" => "\uE7FC",
+            "cursed" => "\uE814",
+            "decoration" => "\uECA5",
+            "economy" => "\uE8EF",
+            "equipment" => "\uE8D7",
+            "food" => "\uE719",
+            "game-mechanics" => "\uE7FC",
+            "library" => "\uE8F1",
+            "magic" => "\uEA8C",
+            "management" => "\uE78B",
+            "minigame" => "\uE7FC",
+            "mobs" => "\uE825",
+            "optimization" => "\uE9D9",
+            "social" => "\uE716",
+            "storage" => "\uE8B7",
+            "technology" => "\uE772",
+            "transportation" => "\uEC4A",
+            "utility" => "\uE90F",
+            "worldgen" => "\uE909",
+            _ => DefaultCategoryIconGlyph
+        };
+    }
+
+    private string GetModCategorySelectionStateKey()
+    {
+        if (ViewModel.SelectedModCategories.Count == 0)
+        {
+            return "all";
+        }
+
+        return string.Join(
+            ",",
+            ViewModel.SelectedModCategories
+                .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>

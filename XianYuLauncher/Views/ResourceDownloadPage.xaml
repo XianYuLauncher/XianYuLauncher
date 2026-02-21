@@ -10,6 +10,7 @@
     xmlns:models="using:XianYuLauncher.Core.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:labs="using:CommunityToolkit.Labs.WinUI"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
     NavigationCacheMode="Required"
     mc:Ignorable="d">
@@ -546,17 +547,36 @@
                                     </ComboBox>
 
                                     <!-- 类别筛选 -->
-                                    <ComboBox
-                                        x:Name="ModCategoryComboBox"
-                                        x:Uid="ResourceDownloadPage_ModCategoryComboBox"
+                                    <Button
+                                        x:Name="ModCategoryFilterButton"
                                         Grid.Column="3"
-                                        MinWidth="80"
+                                        MinWidth="110"
                                         Margin="0,0,8,0"
-                                        ItemsSource="{Binding ModCategories}"
-                                        DisplayMemberPath="DisplayName"
-                                        SelectedValuePath="Tag"
-                                        SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
-                                        SelectionChanged="ModCategoryComboBox_SelectionChanged" />
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Click="ModCategoryFilterButton_Click">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding SelectedModCategoriesDisplayText, Mode=OneWay}" />
+                                            <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                        </StackPanel>
+                                        <Button.Flyout>
+                                            <Flyout x:Name="ModCategoryFilterFlyout" Placement="Bottom" Opening="ModCategoryFilterFlyout_Opening" Closed="ModCategoryFilterFlyout_Closed">
+                                                <StackPanel Width="360" Spacing="12" Padding="4">
+                                                    <TextBlock Text="筛选类型" FontWeight="SemiBold" />
+
+                                                    <labs:TokenView
+                                                        x:Name="ModCategoryPickerTokenView"
+                                                        MaxHeight="320"
+                                                        IsWrapped="True"
+                                                        CanRemoveTokens="False"
+                                                        SelectionMode="Multiple"
+                                                        SelectionChanged="ModCategoryPickerTokenView_SelectionChanged" />
+                                                </StackPanel>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                    </Button>
+
+                                    <!-- TODO: 后续将加载器/类型/版本合并为统一筛选入口。 -->
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
                                     <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
