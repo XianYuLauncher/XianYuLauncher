@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;using CommunityToolkit.Labs.WinUI;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using Microsoft.UI.Xaml.Media.Animation;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Views;
 
@@ -68,10 +68,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         // 直接使用Dispatcher延迟执行，确保TabView已经初始化完成
         DispatcherQueue.TryEnqueue(() =>
         {
-            // 检查是否有从NavigateToModPage方法传递的信号
-            if (ViewModel.SelectedTabIndex == 1)
+            // 导航缓存场景下，恢复上次选中的标签页
+            if (ViewModel.SelectedTabIndex >= 0 && ViewModel.SelectedTabIndex < ResourceTabView.TabItems.Count)
             {
-                ResourceTabView.SelectedIndex = 1;
+                ResourceTabView.SelectedIndex = ViewModel.SelectedTabIndex;
             }
         });
 
@@ -454,6 +454,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ModCategoryFilterFlyout_Opening(object sender, object e)
     {
+        AnimateModCategoryFilterChevron(isExpanded: true);
         _modCategorySelectionSnapshot = GetModCategorySelectionStateKey();
         _hasModCategorySelectionChangedInFlyout = false;
         RefreshModCategoryTokenPicker();
@@ -461,6 +462,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void ModCategoryFilterFlyout_Closed(object sender, object e)
     {
+        AnimateModCategoryFilterChevron(isExpanded: false);
         if (!_hasModCategorySelectionChangedInFlyout)
         {
             return;
@@ -470,6 +472,73 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
+    }
+
+    private void AnimateModCategoryFilterChevron(bool isExpanded)
+    {
+        if (ModCategoryFilterChevronTranslateTransform == null || ModCategoryFilterChevronIcon == null)
+        {
+            return;
+        }
+
+        if (!isExpanded)
+        {
+            ModCategoryFilterChevronTranslateTransform.Y = 0;
+            ModCategoryFilterChevronIcon.Opacity = 0.72;
+            return;
+        }
+
+        var offsetAnimation = new DoubleAnimationUsingKeyFrames
+        {
+            EnableDependentAnimation = true
+        };
+        offsetAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value = 0,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+        offsetAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(70)),
+            Value = 1.25,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+        offsetAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180)),
+            Value = 0,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+
+        var opacityAnimation = new DoubleAnimationUsingKeyFrames();
+        opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value = 0.72,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+        opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(70)),
+            Value = 0.88,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+        opacityAnimation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180)),
+            Value = 0.72,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+
+        var storyboard = new Storyboard();
+        Storyboard.SetTarget(offsetAnimation, ModCategoryFilterChevronTranslateTransform);
+        Storyboard.SetTargetProperty(offsetAnimation, "Y");
+        Storyboard.SetTarget(opacityAnimation, ModCategoryFilterChevronIcon);
+        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+        storyboard.Children.Add(offsetAnimation);
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Begin();
     }
 
     private void RefreshModCategoryTokenPicker()

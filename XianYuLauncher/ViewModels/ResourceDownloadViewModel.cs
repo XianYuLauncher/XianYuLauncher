@@ -1894,14 +1894,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 Source = "common"
             });
             
-            // 如果两个平台都启用，只显示"所有类别"
-            if (IsModrinthEnabled && IsCurseForgeEnabled)
+            // 根据启用的平台加载类别；双平台时合并后去重
+            if (IsModrinthEnabled || IsCurseForgeEnabled)
             {
-                System.Diagnostics.Debug.WriteLine($"[类别加载] {resourceType}: 两个平台都启用，只显示'所有类别'");
-            }
-            else
-            {
-                // 根据启用的平台加载类别
                 if (IsModrinthEnabled)
                 {
                     // 添加Modrinth类别（硬编码，因为Modrinth类别是固定的）

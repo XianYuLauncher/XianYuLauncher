@@ -288,7 +288,7 @@
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 Height="Auto" 
-                SelectedIndex="0"
+                SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
                 SelectionChanged="ResourceTabView_SelectionChanged"
                 IsAddTabButtonVisible="False"
                 CanDragTabs="False"
@@ -555,10 +555,29 @@
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
                                         Click="ModCategoryFilterButton_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{Binding SelectedModCategoriesDisplayText, Mode=OneWay}" />
-                                            <FontIcon Glyph="&#xE70D;" FontSize="12" />
-                                        </StackPanel>
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock
+                                                Grid.Column="0"
+                                                Text="{Binding SelectedModCategoriesDisplayText, Mode=OneWay}"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <FontIcon
+                                                x:Name="ModCategoryFilterChevronIcon"
+                                                Grid.Column="1"
+                                                Margin="6,0,2,0"
+                                                VerticalAlignment="Center"
+                                                Glyph="&#xE70D;"
+                                                FontSize="12"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Opacity="0.72">
+                                                <FontIcon.RenderTransform>
+                                                    <TranslateTransform x:Name="ModCategoryFilterChevronTranslateTransform" />
+                                                </FontIcon.RenderTransform>
+                                            </FontIcon>
+                                        </Grid>
                                         <Button.Flyout>
                                             <Flyout x:Name="ModCategoryFilterFlyout" Placement="Bottom" Opening="ModCategoryFilterFlyout_Opening" Closed="ModCategoryFilterFlyout_Closed">
                                                 <StackPanel Width="360" Spacing="12" Padding="4">
@@ -577,6 +596,7 @@
                                     </Button>
 
                                     <!-- TODO: 后续将加载器/类型/版本合并为统一筛选入口。 -->
+                                    <!-- TODO: 当前 Flyout + TokenView 仅适配 Mods 页，后续按同一交互同步到光影/资源包/数据包/整合包/世界等资源页。 -->
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
                                     <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
