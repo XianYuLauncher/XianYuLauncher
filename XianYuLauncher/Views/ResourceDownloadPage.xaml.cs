@@ -1,12 +1,14 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.ComponentModel;using CommunityToolkit.Labs.WinUI;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.Collections.Generic;using System.ComponentModel;using System.Runtime.InteropServices;using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Views;
 
 public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {
     private bool _isUpdatingModCategoryTokenViewSelection = false;
-    private bool _hasModCategorySelectionChangedInFlyout = false;
-    private string _modCategorySelectionSnapshot = string.Empty;
+    private bool _isUpdatingModLoaderTokenViewSelection = false;
+    private bool _isUpdatingModVersionTokenViewSelection = false;
+    private string _modFilterSelectionSnapshot = string.Empty;
+    private bool _modFilterTokenItemsDirty = true;
     private const string DefaultCategoryIconGlyph = "\uE8FD";
 
     // 静态属性，用于存储需要切换的标签页索引
@@ -45,6 +47,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         InitializeComponent();
+        DispatcherQueue.TryEnqueue(TryRefreshModFilterTokenItems);
         
         // 在页面加载完成后检查是否需要切换标签页
         Loaded += (sender, e) =>
@@ -138,6 +141,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             {
                 ShareCodeImportDialog.Hide();
             }
+        }
+        else if (e.PropertyName == nameof(ViewModel.ModCategories)
+            || e.PropertyName == nameof(ViewModel.AvailableVersions)
+            || e.PropertyName == nameof(ViewModel.SelectedLoader)
+            || e.PropertyName == nameof(ViewModel.SelectedVersion))
+        {
+            _modFilterTokenItemsDirty = true;
+            TryRefreshModFilterTokenItems();
         }
     }
 
@@ -405,24 +416,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private async void LoaderComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
-        {
-            await ViewModel.SearchModsCommand.ExecuteAsync(null);
-        }
-    }
-
-    private async void VersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded) // Mod下载标签页索引
-        {
-            await ViewModel.SearchModsCommand.ExecuteAsync(null);
-        }
-    }
-    
     /// <summary>
     /// 光影搜索提交事件处理程序
     /// </summary>
@@ -449,14 +442,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ModCategoryFilterFlyout_Opening(object sender, object e)
     {
-        _modCategorySelectionSnapshot = GetModCategorySelectionStateKey();
-        _hasModCategorySelectionChangedInFlyout = false;
-        RefreshModCategoryTokenPicker();
+        _modFilterSelectionSnapshot = GetModFilterSelectionStateKey();
     }
 
     private async void ModCategoryFilterFlyout_Closed(object sender, object e)
     {
-        if (!_hasModCategorySelectionChangedInFlyout)
+        var hasFilterChanged = !string.Equals(
+            _modFilterSelectionSnapshot,
+            GetModFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
         {
             return;
         }
@@ -465,6 +461,207 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
+        TryRefreshModFilterTokenItems();
+    }
+
+    private void TryRefreshModFilterTokenItems()
+    {
+        if (ModCategoryFilterFlyout?.IsOpen == true)
+        {
+            return;
+        }
+
+        if (!_modFilterTokenItemsDirty
+            && ModLoaderPickerTokenView?.Items.Count > 0
+            && ModVersionPickerTokenView?.Items.Count > 0
+            && ModCategoryPickerTokenView?.Items.Count > 0)
+        {
+            return;
+        }
+
+        var hasComFailure = false;
+
+        // 优先刷新“筛选类型”，即使其它分段炸了，也要保证类别可见。
+        try
+        {
+            RefreshModCategoryTokenPicker();
+        }
+        catch (COMException)
+        {
+            hasComFailure = true;
+        }
+
+        try
+        {
+            RefreshModLoaderTokenPicker();
+        }
+        catch (COMException)
+        {
+            hasComFailure = true;
+        }
+
+        try
+        {
+            RefreshModVersionTokenPicker();
+        }
+        catch (COMException)
+        {
+            hasComFailure = true;
+        }
+
+        // 任一分段失败都保留 dirty，等后续安全时机再补齐。
+        _modFilterTokenItemsDirty = hasComFailure;
+    }
+
+    private void RefreshModLoaderTokenPicker()
+    {
+        if (ModLoaderPickerTokenView == null)
+        {
+            return;
+        }
+
+        _isUpdatingModLoaderTokenViewSelection = true;
+        try
+        {
+            SafeClearItems(ModLoaderPickerTokenView.Items);
+
+            var loaders = new (string Tag, string DisplayName, string Glyph)[]
+            {
+                ("all", "所有加载器", "\uE71D"),
+                ("fabric", "Fabric", "\uE8D2"),
+                ("forge", "Forge", "\uE7FC"),
+                ("quilt", "Quilt", "\uE8FD"),
+                ("legacy-fabric", "Legacy Fabric", "\uE8FD"),
+                ("liteloader", "LiteLoader", "\uE9CE")
+            };
+
+            var selectedLoaderTag = string.IsNullOrWhiteSpace(ViewModel.SelectedLoader)
+                ? "all"
+                : ViewModel.SelectedLoader;
+
+            TokenItem? selectedToken = null;
+            TokenItem? allToken = null;
+            foreach (var loader in loaders)
+            {
+                var token = new TokenItem
+                {
+                    Content = loader.DisplayName,
+                    Tag = loader.Tag,
+                    Icon = new FontIcon { Glyph = loader.Glyph },
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Padding = new Thickness(8, 4, 8, 4)
+                };
+
+                ModLoaderPickerTokenView.Items.Add(token);
+                if (string.Equals(loader.Tag, "all", StringComparison.OrdinalIgnoreCase))
+                {
+                    allToken = token;
+                }
+
+                if (string.Equals(loader.Tag, selectedLoaderTag, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedToken = token;
+                }
+            }
+
+            ModLoaderPickerTokenView.SelectedItems.Add(selectedToken ?? allToken ?? ModLoaderPickerTokenView.Items.OfType<TokenItem>().First());
+        }
+        finally
+        {
+            _isUpdatingModLoaderTokenViewSelection = false;
+        }
+    }
+
+    private void RefreshModVersionTokenPicker()
+    {
+        if (ModVersionPickerTokenView == null)
+        {
+            return;
+        }
+
+        _isUpdatingModVersionTokenViewSelection = true;
+        try
+        {
+            SafeClearItems(ModVersionPickerTokenView.Items);
+
+            var allToken = new TokenItem
+            {
+                Content = "所有版本",
+                Tag = "all",
+                Icon = new FontIcon { Glyph = "\uE71D" },
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(8, 4, 8, 4)
+            };
+            ModVersionPickerTokenView.Items.Add(allToken);
+
+            TokenItem? selectedToken = null;
+            foreach (var version in ViewModel.AvailableVersions)
+            {
+                if (string.IsNullOrWhiteSpace(version))
+                {
+                    continue;
+                }
+
+                var token = new TokenItem
+                {
+                    Content = version,
+                    Tag = version,
+                    Icon = new FontIcon { Glyph = "\uE823" },
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Padding = new Thickness(8, 4, 8, 4)
+                };
+                ModVersionPickerTokenView.Items.Add(token);
+
+                if (string.Equals(ViewModel.SelectedVersion, version, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedToken = token;
+                }
+            }
+
+            ModVersionPickerTokenView.SelectedItems.Add(selectedToken ?? allToken);
+        }
+        finally
+        {
+            _isUpdatingModVersionTokenViewSelection = false;
+        }
+    }
+
+    private void ModLoaderPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingModLoaderTokenViewSelection || ModLoaderPickerTokenView == null)
+        {
+            return;
+        }
+
+        var selectedToken = ModLoaderPickerTokenView.SelectedItems.OfType<TokenItem>().LastOrDefault();
+        if (selectedToken == null)
+        {
+            ViewModel.SelectedLoader = "all";
+            return;
+        }
+
+        var selectedLoaderTag = selectedToken.Tag?.ToString();
+        ViewModel.SelectedLoader = string.IsNullOrWhiteSpace(selectedLoaderTag) ? "all" : selectedLoaderTag!;
+    }
+
+    private void ModVersionPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingModVersionTokenViewSelection || ModVersionPickerTokenView == null)
+        {
+            return;
+        }
+
+        var selectedToken = ModVersionPickerTokenView.SelectedItems.OfType<TokenItem>().LastOrDefault();
+        if (selectedToken == null)
+        {
+            ViewModel.SelectedVersion = string.Empty;
+            return;
+        }
+
+        var selectedVersionTag = selectedToken.Tag?.ToString();
+        ViewModel.SelectedVersion = string.Equals(selectedVersionTag, "all", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : (selectedVersionTag ?? string.Empty);
     }
 
     private void RefreshModCategoryTokenPicker()
@@ -478,8 +675,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
         try
         {
-            ModCategoryPickerTokenView.Items.Clear();
-            ModCategoryPickerTokenView.SelectedItems.Clear();
+            SafeClearItems(ModCategoryPickerTokenView.Items);
+            SafeClearSelection(ModCategoryPickerTokenView.SelectedItems);
 
             var selectedTags = new HashSet<string>(ViewModel.SelectedModCategories, StringComparer.OrdinalIgnoreCase);
             foreach (var category in ViewModel.ModCategories)
@@ -544,7 +741,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         if (allAddedThisTime)
         {
             // 用户显式点了“所有类别”，强制只保留 all。
-            ModCategoryPickerTokenView.SelectedItems.Clear();
+            SafeClearSelection(ModCategoryPickerTokenView.SelectedItems);
             if (allToken != null)
             {
                 ModCategoryPickerTokenView.SelectedItems.Add(allToken);
@@ -575,8 +772,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             .ToList();
 
         ViewModel.SetSelectedModCategories(selectedTags);
-        _hasModCategorySelectionChangedInFlyout =
-            !string.Equals(_modCategorySelectionSnapshot, GetModCategorySelectionStateKey(), StringComparison.Ordinal);
+    }
+
+    private static void SafeClearItems(ItemCollection items)
+    {
+        for (int i = items.Count - 1; i >= 0; i--)
+        {
+            items.RemoveAt(i);
+        }
+    }
+
+    private static void SafeClearSelection(IList<object> selectedItems)
+    {
+        for (int i = selectedItems.Count - 1; i >= 0; i--)
+        {
+            selectedItems.RemoveAt(i);
+        }
     }
 
     private static string GetCategoryGlyph(string? categoryTag)
@@ -612,17 +823,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         };
     }
 
-    private string GetModCategorySelectionStateKey()
+    private string GetModFilterSelectionStateKey()
     {
-        if (ViewModel.SelectedModCategories.Count == 0)
-        {
-            return "all";
-        }
+        var selectedLoader = string.IsNullOrWhiteSpace(ViewModel.SelectedLoader)
+            ? "all"
+            : ViewModel.SelectedLoader.Trim();
+        var selectedVersion = string.IsNullOrWhiteSpace(ViewModel.SelectedVersion)
+            ? "all"
+            : ViewModel.SelectedVersion.Trim();
+        var selectedCategories = ViewModel.SelectedModCategories.Count == 0
+            ? "all"
+            : string.Join(
+                ",",
+                ViewModel.SelectedModCategories
+                    .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
 
-        return string.Join(
-            ",",
-            ViewModel.SelectedModCategories
-                .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase));
+        return $"{selectedLoader}|{selectedVersion}|{selectedCategories}";
     }
 
     /// <summary>

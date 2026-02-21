@@ -501,8 +501,6 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Search Box -->
@@ -515,53 +513,31 @@
                                         Text="{Binding SearchQuery, Mode=TwoWay}"
                                         QuerySubmitted="ModSearchBox_QuerySubmitted"/>
 
-                                    <!-- Mod Loader Filter -->
-                                    <ComboBox
-                                        x:Name="LoaderComboBox"
-                                        x:Uid="ResourceDownloadPage_LoaderComboBox"
-                                        Grid.Column="1"
-                                        MinWidth="80"
-                                        Margin="0,0,4,0"
-                                        SelectedValue="{Binding SelectedLoader, Mode=TwoWay}"
-                                        SelectedValuePath="Tag"
-                                        SelectionChanged="LoaderComboBox_SelectionChanged">
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AllLoaders" Content="加载器" Tag="all" IsSelected="True" />
-                                        <ComboBoxItem Content="Fabric" Tag="fabric" />
-                                        <ComboBoxItem Content="Forge" Tag="forge" />
-                                        <ComboBoxItem Content="Quilt" Tag="quilt" />
-                                        <ComboBoxItem Content="Bolt" Tag="bolt" Visibility="Collapsed"/>
-                                        <ComboBoxItem Content="Legacy Fabric" Tag="legacy-fabric" />
-                                        <ComboBoxItem Content="LiteLoader" Tag="liteloader" />
-                                    </ComboBox>
-
-                                    <!-- Version Filter -->
-                                    <ComboBox
-                                        x:Name="VersionComboBox"
-                                        x:Uid="ResourceDownloadPage_VersionComboBox"
-                                        Grid.Column="2"
-                                        MinWidth="90"
-                                        Margin="0,0,4,0"
-                                        ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                        SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
-                                        SelectionChanged="VersionComboBox_SelectionChanged">
-                                    </ComboBox>
-
-                                    <!-- 类别筛选 -->
+                                    <!-- 统一筛选 -->
                                     <DropDownButton
                                         x:Name="ModCategoryFilterButton"
-                                        Grid.Column="3"
+                                        Grid.Column="1"
                                         MinWidth="110"
                                         Margin="0,0,8,0"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left">
                                         <DropDownButton.Content>
-                                            <TextBlock
-                                                Text="{Binding SelectedModCategoriesDisplayText, Mode=OneWay}"
-                                                TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE71C;" />
+                                                <TextBlock Text="筛选" />
+                                            </StackPanel>
                                         </DropDownButton.Content>
                                         <DropDownButton.Flyout>
                                             <Flyout x:Name="ModCategoryFilterFlyout" Placement="Bottom" Opening="ModCategoryFilterFlyout_Opening" Closed="ModCategoryFilterFlyout_Closed">
                                                 <StackPanel Width="360" Spacing="12" Padding="4">
+                                                    <TextBlock Text="加载器" FontWeight="SemiBold" />
+                                                    <labs:TokenView
+                                                        x:Name="ModLoaderPickerTokenView"
+                                                        IsWrapped="True"
+                                                        CanRemoveTokens="False"
+                                                        SelectionMode="Single"
+                                                        SelectionChanged="ModLoaderPickerTokenView_SelectionChanged" />
+
                                                     <TextBlock Text="筛选类型" FontWeight="SemiBold" />
 
                                                     <labs:TokenView
@@ -571,16 +547,24 @@
                                                         CanRemoveTokens="False"
                                                         SelectionMode="Multiple"
                                                         SelectionChanged="ModCategoryPickerTokenView_SelectionChanged" />
+
+                                                    <TextBlock Text="游戏版本" FontWeight="SemiBold" />
+                                                    <labs:TokenView
+                                                        x:Name="ModVersionPickerTokenView"
+                                                        MaxHeight="180"
+                                                        IsWrapped="True"
+                                                        CanRemoveTokens="False"
+                                                        SelectionMode="Single"
+                                                        SelectionChanged="ModVersionPickerTokenView_SelectionChanged" />
                                                 </StackPanel>
                                             </Flyout>
                                         </DropDownButton.Flyout>
                                     </DropDownButton>
 
-                                    <!-- TODO: 后续将加载器/类型/版本合并为统一筛选入口。 -->
                                     <!-- TODO: 当前 Flyout + TokenView 仅适配 Mods 页，后续按同一交互同步到光影/资源包/数据包/整合包/世界等资源页。 -->
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
-                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                         <ToggleButton 
                                             x:Name="ModrinthToggle"
                                             x:Uid="ResourceDownloadPage_ModrinthToggle"
