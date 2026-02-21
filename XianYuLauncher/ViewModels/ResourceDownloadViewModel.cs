@@ -2672,12 +2672,26 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             });
 
                             var searchResults = await Task.WhenAll(searchTasks);
-                            foreach (var mods in searchResults)
+                            
+                            // 实现多类别结果交错合并 (Interleave)
+                            // 假设有3个类别，结果分别是 A, B, C
+                            // 我们希望顺序是: A1, B1, C1, A2, B2, C2, ...
+                            int maxCount = searchResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
                             {
-                                foreach (var curseForgeMod in mods)
+                                foreach (var modList in searchResults)
                                 {
-                                    var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                    deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                        
+                                        // 使用 TryAdd 避免重复添加 (保留第一次出现的位置)
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
                                 }
                             }
 
@@ -3042,12 +3056,26 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             });
 
                             var categoryResults = await Task.WhenAll(categoryTasks);
-                            foreach (var mods in categoryResults)
+                            
+                            // 实现多类别结果交错合并 (Interleave)
+                            // 假设有3个类别，结果分别是 A, B, C
+                            // 我们希望顺序是: A1, B1, C1, A2, B2, C2, ...
+                            int maxCount = categoryResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
                             {
-                                foreach (var curseForgeMod in mods)
+                                foreach (var modList in categoryResults)
                                 {
-                                    var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                    deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                        
+                                        // 使用 TryAdd 避免重复添加 (保留第一次出现的位置)
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
                                 }
                             }
 
