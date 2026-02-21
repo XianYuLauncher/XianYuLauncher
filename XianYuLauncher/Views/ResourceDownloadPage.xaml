@@ -610,35 +610,6 @@
                                 </Grid>
                             </Grid>
 
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-
                             <!-- Loading Indicator -->
                             <ProgressRing
                                 Grid.Row="2"
@@ -839,35 +810,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1092,35 +1034,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1348,35 +1261,6 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-
                             <!-- Loading Indicator -->
                             <ProgressRing
                                 Grid.Row="2"
@@ -1578,35 +1462,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1812,35 +1667,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
