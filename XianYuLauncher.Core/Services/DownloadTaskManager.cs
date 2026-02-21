@@ -18,7 +18,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
     private DownloadTaskInfo? _currentTask;
     private CancellationTokenSource? _currentCts;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     public DownloadTaskInfo? CurrentTask => _currentTask;
     public bool HasActiveDownload => _currentTask?.State == DownloadTaskState.Downloading;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -66,7 +66,7 @@ public class UpdateService
     /// 检查是否有新版本可用
     /// </summary>
     /// <returns>更新信息，如果没有更新则返回null</returns>    
-    public async Task<UpdateInfo> CheckForUpdatesAsync()
+    public async Task<UpdateInfo?> CheckForUpdatesAsync()
     {
         _logger.LogInformation("开始检查更新");
         Debug.WriteLine("[DEBUG] 开始检查更新");
@@ -131,7 +131,7 @@ public class UpdateService
     /// 检查 Dev 通道更新 (GitHub)
     /// </summary>
     /// <returns>更新信息</returns>
-    public async Task<UpdateInfo> CheckForDevUpdateAsync()
+    public async Task<UpdateInfo?> CheckForDevUpdateAsync()
     {
         try
         {
@@ -153,7 +153,7 @@ public class UpdateService
                     string body = release.body ?? "No changelog provided.";
                     string publishedAt = release.published_at;
                     
-                    string downloadUrl = null;
+                    string? downloadUrl = null;
                     var archUrls = new Dictionary<string, string>();
                     
                     foreach (var asset in release.assets)

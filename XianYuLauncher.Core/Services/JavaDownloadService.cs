@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -60,7 +60,7 @@ public class JavaDownloadService : IJavaDownloadService
 
     public async Task<List<JavaVersionDownloadOption>> GetAvailableJavaVersionsAsync(CancellationToken cancellationToken = default)
     {
-        string platformKey = GetPlatformKey();
+        var platformKey = GetPlatformKey();
         if (string.IsNullOrEmpty(platformKey))
         {
             throw new PlatformNotSupportedException("当前操作系统不受支持");
@@ -97,7 +97,7 @@ public class JavaDownloadService : IJavaDownloadService
         return options.OrderByDescending(o => o.Name).ToList();
     }
 
-    private Dictionary<string, List<JavaRuntimeVariant>> GetPlatformDictionary(JavaRuntimeManifest manifest, string platform)
+    private Dictionary<string, List<JavaRuntimeVariant>>? GetPlatformDictionary(JavaRuntimeManifest manifest, string platform)
     {
         return platform switch
         {
@@ -116,7 +116,7 @@ public class JavaDownloadService : IJavaDownloadService
     public async Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string> statusCallback, CancellationToken cancellationToken = default)
     {
         // 1. 确定运行平台
-        string platformKey = GetPlatformKey();
+        var platformKey = GetPlatformKey();
         if (string.IsNullOrEmpty(platformKey))
         {
             throw new PlatformNotSupportedException("当前操作系统不受支持");
@@ -169,7 +169,7 @@ public class JavaDownloadService : IJavaDownloadService
         return javaPath;
     }
 
-    private string GetPlatformKey()
+    private string? GetPlatformKey()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -192,7 +192,7 @@ public class JavaDownloadService : IJavaDownloadService
         return null;
     }
 
-    private async Task<JavaRuntimeManifest> FetchMainManifestAsync(CancellationToken token)
+    private async Task<JavaRuntimeManifest?> FetchMainManifestAsync(CancellationToken token)
     {
         // 读取用户下载源设置
         var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
@@ -215,13 +215,13 @@ public class JavaDownloadService : IJavaDownloadService
         }
     }
 
-    private JavaRuntimeVariant FindBestVariant(JavaRuntimeManifest manifest, string platform, string component)
+    private JavaRuntimeVariant? FindBestVariant(JavaRuntimeManifest manifest, string platform, string component)
     {
         var platformDict = GetPlatformDictionary(manifest, platform);
 
         if (platformDict != null && platformDict.TryGetValue(component, out var list) && list.Count > 0)
         {
-            return list[0]; 
+            return list[0];
         }
 
         return null;

@@ -10,7 +10,7 @@ namespace XianYuLauncher.Core.Services;
 public static class SecretsService
 {
     private static SecretsConfig? _config;
-    private static readonly object _lock = new();
+    private static readonly Lock _lock = new();
 
     /// <summary>
     /// 获取配置
@@ -23,7 +23,7 @@ public static class SecretsService
             {
                 lock (_lock)
                 {
-                    _config ??= LoadConfig();
+                    _config = LoadConfig();
                 }
             }
             return _config;

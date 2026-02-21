@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,7 +17,7 @@ public class GameHistoryService : IGameHistoryService
     private readonly IFileService _fileService;
     private readonly string _historyFilePath;
     private List<GameLaunchHistory> _historyCache;
-    private readonly object _lock = new object();
+    private readonly Lock _lock = new();
     
     public GameHistoryService(IFileService fileService)
     {
