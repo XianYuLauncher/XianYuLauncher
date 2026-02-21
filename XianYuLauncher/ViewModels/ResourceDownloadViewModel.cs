@@ -370,7 +370,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string _selectedVersionDisplayText = "所有版本";
-    
+
+    [ObservableProperty]
+    private bool _isShowAllVersions = false;
+
     [ObservableProperty]
     private ObservableCollection<string> _availableVersions = new();
 
@@ -2307,23 +2310,33 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         try
         {
-            var versions = versionList.Select(v => v.Id).Distinct().ToList();
+            var versions = versionList
+                .Where(v => IsShowAllVersions || v.Type == "release")
+                .Select(v => v.Id)
+                .Distinct()
+                .ToList();
             
             // 保存当前选中的版本
-            var currentSelectedVersion = SelectedVersion;
+            var currentSelectedVersions = SelectedVersions.ToList();
             
             // 使用一次性替换集合的方式更新AvailableVersions，减少UI更新次数
             AvailableVersions = new ObservableCollection<string>(versions);
             
-            // 如果当前选中的版本仍然在可用版本列表中，则保留选中状态
-            if (!string.IsNullOrEmpty(currentSelectedVersion) && versions.Contains(currentSelectedVersion))
-            {
-                SelectedVersion = currentSelectedVersion;
-            }
+            // 重新验证选中的版本是否有效（如果不可用则移除，除非是 "all"）
+            // 注意：这里不做移除操作可能更好，因为用户可能想保留之前的选择即使现在不可见
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+        }
+    }
+
+    partial void OnIsShowAllVersionsChanged(bool value)
+    {
+        // 当 CheckBox 状态改变时，重新基于现有缓存的版本列表刷新 AvailableVersions
+        if (Versions != null && Versions.Count > 0)
+        {
+            _ = UpdateAvailableVersionsFromManifest(Versions.ToList());
         }
     }
 

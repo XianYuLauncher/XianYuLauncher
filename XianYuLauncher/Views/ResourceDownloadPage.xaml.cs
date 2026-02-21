@@ -145,7 +145,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         else if (e.PropertyName == nameof(ViewModel.ModCategories)
             || e.PropertyName == nameof(ViewModel.AvailableVersions)
             || e.PropertyName == nameof(ViewModel.SelectedLoader)
-            || e.PropertyName == nameof(ViewModel.SelectedVersion))
+            || e.PropertyName == nameof(ViewModel.SelectedVersion)
+            || e.PropertyName == nameof(ViewModel.IsShowAllVersions))
         {
             _modFilterTokenItemsDirty = true;
             TryRefreshModFilterTokenItems();
@@ -1504,6 +1505,24 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                     await ViewModel.DownloadModCommand.ExecuteAsync(project);
                     break;
             }
+        }
+    }
+
+    private void ShowAllVersionsCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        // 这里的逻辑由 ViewModel 的 IsShowAllVersions 属性变化驱动
+        // 只要 ViewModel 的 AvailableVersions 变了，OnPropertyChanged 就会触发 TryRefreshModFilterTokenItems
+        // 但我们需要确保 TokenView 被强制刷新，因为 TryRefreshModFilterTokenItems 有脏检查
+        
+        // 强制标记为 dirty 并刷新
+        _modFilterTokenItemsDirty = true;
+        
+        // 由于 CheckBox 就在 Flyout 里，此时 Flyout 是 Open 的，TryRefreshModFilterTokenItems 可能会被短路
+        // 所以我们需要针对这种情况特殊处理：如果 Flyout 打开，允许就地刷新版本部分
+        
+        if (ModCategoryFilterFlyout?.IsOpen == true)
+        {
+            RefreshModVersionTokenPicker();
         }
     }
 

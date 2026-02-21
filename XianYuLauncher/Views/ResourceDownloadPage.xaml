@@ -517,13 +517,12 @@
                                     <DropDownButton
                                         x:Name="ModCategoryFilterButton"
                                         Grid.Column="1"
-                                        MinWidth="110"
                                         Margin="0,0,8,0"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left">
                                         <DropDownButton.Content>
                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="&#xE71C;" />
+                                                <FontIcon Glyph="&#xE71C;" FontSize="12" />
                                                 <TextBlock Text="筛选" />
                                             </StackPanel>
                                         </DropDownButton.Content>
@@ -542,7 +541,7 @@
 
                                                     <labs:TokenView
                                                         x:Name="ModCategoryPickerTokenView"
-                                                        MaxHeight="320"
+                                                        MaxHeight="280"
                                                         IsWrapped="True"
                                                         CanRemoveTokens="False"
                                                         SelectionMode="Multiple"
@@ -556,6 +555,16 @@
                                                         CanRemoveTokens="False"
                                                         SelectionMode="Multiple"
                                                         SelectionChanged="ModVersionPickerTokenView_SelectionChanged" />
+                                                    
+                                                    <CheckBox
+                                                        FontSize="12"
+                                                        Margin="0,-6,0,0"
+                                                        VerticalContentAlignment="Center"
+                                                        IsChecked="{Binding IsShowAllVersions, Mode=TwoWay}"
+                                                        Checked="ShowAllVersionsCheckBox_CheckedChanged"
+                                                        Unchecked="ShowAllVersionsCheckBox_CheckedChanged">
+                                                        <TextBlock Text="显示所有版本" Margin="0,-4,0,0"/>
+                                                    </CheckBox>
                                                 </StackPanel>
                                             </Flyout>
                                         </DropDownButton.Flyout>
