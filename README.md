@@ -11,7 +11,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 [![GitHub Stars](https://img.shields.io/github/stars/XianYuLauncher/XianYuLauncher.svg?style=flat-square&label=⭐%20Stars)](https://github.com/XianYuLauncher/XianYuLauncher)
 [![GitHub Release](https://img.shields.io/github/v/release/XianYuLauncher/XianYuLauncher?style=flat-square%20Release&logo=github)](https://github.com/XianYuLauncher/XianYuLauncher/releases)
 [![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
-[![Bilibili](https://img.shields.io/badge/bilibili-@Spirit灵动工作室-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
+[![Bilibili](https://img.shields.io/badge/bilibili-@SpiritStudio-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
 
 [English](README.md) | [简体中文](README_zh-CN.md) | [繁體中文](README_zh-TW.md)
 </div>
