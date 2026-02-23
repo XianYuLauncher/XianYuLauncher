@@ -209,39 +209,44 @@ def run(args: argparse.Namespace) -> int:
     blocked = False
     for mod_id in range(current_id, effective_end_id + 1):
         url = f"https://www.mcmod.cn/class/{mod_id}.html"
+        start_ts = time.time()
+        status_label = "OK"
 
         try:
             status_code, html = fetch_html(url, args.user_agent, args.timeout_seconds)
 
             if status_code == 404:
-                print(f"[{mod_id}] 404 -> 占位")
                 append_line(output_path, PLACEHOLDER_LINE)
+                status_label = "404"
+                # small polite pause for 404s
                 time.sleep(1.0)
-                continue
-
-            if status_code == 403:
-                print(f"[{mod_id}] 403 -> 停止，避免进一步触发防御")
-                blocked = True
-                break
-
-            if status_code < 200 or status_code >= 300:
-                print(f"[{mod_id}] HTTP {status_code} -> 占位")
+            elif status_code == 403:
                 append_line(output_path, PLACEHOLDER_LINE)
+                status_label = "403"
+                blocked = True
+            elif status_code < 200 or status_code >= 300:
+                append_line(output_path, PLACEHOLDER_LINE)
+                status_label = f"HTTP{status_code}"
             else:
                 info = parse_html(mod_id, html)
                 line = build_line(info)
                 append_line(output_path, line)
-                if info.name:
-                    print(f"[{mod_id}] {info.name} (CF:{info.cf_id or '-'} MR:{info.mr_id or '-'})")
-                else:
-                    print(f"[{mod_id}] 空数据")
+                status_label = "OK"
 
-        except URLError as error:
-            print(f"[{mod_id}] 网络异常: {error} -> 占位")
+        except URLError:
             append_line(output_path, PLACEHOLDER_LINE)
-        except Exception as error:
-            print(f"[{mod_id}] 未知异常: {error} -> 占位")
+            status_label = "NETERR"
+        except Exception:
             append_line(output_path, PLACEHOLDER_LINE)
+            status_label = "ERR"
+
+        elapsed_ms = int((time.time() - start_ts) * 1000)
+        # Minimal real-time logging: only ID + status + elapsed
+        print(f"[{mod_id}] {status_label} {elapsed_ms}ms", flush=True)
+
+        if blocked:
+            # stop after printing
+            break
 
         sleep_ms = random.randint(args.delay_min_ms, args.delay_max_ms)
         time.sleep(sleep_ms / 1000.0)
