@@ -256,7 +256,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", help="已存在的 mod_data.txt 路径（可选）")
     parser.add_argument("--output", required=True, help="输出文件路径")
     parser.add_argument("--start-id", type=int, default=1, help="起始 ID")
-    parser.add_argument("--end-id", type=int, default=17793, help="结束 ID")
+    parser.add_argument("--end-id", type=int, default=2147483647, help="结束 ID（默认无限上限）")
     parser.add_argument("--max-items", type=int, default=0, help="本次最多处理条数，0 表示不限制")
     parser.add_argument("--delay-min-ms", type=int, default=500, help="最小延迟（毫秒）")
     parser.add_argument("--delay-max-ms", type=int, default=1500, help="最大延迟（毫秒）")
