@@ -11,14 +11,19 @@ on:
         description: "本次最多抓取条数（0=不限制）"
         required: true
         default: "300"
-      patch_start_id:
-        description: "Patch 模式起始 ID（0 表示禁用）"
+      patch_mode:
+        description: "是否启用 patch 模式（仅替换指定区间）"
+        required: true
+        type: boolean
+        default: false
+      patch_start:
+        description: "Patch 模式起始 ID（从1开始）"
         required: false
-        default: "0"
-      patch_max_items:
-        description: "Patch 模式替换条数（与 patch_start_id 配合，0 表示禁用）"
+        default: "1"
+      patch_count:
+        description: "Patch 模式替换条数（与 patch_start 配合）"
         required: false
-        default: "0"
+        default: "100"
       full_rebuild:
         description: "是否忽略旧文件并全量重建"
         required: true
@@ -117,10 +122,11 @@ jobs:
             --start-id "1"
             --max-items "${{ inputs.max_items }}")
 
-          # pass patch args if provided
-          if [ -n "${{ inputs.patch_start_id }}" ] && [ "${{ inputs.patch_start_id }}" != "0" ]; then
-            CMD+=(--patch-start-id "${{ inputs.patch_start_id }}")
-            CMD+=(--patch-max-items "${{ inputs.patch_max_items }}")
+          # enable patch mode if requested
+          if [ "${{ inputs.patch_mode }}" = "true" ]; then
+            CMD+=(--patch-mode)
+            CMD+=(--patch-start "${{ inputs.patch_start }}")
+            CMD+=(--patch-count "${{ inputs.patch_count }}")
           fi
 
           if [ "${{ inputs.full_rebuild }}" = "true" ]; then

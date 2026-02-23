@@ -185,11 +185,14 @@ def run(args: argparse.Namespace) -> int:
         existing_lines = load_lines(input_path)
 
     # Patch mode: only replace a specified interval of existing lines
-    if args.patch_start_id and args.patch_start_id > 0:
-        patch_start = args.patch_start_id
-        patch_max = args.patch_max_items
+    if args.patch_mode:
+        patch_start = args.patch_start
+        patch_max = args.patch_count
+        if patch_start is None or patch_start <= 0:
+            print("--patch-start 必须为正整数")
+            return 1
         if patch_max is None or patch_max <= 0:
-            print("--patch-max-items 必须为正整数")
+            print("--patch-count 必须为正整数")
             return 1
 
         patch_end = patch_start + patch_max - 1
@@ -331,14 +334,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, help="输出文件路径")
     parser.add_argument("--start-id", type=int, default=1, help="起始 ID")
     parser.add_argument("--end-id", type=int, default=2147483647, help="结束 ID（默认无限上限）")
-    parser.add_argument("--max-items", type=int, default=0, help="本次最多处理条数，0 表示不限制")
+    parser.add_argument("--max-items", type=int, default=0, help="本次最多处理条数，0 表示不限制（非 patch 模式）")
     parser.add_argument("--delay-min-ms", type=int, default=200, help="最小延迟（毫秒）")
     parser.add_argument("--delay-max-ms", type=int, default=500, help="最大延迟（毫秒）")
     parser.add_argument("--timeout-seconds", type=float, default=15.0, help="单请求超时秒数")
     parser.add_argument("--user-agent", default=DEFAULT_UA, help="请求 User-Agent")
     parser.add_argument("--full-rebuild", action="store_true", help="忽略输入文件，从 start-id 全量重建")
-    parser.add_argument("--patch-start-id", type=int, default=0, help="patch 模式: 起始 ID (从1开始), 0 表示禁用")
-    parser.add_argument("--patch-max-items", type=int, default=0, help="patch 模式: 本次最多替换条数，必须 >0")
+    parser.add_argument("--patch-mode", action="store_true", help="启用 patch 模式：只替换指定区间（需要 --input）")
+    parser.add_argument("--patch-start", type=int, default=0, help="patch 模式: 起始 ID (从1开始)")
+    parser.add_argument("--patch-count", type=int, default=0, help="patch 模式: 本次替换条数，必须 >0")
 
     args = parser.parse_args()
     if args.start_id < 1:
@@ -349,6 +353,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("延迟参数必须 >= 0")
     if args.delay_max_ms < args.delay_min_ms:
         parser.error("--delay-max-ms 必须 >= --delay-min-ms")
+    if args.patch_mode and args.full_rebuild:
+        parser.error("--patch-mode 与 --full-rebuild 互斥，不可同时使用")
+    if args.patch_mode and not args.input:
+        parser.error("--patch-mode 需要提供 --input 已存在的文件作为基础")
     return args
 
 
