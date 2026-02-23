@@ -11,6 +11,14 @@ on:
         description: "本次最多抓取条数（0=不限制）"
         required: true
         default: "300"
+      patch_start_id:
+        description: "Patch 模式起始 ID（0 表示禁用）"
+        required: false
+        default: "0"
+      patch_max_items:
+        description: "Patch 模式替换条数（与 patch_start_id 配合，0 表示禁用）"
+        required: false
+        default: "0"
       full_rebuild:
         description: "是否忽略旧文件并全量重建"
         required: true
@@ -108,6 +116,12 @@ jobs:
             --output "$LOCAL_OUTPUT"
             --start-id "1"
             --max-items "${{ inputs.max_items }}")
+
+          # pass patch args if provided
+          if [ -n "${{ inputs.patch_start_id }}" ] && [ "${{ inputs.patch_start_id }}" != "0" ]; then
+            CMD+=(--patch-start-id "${{ inputs.patch_start_id }}")
+            CMD+=(--patch-max-items "${{ inputs.patch_max_items }}")
+          fi
 
           if [ "${{ inputs.full_rebuild }}" = "true" ]; then
             CMD+=(--full-rebuild)

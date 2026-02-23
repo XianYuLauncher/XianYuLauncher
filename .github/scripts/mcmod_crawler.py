@@ -184,6 +184,75 @@ def run(args: argparse.Namespace) -> int:
         ensure_line_ending(input_path)
         existing_lines = load_lines(input_path)
 
+    # Patch mode: only replace a specified interval of existing lines
+    if args.patch_start_id and args.patch_start_id > 0:
+        patch_start = args.patch_start_id
+        patch_max = args.patch_max_items
+        if patch_max is None or patch_max <= 0:
+            print("--patch-max-items 必须为正整数")
+            return 1
+
+        patch_end = patch_start + patch_max - 1
+
+        # ensure existing_lines length covers up to patch_start-1
+        if len(existing_lines) < patch_start - 1:
+            # pad with placeholders
+            existing_lines.extend([PLACEHOLDER_LINE] * (patch_start - 1 - len(existing_lines)))
+
+        # ensure existing_lines covers the patch_end as well (we will replace these indices)
+        if len(existing_lines) < patch_end:
+            existing_lines.extend([PLACEHOLDER_LINE] * (patch_end - len(existing_lines)))
+
+        print(f"=== Patch 模式: 替换区间 {patch_start} - {patch_end} ===")
+
+        blocked = False
+        for mod_id in range(patch_start, patch_end + 1):
+            url = f"https://www.mcmod.cn/class/{mod_id}.html"
+            start_ts = time.time()
+            status_label = "OK"
+
+            try:
+                status_code, html = fetch_html(url, args.user_agent, args.timeout_seconds)
+
+                if status_code == 404:
+                    existing_lines[mod_id - 1] = PLACEHOLDER_LINE
+                    status_label = "404"
+                    time.sleep(1.0)
+                elif status_code == 403:
+                    existing_lines[mod_id - 1] = PLACEHOLDER_LINE
+                    status_label = "403"
+                    blocked = True
+                elif status_code < 200 or status_code >= 300:
+                    existing_lines[mod_id - 1] = PLACEHOLDER_LINE
+                    status_label = f"HTTP{status_code}"
+                else:
+                    info = parse_html(mod_id, html)
+                    line = build_line(info)
+                    existing_lines[mod_id - 1] = line
+                    status_label = "OK"
+
+            except URLError:
+                existing_lines[mod_id - 1] = PLACEHOLDER_LINE
+                status_label = "NETERR"
+            except Exception:
+                existing_lines[mod_id - 1] = PLACEHOLDER_LINE
+                status_label = "ERR"
+
+            elapsed_ms = int((time.time() - start_ts) * 1000)
+            print(f"[{mod_id}] {status_label} {elapsed_ms}ms", flush=True)
+
+            if blocked:
+                break
+
+            sleep_ms = random.randint(args.delay_min_ms, args.delay_max_ms)
+            time.sleep(sleep_ms / 1000.0)
+
+        # write merged result (preserve lines outside patched range)
+        write_lines(output_path, existing_lines)
+        print("=== Patch 结束，已写回合并文件 ===")
+        return 2 if blocked else 0
+
+    # Normal/append mode (non-patch)
     if args.full_rebuild:
         write_lines(output_path, [])
         current_id = args.start_id
@@ -268,6 +337,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout-seconds", type=float, default=15.0, help="单请求超时秒数")
     parser.add_argument("--user-agent", default=DEFAULT_UA, help="请求 User-Agent")
     parser.add_argument("--full-rebuild", action="store_true", help="忽略输入文件，从 start-id 全量重建")
+    parser.add_argument("--patch-start-id", type=int, default=0, help="patch 模式: 起始 ID (从1开始), 0 表示禁用")
+    parser.add_argument("--patch-max-items", type=int, default=0, help="patch 模式: 本次最多替换条数，必须 >0")
 
     args = parser.parse_args()
     if args.start_id < 1:
