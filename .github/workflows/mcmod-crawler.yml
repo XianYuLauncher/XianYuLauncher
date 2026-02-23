@@ -103,7 +103,7 @@ jobs:
       - name: Run crawler
         shell: bash
         run: |
-          CMD=(python .github/scripts/mcmod_crawler.py
+          CMD=(python -u .github/scripts/mcmod_crawler.py
             --input "$LOCAL_INPUT"
             --output "$LOCAL_OUTPUT"
             --start-id "1"
