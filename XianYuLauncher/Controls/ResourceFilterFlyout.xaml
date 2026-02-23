@@ -43,6 +43,7 @@
             FontSize="12"
             Margin="0,-6,0,0"
             VerticalContentAlignment="Center"
+            IsChecked="{Binding IsShowAllVersions, Mode=TwoWay}"
             Checked="ShowAllVersionsCheckBox_Changed"
             Unchecked="ShowAllVersionsCheckBox_Changed">
             <TextBlock Text="显示所有版本" Margin="0,-4,0,0"/>

@@ -748,7 +748,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     #region 通用筛选事件处理
     private void ResourceFilterControl_SelectionChanged(object sender, EventArgs e)
     {
-        // 根据当前选中的 Tab 更新对应的 ViewModel 属性
+        // 只更新 ViewModel 中的筛选状态，不触发刷新
+        // 刷新逻辑在 Flyout_Closed 中处理
         switch (ResourceTabView.SelectedIndex)
         {
             case 2: // 光影
@@ -767,17 +768,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                 UpdateWorldFilterSelection();
                 break;
         }
-
-        // 立即触发筛选刷新
-        _ = RefreshCurrentTabAfterFilterChange();
     }
 
     private void ResourceFilterControl_ShowAllVersionsChanged(object sender, EventArgs e)
     {
+        // ShowAllVersions 没有对应的 Flyout_Closed 处理，需要立即刷新
         if (sender is ResourceFilterFlyout filterControl)
         {
             ViewModel.IsShowAllVersions = filterControl.IsShowAllVersions;
-            // 立即触发筛选刷新
             _ = RefreshCurrentTabAfterFilterChange();
         }
     }
