@@ -339,7 +339,57 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string _selectedWorldCategory = "all";
-    
+
+    // 多选属性 - 光影
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedShaderPackLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedShaderPackCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedShaderPackVersions = new();
+
+    // 多选属性 - 资源包
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedResourcePackLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedResourcePackCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedResourcePackVersions = new();
+
+    // 多选属性 - 数据包
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedDatapackLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedDatapackCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedDatapackVersions = new();
+
+    // 多选属性 - 整合包
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedModpackLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedModpackCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedModpackVersions = new();
+
+    // 多选属性 - 世界
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedWorldLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedWorldCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedWorldVersions = new();
+
     // 类别集合（用于动态绑定）
     [ObservableProperty]
     private ObservableCollection<Models.CategoryItem> _modCategories = new();

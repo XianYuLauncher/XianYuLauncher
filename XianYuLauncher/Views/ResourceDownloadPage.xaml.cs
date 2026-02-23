@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Contracts.Services;using System.Collections.Generic;using System.ComponentModel;using System.Runtime.InteropServices;using CommunityToolkit.Labs.WinUI;
+using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Models;using XianYuLauncher.Contracts.Services;using XianYuLauncher.Controls;using System.Collections.Generic;using System.Collections.ObjectModel;using System.ComponentModel;using System.Runtime.InteropServices;using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Views;
 
@@ -9,6 +9,27 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private bool _isUpdatingModVersionTokenViewSelection = false;
     private string _modFilterSelectionSnapshot = string.Empty;
     private bool _modFilterTokenItemsDirty = true;
+
+    // 光影页面筛选状态
+    private string _shaderPackFilterSelectionSnapshot = string.Empty;
+    private bool _shaderPackFilterTokenItemsDirty = true;
+
+    // 资源包页面筛选状态
+    private string _resourcePackFilterSelectionSnapshot = string.Empty;
+    private bool _resourcePackFilterTokenItemsDirty = true;
+
+    // 数据包页面筛选状态
+    private string _datapackFilterSelectionSnapshot = string.Empty;
+    private bool _datapackFilterTokenItemsDirty = true;
+
+    // 整合包页面筛选状态
+    private string _modpackFilterSelectionSnapshot = string.Empty;
+    private bool _modpackFilterTokenItemsDirty = true;
+
+    // 世界页面筛选状态
+    private string _worldFilterSelectionSnapshot = string.Empty;
+    private bool _worldFilterTokenItemsDirty = true;
+
     private const string DefaultCategoryIconGlyph = "\uE8FD";
 
     // 静态属性，用于存储需要切换的标签页索引
@@ -464,6 +485,451 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
         TryRefreshModFilterTokenItems();
     }
+
+    #region 光影页面筛选 Flyout
+    private void ShaderPackFilterFlyout_Opening(object sender, object e)
+    {
+        _shaderPackFilterSelectionSnapshot = GetShaderPackFilterSelectionStateKey();
+        RefreshShaderPackFilterTokenItems();
+    }
+
+    private async void ShaderPackFilterFlyout_Closed(object sender, object e)
+    {
+        var hasFilterChanged = !string.Equals(
+            _shaderPackFilterSelectionSnapshot,
+            GetShaderPackFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
+        {
+            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void RefreshShaderPackFilterTokenItems()
+    {
+        if (ShaderPackFilterControl == null) return;
+
+        // 设置加载器（为空，因为光影不需要加载器筛选）
+        var loaders = CreateLoaderTokenItems();
+        ShaderPackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
+
+        // 设置类别
+        var categories = CreateCategoryTokenItems(ViewModel.ShaderPackCategories);
+        ShaderPackFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
+
+        // 设置版本
+        var versions = CreateVersionTokenItems();
+        ShaderPackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        // 设置选中状态
+        ShaderPackFilterControl.SetSelectedLoaders(ViewModel.SelectedShaderPackLoaders);
+        ShaderPackFilterControl.SetSelectedCategories(ViewModel.SelectedShaderPackCategories);
+        ShaderPackFilterControl.SetSelectedVersions(ViewModel.SelectedShaderPackVersions);
+        ShaderPackFilterControl.IsShowAllVersions = ViewModel.IsShowAllVersions;
+    }
+
+    private string GetShaderPackFilterSelectionStateKey()
+    {
+        if (ShaderPackFilterControl == null) return string.Empty;
+        return $"{string.Join(",", ViewModel.SelectedShaderPackLoaders)}|{string.Join(",", ViewModel.SelectedShaderPackCategories)}|{string.Join(",", ViewModel.SelectedShaderPackVersions)}|{ViewModel.IsShowAllVersions}";
+    }
+    #endregion
+
+    #region 资源包页面筛选 Flyout
+    private void ResourcePackFilterFlyout_Opening(object sender, object e)
+    {
+        _resourcePackFilterSelectionSnapshot = GetResourcePackFilterSelectionStateKey();
+        RefreshResourcePackFilterTokenItems();
+    }
+
+    private async void ResourcePackFilterFlyout_Closed(object sender, object e)
+    {
+        var hasFilterChanged = !string.Equals(
+            _resourcePackFilterSelectionSnapshot,
+            GetResourcePackFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
+        {
+            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void RefreshResourcePackFilterTokenItems()
+    {
+        if (ResourcePackFilterControl == null) return;
+
+        var loaders = CreateLoaderTokenItems();
+        ResourcePackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
+
+        var categories = CreateCategoryTokenItems(ViewModel.ResourcePackCategories);
+        ResourcePackFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
+
+        var versions = CreateVersionTokenItems();
+        ResourcePackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        ResourcePackFilterControl.SetSelectedLoaders(ViewModel.SelectedResourcePackLoaders);
+        ResourcePackFilterControl.SetSelectedCategories(ViewModel.SelectedResourcePackCategories);
+        ResourcePackFilterControl.SetSelectedVersions(ViewModel.SelectedResourcePackVersions);
+        ResourcePackFilterControl.IsShowAllVersions = ViewModel.IsShowAllVersions;
+    }
+
+    private string GetResourcePackFilterSelectionStateKey()
+    {
+        if (ResourcePackFilterControl == null) return string.Empty;
+        return $"{string.Join(",", ViewModel.SelectedResourcePackLoaders)}|{string.Join(",", ViewModel.SelectedResourcePackCategories)}|{string.Join(",", ViewModel.SelectedResourcePackVersions)}|{ViewModel.IsShowAllVersions}";
+    }
+    #endregion
+
+    #region 数据包页面筛选 Flyout
+    private void DatapackFilterFlyout_Opening(object sender, object e)
+    {
+        _datapackFilterSelectionSnapshot = GetDatapackFilterSelectionStateKey();
+        RefreshDatapackFilterTokenItems();
+    }
+
+    private async void DatapackFilterFlyout_Closed(object sender, object e)
+    {
+        var hasFilterChanged = !string.Equals(
+            _datapackFilterSelectionSnapshot,
+            GetDatapackFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded)
+        {
+            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void RefreshDatapackFilterTokenItems()
+    {
+        if (DatapackFilterControl == null) return;
+
+        var loaders = CreateLoaderTokenItems();
+        DatapackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
+
+        var categories = CreateCategoryTokenItems(ViewModel.DatapackCategories);
+        DatapackFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
+
+        var versions = CreateVersionTokenItems();
+        DatapackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        DatapackFilterControl.SetSelectedLoaders(ViewModel.SelectedDatapackLoaders);
+        DatapackFilterControl.SetSelectedCategories(ViewModel.SelectedDatapackCategories);
+        DatapackFilterControl.SetSelectedVersions(ViewModel.SelectedDatapackVersions);
+        DatapackFilterControl.IsShowAllVersions = ViewModel.IsShowAllVersions;
+    }
+
+    private string GetDatapackFilterSelectionStateKey()
+    {
+        if (DatapackFilterControl == null) return string.Empty;
+        return $"{string.Join(",", ViewModel.SelectedDatapackLoaders)}|{string.Join(",", ViewModel.SelectedDatapackCategories)}|{string.Join(",", ViewModel.SelectedDatapackVersions)}|{ViewModel.IsShowAllVersions}";
+    }
+    #endregion
+
+    #region 整合包页面筛选 Flyout
+    private void ModpackFilterFlyout_Opening(object sender, object e)
+    {
+        _modpackFilterSelectionSnapshot = GetModpackFilterSelectionStateKey();
+        RefreshModpackFilterTokenItems();
+    }
+
+    private async void ModpackFilterFlyout_Closed(object sender, object e)
+    {
+        var hasFilterChanged = !string.Equals(
+            _modpackFilterSelectionSnapshot,
+            GetModpackFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded)
+        {
+            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void RefreshModpackFilterTokenItems()
+    {
+        if (ModpackFilterControl == null) return;
+
+        var loaders = CreateLoaderTokenItems();
+        ModpackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
+
+        var categories = CreateCategoryTokenItems(ViewModel.ModpackCategories);
+        ModpackFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
+
+        var versions = CreateVersionTokenItems();
+        ModpackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        ModpackFilterControl.SetSelectedLoaders(ViewModel.SelectedModpackLoaders);
+        ModpackFilterControl.SetSelectedCategories(ViewModel.SelectedModpackCategories);
+        ModpackFilterControl.SetSelectedVersions(ViewModel.SelectedModpackVersions);
+        ModpackFilterControl.IsShowAllVersions = ViewModel.IsShowAllVersions;
+    }
+
+    private string GetModpackFilterSelectionStateKey()
+    {
+        if (ModpackFilterControl == null) return string.Empty;
+        return $"{string.Join(",", ViewModel.SelectedModpackLoaders)}|{string.Join(",", ViewModel.SelectedModpackCategories)}|{string.Join(",", ViewModel.SelectedModpackVersions)}|{ViewModel.IsShowAllVersions}";
+    }
+    #endregion
+
+    #region 世界页面筛选 Flyout
+    private void WorldFilterFlyout_Opening(object sender, object e)
+    {
+        _worldFilterSelectionSnapshot = GetWorldFilterSelectionStateKey();
+        RefreshWorldFilterTokenItems();
+    }
+
+    private async void WorldFilterFlyout_Closed(object sender, object e)
+    {
+        var hasFilterChanged = !string.Equals(
+            _worldFilterSelectionSnapshot,
+            GetWorldFilterSelectionStateKey(),
+            StringComparison.Ordinal);
+
+        if (!hasFilterChanged)
+        {
+            return;
+        }
+
+        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
+        {
+            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void RefreshWorldFilterTokenItems()
+    {
+        if (WorldFilterControl == null) return;
+
+        var loaders = CreateLoaderTokenItems();
+        WorldFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
+
+        var categories = CreateCategoryTokenItems(ViewModel.WorldCategories);
+        WorldFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
+
+        var versions = CreateVersionTokenItems();
+        WorldFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        WorldFilterControl.SetSelectedLoaders(ViewModel.SelectedWorldLoaders);
+        WorldFilterControl.SetSelectedCategories(ViewModel.SelectedWorldCategories);
+        WorldFilterControl.SetSelectedVersions(ViewModel.SelectedWorldVersions);
+        WorldFilterControl.IsShowAllVersions = ViewModel.IsShowAllVersions;
+    }
+
+    private string GetWorldFilterSelectionStateKey()
+    {
+        if (WorldFilterControl == null) return string.Empty;
+        return $"{string.Join(",", ViewModel.SelectedWorldLoaders)}|{string.Join(",", ViewModel.SelectedWorldCategories)}|{string.Join(",", ViewModel.SelectedWorldVersions)}|{ViewModel.IsShowAllVersions}";
+    }
+    #endregion
+
+    #region 通用筛选事件处理
+    private void ResourceFilterControl_SelectionChanged(object sender, EventArgs e)
+    {
+        // 根据当前选中的 Tab 更新对应的 ViewModel 属性
+        switch (ResourceTabView.SelectedIndex)
+        {
+            case 2: // 光影
+                UpdateShaderPackFilterSelection();
+                break;
+            case 3: // 资源包
+                UpdateResourcePackFilterSelection();
+                break;
+            case 4: // 数据包
+                UpdateDatapackFilterSelection();
+                break;
+            case 5: // 整合包
+                UpdateModpackFilterSelection();
+                break;
+            case 6: // 世界
+                UpdateWorldFilterSelection();
+                break;
+        }
+
+        // 立即触发筛选刷新
+        _ = RefreshCurrentTabAfterFilterChange();
+    }
+
+    private void ResourceFilterControl_ShowAllVersionsChanged(object sender, EventArgs e)
+    {
+        if (sender is ResourceFilterFlyout filterControl)
+        {
+            ViewModel.IsShowAllVersions = filterControl.IsShowAllVersions;
+            // 立即触发筛选刷新
+            _ = RefreshCurrentTabAfterFilterChange();
+        }
+    }
+
+    private async Task RefreshCurrentTabAfterFilterChange()
+    {
+        switch (ResourceTabView.SelectedIndex)
+        {
+            case 2 when _shaderPacksLoaded:
+                await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+                break;
+            case 3 when _resourcePacksLoaded:
+                await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+                break;
+            case 4 when _datapacksLoaded:
+                await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+                break;
+            case 5 when _modpacksLoaded:
+                await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+                break;
+            case 6 when _worldsLoaded:
+                await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+                break;
+        }
+    }
+
+    private ResourceFilterFlyout? GetCurrentFilterControl()
+    {
+        return ResourceTabView.SelectedIndex switch
+        {
+            2 => ShaderPackFilterControl,
+            3 => ResourcePackFilterControl,
+            4 => DatapackFilterControl,
+            5 => ModpackFilterControl,
+            6 => WorldFilterControl,
+            _ => null
+        };
+    }
+
+    private void UpdateShaderPackFilterSelection()
+    {
+        if (ShaderPackFilterControl == null) return;
+        ViewModel.SelectedShaderPackLoaders = new ObservableCollection<string>(ShaderPackFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedShaderPackCategories = new ObservableCollection<string>(ShaderPackFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedShaderPackVersions = new ObservableCollection<string>(ShaderPackFilterControl.SelectedVersionTags);
+    }
+
+    private void UpdateResourcePackFilterSelection()
+    {
+        if (ResourcePackFilterControl == null) return;
+        ViewModel.SelectedResourcePackLoaders = new ObservableCollection<string>(ResourcePackFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedResourcePackCategories = new ObservableCollection<string>(ResourcePackFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedResourcePackVersions = new ObservableCollection<string>(ResourcePackFilterControl.SelectedVersionTags);
+    }
+
+    private void UpdateDatapackFilterSelection()
+    {
+        if (DatapackFilterControl == null) return;
+        ViewModel.SelectedDatapackLoaders = new ObservableCollection<string>(DatapackFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedDatapackCategories = new ObservableCollection<string>(DatapackFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedDatapackVersions = new ObservableCollection<string>(DatapackFilterControl.SelectedVersionTags);
+    }
+
+    private void UpdateModpackFilterSelection()
+    {
+        if (ModpackFilterControl == null) return;
+        ViewModel.SelectedModpackLoaders = new ObservableCollection<string>(ModpackFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedModpackCategories = new ObservableCollection<string>(ModpackFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedModpackVersions = new ObservableCollection<string>(ModpackFilterControl.SelectedVersionTags);
+    }
+
+    private void UpdateWorldFilterSelection()
+    {
+        if (WorldFilterControl == null) return;
+        ViewModel.SelectedWorldLoaders = new ObservableCollection<string>(WorldFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedWorldCategories = new ObservableCollection<string>(WorldFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedWorldVersions = new ObservableCollection<string>(WorldFilterControl.SelectedVersionTags);
+    }
+
+    #endregion
+
+    #region 辅助方法 - 创建 TokenItems
+    private List<TokenItem> CreateLoaderTokenItems()
+    {
+        var loaders = new (string Tag, string DisplayName, string Glyph)[]
+        {
+            ("all", "所有加载器", "\uE71D"),
+            ("fabric", "Fabric", "\uE8D2"),
+            ("forge", "Forge", "\uE7FC"),
+            ("quilt", "Quilt", "\uE8FD"),
+            ("legacy-fabric", "Legacy Fabric", "\uE8FD"),
+            ("liteloader", "LiteLoader", "\uE9CE")
+        };
+
+        return loaders.Select(l => new TokenItem
+        {
+            Content = l.DisplayName,
+            Tag = l.Tag,
+            Icon = new FontIcon { Glyph = l.Glyph },
+            Margin = new Thickness(0, 0, 6, 6),
+            Padding = new Thickness(8, 4, 8, 4)
+        }).ToList();
+    }
+
+    private List<TokenItem> CreateCategoryTokenItems(IEnumerable<CategoryItem> categories)
+    {
+        // ViewModel 的类别集合已经包含了 "all" 项目，无需重复添加
+        var items = new List<TokenItem>();
+
+        foreach (var category in categories)
+        {
+            items.Add(new TokenItem
+            {
+                Content = category.DisplayName,
+                Tag = category.Tag,
+                Icon = new FontIcon { Glyph = GetCategoryGlyph(category.Tag) },
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(8, 4, 8, 4)
+            });
+        }
+
+        return items;
+    }
+
+    private List<TokenItem> CreateVersionTokenItems()
+    {
+        var allToken = new TokenItem
+        {
+            Content = "所有版本",
+            Tag = "all",
+            Icon = new FontIcon { Glyph = "\uE71D" },
+            Margin = new Thickness(0, 0, 6, 6),
+            Padding = new Thickness(8, 4, 8, 4)
+        };
+
+        var items = new List<TokenItem> { allToken };
+
+        foreach (var version in ViewModel.AvailableVersions)
+        {
+            items.Add(new TokenItem
+            {
+                Content = version,
+                Tag = version,
+                Icon = new FontIcon { Glyph = "\uE8FD" },
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(8, 4, 8, 4)
+            });
+        }
+
+        return items;
+    }
+    #endregion
 
     private void TryRefreshModFilterTokenItems()
     {
