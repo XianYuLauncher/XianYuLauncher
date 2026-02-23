@@ -116,13 +116,14 @@ jobs:
           "${CMD[@]}"
 
       - name: Upload result as workflow artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: mcmod-data-output
           path: ${{ env.LOCAL_OUTPUT }}
 
       - name: Update gist file
-        if: ${{ !inputs.dry_run }}
+        if: ${{ always() && !inputs.dry_run }}
         shell: bash
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
