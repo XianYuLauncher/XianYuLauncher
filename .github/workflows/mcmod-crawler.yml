@@ -1,0 +1,167 @@
+name: McMod Crawler (Manual to Gist)
+
+on:
+  workflow_dispatch:
+    inputs:
+      gist_filename:
+        description: "Gist 中保存的文件名"
+        required: true
+        default: "mod_data.txt"
+      max_items:
+        description: "本次最多抓取条数（0=不限制）"
+        required: true
+        default: "300"
+      full_rebuild:
+        description: "是否忽略旧文件并全量重建"
+        required: true
+        type: boolean
+        default: false
+      dry_run:
+        description: "仅运行抓取，不上传回 Gist"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  crawl-and-upload:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: mcmod-crawler-gist
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve config
+        shell: bash
+        run: |
+          GIST_ID="${{ secrets.GIST_ID }}"
+
+          if [ -z "$GIST_ID" ]; then
+            echo "Missing required secret: GIST_ID" >&2
+            exit 1
+          fi
+
+          echo "GIST_ID=$GIST_ID" >> "$GITHUB_ENV"
+          echo "GIST_FILENAME=${{ inputs.gist_filename }}" >> "$GITHUB_ENV"
+          echo "LOCAL_INPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}" >> "$GITHUB_ENV"
+          echo "LOCAL_OUTPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}.new" >> "$GITHUB_ENV"
+
+      - name: Download existing data from Gist
+        if: ${{ !inputs.full_rebuild }}
+        shell: bash
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          gist_id = os.environ["GIST_ID"]
+          file_name = os.environ["GIST_FILENAME"]
+          local_input = os.environ["LOCAL_INPUT"]
+          token = os.environ["GIST_TOKEN"]
+
+          req = urllib.request.Request(
+              f"https://api.github.com/gists/{gist_id}",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+
+          content = ""
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  payload = json.loads(resp.read().decode("utf-8"))
+              file_info = payload.get("files", {}).get(file_name)
+              if file_info:
+                  content = file_info.get("content", "")
+          except Exception as ex:
+              print(f"读取 Gist 失败，按首次运行处理: {ex}")
+
+          with open(local_input, "w", encoding="utf-8", newline="") as f:
+              f.write(content)
+
+          print(f"已写入本地输入文件: {local_input}, 字符数={len(content)}")
+          PY
+
+      - name: Prepare empty input for full rebuild
+        if: ${{ inputs.full_rebuild }}
+        shell: bash
+        run: |
+          : > "$LOCAL_INPUT"
+
+      - name: Run crawler
+        shell: bash
+        run: |
+          CMD=(python .github/scripts/mcmod_crawler.py
+            --input "$LOCAL_INPUT"
+            --output "$LOCAL_OUTPUT"
+            --start-id "1"
+            --max-items "${{ inputs.max_items }}")
+
+          if [ "${{ inputs.full_rebuild }}" = "true" ]; then
+            CMD+=(--full-rebuild)
+          fi
+
+          "${CMD[@]}"
+
+      - name: Upload result as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcmod-data-output
+          path: ${{ env.LOCAL_OUTPUT }}
+
+      - name: Update gist file
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          gist_id = os.environ["GIST_ID"]
+          file_name = os.environ["GIST_FILENAME"]
+          local_output = os.environ["LOCAL_OUTPUT"]
+          token = os.environ["GIST_TOKEN"]
+
+          with open(local_output, "r", encoding="utf-8", errors="ignore") as f:
+              content = f.read()
+
+          payload = {
+              "files": {
+                  file_name: {
+                      "content": content,
+                  }
+              }
+          }
+
+          req = urllib.request.Request(
+              f"https://api.github.com/gists/{gist_id}",
+              method="PATCH",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "Content-Type": "application/json",
+              },
+          )
+
+          with urllib.request.urlopen(req, timeout=60) as resp:
+              _ = resp.read().decode("utf-8")
+
+          print(f"Gist 更新完成: {gist_id} / {file_name} / chars={len(content)}")
+          PY
