@@ -221,8 +221,9 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
 
     private void ShowAllVersionsCheckBox_Click(object sender, RoutedEventArgs e)
     {
-        // 直接使用 Click 事件，避免 Checked/Unchecked 事件的循环问题
-        // 此时 IsChecked 已经是新状态
+        // 点击时，IsChecked 已经是新状态
+        // 手动同步到依赖属性
+        IsShowAllVersions = ShowAllVersionsCheckBox.IsChecked == true;
 
         // 强制刷新版本 TokenView（模拟 Mod 页面的逻辑）
         RefreshVersionTokenView();
