@@ -3301,7 +3301,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
+                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
                 
                 if (cachedData != null)
                 {
@@ -3377,7 +3377,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                        "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                         modrinthResourcePacks, modrinthTotalHits);
                 }
             }
@@ -3386,7 +3386,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory);
+                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
                 
                 if (cachedData != null)
                 {
@@ -3417,7 +3417,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                            "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                             curseForgeResourcePacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -3535,7 +3535,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -3557,7 +3557,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = ResourcePackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "resourcepack", searchKeyword, "all", SelectedResourcePackVersion, SelectedResourcePackCategory,
+                        "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                         newResourcePacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3983,7 +3983,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory);
+                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4059,7 +4059,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
+                        "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                         modrinthModpacks, modrinthTotalHits);
                 }
             }
@@ -4068,7 +4068,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory);
+                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4099,7 +4099,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
+                            "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                             curseForgeModpacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -4219,7 +4219,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                 // 追加到Modrinth缓存
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
+                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -4242,7 +4242,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 追加到CurseForge缓存
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "modpack", searchKeyword, "all", SelectedModpackVersion, SelectedModpackCategory,
+                        "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                         newModpacks, totalHits);
                 }
                 catch (Exception ex)
@@ -4322,7 +4322,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory);
+                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4398,7 +4398,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                        "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                         modrinthDatapacks, modrinthTotalHits);
                 }
             }
@@ -4407,7 +4407,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory);
+                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4438,7 +4438,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "datapack", DatapackSearchQuery, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                            "datapack", DatapackSearchQuery, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                             curseForgeDatapacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -4556,7 +4556,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -4578,7 +4578,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = DatapackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "datapack", searchKeyword, "all", SelectedDatapackVersion, SelectedDatapackCategory,
+                        "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                         newDatapacks, totalHits);
                 }
                 catch (Exception ex)
@@ -4653,7 +4653,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             
             // 从CurseForge搜索或缓存加载
             var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory);
+                "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories));
             
             if (cachedData != null)
             {
@@ -4704,7 +4704,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _curseForgeCacheService.SaveSearchResultAsync(
-                        "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
                         curseForgeWorlds, curseForgeTotalHits);
                 }
                 catch (Exception ex)
@@ -4794,7 +4794,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = newWorlds.Count;
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "world", searchKeyword, "all", SelectedWorldVersion, SelectedWorldCategory,
+                        "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
                         newWorlds, totalHits);
                 }
                 catch (Exception ex)
