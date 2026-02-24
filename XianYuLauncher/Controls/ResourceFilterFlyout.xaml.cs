@@ -11,6 +11,7 @@ namespace XianYuLauncher.Controls;
 public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.UserControl
 {
     private bool _isUpdatingSelection = false;
+    private bool _isUpdatingShowAllVersions = false;
 
     #region Dependency Properties - Data Sources
 
@@ -119,15 +120,11 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
     {
         if (tokenView == null) return;
 
-        // 如果已经有数据了，不重新添加以避免动画
-        if (tokenView.Items.Count > 0)
-        {
-            return;
-        }
-
         _isUpdatingSelection = true;
         try
         {
+            // 清空并重新添加
+            tokenView.Items.Clear();
             foreach (var item in items)
             {
                 tokenView.Items.Add(item);
@@ -222,9 +219,39 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
             .ToList();
     }
 
-    private void ShowAllVersionsCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void ShowAllVersionsCheckBox_Click(object sender, RoutedEventArgs e)
     {
+        // 直接使用 Click 事件，避免 Checked/Unchecked 事件的循环问题
+        // 此时 IsChecked 已经是新状态
+
+        // 强制刷新版本 TokenView（模拟 Mod 页面的逻辑）
+        RefreshVersionTokenView();
+
         ShowAllVersionsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RefreshVersionTokenView()
+    {
+        if (VersionTokenView == null) return;
+
+        _isUpdatingSelection = true;
+        try
+        {
+            // 强制清空并重新添加，触发 UI 刷新
+            VersionTokenView.Items.Clear();
+
+            if (VersionsSource != null)
+            {
+                foreach (var item in VersionsSource)
+                {
+                    VersionTokenView.Items.Add(item);
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingSelection = false;
+        }
     }
 
     private static void SafeClearItems(ItemCollection items)

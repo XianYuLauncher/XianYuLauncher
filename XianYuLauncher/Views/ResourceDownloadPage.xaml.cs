@@ -500,10 +500,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             GetShaderPackFilterSelectionStateKey(),
             StringComparison.Ordinal);
 
+        System.Diagnostics.Debug.WriteLine($"[筛选] 光影 Flyout 关闭, hasFilterChanged={hasFilterChanged}, snapshot={_shaderPackFilterSelectionSnapshot}, current={GetShaderPackFilterSelectionStateKey()}");
+
         if (!hasFilterChanged)
         {
             return;
         }
+
+        System.Diagnostics.Debug.WriteLine($"[筛选] 光影 开始刷新, Loaders={string.Join(",", ViewModel.SelectedShaderPackLoaders)}, Categories={string.Join(",", ViewModel.SelectedShaderPackCategories)}, Versions={string.Join(",", ViewModel.SelectedShaderPackVersions)}, IsShowAllVersions={ViewModel.IsShowAllVersions}");
 
         if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
         {
@@ -555,10 +559,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             GetResourcePackFilterSelectionStateKey(),
             StringComparison.Ordinal);
 
+        System.Diagnostics.Debug.WriteLine($"[筛选] 资源包 Flyout 关闭, hasFilterChanged={hasFilterChanged}");
+
         if (!hasFilterChanged)
         {
             return;
         }
+
+        System.Diagnostics.Debug.WriteLine($"[筛选] 资源包 开始刷新, Loaders={string.Join(",", ViewModel.SelectedResourcePackLoaders)}, Categories={string.Join(",", ViewModel.SelectedResourcePackCategories)}, Versions={string.Join(",", ViewModel.SelectedResourcePackVersions)}, IsShowAllVersions={ViewModel.IsShowAllVersions}");
 
         if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
         {
@@ -772,11 +780,47 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ResourceFilterControl_ShowAllVersionsChanged(object sender, EventArgs e)
     {
-        // ShowAllVersions 没有对应的 Flyout_Closed 处理，需要立即刷新
         if (sender is ResourceFilterFlyout filterControl)
         {
             ViewModel.IsShowAllVersions = filterControl.IsShowAllVersions;
-            _ = RefreshCurrentTabAfterFilterChange();
+
+            // 如果 Flyout 打开，刷新版本列表
+            var currentFlyout = ResourceTabView.SelectedIndex switch
+            {
+                2 => ShaderPackFilterFlyout,
+                3 => ResourcePackFilterFlyout,
+                4 => DatapackFilterFlyout,
+                5 => ModpackFilterFlyout,
+                6 => WorldFilterFlyout,
+                _ => null
+            };
+
+            if (currentFlyout?.IsOpen == true)
+            {
+                RefreshCurrentPageFilterTokenItems();
+            }
+        }
+    }
+
+    private void RefreshCurrentPageFilterTokenItems()
+    {
+        switch (ResourceTabView.SelectedIndex)
+        {
+            case 2:
+                RefreshShaderPackFilterTokenItems();
+                break;
+            case 3:
+                RefreshResourcePackFilterTokenItems();
+                break;
+            case 4:
+                RefreshDatapackFilterTokenItems();
+                break;
+            case 5:
+                RefreshModpackFilterTokenItems();
+                break;
+            case 6:
+                RefreshWorldFilterTokenItems();
+                break;
         }
     }
 
