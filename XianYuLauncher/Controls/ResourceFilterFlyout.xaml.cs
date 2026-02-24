@@ -12,6 +12,9 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
 {
     private bool _isUpdatingSelection = false;
     private bool _isUpdatingShowAllVersions = false;
+        private string? _lastLoadersSignature;
+        private string? _lastCategoriesSignature;
+        private string? _lastVersionsSignature;
 
     #region Dependency Properties - Data Sources
 
@@ -125,15 +128,76 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
     {
         if (tokenView == null) return;
 
+        // 先计算当前 items 的签名（基于 Tag 与 Content），用于检测是否需要真正重建
+        string MakeSignature(ObservableCollection<TokenItem> src)
+        {
+            return string.Join("|", src.Select(i => (i.Tag?.ToString() ?? "") + ":" + (i.Content?.ToString() ?? "")));
+        }
+
+        string signature = MakeSignature(items);
+
+        // 如果签名与上次相同且已有 Items，则不重新渲染，避免触发不必要的动画
+        if (tokenView == LoaderTokenView && _lastLoadersSignature == signature && tokenView.Items.Count > 0)
+            return;
+        if (tokenView == CategoryTokenView && _lastCategoriesSignature == signature && tokenView.Items.Count > 0)
+            return;
+        if (tokenView == VersionTokenView && _lastVersionsSignature == signature && tokenView.Items.Count > 0)
+            return;
+
+        // 克隆传入的 TokenItem 对象，避免直接复用引用导致 TokenView 对比失败
         _isUpdatingSelection = true;
         try
         {
-            // 清空并重新添加
-            tokenView.Items.Clear();
-            foreach (var item in items)
+            // 记录当前选中的 tag（以便在重建后恢复选中）
+            var prevSelectedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (TokenItem t in tokenView.SelectedItems.OfType<TokenItem>())
             {
-                tokenView.Items.Add(item);
+                var tg = t.Tag?.ToString();
+                if (!string.IsNullOrWhiteSpace(tg)) prevSelectedTags.Add(tg);
             }
+
+            SafeClearItems(tokenView.Items);
+
+            foreach (var src in items)
+            {
+                var clone = new TokenItem
+                {
+                    Content = src.Content,
+                    Tag = src.Tag,
+                    Margin = src.Margin,
+                    Padding = src.Padding,
+                };
+
+                // 复制 Icon（若为 FontIcon，则拷贝 Glyph）
+                try
+                {
+                    if (src.Icon is FontIcon fIcon)
+                    {
+                        clone.Icon = new FontIcon { Glyph = fIcon.Glyph };
+                    }
+                    else
+                    {
+                        clone.Icon = src.Icon;
+                    }
+                }
+                catch
+                {
+                    // 忽略 Icon 复制失败，保持最小信息（Content/Tag）
+                }
+
+                tokenView.Items.Add(clone);
+
+                // 恢复先前选中状态（如果存在）
+                var tagStr = clone.Tag?.ToString();
+                if (!string.IsNullOrWhiteSpace(tagStr) && prevSelectedTags.Contains(tagStr))
+                {
+                    tokenView.SelectedItems.Add(clone);
+                }
+            }
+            // 更新签名缓存
+            if (tokenView == LoaderTokenView) _lastLoadersSignature = signature;
+            if (tokenView == CategoryTokenView) _lastCategoriesSignature = signature;
+            if (tokenView == VersionTokenView) _lastVersionsSignature = signature;
         }
         finally
         {
@@ -234,10 +298,11 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
             // Checked/Unchecked 事件触发时，IsChecked 已经是新状态
             IsShowAllVersions = ShowAllVersionsCheckBox.IsChecked == true;
 
-            // 触发外部刷新版本列表（因为需要根据 IsShowAllVersions 重新生成）
-            RefreshVersionsRequested?.Invoke(this, EventArgs.Empty);
-
+            // 先通知外部 IsShowAllVersions 已变化（外部会更新 ViewModel）
             ShowAllVersionsChanged?.Invoke(this, EventArgs.Empty);
+
+            // 再请求外部刷新版本列表（此时外部 ViewModel 已同步到新的 IsShowAllVersions）
+            RefreshVersionsRequested?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
