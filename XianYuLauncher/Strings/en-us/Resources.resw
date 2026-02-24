@@ -1192,6 +1192,15 @@ Continue downloading?</value>
   <data name="VersionListPage_DeleteFailedText" xml:space="preserve">
     <value>Failed to delete version</value>
   </data>
+  <data name="VersionListPage_DeleteFailedAccessDeniedText" xml:space="preserve">
+    <value>Failed to delete version, the game may be running</value>
+  </data>
+  <data name="VersionListPage_RenameFailedText" xml:space="preserve">
+    <value>Failed to rename version</value>
+  </data>
+  <data name="VersionListPage_RenameFailedAccessDeniedText" xml:space="preserve">
+    <value>Failed to rename version, the game may be running</value>
+  </data>
   <data name="VersionListPage_EmptyListTitle.Text" xml:space="preserve">
     <value>No installed versions found</value>
   </data>

@@ -725,7 +725,12 @@ public partial class VersionListViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{"VersionListPage_DeleteFailedText".GetLocalized()}: {ex.Message}";
+            // 判断是否是权限被拒绝或文件占用错误
+            string friendlyMessage = ex is UnauthorizedAccessException || ex is IOException
+                ? "VersionListPage_DeleteFailedAccessDeniedText".GetLocalized()
+                : "VersionListPage_DeleteFailedText".GetLocalized();
+
+            StatusMessage = $"{friendlyMessage}: {ex.Message}";
         }
     }
 
@@ -1550,8 +1555,13 @@ public partial class VersionListViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            StatusMessage = $"重命名失败: {ex.Message}";
-            return (false, $"重命名失败: {ex.Message}");
+            // 判断是否是权限被拒绝或文件占用错误
+            string friendlyMessage = ex is UnauthorizedAccessException || ex is IOException
+                ? "VersionListPage_RenameFailedAccessDeniedText".GetLocalized()
+                : "VersionListPage_RenameFailedText".GetLocalized();
+
+            StatusMessage = $"{friendlyMessage}: {ex.Message}";
+            return (false, $"{friendlyMessage}: {ex.Message}");
         }
     }
     

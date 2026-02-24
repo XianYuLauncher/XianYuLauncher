@@ -1195,6 +1195,15 @@
   <data name="VersionListPage_DeleteFailedText" xml:space="preserve">
     <value>删除版本失败</value>
   </data>
+  <data name="VersionListPage_DeleteFailedAccessDeniedText" xml:space="preserve">
+    <value>删除版本失败，可能是游戏正在运行</value>
+  </data>
+  <data name="VersionListPage_RenameFailedText" xml:space="preserve">
+    <value>重命名版本失败</value>
+  </data>
+  <data name="VersionListPage_RenameFailedAccessDeniedText" xml:space="preserve">
+    <value>重命名版本失败，可能是游戏正在运行</value>
+  </data>
   <data name="VersionListPage_EmptyListTitle.Text" xml:space="preserve">
     <value>未找到已安装的版本</value>
   </data>
