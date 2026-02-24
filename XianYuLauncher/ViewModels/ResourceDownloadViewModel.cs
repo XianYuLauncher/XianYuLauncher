@@ -1920,6 +1920,61 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             .ToList();
     }
 
+    private List<int> GetSelectedCurseForgeShaderPackCategoryIds()
+    {
+        return SelectedShaderPackCategories
+            .Where(tag => !string.IsNullOrWhiteSpace(tag) && tag != "all")
+            .Select(tag => int.TryParse(tag, out var categoryId) ? categoryId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+    }
+
+    private List<int> GetSelectedCurseForgeResourcePackCategoryIds()
+    {
+        return SelectedResourcePackCategories
+            .Where(tag => !string.IsNullOrWhiteSpace(tag) && tag != "all")
+            .Select(tag => int.TryParse(tag, out var categoryId) ? categoryId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+    }
+
+    private List<int> GetSelectedCurseForgeDatapackCategoryIds()
+    {
+        return SelectedDatapackCategories
+            .Where(tag => !string.IsNullOrWhiteSpace(tag) && tag != "all")
+            .Select(tag => int.TryParse(tag, out var categoryId) ? categoryId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+    }
+
+    private List<int> GetSelectedCurseForgeModpackCategoryIds()
+    {
+        return SelectedModpackCategories
+            .Where(tag => !string.IsNullOrWhiteSpace(tag) && tag != "all")
+            .Select(tag => int.TryParse(tag, out var categoryId) ? categoryId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+    }
+
+    private List<int> GetSelectedCurseForgeWorldCategoryIds()
+    {
+        return SelectedWorldCategories
+            .Where(tag => !string.IsNullOrWhiteSpace(tag) && tag != "all")
+            .Select(tag => int.TryParse(tag, out var categoryId) ? categoryId : (int?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+    }
+
     private void RefreshSelectedModCategoryDisplay()
     {
         SelectedModCategoryDisplayNames.Clear();
@@ -3398,23 +3453,75 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     try
                     {
-                        var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
-                            classId: 12, // ResourcePacks classId
-                            searchFilter: searchKeyword,
-                            gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
-                            index: 0,
-                            pageSize: _modPageSize
-                        );
-                        
-                        foreach (var curseForgeMod in curseForgeResult.Data)
+                        var selectedCurseForgeCategoryIds = GetSelectedCurseForgeResourcePackCategoryIds();
+                        var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+
+                        if (selectedCurseForgeCategoryIds.Count > 0)
                         {
-                            var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                            curseForgeResourcePacks.Add(convertedMod);
+                            var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                            {
+                                var result = await _curseForgeService.SearchResourcesAsync(
+                                    classId: 12, // ResourcePacks classId
+                                    searchFilter: searchKeyword,
+                                    gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
+                                    categoryId: categoryId,
+                                    index: 0,
+                                    pageSize: _modPageSize
+                                );
+
+                                return result.Data;
+                            });
+
+                            var searchResults = await Task.WhenAll(searchTasks);
+
+                            // 实现多类别结果交错合并 (Interleave)
+                            int maxCount = searchResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
+                            {
+                                foreach (var modList in searchResults)
+                                {
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
+                                }
+                            }
+
+                            curseForgeTotalHits = deduplicatedMods.Count;
                         }
-                        
-                        curseForgeTotalHits = curseForgeResult.Data.Count;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个资源包");
-                        
+                        else
+                        {
+                            var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                                classId: 12, // ResourcePacks classId
+                                searchFilter: searchKeyword,
+                                gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
+                                categoryId: null,
+                                index: 0,
+                                pageSize: _modPageSize
+                            );
+
+                            foreach (var curseForgeMod in curseForgeResult.Data)
+                            {
+                                var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                            }
+
+                            curseForgeTotalHits = curseForgeResult.Data.Count;
+                        }
+
+                        foreach (var item in deduplicatedMods.Values)
+                        {
+                            curseForgeResourcePacks.Add(item);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeTotalHits} 个资源包");
+
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
                             "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
@@ -3744,22 +3851,74 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     try
                     {
-                        var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
-                            classId: 6552, // Shaders classId
-                            searchFilter: searchKeyword,
-                            gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
-                            index: 0,
-                            pageSize: _modPageSize
-                        );
-                        
-                        foreach (var curseForgeMod in curseForgeResult.Data)
+                        var selectedCurseForgeCategoryIds = GetSelectedCurseForgeShaderPackCategoryIds();
+                        var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+
+                        if (selectedCurseForgeCategoryIds.Count > 0)
                         {
-                            var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                            curseForgeShaderPacks.Add(convertedMod);
+                            var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                            {
+                                var result = await _curseForgeService.SearchResourcesAsync(
+                                    classId: 6552, // Shaders classId
+                                    searchFilter: searchKeyword,
+                                    gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
+                                    categoryId: categoryId,
+                                    index: 0,
+                                    pageSize: _modPageSize
+                                );
+
+                                return result.Data;
+                            });
+
+                            var searchResults = await Task.WhenAll(searchTasks);
+
+                            // 实现多类别结果交错合并 (Interleave)
+                            int maxCount = searchResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
+                            {
+                                foreach (var modList in searchResults)
+                                {
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
+                                }
+                            }
+
+                            curseForgeTotalHits = deduplicatedMods.Count;
                         }
-                        
-                        curseForgeTotalHits = curseForgeResult.Data.Count;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个光影");
+                        else
+                        {
+                            var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                                classId: 6552, // Shaders classId
+                                searchFilter: searchKeyword,
+                                gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
+                                categoryId: null,
+                                index: 0,
+                                pageSize: _modPageSize
+                            );
+
+                            foreach (var curseForgeMod in curseForgeResult.Data)
+                            {
+                                var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                            }
+
+                            curseForgeTotalHits = curseForgeResult.Data.Count;
+                        }
+
+                        foreach (var item in deduplicatedMods.Values)
+                        {
+                            curseForgeShaderPacks.Add(item);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeTotalHits} 个光影");
 
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
@@ -4080,23 +4239,75 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     try
                     {
-                        var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
-                            classId: 4471, // Modpacks classId
-                            searchFilter: searchKeyword,
-                            gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
-                            index: 0,
-                            pageSize: _modPageSize
-                        );
-                        
-                        foreach (var curseForgeMod in curseForgeResult.Data)
+                        var selectedCurseForgeCategoryIds = GetSelectedCurseForgeModpackCategoryIds();
+                        var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+
+                        if (selectedCurseForgeCategoryIds.Count > 0)
                         {
-                            var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                            curseForgeModpacks.Add(convertedMod);
+                            var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                            {
+                                var result = await _curseForgeService.SearchResourcesAsync(
+                                    classId: 4471, // Modpacks classId
+                                    searchFilter: searchKeyword,
+                                    gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
+                                    categoryId: categoryId,
+                                    index: 0,
+                                    pageSize: _modPageSize
+                                );
+
+                                return result.Data;
+                            });
+
+                            var searchResults = await Task.WhenAll(searchTasks);
+
+                            // 实现多类别结果交错合并 (Interleave)
+                            int maxCount = searchResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
+                            {
+                                foreach (var modList in searchResults)
+                                {
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
+                                }
+                            }
+
+                            curseForgeTotalHits = deduplicatedMods.Count;
                         }
-                        
-                        curseForgeTotalHits = curseForgeResult.Data.Count;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个整合包");
-                        
+                        else
+                        {
+                            var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                                classId: 4471, // Modpacks classId
+                                searchFilter: searchKeyword,
+                                gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
+                                categoryId: null,
+                                index: 0,
+                                pageSize: _modPageSize
+                            );
+
+                            foreach (var curseForgeMod in curseForgeResult.Data)
+                            {
+                                var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                            }
+
+                            curseForgeTotalHits = curseForgeResult.Data.Count;
+                        }
+
+                        foreach (var item in deduplicatedMods.Values)
+                        {
+                            curseForgeModpacks.Add(item);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeTotalHits} 个整合包");
+
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
                             "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
@@ -4419,23 +4630,75 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     try
                     {
-                        var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
-                            classId: 6945, // Datapacks classId
-                            searchFilter: searchKeyword,
-                            gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
-                            index: 0,
-                            pageSize: _modPageSize
-                        );
-                        
-                        foreach (var curseForgeMod in curseForgeResult.Data)
+                        var selectedCurseForgeCategoryIds = GetSelectedCurseForgeDatapackCategoryIds();
+                        var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+
+                        if (selectedCurseForgeCategoryIds.Count > 0)
                         {
-                            var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                            curseForgeDatapacks.Add(convertedMod);
+                            var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                            {
+                                var result = await _curseForgeService.SearchResourcesAsync(
+                                    classId: 6945, // Datapacks classId
+                                    searchFilter: searchKeyword,
+                                    gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
+                                    categoryId: categoryId,
+                                    index: 0,
+                                    pageSize: _modPageSize
+                                );
+
+                                return result.Data;
+                            });
+
+                            var searchResults = await Task.WhenAll(searchTasks);
+
+                            // 实现多类别结果交错合并 (Interleave)
+                            int maxCount = searchResults.Max(list => list.Count);
+                            for (int i = 0; i < maxCount; i++)
+                            {
+                                foreach (var modList in searchResults)
+                                {
+                                    if (i < modList.Count)
+                                    {
+                                        var curseForgeMod = modList[i];
+                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+
+                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        {
+                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                        }
+                                    }
+                                }
+                            }
+
+                            curseForgeTotalHits = deduplicatedMods.Count;
                         }
-                        
-                        curseForgeTotalHits = curseForgeResult.Data.Count;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个数据包");
-                        
+                        else
+                        {
+                            var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                                classId: 6945, // Datapacks classId
+                                searchFilter: searchKeyword,
+                                gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
+                                categoryId: null,
+                                index: 0,
+                                pageSize: _modPageSize
+                            );
+
+                            foreach (var curseForgeMod in curseForgeResult.Data)
+                            {
+                                var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                            }
+
+                            curseForgeTotalHits = curseForgeResult.Data.Count;
+                        }
+
+                        foreach (var item in deduplicatedMods.Values)
+                        {
+                            curseForgeDatapacks.Add(item);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeTotalHits} 个数据包");
+
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
                             "datapack", DatapackSearchQuery, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
@@ -4676,15 +4939,55 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                     }
 
-                    var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
-                        classId: 17, // Worlds classId
-                        searchFilter: searchKeyword,
-                        gameVersion: gameVersion,
-                        index: 0,
-                        pageSize: _modPageSize
-                    );
+                    var selectedCurseForgeCategoryIds = GetSelectedCurseForgeWorldCategoryIds();
+                    var allResults = new List<CurseForgeMod>();
 
-                    foreach (var curseForgeWorld in curseForgeResult.Data)
+                    if (selectedCurseForgeCategoryIds.Count > 0)
+                    {
+                        var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                        {
+                            var result = await _curseForgeService.SearchResourcesAsync(
+                                classId: 17, // Worlds classId
+                                searchFilter: searchKeyword,
+                                gameVersion: gameVersion,
+                                categoryId: categoryId,
+                                index: 0,
+                                pageSize: _modPageSize
+                            );
+
+                            return result.Data;
+                        });
+
+                        var searchResults = await Task.WhenAll(searchTasks);
+
+                        // 实现多类别结果交错合并 (Interleave)
+                        int maxCount = searchResults.Max(list => list.Count);
+                        for (int i = 0; i < maxCount; i++)
+                        {
+                            foreach (var modList in searchResults)
+                            {
+                                if (i < modList.Count)
+                                {
+                                    allResults.Add(modList[i]);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
+                            classId: 17, // Worlds classId
+                            searchFilter: searchKeyword,
+                            gameVersion: gameVersion,
+                            categoryId: null,
+                            index: 0,
+                            pageSize: _modPageSize
+                        );
+
+                        allResults = curseForgeResult.Data;
+                    }
+
+                    foreach (var curseForgeWorld in allResults)
                     {
                         var convertedWorld = ConvertCurseForgeToModrinth(curseForgeWorld);
                         // 应用客户端筛选（加载器和类别都存储在 Categories 中）
@@ -4700,7 +5003,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
 
                     curseForgeTotalHits = curseForgeWorlds.Count;
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeResult.Data.Count} 个世界，筛选后剩余 {curseForgeTotalHits} 个");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {allResults.Count} 个世界，筛选后剩余 {curseForgeTotalHits} 个");
 
                     // 保存到缓存
                     await _curseForgeCacheService.SaveSearchResultAsync(
