@@ -462,12 +462,25 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private void ModCategoryFilterFlyout_Opening(object sender, object e)
+    private void ModFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
     {
-        _modFilterSelectionSnapshot = GetModFilterSelectionStateKey();
+        if (ModFilterControl == null) return;
+
+        // 重新生成版本列表
+        var versions = CreateVersionTokenItems();
+        ModFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
+
+        // 重新设置选中状态
+        ModFilterControl.SetSelectedVersions(ViewModel.SelectedVersions);
     }
 
-    private async void ModCategoryFilterFlyout_Closed(object sender, object e)
+    private void ModFilterFlyout_Opening(object sender, object e)
+    {
+        _modFilterSelectionSnapshot = GetModFilterSelectionStateKey();
+        RefreshModFilterTokenItems();
+    }
+
+    private async void ModFilterFlyout_Closed(object sender, object e)
     {
         var hasFilterChanged = !string.Equals(
             _modFilterSelectionSnapshot,
@@ -808,6 +821,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         // 刷新逻辑在 Flyout_Closed 中处理
         switch (ResourceTabView.SelectedIndex)
         {
+            case 1: // Mod
+                UpdateModFilterSelection();
+                break;
             case 2: // 光影
                 UpdateShaderPackFilterSelection();
                 break;
@@ -885,6 +901,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         return ResourceTabView.SelectedIndex switch
         {
+            1 => ModFilterControl,
             2 => ShaderPackFilterControl,
             3 => ResourcePackFilterControl,
             4 => DatapackFilterControl,
@@ -892,6 +909,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             6 => WorldFilterControl,
             _ => null
         };
+    }
+
+    private void UpdateModFilterSelection()
+    {
+        if (ModFilterControl == null) return;
+        ViewModel.SelectedLoaders = new ObservableCollection<string>(ModFilterControl.SelectedLoaderTags);
+        ViewModel.SelectedModCategories = new ObservableCollection<string>(ModFilterControl.SelectedCategoryTags);
+        ViewModel.SelectedVersions = new ObservableCollection<string>(ModFilterControl.SelectedVersionTags);
     }
 
     private void UpdateShaderPackFilterSelection()
@@ -1010,413 +1035,32 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void TryRefreshModFilterTokenItems()
     {
-        if (ModCategoryFilterFlyout?.IsOpen == true)
-        {
-            return;
-        }
-
-        if (!_modFilterTokenItemsDirty
-            && ModLoaderPickerTokenView?.Items.Count > 0
-            && ModVersionPickerTokenView?.Items.Count > 0
-            && ModCategoryPickerTokenView?.Items.Count > 0)
-        {
-            return;
-        }
-
-        var hasComFailure = false;
-
-        // 优先刷新“筛选类型”，即使其它分段炸了，也要保证类别可见。
-        try
-        {
-            RefreshModCategoryTokenPicker();
-        }
-        catch (COMException)
-        {
-            hasComFailure = true;
-        }
-
-        try
-        {
-            RefreshModLoaderTokenPicker();
-        }
-        catch (COMException)
-        {
-            hasComFailure = true;
-        }
-
-        try
-        {
-            RefreshModVersionTokenPicker();
-        }
-        catch (COMException)
-        {
-            hasComFailure = true;
-        }
-
-        // 任一分段失败都保留 dirty，等后续安全时机再补齐。
-        _modFilterTokenItemsDirty = hasComFailure;
+        // Mod 页面使用 ResourceFilterFlyout，已在 Flyout_Opening 中刷新
+        // 此方法保留用于兼容，暂不需要刷新
     }
 
-    private void RefreshModLoaderTokenPicker()
+    private void RefreshModFilterTokenItems()
     {
-        if (ModLoaderPickerTokenView == null)
-        {
-            return;
-        }
+        if (ModFilterControl == null) return;
 
-        _isUpdatingModLoaderTokenViewSelection = true;
-        try
-        {
-            SafeClearItems(ModLoaderPickerTokenView.Items);
-            SafeClearSelection(ModLoaderPickerTokenView.SelectedItems);
+        // 设置加载器
+        var loaders = CreateLoaderTokenItems();
+        ModFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
-            var loaders = new (string Tag, string DisplayName, string Glyph)[]
-            {
-                ("all", "所有加载器", "\uE71D"),
-                ("fabric", "Fabric", "\uE8D2"),
-                ("forge", "Forge", "\uE7FC"),
-                ("quilt", "Quilt", "\uE8FD"),
-                ("legacy-fabric", "Legacy Fabric", "\uE8FD"),
-                ("liteloader", "LiteLoader", "\uE9CE")
-            };
+        // 设置类别
+        var categories = CreateCategoryTokenItems(ViewModel.ModCategories);
+        ModFilterControl.CategoriesSource = new ObservableCollection<TokenItem>(categories);
 
-            var selectedTags = new HashSet<string>(ViewModel.SelectedLoaders, StringComparer.OrdinalIgnoreCase);
+        // 设置版本
+        var versions = CreateVersionTokenItems();
+        ModFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
 
-            TokenItem? allToken = null;
-            foreach (var loader in loaders)
-            {
-                var token = new TokenItem
-                {
-                    Content = loader.DisplayName,
-                    Tag = loader.Tag,
-                    Icon = new FontIcon { Glyph = loader.Glyph },
-                    Margin = new Thickness(0, 0, 6, 6),
-                    Padding = new Thickness(8, 4, 8, 4)
-                };
-
-                ModLoaderPickerTokenView.Items.Add(token);
-                if (string.Equals(loader.Tag, "all", StringComparison.OrdinalIgnoreCase))
-                {
-                    allToken = token;
-                    if (selectedTags.Count == 0 || selectedTags.Contains("all"))
-                    {
-                        ModLoaderPickerTokenView.SelectedItems.Add(token);
-                    }
-                }
-                else if (selectedTags.Contains(loader.Tag))
-                {
-                    ModLoaderPickerTokenView.SelectedItems.Add(token);
-                }
-            }
-
-            // 如果没有选中任何项，默认选中“所有”
-            if (ModLoaderPickerTokenView.SelectedItems.Count == 0 && allToken != null)
-            {
-                ModLoaderPickerTokenView.SelectedItems.Add(allToken);
-            }
-        }
-        finally
-        {
-            _isUpdatingModLoaderTokenViewSelection = false;
-        }
+        // 恢复选中状态
+        ModFilterControl.SetSelectedLoaders(ViewModel.SelectedLoaders);
+        ModFilterControl.SetSelectedCategories(ViewModel.SelectedModCategories);
+        ModFilterControl.SetSelectedVersions(ViewModel.SelectedVersions);
     }
 
-    private void RefreshModVersionTokenPicker()
-    {
-        if (ModVersionPickerTokenView == null)
-        {
-            return;
-        }
-
-        _isUpdatingModVersionTokenViewSelection = true;
-        try
-        {
-            SafeClearItems(ModVersionPickerTokenView.Items);
-            SafeClearSelection(ModVersionPickerTokenView.SelectedItems);
-
-            var allToken = new TokenItem
-            {
-                Content = "所有版本",
-                Tag = "all",
-                Icon = new FontIcon { Glyph = "\uE71D" },
-                Margin = new Thickness(0, 0, 6, 6),
-                Padding = new Thickness(8, 4, 8, 4)
-            };
-            ModVersionPickerTokenView.Items.Add(allToken);
-
-            var selectedTags = new HashSet<string>(ViewModel.SelectedVersions, StringComparer.OrdinalIgnoreCase);
-
-            if (selectedTags.Count == 0 || selectedTags.Contains("all"))
-            {
-                ModVersionPickerTokenView.SelectedItems.Add(allToken);
-            }
-
-            foreach (var version in ViewModel.AvailableVersions)
-            {
-                if (string.IsNullOrWhiteSpace(version))
-                {
-                    continue;
-                }
-
-                var token = new TokenItem
-                {
-                    Content = version,
-                    Tag = version,
-                    Icon = new FontIcon { Glyph = "\uE823" },
-                    Margin = new Thickness(0, 0, 6, 6),
-                    Padding = new Thickness(8, 4, 8, 4)
-                };
-                ModVersionPickerTokenView.Items.Add(token);
-
-                if (selectedTags.Contains(version))
-                {
-                    ModVersionPickerTokenView.SelectedItems.Add(token);
-                }
-            }
-            
-            // 如果没有选中任何项，默认选中“所有”
-            if (ModVersionPickerTokenView.SelectedItems.Count == 0)
-            {
-                ModVersionPickerTokenView.SelectedItems.Add(allToken);
-            }
-        }
-        finally
-        {
-            _isUpdatingModVersionTokenViewSelection = false;
-        }
-    }
-
-    private void ModLoaderPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingModLoaderTokenViewSelection || ModLoaderPickerTokenView == null)
-        {
-            return;
-        }
-
-        // 复用通用的多选逻辑（互斥处理）
-        HandleMultiSelection(
-            ModLoaderPickerTokenView,
-            e,
-            ref _isUpdatingModLoaderTokenViewSelection,
-            (selectedTags) => 
-            {
-                ViewModel.SelectedLoaders.Clear();
-                foreach (var tag in selectedTags)
-                {
-                    ViewModel.SelectedLoaders.Add(tag);
-                }
-                
-                // 兼容旧属性，取第一个选中的（非all）或 all
-                var first = selectedTags.FirstOrDefault(t => t != "all");
-                ViewModel.SelectedLoader = first ?? "all";
-            });
-    }
-
-    private void ModVersionPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingModVersionTokenViewSelection || ModVersionPickerTokenView == null)
-        {
-            return;
-        }
-
-        // 复用通用的多选逻辑（互斥处理）
-        HandleMultiSelection(
-            ModVersionPickerTokenView,
-            e,
-            ref _isUpdatingModVersionTokenViewSelection,
-            (selectedTags) => 
-            {
-                ViewModel.SelectedVersions.Clear();
-                foreach (var tag in selectedTags)
-                {
-                    ViewModel.SelectedVersions.Add(tag);
-                }
-                
-                // 兼容旧属性，取第一个选中的（非all）或 empty
-                var first = selectedTags.FirstOrDefault(t => t != "all");
-                ViewModel.SelectedVersion = first ?? string.Empty;
-            });
-    }
-
-    // 通用的多选互斥处理逻辑（All 与 具体项互斥）
-    private void HandleMultiSelection(
-        TokenView tokenView, 
-        SelectionChangedEventArgs e, 
-        ref bool isUpdatingFlag,
-        Action<List<string>> updateViewModelAction)
-    {
-        var selectedTokenTags = tokenView.SelectedItems
-            .OfType<TokenItem>()
-            .Select(item => item.Tag?.ToString())
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Select(tag => tag!)
-            .ToList();
-
-        var allSelected = selectedTokenTags.Any(tag => string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase));
-        var allToken = tokenView.Items
-            .OfType<TokenItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
-        var allAddedThisTime = e.AddedItems
-            .OfType<TokenItem>()
-            .Any(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
-        var selectedNonAllTags = selectedTokenTags
-            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        isUpdatingFlag = true;
-        try
-        {
-            if (allAddedThisTime)
-            {
-                // 用户显式点了“所有”，强制只保留 all。
-                SafeClearSelection(tokenView.SelectedItems);
-                if (allToken != null)
-                {
-                    tokenView.SelectedItems.Add(allToken);
-                }
-            }
-            else if (allSelected && selectedNonAllTags.Count > 0 && allToken != null)
-            {
-                // 选中具体类别时自动移除 all。
-                tokenView.SelectedItems.Remove(allToken);
-            }
-            else if (!allSelected && selectedNonAllTags.Count == 0 && allToken != null)
-            {
-                // 所有具体项都被取消后，回退到 all。
-                tokenView.SelectedItems.Add(allToken);
-            }
-        }
-        finally
-        {
-            isUpdatingFlag = false;
-        }
-
-        // 重新计算最终选中的标签并更新 VM
-        selectedTokenTags = tokenView.SelectedItems
-            .OfType<TokenItem>()
-            .Select(item => item.Tag?.ToString())
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Select(tag => tag!)
-            .ToList();
-
-        var finalSelectedTags = selectedTokenTags
-            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        updateViewModelAction(finalSelectedTags);
-    }
-
-    private void RefreshModCategoryTokenPicker()
-    {
-        if (ModCategoryPickerTokenView == null)
-        {
-            return;
-        }
-
-        _isUpdatingModCategoryTokenViewSelection = true;
-
-        try
-        {
-            SafeClearItems(ModCategoryPickerTokenView.Items);
-            SafeClearSelection(ModCategoryPickerTokenView.SelectedItems);
-
-            var selectedTags = new HashSet<string>(ViewModel.SelectedModCategories, StringComparer.OrdinalIgnoreCase);
-            foreach (var category in ViewModel.ModCategories)
-            {
-                var token = new TokenItem
-                {
-                    Content = category.DisplayName,
-                    Tag = category.Tag,
-                    Icon = new FontIcon { Glyph = GetCategoryGlyph(category.Tag) },
-                    Margin = new Thickness(0, 0, 6, 6),
-                    Padding = new Thickness(8, 4, 8, 4)
-                };
-
-                ModCategoryPickerTokenView.Items.Add(token);
-
-                if (string.Equals(category.Tag, "all", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (selectedTags.Count == 0)
-                    {
-                        ModCategoryPickerTokenView.SelectedItems.Add(token);
-                    }
-                }
-                else if (selectedTags.Contains(category.Tag))
-                {
-                    ModCategoryPickerTokenView.SelectedItems.Add(token);
-                }
-            }
-        }
-        finally
-        {
-            _isUpdatingModCategoryTokenViewSelection = false;
-        }
-    }
-
-    private void ModCategoryPickerTokenView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isUpdatingModCategoryTokenViewSelection || ModCategoryPickerTokenView == null)
-        {
-            return;
-        }
-
-        var selectedTokenTags = ModCategoryPickerTokenView.SelectedItems
-            .OfType<TokenItem>()
-            .Select(item => item.Tag?.ToString())
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Select(tag => tag!)
-            .ToList();
-
-        var allSelected = selectedTokenTags.Any(tag => string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase));
-        var allToken = ModCategoryPickerTokenView.Items
-            .OfType<TokenItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
-        var allAddedThisTime = e.AddedItems
-            .OfType<TokenItem>()
-            .Any(item => string.Equals(item.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
-        var selectedNonAllTags = selectedTokenTags
-            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        _isUpdatingModCategoryTokenViewSelection = true;
-        if (allAddedThisTime)
-        {
-            // 用户显式点了“所有类别”，强制只保留 all。
-            SafeClearSelection(ModCategoryPickerTokenView.SelectedItems);
-            if (allToken != null)
-            {
-                ModCategoryPickerTokenView.SelectedItems.Add(allToken);
-            }
-        }
-        else if (allSelected && selectedNonAllTags.Count > 0 && allToken != null)
-        {
-            // 选中具体类别时自动移除 all。
-            ModCategoryPickerTokenView.SelectedItems.Remove(allToken);
-        }
-        else if (!allSelected && selectedNonAllTags.Count == 0 && allToken != null)
-        {
-            // 所有具体项都被取消后，回退到 all。
-            ModCategoryPickerTokenView.SelectedItems.Add(allToken);
-        }
-        _isUpdatingModCategoryTokenViewSelection = false;
-
-        selectedTokenTags = ModCategoryPickerTokenView.SelectedItems
-            .OfType<TokenItem>()
-            .Select(item => item.Tag?.ToString())
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Select(tag => tag!)
-            .ToList();
-
-        var selectedTags = selectedTokenTags
-            .Where(tag => !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        ViewModel.SetSelectedModCategories(selectedTags);
-    }
 
     private static void SafeClearItems(ItemCollection items)
     {
@@ -2048,24 +1692,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                     await ViewModel.DownloadModCommand.ExecuteAsync(project);
                     break;
             }
-        }
-    }
-
-    private void ShowAllVersionsCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
-    {
-        // 这里的逻辑由 ViewModel 的 IsShowAllVersions 属性变化驱动
-        // 只要 ViewModel 的 AvailableVersions 变了，OnPropertyChanged 就会触发 TryRefreshModFilterTokenItems
-        // 但我们需要确保 TokenView 被强制刷新，因为 TryRefreshModFilterTokenItems 有脏检查
-        
-        // 强制标记为 dirty 并刷新
-        _modFilterTokenItemsDirty = true;
-        
-        // 由于 CheckBox 就在 Flyout 里，此时 Flyout 是 Open 的，TryRefreshModFilterTokenItems 可能会被短路
-        // 所以我们需要针对这种情况特殊处理：如果 Flyout 打开，允许就地刷新版本部分
-        
-        if (ModCategoryFilterFlyout?.IsOpen == true)
-        {
-            RefreshModVersionTokenPicker();
         }
     }
 

@@ -2644,25 +2644,30 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
             var selectedCategoryTags = GetSelectedModCategoryTags();
+
+            // 生成缓存 key（用于多选筛选）
+            var loaderKey = string.Join(",", SelectedLoaders);
+            var versionKey = string.Join(",", SelectedVersions);
             var categoryCacheKey = BuildModCategoryCacheKey();
-            
+            System.Diagnostics.Debug.WriteLine($"[Mod搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
+
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
             {
                 Mods.Clear();
                 return;
             }
-            
+
             var modrinthMods = new List<ModrinthProject>();
             var curseForgeMods = new List<ModrinthProject>();
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
-            
+
             // 从Modrinth搜索或缓存加载
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "mod", searchKeyword, SelectedLoader, SelectedVersion, categoryCacheKey);
+                    "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey);
                 
                 if (cachedData != null)
                 {
@@ -2693,12 +2698,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             facets.Add(loaderFacets);
                         }
                     }
-                    else if (SelectedLoader != "all")
-                    {
-                        // 兼容旧的单选逻辑
-                        facets.Add(new List<string> { $"categories:{SelectedLoader}" });
-                    }
-                    
+
                     // Modrinth 多选版本逻辑（OR 关系）
                     if (SelectedVersions.Count > 0)
                     {
@@ -2707,16 +2707,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         {
                             versionFacets.Add($"versions:{version}");
                         }
-                        
+
                         if (versionFacets.Count > 0)
                         {
                             facets.Add(versionFacets);
                         }
-                    }
-                    else if (!string.IsNullOrEmpty(SelectedVersion))
-                    {
-                         // 兼容旧的单选逻辑
-                        facets.Add(new List<string> { $"versions:{SelectedVersion}" });
                     }
 
                     if (selectedCategoryTags.Count > 0)
@@ -2740,16 +2735,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "mod", searchKeyword, SelectedLoader, SelectedVersion, categoryCacheKey,
+                        "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey,
                         modrinthMods, modrinthTotalHits);
                 }
             }
-            
+
             // 从CurseForge搜索或缓存加载
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "mod", searchKeyword, SelectedLoader, SelectedVersion, categoryCacheKey);
+                    "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey);
                 
                 if (cachedData != null)
                 {
@@ -2854,7 +2849,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "mod", SearchQuery, SelectedLoader, SelectedVersion, categoryCacheKey,
+                            "mod", SearchQuery, loaderKey, versionKey, categoryCacheKey,
                             curseForgeMods, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -3070,6 +3065,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
             var selectedCategoryTags = GetSelectedModCategoryTags();
+
+            // 生成缓存 key（用于多选筛选）
+            var loaderKey = string.Join(",", SelectedLoaders);
+            var versionKey = string.Join(",", SelectedVersions);
             var categoryCacheKey = BuildModCategoryCacheKey();
 
             // 如果两个平台都未启用，直接返回
@@ -3078,26 +3077,49 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 ModHasMoreResults = false;
                 return;
             }
-            
+
             var modrinthMods = new List<ModrinthProject>();
             var curseForgeMods = new List<ModrinthProject>();
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
-            
+
             // 从Modrinth加载更多
             if (IsModrinthEnabled)
             {
                 // 构建facets参数
                 var facets = new List<List<string>>();
-                
-                if (SelectedLoader != "all")
+
+                // Modrinth 多选加载器逻辑（OR 关系）
+                if (SelectedLoaders.Count > 0)
                 {
-                    facets.Add(new List<string> { $"categories:{SelectedLoader}" });
+                    var loaderFacets = new List<string>();
+                    foreach (var loader in SelectedLoaders)
+                    {
+                        if (loader != "all")
+                        {
+                            loaderFacets.Add($"categories:{loader}");
+                        }
+                    }
+
+                    if (loaderFacets.Count > 0)
+                    {
+                        facets.Add(loaderFacets);
+                    }
                 }
-                
-                if (!string.IsNullOrEmpty(SelectedVersion))
+
+                // Modrinth 多选版本逻辑（OR 关系）
+                if (SelectedVersions.Count > 0)
                 {
-                    facets.Add(new List<string> { $"versions:{SelectedVersion}" });
+                    var versionFacets = new List<string>();
+                    foreach (var version in SelectedVersions)
+                    {
+                        versionFacets.Add($"versions:{version}");
+                    }
+
+                    if (versionFacets.Count > 0)
+                    {
+                        facets.Add(versionFacets);
+                    }
                 }
 
                 if (selectedCategoryTags.Count > 0)
@@ -3105,7 +3127,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     // 多选类别在同一个 facet 子数组中，使用 OR 语义。
                     facets.Add(selectedCategoryTags.Select(tag => $"categories:{tag}").ToList());
                 }
-                
+
                 var result = await _modrinthService.SearchModsAsync(
                     query: searchKeyword,
                     facets: facets,
@@ -3118,16 +3140,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 _modrinthModOffset += result.Hits.Count;
                 modrinthTotalHits = result.TotalHits;
                 System.Diagnostics.Debug.WriteLine($"[Modrinth] 加载更多 {result.Hits.Count} 个Mod，当前offset: {_modrinthModOffset}，总数: {modrinthTotalHits}");
-                
+
                 // 追加到缓存
                 if (modrinthMods.Count > 0)
                 {
                     await _modrinthCacheService.AppendToSearchResultAsync(
-                        "mod", searchKeyword, SelectedLoader, SelectedVersion, categoryCacheKey,
+                        "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey,
                         modrinthMods, modrinthTotalHits);
                 }
             }
-            
+
             // 从CurseForge加载更多
             if (IsCurseForgeEnabled)
             {
@@ -3241,7 +3263,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     if (curseForgeMods.Count > 0)
                     {
                         await _curseForgeCacheService.AppendToSearchResultAsync(
-                            "mod", searchKeyword, SelectedLoader, SelectedVersion, categoryCacheKey,
+                            "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey,
                             curseForgeMods, curseForgeTotalHits);
                     }
                 }
