@@ -147,52 +147,34 @@
         </ContentDialog>
 
         <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,32">
-            <Viewbox 
-                HorizontalAlignment="Left" 
-                VerticalAlignment="Top" 
-                MaxHeight="48"
-                Stretch="Uniform"
-                StretchDirection="DownOnly">
-                <TextBlock 
-                    x:Name="PageTitle" 
-                    Style="{StaticResource PageTitleStyle}" 
-                    FontSize="36" 
-                    FontWeight="Bold"
-                    TextTrimming="CharacterEllipsis" />
-            </Viewbox>
-            <TextBlock 
-                x:Name="PageSubtitle" 
-                Style="{StaticResource BodyTextStyle}" 
-                Margin="0,8,0,0" 
-                Opacity="0.7"
-                TextTrimming="CharacterEllipsis"
-                TextWrapping="NoWrap" />
-        </StackPanel>
-
-        <!-- 控制区域 -->
-        <Grid Grid.Row="1" Margin="0,0,0,24">
+        <Grid Grid.Row="0" Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Grid.ColumnSpacing>12</Grid.ColumnSpacing>
-            
-            <!-- 打开文件夹按钮 -->
-                <Button 
-                    Grid.Column="1"
-                    x:Uid="VersionManagerPage_OpenFolderButton"
-                    Command="{Binding OpenCurrentFolderCommand}"
-                    Style="{StaticResource DefaultButtonStyle}" />
-            
-            <!-- 刷新按钮 -->
-                <Button 
-                    Grid.Column="2"
-                    x:Uid="VersionManagerPage_RefreshButton"
-                    Command="{Binding RefreshDataCommand}"
-                    IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                    Style="{StaticResource DefaultButtonStyle}" />
+
+            <StackPanel Grid.Column="0">
+                <TextBlock
+                    x:Name="PageTitle"
+                    Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock
+                    x:Name="PageSubtitle"
+                    Style="{StaticResource BodyTextStyle}"
+                    Margin="0,8,0,0"
+                    Opacity="0.7" />
+            </StackPanel>
+
+            <!-- 打开文件夹图标按钮 -->
+            <Button
+                Grid.Column="1"
+                Command="{Binding OpenCurrentFolderCommand}"
+                ToolTipService.ToolTip="打开文件夹"
+                VerticalAlignment="Center"
+                Style="{StaticResource DefaultButtonStyle}"
+                Padding="8"
+                Height="32">
+                <FontIcon Glyph="&#xE838;" FontSize="16" />
+            </Button>
         </Grid>
 
         <!-- 加载指示器 -->
@@ -208,7 +190,7 @@
             Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
         
         <!-- 主内容区域 - TabView -->
-        <TabView 
+        <TabView
             x:Name="MainTabView"
             Grid.Row="2"
             Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
