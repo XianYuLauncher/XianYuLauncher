@@ -1920,6 +1920,25 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             .ToList();
     }
 
+    private int? GetCurseForgeModLoaderType(IEnumerable<string> selectedLoaders)
+    {
+        var firstLoader = selectedLoaders.FirstOrDefault(l => l != "all");
+        return firstLoader?.ToLower() switch
+        {
+            "forge" => 1,
+            "fabric" => 4,
+            "quilt" => 5,
+            "neoforge" => 6,
+            _ => null
+        };
+    }
+
+    private string? GetCurseForgeGameVersion(IEnumerable<string> selectedVersions)
+    {
+        var firstVersion = selectedVersions.FirstOrDefault(v => v != "all");
+        return string.IsNullOrEmpty(firstVersion) ? null : firstVersion;
+    }
+
     private List<int> GetSelectedCurseForgeShaderPackCategoryIds()
     {
         return SelectedShaderPackCategories
@@ -2064,7 +2083,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     break;
                 case "world":
                     WorldCategories = new ObservableCollection<Models.CategoryItem>(uniqueCategories);
-                    SelectedWorldCategory = "all";
+                    SelectedWorldCategories.Clear();
+                    SelectedWorldCategories.Add("all");
                     break;
             }
             
@@ -2189,6 +2209,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 "resourcepack" => 12,
                 "datapack" => 6945,
                 "modpack" => 4471,
+                "world" => 17,
                 _ => 6
             };
             
@@ -3356,7 +3377,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
+                    "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
                 
                 if (cachedData != null)
                 {
@@ -3432,7 +3453,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
+                        "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                         modrinthResourcePacks, modrinthTotalHits);
                 }
             }
@@ -3441,7 +3462,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
+                    "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories));
                 
                 if (cachedData != null)
                 {
@@ -3458,12 +3479,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         if (selectedCurseForgeCategoryIds.Count > 0)
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedResourcePackLoaders);
                             var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
                             {
                                 var result = await _curseForgeService.SearchResourcesAsync(
                                     classId: 12, // ResourcePacks classId
                                     searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
+                                    gameVersion: GetCurseForgeGameVersion(SelectedResourcePackVersions),
+                                    modLoaderType: modLoaderType,
                                     categoryId: categoryId,
                                     index: 0,
                                     pageSize: _modPageSize
@@ -3497,10 +3520,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                         else
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedResourcePackLoaders);
                             var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                                 classId: 12, // ResourcePacks classId
                                 searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
+                                gameVersion: GetCurseForgeGameVersion(SelectedResourcePackVersions),
+                                modLoaderType: modLoaderType,
                                 categoryId: null,
                                 index: 0,
                                 pageSize: _modPageSize
@@ -3524,7 +3549,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
+                            "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                             curseForgeResourcePacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -3642,7 +3667,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
+                    "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -3652,7 +3677,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 12,
                         searchFilter: searchKeyword,
-                        gameVersion: string.IsNullOrEmpty(SelectedResourcePackVersion) ? null : SelectedResourcePackVersion,
+                        gameVersion: GetCurseForgeGameVersion(SelectedResourcePackVersions),
                         index: ResourcePackOffset,
                         pageSize: _modPageSize
                     );
@@ -3664,7 +3689,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = ResourcePackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "resourcepack", searchKeyword, "all", string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
+                        "resourcepack", searchKeyword, string.Join(",", SelectedResourcePackLoaders), string.Join(",", SelectedResourcePackVersions), string.Join(",", SelectedResourcePackCategories),
                         newResourcePacks, totalHits);
                 }
                 catch (Exception ex)
@@ -3856,12 +3881,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         if (selectedCurseForgeCategoryIds.Count > 0)
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedShaderPackLoaders);
                             var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
                             {
                                 var result = await _curseForgeService.SearchResourcesAsync(
                                     classId: 6552, // Shaders classId
                                     searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
+                                    gameVersion: GetCurseForgeGameVersion(SelectedShaderPackVersions),
+                                    modLoaderType: modLoaderType,
                                     categoryId: categoryId,
                                     index: 0,
                                     pageSize: _modPageSize
@@ -3895,10 +3922,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                         else
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedShaderPackLoaders);
                             var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                                 classId: 6552, // Shaders classId
                                 searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
+                                gameVersion: GetCurseForgeGameVersion(SelectedShaderPackVersions),
+                                modLoaderType: modLoaderType,
                                 categoryId: null,
                                 index: 0,
                                 pageSize: _modPageSize
@@ -4051,7 +4080,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 6552,
                         searchFilter: searchKeyword,
-                        gameVersion: string.IsNullOrEmpty(SelectedShaderPackVersion) ? null : SelectedShaderPackVersion,
+                        gameVersion: GetCurseForgeGameVersion(SelectedShaderPackVersions),
                         index: ShaderPackOffset,
                         pageSize: _modPageSize
                     );
@@ -4142,7 +4171,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
+                    "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4218,7 +4247,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
+                        "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                         modrinthModpacks, modrinthTotalHits);
                 }
             }
@@ -4227,7 +4256,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
+                    "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4244,12 +4273,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         if (selectedCurseForgeCategoryIds.Count > 0)
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedModpackLoaders);
                             var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
                             {
                                 var result = await _curseForgeService.SearchResourcesAsync(
                                     classId: 4471, // Modpacks classId
                                     searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
+                                    gameVersion: GetCurseForgeGameVersion(SelectedModpackVersions),
+                                    modLoaderType: modLoaderType,
                                     categoryId: categoryId,
                                     index: 0,
                                     pageSize: _modPageSize
@@ -4283,10 +4314,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                         else
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedModpackLoaders);
                             var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                                 classId: 4471, // Modpacks classId
                                 searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
+                                gameVersion: GetCurseForgeGameVersion(SelectedModpackVersions),
+                                modLoaderType: modLoaderType,
                                 categoryId: null,
                                 index: 0,
                                 pageSize: _modPageSize
@@ -4310,7 +4343,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         // 保存到缓存
                         await _curseForgeCacheService.SaveSearchResultAsync(
-                            "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
+                            "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                             curseForgeModpacks, curseForgeTotalHits);
                     }
                     catch (Exception ex)
@@ -4430,7 +4463,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                 // 追加到Modrinth缓存
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
+                    "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -4440,7 +4473,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 4471,
                         searchFilter: searchKeyword,
-                        gameVersion: string.IsNullOrEmpty(SelectedModpackVersion) ? null : SelectedModpackVersion,
+                        gameVersion: GetCurseForgeGameVersion(SelectedModpackVersions),
                         index: ModpackOffset,
                         pageSize: _modPageSize
                     );
@@ -4453,7 +4486,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 追加到CurseForge缓存
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "modpack", searchKeyword, "all", string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
+                        "modpack", searchKeyword, string.Join(",", SelectedModpackLoaders), string.Join(",", SelectedModpackVersions), string.Join(",", SelectedModpackCategories),
                         newModpacks, totalHits);
                 }
                 catch (Exception ex)
@@ -4533,7 +4566,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsModrinthEnabled)
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
-                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
+                    "datapack", searchKeyword, string.Join(",", SelectedDatapackLoaders), string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4609,7 +4642,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
-                        "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
+                        "datapack", searchKeyword, string.Join(",", SelectedDatapackLoaders), string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                         modrinthDatapacks, modrinthTotalHits);
                 }
             }
@@ -4618,7 +4651,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (IsCurseForgeEnabled)
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
+                    "datapack", searchKeyword, string.Join(",", SelectedDatapackLoaders), string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories));
                 
                 if (cachedData != null)
                 {
@@ -4635,12 +4668,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                         if (selectedCurseForgeCategoryIds.Count > 0)
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedDatapackLoaders);
                             var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
                             {
                                 var result = await _curseForgeService.SearchResourcesAsync(
                                     classId: 6945, // Datapacks classId
                                     searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
+                                    gameVersion: GetCurseForgeGameVersion(SelectedDatapackVersions),
+                                    modLoaderType: modLoaderType,
                                     categoryId: categoryId,
                                     index: 0,
                                     pageSize: _modPageSize
@@ -4674,10 +4709,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                         else
                         {
+                            var modLoaderType = GetCurseForgeModLoaderType(SelectedDatapackLoaders);
                             var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                                 classId: 6945, // Datapacks classId
                                 searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
+                                gameVersion: GetCurseForgeGameVersion(SelectedDatapackVersions),
+                                modLoaderType: modLoaderType,
                                 categoryId: null,
                                 index: 0,
                                 pageSize: _modPageSize
@@ -4819,7 +4856,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 totalHits = result.TotalHits;
 
                 await _modrinthCacheService.AppendToSearchResultAsync(
-                    "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
+                    "datapack", searchKeyword, string.Join(",", SelectedDatapackLoaders), string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                     result.Hits, result.TotalHits);
             }
             else if (IsCurseForgeEnabled)
@@ -4829,7 +4866,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 6945,
                         searchFilter: searchKeyword,
-                        gameVersion: string.IsNullOrEmpty(SelectedDatapackVersion) ? null : SelectedDatapackVersion,
+                        gameVersion: GetCurseForgeGameVersion(SelectedDatapackVersions),
                         index: DatapackOffset,
                         pageSize: _modPageSize
                     );
@@ -4841,7 +4878,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     totalHits = DatapackOffset + curseForgeResult.Data.Count + (curseForgeResult.Data.Count >= _modPageSize ? _modPageSize : 0);
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "datapack", searchKeyword, "all", string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
+                        "datapack", searchKeyword, string.Join(",", SelectedDatapackLoaders), string.Join(",", SelectedDatapackVersions), string.Join(",", SelectedDatapackCategories),
                         newDatapacks, totalHits);
                 }
                 catch (Exception ex)
@@ -4916,7 +4953,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             
             // 从CurseForge搜索或缓存加载
             var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
-                "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories));
+                "world", searchKeyword, string.Join(",", SelectedWorldLoaders), string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories));
             
             if (cachedData != null)
             {
@@ -4944,12 +4981,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     if (selectedCurseForgeCategoryIds.Count > 0)
                     {
+                        var modLoaderType = GetCurseForgeModLoaderType(SelectedWorldLoaders);
                         var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
                         {
                             var result = await _curseForgeService.SearchResourcesAsync(
                                 classId: 17, // Worlds classId
                                 searchFilter: searchKeyword,
                                 gameVersion: gameVersion,
+                                modLoaderType: modLoaderType,
                                 categoryId: categoryId,
                                 index: 0,
                                 pageSize: _modPageSize
@@ -4975,10 +5014,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     }
                     else
                     {
+                        var modLoaderType = GetCurseForgeModLoaderType(SelectedWorldLoaders);
                         var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                             classId: 17, // Worlds classId
                             searchFilter: searchKeyword,
                             gameVersion: gameVersion,
+                            modLoaderType: modLoaderType,
                             categoryId: null,
                             index: 0,
                             pageSize: _modPageSize
@@ -4987,19 +5028,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         allResults = curseForgeResult.Data;
                     }
 
+                    // 直接添加所有结果（已在服务端完成筛选）
                     foreach (var curseForgeWorld in allResults)
                     {
-                        var convertedWorld = ConvertCurseForgeToModrinth(curseForgeWorld);
-                        // 应用客户端筛选（加载器和类别都存储在 Categories 中）
-                        var loaderMatch = SelectedWorldLoaders.Count == 0 || SelectedWorldLoaders.Contains("all") ||
-                            (convertedWorld.Categories?.Any(c => SelectedWorldLoaders.Contains(c, StringComparer.OrdinalIgnoreCase)) ?? false);
-                        var categoryMatch = SelectedWorldCategories.Count == 0 || SelectedWorldCategories.Contains("all") ||
-                            (convertedWorld.Categories?.Any(c => SelectedWorldCategories.Contains(c, StringComparer.OrdinalIgnoreCase)) ?? false);
-
-                        if (loaderMatch && categoryMatch)
-                        {
-                            curseForgeWorlds.Add(convertedWorld);
-                        }
+                        curseForgeWorlds.Add(ConvertCurseForgeToModrinth(curseForgeWorld));
                     }
 
                     curseForgeTotalHits = curseForgeWorlds.Count;
@@ -5007,7 +5039,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
                     // 保存到缓存
                     await _curseForgeCacheService.SaveSearchResultAsync(
-                        "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
+                        "world", searchKeyword, string.Join(",", SelectedWorldLoaders), string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
                         curseForgeWorlds, curseForgeTotalHits);
                 }
                 catch (Exception ex)
@@ -5072,32 +5104,25 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         }
                     }
 
+                    var modLoaderType = GetCurseForgeModLoaderType(SelectedWorldLoaders);
                     var curseForgeResult = await _curseForgeService.SearchResourcesAsync(
                         classId: 17, // Worlds classId
                         searchFilter: searchKeyword,
                         gameVersion: gameVersion,
+                        modLoaderType: modLoaderType,
                         index: WorldOffset,
                         pageSize: _modPageSize
                     );
 
+                    // 直接添加所有结果（已在服务端完成筛选）
                     foreach (var curseForgeWorld in curseForgeResult.Data)
                     {
-                        var convertedWorld = ConvertCurseForgeToModrinth(curseForgeWorld);
-                        // 应用客户端筛选（加载器和类别都存储在 Categories 中）
-                        var loaderMatch = SelectedWorldLoaders.Count == 0 || SelectedWorldLoaders.Contains("all") ||
-                            (convertedWorld.Categories?.Any(c => SelectedWorldLoaders.Contains(c, StringComparer.OrdinalIgnoreCase)) ?? false);
-                        var categoryMatch = SelectedWorldCategories.Count == 0 || SelectedWorldCategories.Contains("all") ||
-                            (convertedWorld.Categories?.Any(c => SelectedWorldCategories.Contains(c, StringComparer.OrdinalIgnoreCase)) ?? false);
-
-                        if (loaderMatch && categoryMatch)
-                        {
-                            newWorlds.Add(convertedWorld);
-                        }
+                        newWorlds.Add(ConvertCurseForgeToModrinth(curseForgeWorld));
                     }
                     totalHits = newWorlds.Count;
 
                     await _curseForgeCacheService.AppendToSearchResultAsync(
-                        "world", searchKeyword, "all", string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
+                        "world", searchKeyword, string.Join(",", SelectedWorldLoaders), string.Join(",", SelectedWorldVersions), string.Join(",", SelectedWorldCategories),
                         newWorlds, totalHits);
                 }
                 catch (Exception ex)

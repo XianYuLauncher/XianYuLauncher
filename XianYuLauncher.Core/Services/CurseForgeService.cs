@@ -280,12 +280,14 @@ public class CurseForgeService
     /// <param name="index">起始索引</param>
     /// <param name="pageSize">每页数量</param>
     /// <param name="sortField">排序字段</param>
+    /// <param name="modLoaderType">加载器类型 (1=Forge, 4=Fabric, 5=Quilt, 6=NeoForge)</param>
     /// <param name="sortOrder">排序方向</param>
     /// <returns>搜索结果</returns>
     public async Task<CurseForgeSearchResult> SearchResourcesAsync(
         int classId,
         string searchFilter = "",
         string gameVersion = null,
+        int? modLoaderType = null,
         int? categoryId = null,
         int index = 0,
         int pageSize = 20,
@@ -295,11 +297,13 @@ public class CurseForgeService
         try
         {
             var url = $"{OfficialApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={classId}";
-            
+
             if (!string.IsNullOrEmpty(searchFilter))
                 url += $"&searchFilter={Uri.EscapeDataString(searchFilter)}";
             if (!string.IsNullOrEmpty(gameVersion))
                 url += $"&gameVersion={Uri.EscapeDataString(gameVersion)}";
+            if (modLoaderType.HasValue)
+                url += $"&modLoaderType={modLoaderType.Value}";
             if (categoryId.HasValue)
                 url += $"&categoryId={categoryId.Value}";
             
