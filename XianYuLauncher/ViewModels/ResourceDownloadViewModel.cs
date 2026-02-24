@@ -2646,8 +2646,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var selectedCategoryTags = GetSelectedModCategoryTags();
 
             // 生成缓存 key（用于多选筛选）
-            var loaderKey = string.Join(",", SelectedLoaders);
-            var versionKey = string.Join(",", SelectedVersions);
+            // 安全处理空集合情况
+            var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
+                ? "all"
+                : string.Join(",", SelectedLoaders);
+            var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
+                ? "all"
+                : string.Join(",", SelectedVersions);
             var categoryCacheKey = BuildModCategoryCacheKey();
             System.Diagnostics.Debug.WriteLine($"[Mod搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
 
@@ -2753,12 +2758,31 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     curseForgeTotalHits = cachedData.TotalHits;
                     System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
                 }
-                else if (SelectedLoader != "legacy-fabric" && SelectedLoader != "liteloader")
+                else
                 {
                     try
                     {
+                        // 获取多选加载器（排除不支持的加载器和 "all"）
+                        var selectedLoaders = SelectedLoaders
+                            .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+                            .ToList();
+                        if (selectedLoaders.Count == 0)
+                        {
+                            selectedLoaders.Add("all"); // 如果没有有效选择，使用 all
+                        }
+
+                        // 获取多选版本（排除 "all"）
+                        var selectedVersions = SelectedVersions
+                            .Where(v => v != "all")
+                            .ToList();
+                        // 如果没有选择版本，搜索所有版本
+                        if (selectedVersions.Count == 0)
+                        {
+                            selectedVersions.Add(null!); // null 表示搜索所有版本
+                        }
+
                         // 映射加载器类型
-                        int? modLoaderType = SelectedLoader switch
+                        int? GetLoaderType(string loader) => loader.ToLower() switch
                         {
                             "forge" => 1,
                             "fabric" => 4,
@@ -2766,96 +2790,107 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             "neoforge" => 6,
                             _ => null
                         };
-                        
+
                         var selectedCurseForgeCategoryIds = GetSelectedCurseForgeModCategoryIds();
                         var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
 
-                        if (selectedCurseForgeCategoryIds.Count > 0)
+                        // 构建搜索任务列表（加载器 x 版本 x 类别）
+                        var searchTasks = new List<Func<Task<List<CurseForgeMod>>>>();
+
+                        foreach (var loader in selectedLoaders)
                         {
-                            var searchTasks = selectedCurseForgeCategoryIds.Select(async categoryId =>
+                            var loaderType = GetLoaderType(loader);
+
+                            foreach (var version in selectedVersions)
                             {
-                                var result = await _curseForgeService.SearchModsAsync(
-                                    searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
-                                    modLoaderType: modLoaderType,
-                                    categoryId: categoryId,
-                                    index: 0,
-                                    pageSize: _modPageSize
-                                );
+                                var searchVersion = version;
 
-                                _curseForgeModCategoryOffsets[categoryId] = result.Data.Count;
-                                if (result.Data.Count < _modPageSize)
+                                if (selectedCurseForgeCategoryIds.Count > 0)
                                 {
-                                    _curseForgeModCategoriesExhausted.Add(categoryId);
-                                }
-
-                                return result.Data;
-                            });
-
-                            var searchResults = await Task.WhenAll(searchTasks);
-                            
-                            // 实现多类别结果交错合并 (Interleave)
-                            // 假设有3个类别，结果分别是 A, B, C
-                            // 我们希望顺序是: A1, B1, C1, A2, B2, C2, ...
-                            int maxCount = searchResults.Max(list => list.Count);
-                            for (int i = 0; i < maxCount; i++)
-                            {
-                                foreach (var modList in searchResults)
-                                {
-                                    if (i < modList.Count)
+                                    // 多类别搜索
+                                    foreach (var categoryId in selectedCurseForgeCategoryIds)
                                     {
-                                        var curseForgeMod = modList[i];
-                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                        
-                                        // 使用 TryAdd 避免重复添加 (保留第一次出现的位置)
-                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        var catId = categoryId;
+                                        searchTasks.Add(async () =>
                                         {
-                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
-                                        }
+                                            var result = await _curseForgeService.SearchModsAsync(
+                                                searchFilter: searchKeyword,
+                                                gameVersion: searchVersion,
+                                                modLoaderType: loaderType,
+                                                categoryId: catId,
+                                                index: 0,
+                                                pageSize: _modPageSize
+                                            );
+                                            return result.Data;
+                                        });
+                                    }
+                                }
+                                else
+                                {
+                                    // 无类别搜索
+                                    searchTasks.Add(async () =>
+                                    {
+                                        var result = await _curseForgeService.SearchModsAsync(
+                                            searchFilter: searchKeyword,
+                                            gameVersion: searchVersion,
+                                            modLoaderType: loaderType,
+                                            categoryId: null,
+                                            index: 0,
+                                            pageSize: _modPageSize
+                                        );
+                                        return result.Data;
+                                    });
+                                }
+                            }
+                        }
+
+                        // 执行所有搜索任务
+                        if (searchTasks.Count > 0)
+                        {
+                            var allSearchResults = await Task.WhenAll(searchTasks.Select(t => t()));
+
+                            // 合并所有结果
+                            foreach (var modList in allSearchResults)
+                            {
+                                foreach (var curseForgeMod in modList)
+                                {
+                                    var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
+                                    if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                    {
+                                        deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
                                     }
                                 }
                             }
 
-                            _curseForgeModOffset = deduplicatedMods.Count;
-                            curseForgeTotalHits = deduplicatedMods.Count;
+                            // 交错合并结果
+                            var combinedList = deduplicatedMods.Values.ToList();
+                            // 只有一个列表时，直接使用
+                            var interleaved = combinedList;
+
+                            curseForgeMods.AddRange(interleaved);
+                            _curseForgeModOffset = interleaved.Count;
+                            curseForgeTotalHits = interleaved.Count;
+                            System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {interleaved.Count} 个Mod（多选加载器/版本）");
                         }
                         else
                         {
-                            var curseForgeResult = await _curseForgeService.SearchModsAsync(
-                                searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
-                                modLoaderType: modLoaderType,
-                                categoryId: null,
-                                index: 0,
-                                pageSize: _modPageSize
-                            );
-
-                            foreach (var curseForgeMod in curseForgeResult.Data)
-                            {
-                                var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
-                            }
-
-                            _curseForgeModOffset = curseForgeResult.Data.Count;
-                            curseForgeTotalHits = curseForgeResult.Data.Count; // CurseForge 不返回总数，使用当前数量
+                            // 无有效搜索条件
+                            _curseForgeModOffset = 0;
+                            curseForgeTotalHits = 0;
                         }
-
-                        foreach (var item in deduplicatedMods.Values)
-                        {
-                            curseForgeMods.Add(item);
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {curseForgeMods.Count} 个Mod");
-                        
-                        // 保存到缓存
-                        await _curseForgeCacheService.SaveSearchResultAsync(
-                            "mod", SearchQuery, loaderKey, versionKey, categoryCacheKey,
-                            curseForgeMods, curseForgeTotalHits);
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索失败: {ex.Message}");
                     }
+                }
+
+                // 保存到缓存（多选加载器/版本）
+                if (curseForgeMods.Count > 0)
+                {
+                    await _curseForgeCacheService.SaveSearchResultAsync(
+                        "mod", searchKeyword, loaderKey, versionKey, categoryCacheKey,
+                        curseForgeMods, curseForgeTotalHits);
                 }
             }
 
@@ -3067,8 +3102,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var selectedCategoryTags = GetSelectedModCategoryTags();
 
             // 生成缓存 key（用于多选筛选）
-            var loaderKey = string.Join(",", SelectedLoaders);
-            var versionKey = string.Join(",", SelectedVersions);
+            // 安全处理空集合情况
+            var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
+                ? "all"
+                : string.Join(",", SelectedLoaders);
+            var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
+                ? "all"
+                : string.Join(",", SelectedVersions);
             var categoryCacheKey = BuildModCategoryCacheKey();
 
             // 如果两个平台都未启用，直接返回
@@ -3155,100 +3195,118 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 try
                 {
-                    // 映射加载器类型
-                    // 特别注意：Legacy Fabric 和 LiteLoader 不被 CurseForge 支持，如果选中则必须跳过 CurseForge 搜索
-                    if (SelectedLoader == "legacy-fabric" || SelectedLoader == "liteloader")
+                    // 获取多选加载器（排除不支持的加载器和 "all"）
+                    var selectedLoaders = SelectedLoaders
+                        .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+                        .ToList();
+                    if (selectedLoaders.Count == 0)
                     {
-                        // 显式跳过CurseForge
-                        curseForgeTotalHits = 0;
+                        selectedLoaders.Add("all"); // 如果没有有效选择，使用 all
                     }
-                    else
+
+                    // 获取多选版本（排除 "all"）
+                    var selectedVersions = SelectedVersions
+                        .Where(v => v != "all")
+                        .ToList();
+                    // 如果没有选择版本，搜索所有版本
+                    if (selectedVersions.Count == 0)
                     {
-                        int? modLoaderType = SelectedLoader switch
+                        selectedVersions.Add(null!); // null 表示搜索所有版本
+                    }
+
+                    // 映射加载器类型
+                    int? GetLoaderType(string loader) => loader.ToLower() switch
+                    {
+                        "forge" => 1,
+                        "fabric" => 4,
+                        "quilt" => 5,
+                        "neoforge" => 6,
+                        _ => null
+                    };
+
+                    var selectedCurseForgeCategoryIds = GetSelectedCurseForgeModCategoryIds();
+                    var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+
+                    // 构建搜索任务列表（加载器 x 版本 x 类别）
+                    var searchTasks = new List<Func<Task<List<CurseForgeMod>>>>();
+
+                    foreach (var loader in selectedLoaders)
+                    {
+                        var loaderType = GetLoaderType(loader);
+
+                        foreach (var version in selectedVersions)
                         {
-                            "forge" => 1,
-                            "fabric" => 4,
-                            "quilt" => 5,
-                            "neoforge" => 6,
-                            _ => null
-                        };
+                            var searchVersion = version;
 
-                        var selectedCurseForgeCategoryIds = GetSelectedCurseForgeModCategoryIds();
-                        var deduplicatedMods = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
-
-                        if (selectedCurseForgeCategoryIds.Count > 0)
-                        {
-                            var categoryIdsToLoad = selectedCurseForgeCategoryIds
-                                .Where(id => !_curseForgeModCategoriesExhausted.Contains(id))
-                                .ToList();
-
-                            var categoryTasks = categoryIdsToLoad.Select(async categoryId =>
+                            if (selectedCurseForgeCategoryIds.Count > 0)
                             {
-                                var currentOffset = _curseForgeModCategoryOffsets.TryGetValue(categoryId, out var offset) ? offset : 0;
-                                var result = await _curseForgeService.SearchModsAsync(
-                                    searchFilter: searchKeyword,
-                                    gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
-                                    modLoaderType: modLoaderType,
-                                    categoryId: categoryId,
-                                    index: currentOffset,
-                                    pageSize: _modPageSize
-                                );
+                                // 多类别搜索
+                                var categoryIdsToLoad = selectedCurseForgeCategoryIds
+                                    .Where(id => !_curseForgeModCategoriesExhausted.Contains(id))
+                                    .ToList();
 
-                                _curseForgeModCategoryOffsets[categoryId] = currentOffset + result.Data.Count;
-                                if (result.Data.Count < _modPageSize)
+                                foreach (var categoryId in categoryIdsToLoad)
                                 {
-                                    _curseForgeModCategoriesExhausted.Add(categoryId);
-                                }
+                                    var catId = categoryId;
+                                    var currentOffset = _curseForgeModCategoryOffsets.TryGetValue(catId, out var offset) ? offset : 0;
 
-                                return result.Data;
-                            });
-
-                            var categoryResults = await Task.WhenAll(categoryTasks);
-                            
-                            // 实现多类别结果交错合并 (Interleave)
-                            // 假设有3个类别，结果分别是 A, B, C
-                            // 我们希望顺序是: A1, B1, C1, A2, B2, C2, ...
-                            int maxCount = categoryResults.Max(list => list.Count);
-                            for (int i = 0; i < maxCount; i++)
-                            {
-                                foreach (var modList in categoryResults)
-                                {
-                                    if (i < modList.Count)
+                                    searchTasks.Add(async () =>
                                     {
-                                        var curseForgeMod = modList[i];
-                                        var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                        
-                                        // 使用 TryAdd 避免重复添加 (保留第一次出现的位置)
-                                        if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                        var result = await _curseForgeService.SearchModsAsync(
+                                            searchFilter: searchKeyword,
+                                            gameVersion: searchVersion,
+                                            modLoaderType: loaderType,
+                                            categoryId: catId,
+                                            index: currentOffset,
+                                            pageSize: _modPageSize
+                                        );
+
+                                        // 更新 offset（简化处理：不区分 loader/version 组合）
+                                        _curseForgeModCategoryOffsets[catId] = currentOffset + result.Data.Count;
+                                        if (result.Data.Count < _modPageSize)
                                         {
-                                            deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                            _curseForgeModCategoriesExhausted.Add(catId);
                                         }
-                                    }
+
+                                        return result.Data;
+                                    });
                                 }
                             }
-
-                            _curseForgeModOffset = _curseForgeModCategoryOffsets.Values.Sum();
-                            curseForgeTotalHits = _curseForgeModOffset;
+                            else
+                            {
+                                // 无类别搜索
+                                searchTasks.Add(async () =>
+                                {
+                                    var result = await _curseForgeService.SearchModsAsync(
+                                        searchFilter: searchKeyword,
+                                        gameVersion: searchVersion,
+                                        modLoaderType: loaderType,
+                                        categoryId: null,
+                                        index: _curseForgeModOffset,
+                                        pageSize: _modPageSize
+                                    );
+                                    return result.Data;
+                                });
+                            }
                         }
-                        else
-                        {
-                            var curseForgeResult = await _curseForgeService.SearchModsAsync(
-                                searchFilter: searchKeyword,
-                                gameVersion: string.IsNullOrEmpty(SelectedVersion) ? null : SelectedVersion,
-                                modLoaderType: modLoaderType,
-                                categoryId: null,
-                                index: _curseForgeModOffset,
-                                pageSize: _modPageSize
-                            );
+                    }
 
-                            foreach (var curseForgeMod in curseForgeResult.Data)
+                    // 执行搜索任务
+                    if (searchTasks.Count > 0)
+                    {
+                        var allSearchResults = await Task.WhenAll(searchTasks.Select(t => t()));
+
+                        // 合并结果
+                        foreach (var modList in allSearchResults)
+                        {
+                            foreach (var curseForgeMod in modList)
                             {
                                 var convertedMod = ConvertCurseForgeToModrinth(curseForgeMod);
-                                deduplicatedMods[convertedMod.ProjectId] = convertedMod;
+                                if (!deduplicatedMods.ContainsKey(convertedMod.ProjectId))
+                                {
+                                    deduplicatedMods.Add(convertedMod.ProjectId, convertedMod);
+                                }
                             }
-
-                            _curseForgeModOffset += curseForgeResult.Data.Count;
-                            curseForgeTotalHits = _curseForgeModOffset; // 使用累计数量作为总数
                         }
 
                         foreach (var mod in deduplicatedMods.Values)
@@ -3256,9 +3314,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             curseForgeMods.Add(mod);
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeMods.Count} 个Mod，当前offset: {_curseForgeModOffset}");
+                        _curseForgeModOffset += deduplicatedMods.Count;
+                        curseForgeTotalHits = _curseForgeModOffset;
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeMods.Count} 个Mod（多选加载器/版本），当前offset: {_curseForgeModOffset}");
                     }
-                    
+
                     // 追加到缓存
                     if (curseForgeMods.Count > 0)
                     {
