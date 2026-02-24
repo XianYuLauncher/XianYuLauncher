@@ -14,6 +14,7 @@ public interface IModpackInstallationService
     /// <param name="fileName">文件名（如 modpack.mrpack）</param>
     /// <param name="modpackDisplayName">整合包显示名称</param>
     /// <param name="minecraftPath">Minecraft 数据目录</param>
+    /// <param name="isFromCurseForge">是否来自 CurseForge（决定使用哪种 CDN 回退）</param>
     /// <param name="progress">进度报告</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>安装结果</returns>
@@ -22,6 +23,7 @@ public interface IModpackInstallationService
         string fileName,
         string modpackDisplayName,
         string minecraftPath,
+        bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
         CancellationToken cancellationToken = default);
 }

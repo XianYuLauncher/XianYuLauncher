@@ -13,17 +13,20 @@ namespace XianYuLauncher.Core.Services;
 public class ModpackInstallationService : IModpackInstallationService
 {
     private readonly IDownloadManager _downloadManager;
+    private readonly FallbackDownloadManager _fallbackDownloadManager;
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly CurseForgeService _curseForgeService;
     private readonly ILocalSettingsService _localSettingsService;
 
     public ModpackInstallationService(
         IDownloadManager downloadManager,
+        FallbackDownloadManager fallbackDownloadManager,
         IMinecraftVersionService minecraftVersionService,
         CurseForgeService curseForgeService,
         ILocalSettingsService localSettingsService)
     {
         _downloadManager = downloadManager;
+        _fallbackDownloadManager = fallbackDownloadManager;
         _minecraftVersionService = minecraftVersionService;
         _curseForgeService = curseForgeService;
         _localSettingsService = localSettingsService;
@@ -34,6 +37,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string fileName,
         string modpackDisplayName,
         string minecraftPath,
+        bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
         CancellationToken cancellationToken = default)
     {
@@ -46,7 +50,7 @@ public class ModpackInstallationService : IModpackInstallationService
             string mrpackPath = Path.Combine(tempDir, fileName);
             Directory.CreateDirectory(tempDir);
 
-            await DownloadModpackFileAsync(downloadUrl, mrpackPath, progress, cancellationToken);
+            await DownloadModpackFileAsync(downloadUrl, mrpackPath, isFromCurseForge, progress, cancellationToken);
 
             Report(progress, 30, "30%", "下载完成，正在解压整合包...");
 
@@ -462,6 +466,7 @@ public class ModpackInstallationService : IModpackInstallationService
     private async Task DownloadModpackFileAsync(
         string downloadUrl,
         string targetPath,
+        bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
         CancellationToken cancellationToken)
     {
@@ -470,14 +475,28 @@ public class ModpackInstallationService : IModpackInstallationService
 
         if (downloadUrl.StartsWith("http://") || downloadUrl.StartsWith("https://"))
         {
-            await _downloadManager.DownloadFileAsync(
-                downloadUrl, targetPath, null,
-                status =>
+            // 根据来源决定资源类型，使用 fallback 系统下载
+            var resourceType = isFromCurseForge ? "curseforge_cdn" : "modrinth_cdn";
+
+            Debug.WriteLine($"[整合包下载] URL: {downloadUrl}, 来源: {(isFromCurseForge ? "CurseForge" : "Modrinth")}, 资源类型: {resourceType}");
+
+            var result = await _fallbackDownloadManager.DownloadFileForCommunityAsync(
+                downloadUrl,
+                targetPath,
+                resourceType,
+                percent =>
                 {
-                    double p = status.Percent * 0.3;
-                    Report(progress, p, $"{p:F1}%", "正在下载整合包...", status.SpeedText);
+                    double p = percent * 0.3;
+                    Report(progress, p, $"{p:F1}%", "正在下载整合包...");
                 },
                 cancellationToken);
+
+            if (!result.Success)
+            {
+                throw new Exception($"整合包下载失败: {result.ErrorMessage}");
+            }
+
+            Debug.WriteLine($"[整合包下载] 下载成功，使用源: {result.UsedSourceKey}");
         }
         else
         {

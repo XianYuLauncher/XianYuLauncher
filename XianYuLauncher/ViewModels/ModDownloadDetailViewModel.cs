@@ -2757,6 +2757,7 @@ namespace XianYuLauncher.ViewModels
                     modVersion.FileName,
                     ModName,
                     minecraftPath,
+                    modVersion.IsCurseForge,
                     progress,
                     _installCancellationTokenSource.Token);
 

@@ -127,7 +127,17 @@ public partial class App : Application
             });
             
             services.AddSingleton<IDownloadTaskManager, DownloadTaskManager>();
-            services.AddSingleton<IModpackInstallationService, ModpackInstallationService>();
+            services.AddSingleton<IModpackInstallationService>(sp =>
+            {
+                var downloadManager = sp.GetRequiredService<IDownloadManager>();
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                var minecraftVersionService = sp.GetRequiredService<IMinecraftVersionService>();
+                var curseForgeService = sp.GetRequiredService<CurseForgeService>();
+                var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+                return new ModpackInstallationService(
+                    downloadManager, fallbackDownloadManager,
+                    minecraftVersionService, curseForgeService, localSettingsService);
+            });
 
             // ModLoader Services (抽离自 ModLoaderSelectorViewModel)
             services.AddSingleton<IModLoaderVersionLoaderService, ModLoaderVersionLoaderService>();
