@@ -1025,8 +1025,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void TryRefreshModFilterTokenItems()
     {
-        // Mod 页面使用 ResourceFilterFlyout，已在 Flyout_Opening 中刷新
-        // 此方法保留用于兼容，暂不需要刷新
+        // 尝试刷新 Mod 页面筛选 TokenItems
+        if (ViewModel == null)
+        {
+            return;
+        }
+
+        RefreshModFilterTokenItems();
     }
 
     private void RefreshModFilterTokenItems()

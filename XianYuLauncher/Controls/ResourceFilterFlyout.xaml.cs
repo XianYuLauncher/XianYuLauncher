@@ -298,11 +298,10 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
             // Checked/Unchecked 事件触发时，IsChecked 已经是新状态
             IsShowAllVersions = ShowAllVersionsCheckBox.IsChecked == true;
 
-            // 先通知外部 IsShowAllVersions 已变化（外部会更新 ViewModel）
+            // 通知外部 IsShowAllVersions 已变化（外部会更新 ViewModel、异步刷新版本列表等）
             ShowAllVersionsChanged?.Invoke(this, EventArgs.Empty);
-
-            // 再请求外部刷新版本列表（此时外部 ViewModel 已同步到新的 IsShowAllVersions）
-            RefreshVersionsRequested?.Invoke(this, EventArgs.Empty);
+            // 注意：不再在此处直接触发 RefreshVersionsRequested，避免与外部异步刷新 AvailableVersions 产生竞态；
+            // 外部应在完成版本列表刷新后，再在合适时机刷新 TokenView 或调用相应刷新逻辑。
         }
         finally
         {

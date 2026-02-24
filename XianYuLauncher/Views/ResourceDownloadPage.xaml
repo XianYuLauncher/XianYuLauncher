@@ -538,7 +538,7 @@
                                         </DropDownButton.Flyout>
                                     </DropDownButton>
 
-                                    <!-- TODO: 当前 Flyout + TokenView 仅适配 Mods 页，后续按同一交互同步到光影/资源包/数据包/整合包/世界等资源页。 -->
+                                    <!-- TODO: 如需调整 Flyout + TokenView 的交互，请同步检查光影/资源包/数据包/整合包/世界等资源页中的相同控件，保持交互一致。 -->
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
