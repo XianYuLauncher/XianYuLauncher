@@ -766,7 +766,8 @@
                                             <localControls:ResourceFilterFlyout
                                                 x:Name="ShaderPackFilterControl"
                                                 SelectionChanged="ResourceFilterControl_SelectionChanged"
-                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ShaderPackFilterControl_RefreshVersionsRequested" />
                                         </Flyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
@@ -985,7 +986,8 @@
                                             <localControls:ResourceFilterFlyout
                                                 x:Name="ResourcePackFilterControl"
                                                 SelectionChanged="ResourceFilterControl_SelectionChanged"
-                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ResourcePackFilterControl_RefreshVersionsRequested" />
                                         </Flyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
@@ -1205,7 +1207,8 @@
                                             <localControls:ResourceFilterFlyout
                                                 x:Name="DatapackFilterControl"
                                                 SelectionChanged="ResourceFilterControl_SelectionChanged"
-                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="DatapackFilterControl_RefreshVersionsRequested" />
                                         </Flyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
@@ -1403,7 +1406,8 @@
                                             <localControls:ResourceFilterFlyout
                                                 x:Name="ModpackFilterControl"
                                                 SelectionChanged="ResourceFilterControl_SelectionChanged"
-                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ModpackFilterControl_RefreshVersionsRequested" />
                                         </Flyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
@@ -1601,7 +1605,8 @@
                                             <localControls:ResourceFilterFlyout
                                                 x:Name="WorldFilterControl"
                                                 SelectionChanged="ResourceFilterControl_SelectionChanged"
-                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="WorldFilterControl_RefreshVersionsRequested" />
                                         </Flyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>

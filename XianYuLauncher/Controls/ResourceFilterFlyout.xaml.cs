@@ -85,6 +85,11 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
 
     public event EventHandler? ShowAllVersionsChanged;
 
+    /// <summary>
+    /// 当需要刷新版本列表时触发（CheckBox 点击时）
+    /// </summary>
+    public event EventHandler? RefreshVersionsRequested;
+
     #endregion
 
     public ResourceFilterFlyout()
@@ -219,39 +224,24 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
             .ToList();
     }
 
-    private void ShowAllVersionsCheckBox_Click(object sender, RoutedEventArgs e)
+    private void ShowAllVersionsCheckBox_Changed(object sender, RoutedEventArgs e)
     {
-        // 点击时，IsChecked 已经是新状态
-        // 手动同步到依赖属性
-        IsShowAllVersions = ShowAllVersionsCheckBox.IsChecked == true;
+        if (_isUpdatingShowAllVersions) return;
 
-        // 强制刷新版本 TokenView（模拟 Mod 页面的逻辑）
-        RefreshVersionTokenView();
-
-        ShowAllVersionsChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void RefreshVersionTokenView()
-    {
-        if (VersionTokenView == null) return;
-
-        _isUpdatingSelection = true;
+        _isUpdatingShowAllVersions = true;
         try
         {
-            // 强制清空并重新添加，触发 UI 刷新
-            VersionTokenView.Items.Clear();
+            // Checked/Unchecked 事件触发时，IsChecked 已经是新状态
+            IsShowAllVersions = ShowAllVersionsCheckBox.IsChecked == true;
 
-            if (VersionsSource != null)
-            {
-                foreach (var item in VersionsSource)
-                {
-                    VersionTokenView.Items.Add(item);
-                }
-            }
+            // 触发外部刷新版本列表（因为需要根据 IsShowAllVersions 重新生成）
+            RefreshVersionsRequested?.Invoke(this, EventArgs.Empty);
+
+            ShowAllVersionsChanged?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
-            _isUpdatingSelection = false;
+            _isUpdatingShowAllVersions = false;
         }
     }
 
