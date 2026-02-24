@@ -369,6 +369,18 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
                     tokenView.SelectedItems.Add(item);
                 }
             }
+
+            // 如果没有任何选中项，默认回退到 "all"（保持与旧逻辑一致）
+            if (tokenView.SelectedItems.Count == 0)
+            {
+                var allToken = tokenView.Items
+                    .OfType<TokenItem>()
+                    .FirstOrDefault(it => string.Equals(it.Tag?.ToString(), "all", StringComparison.OrdinalIgnoreCase));
+                if (allToken != null)
+                {
+                    tokenView.SelectedItems.Add(allToken);
+                }
+            }
         }
         finally
         {
