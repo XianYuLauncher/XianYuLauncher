@@ -4,31 +4,22 @@ namespace XianYuLauncher.Views;
 
 public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {
-    private bool _isUpdatingModCategoryTokenViewSelection = false;
-    private bool _isUpdatingModLoaderTokenViewSelection = false;
-    private bool _isUpdatingModVersionTokenViewSelection = false;
     private string _modFilterSelectionSnapshot = string.Empty;
-    private bool _modFilterTokenItemsDirty = true;
 
     // 光影页面筛选状态
     private string _shaderPackFilterSelectionSnapshot = string.Empty;
-    private bool _shaderPackFilterTokenItemsDirty = true;
 
     // 资源包页面筛选状态
     private string _resourcePackFilterSelectionSnapshot = string.Empty;
-    private bool _resourcePackFilterTokenItemsDirty = true;
 
     // 数据包页面筛选状态
     private string _datapackFilterSelectionSnapshot = string.Empty;
-    private bool _datapackFilterTokenItemsDirty = true;
 
     // 整合包页面筛选状态
     private string _modpackFilterSelectionSnapshot = string.Empty;
-    private bool _modpackFilterTokenItemsDirty = true;
 
     // 世界页面筛选状态
     private string _worldFilterSelectionSnapshot = string.Empty;
-    private bool _worldFilterTokenItemsDirty = true;
 
     private const string DefaultCategoryIconGlyph = "\uE8FD";
 
@@ -169,7 +160,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             || e.PropertyName == nameof(ViewModel.SelectedVersion)
             || e.PropertyName == nameof(ViewModel.IsShowAllVersions))
         {
-            _modFilterTokenItemsDirty = true;
             TryRefreshModFilterTokenItems();
         }
     }

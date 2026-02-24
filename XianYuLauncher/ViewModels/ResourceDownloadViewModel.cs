@@ -2646,13 +2646,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var selectedCategoryTags = GetSelectedModCategoryTags();
 
             // 生成缓存 key（用于多选筛选）
-            // 安全处理空集合情况
+            // 安全处理空集合情况，并对集合排序以避免同义筛选命中不同缓存 key
             var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
                 ? "all"
-                : string.Join(",", SelectedLoaders);
+                : string.Join(",", SelectedLoaders.OrderBy(l => l, StringComparer.Ordinal));
             var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
                 ? "all"
-                : string.Join(",", SelectedVersions);
+                : string.Join(",", SelectedVersions.OrderBy(v => v, StringComparer.Ordinal));
             var categoryCacheKey = BuildModCategoryCacheKey();
             System.Diagnostics.Debug.WriteLine($"[Mod搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
 
@@ -2774,11 +2774,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                         // 获取多选版本（排除 "all"）
                         var selectedVersions = SelectedVersions
                             .Where(v => v != "all")
+                            .Cast<string?>()
                             .ToList();
                         // 如果没有选择版本，搜索所有版本
                         if (selectedVersions.Count == 0)
                         {
-                            selectedVersions.Add(null!); // null 表示搜索所有版本
+                            selectedVersions.Add(null); // null 表示搜索所有版本
                         }
 
                         // 映射加载器类型
@@ -3102,13 +3103,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var selectedCategoryTags = GetSelectedModCategoryTags();
 
             // 生成缓存 key（用于多选筛选）
-            // 安全处理空集合情况
+            // 安全处理空集合情况，并对集合排序以避免同义筛选命中不同缓存 key
             var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
                 ? "all"
-                : string.Join(",", SelectedLoaders);
+                : string.Join(",", SelectedLoaders.OrderBy(l => l, StringComparer.Ordinal));
             var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
                 ? "all"
-                : string.Join(",", SelectedVersions);
+                : string.Join(",", SelectedVersions.OrderBy(v => v, StringComparer.Ordinal));
             var categoryCacheKey = BuildModCategoryCacheKey();
 
             // 如果两个平台都未启用，直接返回
