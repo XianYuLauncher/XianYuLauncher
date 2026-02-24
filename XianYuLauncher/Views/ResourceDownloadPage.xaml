@@ -10,7 +10,9 @@
     xmlns:models="using:XianYuLauncher.Core.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:labs="using:CommunityToolkit.Labs.WinUI"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
+    xmlns:localControls="using:XianYuLauncher.Controls"
     NavigationCacheMode="Required"
     mc:Ignorable="d">
 
@@ -287,7 +289,7 @@
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 Height="Auto" 
-                SelectedIndex="0"
+                SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
                 SelectionChanged="ResourceTabView_SelectionChanged"
                 IsAddTabButtonVisible="False"
                 CanDragTabs="False"
@@ -500,8 +502,6 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Search Box -->
@@ -514,52 +514,34 @@
                                         Text="{Binding SearchQuery, Mode=TwoWay}"
                                         QuerySubmitted="ModSearchBox_QuerySubmitted"/>
 
-                                    <!-- Mod Loader Filter -->
-                                    <ComboBox
-                                        x:Name="LoaderComboBox"
-                                        x:Uid="ResourceDownloadPage_LoaderComboBox"
+                                    <!-- 统一筛选 -->
+                                    <DropDownButton
+                                        x:Name="ModCategoryFilterButton"
                                         Grid.Column="1"
-                                        MinWidth="80"
-                                        Margin="0,0,4,0"
-                                        SelectedValue="{Binding SelectedLoader, Mode=TwoWay}"
-                                        SelectedValuePath="Tag"
-                                        SelectionChanged="LoaderComboBox_SelectionChanged">
-                                        <ComboBoxItem x:Uid="ResourceDownloadPage_AllLoaders" Content="加载器" Tag="all" IsSelected="True" />
-                                        <ComboBoxItem Content="Fabric" Tag="fabric" />
-                                        <ComboBoxItem Content="Forge" Tag="forge" />
-                                        <ComboBoxItem Content="Quilt" Tag="quilt" />
-                                        <ComboBoxItem Content="Bolt" Tag="bolt" Visibility="Collapsed"/>
-                                        <ComboBoxItem Content="Legacy Fabric" Tag="legacy-fabric" />
-                                        <ComboBoxItem Content="LiteLoader" Tag="liteloader" />
-                                    </ComboBox>
-
-                                    <!-- Version Filter -->
-                                    <ComboBox
-                                        x:Name="VersionComboBox"
-                                        x:Uid="ResourceDownloadPage_VersionComboBox"
-                                        Grid.Column="2"
-                                        MinWidth="90"
-                                        Margin="0,0,4,0"
-                                        ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                        SelectedItem="{Binding SelectedVersion, Mode=TwoWay}"
-                                        SelectionChanged="VersionComboBox_SelectionChanged">
-                                    </ComboBox>
-
-                                    <!-- 类别筛选 -->
-                                    <ComboBox
-                                        x:Name="ModCategoryComboBox"
-                                        x:Uid="ResourceDownloadPage_ModCategoryComboBox"
-                                        Grid.Column="3"
-                                        MinWidth="80"
                                         Margin="0,0,8,0"
-                                        ItemsSource="{Binding ModCategories}"
-                                        DisplayMemberPath="DisplayName"
-                                        SelectedValuePath="Tag"
-                                        SelectedValue="{Binding SelectedModCategory, Mode=TwoWay}"
-                                        SelectionChanged="ModCategoryComboBox_SelectionChanged" />
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left">
+                                        <DropDownButton.Content>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                                <TextBlock Text="筛选" />
+                                            </StackPanel>
+                                        </DropDownButton.Content>
+                                        <DropDownButton.Flyout>
+                                            <Flyout x:Name="ModFilterFlyout" Placement="Bottom" Opening="ModFilterFlyout_Opening" Closed="ModFilterFlyout_Closed">
+                                                <localControls:ResourceFilterFlyout
+                                                    x:Name="ModFilterControl"
+                                                    SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                    ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                    RefreshVersionsRequested="ModFilterControl_RefreshVersionsRequested" />
+                                            </Flyout>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
+
+                                    <!-- TODO: 如需调整 Flyout + TokenView 的交互，请同步检查光影/资源包/数据包/整合包/世界等资源页中的相同控件，保持交互一致。 -->
 
                                     <!-- 平台选择 - 使用 ToggleButtons -->
-                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="0">
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                         <ToggleButton 
                                             x:Name="ModrinthToggle"
                                             x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -588,35 +570,6 @@
                                         </ToggleButton>
                                     </StackPanel>
                                 </Grid>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -743,8 +696,6 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -761,37 +712,35 @@
                                     Text="{Binding ShaderPackSearchQuery, Mode=TwoWay}"
                                     QuerySubmitted="ShaderPackSearchBox_QuerySubmitted"/>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="ShaderPackVersionComboBox"
-                                    x:Uid="ResourceDownloadPage_ShaderPackVersionComboBox"
+                                <!-- 统一筛选按钮 -->
+                                <DropDownButton
+                                    x:Name="ShaderPackFilterButton"
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,4,0"
-                                    MinWidth="90"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedShaderPackVersion, Mode=TwoWay}"
-                                    SelectionChanged="ShaderPackVersionComboBox_SelectionChanged">
-                                </ComboBox>
-
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="ShaderPackCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_ShaderPackCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="80"
                                     Margin="0,0,8,0"
-                                    ItemsSource="{Binding ShaderPackCategories}"
-                                    DisplayMemberPath="DisplayName"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedShaderPackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ShaderPackCategoryComboBox_SelectionChanged" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                            <TextBlock Text="筛选" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <Flyout x:Name="ShaderPackFilterFlyout" Placement="Bottom"
+                                                Opening="ShaderPackFilterFlyout_Opening"
+                                                Closed="ShaderPackFilterFlyout_Closed">
+                                            <localControls:ResourceFilterFlyout
+                                                x:Name="ShaderPackFilterControl"
+                                                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ShaderPackFilterControl_RefreshVersionsRequested" />
+                                        </Flyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                     <ToggleButton 
                                         x:Name="ShaderPackModrinthToggle"
                                         x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -819,35 +768,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -996,8 +916,6 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -1014,37 +932,35 @@
                                     Text="{Binding ResourcePackSearchQuery, Mode=TwoWay}"
                                     QuerySubmitted="ResourcePackSearchBox_QuerySubmitted"/>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="ResourcePackVersionComboBox"
-                                    x:Uid="ResourceDownloadPage_ResourcePackVersionComboBox"
+                                <!-- 统一筛选按钮 -->
+                                <DropDownButton
+                                    x:Name="ResourcePackFilterButton"
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,4,0"
-                                    MinWidth="90"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedResourcePackVersion, Mode=TwoWay}"
-                                    SelectionChanged="ResourcePackVersionComboBox_SelectionChanged">
-                                </ComboBox>
-
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="ResourcePackCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_ResourcePackCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="80"
                                     Margin="0,0,8,0"
-                                    ItemsSource="{Binding ResourcePackCategories}"
-                                    DisplayMemberPath="DisplayName"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedResourcePackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ResourcePackCategoryComboBox_SelectionChanged" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                            <TextBlock Text="筛选" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <Flyout x:Name="ResourcePackFilterFlyout" Placement="Bottom"
+                                                Opening="ResourcePackFilterFlyout_Opening"
+                                                Closed="ResourcePackFilterFlyout_Closed">
+                                            <localControls:ResourceFilterFlyout
+                                                x:Name="ResourcePackFilterControl"
+                                                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ResourcePackFilterControl_RefreshVersionsRequested" />
+                                        </Flyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                     <ToggleButton 
                                         x:Name="ResourcePackModrinthToggle"
                                         x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -1072,35 +988,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1249,8 +1136,6 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -1268,37 +1153,35 @@
                                     Text="{Binding DatapackSearchQuery, Mode=TwoWay}"
                                     QuerySubmitted="DatapackSearchBox_QuerySubmitted"/>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="DatapackVersionComboBox"
-                                    x:Uid="ResourceDownloadPage_DatapackVersionComboBox"
+                                <!-- 统一筛选按钮 -->
+                                <DropDownButton
+                                    x:Name="DatapackFilterButton"
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,4,0"
-                                    MinWidth="90"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedDatapackVersion, Mode=TwoWay}"
-                                    SelectionChanged="DatapackVersionComboBox_SelectionChanged">
-                                </ComboBox>
-
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="DatapackCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_DatapackCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="80"
                                     Margin="0,0,8,0"
-                                    ItemsSource="{Binding DatapackCategories}"
-                                    DisplayMemberPath="DisplayName"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedDatapackCategory, Mode=TwoWay}"
-                                    SelectionChanged="DatapackCategoryComboBox_SelectionChanged" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                            <TextBlock Text="筛选" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <Flyout x:Name="DatapackFilterFlyout" Placement="Bottom"
+                                                Opening="DatapackFilterFlyout_Opening"
+                                                Closed="DatapackFilterFlyout_Closed">
+                                            <localControls:ResourceFilterFlyout
+                                                x:Name="DatapackFilterControl"
+                                                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="DatapackFilterControl_RefreshVersionsRequested" />
+                                        </Flyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                     <ToggleButton 
                                         x:Name="DatapackModrinthToggle"
                                         x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -1326,35 +1209,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1481,8 +1335,6 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -1500,37 +1352,35 @@
                                     Text="{Binding ModpackSearchQuery, Mode=TwoWay}"
                                     QuerySubmitted="ModpackSearchBox_QuerySubmitted"/>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="ModpackVersionComboBox"
-                                    x:Uid="ResourceDownloadPage_ModpackVersionComboBox"
+                                <!-- 统一筛选按钮 -->
+                                <DropDownButton
+                                    x:Name="ModpackFilterButton"
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,4,0"
-                                    MinWidth="90"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedModpackVersion, Mode=TwoWay}"
-                                    SelectionChanged="ModpackVersionComboBox_SelectionChanged">
-                                </ComboBox>
-
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="ModpackCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_ModpackCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="80"
                                     Margin="0,0,8,0"
-                                    ItemsSource="{Binding ModpackCategories}"
-                                    DisplayMemberPath="DisplayName"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedModpackCategory, Mode=TwoWay}"
-                                    SelectionChanged="ModpackCategoryComboBox_SelectionChanged" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                            <TextBlock Text="筛选" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <Flyout x:Name="ModpackFilterFlyout" Placement="Bottom"
+                                                Opening="ModpackFilterFlyout_Opening"
+                                                Closed="ModpackFilterFlyout_Closed">
+                                            <localControls:ResourceFilterFlyout
+                                                x:Name="ModpackFilterControl"
+                                                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="ModpackFilterControl_RefreshVersionsRequested" />
+                                        </Flyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                     <ToggleButton 
                                         x:Name="ModpackModrinthToggle"
                                         x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -1558,35 +1408,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->
@@ -1713,8 +1534,6 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -1732,37 +1551,35 @@
                                     Text="{Binding WorldSearchQuery, Mode=TwoWay}"
                                     QuerySubmitted="WorldSearchBox_QuerySubmitted"/>
 
-                                <!-- Version Filter -->
-                                <ComboBox
-                                    x:Name="WorldVersionComboBox"
-                                    x:Uid="ResourceDownloadPage_WorldVersionComboBox"
+                                <!-- 统一筛选按钮 -->
+                                <DropDownButton
+                                    x:Name="WorldFilterButton"
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    PlaceholderText="版本"
-                                    Margin="0,0,4,0"
-                                    MinWidth="90"
-                                    ItemsSource="{Binding AvailableVersions, Mode=OneWay}"
-                                    SelectedItem="{Binding SelectedWorldVersion, Mode=TwoWay}"
-                                    SelectionChanged="WorldVersionComboBox_SelectionChanged">
-                                </ComboBox>
-
-                                <!-- 类别筛选 -->
-                                <ComboBox
-                                    x:Name="WorldCategoryComboBox"
-                                    x:Uid="ResourceDownloadPage_WorldCategoryComboBox"
-                                    Grid.Row="0"
-                                    Grid.Column="2"
-                                    PlaceholderText="所有类别"
-                                    MinWidth="80"
                                     Margin="0,0,8,0"
-                                    ItemsSource="{Binding WorldCategories}"
-                                    DisplayMemberPath="DisplayName"
-                                    SelectedValuePath="Tag"
-                                    SelectedValue="{Binding SelectedWorldCategory, Mode=TwoWay}"
-                                    SelectionChanged="WorldCategoryComboBox_SelectionChanged" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                            <TextBlock Text="筛选" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <Flyout x:Name="WorldFilterFlyout" Placement="Bottom"
+                                                Opening="WorldFilterFlyout_Opening"
+                                                Closed="WorldFilterFlyout_Closed">
+                                            <localControls:ResourceFilterFlyout
+                                                x:Name="WorldFilterControl"
+                                                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                                                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged"
+                                                RefreshVersionsRequested="WorldFilterControl_RefreshVersionsRequested" />
+                                        </Flyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
 
                                 <!-- 平台选择 - 使用 ToggleButtons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
                                     <ToggleButton 
                                         x:Name="WorldModrinthToggle"
                                         x:Uid="ResourceDownloadPage_ModrinthToggle"
@@ -1792,35 +1609,6 @@
                                         </StackPanel>
                                     </ToggleButton>
                                 </StackPanel>
-                            </Grid>
-
-                            <!-- Error Message -->
-                            <Grid
-                                Grid.Row="2"
-                                Margin="20,10,20,10"
-                                Background="#FFFDE7E9"
-                                BorderBrush="#FFD53939"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Visibility="{Binding ErrorMessage, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="⚠"
-                                    FontSize="24"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,12,0"
-                                    Foreground="#FFD53939"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ErrorMessage, Mode=OneWay}"
-                                    Foreground="#FFD53939"
-                                    Style="{ThemeResource BodyTextBlockStyle}"
-                                    VerticalAlignment="Center"/>
                             </Grid>
 
                             <!-- Loading Indicator -->

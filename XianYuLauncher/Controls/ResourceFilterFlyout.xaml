@@ -1,0 +1,52 @@
+<UserControl
+    x:Class="XianYuLauncher.Controls.ResourceFilterFlyout"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:labs="using:CommunityToolkit.Labs.WinUI"
+    mc:Ignorable="d">
+
+    <StackPanel Width="360" Spacing="12" Padding="4">
+        <!-- 加载器筛选 -->
+        <TextBlock Text="加载器" FontWeight="SemiBold" />
+        <labs:TokenView
+            x:Name="LoaderTokenView"
+            IsWrapped="True"
+            CanRemoveTokens="False"
+            SelectionMode="Multiple"
+            SelectionChanged="TokenView_SelectionChanged" />
+
+        <!-- 类别筛选 -->
+        <TextBlock Text="筛选类型" FontWeight="SemiBold" />
+        <labs:TokenView
+            x:Name="CategoryTokenView"
+            MaxHeight="280"
+            IsWrapped="True"
+            CanRemoveTokens="False"
+            SelectionMode="Multiple"
+            SelectionChanged="TokenView_SelectionChanged" />
+
+        <!-- 游戏版本筛选 -->
+        <TextBlock Text="游戏版本" FontWeight="SemiBold" />
+        <labs:TokenView
+            x:Name="VersionTokenView"
+            MaxHeight="180"
+            IsWrapped="True"
+            CanRemoveTokens="False"
+            SelectionMode="Multiple"
+            SelectionChanged="TokenView_SelectionChanged" />
+
+        <!-- 显示所有版本 CheckBox -->
+        <CheckBox
+            x:Name="ShowAllVersionsCheckBox"
+            FontSize="12"
+            Margin="0,-6,0,0"
+            VerticalContentAlignment="Center"
+            IsChecked="{x:Bind IsShowAllVersions, Mode=TwoWay}"
+            Checked="ShowAllVersionsCheckBox_Changed"
+            Unchecked="ShowAllVersionsCheckBox_Changed">
+            <TextBlock Text="显示所有版本" Margin="0,-4,0,0"/>
+        </CheckBox>
+    </StackPanel>
+</UserControl>

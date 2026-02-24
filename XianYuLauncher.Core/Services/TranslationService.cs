@@ -97,20 +97,20 @@ public class TranslationService : ITranslationService
         try
         {
             var url = $"{ModrinthTranslationApiUrl}?project_id={projectId}";
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求Modrinth翻译: {url}");
-            
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求Modrinth翻译: {projectId}");
+
             // 使用GET请求而不是POST
             var response = await _httpClient.GetAsync(url);
-            
+
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译请求失败: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译失败: {response.StatusCode}");
                 return null;
             }
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var translation = JsonConvert.DeserializeObject<McimTranslationResponse>(content);
-            
+
             if (translation != null && !string.IsNullOrEmpty(translation.Translated))
             {
                 // 缓存翻译结果
@@ -118,12 +118,13 @@ public class TranslationService : ITranslationService
                 System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译成功: {projectId}");
                 return translation;
             }
-            
+
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译无结果: {projectId}");
             return null;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 获取Modrinth翻译失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译异常: {ex.Message}");
             return null;
         }
     }
@@ -148,20 +149,20 @@ public class TranslationService : ITranslationService
         try
         {
             var url = $"{CurseForgeTranslationApiUrl}?modId={modId}";
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求CurseForge翻译: {url}");
-            
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求CurseForge翻译: {modId}");
+
             // 使用GET请求而不是POST
             var response = await _httpClient.GetAsync(url);
-            
+
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译请求失败: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译失败: {response.StatusCode}");
                 return null;
             }
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var translation = JsonConvert.DeserializeObject<McimTranslationResponse>(content);
-            
+
             if (translation != null && !string.IsNullOrEmpty(translation.Translated))
             {
                 // 缓存翻译结果
@@ -169,12 +170,13 @@ public class TranslationService : ITranslationService
                 System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译成功: {modId}");
                 return translation;
             }
-            
+
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译无结果: {modId}");
             return null;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 获取CurseForge翻译失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译异常: {ex.Message}");
             return null;
         }
     }
