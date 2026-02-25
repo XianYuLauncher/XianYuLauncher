@@ -410,6 +410,13 @@ public class SpeedTestService : ISpeedTestService
             var source = kvp.Value;
             try
             {
+                // 过滤：MCIM 不支持游戏资源，返回官方地址
+                if (kvp.Key.Equals("mcim", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持游戏资源（返回官方地址），跳过", kvp.Key);
+                    continue;
+                }
+
                 // 过滤：只有官方和 BMCLAPI 支持游戏资源，community 模板的自定义源不支持
                 if (source is CustomDownloadSource customSource && customSource.TemplateName == "community")
                     continue;
@@ -489,6 +496,13 @@ public class SpeedTestService : ISpeedTestService
                     continue;
 
                 var url = source.GetCurseForgeApiBaseUrl();
+
+                // 过滤：BMCLAPI 不支持 CurseForge 镜像，返回官方地址
+                if (kvp.Key.Equals("bmclapi", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持 CurseForge 镜像（返回官方地址），跳过", kvp.Key);
+                    continue;
+                }
 
                 if (!string.IsNullOrEmpty(url))
                 {
