@@ -586,7 +586,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedCurseforgeResourceSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button x:Uid="Settings_AddCustomSource_CurseForge" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />

@@ -490,13 +490,6 @@ public class SpeedTestService : ISpeedTestService
 
                 var url = source.GetCurseForgeApiBaseUrl();
 
-                // 过滤：BMCLAPI 不支持 CurseForge 镜像，使用官方源
-                if (kvp.Key.Equals("bmclapi", StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持 CurseForge 镜像，跳过", kvp.Key);
-                    continue;
-                }
-
                 if (!string.IsNullOrEmpty(url))
                 {
                     var host = ExtractHost(url);

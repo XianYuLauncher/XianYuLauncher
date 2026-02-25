@@ -154,7 +154,7 @@ public class DownloadSourceFactory
     /// <summary>
     /// 设置CurseForge专用下载源
     /// </summary>
-    /// <param name="key">下载源标识（official/bmclapi/mcim）</param>
+    /// <param name="key">下载源标识（任意已注册的下载源，例如 official/bmclapi/mcim 或自定义源）</param>
     public void SetCurseForgeSource(string key)
     {
         if (string.IsNullOrWhiteSpace(key))

@@ -15,7 +15,6 @@ using Windows.ApplicationModel;
 using Microsoft.Win32;
 using System.IO;
 using System.Collections.ObjectModel;
-using Windows.ApplicationModel.Resources;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -227,19 +226,19 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 显示的最快游戏源信息
     /// </summary>
     [ObservableProperty]
-    private string _fastestGameSourceInfo = "未测速";
+    private string _fastestGameSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
     /// 显示的最快社区源信息（Modrinth）
     /// </summary>
     [ObservableProperty]
-    private string _fastestCommunitySourceInfo = "未测速";
+    private string _fastestCommunitySourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
     /// 显示的最快CurseForge源信息
     /// </summary>
     [ObservableProperty]
-    private string _fastestCurseForgeSourceInfo = "未测速";
+    private string _fastestCurseForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
     /// 最后测速时间
@@ -258,7 +257,6 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private const int CacheExpirationHours = 12;
 
-    /// </summary>
     [ObservableProperty]
     private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
     
@@ -3131,9 +3129,6 @@ public partial class SettingsViewModel : ObservableRecipient
 
         // 保存设置
         _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
-
-        // 通知 UI 更新 CanSelectDownloadSource
-        OnPropertyChanged(nameof(CanSelectDownloadSource));
     }
 
     /// <summary>
@@ -3166,7 +3161,6 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             IsSpeedTestRunning = true;
-            OnPropertyChanged(nameof(CanRunSpeedTest));
 
             // 强制执行新测速（忽略缓存）
             var gameResults = await _speedTestService.TestGameSourcesAsync();
@@ -3207,7 +3201,6 @@ public partial class SettingsViewModel : ObservableRecipient
         finally
         {
             IsSpeedTestRunning = false;
-            OnPropertyChanged(nameof(CanRunSpeedTest));
         }
     }
 
@@ -3222,10 +3215,16 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var cache = await _speedTestService.LoadCacheAsync();
 
-            // 检查缓存是否有效
+            // 无论是否有结果数据，只要 LastUpdated 有值就更新时间显示
+            if (cache.LastUpdated != default)
+            {
+                LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                UpdateNextSpeedTestTime(cache.LastUpdated);
+            }
+
+            // 如果没有任何测速结果，不更新列表和最快源信息
             if (cache.GameSources.Count == 0 && cache.CommunitySources.Count == 0 && cache.CurseForgeSources.Count == 0)
             {
-                // 没有缓存数据，保持默认值
                 return;
             }
 
@@ -3236,13 +3235,6 @@ public partial class SettingsViewModel : ObservableRecipient
 
             // 更新显示信息
             UpdateSpeedTestDisplayInfoFromCache(cache);
-
-            // 更新时间显示
-            if (cache.LastUpdated != default)
-            {
-                LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-                UpdateNextSpeedTestTime(cache.LastUpdated);
-            }
         }
         catch (Exception ex)
         {
@@ -3392,7 +3384,6 @@ public partial class SettingsViewModel : ObservableRecipient
         }
     }
 
-    /// <summary>
     /// <summary>
     /// 添加自定义源（指定模板类型）
     /// </summary>

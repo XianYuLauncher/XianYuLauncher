@@ -48,7 +48,7 @@ public class SpeedTestCacheTests
         // Arrange
         var cache = new SpeedTestCache
         {
-            LastUpdated = DateTime.UtcNow.AddHours(-12).AddSeconds(-1)
+            LastUpdated = DateTime.UtcNow.AddHours(-12)
         };
 
         // Act
