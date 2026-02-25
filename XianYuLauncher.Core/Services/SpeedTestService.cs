@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -43,26 +45,20 @@ public interface ISpeedTestService
 }
 
 /// <summary>
-/// 下载源测速服务
+/// 下载源测速服务 - 使用 TCP 连接测速（包含 TCP + TLS 握手）
 /// </summary>
 public class SpeedTestService : ISpeedTestService
 {
-    private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILogger<SpeedTestService> _logger;
 
     private const int TimeoutSeconds = 5;
     private const int MaxConcurrentTests = 3;
 
-    // 缓存键
-    private const string SpeedTestCacheKey = "SpeedTestCache";
-
     public SpeedTestService(
-        HttpClient httpClient,
         DownloadSourceFactory downloadSourceFactory,
         ILogger<SpeedTestService> logger)
     {
-        _httpClient = httpClient;
         _downloadSourceFactory = downloadSourceFactory;
         _logger = logger;
     }
@@ -84,7 +80,7 @@ public class SpeedTestService : ISpeedTestService
             await semaphore.WaitAsync(ct);
             try
             {
-                return await TestSourceAsync(source.Key, source.Url, source.Name, ct);
+                return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
             }
             finally
             {
@@ -124,7 +120,7 @@ public class SpeedTestService : ISpeedTestService
             await semaphore.WaitAsync(ct);
             try
             {
-                return await TestSourceAsync(source.Key, source.Url, source.Name, ct);
+                return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
             }
             finally
             {
@@ -206,7 +202,6 @@ public class SpeedTestService : ISpeedTestService
     {
         try
         {
-            // 从本地设置加载缓存
             var localSettingsPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "XianYuLauncher",
@@ -254,9 +249,9 @@ public class SpeedTestService : ISpeedTestService
     }
 
     /// <summary>
-    /// 测试单个下载源
+    /// 测试单个下载源的 TCP 连接速度（包含 TCP + TLS 握手）
     /// </summary>
-    private async Task<SpeedTestResult> TestSourceAsync(string key, string url, string name, CancellationToken ct)
+    private async Task<SpeedTestResult> TestSourceAsync(string key, string host, string name, CancellationToken ct)
     {
         var result = new SpeedTestResult
         {
@@ -267,32 +262,29 @@ public class SpeedTestService : ISpeedTestService
 
         try
         {
-            _logger.LogDebug("[SpeedTest] 测试源: {Key}, URL: {Url}", key, url);
+            _logger.LogDebug("[SpeedTest] 测试源: {Key}, Host: {Host}", key, host);
 
             var stopwatch = Stopwatch.StartNew();
 
-            using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            using var response = await _httpClient.SendAsync(request, ct)
-                .WaitAsync(TimeSpan.FromSeconds(TimeoutSeconds));
+            // 使用 TCP 连接测试（包含 DNS + TCP 三次握手 + TLS 握手）
+            using var tcpClient = new TcpClient();
+            await tcpClient.ConnectAsync(host, 443).WaitAsync(TimeSpan.FromSeconds(TimeoutSeconds), ct);
 
             stopwatch.Stop();
 
-            if (response.IsSuccessStatusCode)
-            {
-                result.IsSuccess = true;
-                result.LatencyMs = (int)stopwatch.ElapsedMilliseconds;
-                result.SpeedKBps = 0; // HEAD 请求不计算速度
+            result.IsSuccess = true;
+            result.LatencyMs = (int)stopwatch.ElapsedMilliseconds;
+            result.SpeedKBps = 0;
 
-                _logger.LogInformation("[SpeedTest] 源 {Key} 测速成功，延迟: {Latency}ms", key, result.LatencyMs);
-            }
-            else
-            {
-                result.IsSuccess = false;
-                result.ErrorMessage = $"HTTP {response.StatusCode}";
-                _logger.LogWarning("[SpeedTest] 源 {Key} 测速失败: {Error}", key, result.ErrorMessage);
-            }
+            _logger.LogInformation("[SpeedTest] 源 {Key} 测速成功，延迟: {Latency}ms", key, result.LatencyMs);
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
+        {
+            result.IsSuccess = false;
+            result.ErrorMessage = "测速取消";
+            _logger.LogWarning("[SpeedTest] 源 {Key} 测速取消", key);
+        }
+        catch (TimeoutException)
         {
             result.IsSuccess = false;
             result.ErrorMessage = "测速超时";
@@ -302,7 +294,7 @@ public class SpeedTestService : ISpeedTestService
         {
             result.IsSuccess = false;
             result.ErrorMessage = ex.Message;
-            _logger.LogWarning(ex, "[SpeedTest] 源 {Key} 测速异常", key);
+            _logger.LogWarning(ex, "[SpeedTest] 源 {Key} 测速异常: {Error}", key, ex.Message);
         }
 
         return result;
@@ -311,21 +303,23 @@ public class SpeedTestService : ISpeedTestService
     /// <summary>
     /// 获取所有游戏资源源
     /// </summary>
-    private List<(string Key, string Url, string Name)> GetAllGameSources()
+    private List<(string Key, string Host, string Name)> GetAllGameSources()
     {
-        var sources = new List<(string Key, string Url, string Name)>();
+        var sources = new List<(string Key, string Host, string Name)>();
 
-        // 遍历下载源工厂中的所有源
         foreach (var kvp in _downloadSourceFactory.GetAllSources())
         {
             var source = kvp.Value;
             try
             {
-                // 尝试获取版本清单 URL 作为测试 URL
                 var url = source.GetVersionManifestUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
-                    sources.Add((kvp.Key, url, source.Name));
+                    var host = ExtractHost(url);
+                    if (!string.IsNullOrEmpty(host))
+                    {
+                        sources.Add((kvp.Key, host, source.Name));
+                    }
                 }
             }
             catch
@@ -340,21 +334,23 @@ public class SpeedTestService : ISpeedTestService
     /// <summary>
     /// 获取所有社区资源源
     /// </summary>
-    private List<(string Key, string Url, string Name)> GetAllCommunitySources()
+    private List<(string Key, string Host, string Name)> GetAllCommunitySources()
     {
-        var sources = new List<(string Key, string Url, string Name)>();
+        var sources = new List<(string Key, string Host, string Name)>();
 
-        // 遍历下载源工厂中的所有源
         foreach (var kvp in _downloadSourceFactory.GetAllSources())
         {
             var source = kvp.Value;
             try
             {
-                // 尝试获取 Modrinth API URL 作为测试 URL
                 var url = source.GetModrinthApiBaseUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
-                    sources.Add((kvp.Key, url, source.Name));
+                    var host = ExtractHost(url);
+                    if (!string.IsNullOrEmpty(host))
+                    {
+                        sources.Add((kvp.Key, host, source.Name));
+                    }
                 }
             }
             catch
@@ -364,5 +360,33 @@ public class SpeedTestService : ISpeedTestService
         }
 
         return sources;
+    }
+
+    /// <summary>
+    /// 从 URL 中提取主机名
+    /// </summary>
+    private static string? ExtractHost(string url)
+    {
+        try
+        {
+            if (url.StartsWith("http://"))
+                url = url.Substring(7);
+            else if (url.StartsWith("https://"))
+                url = url.Substring(8);
+
+            var slashIndex = url.IndexOf('/');
+            if (slashIndex >= 0)
+                url = url.Substring(0, slashIndex);
+
+            var colonIndex = url.IndexOf(':');
+            if (colonIndex >= 0)
+                url = url.Substring(0, colonIndex);
+
+            return url;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
