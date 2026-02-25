@@ -33,9 +33,17 @@ public sealed partial class SettingsPage : Page
         System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面加载，开始刷新自定义源列表");
         try
         {
+            // 先加载测速缓存，显示上次的测速结果
+            if (ViewModel != null)
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始加载测速缓存");
+                await ViewModel.LoadSpeedTestCacheAsync();
+                System.Diagnostics.Debug.WriteLine("[SettingsPage] 测速缓存加载完成");
+            }
+
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] ViewModel 是否为 null: {ViewModel == null}");
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] RefreshCustomSourcesCommand 是否为 null: {ViewModel?.RefreshCustomSourcesCommand == null}");
-            
+
             if (ViewModel?.RefreshCustomSourcesCommand != null)
             {
                 System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始执行 RefreshCustomSourcesCommand");

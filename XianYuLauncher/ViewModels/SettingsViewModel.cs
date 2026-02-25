@@ -2863,7 +2863,8 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 构建社区资源源列表
+    /// 构建社区资源源列表（Modrinth）
+    /// 注意：BMCLAPI 不支持 Modrinth，因此只显示 official 和 mcim
     /// </summary>
     private async Task BuildCommunityResourceSourcesAsync()
     {
@@ -2874,7 +2875,9 @@ public partial class SettingsViewModel : ObservableRecipient
                 new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
                 new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
             };
-            
+
+            // 注意：BMCLAPI (bmclapi) 虽然能解析 api.modrinth.com，但已被过滤不参与 Modrinth 测速
+
             // 添加社区资源类型的自定义源
             var customSources = _customSourceManager.GetAllSources()
                 .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
@@ -3153,54 +3156,28 @@ public partial class SettingsViewModel : ObservableRecipient
             IsSpeedTestRunning = true;
             OnPropertyChanged(nameof(CanRunSpeedTest));
 
-            // 加载缓存的测速结果
-            var cache = await _speedTestService.LoadCacheAsync();
+            // 强制执行新测速（忽略缓存）
+            var gameResults = await _speedTestService.TestGameSourcesAsync();
+            GameSourceSpeedResults = gameResults;
 
-            // 获取游戏资源源测速结果
-            if (cache.GameSources.Any())
-            {
-                GameSourceSpeedResults = cache.GameSources.Values
-                    .OrderBy(r => r.LatencyMs)
-                    .ToList();
-            }
+            var communityResults = await _speedTestService.TestCommunitySourcesAsync();
+            CommunitySourceSpeedResults = communityResults;
 
-            // 获取社区资源源测速结果（Modrinth）
-            if (cache.CommunitySources.Any())
-            {
-                CommunitySourceSpeedResults = cache.CommunitySources.Values
-                    .OrderBy(r => r.LatencyMs)
-                    .ToList();
-            }
+            var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
+            CurseforgeSourceSpeedResults = curseforgeResults;
 
-            // 获取CurseForge资源源测速结果
-            if (cache.CurseForgeSources.Any())
+            // 保存到缓存
+            var cache = new Core.Models.SpeedTestCache
             {
-                CurseforgeSourceSpeedResults = cache.CurseForgeSources.Values
-                    .OrderBy(r => r.LatencyMs)
-                    .ToList();
-            }
-
-            // 如果缓存过期，执行新测速
-            if (cache.IsExpired || !cache.GameSources.Any())
-            {
-                var gameResults = await _speedTestService.TestGameSourcesAsync();
-                GameSourceSpeedResults = gameResults;
-            }
-
-            if (cache.IsExpired || !cache.CommunitySources.Any())
-            {
-                var communityResults = await _speedTestService.TestCommunitySourcesAsync();
-                CommunitySourceSpeedResults = communityResults;
-            }
-
-            if (cache.IsExpired || !cache.CurseForgeSources.Any())
-            {
-                var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
-                CurseforgeSourceSpeedResults = curseforgeResults;
-            }
+                GameSources = GameSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                CommunitySources = CommunitySourceSpeedResults.ToDictionary(r => r.SourceKey),
+                CurseForgeSources = CurseforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                LastUpdated = DateTime.UtcNow
+            };
+            await _speedTestService.SaveCacheAsync(cache);
 
             // 更新显示信息
-            UpdateSpeedTestDisplayInfo(cache);
+            UpdateSpeedTestDisplayInfo();
 
             // 如果开启了自动选择，执行自动选源
             if (AutoSelectFastestSource)
@@ -3223,9 +3200,47 @@ public partial class SettingsViewModel : ObservableRecipient
     }
 
     /// <summary>
-    /// 更新测速显示信息
+    /// 加载测速缓存并更新显示信息
     /// </summary>
-    private void UpdateSpeedTestDisplayInfo(Core.Models.SpeedTestCache cache)
+    public async Task LoadSpeedTestCacheAsync()
+    {
+        if (_speedTestService == null) return;
+
+        try
+        {
+            var cache = await _speedTestService.LoadCacheAsync();
+
+            // 检查缓存是否有效
+            if (cache.GameSources.Count == 0 && cache.CommunitySources.Count == 0 && cache.CurseForgeSources.Count == 0)
+            {
+                // 没有缓存数据，保持默认值
+                return;
+            }
+
+            // 将字典转换为列表
+            GameSourceSpeedResults = cache.GameSources.Values.ToList();
+            CommunitySourceSpeedResults = cache.CommunitySources.Values.ToList();
+            CurseforgeSourceSpeedResults = cache.CurseForgeSources.Values.ToList();
+
+            // 更新显示信息
+            UpdateSpeedTestDisplayInfoFromCache(cache);
+
+            // 更新时间显示
+            if (cache.LastUpdated != default)
+            {
+                LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "[Settings] 加载测速缓存失败");
+        }
+    }
+
+    /// <summary>
+    /// 从缓存更新测速显示信息
+    /// </summary>
+    private void UpdateSpeedTestDisplayInfoFromCache(Core.Models.SpeedTestCache cache)
     {
         // 游戏资源源
         var fastestGame = cache.GameSources.Values
@@ -3247,6 +3262,39 @@ public partial class SettingsViewModel : ObservableRecipient
 
         // CurseForge资源源
         var fastestCurseForge = cache.CurseForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCurseForgeSourceInfo = fastestCurseForge != null
+            ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
+            : "测速失败";
+    }
+
+    /// <summary>
+    /// 更新测速显示信息
+    /// </summary>
+    private void UpdateSpeedTestDisplayInfo()
+    {
+        // 游戏资源源
+        var fastestGame = GameSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestGameSourceInfo = fastestGame != null
+            ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
+            : "测速失败";
+
+        // 社区资源源（Modrinth）
+        var fastestCommunity = CommunitySourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCommunitySourceInfo = fastestCommunity != null
+            ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
+            : "测速失败";
+
+        // CurseForge资源源
+        var fastestCurseForge = CurseforgeSourceSpeedResults
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault();

@@ -339,7 +339,7 @@ public class SpeedTestService : ISpeedTestService
 
         try
         {
-            _logger.LogDebug("[SpeedTest] 测试源: {Key}, Host: {Host}", key, host);
+            _logger.LogInformation("[SpeedTest] 开始测试源: {Key}, Host: {Host}:443", key, host);
 
             var stopwatch = Stopwatch.StartNew();
 
@@ -359,19 +359,19 @@ public class SpeedTestService : ISpeedTestService
         {
             result.IsSuccess = false;
             result.ErrorMessage = "测速取消";
-            _logger.LogWarning("[SpeedTest] 源 {Key} 测速取消", key);
+            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速取消", key, host);
         }
         catch (TimeoutException)
         {
             result.IsSuccess = false;
             result.ErrorMessage = "测速超时";
-            _logger.LogWarning("[SpeedTest] 源 {Key} 测速超时", key);
+            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速超时", key, host);
         }
         catch (Exception ex)
         {
             result.IsSuccess = false;
             result.ErrorMessage = ex.Message;
-            _logger.LogWarning(ex, "[SpeedTest] 源 {Key} 测速异常: {Error}", key, ex.Message);
+            _logger.LogError(ex, "[SpeedTest] 源 {Key} ({Host}) 测速异常: {Error}, Type: {Type}", key, host, ex.Message, ex.GetType().FullName);
         }
 
         return result;
@@ -389,6 +389,10 @@ public class SpeedTestService : ISpeedTestService
             var source = kvp.Value;
             try
             {
+                // 过滤：只有官方和 BMCLAPI 支持游戏资源，community 模板的自定义源不支持
+                if (source is CustomDownloadSource customSource && customSource.TemplateName == "community")
+                    continue;
+
                 var url = source.GetVersionManifestUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
@@ -420,6 +424,14 @@ public class SpeedTestService : ISpeedTestService
             var source = kvp.Value;
             try
             {
+                // 过滤：BMCLAPI 不支持 Modrinth 社区资源
+                if (kvp.Key == "bmclapi")
+                    continue;
+
+                // 过滤：CustomDownloadSource 只有 template=community 的才支持 Modrinth
+                if (source is CustomDownloadSource customSource && customSource.TemplateName != "community")
+                    continue;
+
                 var url = source.GetModrinthApiBaseUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
@@ -451,6 +463,14 @@ public class SpeedTestService : ISpeedTestService
             var source = kvp.Value;
             try
             {
+                // 过滤：BMCLAPI 和 official 不支持 CurseForge 社区资源
+                if (kvp.Key == "bmclapi" || kvp.Key == "official")
+                    continue;
+
+                // 过滤：CustomDownloadSource 只有 template=community 的才支持 CurseForge
+                if (source is CustomDownloadSource customSource && !customSource.TemplateName.Equals("community", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 var url = source.GetCurseForgeApiBaseUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
