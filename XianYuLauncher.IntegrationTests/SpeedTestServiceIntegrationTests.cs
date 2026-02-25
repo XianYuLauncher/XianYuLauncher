@@ -13,13 +13,14 @@ namespace XianYuLauncher.IntegrationTests
     /// 测速服务集成测试
     /// 注意：这些测试需要网络连接，实际测试 TCP 连接速度
     /// </summary>
+    [Trait("Category", "Integration")]
     public class SpeedTestServiceIntegrationTests
     {
         /// <summary>
         /// 测试游戏资源源测速
         /// 验证：能够成功测速并返回结果
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task TestGameSources_Success()
         {
             // Arrange
@@ -57,7 +58,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 测试社区资源源测速
         /// 验证：能够成功测速 Modrinth/MCIM 等社区源
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task TestCommunitySources_Success()
         {
             // Arrange
@@ -94,7 +95,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 测试获取最快游戏源
         /// 验证：能够正确返回延迟最低的源
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task GetFastestGameSourceKey_ReturnsFastest()
         {
             // Arrange
@@ -120,7 +121,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 测试获取最快社区源
         /// 验证：能够正确返回延迟最低的社区源
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task GetFastestCommunitySourceKey_ReturnsFastest()
         {
             // Arrange
@@ -142,7 +143,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 测试测速结果排序
         /// 验证：测速结果按延迟从低到高排序
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task TestGameSources_ResultsOrderedByLatency()
         {
             // Arrange
@@ -171,7 +172,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 测试缓存保存和加载
         /// 验证：缓存能够正确保存和加载
         /// </summary>
-        [Fact]
+        [Fact(Skip = "网络集成测试，需要外网连接")]
         public async Task SaveAndLoadCache_WorksCorrectly()
         {
             // Arrange

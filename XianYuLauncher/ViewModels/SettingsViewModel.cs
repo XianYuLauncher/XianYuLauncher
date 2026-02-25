@@ -15,6 +15,7 @@ using Windows.ApplicationModel;
 using Microsoft.Win32;
 using System.IO;
 using System.Collections.ObjectModel;
+using Windows.ApplicationModel.Resources;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -244,21 +245,19 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 最后测速时间
     /// </summary>
     [ObservableProperty]
-    private string _lastSpeedTestTime = "从未测速";
+    private string _lastSpeedTestTime = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
     /// 下次测速时间（剩余时间）
     /// </summary>
     [ObservableProperty]
-    private string _nextSpeedTestTime = "即将测速";
+    private string _nextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
 
     /// <summary>
     /// 缓存过期时间（小时）
     /// </summary>
     private const int CacheExpirationHours = 12;
 
-    /// <summary>
-    /// 材质类型
     /// </summary>
     [ObservableProperty]
     private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
@@ -3261,15 +3260,15 @@ public partial class SettingsViewModel : ObservableRecipient
 
         if (remaining.TotalSeconds <= 0)
         {
-            NextSpeedTestTime = "即将测速";
+            NextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
         }
         else if (remaining.TotalHours >= 1)
         {
-            NextSpeedTestTime = $"约 {Math.Ceiling(remaining.TotalHours)} 小时后";
+            NextSpeedTestTime = "Settings_SpeedTest_HoursLater".GetLocalized(Math.Ceiling(remaining.TotalHours));
         }
         else
         {
-            NextSpeedTestTime = $"约 {Math.Ceiling(remaining.TotalMinutes)} 分钟后";
+            NextSpeedTestTime = "Settings_SpeedTest_MinutesLater".GetLocalized(Math.Ceiling(remaining.TotalMinutes));
         }
     }
 
@@ -3285,7 +3284,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestGameSourceInfo = fastestGame != null
             ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
 
         // 社区资源源（Modrinth）
         var fastestCommunity = cache.CommunitySources.Values
@@ -3294,7 +3293,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestCommunitySourceInfo = fastestCommunity != null
             ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
 
         // CurseForge资源源
         var fastestCurseForge = cache.CurseForgeSources.Values
@@ -3303,7 +3302,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestCurseForgeSourceInfo = fastestCurseForge != null
             ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
     }
 
     /// <summary>
@@ -3318,7 +3317,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestGameSourceInfo = fastestGame != null
             ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
 
         // 社区资源源（Modrinth）
         var fastestCommunity = CommunitySourceSpeedResults
@@ -3327,7 +3326,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestCommunitySourceInfo = fastestCommunity != null
             ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
 
         // CurseForge资源源
         var fastestCurseForge = CurseforgeSourceSpeedResults
@@ -3336,7 +3335,7 @@ public partial class SettingsViewModel : ObservableRecipient
             .FirstOrDefault();
         FastestCurseForgeSourceInfo = fastestCurseForge != null
             ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
-            : "测速失败";
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
     }
 
     /// <summary>

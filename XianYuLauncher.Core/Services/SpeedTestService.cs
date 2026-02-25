@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -55,7 +56,7 @@ public interface ISpeedTestService
 }
 
 /// <summary>
-/// 下载源测速服务 - 使用 TCP 连接测速（包含 TCP + TLS 握手）
+/// 下载源测速服务 - 使用 TCP 连接建立时间测速（仅 DNS 解析 + TCP 握手）
 /// </summary>
 public class SpeedTestService : ISpeedTestService
 {
@@ -301,8 +302,7 @@ public class SpeedTestService : ISpeedTestService
         try
         {
             var localSettingsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "XianYuLauncher",
+                AppEnvironment.SafeAppDataPath,
                 "SpeedTestCache.json");
 
             if (File.Exists(localSettingsPath))
@@ -330,13 +330,13 @@ public class SpeedTestService : ISpeedTestService
         try
         {
             var localSettingsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "XianYuLauncher");
+                AppEnvironment.SafeAppDataPath,
+                "SpeedTestCache.json");
 
-            Directory.CreateDirectory(localSettingsPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(localSettingsPath)!);
 
             var json = JsonConvert.SerializeObject(cache, Formatting.Indented);
-            await File.WriteAllTextAsync(Path.Combine(localSettingsPath, "SpeedTestCache.json"), json);
+            await File.WriteAllTextAsync(localSettingsPath, json);
 
             _logger.LogInformation("[SpeedTest] 保存测速缓存成功");
         }
@@ -347,7 +347,7 @@ public class SpeedTestService : ISpeedTestService
     }
 
     /// <summary>
-    /// 测试单个下载源的 TCP 连接速度（包含 TCP + TLS 握手）
+    /// 测试单个下载源的 TCP 连接速度（仅 DNS 解析 + TCP 握手）
     /// </summary>
     private async Task<SpeedTestResult> TestSourceAsync(string key, string host, string name, CancellationToken ct)
     {
@@ -364,7 +364,7 @@ public class SpeedTestService : ISpeedTestService
 
             var stopwatch = Stopwatch.StartNew();
 
-            // 使用 TCP 连接测试（包含 DNS + TCP 三次握手 + TLS 握手）
+            // 使用 TCP 连接测试（仅 DNS 解析 + TCP 三次握手）
             using var tcpClient = new TcpClient();
             await tcpClient.ConnectAsync(host, 443).WaitAsync(TimeSpan.FromSeconds(TimeoutSeconds), ct);
 
@@ -484,15 +484,19 @@ public class SpeedTestService : ISpeedTestService
             var source = kvp.Value;
             try
             {
-                // 过滤：BMCLAPI 和 official 不支持 CurseForge 社区资源
-                if (kvp.Key == "bmclapi" || kvp.Key == "official")
-                    continue;
-
                 // 过滤：CustomDownloadSource 只有 template=community 的才支持 CurseForge
                 if (source is CustomDownloadSource customSource && !customSource.TemplateName.Equals("community", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var url = source.GetCurseForgeApiBaseUrl();
+
+                // 过滤：BMCLAPI 不支持 CurseForge 镜像，使用官方源
+                if (kvp.Key.Equals("bmclapi", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持 CurseForge 镜像，跳过", kvp.Key);
+                    continue;
+                }
+
                 if (!string.IsNullOrEmpty(url))
                 {
                     var host = ExtractHost(url);

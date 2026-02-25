@@ -501,7 +501,7 @@
                 <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- 测速与自动选源 -->
-                <controls:SettingsExpander x:Uid="Settings_SpeedTest" Header="测速与自动选源" Description="测试并自动选择最快的下载源" IsExpanded="False">
+                <controls:SettingsExpander x:Uid="Settings_SpeedTest" IsExpanded="False">
                     <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE9F5;" />
                     </controls:SettingsExpander.HeaderIcon>
@@ -509,25 +509,25 @@
                         <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSelectFastestSource, Mode=TwoWay}" />
                     </controls:SettingsExpander.Content>
                     <controls:SettingsExpander.Items>
-                        <controls:SettingsCard Header="测试下载源速度">
+                        <controls:SettingsCard x:Uid="Settings_SpeedTestAction" Header="测试下载源速度">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button x:Uid="Settings_RunSpeedTest" Content="测速" Command="{x:Bind ViewModel.RunSpeedTestCommand}" IsEnabled="{x:Bind ViewModel.CanRunSpeedTest, Mode=OneWay}" />
+                                <Button x:Uid="Settings_RunSpeedTest" Command="{x:Bind ViewModel.RunSpeedTestCommand}" IsEnabled="{x:Bind ViewModel.CanRunSpeedTest, Mode=OneWay}" />
                                 <ProgressRing IsActive="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay}" Width="20" Height="20" Visibility="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                             </StackPanel>
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最后测速时间">
+                        <controls:SettingsCard x:Uid="Settings_LastSpeedTestTime" Header="最后测速时间">
                             <TextBlock Text="{x:Bind ViewModel.LastSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="下次测速时间">
+                        <controls:SettingsCard x:Uid="Settings_NextSpeedTestTime" Header="下次测速时间">
                             <TextBlock Text="{x:Bind ViewModel.NextSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快游戏源">
+                        <controls:SettingsCard x:Uid="Settings_FastestGameSource" Header="最快游戏源">
                             <TextBlock Text="{x:Bind ViewModel.FastestGameSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Modrinth 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestModrinthSource" Header="最快 Modrinth 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestCommunitySourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 CurseForge 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestCurseForgeSource" Header="最快 CurseForge 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestCurseForgeSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
