@@ -96,6 +96,7 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IDialogService _dialogService;
         private readonly DownloadSourceFactory _downloadSourceFactory;
+        private readonly ISpeedTestService? _speedTestService;
         private const string JavaPathKey = "JavaPath";
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
@@ -177,6 +178,29 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否可以手动选择下载源（当自动选择关闭时为true）
     /// </summary>
     public bool CanSelectDownloadSource => !AutoSelectFastestSource;
+
+    /// <summary>
+    /// 是否正在测速
+    /// </summary>
+    [ObservableProperty]
+    private bool _isSpeedTestRunning = false;
+
+    /// <summary>
+    /// 是否可以运行测速
+    /// </summary>
+    public bool CanRunSpeedTest => !IsSpeedTestRunning && _speedTestService != null;
+
+    /// <summary>
+    /// 测速结果列表（游戏资源源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _gameSourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（社区资源源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _communitySourceSpeedResults = new();
 
     /// <summary>
     /// 材质类型
@@ -766,6 +790,7 @@ public partial class SettingsViewModel : ObservableRecipient
         IDialogService dialogService,
         DownloadSourceFactory downloadSourceFactory,
         CustomSourceManager customSourceManager,
+        ISpeedTestService? speedTestService,
         IAfdianService? afdianService = null)
     {
         _themeSelectorService = themeSelectorService;
@@ -782,6 +807,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _dialogService = dialogService;
         _downloadSourceFactory = downloadSourceFactory;
         _customSourceManager = customSourceManager;
+        _speedTestService = speedTestService;
         _afdianService = afdianService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
@@ -2985,7 +3011,64 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         await AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType.Community);
     }
-    
+
+    /// <summary>
+    /// 运行测速命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RunSpeedTestAsync()
+    {
+        if (_speedTestService == null || IsSpeedTestRunning)
+            return;
+
+        try
+        {
+            IsSpeedTestRunning = true;
+            OnPropertyChanged(nameof(CanRunSpeedTest));
+
+            // 加载缓存的测速结果
+            var cache = await _speedTestService.LoadCacheAsync();
+
+            // 获取游戏资源源测速结果
+            if (cache.GameSources.Any())
+            {
+                GameSourceSpeedResults = cache.GameSources.Values
+                    .OrderBy(r => r.LatencyMs)
+                    .ToList();
+            }
+
+            // 获取社区资源源测速结果
+            if (cache.CommunitySources.Any())
+            {
+                CommunitySourceSpeedResults = cache.CommunitySources.Values
+                    .OrderBy(r => r.LatencyMs)
+                    .ToList();
+            }
+
+            // 如果缓存过期，执行新测速
+            if (cache.IsExpired || !cache.GameSources.Any())
+            {
+                var gameResults = await _speedTestService.TestGameSourcesAsync();
+                GameSourceSpeedResults = gameResults;
+            }
+
+            if (cache.IsExpired || !cache.CommunitySources.Any())
+            {
+                var communityResults = await _speedTestService.TestCommunitySourcesAsync();
+                CommunitySourceSpeedResults = communityResults;
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[Settings] 测速失败");
+        }
+        finally
+        {
+            IsSpeedTestRunning = false;
+            OnPropertyChanged(nameof(CanRunSpeedTest));
+        }
+    }
+
     /// <summary>
     /// <summary>
     /// 添加自定义源（指定模板类型）

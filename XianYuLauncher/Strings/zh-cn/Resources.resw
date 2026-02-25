@@ -2934,6 +2934,9 @@
   <data name="Settings_AutoSelectFastestSource.Description" xml:space="preserve">
     <value>自动测试并选择最快的下载源</value>
   </data>
+  <data name="Settings_RunSpeedTest.Content" xml:space="preserve">
+    <value>测速</value>
+  </data>
   <data name="Settings_GameResourceSource.Header" xml:space="preserve">
     <value>游戏资源下载源</value>
   </data>

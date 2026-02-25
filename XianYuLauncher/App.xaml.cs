@@ -113,6 +113,14 @@ public partial class App : Application
             services.AddSingleton<IGameHistoryService, GameHistoryService>();
             services.AddSingleton<DownloadSourceFactory>();
             services.AddSingleton<CustomSourceManager>(); // 自定义下载源管理器
+            services.AddSingleton<ISpeedTestService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(SpeedTestService));
+                var sourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<SpeedTestService>>();
+                return new SpeedTestService(httpClient, sourceFactory, logger);
+            });
             services.AddSingleton<IDownloadManager, DownloadManager>();
             
             // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）

@@ -505,7 +505,16 @@
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE9F5;" />
                     </controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSelectFastestSource, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Uid="Settings_RunSpeedTest"
+                                Content="测速"
+                                Command="{x:Bind ViewModel.RunSpeedTestCommand}"
+                                IsEnabled="{x:Bind ViewModel.CanRunSpeedTest, Mode=OneWay}" />
+                        <ProgressRing IsActive="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay}"
+                                     Width="20" Height="20"
+                                     Visibility="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSelectFastestSource, Mode=TwoWay}" />
+                    </StackPanel>
                 </controls:SettingsCard>
 
                 <!-- 游戏资源下载源（MC本体、ModLoader、版本列表）-->

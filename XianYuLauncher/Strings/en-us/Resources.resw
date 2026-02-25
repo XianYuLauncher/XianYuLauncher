@@ -2922,6 +2922,9 @@ Continue downloading?</value>
   <data name="Settings_AutoSelectFastestSource.Description" xml:space="preserve">
     <value>Automatically test and select the fastest download source</value>
   </data>
+  <data name="Settings_RunSpeedTest.Content" xml:space="preserve">
+    <value>Speed Test</value>
+  </data>
   <data name="Settings_GameResourceSource.Header" xml:space="preserve">
     <value>Game Resource Source</value>
   </data>
