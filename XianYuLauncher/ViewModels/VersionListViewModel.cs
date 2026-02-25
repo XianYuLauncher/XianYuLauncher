@@ -472,6 +472,72 @@ public partial class VersionListViewModel : ObservableRecipient
     }
 
     /// <summary>
+    /// 从指定文件路径导入整合包（用于全局拖拽处理）
+    /// </summary>
+    public async Task ImportModpackFromPathAsync(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                System.Diagnostics.Debug.WriteLine($"ImportModpackFromPathAsync: invalid path '{filePath}'");
+                return;
+            }
+
+            string modpackFilePath = filePath;
+            string modpackFileName = Path.GetFileName(filePath);
+
+            if (modpackFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                var modpackType = await DetectModpackTypeFromZipAsync(filePath);
+
+                if (modpackType == ModpackType.CurseForge)
+                {
+                    // 使用 zip 文件路径
+                    modpackFilePath = filePath;
+                    modpackFileName = Path.GetFileName(filePath);
+                }
+                else if (modpackType == ModpackType.Modrinth)
+                {
+                    var extractedMrpack = await ExtractMrpackFromZipAsync(filePath);
+                    if (extractedMrpack.HasValue)
+                    {
+                        modpackFilePath = extractedMrpack.Value.FilePath;
+                        modpackFileName = extractedMrpack.Value.FileName;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ImportModpackFromPathAsync: zip does not contain .mrpack: '{filePath}'");
+                        return;
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ImportModpackFromPathAsync: unsupported format for '{filePath}'");
+                    return;
+                }
+            }
+
+            var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
+            modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
+
+            var modVersion = new ModVersionViewModel
+            {
+                FileName = modpackFileName,
+                DownloadUrl = modpackFilePath
+            };
+
+            await modDownloadViewModel.InstallModpackAsync(modVersion);
+
+            await LoadVersionsAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"导入整合包失败: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// 整合包类型枚举
     /// </summary>
     private enum ModpackType

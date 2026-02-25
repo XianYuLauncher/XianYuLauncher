@@ -1,5 +1,8 @@
 using Windows.UI.ViewManagement;
 
+using System.Linq;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
 
@@ -26,6 +29,68 @@ public sealed partial class MainWindow : WindowEx
 
         // 应用材质设置
         ApplyMaterialSettings();
+    }
+
+    private void MainWindow_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        try
+        {
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                e.AcceptedOperation = DataPackageOperation.Copy;
+            }
+            else
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+            }
+        }
+        catch
+        {
+            e.AcceptedOperation = DataPackageOperation.None;
+        }
+    }
+
+    private async void MainWindow_Drop(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        try
+        {
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+
+            var items = await e.DataView.GetStorageItemsAsync();
+            foreach (var item in items.OfType<StorageFile>())
+            {
+                var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
+                if (ext == ".mrpack" || ext == ".zip")
+                {
+                    var navigationService = App.GetService<Contracts.Services.INavigationService>();
+                    // Navigate to VersionListPage
+                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
+
+                    // Call import on the viewmodel (run on UI dispatcher)
+                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    {
+                        try
+                        {
+                            var vm = App.GetService<ViewModels.VersionListViewModel>();
+                            if (vm != null)
+                            {
+                                await vm.ImportModpackFromPathAsync(item.Path);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
+                        }
+                    });
+
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Drop handling failed: {ex}");
+        }
     }
 
     /// <summary>

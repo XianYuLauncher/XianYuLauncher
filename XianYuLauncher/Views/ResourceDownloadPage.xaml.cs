@@ -1596,12 +1596,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void FavoritesDropArea_DragOver(object sender, DragEventArgs e)
     {
-        e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-        
-        if (sender is Control control)
-        {
-             control.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-        }
+           e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+           // Show a clear caption when dragging over the favorites drop area
+           e.DragUIOverride.Caption = "加入收藏夹";
+           e.DragUIOverride.IsCaptionVisible = true;
+           e.DragUIOverride.IsContentVisible = true;
+           e.DragUIOverride.IsGlyphVisible = true;
+
+           if (sender is Control control)
+           {
+               control.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+           }
     }
 
     private void FavoritesDropArea_DragLeave(object sender, DragEventArgs e)

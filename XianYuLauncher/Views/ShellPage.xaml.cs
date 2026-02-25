@@ -6,6 +6,9 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 
 using Windows.System;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
+using System.Linq;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
@@ -63,6 +66,155 @@ public sealed partial class ShellPage : Page
         
         // 加载导航栏风格设置
         LoadNavigationStyleAsync();
+    }
+
+    private void Shell_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        try
+        {
+            // Only handle external file drops (StorageItems). For internal drags (app items),
+            // do not set AcceptedOperation so child controls can receive drag events.
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                e.Handled = false;
+                return;
+            }
+
+            // Synchronously check the incoming storage items' extensions to avoid
+            // showing the system copy icon for unsupported formats (e.g., png).
+            var items = e.DataView.GetStorageItemsAsync().AsTask().GetAwaiter().GetResult();
+            bool anySupported = false;
+            foreach (var it in items.OfType<StorageFile>())
+            {
+                var ext = System.IO.Path.GetExtension(it.Path ?? string.Empty)?.ToLowerInvariant();
+                if (ext == ".mrpack" || ext == ".zip")
+                {
+                    anySupported = true;
+                    break;
+                }
+            }
+
+            if (anySupported)
+            {
+                e.AcceptedOperation = DataPackageOperation.Copy;
+                // Show a helpful caption instead of the default "Copy"
+                e.DragUIOverride.Caption = "导入整合包";
+                e.DragUIOverride.IsCaptionVisible = true;
+                e.DragUIOverride.IsContentVisible = true;
+                e.DragUIOverride.IsGlyphVisible = true;
+                e.Handled = true;
+            }
+            else
+            {
+                // Do not accept unsupported external files; leave Handled = false to allow child controls to process other drags.
+                e.AcceptedOperation = DataPackageOperation.None;
+                e.Handled = false;
+            }
+            // Also accept external text drops for CharacterPage external-login format
+            if (!e.Handled && e.DataView.Contains(StandardDataFormats.Text))
+            {
+                // show copy cursor and caption similar to original CharacterPage behavior
+                e.AcceptedOperation = DataPackageOperation.Copy;
+                e.DragUIOverride.Caption = "添加验证服务器";
+                e.DragUIOverride.IsCaptionVisible = true;
+                e.DragUIOverride.IsContentVisible = true;
+                e.DragUIOverride.IsGlyphVisible = true;
+                e.Handled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Shell_DragOver error: {ex}");
+            e.Handled = false;
+            return;
+        }
+    }
+
+    private async void Shell_Drop(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        try
+        {
+            // Only handle external storage item drops here. Let internal app drags be handled by child controls.
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                e.Handled = false;
+                return;
+            }
+
+            // First check for storage items (modpack import)
+            var items = await e.DataView.GetStorageItemsAsync();
+            foreach (var item in items.OfType<StorageFile>())
+            {
+                var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
+                if (ext == ".mrpack" || ext == ".zip")
+                {
+                    var navigationService = App.GetService<Contracts.Services.INavigationService>();
+                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
+
+                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    {
+                        try
+                        {
+                            var vm = App.GetService<ViewModels.VersionListViewModel>();
+                            if (vm != null)
+                            {
+                                await vm.ImportModpackFromPathAsync(item.Path);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
+                        }
+                    });
+
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // If not storage items handled, check for text drops (external login server)
+            if (e.DataView.Contains(StandardDataFormats.Text))
+            {
+                try
+                {
+                    var draggedText = await e.DataView.GetTextAsync();
+                    if (!string.IsNullOrEmpty(draggedText))
+                    {
+                        var navigationService = App.GetService<Contracts.Services.INavigationService>();
+                        navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName);
+
+                        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                        {
+                            try
+                            {
+                                // After navigation, forward the text to the CharacterPage instance
+                                var page = NavigationFrame?.Content as Views.CharacterPage;
+                                if (page != null)
+                                {
+                                    await page.HandleExternalLoginDropAsync(draggedText);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Forward external-login drop failed: {ex}");
+                            }
+                        });
+
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Shell_Drop text handling failed: {ex}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Drop handling failed: {ex}");
+            e.Handled = false;
+        }
     }
     
     /// <summary>

@@ -38,10 +38,7 @@ namespace XianYuLauncher.Views
             // 订阅角色列表内容变化事件（添加、删除等）
             ViewModel.Profiles.CollectionChanged += Profiles_CollectionChanged;
             
-            // 添加拖拽事件监听
-            this.AllowDrop = true;
-            this.Drop += CharacterPage_Drop;
-            this.DragOver += CharacterPage_DragOver;
+            // 拖拽由 ShellPage 全局处理（避免重复拦截）
             
             // 预加载处理过的史蒂夫头像
             _ = PreloadProcessedSteveAvatarAsync();
@@ -1991,62 +1988,52 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 拖拽进入页面时的处理
         /// </summary>
-        private void CharacterPage_DragOver(object sender, DragEventArgs e)
-        {
-            // 允许复制操作
-            e.AcceptedOperation = DataPackageOperation.Copy;
-            // 显示复制光标
-            e.DragUIOverride.Caption = "添加验证服务器";
-            e.DragUIOverride.IsCaptionVisible = true;
-            e.DragUIOverride.IsContentVisible = true;
-            e.DragUIOverride.IsGlyphVisible = true;
-        }
+        
         
         /// <summary>
         /// 拖拽释放时的处理
         /// </summary>
-        private async void CharacterPage_Drop(object sender, DragEventArgs e)
+        
+        /// <summary>
+        /// 公共接口：处理外部拖拽到角色页面的文本（由 Shell 转发）
+        /// 行为应与原来 CharacterPage 的 Drop 文本分支完全一致。
+        /// </summary>
+        public async Task HandleExternalLoginDropAsync(string draggedText)
         {
             try
             {
-                // 检查是否包含文本数据
-                if (e.DataView.Contains(StandardDataFormats.Text))
+                Debug.WriteLine($"[角色Page] 接收到转发的拖拽文本: {draggedText}");
+                // 解析拖拽的URI格式：authlib-injector:yggdrasil-server:{API地址}
+                if (draggedText.StartsWith("authlib-injector:yggdrasil-server:"))
                 {
-                    string draggedText = await e.DataView.GetTextAsync();
-                    Debug.WriteLine($"[角色Page] 接收到拖拽文本: {draggedText}");
-                    
-                    // 解析拖拽的URI格式：authlib-injector:yggdrasil-server:{API地址}
-                    if (draggedText.StartsWith("authlib-injector:yggdrasil-server:"))
+                    // 提取API地址
+                    string encodedApiUrl = draggedText.Substring("authlib-injector:yggdrasil-server:".Length);
+                    string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
+                    Debug.WriteLine($"[角色Page] 解析出API地址: {apiUrl}");
+
+                    // 显示确认对话框
+                    var dialog = new ContentDialog
                     {
-                        // 提取API地址
-                        string encodedApiUrl = draggedText.Substring("authlib-injector:yggdrasil-server:".Length);
-                        string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
-                        Debug.WriteLine($"[角色Page] 解析出API地址: {apiUrl}");
-                        
-                        // 显示确认对话框
-                        var dialog = new ContentDialog
-                        {
-                            Title = "添加验证服务器",
-                            Content = $"是否要添加以下验证服务器？\n{apiUrl}",
-                            PrimaryButtonText = "确定",
-                            SecondaryButtonText = "取消",
-                            DefaultButton = ContentDialogButton.Primary,
-                            XamlRoot = this.Content.XamlRoot,
-                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                        };
-                        
-                        var result = await dialog.ShowAsync();
-                        if (result == ContentDialogResult.Primary)
-                        {
-                            // 调用外置登录对话框，并预填充认证服务器地址
-                            ShowExternalLoginDialogWithPreFilledServer(apiUrl);
-                        }
+                        Title = "添加验证服务器",
+                        Content = $"是否要添加以下验证服务器？\n{apiUrl}",
+                        PrimaryButtonText = "确定",
+                        SecondaryButtonText = "取消",
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = this.Content.XamlRoot,
+                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+                    };
+
+                    var result = await dialog.ShowAsync();
+                    if (result == ContentDialogResult.Primary)
+                    {
+                        // 调用外置登录对话框，并预填充认证服务器地址
+                        ShowExternalLoginDialogWithPreFilledServer(apiUrl);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 处理拖拽时发生异常: {ex.Message}");
+                Debug.WriteLine($"[角色Page] 处理转发拖拽时发生异常: {ex.Message}");
             }
         }
         

@@ -26,7 +26,7 @@
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid>
+    <Grid AllowDrop="True" DragOver="Shell_DragOver" Drop="Shell_Drop">
         <!-- 动态光效背景 (ZIndex -2: 最底层) - 默认隐藏 -->
         <controls:MotionBackgroundControl x:Name="MotionBg" Canvas.ZIndex="-2" Visibility="Collapsed" />
         
