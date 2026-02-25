@@ -85,21 +85,28 @@ public class SpeedTestService : ISpeedTestService
 
         // 并发测试，限制数量
         var semaphore = new SemaphoreSlim(MaxConcurrentTests);
-        var tasks = sources.Select(async source =>
+        try
         {
-            await semaphore.WaitAsync(ct);
-            try
+            var tasks = sources.Select(async source =>
             {
-                return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
 
-        var testResults = await Task.WhenAll(tasks);
-        results.AddRange(testResults.Where(r => r != null)!);
+            var testResults = await Task.WhenAll(tasks);
+            results.AddRange(testResults.Where(r => r != null)!);
+        }
+        finally
+        {
+            semaphore.Dispose();
+        }
 
         // 按延迟排序
         var sortedResults = results
@@ -125,21 +132,28 @@ public class SpeedTestService : ISpeedTestService
 
         // 并发测试
         var semaphore = new SemaphoreSlim(MaxConcurrentTests);
-        var tasks = sources.Select(async source =>
+        try
         {
-            await semaphore.WaitAsync(ct);
-            try
+            var tasks = sources.Select(async source =>
             {
-                return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
 
-        var testResults = await Task.WhenAll(tasks);
-        results.AddRange(testResults.Where(r => r != null)!);
+            var testResults = await Task.WhenAll(tasks);
+            results.AddRange(testResults.Where(r => r != null)!);
+        }
+        finally
+        {
+            semaphore.Dispose();
+        }
 
         // 按延迟排序
         var sortedResults = results
@@ -165,21 +179,28 @@ public class SpeedTestService : ISpeedTestService
 
         // 并发测试
         var semaphore = new SemaphoreSlim(MaxConcurrentTests);
-        var tasks = sources.Select(async source =>
+        try
         {
-            await semaphore.WaitAsync(ct);
-            try
+            var tasks = sources.Select(async source =>
             {
-                return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
 
-        var testResults = await Task.WhenAll(tasks);
-        results.AddRange(testResults.Where(r => r != null)!);
+            var testResults = await Task.WhenAll(tasks);
+            results.AddRange(testResults.Where(r => r != null)!);
+        }
+        finally
+        {
+            semaphore.Dispose();
+        }
 
         // 按延迟排序
         var sortedResults = results
@@ -403,9 +424,9 @@ public class SpeedTestService : ISpeedTestService
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略不支持的源
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持游戏资源", kvp.Key);
             }
         }
 
@@ -442,9 +463,9 @@ public class SpeedTestService : ISpeedTestService
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略不支持的源
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", kvp.Key);
             }
         }
 
@@ -481,9 +502,9 @@ public class SpeedTestService : ISpeedTestService
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略不支持的源
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", kvp.Key);
             }
         }
 
@@ -493,7 +514,7 @@ public class SpeedTestService : ISpeedTestService
     /// <summary>
     /// 从 URL 中提取主机名
     /// </summary>
-    private static string? ExtractHost(string url)
+    private string? ExtractHost(string url)
     {
         try
         {
@@ -512,8 +533,9 @@ public class SpeedTestService : ISpeedTestService
 
             return url;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "[SpeedTest] 提取主机名失败: {Url}", url);
             return null;
         }
     }

@@ -184,6 +184,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否自动选择最优下载源
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSelectDownloadSource))]
     private bool _autoSelectFastestSource = false;
 
     /// <summary>
@@ -195,6 +196,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 是否正在测速
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRunSpeedTest))]
     private bool _isSpeedTestRunning = false;
 
     /// <summary>
@@ -3196,8 +3198,8 @@ public partial class SettingsViewModel : ObservableRecipient
                 await ApplyFastestSourcesAsync();
             }
 
-            // 更新最后测速时间
-            LastSpeedTestTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            // 更新最后测速时间（使用本地时间）
+            LastSpeedTestTime = DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
         }
         catch (Exception ex)
         {
@@ -3252,10 +3254,10 @@ public partial class SettingsViewModel : ObservableRecipient
     /// <summary>
     /// 更新下次测速时间显示
     /// </summary>
-    private void UpdateNextSpeedTestTime(DateTime lastUpdated)
+    private void UpdateNextSpeedTestTime(DateTime lastUpdatedUtc)
     {
-        var expirationTime = lastUpdated.AddHours(CacheExpirationHours);
-        var remaining = expirationTime - DateTime.Now;
+        var expirationTime = lastUpdatedUtc.AddHours(CacheExpirationHours);
+        var remaining = expirationTime - DateTime.UtcNow;
 
         if (remaining.TotalSeconds <= 0)
         {
