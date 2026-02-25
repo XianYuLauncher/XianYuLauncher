@@ -2928,6 +2928,12 @@
   <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
     <value>顶部</value>
   </data>
+  <data name="Settings_AutoSelectFastestSource.Header" xml:space="preserve">
+    <value>自动选择最优下载源</value>
+  </data>
+  <data name="Settings_AutoSelectFastestSource.Description" xml:space="preserve">
+    <value>自动测试并选择最快的下载源</value>
+  </data>
   <data name="Settings_GameResourceSource.Header" xml:space="preserve">
     <value>游戏资源下载源</value>
   </data>

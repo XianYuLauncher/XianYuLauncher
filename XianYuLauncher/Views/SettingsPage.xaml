@@ -500,15 +500,25 @@
                 <!-- ==================== 网络 ==================== -->
                 <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
+                <!-- 自动选择最优下载源 -->
+                <controls:SettingsCard x:Uid="Settings_AutoSelectFastestSource" Header="自动选择最优下载源" Description="自动测试并选择最快的下载源">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE9F5;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSelectFastestSource, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
                 <!-- 游戏资源下载源（MC本体、ModLoader、版本列表）-->
                 <controls:SettingsCard x:Uid="Settings_GameResourceSource" Header="游戏资源下载源" Description="MC本体、ModLoader、版本列表的下载源">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
                     </controls:SettingsCard.HeaderIcon>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}" 
-                                  SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}" 
-                                  MinWidth="200" />
+                        <ComboBox x:Name="GameResourceSourceComboBox"
+                                  ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}"
+                                  MinWidth="200"
+                                  IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
                         <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                             <Button.ContentTemplate>
                                 <DataTemplate>
@@ -525,9 +535,11 @@
                         <FontIcon Glyph="&#xE753;" />
                     </controls:SettingsCard.HeaderIcon>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}" 
-                                  SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}" 
-                                  MinWidth="200" />
+                        <ComboBox x:Name="CommunityResourceSourceComboBox"
+                                  ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}"
+                                  MinWidth="200"
+                                  IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
                         <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
                             <Button.ContentTemplate>
                                 <DataTemplate>

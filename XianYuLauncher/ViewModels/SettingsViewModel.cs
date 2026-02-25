@@ -166,7 +166,18 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private DownloadSourceItem? _selectedCommunityResourceSource;
-    
+
+    /// <summary>
+    /// 是否自动选择最优下载源
+    /// </summary>
+    [ObservableProperty]
+    private bool _autoSelectFastestSource = false;
+
+    /// <summary>
+    /// 是否可以手动选择下载源（当自动选择关闭时为true）
+    /// </summary>
+    public bool CanSelectDownloadSource => !AutoSelectFastestSource;
+
     /// <summary>
     /// 材质类型
     /// </summary>
@@ -2716,10 +2727,11 @@ public partial class SettingsViewModel : ObservableRecipient
     #endregion
     
     #region 下载源管理（新版统一管理）
-    
+
     private const string GameResourceSourceKey = "GameResourceSource";
     private const string CommunityResourceSourceKey = "CommunityResourceSource";
-    
+    private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
+
     /// <summary>
     /// 加载下载源设置（新版）
     /// </summary>
@@ -2842,16 +2854,21 @@ public partial class SettingsViewModel : ObservableRecipient
         }
         
         Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
-        
+
+        // 读取自动选择最优下载源设置
+        var savedAutoSelect = await _localSettingsService.ReadSettingAsync<bool>(AutoSelectFastestSourceKey);
+        Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
+
         // 在 UI 线程上设置选中项
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            SelectedGameResourceSource = GameResourceSources.FirstOrDefault(s => s.Key == savedGameSource) 
+            SelectedGameResourceSource = GameResourceSources.FirstOrDefault(s => s.Key == savedGameSource)
                 ?? GameResourceSources.FirstOrDefault();
-            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource) 
+            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource)
                 ?? CommunityResourceSources.FirstOrDefault();
-            
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key})");
+            AutoSelectFastestSource = savedAutoSelect;
+
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key}), 自动选择: {AutoSelectFastestSource}");
             
             // 同步到 DownloadSourceFactory
             if (SelectedGameResourceSource != null)
@@ -2936,7 +2953,21 @@ public partial class SettingsViewModel : ObservableRecipient
         
         Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
     }
-    
+
+    /// <summary>
+    /// 当自动选择最优下载源设置变化时
+    /// </summary>
+    partial void OnAutoSelectFastestSourceChanged(bool value)
+    {
+        Log.Information($"[Settings] 自动选择最优下载源设置变化: {value}");
+
+        // 保存设置
+        _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
+
+        // 通知 UI 更新 CanSelectDownloadSource
+        OnPropertyChanged(nameof(CanSelectDownloadSource));
+    }
+
     /// <summary>
     /// 添加自定义游戏资源源命令
     /// </summary>
