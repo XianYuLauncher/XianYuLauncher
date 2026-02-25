@@ -245,6 +245,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private string _lastSpeedTestTime = "从未测速";
 
     /// <summary>
+    /// 下次测速时间（剩余时间）
+    /// </summary>
+    [ObservableProperty]
+    private string _nextSpeedTestTime = "即将测速";
+
+    /// <summary>
+    /// 缓存过期时间（小时）
+    /// </summary>
+    private const int CacheExpirationHours = 12;
+
+    /// <summary>
     /// 材质类型
     /// </summary>
     [ObservableProperty]
@@ -3229,11 +3240,34 @@ public partial class SettingsViewModel : ObservableRecipient
             if (cache.LastUpdated != default)
             {
                 LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                UpdateNextSpeedTestTime(cache.LastUpdated);
             }
         }
         catch (Exception ex)
         {
             Serilog.Log.Warning(ex, "[Settings] 加载测速缓存失败");
+        }
+    }
+
+    /// <summary>
+    /// 更新下次测速时间显示
+    /// </summary>
+    private void UpdateNextSpeedTestTime(DateTime lastUpdated)
+    {
+        var expirationTime = lastUpdated.AddHours(CacheExpirationHours);
+        var remaining = expirationTime - DateTime.Now;
+
+        if (remaining.TotalSeconds <= 0)
+        {
+            NextSpeedTestTime = "即将测速";
+        }
+        else if (remaining.TotalHours >= 1)
+        {
+            NextSpeedTestTime = $"约 {Math.Ceiling(remaining.TotalHours)} 小时后";
+        }
+        else
+        {
+            NextSpeedTestTime = $"约 {Math.Ceiling(remaining.TotalMinutes)} 分钟后";
         }
     }
 

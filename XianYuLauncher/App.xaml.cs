@@ -119,6 +119,11 @@ public partial class App : Application
                 var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<SpeedTestService>>();
                 return new SpeedTestService(sourceFactory, logger);
             });
+            services.AddSingleton<IAutoSpeedTestService>(sp =>
+            {
+                var speedTestService = sp.GetRequiredService<ISpeedTestService>();
+                return new AutoSpeedTestService(speedTestService);
+            });
             services.AddSingleton<IDownloadManager, DownloadManager>();
             
             // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）

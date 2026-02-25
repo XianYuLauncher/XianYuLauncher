@@ -33,7 +33,7 @@ public sealed partial class SettingsPage : Page
         System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面加载，开始刷新自定义源列表");
         try
         {
-            // 先加载测速缓存，显示上次的测速结果
+            // 加载测速缓存，显示上次的测速结果（启动时已自动测速）
             if (ViewModel != null)
             {
                 System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始加载测速缓存");

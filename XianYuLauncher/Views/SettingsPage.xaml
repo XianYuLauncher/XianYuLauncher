@@ -518,6 +518,9 @@
                         <controls:SettingsCard Header="最后测速时间">
                             <TextBlock Text="{x:Bind ViewModel.LastSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
+                        <controls:SettingsCard Header="下次测速时间">
+                            <TextBlock Text="{x:Bind ViewModel.NextSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
                         <controls:SettingsCard Header="最快游戏源">
                             <TextBlock Text="{x:Bind ViewModel.FastestGameSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Serilog;
 
 using XianYuLauncher.Activation;
 using XianYuLauncher.Contracts.Services;
@@ -21,15 +22,17 @@ public class ActivationService : IActivationService
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
+    private readonly XianYuLauncher.Core.Services.IAutoSpeedTestService? _autoSpeedTestService;
     private UIElement? _shell = null;
 
     public ActivationService(
-        ActivationHandler<LaunchActivatedEventArgs> defaultHandler, 
-        IEnumerable<IActivationHandler> activationHandlers, 
-        IThemeSelectorService themeSelectorService, 
+        ActivationHandler<LaunchActivatedEventArgs> defaultHandler,
+        IEnumerable<IActivationHandler> activationHandlers,
+        IThemeSelectorService themeSelectorService,
         ILanguageSelectorService languageSelectorService,
         ILocalSettingsService localSettingsService,
-        XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory)
+        XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
+        XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null)
     {
         _defaultHandler = defaultHandler;
         _activationHandlers = activationHandlers;
@@ -37,6 +40,7 @@ public class ActivationService : IActivationService
         _languageSelectorService = languageSelectorService;
         _localSettingsService = localSettingsService;
         _downloadSourceFactory = downloadSourceFactory;
+        _autoSpeedTestService = autoSpeedTestService;
     }
 
     public async Task ActivateAsync(object activationArgs)
@@ -191,24 +195,30 @@ public class ActivationService : IActivationService
     private async Task StartupAsync()
     {
         await _themeSelectorService.SetRequestedThemeAsync();
-        
+
         // 延迟1秒，确保主窗口完全初始化
         await Task.Delay(1000);
-        
+
         Serilog.Log.Information("主窗口状态检查: Content={IsContentNull}", App.MainWindow.Content == null ? "null" : "not null");
-        
+
         // 显示保密协议弹窗
         await ShowPrivacyAgreementAsync();
-        
+
         // 显示云控公告
         await ShowAnnouncementAsync();
-        
+
         // 检查更新
         await CheckForUpdatesAsync();
-        
+
+        // 自动测速（缓存为空或过期时）
+        if (_autoSpeedTestService != null)
+        {
+            await _autoSpeedTestService.CheckAndRunAsync();
+        }
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// 检查应用更新
     /// </summary>
