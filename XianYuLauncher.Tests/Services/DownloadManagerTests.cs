@@ -130,7 +130,7 @@ public class DownloadManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadFileAsync_WithCancellation_ThrowsOperationCanceledException()
+    public async Task DownloadFileAsync_WithCancellation_ReturnsFailedResult()
     {
         // Arrange
         var url = "https://httpbin.org/delay/10"; // 延迟10秒的请求
@@ -138,12 +138,13 @@ public class DownloadManagerTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(100); // 100ms后取消
 
-        // Act & Assert
-        // TaskCanceledException 继承自 OperationCanceledException
-        var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await _downloadManager.DownloadFileAsync(url, targetPath, cancellationToken: cts.Token));
-        
-        exception.Should().NotBeNull();
+        // Act
+        // DownloadManager 捕获 OperationCanceledException 并返回失败结果，而不是抛出异常
+        var result = await _downloadManager.DownloadFileAsync(url, targetPath, cancellationToken: cts.Token);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("取消");
     }
 
     [Fact]
