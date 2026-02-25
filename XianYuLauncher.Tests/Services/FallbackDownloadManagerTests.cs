@@ -218,7 +218,7 @@ public class FallbackDownloadManagerTests : IDisposable
         _innerManagerMock
             .Setup(m => m.DownloadFileAsync(
                 It.IsAny<string>(), targetPath, null, null, It.IsAny<CancellationToken>()))
-            .Callback<string, string, string?, Action<double>?, CancellationToken>((url, _, _, _, _) => capturedUrl = url)
+            .Callback<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, _, _, _, _) => capturedUrl = url)
             .ReturnsAsync(DownloadResult.Succeeded(targetPath, originalUrl));
 
         // Act
@@ -242,7 +242,7 @@ public class FallbackDownloadManagerTests : IDisposable
         _innerManagerMock
             .Setup(m => m.DownloadFileAsync(
                 It.IsAny<string>(), targetPath, null, null, It.IsAny<CancellationToken>()))
-            .Callback<string, string, string?, Action<double>?, CancellationToken>((url, _, _, _, _) => capturedUrl = url)
+            .Callback<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, _, _, _, _) => capturedUrl = url)
             .ReturnsAsync(DownloadResult.Succeeded(targetPath, originalUrl));
 
         // Act

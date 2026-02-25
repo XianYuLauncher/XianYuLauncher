@@ -373,6 +373,15 @@ public class DownloadTaskManagerResourceDownloadTests
     {
         // Arrange
         var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("网络错误"));
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         DownloadTaskInfo? finalTask = null;
@@ -386,7 +395,7 @@ public class DownloadTaskManagerResourceDownloadTests
             "mod",
             "https://example.com/notfound.jar",
             savePath);
-        
+
         await Task.Delay(200); // 等待后台任务完成
 
         // Assert
@@ -404,6 +413,21 @@ public class DownloadTaskManagerResourceDownloadTests
     {
         // Arrange
         var downloadManagerMock = new Mock<IDownloadManager>();
+        // 设置延迟返回，模拟下载正在进行中
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    await Task.Delay(1000, ct); // 模拟下载需要时间
+                    return DownloadResult.Succeeded(path, url);
+                });
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var savePath1 = Path.Combine(_tempDirectory, "test_mod1.jar");
@@ -415,13 +439,16 @@ public class DownloadTaskManagerResourceDownloadTests
             "https://example.com/test1.jar",
             savePath1);
 
+        // 等待一小段时间确保下载已开始但尚未完成
+        await Task.Delay(100);
+
         // Act & Assert
         var act = async () => await downloadTaskManager.StartResourceDownloadAsync(
             "Test Mod 2",
             "mod",
             "https://example.com/test2.jar",
             savePath2);
-        
+
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*已有下载任务正在进行中*");
     }
@@ -643,6 +670,26 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             }
         });
         var downloadManagerMock = new Mock<IDownloadManager>();
+        // 设置使用 mockHandler 的 HttpClient
+        var httpClient = new HttpClient(mockHandler);
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    // 实际下载到目标路径
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                        Directory.CreateDirectory(dir);
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskState>();
@@ -656,7 +703,7 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             "https://example.com/world.zip",
             savesDir,
             "TestWorld.zip");
-        
+
         await Task.Delay(500); // 等待后台任务完成
 
         // Assert
@@ -702,6 +749,21 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     {
         // Arrange
         var downloadManagerMock = new Mock<IDownloadManager>();
+        // 设置延迟返回，模拟下载正在进行中
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    await Task.Delay(1000, ct); // 模拟下载需要时间
+                    return DownloadResult.Succeeded(path, url);
+                });
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var savesDir = Path.Combine(_tempDirectory, "saves");
@@ -712,13 +774,16 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             savesDir,
             "TestWorld1.zip");
 
+        // 等待一小段时间确保下载已开始但尚未完成
+        await Task.Delay(100);
+
         // Act & Assert
         var act = async () => await downloadTaskManager.StartWorldDownloadAsync(
             "Test World 2",
             "https://example.com/world2.zip",
             savesDir,
             "TestWorld2.zip");
-        
+
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*已有下载任务正在进行中*");
     }

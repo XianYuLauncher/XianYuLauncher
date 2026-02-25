@@ -20,6 +20,7 @@ public class ForgeInstallerTests : IDisposable
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
     private readonly Mock<IProcessorExecutor> _mockProcessorExecutor;
     private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
+    private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<ForgeInstaller>> _mockLogger;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ForgeInstaller _forgeInstaller;
@@ -32,9 +33,10 @@ public class ForgeInstallerTests : IDisposable
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
         _mockProcessorExecutor = new Mock<IProcessorExecutor>();
         _mockLocalSettingsService = new Mock<ILocalSettingsService>();
+        _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<ForgeInstaller>>();
         _downloadSourceFactory = new DownloadSourceFactory();
-        
+
         _forgeInstaller = new ForgeInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
@@ -42,6 +44,7 @@ public class ForgeInstallerTests : IDisposable
             _mockProcessorExecutor.Object,
             _downloadSourceFactory,
             _mockLocalSettingsService.Object,
+            _mockJavaRuntimeService.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"ForgeInstallerTests_{Guid.NewGuid()}");
