@@ -1873,6 +1873,7 @@ namespace XianYuLauncher.Views
                 // 创建外置角色
                 var externalMinecraftProfile = new MinecraftProfile
                 {
+                    InstanceId = System.Guid.NewGuid(),
                     Id = externalProfile.Id,
                     Name = externalProfile.Name,
                     AccessToken = externalProfile.AccessToken,

@@ -139,26 +139,28 @@ public sealed partial class LaunchPage : Page
             ProfileMenuFlyout.Items.RemoveAt(0);
         }
 
-        // 添加分隔线
-        ProfileMenuFlyout.Items.Insert(0, new MenuFlyoutSeparator());
-
-        // 添加角色列表
-            if (ViewModel.Profiles.Count > 0)
+        // 将每个角色作为一级菜单项插入到 MenuFlyout 中（保持原列表顺序）
+        if (ViewModel.Profiles.Count > 0)
+        {
+            for (int i = ViewModel.Profiles.Count - 1; i >= 0; i--)
             {
-                var profileSubItem = new MenuFlyoutSubItem { Text = "LaunchPage_AddedProfilesText".GetLocalized() };
-            
-            foreach (var profile in ViewModel.Profiles)
-            {
+                var profile = ViewModel.Profiles[i];
                 var menuItem = new MenuFlyoutItem
                 {
                     Text = profile.Name,
                     Tag = profile
                 };
+                // 如果是当前选中的角色（使用 InstanceId 以长期稳定区分实例）
+                if (ViewModel.SelectedProfile != null && profile.InstanceId == ViewModel.SelectedProfile.InstanceId)
+                {
+                    menuItem.Icon = new SymbolIcon(Symbol.Accept);
+                }
                 menuItem.Click += ProfileMenuItem_Click;
-                profileSubItem.Items.Add(menuItem);
+                ProfileMenuFlyout.Items.Insert(0, menuItem);
             }
-            
-            ProfileMenuFlyout.Items.Insert(0, profileSubItem);
+
+            // 在角色列表和"添加角色"之间插入分割线
+            ProfileMenuFlyout.Items.Insert(ProfileMenuFlyout.Items.Count - 1, new MenuFlyoutSeparator());
         }
     }
 
@@ -173,31 +175,27 @@ public sealed partial class LaunchPage : Page
             VersionMenuFlyout.Items.RemoveAt(0);
         }
 
-        // 添加版本列表
+        // 将每个已安装版本作为一级菜单项插入到 MenuFlyout 中（保持原列表顺序）
         if (ViewModel.InstalledVersions.Count > 0)
         {
-            var versionSubItem = new MenuFlyoutSubItem();
-            versionSubItem.Text = "LaunchPage_InstalledVersionsText".GetLocalized();
-            
-            foreach (var version in ViewModel.InstalledVersions)
+            for (int i = ViewModel.InstalledVersions.Count - 1; i >= 0; i--)
             {
+                var version = ViewModel.InstalledVersions[i];
                 var menuItem = new MenuFlyoutItem
                 {
                     Text = version,
                     Tag = version
                 };
-                
+
                 // 如果是当前选中的版本，添加勾选标记
                 if (version == ViewModel.SelectedVersion)
                 {
                     menuItem.Icon = new SymbolIcon(Symbol.Accept);
                 }
-                
+
                 menuItem.Click += VersionMenuItem_Click;
-                versionSubItem.Items.Add(menuItem);
+                VersionMenuFlyout.Items.Insert(0, menuItem);
             }
-            
-            VersionMenuFlyout.Items.Insert(0, versionSubItem);
         }
     }
 

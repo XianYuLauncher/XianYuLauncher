@@ -419,6 +419,7 @@ namespace XianYuLauncher.ViewModels
                 // 添加离线账户
                 var offlineProfile = new MinecraftProfile
                 {
+                    InstanceId = System.Guid.NewGuid(),
                     Id = XianYuLauncher.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineProfileName),
                     Name = OfflineProfileName,
                     AccessToken = Guid.NewGuid().ToString(),
@@ -837,6 +838,7 @@ namespace XianYuLauncher.ViewModels
                     // 创建外置登录角色
                     var externalProfile = new MinecraftProfile
                     {
+                        InstanceId = System.Guid.NewGuid(),
                         Id = selectedProfile.Id,
                         Name = selectedProfile.Name,
                         AccessToken = result.AccessToken,
@@ -972,6 +974,7 @@ namespace XianYuLauncher.ViewModels
                 // 创建微软角色
                 var microsoftProfile = new MinecraftProfile
                 {
+                    InstanceId = System.Guid.NewGuid(),
                     Id = result.Uuid,
                     Name = result.Username,
                     AccessToken = result.AccessToken,

@@ -36,8 +36,34 @@ public class ProfileManager : IProfileManager
             var json = await File.ReadAllTextAsync(profilesPath);
             var profiles = JsonConvert.DeserializeObject<List<MinecraftProfile>>(json) ?? new List<MinecraftProfile>();
             
+            // Backfill InstanceId for older saved profiles (兼容旧数据)
+            bool needsBackfill = false;
+            foreach (var p in profiles)
+            {
+                if (p.InstanceId == System.Guid.Empty)
+                {
+                    p.InstanceId = System.Guid.NewGuid();
+                    needsBackfill = true;
+                }
+            }
+
             // 🔒 安全检查：检测并迁移明文token
             bool needsMigration = await MigrateUnencryptedTokensAsync(profiles, profilesPath);
+            
+            // 如果需要回填 InstanceId，则立即保存以保持数据一致
+            if (needsBackfill)
+            {
+                try
+                {
+                    var json2 = JsonConvert.SerializeObject(profiles, Formatting.Indented);
+                    await File.WriteAllTextAsync(profilesPath, json2);
+                    System.Diagnostics.Debug.WriteLine("[ProfileManager] 已为旧数据回填 InstanceId 并保存");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ProfileManager] 回填 InstanceId 保存失败: {ex.Message}");
+                }
+            }
             
             // 🔓 解密所有token供内存使用
             DecryptProfileTokens(profiles);
@@ -191,6 +217,8 @@ public class ProfileManager : IProfileManager
     {
         return profiles.Select(p => new MinecraftProfile
         {
+            // 保留 InstanceId 以便后续加载后能恢复实例标识
+            InstanceId = p.InstanceId,
             Id = p.Id,
             Name = p.Name,
             AccessToken = TokenEncryption.Encrypt(p.AccessToken),
