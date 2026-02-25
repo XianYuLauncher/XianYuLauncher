@@ -62,10 +62,16 @@ public class SpeedTestCache
     public Dictionary<string, SpeedTestResult> GameSources { get; set; } = new();
 
     /// <summary>
-    /// 社区资源源测速结果
+    /// 社区资源源测速结果（Modrinth）
     /// </summary>
     [JsonProperty("communitySources")]
     public Dictionary<string, SpeedTestResult> CommunitySources { get; set; } = new();
+
+    /// <summary>
+    /// CurseForge 资源源测速结果
+    /// </summary>
+    [JsonProperty("curseforgeSources")]
+    public Dictionary<string, SpeedTestResult> CurseForgeSources { get; set; } = new();
 
     /// <summary>
     /// 最后更新时间
@@ -91,11 +97,22 @@ public class SpeedTestCache
     }
 
     /// <summary>
-    /// 获取最快的社区资源源
+    /// 获取最快的社区资源源（Modrinth）
     /// </summary>
     public string? GetFastestCommunitySourceKey()
     {
         return CommunitySources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 CurseForge 资源源
+    /// </summary>
+    public string? GetFastestCurseForgeSourceKey()
+    {
+        return CurseForgeSources.Values
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault()?.SourceKey;

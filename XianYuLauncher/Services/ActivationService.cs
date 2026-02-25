@@ -161,6 +161,26 @@ public class ActivationService : IActivationService
             {
                 Serilog.Log.Information("[ActivationService] 未找到 CommunityResourceSource，保留默认社区资源源设置");
             }
+
+            // 读取 CurseForge 资源下载源
+            var curseforgeResourceSource = await _localSettingsService.ReadSettingAsync<string>("CurseForgeResourceSource");
+
+            if (!string.IsNullOrEmpty(curseforgeResourceSource))
+            {
+                if (allSources.ContainsKey(curseforgeResourceSource))
+                {
+                    _downloadSourceFactory.SetCurseForgeSource(curseforgeResourceSource);
+                    Serilog.Log.Information($"[ActivationService] CurseForge 资源下载源已设置为: {curseforgeResourceSource}");
+                }
+                else
+                {
+                    Serilog.Log.Warning($"[ActivationService] CurseForge 资源源 {curseforgeResourceSource} 不存在，使用默认值");
+                }
+            }
+            else
+            {
+                Serilog.Log.Information("[ActivationService] 未找到 CurseForgeResourceSource，保留默认 CurseForge 资源源设置");
+            }
         }
         catch (Exception ex)
         {

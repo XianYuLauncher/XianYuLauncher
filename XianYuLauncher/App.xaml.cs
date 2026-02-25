@@ -115,11 +115,9 @@ public partial class App : Application
             services.AddSingleton<CustomSourceManager>(); // 自定义下载源管理器
             services.AddSingleton<ISpeedTestService>(sp =>
             {
-                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(nameof(SpeedTestService));
                 var sourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
                 var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<SpeedTestService>>();
-                return new SpeedTestService(httpClient, sourceFactory, logger);
+                return new SpeedTestService(sourceFactory, logger);
             });
             services.AddSingleton<IDownloadManager, DownloadManager>();
             

@@ -2943,11 +2943,23 @@
   <data name="Settings_GameResourceSource.Description" xml:space="preserve">
     <value>MC本体、ModLoader、版本列表的下载源</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Header" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>社区资源下载源</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Description" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Description" xml:space="preserve">
     <value>Modrinth、CurseForge 资源的下载源</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Header" xml:space="preserve">
+    <value>Modrinth 下载源</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Description" xml:space="preserve">
+    <value>Modrinth 资源的下载源</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Header" xml:space="preserve">
+    <value>CurseForge 下载源</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Description" xml:space="preserve">
+    <value>CurseForge 资源的下载源</value>
   </data>
   <data name="Settings_OpenCustomSourceConfig.Header" xml:space="preserve">
     <value>自定义源配置</value>

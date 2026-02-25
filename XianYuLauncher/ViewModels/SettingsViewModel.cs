@@ -151,11 +151,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private ObservableCollection<DownloadSourceItem> _gameResourceSources = new ObservableCollection<DownloadSourceItem>();
     
     /// <summary>
-    /// 社区资源下载源列表（Modrinth、CurseForge）
+    /// 社区资源下载源列表（Modrinth）
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<DownloadSourceItem> _communityResourceSources = new ObservableCollection<DownloadSourceItem>();
-    
+
+    /// <summary>
+    /// CurseForge 资源下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _curseforgeResourceSources = new ObservableCollection<DownloadSourceItem>();
+
     /// <summary>
     /// 当前选中的游戏资源下载源
     /// </summary>
@@ -163,10 +169,16 @@ public partial class SettingsViewModel : ObservableRecipient
     private DownloadSourceItem? _selectedGameResourceSource;
     
     /// <summary>
-    /// 当前选中的社区资源下载源
+    /// 当前选中的社区资源下载源（Modrinth）
     /// </summary>
     [ObservableProperty]
     private DownloadSourceItem? _selectedCommunityResourceSource;
+
+    /// <summary>
+    /// 当前选中的 CurseForge 资源下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCurseforgeResourceSource;
 
     /// <summary>
     /// 是否自动选择最优下载源
@@ -2756,6 +2768,7 @@ public partial class SettingsViewModel : ObservableRecipient
 
     private const string GameResourceSourceKey = "GameResourceSource";
     private const string CommunityResourceSourceKey = "CommunityResourceSource";
+    private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
     private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
 
     /// <summary>
@@ -2769,10 +2782,13 @@ public partial class SettingsViewModel : ObservableRecipient
         // 2. 构建游戏资源源列表（BMCLAPI 类型：MC本体、ModLoader、版本列表）
         await BuildGameResourceSourcesAsync();
         
-        // 3. 构建社区资源源列表（MCIM 类型：Modrinth、CurseForge）
+        // 3. 构建社区资源源列表（Modrinth）
         await BuildCommunityResourceSourcesAsync();
-        
-        // 4. 加载用户选择的源
+
+        // 4. 构建 CurseForge 资源源列表
+        await BuildCurseForgeResourceSourcesAsync();
+
+        // 5. 加载用户选择的源
         await LoadSelectedSourcesAsync();
     }
     
@@ -2855,7 +2871,48 @@ public partial class SettingsViewModel : ObservableRecipient
             });
         });
     }
-    
+
+    /// <summary>
+    /// 构建 CurseForge 资源源列表
+    /// 注意：BMCLAPI 不支持社区资源（CurseForge），因此只显示 official 和 mcim
+    /// </summary>
+    private async Task BuildCurseForgeResourceSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var sources = new List<DownloadSourceItem>
+            {
+                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
+                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
+            };
+
+            // 添加社区资源类型的自定义源
+            var customSources = _customSourceManager.GetAllSources()
+                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.Priority);
+
+            foreach (var customSource in customSources)
+            {
+                sources.Add(new DownloadSourceItem
+                {
+                    Key = customSource.Key,
+                    DisplayName = $"{customSource.Name} (自定义)",
+                    IsCustom = true
+                });
+            }
+
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                CurseforgeResourceSources.Clear();
+                foreach (var source in sources)
+                {
+                    CurseforgeResourceSources.Add(source);
+                }
+                Log.Information($"[Settings] 已加载 {CurseforgeResourceSources.Count} 个 CurseForge 资源源");
+            });
+        });
+    }
+
     /// <summary>
     /// 加载用户选择的源
     /// </summary>
@@ -2881,6 +2938,16 @@ public partial class SettingsViewModel : ObservableRecipient
         
         Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
 
+        // 读取保存的 CurseForge 资源源
+        var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>(CurseForgeResourceSourceKey);
+        if (string.IsNullOrEmpty(savedCurseForgeSource))
+        {
+            // 首次启动，根据地区设置默认值
+            savedCurseForgeSource = GetDefaultSourceKeyByRegion("mcim", "official");
+        }
+
+        Log.Information($"[Settings] 读取到保存的 CurseForge 资源源: {savedCurseForgeSource}");
+
         // 读取自动选择最优下载源设置
         var savedAutoSelect = await _localSettingsService.ReadSettingAsync<bool>(AutoSelectFastestSourceKey);
         Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
@@ -2892,9 +2959,11 @@ public partial class SettingsViewModel : ObservableRecipient
                 ?? GameResourceSources.FirstOrDefault();
             SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource)
                 ?? CommunityResourceSources.FirstOrDefault();
+            SelectedCurseforgeResourceSource = CurseforgeResourceSources.FirstOrDefault(s => s.Key == savedCurseForgeSource)
+                ?? CurseforgeResourceSources.FirstOrDefault();
             AutoSelectFastestSource = savedAutoSelect;
 
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key}), 自动选择: {AutoSelectFastestSource}");
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key}), CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName} ({SelectedCurseforgeResourceSource?.Key}), 自动选择: {AutoSelectFastestSource}");
             
             // 同步到 DownloadSourceFactory
             if (SelectedGameResourceSource != null)
@@ -2919,6 +2988,18 @@ public partial class SettingsViewModel : ObservableRecipient
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"[Settings] 同步社区资源源到 DownloadSourceFactory 失败: {SelectedCommunityResourceSource.Key}");
+                }
+            }
+            if (SelectedCurseforgeResourceSource != null)
+            {
+                try
+                {
+                    _downloadSourceFactory.SetCurseForgeSource(SelectedCurseforgeResourceSource.Key);
+                    Log.Information($"[Settings] 已同步 CurseForge 资源源到 DownloadSourceFactory: {SelectedCurseforgeResourceSource.Key}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"[Settings] 同步 CurseForge 资源源到 DownloadSourceFactory 失败: {SelectedCurseforgeResourceSource.Key}");
                 }
             }
         });
@@ -2978,6 +3059,22 @@ public partial class SettingsViewModel : ObservableRecipient
         _downloadSourceFactory.SetModrinthSource(value.Key);
         
         Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 CurseForge 资源源选择变化时
+    /// </summary>
+    partial void OnSelectedCurseforgeResourceSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        // 保存选择
+        _localSettingsService.SaveSettingAsync(CurseForgeResourceSourceKey, value.Key).ConfigureAwait(false);
+
+        // 同步到 DownloadSourceFactory
+        _downloadSourceFactory.SetCurseForgeSource(value.Key);
+
+        Log.Information($"[Settings] CurseForge 资源源已切换为: {value.DisplayName} ({value.Key})");
     }
 
     /// <summary>

@@ -538,26 +538,49 @@
                     </StackPanel>
                 </controls:SettingsCard>
 
-                <!-- 社区资源下载源（Modrinth、CurseForge）-->
-                <controls:SettingsCard x:Uid="Settings_CommunityResourceSource" Header="社区资源下载源" Description="Modrinth、CurseForge 资源的下载源">
-                    <controls:SettingsCard.HeaderIcon>
+                <!-- 社区资源下载源（SettingsExpander） -->
+                <controls:SettingsExpander x:Uid="Settings_CommunityResourceSourceExpander" Header="社区资源下载源" Description="Modrinth、CurseForge 资源的下载源" IsExpanded="False">
+                    <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE753;" />
-                    </controls:SettingsCard.HeaderIcon>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox x:Name="CommunityResourceSourceComboBox"
-                                  ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}"
-                                  SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}"
-                                  MinWidth="200"
-                                  IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                        <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
-                            <Button.ContentTemplate>
-                                <DataTemplate>
-                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                </DataTemplate>
-                            </Button.ContentTemplate>
-                        </Button>
-                    </StackPanel>
-                </controls:SettingsCard>
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <!-- Modrinth 下载源 -->
+                        <controls:SettingsCard x:Uid="Settings_ModrinthResourceSource" Header="Modrinth 下载源" Description="Modrinth 资源的下载源">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CommunityResourceSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- CurseForge 下载源 -->
+                        <controls:SettingsCard x:Uid="Settings_CurseForgeResourceSource" Header="CurseForge 下载源" Description="CurseForge 资源的下载源">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CurseForgeResourceSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.CurseforgeResourceSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedCurseforgeResourceSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                                <Button x:Uid="Settings_AddCustomSource_CurseForge" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- 打开自定义源配置文件夹 -->
                 <controls:SettingsCard x:Uid="Settings_OpenCustomSourceConfig" Header="自定义源配置" Description="打开配置文件夹，可手动添加或管理配置文件" IsClickEnabled="True" Click="OpenCustomSourceConfigFolder_Click">
