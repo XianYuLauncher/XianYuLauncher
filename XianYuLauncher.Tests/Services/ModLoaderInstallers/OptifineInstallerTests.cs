@@ -16,6 +16,7 @@ public class OptifineInstallerTests : IDisposable
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILibraryManager> _mockLibraryManager;
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
+    private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<OptifineInstaller>> _mockLogger;
     private readonly OptifineInstaller _optifineInstaller;
     private readonly string _testDirectory;
@@ -25,12 +26,14 @@ public class OptifineInstallerTests : IDisposable
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLibraryManager = new Mock<ILibraryManager>();
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
+        _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<OptifineInstaller>>();
-        
+
         _optifineInstaller = new OptifineInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
+            _mockJavaRuntimeService.Object,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"OptifineInstallerTests_{Guid.NewGuid()}");
