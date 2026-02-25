@@ -116,7 +116,7 @@ public partial class App : Application
             services.AddSingleton<ISpeedTestService>(sp =>
             {
                 var sourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
-                var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<SpeedTestService>>();
+                var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SpeedTestService>>();
                 return new SpeedTestService(sourceFactory, logger);
             });
             services.AddSingleton<IAutoSpeedTestService>(sp =>

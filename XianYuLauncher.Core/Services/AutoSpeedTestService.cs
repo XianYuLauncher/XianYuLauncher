@@ -34,10 +34,10 @@ public class AutoSpeedTestService : IAutoSpeedTestService
         {
             var cache = await _speedTestService.LoadCacheAsync();
 
-            // 缓存为空时测速
-            if (cache.GameSources.Count == 0 && cache.CommunitySources.Count == 0 && cache.CurseForgeSources.Count == 0)
+            // 无缓存（或缓存未初始化）时测速
+            if (cache.LastUpdated == default)
             {
-                Log.Information("[AutoSpeedTest] 测速缓存为空，执行自动测速");
+                Log.Information("[AutoSpeedTest] 未检测到测速缓存，执行自动测速");
                 await RunSpeedTestAsync();
                 return;
             }
