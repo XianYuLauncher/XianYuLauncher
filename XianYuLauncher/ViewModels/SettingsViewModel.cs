@@ -96,6 +96,7 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IDialogService _dialogService;
         private readonly DownloadSourceFactory _downloadSourceFactory;
+        private readonly ISpeedTestService? _speedTestService;
         private const string JavaPathKey = "JavaPath";
         private const string SelectedJavaVersionKey = "SelectedJavaVersion";
         private const string JavaVersionsKey = "JavaVersions";
@@ -150,11 +151,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private ObservableCollection<DownloadSourceItem> _gameResourceSources = new ObservableCollection<DownloadSourceItem>();
     
     /// <summary>
-    /// 社区资源下载源列表（Modrinth、CurseForge）
+    /// 社区资源下载源列表（Modrinth）
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<DownloadSourceItem> _communityResourceSources = new ObservableCollection<DownloadSourceItem>();
-    
+
+    /// <summary>
+    /// CurseForge 资源下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _curseforgeResourceSources = new ObservableCollection<DownloadSourceItem>();
+
     /// <summary>
     /// 当前选中的游戏资源下载源
     /// </summary>
@@ -162,14 +169,94 @@ public partial class SettingsViewModel : ObservableRecipient
     private DownloadSourceItem? _selectedGameResourceSource;
     
     /// <summary>
-    /// 当前选中的社区资源下载源
+    /// 当前选中的社区资源下载源（Modrinth）
     /// </summary>
     [ObservableProperty]
     private DownloadSourceItem? _selectedCommunityResourceSource;
-    
+
     /// <summary>
-    /// 材质类型
+    /// 当前选中的 CurseForge 资源下载源
     /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCurseforgeResourceSource;
+
+    /// <summary>
+    /// 是否自动选择最优下载源
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSelectDownloadSource))]
+    private bool _autoSelectFastestSource = false;
+
+    /// <summary>
+    /// 是否可以手动选择下载源（当自动选择关闭时为true）
+    /// </summary>
+    public bool CanSelectDownloadSource => !AutoSelectFastestSource;
+
+    /// <summary>
+    /// 是否正在测速
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRunSpeedTest))]
+    private bool _isSpeedTestRunning = false;
+
+    /// <summary>
+    /// 是否可以运行测速
+    /// </summary>
+    public bool CanRunSpeedTest => !IsSpeedTestRunning && _speedTestService != null;
+
+    /// <summary>
+    /// 测速结果列表（游戏资源源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _gameSourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（社区资源源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _communitySourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（CurseForge资源源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _curseforgeSourceSpeedResults = new();
+
+    /// <summary>
+    /// 显示的最快游戏源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestGameSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快社区源信息（Modrinth）
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestCommunitySourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快CurseForge源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestCurseForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 最后测速时间
+    /// </summary>
+    [ObservableProperty]
+    private string _lastSpeedTestTime = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 下次测速时间（剩余时间）
+    /// </summary>
+    [ObservableProperty]
+    private string _nextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
+
+    /// <summary>
+    /// 缓存过期时间（小时）
+    /// </summary>
+    private const int CacheExpirationHours = 12;
+
     [ObservableProperty]
     private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
     
@@ -755,6 +842,7 @@ public partial class SettingsViewModel : ObservableRecipient
         IDialogService dialogService,
         DownloadSourceFactory downloadSourceFactory,
         CustomSourceManager customSourceManager,
+        ISpeedTestService? speedTestService,
         IAfdianService? afdianService = null)
     {
         _themeSelectorService = themeSelectorService;
@@ -771,6 +859,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _dialogService = dialogService;
         _downloadSourceFactory = downloadSourceFactory;
         _customSourceManager = customSourceManager;
+        _speedTestService = speedTestService;
         _afdianService = afdianService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
@@ -2716,10 +2805,12 @@ public partial class SettingsViewModel : ObservableRecipient
     #endregion
     
     #region 下载源管理（新版统一管理）
-    
+
     private const string GameResourceSourceKey = "GameResourceSource";
     private const string CommunityResourceSourceKey = "CommunityResourceSource";
-    
+    private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
+    private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
+
     /// <summary>
     /// 加载下载源设置（新版）
     /// </summary>
@@ -2731,10 +2822,13 @@ public partial class SettingsViewModel : ObservableRecipient
         // 2. 构建游戏资源源列表（BMCLAPI 类型：MC本体、ModLoader、版本列表）
         await BuildGameResourceSourcesAsync();
         
-        // 3. 构建社区资源源列表（MCIM 类型：Modrinth、CurseForge）
+        // 3. 构建社区资源源列表（Modrinth）
         await BuildCommunityResourceSourcesAsync();
-        
-        // 4. 加载用户选择的源
+
+        // 4. 构建 CurseForge 资源源列表
+        await BuildCurseForgeResourceSourcesAsync();
+
+        // 5. 加载用户选择的源
         await LoadSelectedSourcesAsync();
     }
     
@@ -2779,7 +2873,8 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 构建社区资源源列表
+    /// 构建社区资源源列表（Modrinth）
+    /// 注意：BMCLAPI 不支持 Modrinth，因此只显示 official 和 mcim
     /// </summary>
     private async Task BuildCommunityResourceSourcesAsync()
     {
@@ -2790,7 +2885,9 @@ public partial class SettingsViewModel : ObservableRecipient
                 new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
                 new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
             };
-            
+
+            // 注意：BMCLAPI (bmclapi) 虽然能解析 api.modrinth.com，但已被过滤不参与 Modrinth 测速
+
             // 添加社区资源类型的自定义源
             var customSources = _customSourceManager.GetAllSources()
                 .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
@@ -2817,7 +2914,48 @@ public partial class SettingsViewModel : ObservableRecipient
             });
         });
     }
-    
+
+    /// <summary>
+    /// 构建 CurseForge 资源源列表
+    /// 注意：BMCLAPI 不支持社区资源（CurseForge），因此只显示 official 和 mcim
+    /// </summary>
+    private async Task BuildCurseForgeResourceSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var sources = new List<DownloadSourceItem>
+            {
+                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
+                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
+            };
+
+            // 添加社区资源类型的自定义源
+            var customSources = _customSourceManager.GetAllSources()
+                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.Priority);
+
+            foreach (var customSource in customSources)
+            {
+                sources.Add(new DownloadSourceItem
+                {
+                    Key = customSource.Key,
+                    DisplayName = $"{customSource.Name} (自定义)",
+                    IsCustom = true
+                });
+            }
+
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                CurseforgeResourceSources.Clear();
+                foreach (var source in sources)
+                {
+                    CurseforgeResourceSources.Add(source);
+                }
+                Log.Information($"[Settings] 已加载 {CurseforgeResourceSources.Count} 个 CurseForge 资源源");
+            });
+        });
+    }
+
     /// <summary>
     /// 加载用户选择的源
     /// </summary>
@@ -2842,16 +2980,33 @@ public partial class SettingsViewModel : ObservableRecipient
         }
         
         Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
-        
+
+        // 读取保存的 CurseForge 资源源
+        var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>(CurseForgeResourceSourceKey);
+        if (string.IsNullOrEmpty(savedCurseForgeSource))
+        {
+            // 首次启动，根据地区设置默认值
+            savedCurseForgeSource = GetDefaultSourceKeyByRegion("mcim", "official");
+        }
+
+        Log.Information($"[Settings] 读取到保存的 CurseForge 资源源: {savedCurseForgeSource}");
+
+        // 读取自动选择最优下载源设置
+        var savedAutoSelect = await _localSettingsService.ReadSettingAsync<bool>(AutoSelectFastestSourceKey);
+        Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
+
         // 在 UI 线程上设置选中项
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            SelectedGameResourceSource = GameResourceSources.FirstOrDefault(s => s.Key == savedGameSource) 
+            SelectedGameResourceSource = GameResourceSources.FirstOrDefault(s => s.Key == savedGameSource)
                 ?? GameResourceSources.FirstOrDefault();
-            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource) 
+            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource)
                 ?? CommunityResourceSources.FirstOrDefault();
-            
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key})");
+            SelectedCurseforgeResourceSource = CurseforgeResourceSources.FirstOrDefault(s => s.Key == savedCurseForgeSource)
+                ?? CurseforgeResourceSources.FirstOrDefault();
+            AutoSelectFastestSource = savedAutoSelect;
+
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key}), CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName} ({SelectedCurseforgeResourceSource?.Key}), 自动选择: {AutoSelectFastestSource}");
             
             // 同步到 DownloadSourceFactory
             if (SelectedGameResourceSource != null)
@@ -2876,6 +3031,18 @@ public partial class SettingsViewModel : ObservableRecipient
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"[Settings] 同步社区资源源到 DownloadSourceFactory 失败: {SelectedCommunityResourceSource.Key}");
+                }
+            }
+            if (SelectedCurseforgeResourceSource != null)
+            {
+                try
+                {
+                    _downloadSourceFactory.SetCurseForgeSource(SelectedCurseforgeResourceSource.Key);
+                    Log.Information($"[Settings] 已同步 CurseForge 资源源到 DownloadSourceFactory: {SelectedCurseforgeResourceSource.Key}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"[Settings] 同步 CurseForge 资源源到 DownloadSourceFactory 失败: {SelectedCurseforgeResourceSource.Key}");
                 }
             }
         });
@@ -2936,7 +3103,34 @@ public partial class SettingsViewModel : ObservableRecipient
         
         Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
     }
-    
+
+    /// <summary>
+    /// 当 CurseForge 资源源选择变化时
+    /// </summary>
+    partial void OnSelectedCurseforgeResourceSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        // 保存选择
+        _localSettingsService.SaveSettingAsync(CurseForgeResourceSourceKey, value.Key).ConfigureAwait(false);
+
+        // 同步到 DownloadSourceFactory
+        _downloadSourceFactory.SetCurseForgeSource(value.Key);
+
+        Log.Information($"[Settings] CurseForge 资源源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当自动选择最优下载源设置变化时
+    /// </summary>
+    partial void OnAutoSelectFastestSourceChanged(bool value)
+    {
+        Log.Information($"[Settings] 自动选择最优下载源设置变化: {value}");
+
+        // 保存设置
+        _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// 添加自定义游戏资源源命令
     /// </summary>
@@ -2954,8 +3148,242 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         await AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType.Community);
     }
-    
+
     /// <summary>
+    /// 运行测速命令
+    /// </summary>
+    [RelayCommand]
+    private async Task RunSpeedTestAsync()
+    {
+        if (_speedTestService == null || IsSpeedTestRunning)
+            return;
+
+        try
+        {
+            IsSpeedTestRunning = true;
+
+            // 强制执行新测速（忽略缓存）
+            var gameResults = await _speedTestService.TestGameSourcesAsync();
+            GameSourceSpeedResults = gameResults;
+
+            var communityResults = await _speedTestService.TestCommunitySourcesAsync();
+            CommunitySourceSpeedResults = communityResults;
+
+            var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
+            CurseforgeSourceSpeedResults = curseforgeResults;
+
+            // 保存到缓存
+            var cache = new Core.Models.SpeedTestCache
+            {
+                GameSources = GameSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                CommunitySources = CommunitySourceSpeedResults.ToDictionary(r => r.SourceKey),
+                CurseForgeSources = CurseforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                LastUpdated = DateTime.UtcNow
+            };
+            await _speedTestService.SaveCacheAsync(cache);
+
+            // 更新显示信息
+            UpdateSpeedTestDisplayInfo();
+
+            // 如果开启了自动选择，执行自动选源
+            if (AutoSelectFastestSource)
+            {
+                await ApplyFastestSourcesAsync();
+            }
+
+            // 更新最后测速时间（使用本地时间）
+            LastSpeedTestTime = DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[Settings] 测速失败");
+        }
+        finally
+        {
+            IsSpeedTestRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// 加载测速缓存并更新显示信息
+    /// </summary>
+    public async Task LoadSpeedTestCacheAsync()
+    {
+        if (_speedTestService == null) return;
+
+        try
+        {
+            var cache = await _speedTestService.LoadCacheAsync();
+
+            // 无论是否有结果数据，只要 LastUpdated 有值就更新时间显示
+            if (cache.LastUpdated != default)
+            {
+                LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                UpdateNextSpeedTestTime(cache.LastUpdated);
+            }
+
+            // 如果没有任何测速结果，不更新列表和最快源信息
+            if (cache.GameSources.Count == 0 && cache.CommunitySources.Count == 0 && cache.CurseForgeSources.Count == 0)
+            {
+                return;
+            }
+
+            // 将字典转换为列表
+            GameSourceSpeedResults = cache.GameSources.Values.ToList();
+            CommunitySourceSpeedResults = cache.CommunitySources.Values.ToList();
+            CurseforgeSourceSpeedResults = cache.CurseForgeSources.Values.ToList();
+
+            // 更新显示信息
+            UpdateSpeedTestDisplayInfoFromCache(cache);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "[Settings] 加载测速缓存失败");
+        }
+    }
+
+    /// <summary>
+    /// 更新下次测速时间显示
+    /// </summary>
+    private void UpdateNextSpeedTestTime(DateTime lastUpdatedUtc)
+    {
+        var expirationTime = lastUpdatedUtc.AddHours(CacheExpirationHours);
+        var remaining = expirationTime - DateTime.UtcNow;
+
+        if (remaining.TotalSeconds <= 0)
+        {
+            NextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
+        }
+        else if (remaining.TotalHours >= 1)
+        {
+            NextSpeedTestTime = "Settings_SpeedTest_HoursLater".GetLocalized(Math.Ceiling(remaining.TotalHours));
+        }
+        else
+        {
+            NextSpeedTestTime = "Settings_SpeedTest_MinutesLater".GetLocalized(Math.Ceiling(remaining.TotalMinutes));
+        }
+    }
+
+    /// <summary>
+    /// 从缓存更新测速显示信息
+    /// </summary>
+    private void UpdateSpeedTestDisplayInfoFromCache(Core.Models.SpeedTestCache cache)
+    {
+        // 游戏资源源
+        var fastestGame = cache.GameSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestGameSourceInfo = fastestGame != null
+            ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // 社区资源源（Modrinth）
+        var fastestCommunity = cache.CommunitySources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCommunitySourceInfo = fastestCommunity != null
+            ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // CurseForge资源源
+        var fastestCurseForge = cache.CurseForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCurseForgeSourceInfo = fastestCurseForge != null
+            ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+    }
+
+    /// <summary>
+    /// 更新测速显示信息
+    /// </summary>
+    private void UpdateSpeedTestDisplayInfo()
+    {
+        // 游戏资源源
+        var fastestGame = GameSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestGameSourceInfo = fastestGame != null
+            ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // 社区资源源（Modrinth）
+        var fastestCommunity = CommunitySourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCommunitySourceInfo = fastestCommunity != null
+            ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // CurseForge资源源
+        var fastestCurseForge = CurseforgeSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCurseForgeSourceInfo = fastestCurseForge != null
+            ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+    }
+
+    /// <summary>
+    /// 自动应用最快源
+    /// </summary>
+    private async Task ApplyFastestSourcesAsync()
+    {
+        try
+        {
+            var cache = await _speedTestService.LoadCacheAsync();
+
+            // 应用最快的游戏资源源
+            var fastestGameKey = cache.GetFastestGameSourceKey();
+            if (!string.IsNullOrEmpty(fastestGameKey))
+            {
+                var gameSourceItem = GameResourceSources.FirstOrDefault(s => s.Key == fastestGameKey);
+                if (gameSourceItem != null)
+                {
+                    SelectedGameResourceSource = gameSourceItem;
+                    _downloadSourceFactory.SetDefaultSource(fastestGameKey);
+                    Log.Information("[Settings] 自动选择最快游戏源: {Source}", fastestGameKey);
+                }
+            }
+
+            // 应用最快的社区资源源（Modrinth）
+            var fastestCommunityKey = cache.GetFastestCommunitySourceKey();
+            if (!string.IsNullOrEmpty(fastestCommunityKey))
+            {
+                var communitySourceItem = CommunityResourceSources.FirstOrDefault(s => s.Key == fastestCommunityKey);
+                if (communitySourceItem != null)
+                {
+                    SelectedCommunityResourceSource = communitySourceItem;
+                    _downloadSourceFactory.SetModrinthSource(fastestCommunityKey);
+                    Log.Information("[Settings] 自动选择最快社区源: {Source}", fastestCommunityKey);
+                }
+            }
+
+            // 应用最快的CurseForge资源源
+            var fastestCurseForgeKey = cache.GetFastestCurseForgeSourceKey();
+            if (!string.IsNullOrEmpty(fastestCurseForgeKey))
+            {
+                var curseforgeSourceItem = CurseforgeResourceSources.FirstOrDefault(s => s.Key == fastestCurseForgeKey);
+                if (curseforgeSourceItem != null)
+                {
+                    SelectedCurseforgeResourceSource = curseforgeSourceItem;
+                    _downloadSourceFactory.SetCurseForgeSource(fastestCurseForgeKey);
+                    Log.Information("[Settings] 自动选择最快CurseForge源: {Source}", fastestCurseForgeKey);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Settings] 自动应用最快源失败");
+        }
+    }
+
     /// <summary>
     /// 添加自定义源（指定模板类型）
     /// </summary>

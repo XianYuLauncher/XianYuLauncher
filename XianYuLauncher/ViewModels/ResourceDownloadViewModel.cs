@@ -1844,24 +1844,44 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 GameResourceSource，保留当前默认游戏资源源设置");
             }
             
-            // 加载社区资源下载源配置（新版）
+            // 加载社区资源下载源配置（Modrinth）
             var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>("CommunityResourceSource");
             if (!string.IsNullOrEmpty(savedCommunitySource))
             {
                 try
                 {
                     factory.SetModrinthSource(savedCommunitySource);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 社区资源源已设置为: {savedCommunitySource}");
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth 社区资源源已设置为: {savedCommunitySource}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置社区资源源失败: {ex.Message}，回退到 official");
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置 Modrinth 社区资源源失败: {ex.Message}，回退到 official");
                     factory.SetModrinthSource("official");
                 }
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 CommunityResourceSource，保留当前默认社区资源源设置");
+            }
+
+            // 加载社区资源下载源配置（CurseForge）
+            var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>("CurseForgeResourceSource");
+            if (!string.IsNullOrEmpty(savedCurseForgeSource))
+            {
+                try
+                {
+                    factory.SetCurseForgeSource(savedCurseForgeSource);
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] CurseForge 社区资源源已设置为: {savedCurseForgeSource}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置 CurseForge 社区资源源失败: {ex.Message}，回退到 official");
+                    factory.SetCurseForgeSource("official");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 CurseForgeResourceSource，保留当前默认 CurseForge 资源源设置");
             }
         }
         catch (Exception ex)

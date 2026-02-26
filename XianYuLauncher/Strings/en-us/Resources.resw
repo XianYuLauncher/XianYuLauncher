@@ -2916,17 +2916,77 @@ Continue downloading?</value>
   <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
     <value>Top</value>
   </data>
+  <data name="Settings_AutoSelectFastestSource.Header" xml:space="preserve">
+    <value>Auto Select Fastest Source</value>
+  </data>
+  <data name="Settings_AutoSelectFastestSource.Description" xml:space="preserve">
+    <value>Automatically test and select the fastest download source</value>
+  </data>
+  <data name="Settings_SpeedTest.Header" xml:space="preserve">
+    <value>Speed Test &amp; Auto Select</value>
+  </data>
+  <data name="Settings_SpeedTest.Description" xml:space="preserve">
+    <value>Test and automatically select the fastest download source</value>
+  </data>
+  <data name="Settings_RunSpeedTest.Content" xml:space="preserve">
+    <value>Speed Test</value>
+  </data>
+  <data name="Settings_SpeedTestAction.Header" xml:space="preserve">
+    <value>Test Download Sources</value>
+  </data>
+  <data name="Settings_LastSpeedTestTime.Header" xml:space="preserve">
+    <value>Last Speed Test</value>
+  </data>
+  <data name="Settings_NextSpeedTestTime.Header" xml:space="preserve">
+    <value>Next Speed Test</value>
+  </data>
+  <data name="Settings_FastestGameSource.Header" xml:space="preserve">
+    <value>Fastest Game Source</value>
+  </data>
+  <data name="Settings_FastestModrinthSource.Header" xml:space="preserve">
+    <value>Fastest Modrinth Source</value>
+  </data>
+  <data name="Settings_FastestCurseForgeSource.Header" xml:space="preserve">
+    <value>Fastest CurseForge Source</value>
+  </data>
+  <data name="Settings_SpeedTest_NeverTested" xml:space="preserve">
+    <value>Never tested</value>
+  </data>
+  <data name="Settings_SpeedTest_AboutToTest" xml:space="preserve">
+    <value>About to test</value>
+  </data>
+  <data name="Settings_SpeedTest_TestFailed" xml:space="preserve">
+    <value>Test failed</value>
+  </data>
+  <data name="Settings_SpeedTest_HoursLater" xml:space="preserve">
+    <value>About {0} hours later</value>
+  </data>
+  <data name="Settings_SpeedTest_MinutesLater" xml:space="preserve">
+    <value>About {0} minutes later</value>
+  </data>
   <data name="Settings_GameResourceSource.Header" xml:space="preserve">
     <value>Game Resource Source</value>
   </data>
   <data name="Settings_GameResourceSource.Description" xml:space="preserve">
     <value>Download source for MC, ModLoader, and version list</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Header" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>Community Resource Source</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Description" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Description" xml:space="preserve">
     <value>Download source for Modrinth and CurseForge resources</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Header" xml:space="preserve">
+    <value>Modrinth Source</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Description" xml:space="preserve">
+    <value>Download source for Modrinth resources</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Header" xml:space="preserve">
+    <value>CurseForge Source</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Description" xml:space="preserve">
+    <value>Download source for CurseForge resources</value>
   </data>
   <data name="Settings_OpenCustomSourceConfig.Header" xml:space="preserve">
     <value>Custom Source Configuration</value>

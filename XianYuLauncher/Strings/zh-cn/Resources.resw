@@ -2928,17 +2928,77 @@
   <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
     <value>顶部</value>
   </data>
+  <data name="Settings_AutoSelectFastestSource.Header" xml:space="preserve">
+    <value>自动选择最优下载源</value>
+  </data>
+  <data name="Settings_AutoSelectFastestSource.Description" xml:space="preserve">
+    <value>自动测试并选择最快的下载源</value>
+  </data>
+  <data name="Settings_SpeedTest.Header" xml:space="preserve">
+    <value>测速与自动选源</value>
+  </data>
+  <data name="Settings_SpeedTest.Description" xml:space="preserve">
+    <value>测试并自动选择最快的下载源</value>
+  </data>
+  <data name="Settings_RunSpeedTest.Content" xml:space="preserve">
+    <value>测速</value>
+  </data>
+  <data name="Settings_SpeedTestAction.Header" xml:space="preserve">
+    <value>测试下载源速度</value>
+  </data>
+  <data name="Settings_LastSpeedTestTime.Header" xml:space="preserve">
+    <value>最后测速时间</value>
+  </data>
+  <data name="Settings_NextSpeedTestTime.Header" xml:space="preserve">
+    <value>下次测速时间</value>
+  </data>
+  <data name="Settings_FastestGameSource.Header" xml:space="preserve">
+    <value>最快游戏源</value>
+  </data>
+  <data name="Settings_FastestModrinthSource.Header" xml:space="preserve">
+    <value>最快 Modrinth 源</value>
+  </data>
+  <data name="Settings_FastestCurseForgeSource.Header" xml:space="preserve">
+    <value>最快 CurseForge 源</value>
+  </data>
+  <data name="Settings_SpeedTest_NeverTested" xml:space="preserve">
+    <value>从未测速</value>
+  </data>
+  <data name="Settings_SpeedTest_AboutToTest" xml:space="preserve">
+    <value>即将测速</value>
+  </data>
+  <data name="Settings_SpeedTest_TestFailed" xml:space="preserve">
+    <value>测速失败</value>
+  </data>
+  <data name="Settings_SpeedTest_HoursLater" xml:space="preserve">
+    <value>约 {0} 小时后</value>
+  </data>
+  <data name="Settings_SpeedTest_MinutesLater" xml:space="preserve">
+    <value>约 {0} 分钟后</value>
+  </data>
   <data name="Settings_GameResourceSource.Header" xml:space="preserve">
     <value>游戏资源下载源</value>
   </data>
   <data name="Settings_GameResourceSource.Description" xml:space="preserve">
     <value>MC本体、ModLoader、版本列表的下载源</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Header" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>社区资源下载源</value>
   </data>
-  <data name="Settings_CommunityResourceSource.Description" xml:space="preserve">
+  <data name="Settings_CommunityResourceSourceExpander.Description" xml:space="preserve">
     <value>Modrinth、CurseForge 资源的下载源</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Header" xml:space="preserve">
+    <value>Modrinth 下载源</value>
+  </data>
+  <data name="Settings_ModrinthResourceSource.Description" xml:space="preserve">
+    <value>Modrinth 资源的下载源</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Header" xml:space="preserve">
+    <value>CurseForge 下载源</value>
+  </data>
+  <data name="Settings_CurseForgeResourceSource.Description" xml:space="preserve">
+    <value>CurseForge 资源的下载源</value>
   </data>
   <data name="Settings_OpenCustomSourceConfig.Header" xml:space="preserve">
     <value>自定义源配置</value>

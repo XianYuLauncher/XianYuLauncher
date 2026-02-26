@@ -8,6 +8,7 @@ public class DownloadSourceFactory
     private readonly Dictionary<string, IDownloadSource> _sources = new();
     private string _defaultSourceKey = "official";
     private string _modrinthSourceKey = "official"; // Modrinth专用下载源
+    private string _curseforgeSourceKey = "official"; // CurseForge专用下载源
     
     /// <summary>
     /// 初始化下载源工厂
@@ -140,7 +141,41 @@ public class DownloadSourceFactory
     /// 获取当前Modrinth下载源标识
     /// </summary>
     public string GetModrinthSourceKey() => _modrinthSourceKey;
-    
+
+    /// <summary>
+    /// 获取CurseForge专用下载源
+    /// </summary>
+    /// <returns>CurseForge下载源实例</returns>
+    public IDownloadSource GetCurseForgeSource()
+    {
+        return _sources.TryGetValue(_curseforgeSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置CurseForge专用下载源
+    /// </summary>
+    /// <param name="key">下载源标识（任意已注册的下载源，例如 official/bmclapi/mcim 或自定义源）</param>
+    public void SetCurseForgeSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+        }
+
+        if (!_sources.ContainsKey(key))
+        {
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+        }
+
+        _curseforgeSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] CurseForge下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前CurseForge下载源标识
+    /// </summary>
+    public string GetCurseForgeSourceKey() => _curseforgeSourceKey;
+
     /// <summary>
     /// 获取所有注册的下载源
     /// </summary>

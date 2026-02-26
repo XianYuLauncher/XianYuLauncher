@@ -18,7 +18,24 @@ public class CustomDownloadSource : IDownloadSource
 
     public string Name => _name;
     public string Key => _key;
-    
+
+    /// <summary>
+    /// 模板名称（official/community）
+    /// </summary>
+    public string TemplateName
+    {
+        get
+        {
+            // BmclapiTemplate 对应 official，McimTemplate 对应 community
+            return _template switch
+            {
+                BmclapiTemplate => "official",
+                McimTemplate => "community",
+                _ => "community"
+            };
+        }
+    }
+
     /// <summary>
     /// 优先级（数值越大优先级越高）
     /// </summary>

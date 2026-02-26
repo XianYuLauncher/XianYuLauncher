@@ -68,9 +68,9 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 获取当前CurseForge下载源（与Modrinth共享设置）
+    /// 获取当前CurseForge下载源（独立的下载源设置）
     /// </summary>
-    private IDownloadSource GetCurseForgeSource() => _downloadSourceFactory.GetModrinthSource();
+    private IDownloadSource GetCurseForgeSource() => _downloadSourceFactory.GetCurseForgeSource();
     
     /// <summary>
     /// 转换API URL（根据当前下载源，仅供无FallbackDownloadManager的兼容路径使用）

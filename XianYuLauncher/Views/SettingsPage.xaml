@@ -500,15 +500,50 @@
                 <!-- ==================== 网络 ==================== -->
                 <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
+                <!-- 测速与自动选源 -->
+                <controls:SettingsExpander x:Uid="Settings_SpeedTest" IsExpanded="False">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE9F5;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.AutoSelectFastestSource, Mode=TwoWay}" />
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard x:Uid="Settings_SpeedTestAction" Header="测试下载源速度">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Uid="Settings_RunSpeedTest" Command="{x:Bind ViewModel.RunSpeedTestCommand}" IsEnabled="{x:Bind ViewModel.CanRunSpeedTest, Mode=OneWay}" />
+                                <ProgressRing IsActive="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay}" Width="20" Height="20" Visibility="{x:Bind ViewModel.IsSpeedTestRunning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_LastSpeedTestTime" Header="最后测速时间">
+                            <TextBlock Text="{x:Bind ViewModel.LastSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_NextSpeedTestTime" Header="下次测速时间">
+                            <TextBlock Text="{x:Bind ViewModel.NextSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_FastestGameSource" Header="最快游戏源">
+                            <TextBlock Text="{x:Bind ViewModel.FastestGameSourceInfo, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_FastestModrinthSource" Header="最快 Modrinth 源">
+                            <TextBlock Text="{x:Bind ViewModel.FastestCommunitySourceInfo, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                        <controls:SettingsCard x:Uid="Settings_FastestCurseForgeSource" Header="最快 CurseForge 源">
+                            <TextBlock Text="{x:Bind ViewModel.FastestCurseForgeSourceInfo, Mode=OneWay}" Opacity="0.7" />
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
+
                 <!-- 游戏资源下载源（MC本体、ModLoader、版本列表）-->
                 <controls:SettingsCard x:Uid="Settings_GameResourceSource" Header="游戏资源下载源" Description="MC本体、ModLoader、版本列表的下载源">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
                     </controls:SettingsCard.HeaderIcon>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}" 
-                                  SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}" 
-                                  MinWidth="200" />
+                        <ComboBox x:Name="GameResourceSourceComboBox"
+                                  ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}"
+                                  MinWidth="200"
+                                  IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
                         <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                             <Button.ContentTemplate>
                                 <DataTemplate>
@@ -519,24 +554,49 @@
                     </StackPanel>
                 </controls:SettingsCard>
 
-                <!-- 社区资源下载源（Modrinth、CurseForge）-->
-                <controls:SettingsCard x:Uid="Settings_CommunityResourceSource" Header="社区资源下载源" Description="Modrinth、CurseForge 资源的下载源">
-                    <controls:SettingsCard.HeaderIcon>
+                <!-- 社区资源下载源（SettingsExpander） -->
+                <controls:SettingsExpander x:Uid="Settings_CommunityResourceSourceExpander" Header="社区资源下载源" Description="Modrinth、CurseForge 资源的下载源" IsExpanded="False">
+                    <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE753;" />
-                    </controls:SettingsCard.HeaderIcon>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}" 
-                                  SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}" 
-                                  MinWidth="200" />
-                        <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
-                            <Button.ContentTemplate>
-                                <DataTemplate>
-                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                </DataTemplate>
-                            </Button.ContentTemplate>
-                        </Button>
-                    </StackPanel>
-                </controls:SettingsCard>
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <!-- Modrinth 下载源 -->
+                        <controls:SettingsCard x:Uid="Settings_ModrinthResourceSource" Header="Modrinth 下载源" Description="Modrinth 资源的下载源">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CommunityResourceSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- CurseForge 下载源 -->
+                        <controls:SettingsCard x:Uid="Settings_CurseForgeResourceSource" Header="CurseForge 下载源" Description="CurseForge 资源的下载源">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CurseForgeResourceSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.CurseforgeResourceSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedCurseforgeResourceSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- 打开自定义源配置文件夹 -->
                 <controls:SettingsCard x:Uid="Settings_OpenCustomSourceConfig" Header="自定义源配置" Description="打开配置文件夹，可手动添加或管理配置文件" IsClickEnabled="True" Click="OpenCustomSourceConfigFolder_Click">

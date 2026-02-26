@@ -451,9 +451,11 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
-        return await SendGetForCommunityAsync(
+        var sourcesToTry = GetCommunitySourceOrder(resourceType);
+        return await SendGetWithFallbackCoreAsync(
             source => TransformUrl(originalUrl, source, resourceType),
             configureRequest,
+            sourcesToTry,
             cancellationToken);
     }
 
@@ -481,7 +483,7 @@ public class FallbackDownloadManager
     {
         return await SendPostWithFallbackCoreAsync(
             originalUrl, resourceType, contentFactory, configureRequest,
-            GetCommunitySourceOrder(), cancellationToken);
+            GetCommunitySourceOrder(resourceType), cancellationToken);
     }
 
     /// <summary>
@@ -496,7 +498,7 @@ public class FallbackDownloadManager
     {
         var attemptedSources = new List<string>();
         var errors = new List<string>();
-        var sourcesToTry = GetCommunitySourceOrder();
+        var sourcesToTry = GetCommunitySourceOrder(resourceType);
 
         _logger?.LogDebug("社区资源下载 {Url}，回退顺序: {Sources}", originalUrl, string.Join(" -> ", sourcesToTry));
 
@@ -599,18 +601,39 @@ public class FallbackDownloadManager
     /// 获取社区资源（Modrinth/CurseForge）的回退源顺序
     /// 使用用户在设置页选择的社区资源源作为主源
     /// </summary>
-    private List<string> GetCommunitySourceOrder()
+    /// <param name="resourceType">资源类型（modrinth_api/modrinth_cdn/curseforge_api/curseforge_cdn）</param>
+    private List<string> GetCommunitySourceOrder(string? resourceType = null)
     {
-        // 始终使用用户在设置页选择的社区资源源作为主源
-        var primarySource = _sourceFactory.GetModrinthSource();
+        // 根据资源类型选择对应的下载源
+        IDownloadSource primarySource;
+        if (!string.IsNullOrEmpty(resourceType))
+        {
+            var lowerType = resourceType.ToLowerInvariant();
+            if (lowerType.StartsWith("curseforge"))
+            {
+                // CurseForge 资源使用 CurseForge 专用下载源
+                primarySource = _sourceFactory.GetCurseForgeSource();
+            }
+            else
+            {
+                // 其他资源（Modrinth）使用 Modrinth 专用下载源
+                primarySource = _sourceFactory.GetModrinthSource();
+            }
+        }
+        else
+        {
+            // 默认使用 Modrinth 源（向后兼容）
+            primarySource = _sourceFactory.GetModrinthSource();
+        }
+
         var primarySourceKey = primarySource.Key;
-        
-        _logger?.LogDebug("[社区资源] 使用用户选择的社区资源源作为主源: {Source} ({Name})", 
+
+        _logger?.LogDebug("[社区资源] 使用用户选择的社区资源源作为主源: {Source} ({Name})",
             primarySourceKey, primarySource.Name);
-        
+
         var order = GetSourceOrder(primarySourceKey);
         _logger?.LogDebug("[社区资源] 回退顺序: {Order}", string.Join(" -> ", order));
-        
+
         return order;
     }
 
