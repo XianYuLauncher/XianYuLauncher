@@ -1,38 +1,39 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using Xunit;
 
-namespace XianYuLauncher.Tests.Services;
+namespace XianYuLauncher.IntegrationTests;
 
 /// <summary>
-/// DownloadManager 单元测试
+/// DownloadManager 集成测试
+/// 注意：依赖外部网络（httpbin），默认跳过，按需手动开启
 /// </summary>
-public class DownloadManagerTests : IDisposable
+[Trait("Category", "Integration")]
+public class DownloadManagerIntegrationTests : IDisposable
 {
     private readonly Mock<ILogger<DownloadManager>> _loggerMock;
     private readonly Mock<ILocalSettingsService> _localSettingsServiceMock;
     private readonly DownloadManager _downloadManager;
     private readonly string _testDirectory;
 
-    public DownloadManagerTests()
+    public DownloadManagerIntegrationTests()
     {
         _loggerMock = new Mock<ILogger<DownloadManager>>();
         _localSettingsServiceMock = new Mock<ILocalSettingsService>();
         _downloadManager = new DownloadManager(_loggerMock.Object, _localSettingsServiceMock.Object);
-        _testDirectory = Path.Combine(Path.GetTempPath(), "DownloadManagerTests_" + Guid.NewGuid().ToString("N"));
+        _testDirectory = Path.Combine(Path.GetTempPath(), "DownloadManagerIntegrationTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_testDirectory);
     }
 
     public void Dispose()
     {
-        // 清理测试目录
         if (Directory.Exists(_testDirectory))
         {
             try
@@ -41,116 +42,92 @@ public class DownloadManagerTests : IDisposable
             }
             catch
             {
-                // 忽略清理失败
             }
         }
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadStringAsync_ValidUrl_ReturnsContent()
     {
-        // Arrange
-        // 使用一个稳定的公共API进行测试
         var url = "https://httpbin.org/get";
-
-        // Act
         var result = await _downloadManager.DownloadStringAsync(url);
 
-        // Assert
-        result.Should().NotBeNullOrEmpty();
-        result.Should().Contain("httpbin.org");
+        Assert.False(string.IsNullOrWhiteSpace(result));
+        Assert.Contains("httpbin.org", result);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadBytesAsync_ValidUrl_ReturnsBytes()
     {
-        // Arrange
         var url = "https://httpbin.org/bytes/100";
-
-        // Act
         var result = await _downloadManager.DownloadBytesAsync(url);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.Length.Should().Be(100);
+        Assert.NotNull(result);
+        Assert.Equal(100, result.Length);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFileAsync_ValidUrl_CreatesFile()
     {
-        // Arrange
         var url = "https://httpbin.org/bytes/50";
         var targetPath = Path.Combine(_testDirectory, "test_download.bin");
 
-        // Act
         var result = await _downloadManager.DownloadFileAsync(url, targetPath);
 
-        // Assert
-        result.Success.Should().BeTrue();
-        result.FilePath.Should().Be(targetPath);
-        File.Exists(targetPath).Should().BeTrue();
-        new FileInfo(targetPath).Length.Should().Be(50);
+        Assert.True(result.Success);
+        Assert.Equal(targetPath, result.FilePath);
+        Assert.True(File.Exists(targetPath));
+        Assert.Equal(50, new FileInfo(targetPath).Length);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFileAsync_WithProgressCallback_ReportsProgress()
     {
-        // Arrange
         var url = "https://httpbin.org/bytes/1000";
         var targetPath = Path.Combine(_testDirectory, "test_progress.bin");
         var progressValues = new System.Collections.Generic.List<double>();
 
-        // Act
         var result = await _downloadManager.DownloadFileAsync(
-            url, 
-            targetPath, 
+            url,
+            targetPath,
             progressCallback: progress => progressValues.Add(progress.Percent));
 
-        // Assert
-        result.Success.Should().BeTrue();
-        progressValues.Should().NotBeEmpty();
-        // 最后一个进度值应该接近100
-        progressValues[^1].Should().BeGreaterThanOrEqualTo(99);
+        Assert.True(result.Success);
+        Assert.NotEmpty(progressValues);
+        Assert.True(progressValues[^1] >= 99);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFileAsync_InvalidUrl_ReturnsFailed()
     {
-        // Arrange
         var url = "https://httpbin.org/status/404";
         var targetPath = Path.Combine(_testDirectory, "test_404.bin");
 
-        // Act
         var result = await _downloadManager.DownloadFileAsync(url, targetPath);
 
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().NotBeNullOrEmpty();
-        File.Exists(targetPath).Should().BeFalse();
+        Assert.False(result.Success);
+        Assert.False(string.IsNullOrWhiteSpace(result.ErrorMessage));
+        Assert.Equal(0, result.RetryCount);
+        Assert.False(File.Exists(targetPath));
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFileAsync_WithCancellation_ReturnsFailedResult()
     {
-        // Arrange
-        var url = "https://httpbin.org/delay/10"; // 延迟10秒的请求
+        var url = "https://httpbin.org/delay/10";
         var targetPath = Path.Combine(_testDirectory, "test_cancel.bin");
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(100); // 100ms后取消
+        cts.CancelAfter(100);
 
-        // Act
-        // DownloadManager 捕获 OperationCanceledException 并返回失败结果，而不是抛出异常
         var result = await _downloadManager.DownloadFileAsync(url, targetPath, cancellationToken: cts.Token);
 
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("取消");
+        Assert.False(result.Success);
+        Assert.Contains("取消", result.ErrorMessage ?? string.Empty);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFilesAsync_MultipleTasks_DownloadsAll()
     {
-        // Arrange
         var tasks = new[]
         {
             new DownloadTask
@@ -170,23 +147,19 @@ public class DownloadManagerTests : IDisposable
             }
         };
 
-        // Act
         var results = await _downloadManager.DownloadFilesAsync(tasks, maxConcurrency: 2);
-
-        // Assert
         var resultList = results.ToList();
-        resultList.Should().HaveCount(3);
-        resultList.Should().OnlyContain(r => r.Success);
-        
-        File.Exists(tasks[0].TargetPath).Should().BeTrue();
-        File.Exists(tasks[1].TargetPath).Should().BeTrue();
-        File.Exists(tasks[2].TargetPath).Should().BeTrue();
+
+        Assert.Equal(3, resultList.Count);
+        Assert.All(resultList, item => Assert.True(item.Success));
+        Assert.True(File.Exists(tasks[0].TargetPath));
+        Assert.True(File.Exists(tasks[1].TargetPath));
+        Assert.True(File.Exists(tasks[2].TargetPath));
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFilesAsync_WithProgressCallback_ReportsOverallProgress()
     {
-        // Arrange
         var tasks = new[]
         {
             new DownloadTask
@@ -200,44 +173,36 @@ public class DownloadManagerTests : IDisposable
                 TargetPath = Path.Combine(_testDirectory, "progress_2.bin")
             }
         };
+
         var progressValues = new System.Collections.Generic.List<double>();
 
-        // Act
         await _downloadManager.DownloadFilesAsync(
-            tasks, 
+            tasks,
             maxConcurrency: 1,
             progressCallback: progress => progressValues.Add(progress.Percent));
 
-        // Assert
-        progressValues.Should().NotBeEmpty();
-        // 应该有两次进度更新（每完成一个文件更新一次）
-        progressValues.Should().HaveCountGreaterThanOrEqualTo(2);
-        // 最后一个进度值应该是100
-        progressValues[^1].Should().Be(100);
+        Assert.NotEmpty(progressValues);
+        Assert.True(progressValues.Count >= 2);
+        Assert.Equal(100, progressValues[^1]);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFilesAsync_EmptyTasks_ReturnsEmpty()
     {
-        // Arrange
         var tasks = Array.Empty<DownloadTask>();
         double? finalProgress = null;
 
-        // Act
         var results = await _downloadManager.DownloadFilesAsync(
             tasks,
             progressCallback: progress => finalProgress = progress.Percent);
 
-        // Assert
-        results.Should().BeEmpty();
-        finalProgress.Should().Be(100);
+        Assert.Empty(results);
+        Assert.Equal(100, finalProgress);
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFilesAsync_WithPriority_RespectsOrder()
     {
-        // Arrange
-        var downloadOrder = new System.Collections.Generic.List<string>();
         var tasks = new[]
         {
             new DownloadTask
@@ -256,27 +221,22 @@ public class DownloadManagerTests : IDisposable
             }
         };
 
-        // Act - 使用并发数1确保顺序执行
         var results = await _downloadManager.DownloadFilesAsync(tasks, maxConcurrency: 1);
-
-        // Assert
         var resultList = results.ToList();
-        resultList.Should().HaveCount(2);
-        resultList.Should().OnlyContain(r => r.Success);
+
+        Assert.Equal(2, resultList.Count);
+        Assert.All(resultList, item => Assert.True(item.Success));
     }
 
-    [Fact]
+    [Fact(Skip = "网络集成测试，需要外网连接")]
     public async Task DownloadFileAsync_CreatesDirectoryIfNotExists()
     {
-        // Arrange
         var url = "https://httpbin.org/bytes/10";
         var nestedPath = Path.Combine(_testDirectory, "nested", "deep", "path", "file.bin");
 
-        // Act
         var result = await _downloadManager.DownloadFileAsync(url, nestedPath);
 
-        // Assert
-        result.Success.Should().BeTrue();
-        File.Exists(nestedPath).Should().BeTrue();
+        Assert.True(result.Success);
+        Assert.True(File.Exists(nestedPath));
     }
 }

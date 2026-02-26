@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -75,6 +76,7 @@ public class DownloadManager : IDownloadManager
     {
         int retryCount = 0;
         Exception? lastException = null;
+        int maxAttempts = Math.Max(1, DefaultMaxRetries);
         
         // 确定并发线程数。
         // 如果外部强制指定了maxConcurrency(例如批量下载时指定为1)，则优先使用
@@ -84,13 +86,13 @@ public class DownloadManager : IDownloadManager
         // 2. 单个大文件时 -> 单文件线程=DownloadShardCount
         int threadCount = maxConcurrency ?? await GetConfiguredShardCountAsync();
 
-        while (retryCount <= DefaultMaxRetries)
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             try
             {
-                if (retryCount > 0)
+                if (attempt > 1)
                 {
-                    int delayMs = DefaultRetryBaseDelayMs * (int)Math.Pow(2, retryCount - 1);
+                    int delayMs = DefaultRetryBaseDelayMs * (int)Math.Pow(2, attempt - 2);
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
@@ -117,7 +119,15 @@ public class DownloadManager : IDownloadManager
             {
                 _logger.LogError(ex, $"SHA1验证失败: {url}");
                 lastException = ex;
-                retryCount++; 
+
+                if (attempt < maxAttempts)
+                {
+                    retryCount++;
+                    _logger.LogWarning(ex, $"下载失败 ({attempt}/{maxAttempts}): {url}");
+                    continue;
+                }
+
+                break;
             }
             catch (OperationCanceledException)
             {
@@ -125,15 +135,45 @@ public class DownloadManager : IDownloadManager
                 CleanupFile(targetPath);
                 return DownloadResult.Failed(url, "下载已取消", null, retryCount);
             }
+            catch (HttpRequestException ex) when (IsNonRetriableHttpStatus(ex.StatusCode))
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, $"下载失败 (不可重试 HTTP 状态): {url}");
+                return DownloadResult.Failed(url, $"下载失败: {ex.Message}", ex, retryCount);
+            }
             catch (Exception ex)
             {
                 lastException = ex;
-                retryCount++;
-                _logger.LogWarning(ex, $"下载失败 ({retryCount}/{DefaultMaxRetries}): {url}");
+
+                if (attempt < maxAttempts)
+                {
+                    retryCount++;
+                    _logger.LogWarning(ex, $"下载失败 ({attempt}/{maxAttempts}): {url}");
+                    continue;
+                }
+
+                _logger.LogWarning(ex, $"下载失败 ({attempt}/{maxAttempts}): {url}");
+                break;
             }
         }
 
         return DownloadResult.Failed(url, $"下载失败: {lastException?.Message}", lastException, retryCount);
+    }
+
+    private static bool IsNonRetriableHttpStatus(HttpStatusCode? statusCode)
+    {
+        if (!statusCode.HasValue)
+        {
+            return false;
+        }
+
+        var code = (int)statusCode.Value;
+        if (code >= 400 && code < 500)
+        {
+            return statusCode != HttpStatusCode.RequestTimeout && statusCode != (HttpStatusCode)429;
+        }
+
+        return false;
     }
 
     /// <inheritdoc/>

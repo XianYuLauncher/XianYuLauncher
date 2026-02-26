@@ -501,16 +501,22 @@ public class FallbackDownloadManager
         var sourcesToTry = GetCommunitySourceOrder(resourceType);
 
         _logger?.LogDebug("社区资源下载 {Url}，回退顺序: {Sources}", originalUrl, string.Join(" -> ", sourcesToTry));
+        _logger?.LogWarning("[社区资源回退] 开始下载, 类型={ResourceType}, 原始URL={Url}, 尝试顺序={Sources}",
+            resourceType, originalUrl, string.Join(" -> ", sourcesToTry));
 
-        foreach (var sourceKey in sourcesToTry)
+        for (int index = 0; index < sourcesToTry.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            var sourceKey = sourcesToTry[index];
 
             var source = _sourceFactory.GetSource(sourceKey);
             attemptedSources.Add(sourceKey);
 
             var transformedUrl = TransformUrl(originalUrl, source, resourceType);
             _logger?.LogDebug("尝试源 {Source}: {Url}", sourceKey, transformedUrl);
+            _logger?.LogWarning("[社区资源回退] 尝试源 {Source} ({Index}/{Total}), URL={Url}",
+                sourceKey, index + 1, sourcesToTry.Count, transformedUrl);
 
             var result = await TryDownloadWithRetryAsync(
                 transformedUrl, targetPath, null, progressCallback, cancellationToken);
@@ -518,17 +524,23 @@ public class FallbackDownloadManager
             if (result.Success)
             {
                 _logger?.LogInformation("社区资源下载成功，使用源: {Source}", sourceKey);
+                _logger?.LogWarning("[社区资源回退] 下载成功, 使用源={Source}, 已尝试={Attempted}",
+                    sourceKey, string.Join(" -> ", attemptedSources));
                 return FallbackDownloadResult.Succeeded(targetPath, originalUrl, sourceKey, attemptedSources);
             }
 
             errors.Add($"[{sourceKey}] {result.ErrorMessage}");
             _logger?.LogWarning("源 {Source} 下载失败: {Error}", sourceKey, result.ErrorMessage);
+            _logger?.LogWarning("[社区资源回退] 源 {Source} 失败, 错误={Error}, 当前已尝试={Attempted}",
+                sourceKey, result.ErrorMessage, string.Join(" -> ", attemptedSources));
 
             if (!ShouldFallback(result) || !AutoFallbackEnabled) break;
         }
 
         var allErrors = string.Join("; ", errors);
         _logger?.LogError("社区资源所有源都失败: {Errors}", allErrors);
+        _logger?.LogError("[社区资源回退] 所有源失败, 已尝试={Attempted}, 错误={Errors}",
+            string.Join(" -> ", attemptedSources), allErrors);
         return FallbackDownloadResult.Failed(originalUrl, allErrors, attemptedSources);
     }
 
@@ -604,12 +616,14 @@ public class FallbackDownloadManager
     /// <param name="resourceType">资源类型（modrinth_api/modrinth_cdn/curseforge_api/curseforge_cdn）</param>
     private List<string> GetCommunitySourceOrder(string? resourceType = null)
     {
+        bool isCurseForgeResource = !string.IsNullOrEmpty(resourceType)
+            && resourceType.StartsWith("curseforge", StringComparison.OrdinalIgnoreCase);
+
         // 根据资源类型选择对应的下载源
         IDownloadSource primarySource;
         if (!string.IsNullOrEmpty(resourceType))
         {
-            var lowerType = resourceType.ToLowerInvariant();
-            if (lowerType.StartsWith("curseforge"))
+            if (isCurseForgeResource)
             {
                 // CurseForge 资源使用 CurseForge 专用下载源
                 primarySource = _sourceFactory.GetCurseForgeSource();
@@ -628,10 +642,42 @@ public class FallbackDownloadManager
 
         var primarySourceKey = primarySource.Key;
 
+        // 仅保留支持当前社区平台的下载源，避免无效回退（例如 CurseForge 回退到 bmclapi）
+        var supportedSourceKeys = (isCurseForgeResource
+                ? _sourceFactory.GetSourcesForCurseForge()
+                : _sourceFactory.GetSourcesForModrinth())
+            .Select(source => source.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (supportedSourceKeys.Count == 0)
+        {
+            _logger?.LogWarning("[社区资源] 未找到支持当前资源类型的下载源，回退到主源: {Source}", primarySourceKey);
+            return new List<string> { primarySourceKey };
+        }
+
+        if (!supportedSourceKeys.Contains(primarySourceKey))
+        {
+            var previousPrimary = primarySourceKey;
+            primarySourceKey = supportedSourceKeys.Contains("official")
+                ? "official"
+                : supportedSourceKeys.First();
+
+            _logger?.LogWarning("[社区资源] 主源 {Previous} 不支持当前资源类型，已回退到可用主源: {Current}", previousPrimary, primarySourceKey);
+        }
+
         _logger?.LogDebug("[社区资源] 使用用户选择的社区资源源作为主源: {Source} ({Name})",
             primarySourceKey, primarySource.Name);
 
-        var order = GetSourceOrder(primarySourceKey);
+        var order = GetSourceOrder(primarySourceKey)
+            .Where(key => supportedSourceKeys.Contains(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (order.Count == 0)
+        {
+            order.Add(primarySourceKey);
+        }
+
         _logger?.LogDebug("[社区资源] 回退顺序: {Order}", string.Join(" -> ", order));
 
         return order;
@@ -736,9 +782,34 @@ public class FallbackDownloadManager
                 _logger?.LogDebug("SHA1验证失败，不重试");
                 return lastResult;
             }
+
+            // 非瞬时 HTTP 状态不在当前源重试（例如 404），应尽快切换到下一个源
+            if (IsNonRetriableHttpStatus(lastResult))
+            {
+                _logger?.LogDebug("检测到非瞬时HTTP状态，不在当前源重试，直接切换回退源");
+                return lastResult;
+            }
         }
 
         return lastResult ?? DownloadResult.Failed(url, "下载失败，已达到最大重试次数");
+    }
+
+    private static bool IsNonRetriableHttpStatus(DownloadResult result)
+    {
+        if (result.Exception is not HttpRequestException httpException || !httpException.StatusCode.HasValue)
+        {
+            return false;
+        }
+
+        var statusCode = httpException.StatusCode.Value;
+        var code = (int)statusCode;
+
+        if (code >= 400 && code < 500)
+        {
+            return statusCode != HttpStatusCode.RequestTimeout && statusCode != (HttpStatusCode)429;
+        }
+
+        return false;
     }
 
     /// <summary>
