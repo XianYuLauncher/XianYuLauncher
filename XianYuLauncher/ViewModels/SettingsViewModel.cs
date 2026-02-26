@@ -3188,6 +3188,9 @@ public partial class SettingsViewModel : ObservableRecipient
 
             // 更新最后测速时间（使用本地时间）
             LastSpeedTestTime = DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+
+            // 更新下次测速时间
+            UpdateNextSpeedTestTime(DateTime.UtcNow);
         }
         catch (Exception ex)
         {
