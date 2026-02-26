@@ -2839,27 +2839,26 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
+            var sources = new List<DownloadSourceItem>();
+
+            // 使用统一的获取方法
+            var gameSources = _downloadSourceFactory.GetSourcesForGameResources();
+            var allSourcesDict = _downloadSourceFactory.GetAllSources();
+
+            foreach (var source in gameSources)
             {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "bmclapi", DisplayName = "BMCLAPI 镜像", IsCustom = false }
-            };
-            
-            // 添加官方资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("official", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
-            
-            foreach (var customSource in customSources)
-            {
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
+
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
-            
+
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 GameResourceSources.Clear();
@@ -2874,35 +2873,31 @@ public partial class SettingsViewModel : ObservableRecipient
     
     /// <summary>
     /// 构建社区资源源列表（Modrinth）
-    /// 注意：BMCLAPI 不支持 Modrinth，因此只显示 official 和 mcim
     /// </summary>
     private async Task BuildCommunityResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
-            {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
-            };
+            var sources = new List<DownloadSourceItem>();
 
-            // 注意：BMCLAPI (bmclapi) 虽然能解析 api.modrinth.com，但已被过滤不参与 Modrinth 测速
+            // 使用统一的获取方法
+            var modrinthSources = _downloadSourceFactory.GetSourcesForModrinth();
+            var allSourcesDict = _downloadSourceFactory.GetAllSources();
 
-            // 添加社区资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
-            
-            foreach (var customSource in customSources)
+            foreach (var source in modrinthSources)
             {
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
+
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
-            
+
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 CommunityResourceSources.Clear();
@@ -2917,30 +2912,30 @@ public partial class SettingsViewModel : ObservableRecipient
 
     /// <summary>
     /// 构建 CurseForge 资源源列表
-    /// 注意：BMCLAPI 不支持社区资源（CurseForge），因此只显示 official 和 mcim
+    /// <summary>
+    /// 构建 CurseForge 资源源列表
     /// </summary>
     private async Task BuildCurseForgeResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
-            {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
-            };
+            var sources = new List<DownloadSourceItem>();
 
-            // 添加社区资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
+            // 使用统一的获取方法
+            var curseforgeSources = _downloadSourceFactory.GetSourcesForCurseForge();
+            var allSourcesDict = _downloadSourceFactory.GetAllSources();
 
-            foreach (var customSource in customSources)
+            foreach (var source in curseforgeSources)
             {
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
+
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
 

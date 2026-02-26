@@ -21,7 +21,16 @@ public class McimDownloadSource : IDownloadSource
     /// 下载源标识键
     /// </summary>
     public string Key => "mcim";
-    
+
+    /// <inheritdoc />
+    public bool SupportsGameResources => false;
+
+    /// <inheritdoc />
+    public bool SupportsModrinth => true;
+
+    /// <inheritdoc />
+    public bool SupportsCurseForge => true;
+
     /// <summary>
     /// 获取Minecraft版本清单URL（MCIM不支持MC资源，使用官方源）
     /// </summary>

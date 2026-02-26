@@ -405,21 +405,17 @@ public class SpeedTestService : ISpeedTestService
     {
         var sources = new List<(string Key, string Host, string Name)>();
 
-        foreach (var kvp in _downloadSourceFactory.GetAllSources())
+        // 使用统一的获取方法，自动过滤不支持的源
+        var gameSources = _downloadSourceFactory.GetSourcesForGameResources();
+        var allSourcesDict = _downloadSourceFactory.GetAllSources();
+
+        foreach (var source in gameSources)
         {
-            var source = kvp.Value;
             try
             {
-                // 过滤：MCIM 不支持游戏资源，返回官方地址
-                if (kvp.Key.Equals("mcim", StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持游戏资源（返回官方地址），跳过", kvp.Key);
-                    continue;
-                }
-
-                // 过滤：只有官方和 BMCLAPI 支持游戏资源，community 模板的自定义源不支持
-                if (source is CustomDownloadSource customSource && customSource.TemplateName == "community")
-                    continue;
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
 
                 var url = source.GetVersionManifestUrl();
                 if (!string.IsNullOrEmpty(url))
@@ -427,13 +423,13 @@ public class SpeedTestService : ISpeedTestService
                     var host = ExtractHost(url);
                     if (!string.IsNullOrEmpty(host))
                     {
-                        sources.Add((kvp.Key, host, source.Name));
+                        sources.Add((key, host, source.Name));
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持游戏资源", kvp.Key);
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持游戏资源", source.Key);
             }
         }
 
@@ -447,18 +443,17 @@ public class SpeedTestService : ISpeedTestService
     {
         var sources = new List<(string Key, string Host, string Name)>();
 
-        foreach (var kvp in _downloadSourceFactory.GetAllSources())
+        // 使用统一的获取方法，自动过滤不支持的源
+        var modrinthSources = _downloadSourceFactory.GetSourcesForModrinth();
+        var allSourcesDict = _downloadSourceFactory.GetAllSources();
+
+        foreach (var source in modrinthSources)
         {
-            var source = kvp.Value;
             try
             {
-                // 过滤：BMCLAPI 不支持 Modrinth 社区资源
-                if (kvp.Key == "bmclapi")
-                    continue;
-
-                // 过滤：CustomDownloadSource 只有 template=community 的才支持 Modrinth
-                if (source is CustomDownloadSource customSource && customSource.TemplateName != "community")
-                    continue;
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
 
                 var url = source.GetModrinthApiBaseUrl();
                 if (!string.IsNullOrEmpty(url))
@@ -466,13 +461,13 @@ public class SpeedTestService : ISpeedTestService
                     var host = ExtractHost(url);
                     if (!string.IsNullOrEmpty(host))
                     {
-                        sources.Add((kvp.Key, host, source.Name));
+                        sources.Add((key, host, source.Name));
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", kvp.Key);
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", source.Key);
             }
         }
 
@@ -486,23 +481,19 @@ public class SpeedTestService : ISpeedTestService
     {
         var sources = new List<(string Key, string Host, string Name)>();
 
-        foreach (var kvp in _downloadSourceFactory.GetAllSources())
+        // 使用统一的获取方法，自动过滤不支持的源
+        var curseforgeSources = _downloadSourceFactory.GetSourcesForCurseForge();
+        var allSourcesDict = _downloadSourceFactory.GetAllSources();
+
+        foreach (var source in curseforgeSources)
         {
-            var source = kvp.Value;
             try
             {
-                // 过滤：CustomDownloadSource 只有 template=community 的才支持 CurseForge
-                if (source is CustomDownloadSource customSource && !customSource.TemplateName.Equals("community", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                // 获取对应的 key
+                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
+                var key = kvp.Key;
 
                 var url = source.GetCurseForgeApiBaseUrl();
-
-                // 过滤：BMCLAPI 不支持 CurseForge 镜像，返回官方地址
-                if (kvp.Key.Equals("bmclapi", StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogDebug("[SpeedTest] 源 {Key} 不支持 CurseForge 镜像（返回官方地址），跳过", kvp.Key);
-                    continue;
-                }
 
                 if (!string.IsNullOrEmpty(url))
                 {
@@ -515,7 +506,7 @@ public class SpeedTestService : ISpeedTestService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", kvp.Key);
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", source.Key);
             }
         }
 
