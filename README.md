@@ -98,4 +98,4 @@ For the full license text, please refer to the [LICENSE](LICENSE) file.
 
 ---
 
-**XianYu Launcher** - Elevate your Minecraft experience!
+**XianYu Launcher** - Made with ❤️ for the Minecraft Community ☕
