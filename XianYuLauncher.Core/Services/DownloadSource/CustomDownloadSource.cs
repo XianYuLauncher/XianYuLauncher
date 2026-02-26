@@ -36,6 +36,15 @@ public class CustomDownloadSource : IDownloadSource
         }
     }
 
+    /// <inheritdoc />
+    public bool SupportsGameResources => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsModrinth => TemplateName == "community";
+
+    /// <inheritdoc />
+    public bool SupportsCurseForge => TemplateName == "community";
+
     /// <summary>
     /// 优先级（数值越大优先级越高）
     /// </summary>

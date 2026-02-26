@@ -14,7 +14,22 @@ public interface IDownloadSource
     /// 下载源标识键
     /// </summary>
     string Key { get; }
-    
+
+    /// <summary>
+    /// 下载源是否支持游戏资源（Minecraft 本体、ModLoader、版本列表）
+    /// </summary>
+    bool SupportsGameResources { get; }
+
+    /// <summary>
+    /// 下载源是否支持 Modrinth 社区资源
+    /// </summary>
+    bool SupportsModrinth { get; }
+
+    /// <summary>
+    /// 下载源是否支持 CurseForge 社区资源
+    /// </summary>
+    bool SupportsCurseForge { get; }
+
     /// <summary>
     /// 获取Minecraft版本清单URL
     /// </summary>

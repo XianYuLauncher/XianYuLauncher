@@ -2833,33 +2833,38 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 对下载源列表排序：内置源在前，自定义源按 Priority 倒序排列
+    /// </summary>
+    private static IEnumerable<Core.Services.DownloadSource.IDownloadSource> SortSourcesByPriority(
+        IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources)
+    {
+        return sources
+            .OrderBy(s => s is Core.Services.DownloadSource.CustomDownloadSource ? 1 : 0)
+            .ThenByDescending(s => (s as Core.Services.DownloadSource.CustomDownloadSource)?.Priority ?? 0);
+    }
+
+    /// <summary>
     /// 构建游戏资源源列表
     /// </summary>
     private async Task BuildGameResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
-            {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "bmclapi", DisplayName = "BMCLAPI 镜像", IsCustom = false }
-            };
-            
-            // 添加官方资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("official", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
-            
-            foreach (var customSource in customSources)
+            var sources = new List<DownloadSourceItem>();
+
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var gameSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForGameResources());
+
+            foreach (var source in gameSources)
             {
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
-            
+
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 GameResourceSources.Clear();
@@ -2874,35 +2879,26 @@ public partial class SettingsViewModel : ObservableRecipient
     
     /// <summary>
     /// 构建社区资源源列表（Modrinth）
-    /// 注意：BMCLAPI 不支持 Modrinth，因此只显示 official 和 mcim
     /// </summary>
     private async Task BuildCommunityResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
-            {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
-            };
+            var sources = new List<DownloadSourceItem>();
 
-            // 注意：BMCLAPI (bmclapi) 虽然能解析 api.modrinth.com，但已被过滤不参与 Modrinth 测速
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var modrinthSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForModrinth());
 
-            // 添加社区资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
-            
-            foreach (var customSource in customSources)
+            foreach (var source in modrinthSources)
             {
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
-            
+
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 CommunityResourceSources.Clear();
@@ -2917,30 +2913,23 @@ public partial class SettingsViewModel : ObservableRecipient
 
     /// <summary>
     /// 构建 CurseForge 资源源列表
-    /// 注意：BMCLAPI 不支持社区资源（CurseForge），因此只显示 official 和 mcim
     /// </summary>
     private async Task BuildCurseForgeResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
-            var sources = new List<DownloadSourceItem>
-            {
-                new DownloadSourceItem { Key = "official", DisplayName = "官方源", IsCustom = false },
-                new DownloadSourceItem { Key = "mcim", DisplayName = "MCIM 镜像", IsCustom = false }
-            };
+            var sources = new List<DownloadSourceItem>();
 
-            // 添加社区资源类型的自定义源
-            var customSources = _customSourceManager.GetAllSources()
-                .Where(s => s.Enabled && s.Template.Equals("community", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.Priority);
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var curseforgeSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForCurseForge());
 
-            foreach (var customSource in customSources)
+            foreach (var source in curseforgeSources)
             {
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = customSource.Key,
-                    DisplayName = $"{customSource.Name} (自定义)",
-                    IsCustom = true
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
 
@@ -3193,6 +3182,9 @@ public partial class SettingsViewModel : ObservableRecipient
 
             // 更新最后测速时间（使用本地时间）
             LastSpeedTestTime = DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+
+            // 更新下次测速时间
+            UpdateNextSpeedTestTime(DateTime.UtcNow);
         }
         catch (Exception ex)
         {

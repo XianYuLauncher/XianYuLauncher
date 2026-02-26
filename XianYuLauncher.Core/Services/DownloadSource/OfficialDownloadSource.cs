@@ -14,7 +14,16 @@ public class OfficialDownloadSource : IDownloadSource
     /// 下载源标识键
     /// </summary>
     public string Key => "official";
-    
+
+    /// <inheritdoc />
+    public bool SupportsGameResources => true;
+
+    /// <inheritdoc />
+    public bool SupportsModrinth => true;
+
+    /// <inheritdoc />
+    public bool SupportsCurseForge => true;
+
     /// <summary>
     /// 获取Minecraft版本清单URL
     /// </summary>

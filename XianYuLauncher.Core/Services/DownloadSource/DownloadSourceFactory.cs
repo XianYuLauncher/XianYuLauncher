@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace XianYuLauncher.Core.Services.DownloadSource;
 
 /// <summary>
@@ -206,8 +208,64 @@ public class DownloadSourceFactory
         {
             return _defaultSourceKey;
         }
-        
+
         var source = _sources.FirstOrDefault(s => s.Value.Name.Equals(sourceName, StringComparison.OrdinalIgnoreCase));
         return source.Key ?? _defaultSourceKey;
+    }
+
+    /// <summary>
+    /// 内置源显示名称映射
+    /// </summary>
+    private static readonly Dictionary<string, string> BuiltInSourceDisplayNames = new()
+    {
+        { "official", "官方源" },
+        { "bmclapi", "BMCLAPI 镜像" },
+        { "mcim", "MCIM 镜像" }
+    };
+
+    /// <summary>
+    /// 获取支持游戏资源的所有下载源
+    /// </summary>
+    public IReadOnlyList<IDownloadSource> GetSourcesForGameResources()
+    {
+        return _sources.Values
+            .Where(s => s.SupportsGameResources)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 获取支持 Modrinth 的所有下载源
+    /// </summary>
+    public IReadOnlyList<IDownloadSource> GetSourcesForModrinth()
+    {
+        return _sources.Values
+            .Where(s => s.SupportsModrinth)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 获取支持 CurseForge 的所有下载源
+    /// </summary>
+    public IReadOnlyList<IDownloadSource> GetSourcesForCurseForge()
+    {
+        return _sources.Values
+            .Where(s => s.SupportsCurseForge)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 获取下载源的显示名称
+    /// </summary>
+    /// <param name="key">下载源标识</param>
+    /// <returns>显示名称</returns>
+    public string GetDisplayName(string key)
+    {
+        if (BuiltInSourceDisplayNames.TryGetValue(key, out var displayName))
+            return displayName;
+
+        if (_sources.TryGetValue(key, out var source))
+            return source.Name;
+
+        return key;
     }
 }

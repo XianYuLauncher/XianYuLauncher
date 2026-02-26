@@ -14,7 +14,16 @@ public class BmclapiDownloadSource : IDownloadSource
     /// 下载源标识键
     /// </summary>
     public string Key => "bmclapi";
-    
+
+    /// <inheritdoc />
+    public bool SupportsGameResources => true;
+
+    /// <inheritdoc />
+    public bool SupportsModrinth => false;
+
+    /// <inheritdoc />
+    public bool SupportsCurseForge => false;
+
     /// <summary>
     /// 获取Minecraft版本清单URL
     /// </summary>
