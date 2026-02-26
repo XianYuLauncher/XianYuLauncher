@@ -5,6 +5,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:controls="using:XianYuLauncher.Controls"
       xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:labs="using:CommunityToolkit.Labs.WinUI"
       xmlns:viewModels="using:XianYuLauncher.ViewModels"
       xmlns:local="using:XianYuLauncher.Views"
       xmlns:helpers="using:XianYuLauncher.Helpers"
@@ -82,7 +83,12 @@
                         </Grid.ColumnDefinitions>
                         
                         <!-- 左侧：图标和信息 -->
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="0,4,0,0">
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="12"
+                                    VerticalAlignment="Top"
+                                    Margin="0,4,0,0"
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                             <Border CornerRadius="8" Clip="{Binding ElementName=ImageBorder, Path=CornerRadius}">
                                 <Image x:Name="ImageBorder" Source="{x:Bind ViewModel.ModIconUrl, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
                             </Border>
@@ -113,137 +119,227 @@
                         </StackPanel>
                         
                         <!-- 右侧：安装按钮 -->
-                        <Button Grid.Column="1" 
-                                Command="{x:Bind ViewModel.QuickInstallCommand}"
-                                Visibility="{x:Bind ViewModel.IsQuickInstallButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                CornerRadius="8"
-                                Height="44"
-                                Padding="16,10"
-                                FontSize="14"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Right"
-                                Margin="0,0,16,0"
-                                MinWidth="120">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE896;" FontSize="16" />
-                                <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallButton" Text="安装" VerticalAlignment="Center" />
+                        <Grid Grid.Column="1"
+                              VerticalAlignment="Center"
+                              HorizontalAlignment="Right"
+                              Margin="0,0,16,0"
+                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                            <Button Command="{x:Bind ViewModel.QuickInstallCommand}"
+                                    Visibility="{x:Bind ViewModel.IsQuickInstallButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    CornerRadius="8"
+                                    Height="44"
+                                    Padding="16,10"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    MinWidth="120">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE896;" FontSize="16" />
+                                    <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallButton" Text="安装" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Shimmer 占位 -->
+                        <Grid Grid.ColumnSpan="2"
+                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                <Grid Width="80" Height="80">
+                                    <labs:Shimmer />
+                                </Grid>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Left" Spacing="8">
+                                    <Grid Width="260" Height="30" HorizontalAlignment="Left">
+                                        <labs:Shimmer />
+                                    </Grid>
+                                    <Grid Width="180" Height="20" HorizontalAlignment="Left">
+                                        <labs:Shimmer />
+                                    </Grid>
+                                    <Grid Width="300" Height="20" HorizontalAlignment="Left">
+                                        <labs:Shimmer />
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
-                        </Button>
+
+                            <Grid Grid.Column="1" Width="120" Height="44" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0">
+                                <labs:Shimmer />
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </StackPanel>
 
                 <!-- Mod描述 -->
-                <StackPanel Spacing="8">
-                    <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
-                      
-                    <!-- 简短描述 (始终显示) -->
-                    <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" 
-                               FontSize="14" 
-                               TextWrapping="WrapWholeWords" />
-                      
-                    <!-- 展开/收起按钮 -->
-                    <HyperlinkButton x:Name="ToggleDescriptionButton"
-                                     HorizontalAlignment="Left"
-                                     Padding="0"
-                                     Click="ToggleDescriptionButton_Click">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <FontIcon x:Name="ToggleDescriptionIcon" 
-                                      Glyph="&#xE70D;" 
-                                      FontSize="12" 
-                                      VerticalAlignment="Center"
-                                      RenderTransformOrigin="0.5,0.5">
-                                <FontIcon.RenderTransform>
-                                    <RotateTransform Angle="0" />
-                                </FontIcon.RenderTransform>
-                            </FontIcon>
-                            <TextBlock x:Name="ToggleDescriptionText" 
-                                       x:Uid="ModDownloadDetailPage_ViewFullDescription"
-                                       Text="查看完整描述" 
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </HyperlinkButton>
+                <Grid>
+                    <StackPanel Spacing="8"
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                        <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
+                          
+                        <!-- 简短描述 (始终显示) -->
+                        <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}" 
+                                   FontSize="14" 
+                                   TextWrapping="WrapWholeWords" />
+                          
+                        <!-- 展开/收起按钮 -->
+                        <HyperlinkButton x:Name="ToggleDescriptionButton"
+                                         HorizontalAlignment="Left"
+                                         Padding="0"
+                                         Click="ToggleDescriptionButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon x:Name="ToggleDescriptionIcon" 
+                                          Glyph="&#xE70D;" 
+                                          FontSize="12" 
+                                          VerticalAlignment="Center"
+                                          RenderTransformOrigin="0.5,0.5">
+                                    <FontIcon.RenderTransform>
+                                        <RotateTransform Angle="0" />
+                                    </FontIcon.RenderTransform>
+                                </FontIcon>
+                                <TextBlock x:Name="ToggleDescriptionText" 
+                                           x:Uid="ModDownloadDetailPage_ViewFullDescription"
+                                           Text="查看完整描述" 
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HyperlinkButton>
 
-                    <!-- 完整描述容器 (Composition 动画) -->
-                    <StackPanel x:Name="FullDescriptionContainer" 
-                                Visibility="Collapsed"
-                                HorizontalAlignment="Stretch">
-                        <animations:Implicit.ShowAnimations>
-                            <animations:TranslationAnimation Duration="0:0:0.35" From="0, -20, 0" To="0" EasingMode="EaseOut" EasingType="Circle" />
-                            <animations:OpacityAnimation Duration="0:0:0.25" From="0" To="1.0" EasingMode="EaseOut" EasingType="Circle" />
-                        </animations:Implicit.ShowAnimations>
-                        <animations:Implicit.HideAnimations>
-                            <animations:TranslationAnimation Duration="0:0:0.2" From="0" To="0, -10, 0" EasingMode="EaseOut" EasingType="Circle" />
-                            <animations:OpacityAnimation Duration="0:0:0.15" From="1.0" To="0" EasingMode="EaseOut" EasingType="Circle" />
-                        </animations:Implicit.HideAnimations>
-                        <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}" 
-                                              Background="Transparent" 
-                                              TextWrapping="Wrap" 
-                                              FontSize="14"
-                                              IsTextSelectionEnabled="True"/>
+                        <!-- 完整描述容器 (Composition 动画) -->
+                        <StackPanel x:Name="FullDescriptionContainer" 
+                                    Visibility="Collapsed"
+                                    HorizontalAlignment="Stretch">
+                            <animations:Implicit.ShowAnimations>
+                                <animations:TranslationAnimation Duration="0:0:0.35" From="0, -20, 0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                                <animations:OpacityAnimation Duration="0:0:0.25" From="0" To="1.0" EasingMode="EaseOut" EasingType="Circle" />
+                            </animations:Implicit.ShowAnimations>
+                            <animations:Implicit.HideAnimations>
+                                <animations:TranslationAnimation Duration="0:0:0.2" From="0" To="0, -10, 0" EasingMode="EaseOut" EasingType="Circle" />
+                                <animations:OpacityAnimation Duration="0:0:0.15" From="1.0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                            </animations:Implicit.HideAnimations>
+                            <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}" 
+                                                  Background="Transparent" 
+                                                  TextWrapping="Wrap" 
+                                                  FontSize="14"
+                                                  IsTextSelectionEnabled="True"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+
+                    <StackPanel Spacing="8"
+                                HorizontalAlignment="Left"
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Width="80" Height="28" HorizontalAlignment="Left">
+                            <labs:Shimmer />
+                        </Grid>
+                        <Grid Width="620" Height="48" HorizontalAlignment="Left">
+                            <labs:Shimmer />
+                        </Grid>
+                        <Grid Width="120" Height="20" HorizontalAlignment="Left">
+                            <labs:Shimmer />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
                   
-                <StackPanel Spacing="8">
-                    <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
-                    <!-- 使用ScrollViewer + StackPanel替代WrapGrid，确保所有标签完整显示 -->
-                    <ScrollViewer HorizontalScrollMode="Auto" VerticalScrollMode="Disabled" HorizontalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.SupportedLoaders, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                            BorderThickness="1"
-                                            Padding="12,6" 
-                                            Margin="0,0,8,0" 
-                                            CornerRadius="6">
-                                        <TextBlock Text="{Binding}" FontSize="14" VerticalAlignment="Center" />
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                    
-                    <!-- 功能栏 -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                        <!-- 跳转到平台按钮 -->
-                        <Button Command="{x:Bind ViewModel.OpenPlatformUrlCommand}"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Padding="12,8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8A7;" FontSize="16" />
-                                <TextBlock Text="{x:Bind ViewModel.PlatformName, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
+                <Grid>
+                    <StackPanel Spacing="8"
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                        <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
+                        <!-- 使用ScrollViewer + StackPanel替代WrapGrid，确保所有标签完整显示 -->
+                        <ScrollViewer HorizontalScrollMode="Auto" VerticalScrollMode="Disabled" HorizontalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.SupportedLoaders, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                Padding="12,6" 
+                                                Margin="0,0,8,0" 
+                                                CornerRadius="6">
+                                            <TextBlock Text="{Binding}" FontSize="14" VerticalAlignment="Center" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
                         
-                        <!-- MC百科按钮 -->
-                        <Button Command="{x:Bind ViewModel.OpenMcmodCommand}"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Padding="12,8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8F1;" FontSize="16" />
-                                <TextBlock x:Uid="ModDownloadDetailPage_McmodButton" Text="MC百科" FontSize="14" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
+                        <!-- 功能栏 -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                            <!-- 跳转到平台按钮 -->
+                            <Button Command="{x:Bind ViewModel.OpenPlatformUrlCommand}"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12,8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE8A7;" FontSize="16" />
+                                    <TextBlock Text="{x:Bind ViewModel.PlatformName, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            
+                            <!-- MC百科按钮 -->
+                            <Button Command="{x:Bind ViewModel.OpenMcmodCommand}"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12,8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE8F1;" FontSize="16" />
+                                    <TextBlock x:Uid="ModDownloadDetailPage_McmodButton" Text="MC百科" FontSize="14" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+
+                    <StackPanel Spacing="8"
+                                HorizontalAlignment="Left"
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Width="120" Height="28" HorizontalAlignment="Left">
+                            <labs:Shimmer />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+                            <Grid Width="88" Height="32" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <Grid Width="96" Height="32" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <Grid Width="80" Height="32" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0" HorizontalAlignment="Left">
+                            <Grid Width="140" Height="40" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <Grid Width="120" Height="40" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
 
                 <!-- 游戏版本和资源包/Mod版本下载列表 -->
                 <StackPanel Spacing="12">
-                    <TextBlock Text="{x:Bind ViewModel.DownloadSectionText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
+                    <Grid>
+                        <TextBlock Text="{x:Bind ViewModel.DownloadSectionText, Mode=OneWay}"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                        <Grid Width="120"
+                              Height="28"
+                              HorizontalAlignment="Left"
+                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <labs:Shimmer />
+                        </Grid>
+                    </Grid>
                     
                     <!-- 加载状态指示器 -->
                     <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
