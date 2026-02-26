@@ -407,23 +407,18 @@ public class SpeedTestService : ISpeedTestService
 
         // 使用统一的获取方法，自动过滤不支持的源
         var gameSources = _downloadSourceFactory.GetSourcesForGameResources();
-        var allSourcesDict = _downloadSourceFactory.GetAllSources();
 
         foreach (var source in gameSources)
         {
             try
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 var url = source.GetVersionManifestUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
                     var host = ExtractHost(url);
                     if (!string.IsNullOrEmpty(host))
                     {
-                        sources.Add((key, host, source.Name));
+                        sources.Add((source.Key, host, source.Name));
                     }
                 }
             }
@@ -445,23 +440,18 @@ public class SpeedTestService : ISpeedTestService
 
         // 使用统一的获取方法，自动过滤不支持的源
         var modrinthSources = _downloadSourceFactory.GetSourcesForModrinth();
-        var allSourcesDict = _downloadSourceFactory.GetAllSources();
 
         foreach (var source in modrinthSources)
         {
             try
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 var url = source.GetModrinthApiBaseUrl();
                 if (!string.IsNullOrEmpty(url))
                 {
                     var host = ExtractHost(url);
                     if (!string.IsNullOrEmpty(host))
                     {
-                        sources.Add((key, host, source.Name));
+                        sources.Add((source.Key, host, source.Name));
                     }
                 }
             }
@@ -483,16 +473,11 @@ public class SpeedTestService : ISpeedTestService
 
         // 使用统一的获取方法，自动过滤不支持的源
         var curseforgeSources = _downloadSourceFactory.GetSourcesForCurseForge();
-        var allSourcesDict = _downloadSourceFactory.GetAllSources();
 
         foreach (var source in curseforgeSources)
         {
             try
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 var url = source.GetCurseForgeApiBaseUrl();
 
                 if (!string.IsNullOrEmpty(url))
@@ -500,7 +485,7 @@ public class SpeedTestService : ISpeedTestService
                     var host = ExtractHost(url);
                     if (!string.IsNullOrEmpty(host))
                     {
-                        sources.Add((kvp.Key, host, source.Name));
+                        sources.Add((source.Key, host, source.Name));
                     }
                 }
             }

@@ -2833,6 +2833,17 @@ public partial class SettingsViewModel : ObservableRecipient
     }
     
     /// <summary>
+    /// 对下载源列表排序：内置源在前，自定义源按 Priority 倒序排列
+    /// </summary>
+    private static IEnumerable<Core.Services.DownloadSource.IDownloadSource> SortSourcesByPriority(
+        IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources)
+    {
+        return sources
+            .OrderBy(s => s is Core.Services.DownloadSource.CustomDownloadSource ? 1 : 0)
+            .ThenByDescending(s => (s as Core.Services.DownloadSource.CustomDownloadSource)?.Priority ?? 0);
+    }
+
+    /// <summary>
     /// 构建游戏资源源列表
     /// </summary>
     private async Task BuildGameResourceSourcesAsync()
@@ -2841,20 +2852,15 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var sources = new List<DownloadSourceItem>();
 
-            // 使用统一的获取方法
-            var gameSources = _downloadSourceFactory.GetSourcesForGameResources();
-            var allSourcesDict = _downloadSourceFactory.GetAllSources();
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var gameSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForGameResources());
 
             foreach (var source in gameSources)
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -2880,20 +2886,15 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var sources = new List<DownloadSourceItem>();
 
-            // 使用统一的获取方法
-            var modrinthSources = _downloadSourceFactory.GetSourcesForModrinth();
-            var allSourcesDict = _downloadSourceFactory.GetAllSources();
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var modrinthSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForModrinth());
 
             foreach (var source in modrinthSources)
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -2912,8 +2913,6 @@ public partial class SettingsViewModel : ObservableRecipient
 
     /// <summary>
     /// 构建 CurseForge 资源源列表
-    /// <summary>
-    /// 构建 CurseForge 资源源列表
     /// </summary>
     private async Task BuildCurseForgeResourceSourcesAsync()
     {
@@ -2921,20 +2920,15 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var sources = new List<DownloadSourceItem>();
 
-            // 使用统一的获取方法
-            var curseforgeSources = _downloadSourceFactory.GetSourcesForCurseForge();
-            var allSourcesDict = _downloadSourceFactory.GetAllSources();
+            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
+            var curseforgeSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForCurseForge());
 
             foreach (var source in curseforgeSources)
             {
-                // 获取对应的 key
-                var kvp = allSourcesDict.FirstOrDefault(x => x.Value == source);
-                var key = kvp.Key;
-
                 sources.Add(new DownloadSourceItem
                 {
-                    Key = key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(key),
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
