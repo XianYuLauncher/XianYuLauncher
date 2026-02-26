@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -206,6 +207,81 @@ public class FallbackDownloadManagerTests : IDisposable
 
 
     #region URL转换测试
+
+    [Fact]
+    public async Task DownloadFileForCommunityAsync_CurseForgeCdn_SkipsUnsupportedSources()
+    {
+        // Arrange
+        var targetPath = Path.Combine(_testDirectory, "curseforge-test.zip");
+        var originalUrl = "REDACTED_URL";
+        var capturedUrls = new List<string>();
+        var callCount = 0;
+
+        _fallbackManager.MaxRetriesPerSource = 0;
+
+        _innerManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(), targetPath, null, null, It.IsAny<CancellationToken>()))
+            .Callback<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, _, _, _, _) => capturedUrls.Add(url))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return callCount == 1
+                    ? DownloadResult.Failed(originalUrl, "404 Not Found")
+                    : DownloadResult.Succeeded(targetPath, originalUrl);
+            });
+
+        // Act
+        var result = await _fallbackManager.DownloadFileForCommunityAsync(
+            originalUrl, targetPath, "curseforge_cdn");
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.UsedSourceKey.Should().Be("mcim");
+        result.AttemptedSources.Should().ContainInOrder("official", "mcim");
+        result.AttemptedSources.Should().NotContain("bmclapi");
+        capturedUrls.Should().HaveCount(2);
+        capturedUrls[0].Should().Be("REDACTED_URL");
+        capturedUrls[1].Should().Be("REDACTED_URL");
+    }
+
+    [Fact]
+    public async Task DownloadFileForCommunityAsync_CurseForge404_DoesNotRetrySameSource()
+    {
+        // Arrange
+        var targetPath = Path.Combine(_testDirectory, "curseforge-404-fast-fallback.zip");
+        var originalUrl = "REDACTED_URL";
+        var capturedUrls = new List<string>();
+        var callCount = 0;
+
+        _fallbackManager.MaxRetriesPerSource = 2;
+
+        _innerManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(), targetPath, null, null, It.IsAny<CancellationToken>()))
+            .Callback<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, _, _, _, _) => capturedUrls.Add(url))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    var ex = new HttpRequestException("404 Not Found", null, HttpStatusCode.NotFound);
+                    return DownloadResult.Failed(originalUrl, "下载失败: Response status code does not indicate success: 404 (Not Found).", ex);
+                }
+
+                return DownloadResult.Succeeded(targetPath, originalUrl);
+            });
+
+        // Act
+        var result = await _fallbackManager.DownloadFileForCommunityAsync(
+            originalUrl, targetPath, "curseforge_cdn");
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.UsedSourceKey.Should().Be("mcim");
+        result.AttemptedSources.Should().ContainInOrder("official", "mcim");
+        capturedUrls.Should().HaveCount(2);
+    }
 
     [Fact]
     public async Task DownloadFileWithFallbackAsync_ModrinthCdn_TransformsUrlCorrectly()
