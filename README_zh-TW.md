@@ -99,4 +99,4 @@
 
 ---
 
-**XianYu Launcher** - 提升您的 Minecraft 體驗！
+**XianYu Launcher** - 用❤️發電，為 Minecraft 社群 ☕

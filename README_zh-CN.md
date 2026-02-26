@@ -100,4 +100,4 @@
 
 ---
 
-**XianYu Launcher** - 提升您的 Minecraft 体验！
+**XianYu Launcher** - 用❤️发电，为 Minecraft 社区 ☕
