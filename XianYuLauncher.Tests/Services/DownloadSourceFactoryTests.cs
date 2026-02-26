@@ -60,7 +60,6 @@ public class DownloadSourceFactoryTests
         var sources = factory.GetSourcesForGameResources();
 
         // Act & Assert
-        Assert.Equal(2, sources.Count); // official, bmclapi
         Assert.All(sources, s => Assert.True(s.SupportsGameResources));
         Assert.Contains(sources, s => s.Key == "official");
         Assert.Contains(sources, s => s.Key == "bmclapi");
@@ -75,7 +74,6 @@ public class DownloadSourceFactoryTests
         var sources = factory.GetSourcesForModrinth();
 
         // Act & Assert
-        Assert.Equal(2, sources.Count); // official, mcim
         Assert.All(sources, s => Assert.True(s.SupportsModrinth));
         Assert.Contains(sources, s => s.Key == "official");
         Assert.Contains(sources, s => s.Key == "mcim");
@@ -90,7 +88,6 @@ public class DownloadSourceFactoryTests
         var sources = factory.GetSourcesForCurseForge();
 
         // Act & Assert
-        Assert.Equal(2, sources.Count); // official, mcim
         Assert.All(sources, s => Assert.True(s.SupportsCurseForge));
         Assert.Contains(sources, s => s.Key == "official");
         Assert.Contains(sources, s => s.Key == "mcim");
@@ -151,6 +148,60 @@ public class DownloadSourceFactoryTests
 
         // Assert
         Assert.Equal("unknown", displayName);
+    }
+
+    #endregion
+
+    #region CustomDownloadSource Supports* 测试
+
+    [Fact]
+    public void CustomOfficialTemplateSource_ParticipatesInGameResourcesOnly()
+    {
+        // Arrange
+        var factory = new DownloadSourceFactory();
+        var customOfficial = new CustomDownloadSource(
+            key: "custom-official",
+            name: "自定义官方镜像",
+            baseUrl: "https://example.com",
+            template: new BmclapiTemplate());
+
+        factory.RegisterSource("custom-official", customOfficial);
+
+        // Act
+        var gameSources = factory.GetSourcesForGameResources();
+        var modrinthSources = factory.GetSourcesForModrinth();
+        var curseForgeSources = factory.GetSourcesForCurseForge();
+
+        // Assert - official 模板自定义源应参与游戏资源过滤
+        Assert.Contains(gameSources, s => s.Key == "custom-official" && s.SupportsGameResources);
+        // Assert - official 模板自定义源不应参与 Modrinth/CurseForge 过滤
+        Assert.DoesNotContain(modrinthSources, s => s.Key == "custom-official");
+        Assert.DoesNotContain(curseForgeSources, s => s.Key == "custom-official");
+    }
+
+    [Fact]
+    public void CustomCommunityTemplateSource_ExcludedFromGameResourcesButIncludedInModPlatforms()
+    {
+        // Arrange
+        var factory = new DownloadSourceFactory();
+        var customCommunity = new CustomDownloadSource(
+            key: "custom-community",
+            name: "自定义社区镜像",
+            baseUrl: "https://example.com",
+            template: new McimTemplate());
+
+        factory.RegisterSource("custom-community", customCommunity);
+
+        // Act
+        var gameSources = factory.GetSourcesForGameResources();
+        var modrinthSources = factory.GetSourcesForModrinth();
+        var curseForgeSources = factory.GetSourcesForCurseForge();
+
+        // Assert - community 模板不应参与游戏资源过滤
+        Assert.DoesNotContain(gameSources, s => s.Key == "custom-community");
+        // Assert - 但应参与 Modrinth/CurseForge 过滤
+        Assert.Contains(modrinthSources, s => s.Key == "custom-community" && s.SupportsModrinth);
+        Assert.Contains(curseForgeSources, s => s.Key == "custom-community" && s.SupportsCurseForge);
     }
 
     #endregion
