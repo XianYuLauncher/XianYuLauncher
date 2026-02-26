@@ -13,7 +13,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 [![Docs Online](https://img.shields.io/badge/Docs-Online-0EA5E9?style=flat-square&logo=gitbook&logoColor=white)](https://docs.xianyulauncher.com)
 [![Bilibili](https://img.shields.io/badge/bilibili-@SpiritStudio-FF69B4?style=flat-square&logo=bilibili&logoColor=white)](https://space.bilibili.com/3493299136498148)
 
-[English](README.md) | [简体中文](README_zh-CN.md) | [繁體中文](README_zh-TW.md)
+[English](README.md) | [简体中文](docs/README_zh-CN.md) | [繁體中文](docs/README_zh-TW.md)
 </div>
 
 ## ✨ Features
