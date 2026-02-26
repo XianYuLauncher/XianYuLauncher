@@ -19,10 +19,44 @@ public class OfficialDownloadSource : IDownloadSource
     public bool SupportsGameResources => true;
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => true;
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => true;
+
+    /// <inheritdoc />
     public bool SupportsModrinth => true;
 
     /// <inheritdoc />
     public bool SupportsCurseForge => true;
+
+    #region ModLoader 支持
+
+    /// <inheritdoc />
+    public bool SupportsForge => true;
+
+    /// <inheritdoc />
+    public bool SupportsFabric => true;
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => true;
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => true;
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => true;
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => true;
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => true;
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => true;
+
+    #endregion
 
     /// <summary>
     /// 获取Minecraft版本清单URL

@@ -40,10 +40,44 @@ public class CustomDownloadSource : IDownloadSource
     public bool SupportsGameResources => TemplateName == "official";
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => TemplateName == "official";
+
+    /// <inheritdoc />
     public bool SupportsModrinth => TemplateName == "community";
 
     /// <inheritdoc />
     public bool SupportsCurseForge => TemplateName == "community";
+
+    #region ModLoader 支持
+
+    /// <inheritdoc />
+    public bool SupportsForge => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsFabric => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => TemplateName == "official";
+
+    #endregion
 
     /// <summary>
     /// 优先级（数值越大优先级越高）

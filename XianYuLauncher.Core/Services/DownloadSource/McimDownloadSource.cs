@@ -26,10 +26,44 @@ public class McimDownloadSource : IDownloadSource
     public bool SupportsGameResources => false;
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => false;
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => false;
+
+    /// <inheritdoc />
     public bool SupportsModrinth => true;
 
     /// <inheritdoc />
     public bool SupportsCurseForge => true;
+
+    #region ModLoader 支持（MCIM 不支持任何游戏资源/ModLoader）
+
+    /// <inheritdoc />
+    public bool SupportsForge => false;
+
+    /// <inheritdoc />
+    public bool SupportsFabric => false;
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => false;
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => false;
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => false;
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => false;
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => false;
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => false;
+
+    #endregion
 
     /// <summary>
     /// 获取Minecraft版本清单URL（MCIM不支持MC资源，使用官方源）

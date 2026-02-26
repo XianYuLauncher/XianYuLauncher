@@ -21,6 +21,16 @@ public interface IDownloadSource
     bool SupportsGameResources { get; }
 
     /// <summary>
+    /// 下载源是否支持版本清单（获取版本列表等）
+    /// </summary>
+    bool SupportsVersionManifest { get; }
+
+    /// <summary>
+    /// 下载源是否支持文件下载（client.jar、libraries、ModLoader安装包等）
+    /// </summary>
+    bool SupportsFileDownload { get; }
+
+    /// <summary>
     /// 下载源是否支持 Modrinth 社区资源
     /// </summary>
     bool SupportsModrinth { get; }
@@ -29,6 +39,50 @@ public interface IDownloadSource
     /// 下载源是否支持 CurseForge 社区资源
     /// </summary>
     bool SupportsCurseForge { get; }
+
+    #region ModLoader 支持
+
+    /// <summary>
+    /// 下载源是否支持 Forge
+    /// </summary>
+    bool SupportsForge { get; }
+
+    /// <summary>
+    /// 下载源是否支持 Fabric
+    /// </summary>
+    bool SupportsFabric { get; }
+
+    /// <summary>
+    /// 下载源是否支持 NeoForge
+    /// </summary>
+    bool SupportsNeoForge { get; }
+
+    /// <summary>
+    /// 下载源是否支持 Quilt
+    /// </summary>
+    bool SupportsQuilt { get; }
+
+    /// <summary>
+    /// 下载源是否支持 LiteLoader
+    /// </summary>
+    bool SupportsLiteLoader { get; }
+
+    /// <summary>
+    /// 下载源是否支持 Legacy Fabric
+    /// </summary>
+    bool SupportsLegacyFabric { get; }
+
+    /// <summary>
+    /// 下载源是否支持 Cleanroom
+    /// </summary>
+    bool SupportsCleanroom { get; }
+
+    /// <summary>
+    /// 下载源是否支持 OptiFine
+    /// </summary>
+    bool SupportsOptifine { get; }
+
+    #endregion
 
     /// <summary>
     /// 获取Minecraft版本清单URL
