@@ -122,12 +122,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Logger.LogInformation("下载Forge Installer");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "forge");
             Directory.CreateDirectory(cacheDirectory);
-            
+
             forgeInstallerPath = Path.Combine(cacheDirectory, $"forge-{minecraftVersionId}-{modLoaderVersion}-installer.jar");
-            
-            // 获取当前下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+
+            // 使用 Forge 专用下载源
+            var downloadSource = _downloadSourceFactory.GetForgeSource();
             var forgeInstallerUrl = downloadSource.GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             var officialUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             
@@ -449,9 +448,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
-        // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 使用文件下载专用源
+        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
 
         foreach (var library in libraries)
         {

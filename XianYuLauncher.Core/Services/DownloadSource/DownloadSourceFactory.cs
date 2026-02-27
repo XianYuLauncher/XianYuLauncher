@@ -11,10 +11,15 @@ public class DownloadSourceFactory
     private string _defaultSourceKey = "official";
     private string _modrinthSourceKey = "official"; // Modrinth专用下载源
     private string _curseforgeSourceKey = "official"; // CurseForge专用下载源
+    private string _versionManifestSourceKey = "official"; // 版本清单专用下载源
+    private string _fileDownloadSourceKey = "official"; // 文件下载专用下载源
     private string _forgeSourceKey = "official"; // Forge专用下载源
     private string _fabricSourceKey = "official"; // Fabric专用下载源
     private string _neoforgeSourceKey = "official"; // NeoForge专用下载源
     private string _quiltSourceKey = "official"; // Quilt专用下载源
+    private string _liteLoaderSourceKey = "official"; // LiteLoader专用下载源
+    private string _legacyFabricSourceKey = "official"; // LegacyFabric专用下载源
+    private string _cleanroomSourceKey = "official"; // Cleanroom专用下载源
     private string _optifineSourceKey = "official"; // OptiFine专用下载源
     
     /// <summary>
@@ -322,6 +327,146 @@ public class DownloadSourceFactory
     /// 获取当前OptiFine下载源标识
     /// </summary>
     public string GetOptifineSourceKey() => _optifineSourceKey;
+
+    /// <summary>
+    /// 获取版本清单专用下载源
+    /// </summary>
+    public IDownloadSource GetVersionManifestSource()
+    {
+        return _sources.TryGetValue(_versionManifestSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置版本清单专用下载源
+    /// </summary>
+    public void SetVersionManifestSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+
+        if (!_sources.ContainsKey(key))
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+
+        _versionManifestSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] 版本清单下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前版本清单下载源标识
+    /// </summary>
+    public string GetVersionManifestSourceKey() => _versionManifestSourceKey;
+
+    /// <summary>
+    /// 获取文件下载专用下载源
+    /// </summary>
+    public IDownloadSource GetFileDownloadSource()
+    {
+        return _sources.TryGetValue(_fileDownloadSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置文件下载专用下载源
+    /// </summary>
+    public void SetFileDownloadSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+
+        if (!_sources.ContainsKey(key))
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+
+        _fileDownloadSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] 文件下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前文件下载源标识
+    /// </summary>
+    public string GetFileDownloadSourceKey() => _fileDownloadSourceKey;
+
+    /// <summary>
+    /// 获取LiteLoader专用下载源
+    /// </summary>
+    public IDownloadSource GetLiteLoaderSource()
+    {
+        return _sources.TryGetValue(_liteLoaderSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置LiteLoader专用下载源
+    /// </summary>
+    public void SetLiteLoaderSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+
+        if (!_sources.ContainsKey(key))
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+
+        _liteLoaderSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LiteLoader下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前LiteLoader下载源标识
+    /// </summary>
+    public string GetLiteLoaderSourceKey() => _liteLoaderSourceKey;
+
+    /// <summary>
+    /// 获取LegacyFabric专用下载源
+    /// </summary>
+    public IDownloadSource GetLegacyFabricSource()
+    {
+        return _sources.TryGetValue(_legacyFabricSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置LegacyFabric专用下载源
+    /// </summary>
+    public void SetLegacyFabricSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+
+        if (!_sources.ContainsKey(key))
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+
+        _legacyFabricSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前LegacyFabric下载源标识
+    /// </summary>
+    public string GetLegacyFabricSourceKey() => _legacyFabricSourceKey;
+
+    /// <summary>
+    /// 获取Cleanroom专用下载源
+    /// </summary>
+    public IDownloadSource GetCleanroomSource()
+    {
+        return _sources.TryGetValue(_cleanroomSourceKey, out var source) ? source : GetDefaultSource();
+    }
+
+    /// <summary>
+    /// 设置Cleanroom专用下载源
+    /// </summary>
+    public void SetCleanroomSource(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentNullException(nameof(key), "下载源标识不能为空");
+
+        if (!_sources.ContainsKey(key))
+            throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
+
+        _cleanroomSourceKey = key;
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Cleanroom下载源已设置为: {key}");
+    }
+
+    /// <summary>
+    /// 获取当前Cleanroom下载源标识
+    /// </summary>
+    public string GetCleanroomSourceKey() => _cleanroomSourceKey;
 
     /// <summary>
     /// 获取所有注册的下载源

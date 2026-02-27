@@ -3467,6 +3467,27 @@ public partial class SettingsViewModel : ObservableRecipient
             {
                 try { _downloadSourceFactory.SetOptifineSource(SelectedOptifineSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 OptiFine 源失败"); }
             }
+            // 同步版本清单和文件下载源到 DownloadSourceFactory
+            if (SelectedVersionManifestSource != null)
+            {
+                try { _downloadSourceFactory.SetVersionManifestSource(SelectedVersionManifestSource.Key); } catch (Exception ex) { Log.Error(ex, "同步版本清单源失败"); }
+            }
+            if (SelectedFileDownloadSource != null)
+            {
+                try { _downloadSourceFactory.SetFileDownloadSource(SelectedFileDownloadSource.Key); } catch (Exception ex) { Log.Error(ex, "同步文件下载源失败"); }
+            }
+            if (SelectedLiteLoaderSource != null)
+            {
+                try { _downloadSourceFactory.SetLiteLoaderSource(SelectedLiteLoaderSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LiteLoader 源失败"); }
+            }
+            if (SelectedLegacyFabricSource != null)
+            {
+                try { _downloadSourceFactory.SetLegacyFabricSource(SelectedLegacyFabricSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LegacyFabric 源失败"); }
+            }
+            if (SelectedCleanroomSource != null)
+            {
+                try { _downloadSourceFactory.SetCleanroomSource(SelectedCleanroomSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Cleanroom 源失败"); }
+            }
         });
     }
     
@@ -3620,6 +3641,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
         _localSettingsService.SaveSettingAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetVersionManifestSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置版本清单源失败"); }
         Log.Information($"[Settings] 版本清单源已切换为: {value.DisplayName} ({value.Key})");
     }
 
@@ -3630,6 +3652,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
         _localSettingsService.SaveSettingAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetFileDownloadSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置文件下载源失败"); }
         Log.Information($"[Settings] 文件下载源已切换为: {value.DisplayName} ({value.Key})");
     }
 
@@ -3640,6 +3663,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
         _localSettingsService.SaveSettingAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetLiteLoaderSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LiteLoader 源失败"); }
         Log.Information($"[Settings] LiteLoader 源已切换为: {value.DisplayName} ({value.Key})");
     }
 
@@ -3650,6 +3674,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
         _localSettingsService.SaveSettingAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetLegacyFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LegacyFabric 源失败"); }
         Log.Information($"[Settings] LegacyFabric 源已切换为: {value.DisplayName} ({value.Key})");
     }
 
@@ -3660,6 +3685,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
         _localSettingsService.SaveSettingAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetCleanroomSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Cleanroom 源失败"); }
         Log.Information($"[Settings] Cleanroom 源已切换为: {value.DisplayName} ({value.Key})");
     }
 

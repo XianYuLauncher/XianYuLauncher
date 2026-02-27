@@ -97,18 +97,8 @@ public class LegacyFabricService
     /// </summary>
     private async Task<List<FabricLoaderVersion>> GetLegacyFabricLoaderVersionsWithLegacyFallbackAsync(string minecraftVersion)
     {
-        // 获取当前版本列表源设置（枚举类型，然后转为字符串）
-        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
-        string versionListSource = versionListSourceEnum switch
-        {
-            0 => "official",
-            1 => "bmclapi",
-            2 => "mcim",
-            _ => "official"
-        };
-        
-        // 根据设置获取对应的下载源
-        var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
+        // 使用 LegacyFabric 专用下载源
+        var downloadSource = _downloadSourceFactory.GetLegacyFabricSource();
         
         // 使用下载源获取Legacy Fabric版本列表URL
         string url = downloadSource.GetLegacyFabricVersionsUrl(minecraftVersion);

@@ -121,12 +121,11 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Logger.LogInformation("下载NeoForge Installer");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "neoforge");
             Directory.CreateDirectory(cacheDirectory);
-            
+
             neoforgeInstallerPath = Path.Combine(cacheDirectory, $"neoforge-{modLoaderVersion}-installer.jar");
-            
-            // 获取当前下载源
-            var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-            var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+
+            // 使用 NeoForge 专用下载源
+            var downloadSource = _downloadSourceFactory.GetNeoForgeSource();
             var neoforgeInstallerUrl = downloadSource.GetNeoForgeInstallerUrl(modLoaderVersion);
             var officialUrl = GetNeoForgeInstallerUrl(modLoaderVersion);
             
@@ -384,9 +383,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
-        // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 使用文件下载专用源
+        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
 
         foreach (var library in libraries)
         {
