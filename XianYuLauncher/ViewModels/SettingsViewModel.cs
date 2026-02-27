@@ -3128,7 +3128,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 sources.Add(new DownloadSourceItem
                 {
                     Key = source.Key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -3162,7 +3162,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 sources.Add(new DownloadSourceItem
                 {
                     Key = source.Key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -3196,7 +3196,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 sources.Add(new DownloadSourceItem
                 {
                     Key = source.Key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -3230,7 +3230,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 sources.Add(new DownloadSourceItem
                 {
                     Key = source.Key,
-                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                     IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                 });
             }
@@ -3262,7 +3262,7 @@ public partial class SettingsViewModel : ObservableRecipient
                     result.Add(new DownloadSourceItem
                     {
                         Key = source.Key,
-                        DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                        DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                         IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                     });
                 }
@@ -3300,7 +3300,7 @@ public partial class SettingsViewModel : ObservableRecipient
                     result.Add(new DownloadSourceItem
                     {
                         Key = source.Key,
-                        DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                        DisplayName = GetLocalizedDownloadSourceDisplayName(source),
                         IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
                     });
                 }
@@ -3345,6 +3345,17 @@ public partial class SettingsViewModel : ObservableRecipient
                 Log.Information($"[Settings] 已加载 ModLoader 源: Forge={ForgeSources.Count}, Fabric={FabricSources.Count}, NeoForge={NeoForgeSources.Count}, Quilt={QuiltSources.Count}, LiteLoader={LiteLoaderSources.Count}, LegacyFabric={LegacyFabricSources.Count}, Cleanroom={CleanroomSources.Count}, Optifine={OptifineSources.Count}");
             });
         });
+    }
+
+    private string GetLocalizedDownloadSourceDisplayName(Core.Services.DownloadSource.IDownloadSource source)
+    {
+        return source.Key switch
+        {
+            "official" => "DownloadSource_DisplayName_Official".GetLocalized(),
+            "bmclapi" => "DownloadSource_DisplayName_Bmclapi".GetLocalized(),
+            "mcim" => "DownloadSource_DisplayName_Mcim".GetLocalized(),
+            _ => _downloadSourceFactory.GetDisplayName(source.Key)
+        };
     }
 
     /// <summary>

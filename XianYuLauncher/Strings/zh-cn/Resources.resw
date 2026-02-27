@@ -3012,6 +3012,81 @@
   <data name="Settings_GameResourceSource.Description" xml:space="preserve">
     <value>MC本体、ModLoader、版本列表的下载源</value>
   </data>
+  <data name="Settings_GameResourceSourceExpander.Header" xml:space="preserve">
+    <value>游戏资源下载源</value>
+  </data>
+  <data name="Settings_GameResourceSourceExpander.Description" xml:space="preserve">
+    <value>游戏本体、ModLoader 的下载源</value>
+  </data>
+  <data name="Settings_VersionManifestSourceCard.Header" xml:space="preserve">
+    <value>版本清单</value>
+  </data>
+  <data name="Settings_VersionManifestSourceCard.Description" xml:space="preserve">
+    <value>获取版本列表等</value>
+  </data>
+  <data name="Settings_FileDownloadSourceCard.Header" xml:space="preserve">
+    <value>文件下载</value>
+  </data>
+  <data name="Settings_FileDownloadSourceCard.Description" xml:space="preserve">
+    <value>client.jar、libraries 等</value>
+  </data>
+  <data name="Settings_ForgeSourceCard.Header" xml:space="preserve">
+    <value>Forge</value>
+  </data>
+  <data name="Settings_ForgeSourceCard.Description" xml:space="preserve">
+    <value>Minecraft Forge</value>
+  </data>
+  <data name="Settings_FabricSourceCard.Header" xml:space="preserve">
+    <value>Fabric</value>
+  </data>
+  <data name="Settings_FabricSourceCard.Description" xml:space="preserve">
+    <value>Fabric</value>
+  </data>
+  <data name="Settings_NeoForgeSourceCard.Header" xml:space="preserve">
+    <value>NeoForge</value>
+  </data>
+  <data name="Settings_NeoForgeSourceCard.Description" xml:space="preserve">
+    <value>NeoForge</value>
+  </data>
+  <data name="Settings_QuiltSourceCard.Header" xml:space="preserve">
+    <value>Quilt</value>
+  </data>
+  <data name="Settings_QuiltSourceCard.Description" xml:space="preserve">
+    <value>Quilt</value>
+  </data>
+  <data name="Settings_LiteLoaderSourceCard.Header" xml:space="preserve">
+    <value>LiteLoader</value>
+  </data>
+  <data name="Settings_LiteLoaderSourceCard.Description" xml:space="preserve">
+    <value>LiteLoader</value>
+  </data>
+  <data name="Settings_LegacyFabricSourceCard.Header" xml:space="preserve">
+    <value>LegacyFabric</value>
+  </data>
+  <data name="Settings_LegacyFabricSourceCard.Description" xml:space="preserve">
+    <value>LegacyFabric</value>
+  </data>
+  <data name="Settings_CleanroomSourceCard.Header" xml:space="preserve">
+    <value>Cleanroom</value>
+  </data>
+  <data name="Settings_CleanroomSourceCard.Description" xml:space="preserve">
+    <value>Cleanroom</value>
+  </data>
+  <data name="Settings_OptiFineSourceCard.Header" xml:space="preserve">
+    <value>OptiFine</value>
+  </data>
+  <data name="Settings_OptiFineSourceCard.Description" xml:space="preserve">
+    <value>OptiFine</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Official" xml:space="preserve">
+    <value>官方源</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Bmclapi" xml:space="preserve">
+    <value>BMCLAPI 镜像</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Mcim" xml:space="preserve">
+    <value>MCIM 镜像</value>
+  </data>
   <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>社区资源下载源</value>
   </data>

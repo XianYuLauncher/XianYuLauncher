@@ -3000,6 +3000,81 @@ Continue downloading?</value>
   <data name="Settings_GameResourceSource.Description" xml:space="preserve">
     <value>Download source for MC, ModLoader, and version list</value>
   </data>
+  <data name="Settings_GameResourceSourceExpander.Header" xml:space="preserve">
+    <value>Game Resource Sources</value>
+  </data>
+  <data name="Settings_GameResourceSourceExpander.Description" xml:space="preserve">
+    <value>Download sources for game core and ModLoader</value>
+  </data>
+  <data name="Settings_VersionManifestSourceCard.Header" xml:space="preserve">
+    <value>Version Manifest</value>
+  </data>
+  <data name="Settings_VersionManifestSourceCard.Description" xml:space="preserve">
+    <value>Retrieve version lists and related metadata</value>
+  </data>
+  <data name="Settings_FileDownloadSourceCard.Header" xml:space="preserve">
+    <value>File Downloads</value>
+  </data>
+  <data name="Settings_FileDownloadSourceCard.Description" xml:space="preserve">
+    <value>client.jar, libraries, and more</value>
+  </data>
+  <data name="Settings_ForgeSourceCard.Header" xml:space="preserve">
+    <value>Forge</value>
+  </data>
+  <data name="Settings_ForgeSourceCard.Description" xml:space="preserve">
+    <value>Minecraft Forge</value>
+  </data>
+  <data name="Settings_FabricSourceCard.Header" xml:space="preserve">
+    <value>Fabric</value>
+  </data>
+  <data name="Settings_FabricSourceCard.Description" xml:space="preserve">
+    <value>Fabric</value>
+  </data>
+  <data name="Settings_NeoForgeSourceCard.Header" xml:space="preserve">
+    <value>NeoForge</value>
+  </data>
+  <data name="Settings_NeoForgeSourceCard.Description" xml:space="preserve">
+    <value>NeoForge</value>
+  </data>
+  <data name="Settings_QuiltSourceCard.Header" xml:space="preserve">
+    <value>Quilt</value>
+  </data>
+  <data name="Settings_QuiltSourceCard.Description" xml:space="preserve">
+    <value>Quilt</value>
+  </data>
+  <data name="Settings_LiteLoaderSourceCard.Header" xml:space="preserve">
+    <value>LiteLoader</value>
+  </data>
+  <data name="Settings_LiteLoaderSourceCard.Description" xml:space="preserve">
+    <value>LiteLoader</value>
+  </data>
+  <data name="Settings_LegacyFabricSourceCard.Header" xml:space="preserve">
+    <value>LegacyFabric</value>
+  </data>
+  <data name="Settings_LegacyFabricSourceCard.Description" xml:space="preserve">
+    <value>LegacyFabric</value>
+  </data>
+  <data name="Settings_CleanroomSourceCard.Header" xml:space="preserve">
+    <value>Cleanroom</value>
+  </data>
+  <data name="Settings_CleanroomSourceCard.Description" xml:space="preserve">
+    <value>Cleanroom</value>
+  </data>
+  <data name="Settings_OptiFineSourceCard.Header" xml:space="preserve">
+    <value>OptiFine</value>
+  </data>
+  <data name="Settings_OptiFineSourceCard.Description" xml:space="preserve">
+    <value>OptiFine</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Official" xml:space="preserve">
+    <value>Official Source</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Bmclapi" xml:space="preserve">
+    <value>BMCLAPI Mirror</value>
+  </data>
+  <data name="DownloadSource_DisplayName_Mcim" xml:space="preserve">
+    <value>MCIM Mirror</value>
+  </data>
   <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>Community Resource Source</value>
   </data>
