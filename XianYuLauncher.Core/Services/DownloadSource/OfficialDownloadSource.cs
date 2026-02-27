@@ -16,6 +16,9 @@ public class OfficialDownloadSource : IDownloadSource
     public string Key => "official";
 
     /// <inheritdoc />
+    public string Host => "piston-meta.mojang.com:443";
+
+    /// <inheritdoc />
     public bool SupportsGameResources => true;
 
     /// <inheritdoc />

@@ -16,6 +16,11 @@ public interface IDownloadSource
     string Key { get; }
 
     /// <summary>
+    /// 下载源的主机名（用于测速），格式如 "bmclapi2.bangbang93.com:443"
+    /// </summary>
+    string Host { get; }
+
+    /// <summary>
     /// 下载源是否支持游戏资源（Minecraft 本体、ModLoader、版本列表）
     /// </summary>
     bool SupportsGameResources { get; }

@@ -23,6 +23,9 @@ public class McimDownloadSource : IDownloadSource
     public string Key => "mcim";
 
     /// <inheritdoc />
+    public string Host => "mod.mcimirror.top:443";
+
+    /// <inheritdoc />
     public bool SupportsGameResources => false;
 
     /// <inheritdoc />

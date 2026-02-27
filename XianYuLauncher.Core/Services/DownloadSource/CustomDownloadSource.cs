@@ -19,6 +19,30 @@ public class CustomDownloadSource : IDownloadSource
     public string Name => _name;
     public string Key => _key;
 
+    /// <inheritdoc />
+    public string Host
+    {
+        get
+        {
+            // 从 BaseUrl 提取主机名和端口
+            var url = _baseUrl.TrimEnd('/');
+            if (url.StartsWith("http://"))
+                url = url.Substring(7);
+            else if (url.StartsWith("https://"))
+                url = url.Substring(8);
+
+            var slashIndex = url.IndexOf('/');
+            if (slashIndex >= 0)
+                url = url.Substring(0, slashIndex);
+
+            // 添加默认端口
+            if (!url.Contains(':'))
+                url = url + ":443";
+
+            return url;
+        }
+    }
+
     /// <summary>
     /// 模板名称（official/community）
     /// </summary>

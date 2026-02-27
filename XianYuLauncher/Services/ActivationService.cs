@@ -283,10 +283,18 @@ public class ActivationService : IActivationService
         // 检查更新
         await CheckForUpdatesAsync();
 
-        // 自动测速（缓存为空或过期时）
+        // 自动测速（根据设置决定是否启用）
         if (_autoSpeedTestService != null)
         {
-            await _autoSpeedTestService.CheckAndRunAsync();
+            var autoSpeedTestEnabled = await _localSettingsService.ReadSettingAsync<bool>("AutoSelectFastestSource");
+            if (autoSpeedTestEnabled)
+            {
+                await _autoSpeedTestService.CheckAndRunAsync();
+            }
+            else
+            {
+                Serilog.Log.Information("[AutoSpeedTest] 已禁用自动测速，跳过");
+            }
         }
 
         await Task.CompletedTask;

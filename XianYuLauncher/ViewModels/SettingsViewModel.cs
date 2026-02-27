@@ -348,7 +348,13 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 测速结果列表（游戏资源源）
     /// </summary>
     [ObservableProperty]
-    private List<Core.Models.SpeedTestResult> _gameSourceSpeedResults = new();
+    private List<Core.Models.SpeedTestResult> _versionManifestSourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（文件下载源）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _fileDownloadSourceSpeedResults = new();
 
     /// <summary>
     /// 测速结果列表（社区资源源）
@@ -363,10 +369,52 @@ public partial class SettingsViewModel : ObservableRecipient
     private List<Core.Models.SpeedTestResult> _curseforgeSourceSpeedResults = new();
 
     /// <summary>
-    /// 显示的最快游戏源信息
+    /// 测速结果列表（Forge）
     /// </summary>
     [ObservableProperty]
-    private string _fastestGameSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+    private List<Core.Models.SpeedTestResult> _forgeSourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（Fabric）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _fabricSourceSpeedResults = new();
+
+    /// <summary>
+    /// 测速结果列表（NeoForge）
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _neoforgeSourceSpeedResults = new();
+
+    /// <summary>
+    /// LiteLoader 源测速结果
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _liteLoaderSourceSpeedResults = new();
+
+    /// <summary>
+    /// Quilt 源测速结果
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _quiltSourceSpeedResults = new();
+
+    /// <summary>
+    /// LegacyFabric 源测速结果
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _legacyFabricSourceSpeedResults = new();
+
+    /// <summary>
+    /// Cleanroom 源测速结果
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _cleanroomSourceSpeedResults = new();
+
+    /// <summary>
+    /// Optifine 源测速结果
+    /// </summary>
+    [ObservableProperty]
+    private List<Core.Models.SpeedTestResult> _optifineSourceSpeedResults = new();
 
     /// <summary>
     /// 显示的最快社区源信息（Modrinth）
@@ -375,10 +423,70 @@ public partial class SettingsViewModel : ObservableRecipient
     private string _fastestCommunitySourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
+    /// 显示的最快版本清单源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestVersionManifestSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快文件下载源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestFileDownloadSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
     /// 显示的最快CurseForge源信息
     /// </summary>
     [ObservableProperty]
     private string _fastestCurseForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 Forge 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 Fabric 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestFabricSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 NeoForge 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestNeoForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 LiteLoader 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestLiteLoaderSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 Quilt 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestQuiltSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 LegacyFabric 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestLegacyFabricSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 Cleanroom 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestCleanroomSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
+
+    /// <summary>
+    /// 显示的最快 Optifine 源信息
+    /// </summary>
+    [ObservableProperty]
+    private string _fastestOptifineSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
     /// 最后测速时间
@@ -3698,6 +3806,31 @@ public partial class SettingsViewModel : ObservableRecipient
 
         // 保存设置
         _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
+
+        // 根据开关状态更新显示
+        if (value)
+        {
+            // 开启时重新加载缓存数据
+            _ = LoadSpeedTestCacheAsync();
+        }
+        else
+        {
+            // 关闭时显示 "-"
+            LastSpeedTestTime = "-";
+            NextSpeedTestTime = "-";
+            FastestVersionManifestSourceInfo = "-";
+            FastestFileDownloadSourceInfo = "-";
+            FastestCommunitySourceInfo = "-";
+            FastestCurseForgeSourceInfo = "-";
+            FastestForgeSourceInfo = "-";
+            FastestFabricSourceInfo = "-";
+            FastestNeoForgeSourceInfo = "-";
+            FastestLiteLoaderSourceInfo = "-";
+            FastestQuiltSourceInfo = "-";
+            FastestLegacyFabricSourceInfo = "-";
+            FastestCleanroomSourceInfo = "-";
+            FastestOptifineSourceInfo = "-";
+        }
     }
 
     /// <summary>
@@ -3732,8 +3865,11 @@ public partial class SettingsViewModel : ObservableRecipient
             IsSpeedTestRunning = true;
 
             // 强制执行新测速（忽略缓存）
-            var gameResults = await _speedTestService.TestGameSourcesAsync();
-            GameSourceSpeedResults = gameResults;
+            var versionManifestResults = await _speedTestService.TestVersionManifestSourcesAsync();
+            VersionManifestSourceSpeedResults = versionManifestResults;
+
+            var fileDownloadResults = await _speedTestService.TestFileDownloadSourcesAsync();
+            FileDownloadSourceSpeedResults = fileDownloadResults;
 
             var communityResults = await _speedTestService.TestCommunitySourcesAsync();
             CommunitySourceSpeedResults = communityResults;
@@ -3741,12 +3877,47 @@ public partial class SettingsViewModel : ObservableRecipient
             var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
             CurseforgeSourceSpeedResults = curseforgeResults;
 
+            // ModLoader 测速
+            var forgeResults = await _speedTestService.TestForgeSourcesAsync();
+            ForgeSourceSpeedResults = forgeResults;
+
+            var fabricResults = await _speedTestService.TestFabricSourcesAsync();
+            FabricSourceSpeedResults = fabricResults;
+
+            var neoforgeResults = await _speedTestService.TestNeoForgeSourcesAsync();
+            NeoforgeSourceSpeedResults = neoforgeResults;
+
+            // 其他 ModLoader 测速
+            var liteLoaderResults = await _speedTestService.TestModLoaderSourcesAsync("liteloader");
+            LiteLoaderSourceSpeedResults = liteLoaderResults;
+
+            var quiltResults = await _speedTestService.TestModLoaderSourcesAsync("quilt");
+            QuiltSourceSpeedResults = quiltResults;
+
+            var legacyFabricResults = await _speedTestService.TestModLoaderSourcesAsync("legacyfabric");
+            LegacyFabricSourceSpeedResults = legacyFabricResults;
+
+            var cleanroomResults = await _speedTestService.TestModLoaderSourcesAsync("cleanroom");
+            CleanroomSourceSpeedResults = cleanroomResults;
+
+            var optifineResults = await _speedTestService.TestModLoaderSourcesAsync("optifine");
+            OptifineSourceSpeedResults = optifineResults;
+
             // 保存到缓存
             var cache = new Core.Models.SpeedTestCache
             {
-                GameSources = GameSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                VersionManifestSources = VersionManifestSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                FileDownloadSources = FileDownloadSourceSpeedResults.ToDictionary(r => r.SourceKey),
                 CommunitySources = CommunitySourceSpeedResults.ToDictionary(r => r.SourceKey),
                 CurseForgeSources = CurseforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                ForgeSources = ForgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                FabricSources = FabricSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                NeoForgeSources = NeoforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                LiteLoaderSources = LiteLoaderSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                QuiltSources = QuiltSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                LegacyFabricSources = LegacyFabricSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                CleanroomSources = CleanroomSourceSpeedResults.ToDictionary(r => r.SourceKey),
+                OptifineSources = OptifineSourceSpeedResults.ToDictionary(r => r.SourceKey),
                 LastUpdated = DateTime.UtcNow
             };
             await _speedTestService.SaveCacheAsync(cache);
@@ -3777,6 +3948,90 @@ public partial class SettingsViewModel : ObservableRecipient
     }
 
     /// <summary>
+    /// 运行 Forge 测速
+    /// </summary>
+    [RelayCommand]
+    private async Task RunForgeSpeedTestAsync()
+    {
+        if (_speedTestService == null || IsSpeedTestRunning)
+            return;
+
+        try
+        {
+            IsSpeedTestRunning = true;
+            var results = await _speedTestService.TestForgeSourcesAsync();
+            ForgeSourceSpeedResults = results;
+
+            var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
+            Serilog.Log.Information("[SpeedTest] Forge 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[Settings] Forge 测速失败");
+        }
+        finally
+        {
+            IsSpeedTestRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// 运行 Fabric 测速
+    /// </summary>
+    [RelayCommand]
+    private async Task RunFabricSpeedTestAsync()
+    {
+        if (_speedTestService == null || IsSpeedTestRunning)
+            return;
+
+        try
+        {
+            IsSpeedTestRunning = true;
+            var results = await _speedTestService.TestFabricSourcesAsync();
+            FabricSourceSpeedResults = results;
+
+            var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
+            Serilog.Log.Information("[SpeedTest] Fabric 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[Settings] Fabric 测速失败");
+        }
+        finally
+        {
+            IsSpeedTestRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// 运行 NeoForge 测速
+    /// </summary>
+    [RelayCommand]
+    private async Task RunNeoForgeSpeedTestAsync()
+    {
+        if (_speedTestService == null || IsSpeedTestRunning)
+            return;
+
+        try
+        {
+            IsSpeedTestRunning = true;
+            var results = await _speedTestService.TestNeoForgeSourcesAsync();
+            NeoforgeSourceSpeedResults = results;
+
+            var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
+            Serilog.Log.Information("[SpeedTest] NeoForge 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "[Settings] NeoForge 测速失败");
+        }
+        finally
+        {
+            IsSpeedTestRunning = false;
+        }
+    }
+
+    /// <summary>
     /// 加载测速缓存并更新显示信息
     /// </summary>
     public async Task LoadSpeedTestCacheAsync()
@@ -3787,26 +4042,54 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var cache = await _speedTestService.LoadCacheAsync();
 
-            // 无论是否有结果数据，只要 LastUpdated 有值就更新时间显示
-            if (cache.LastUpdated != default)
-            {
-                LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-                UpdateNextSpeedTestTime(cache.LastUpdated);
-            }
-
-            // 如果没有任何测速结果，不更新列表和最快源信息
-            if (cache.GameSources.Count == 0 && cache.CommunitySources.Count == 0 && cache.CurseForgeSources.Count == 0)
-            {
-                return;
-            }
-
-            // 将字典转换为列表
-            GameSourceSpeedResults = cache.GameSources.Values.ToList();
+            // 加载缓存数据到内存（无论 ToggleSwitch 是否开启）
+            VersionManifestSourceSpeedResults = cache.VersionManifestSources.Values.ToList();
+            FileDownloadSourceSpeedResults = cache.FileDownloadSources.Values.ToList();
             CommunitySourceSpeedResults = cache.CommunitySources.Values.ToList();
             CurseforgeSourceSpeedResults = cache.CurseForgeSources.Values.ToList();
+            ForgeSourceSpeedResults = cache.ForgeSources.Values.ToList();
+            FabricSourceSpeedResults = cache.FabricSources.Values.ToList();
+            NeoforgeSourceSpeedResults = cache.NeoForgeSources.Values.ToList();
+            LiteLoaderSourceSpeedResults = cache.LiteLoaderSources.Values.ToList();
+            QuiltSourceSpeedResults = cache.QuiltSources.Values.ToList();
+            LegacyFabricSourceSpeedResults = cache.LegacyFabricSources.Values.ToList();
+            CleanroomSourceSpeedResults = cache.CleanroomSources.Values.ToList();
+            OptifineSourceSpeedResults = cache.OptifineSources.Values.ToList();
 
-            // 更新显示信息
-            UpdateSpeedTestDisplayInfoFromCache(cache);
+            // 根据 ToggleSwitch 决定显示内容
+            if (!AutoSelectFastestSource)
+            {
+                // 关闭时显示 "-"
+                LastSpeedTestTime = "-";
+                NextSpeedTestTime = "-";
+                FastestVersionManifestSourceInfo = "-";
+                FastestFileDownloadSourceInfo = "-";
+                FastestCommunitySourceInfo = "-";
+                FastestCurseForgeSourceInfo = "-";
+                FastestForgeSourceInfo = "-";
+                FastestFabricSourceInfo = "-";
+                FastestNeoForgeSourceInfo = "-";
+                FastestLiteLoaderSourceInfo = "-";
+                FastestQuiltSourceInfo = "-";
+                FastestLegacyFabricSourceInfo = "-";
+                FastestCleanroomSourceInfo = "-";
+                FastestOptifineSourceInfo = "-";
+            }
+            else
+            {
+                // 开启时显示缓存数据
+                if (cache.LastUpdated != default)
+                {
+                    LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                    UpdateNextSpeedTestTime(cache.LastUpdated);
+                }
+                else
+                {
+                    LastSpeedTestTime = "Settings_SpeedTest_NeverTested".GetLocalized();
+                    NextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
+                }
+                UpdateSpeedTestDisplayInfoFromCache(cache);
+            }
         }
         catch (Exception ex)
         {
@@ -3841,32 +4124,59 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private void UpdateSpeedTestDisplayInfoFromCache(Core.Models.SpeedTestCache cache)
     {
-        // 游戏资源源
-        var fastestGame = cache.GameSources.Values
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestGameSourceInfo = fastestGame != null
-            ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
+        static string BuildFastestSourceInfo(IEnumerable<Core.Models.SpeedTestResult> sourceResults)
+        {
+            var results = sourceResults.ToList();
+            if (results.Count == 0)
+            {
+                return "Settings_SpeedTest_NeverTested".GetLocalized();
+            }
+
+            var fastest = results
+                .Where(r => r.IsSuccess)
+                .OrderBy(r => r.LatencyMs)
+                .FirstOrDefault();
+
+            return fastest != null
+                ? $"{fastest.SourceName} ({fastest.LatencyMs}ms)"
+                : "Settings_SpeedTest_TestFailed".GetLocalized();
+        }
+
+        // 版本清单源
+        FastestVersionManifestSourceInfo = BuildFastestSourceInfo(cache.VersionManifestSources.Values);
+
+        // 文件下载源
+        FastestFileDownloadSourceInfo = BuildFastestSourceInfo(cache.FileDownloadSources.Values);
 
         // 社区资源源（Modrinth）
-        var fastestCommunity = cache.CommunitySources.Values
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestCommunitySourceInfo = fastestCommunity != null
-            ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
+        FastestCommunitySourceInfo = BuildFastestSourceInfo(cache.CommunitySources.Values);
 
         // CurseForge资源源
-        var fastestCurseForge = cache.CurseForgeSources.Values
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestCurseForgeSourceInfo = fastestCurseForge != null
-            ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
+        FastestCurseForgeSourceInfo = BuildFastestSourceInfo(cache.CurseForgeSources.Values);
+
+        // Forge 源
+        FastestForgeSourceInfo = BuildFastestSourceInfo(cache.ForgeSources.Values);
+
+        // Fabric 源
+        FastestFabricSourceInfo = BuildFastestSourceInfo(cache.FabricSources.Values);
+
+        // NeoForge 源
+        FastestNeoForgeSourceInfo = BuildFastestSourceInfo(cache.NeoForgeSources.Values);
+
+        // LiteLoader 源
+        FastestLiteLoaderSourceInfo = BuildFastestSourceInfo(cache.LiteLoaderSources.Values);
+
+        // Quilt 源
+        FastestQuiltSourceInfo = BuildFastestSourceInfo(cache.QuiltSources.Values);
+
+        // LegacyFabric 源
+        FastestLegacyFabricSourceInfo = BuildFastestSourceInfo(cache.LegacyFabricSources.Values);
+
+        // Cleanroom 源
+        FastestCleanroomSourceInfo = BuildFastestSourceInfo(cache.CleanroomSources.Values);
+
+        // Optifine 源
+        FastestOptifineSourceInfo = BuildFastestSourceInfo(cache.OptifineSources.Values);
     }
 
     /// <summary>
@@ -3874,13 +4184,22 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private void UpdateSpeedTestDisplayInfo()
     {
-        // 游戏资源源
-        var fastestGame = GameSourceSpeedResults
+        // 版本清单源
+        var fastestVersionManifest = VersionManifestSourceSpeedResults
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault();
-        FastestGameSourceInfo = fastestGame != null
-            ? $"{fastestGame.SourceName} ({fastestGame.LatencyMs}ms)"
+        FastestVersionManifestSourceInfo = fastestVersionManifest != null
+            ? $"{fastestVersionManifest.SourceName} ({fastestVersionManifest.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // 文件下载源
+        var fastestFileDownload = FileDownloadSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestFileDownloadSourceInfo = fastestFileDownload != null
+            ? $"{fastestFileDownload.SourceName} ({fastestFileDownload.LatencyMs}ms)"
             : "Settings_SpeedTest_TestFailed".GetLocalized();
 
         // 社区资源源（Modrinth）
@@ -3900,6 +4219,78 @@ public partial class SettingsViewModel : ObservableRecipient
         FastestCurseForgeSourceInfo = fastestCurseForge != null
             ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
             : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // Forge 源
+        var fastestForge = ForgeSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestForgeSourceInfo = fastestForge != null
+            ? $"{fastestForge.SourceName} ({fastestForge.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // Fabric 源
+        var fastestFabric = FabricSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestFabricSourceInfo = fastestFabric != null
+            ? $"{fastestFabric.SourceName} ({fastestFabric.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // NeoForge 源
+        var fastestNeoForge = NeoforgeSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestNeoForgeSourceInfo = fastestNeoForge != null
+            ? $"{fastestNeoForge.SourceName} ({fastestNeoForge.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // LiteLoader 源
+        var fastestLiteLoader = LiteLoaderSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestLiteLoaderSourceInfo = fastestLiteLoader != null
+            ? $"{fastestLiteLoader.SourceName} ({fastestLiteLoader.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // Quilt 源
+        var fastestQuilt = QuiltSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestQuiltSourceInfo = fastestQuilt != null
+            ? $"{fastestQuilt.SourceName} ({fastestQuilt.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // LegacyFabric 源
+        var fastestLegacyFabric = LegacyFabricSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestLegacyFabricSourceInfo = fastestLegacyFabric != null
+            ? $"{fastestLegacyFabric.SourceName} ({fastestLegacyFabric.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // Cleanroom 源
+        var fastestCleanroom = CleanroomSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestCleanroomSourceInfo = fastestCleanroom != null
+            ? $"{fastestCleanroom.SourceName} ({fastestCleanroom.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
+
+        // Optifine 源
+        var fastestOptifine = OptifineSourceSpeedResults
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault();
+        FastestOptifineSourceInfo = fastestOptifine != null
+            ? $"{fastestOptifine.SourceName} ({fastestOptifine.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized();
     }
 
     /// <summary>
@@ -3911,16 +4302,29 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             var cache = await _speedTestService.LoadCacheAsync();
 
-            // 应用最快的游戏资源源
-            var fastestGameKey = cache.GetFastestGameSourceKey();
-            if (!string.IsNullOrEmpty(fastestGameKey))
+            // 应用最快的版本清单源
+            var fastestVersionManifestKey = cache.GetFastestVersionManifestSourceKey();
+            if (!string.IsNullOrEmpty(fastestVersionManifestKey))
             {
-                var gameSourceItem = GameResourceSources.FirstOrDefault(s => s.Key == fastestGameKey);
-                if (gameSourceItem != null)
+                var versionManifestItem = VersionManifestSources.FirstOrDefault(s => s.Key == fastestVersionManifestKey);
+                if (versionManifestItem != null)
                 {
-                    SelectedGameResourceSource = gameSourceItem;
-                    _downloadSourceFactory.SetDefaultSource(fastestGameKey);
-                    Log.Information("[Settings] 自动选择最快游戏源: {Source}", fastestGameKey);
+                    SelectedVersionManifestSource = versionManifestItem;
+                    _downloadSourceFactory.SetVersionManifestSource(fastestVersionManifestKey);
+                    Log.Information("[Settings] 自动选择最快版本清单源: {Source}", fastestVersionManifestKey);
+                }
+            }
+
+            // 应用最快的文件下载源
+            var fastestFileDownloadKey = cache.GetFastestFileDownloadSourceKey();
+            if (!string.IsNullOrEmpty(fastestFileDownloadKey))
+            {
+                var fileDownloadItem = FileDownloadSources.FirstOrDefault(s => s.Key == fastestFileDownloadKey);
+                if (fileDownloadItem != null)
+                {
+                    SelectedFileDownloadSource = fileDownloadItem;
+                    _downloadSourceFactory.SetFileDownloadSource(fastestFileDownloadKey);
+                    Log.Information("[Settings] 自动选择最快文件下载源: {Source}", fastestFileDownloadKey);
                 }
             }
 
