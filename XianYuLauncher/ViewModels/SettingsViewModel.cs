@@ -4161,24 +4161,6 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private void UpdateSpeedTestDisplayInfoFromCache(Core.Models.SpeedTestCache cache)
     {
-        static string BuildFastestSourceInfo(IEnumerable<Core.Models.SpeedTestResult> sourceResults)
-        {
-            var results = sourceResults.ToList();
-            if (results.Count == 0)
-            {
-                return "Settings_SpeedTest_NeverTested".GetLocalized();
-            }
-
-            var fastest = results
-                .Where(r => r.IsSuccess)
-                .OrderBy(r => r.LatencyMs)
-                .FirstOrDefault();
-
-            return fastest != null
-                ? $"{fastest.SourceName} ({fastest.LatencyMs}ms)"
-                : "Settings_SpeedTest_TestFailed".GetLocalized();
-        }
-
         // 版本清单源
         FastestVersionManifestSourceInfo = BuildFastestSourceInfo(cache.VersionManifestSources.Values);
 
@@ -4221,112 +4203,35 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private void UpdateSpeedTestDisplayInfo()
     {
-        // 版本清单源
-        var fastestVersionManifest = VersionManifestSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestVersionManifestSourceInfo = fastestVersionManifest != null
-            ? $"{fastestVersionManifest.SourceName} ({fastestVersionManifest.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
+        FastestVersionManifestSourceInfo = BuildFastestSourceInfo(VersionManifestSourceSpeedResults);
+        FastestFileDownloadSourceInfo = BuildFastestSourceInfo(FileDownloadSourceSpeedResults);
+        FastestCommunitySourceInfo = BuildFastestSourceInfo(CommunitySourceSpeedResults);
+        FastestCurseForgeSourceInfo = BuildFastestSourceInfo(CurseforgeSourceSpeedResults);
+        FastestForgeSourceInfo = BuildFastestSourceInfo(ForgeSourceSpeedResults);
+        FastestFabricSourceInfo = BuildFastestSourceInfo(FabricSourceSpeedResults);
+        FastestNeoForgeSourceInfo = BuildFastestSourceInfo(NeoforgeSourceSpeedResults);
+        FastestLiteLoaderSourceInfo = BuildFastestSourceInfo(LiteLoaderSourceSpeedResults);
+        FastestQuiltSourceInfo = BuildFastestSourceInfo(QuiltSourceSpeedResults);
+        FastestLegacyFabricSourceInfo = BuildFastestSourceInfo(LegacyFabricSourceSpeedResults);
+        FastestCleanroomSourceInfo = BuildFastestSourceInfo(CleanroomSourceSpeedResults);
+        FastestOptifineSourceInfo = BuildFastestSourceInfo(OptifineSourceSpeedResults);
+    }
 
-        // 文件下载源
-        var fastestFileDownload = FileDownloadSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestFileDownloadSourceInfo = fastestFileDownload != null
-            ? $"{fastestFileDownload.SourceName} ({fastestFileDownload.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
+    private static string BuildFastestSourceInfo(IEnumerable<Core.Models.SpeedTestResult> sourceResults)
+    {
+        var results = sourceResults.ToList();
+        if (results.Count == 0)
+        {
+            return "Settings_SpeedTest_NeverTested".GetLocalized();
+        }
 
-        // 社区资源源（Modrinth）
-        var fastestCommunity = CommunitySourceSpeedResults
+        var fastest = results
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault();
-        FastestCommunitySourceInfo = fastestCommunity != null
-            ? $"{fastestCommunity.SourceName} ({fastestCommunity.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
 
-        // CurseForge资源源
-        var fastestCurseForge = CurseforgeSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestCurseForgeSourceInfo = fastestCurseForge != null
-            ? $"{fastestCurseForge.SourceName} ({fastestCurseForge.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // Forge 源
-        var fastestForge = ForgeSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestForgeSourceInfo = fastestForge != null
-            ? $"{fastestForge.SourceName} ({fastestForge.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // Fabric 源
-        var fastestFabric = FabricSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestFabricSourceInfo = fastestFabric != null
-            ? $"{fastestFabric.SourceName} ({fastestFabric.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // NeoForge 源
-        var fastestNeoForge = NeoforgeSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestNeoForgeSourceInfo = fastestNeoForge != null
-            ? $"{fastestNeoForge.SourceName} ({fastestNeoForge.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // LiteLoader 源
-        var fastestLiteLoader = LiteLoaderSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestLiteLoaderSourceInfo = fastestLiteLoader != null
-            ? $"{fastestLiteLoader.SourceName} ({fastestLiteLoader.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // Quilt 源
-        var fastestQuilt = QuiltSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestQuiltSourceInfo = fastestQuilt != null
-            ? $"{fastestQuilt.SourceName} ({fastestQuilt.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // LegacyFabric 源
-        var fastestLegacyFabric = LegacyFabricSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestLegacyFabricSourceInfo = fastestLegacyFabric != null
-            ? $"{fastestLegacyFabric.SourceName} ({fastestLegacyFabric.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // Cleanroom 源
-        var fastestCleanroom = CleanroomSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestCleanroomSourceInfo = fastestCleanroom != null
-            ? $"{fastestCleanroom.SourceName} ({fastestCleanroom.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-
-        // Optifine 源
-        var fastestOptifine = OptifineSourceSpeedResults
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-        FastestOptifineSourceInfo = fastestOptifine != null
-            ? $"{fastestOptifine.SourceName} ({fastestOptifine.LatencyMs}ms)"
+        return fastest != null
+            ? $"{fastest.SourceName} ({fastest.LatencyMs}ms)"
             : "Settings_SpeedTest_TestFailed".GetLocalized();
     }
 
