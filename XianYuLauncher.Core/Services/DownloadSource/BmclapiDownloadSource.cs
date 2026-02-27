@@ -404,19 +404,13 @@ public class BmclapiDownloadSource : IDownloadSource
 
     public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
     {
-        // OptiFine 版本格式: pre1.19.2-rc2, 1.19.2-HD_U_H9, 1.19.2_HD_U_H9
-        // 需要根据版本号解析出 type 和 patch
-        var parts = optifineVersion.Split('-');
-        if (parts.Length >= 2)
+        // 格式示例: 正式版 1.19.2-HD_U_H9, 1.19.2_HD_U_H9；预发布 pre1.19.2-rc2（走兜底）
+        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
         {
-            string mcVersion = parts[0];
-            string suffix = parts[1];
-            // 格式: 1.19.2-HD_U_H9 或 1.19.2_HD_U_H9
-            string type = suffix.Replace("_", "-").Split('-')[1]; // HD_U_H9 -> HD_U_H9
-            string patch = suffix.Replace("_", "-").Split('-')[2]; // HD_U_H9 -> H9
-            return $"https://bmclapi2.bangbang93.com/optifine/{mcVersion}/{type}/{patch}";
+            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersion}/{type}/{patch}";
         }
-        // 兜底：直接拼接
+
+        // 兜底：直接拼接（兼容无法解析为 HD_U_* 的版本）
         return $"https://bmclapi2.bangbang93.com/optifine/{optifineVersion}";
     }
 
