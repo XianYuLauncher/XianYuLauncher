@@ -43,9 +43,10 @@ public class FabricService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[FabricService] 使用 FallbackDownloadManager 获取 Fabric 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetFabricVersionsUrl(minecraftVersion),
+                    "fabric",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）

@@ -61,9 +61,10 @@ public class ForgeService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[ForgeService] 使用 FallbackDownloadManager 获取 Forge 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetForgeVersionsUrl(minecraftVersion),
+                    "forge",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）

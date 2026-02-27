@@ -240,9 +240,10 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
-        // 使用内置的 URL 转换逻辑
+        // 使用内置的 URL 转换逻辑，调用 Func 版本并传入 resourceType
         return await SendGetWithFallbackAsync(
             source => TransformUrl(originalUrl, source, resourceType),
+            resourceType,
             configureRequest,
             cancellationToken);
     }
@@ -256,11 +257,14 @@ public class FallbackDownloadManager
     /// <returns>HTTP 响应结果</returns>
     public async Task<FallbackHttpResult> SendGetWithFallbackAsync(
         Func<IDownloadSource, string?> urlGenerator,
+        string resourceType,
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
-        // Func 版本没有 resourceType，保持使用默认源（供高级用途）
-        var primarySource = _sourceFactory.GetDefaultSource();
+        // 根据 resourceType 获取主源
+        var primarySource = GetPrimarySourceByResourceType(resourceType);
+        _logger?.LogDebug("[Func版本] 使用主源: {Source} (类型: {ResourceType})", primarySource.Key, resourceType);
+
         return await SendGetWithFallbackCoreAsync(
             urlGenerator, configureRequest, GetSourceOrder(primarySource.Key), cancellationToken);
     }

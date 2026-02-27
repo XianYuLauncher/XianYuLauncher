@@ -43,9 +43,10 @@ public class QuiltService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[QuiltService] 使用 FallbackDownloadManager 获取 Quilt 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetQuiltVersionsUrl(minecraftVersion),
+                    "quilt",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）

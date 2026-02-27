@@ -58,9 +58,10 @@ public class NeoForgeService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 使用 FallbackDownloadManager 获取 NeoForge 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetNeoForgeVersionsUrl(minecraftVersion),
+                    "neoforge",
                     (request, source) =>
                     {
                         // 所有源都添加 User-Agent（maven.neoforged.net 会拒绝没有 UA 的请求）
