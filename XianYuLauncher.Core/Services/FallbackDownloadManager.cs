@@ -85,8 +85,8 @@ public class FallbackDownloadManager
         var attemptedSources = new List<string>();
         var errors = new List<string>();
 
-        // 1. 获取主源
-        var primarySource = _sourceFactory.GetDefaultSource();
+        // 1. 根据资源类型获取主源
+        var primarySource = GetPrimarySourceByResourceType(resourceType);
         var sourcesToTry = GetSourceOrder(primarySource.Key);
 
         _logger?.LogDebug("开始下载 {Url}，主源: {Source}", originalUrl, primarySource.Key);
@@ -151,7 +151,7 @@ public class FallbackDownloadManager
         var attemptedSources = new List<string>();
         var errors = new List<string>();
 
-        var primarySource = _sourceFactory.GetDefaultSource();
+        var primarySource = GetPrimarySourceByResourceType(resourceType);
         var sourcesToTry = GetSourceOrder(primarySource.Key);
 
         foreach (var sourceKey in sourcesToTry)
@@ -194,7 +194,7 @@ public class FallbackDownloadManager
         var attemptedSources = new List<string>();
         var errors = new List<string>();
 
-        var primarySource = _sourceFactory.GetDefaultSource();
+        var primarySource = GetPrimarySourceByResourceType(resourceType);
         var sourcesToTry = GetSourceOrder(primarySource.Key);
 
         foreach (var sourceKey in sourcesToTry)
@@ -259,6 +259,7 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
+        // Func 版本没有 resourceType，保持使用默认源（供高级用途）
         var primarySource = _sourceFactory.GetDefaultSource();
         return await SendGetWithFallbackCoreAsync(
             urlGenerator, configureRequest, GetSourceOrder(primarySource.Key), cancellationToken);
@@ -274,7 +275,7 @@ public class FallbackDownloadManager
         Action<HttpRequestMessage, IDownloadSource>? configureRequest = null,
         CancellationToken cancellationToken = default)
     {
-        var primarySource = _sourceFactory.GetDefaultSource();
+        var primarySource = GetPrimarySourceByResourceType(resourceType);
         return await SendPostWithFallbackCoreAsync(
             originalUrl, resourceType, contentFactory, configureRequest,
             GetSourceOrder(primarySource.Key), cancellationToken);
@@ -607,6 +608,57 @@ public class FallbackDownloadManager
             return customSource.Priority;
         }
         return 0;
+    }
+
+    /// <summary>
+    /// 根据资源类型获取对应的下载源
+    /// </summary>
+    /// <param name="resourceType">资源类型</param>
+    /// <returns>对应的下载源</returns>
+    private IDownloadSource GetPrimarySourceByResourceType(string resourceType)
+    {
+        var type = resourceType.ToLowerInvariant();
+
+        // 社区资源已在 SendGetWithFallbackCoreAsync 中单独处理
+        if (type.StartsWith("modrinth") || type.StartsWith("curseforge"))
+        {
+            // 社区资源使用已有的 GetCommunitySourceOrder 逻辑处理
+            // 这里返回默认源，让 GetCommunitySourceOrder 处理
+            return _sourceFactory.GetDefaultSource();
+        }
+
+        return type switch
+        {
+            // 版本清单
+            "version_manifest" => _sourceFactory.GetVersionManifestSource(),
+
+            // 核心游戏资源文件
+            "library" or "client_jar" or "asset" or "asset_index"
+                => _sourceFactory.GetFileDownloadSource(),
+
+            // ModLoader - 通过资源类型前缀或名称判断
+            var t when t.StartsWith("forge") || t.Contains("forge")
+                => _sourceFactory.GetForgeSource(),
+            var t when t.StartsWith("fabric") || t.Contains("fabric")
+                => _sourceFactory.GetFabricSource(),
+            var t when t.StartsWith("neoforge") || t.Contains("neoforge")
+                => _sourceFactory.GetNeoForgeSource(),
+            var t when t.StartsWith("quilt") || t.Contains("quilt")
+                => _sourceFactory.GetQuiltSource(),
+            var t when t.StartsWith("legacyfabric") || t.Contains("legacyfabric")
+                => _sourceFactory.GetLegacyFabricSource(),
+            var t when t.StartsWith("liteloader") || t.Contains("liteloader")
+                => _sourceFactory.GetLiteLoaderSource(),
+            var t when t.StartsWith("optifine") || t.Contains("optifine")
+                => _sourceFactory.GetOptifineSource(),
+
+            // Quilt/Fabric Meta URL
+            "quilt_meta" => _sourceFactory.GetQuiltSource(),
+            "fabric_meta" => _sourceFactory.GetFabricSource(),
+
+            // 默认使用文件下载源
+            _ => _sourceFactory.GetFileDownloadSource()
+        };
     }
 
     /// <summary>
