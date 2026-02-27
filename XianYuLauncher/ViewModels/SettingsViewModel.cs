@@ -3472,7 +3472,13 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
 
         // 读取自动选择最优下载源设置
-        var savedAutoSelect = await _localSettingsService.ReadSettingAsync<bool>(AutoSelectFastestSourceKey);
+        var savedAutoSelectSetting = await _localSettingsService.ReadSettingAsync<bool?>(AutoSelectFastestSourceKey);
+        var savedAutoSelect = savedAutoSelectSetting ?? true;
+        if (!savedAutoSelectSetting.HasValue)
+        {
+            await _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, savedAutoSelect);
+            Log.Information("[Settings] 首次运行未检测到自动选择最优下载源配置，已默认开启并写回设置");
+        }
         Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
 
         // 在 UI 线程上设置选中项

@@ -286,7 +286,17 @@ public class ActivationService : IActivationService
         // 自动测速（根据设置决定是否启用）
         if (_autoSpeedTestService != null)
         {
-            var autoSpeedTestEnabled = await _localSettingsService.ReadSettingAsync<bool>("AutoSelectFastestSource");
+            const string autoSelectFastestSourceKey = "AutoSelectFastestSource";
+            var autoSpeedTestEnabledSetting = await _localSettingsService.ReadSettingAsync<bool?>(autoSelectFastestSourceKey);
+            var autoSpeedTestEnabled = autoSpeedTestEnabledSetting ?? true;
+
+            // 首次运行（无配置）默认开启，并回写设置
+            if (!autoSpeedTestEnabledSetting.HasValue)
+            {
+                await _localSettingsService.SaveSettingAsync(autoSelectFastestSourceKey, autoSpeedTestEnabled);
+                Serilog.Log.Information("[AutoSpeedTest] 首次运行未检测到配置，已默认开启自动测速并写回设置");
+            }
+
             if (autoSpeedTestEnabled)
             {
                 await _autoSpeedTestService.CheckAndRunAsync();
