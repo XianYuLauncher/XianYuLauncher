@@ -167,6 +167,7 @@ public class SpeedTestService : ISpeedTestService
 
         _logger.LogInformation("[SpeedTest] 版本清单源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("版本清单", results, sortedResults);
 
         return sortedResults;
     }
@@ -214,6 +215,7 @@ public class SpeedTestService : ISpeedTestService
 
         _logger.LogInformation("[SpeedTest] 文件下载源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("文件下载", results, sortedResults);
 
         return sortedResults;
     }
@@ -261,6 +263,7 @@ public class SpeedTestService : ISpeedTestService
 
         _logger.LogInformation("[SpeedTest] 社区资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("社区资源", results, sortedResults);
 
         return sortedResults;
     }
@@ -308,6 +311,7 @@ public class SpeedTestService : ISpeedTestService
 
         _logger.LogInformation("[SpeedTest] CurseForge 资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("CurseForge", results, sortedResults);
 
         return sortedResults;
     }
@@ -463,10 +467,12 @@ public class SpeedTestService : ISpeedTestService
         if (successfulResults.Count == 0)
         {
             _logger.LogWarning("[SpeedTest] {LoaderType} 源测速全部失败", loaderType);
+            LogSpeedTestSummary(loaderType, results, new List<SpeedTestResult>());
             return results.OrderBy(r => r.LatencyMs).ToList();
         }
-
-        return successfulResults.OrderBy(r => r.LatencyMs).ToList();
+        var sortedResults = successfulResults.OrderBy(r => r.LatencyMs).ToList();
+        LogSpeedTestSummary(loaderType, results, sortedResults);
+        return sortedResults;
     }
 
     /// <summary>
@@ -495,9 +501,28 @@ public class SpeedTestService : ISpeedTestService
                     _ => false
                 };
 
-                if (sourceSupportsThisLoader && !string.IsNullOrEmpty(source.Host))
+                if (!sourceSupportsThisLoader)
                 {
-                    result.Add((source.Key, source.Host, source.Name));
+                    continue;
+                }
+
+                var probeUrl = loaderTypeLower switch
+                {
+                    "forge" => source.GetForgeVersionsUrl("1.20.1"),
+                    "fabric" => source.GetFabricVersionsUrl("1.20.1"),
+                    "neoforge" => source.GetNeoForgeVersionsUrl("1.20.1"),
+                    "quilt" => source.GetQuiltVersionsUrl("1.20.1"),
+                    "liteloader" => source.GetLiteLoaderVersionsUrl(),
+                    "legacyfabric" => source.GetLegacyFabricVersionsUrl("1.13.2"),
+                    "optifine" => source.GetOptifineVersionsUrl("1.20.1"),
+                    "cleanroom" => source.GetVersionManifestUrl(),
+                    _ => string.Empty
+                };
+
+                var resolvedHost = ExtractHostWithPort(probeUrl) ?? source.Host;
+                if (!string.IsNullOrEmpty(resolvedHost))
+                {
+                    result.Add((source.Key, resolvedHost, source.Name));
                 }
             }
             catch (Exception ex)
@@ -674,6 +699,32 @@ public class SpeedTestService : ISpeedTestService
     }
 
     /// <summary>
+    /// 输出测速汇总日志：各源测速结果与最终最快源
+    /// </summary>
+    private void LogSpeedTestSummary(string category, List<SpeedTestResult> allResults, List<SpeedTestResult> successfulSorted)
+    {
+        var details = allResults
+            .OrderBy(r => r.IsSuccess ? 0 : 1)
+            .ThenBy(r => r.IsSuccess ? r.LatencyMs : int.MaxValue)
+            .Select(r => r.IsSuccess
+                ? $"{r.SourceKey}={r.LatencyMs}ms"
+                : $"{r.SourceKey}=失败({r.ErrorMessage ?? "unknown"})")
+            .ToList();
+
+        _logger.LogInformation("[SpeedTest] {Category} 源测速结果: {Details}", category, string.Join(", ", details));
+
+        var fastest = successfulSorted.FirstOrDefault();
+        if (fastest != null)
+        {
+            _logger.LogInformation("[SpeedTest] {Category} 最快源: {SourceKey} ({Latency}ms)", category, fastest.SourceKey, fastest.LatencyMs);
+        }
+        else
+        {
+            _logger.LogWarning("[SpeedTest] {Category} 无可用测速结果（全部失败）", category);
+        }
+    }
+
+    /// <summary>
     /// 获取所有社区资源源
     /// </summary>
     private List<(string Key, string Host, string Name)> GetAllCommunitySources()
@@ -685,10 +736,10 @@ public class SpeedTestService : ISpeedTestService
 
         foreach (var source in modrinthSources)
         {
-            // 直接使用源的 Host 属性
-            if (!string.IsNullOrEmpty(source.Host))
+            var resolvedHost = ExtractHostWithPort(source.GetModrinthApiBaseUrl()) ?? source.Host;
+            if (!string.IsNullOrEmpty(resolvedHost))
             {
-                sources.Add((source.Key, source.Host, source.Name));
+                sources.Add((source.Key, resolvedHost, source.Name));
             }
         }
 
@@ -707,10 +758,10 @@ public class SpeedTestService : ISpeedTestService
 
         foreach (var source in curseforgeSources)
         {
-            // 直接使用源的 Host 属性
-            if (!string.IsNullOrEmpty(source.Host))
+            var resolvedHost = ExtractHostWithPort(source.GetCurseForgeApiBaseUrl()) ?? source.Host;
+            if (!string.IsNullOrEmpty(resolvedHost))
             {
-                sources.Add((source.Key, source.Host, source.Name));
+                sources.Add((source.Key, resolvedHost, source.Name));
             }
         }
 
@@ -720,24 +771,25 @@ public class SpeedTestService : ISpeedTestService
     /// <summary>
     /// 从 URL 中提取主机名
     /// </summary>
-    private string? ExtractHost(string url)
+    private string? ExtractHostWithPort(string url)
     {
         try
         {
-            if (url.StartsWith("http://"))
-                url = url.Substring(7);
-            else if (url.StartsWith("https://"))
-                url = url.Substring(8);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return null;
+            }
 
-            var slashIndex = url.IndexOf('/');
-            if (slashIndex >= 0)
-                url = url.Substring(0, slashIndex);
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
 
-            var colonIndex = url.IndexOf(':');
-            if (colonIndex >= 0)
-                url = url.Substring(0, colonIndex);
+            var port = uri.IsDefaultPort
+                ? (uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 80 : 443)
+                : uri.Port;
 
-            return url;
+            return $"{uri.Host}:{port}";
         }
         catch (Exception ex)
         {
