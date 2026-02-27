@@ -154,6 +154,483 @@ public class SpeedTestCacheTests
 
     #endregion
 
+    #region GetFastestFileDownloadSourceKey 测试
+
+    [Fact]
+    public void GetFastestFileDownloadSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestFileDownloadSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFileDownloadSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            FileDownloadSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 40, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 120, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestFileDownloadSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFileDownloadSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            FileDownloadSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 40, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 120, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestFileDownloadSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFileDownloadSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            FileDownloadSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 40, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 120, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestFileDownloadSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestForgeSourceKey 测试
+
+    [Fact]
+    public void GetFastestForgeSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestForgeSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            ForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 55, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestForgeSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            ForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 55, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestForgeSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            ForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 55, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestForgeSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestFabricSourceKey 测试
+
+    [Fact]
+    public void GetFastestFabricSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFabricSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            FabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 30, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 150, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFabricSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            FabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 30, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 150, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestFabricSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            FabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 30, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 150, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestFabricSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestNeoForgeSourceKey 测试
+
+    [Fact]
+    public void GetFastestNeoForgeSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestNeoForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestNeoForgeSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            NeoForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 45, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 180, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestNeoForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestNeoForgeSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            NeoForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 45, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 180, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestNeoForgeSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestNeoForgeSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            NeoForgeSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 45, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 180, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestNeoForgeSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestLiteLoaderSourceKey 测试
+
+    [Fact]
+    public void GetFastestLiteLoaderSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestLiteLoaderSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLiteLoaderSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            LiteLoaderSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 60, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 250, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestLiteLoaderSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLiteLoaderSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            LiteLoaderSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 60, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 250, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestLiteLoaderSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLiteLoaderSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            LiteLoaderSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 60, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 250, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestLiteLoaderSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestQuiltSourceKey 测试
+
+    [Fact]
+    public void GetFastestQuiltSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestQuiltSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestQuiltSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            QuiltSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 35, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 130, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestQuiltSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestQuiltSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            QuiltSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 35, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 130, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestQuiltSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestQuiltSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            QuiltSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 35, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 130, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestQuiltSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestLegacyFabricSourceKey 测试
+
+    [Fact]
+    public void GetFastestLegacyFabricSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestLegacyFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLegacyFabricSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            LegacyFabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 70, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 300, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestLegacyFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLegacyFabricSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            LegacyFabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 70, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 300, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestLegacyFabricSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestLegacyFabricSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            LegacyFabricSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 70, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 300, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestLegacyFabricSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestCleanroomSourceKey 测试
+
+    [Fact]
+    public void GetFastestCleanroomSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestCleanroomSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestCleanroomSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            CleanroomSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestCleanroomSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestCleanroomSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            CleanroomSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestCleanroomSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestCleanroomSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            CleanroomSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 200, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestCleanroomSourceKey());
+    }
+
+    #endregion
+
+    #region GetFastestOptifineSourceKey 测试
+
+    [Fact]
+    public void GetFastestOptifineSourceKey_EmptyCache_ReturnsNull()
+    {
+        var cache = new SpeedTestCache();
+        Assert.Null(cache.GetFastestOptifineSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestOptifineSourceKey_ReturnsLowestLatency()
+    {
+        var cache = new SpeedTestCache
+        {
+            OptifineSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 65, IsSuccess = true },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 220, IsSuccess = true }
+            }
+        };
+        Assert.Equal("bmclapi", cache.GetFastestOptifineSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestOptifineSourceKey_IgnoresFailedSources()
+    {
+        var cache = new SpeedTestCache
+        {
+            OptifineSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 65, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 220, IsSuccess = true }
+            }
+        };
+        Assert.Equal("official", cache.GetFastestOptifineSourceKey());
+    }
+
+    [Fact]
+    public void GetFastestOptifineSourceKey_AllFailed_ReturnsNull()
+    {
+        var cache = new SpeedTestCache
+        {
+            OptifineSources = new Dictionary<string, SpeedTestResult>
+            {
+                ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 65, IsSuccess = false },
+                ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 220, IsSuccess = false }
+            }
+        };
+        Assert.Null(cache.GetFastestOptifineSourceKey());
+    }
+
+    #endregion
+
     #region GetFastestCommunitySourceKey 测试
 
     [Fact]
