@@ -230,12 +230,36 @@ public class CustomDownloadSource : IDownloadSource
 
     public string GetOptifineVersionsUrl(string minecraftVersion)
     {
-        return _template.GetOptifineVersionsUrl(minecraftVersion);
+        var context = new Dictionary<string, string> { { "mcVersion", minecraftVersion } };
+        return ApplyTemplate("optifine_versions", _template.GetOptifineVersionsUrl(minecraftVersion), context);
     }
 
     public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
     {
-        return _template.GetOptifineDownloadUrl(minecraftVersion, optifineVersion);
+        // 解析 OptiFine 版本后缀（如 1.19.2-HD_U_H9 → type=HD_U, patch=H9）
+        Dictionary<string, string> context;
+        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
+        {
+            context = new Dictionary<string, string>
+            {
+                { "mcVersion", minecraftVersion },
+                { "type", type! },
+                { "patch", patch! }
+            };
+        }
+        else
+        {
+            // 无法解析 type/patch（如预发布版），使用 optifineVersion 作为兜底路径段
+            _logger?.LogWarning("无法解析 OptiFine 版本格式 '{Version}'，type/patch 占位符将无法替换", optifineVersion);
+            context = new Dictionary<string, string>
+            {
+                { "mcVersion", minecraftVersion },
+                { "type", optifineVersion },
+                { "patch", string.Empty }
+            };
+        }
+
+        return ApplyTemplate("optifine_download", _template.GetOptifineDownloadUrl(minecraftVersion, optifineVersion), context);
     }
 
     public string GetLiteLoaderVersionsUrl()

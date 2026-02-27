@@ -119,13 +119,17 @@ public class BmclapiTemplate : DownloadSourceTemplate
 
     public override string GetOptifineVersionsUrl(string minecraftVersion)
     {
-        return "{baseUrl}/optifine/{version}";
+        // OptiFine 版本列表：按 Minecraft 版本划分
+        // 实际 URL 形如：{baseUrl}/optifine/{mcVersion}
+        return "{baseUrl}/optifine/{mcVersion}";
     }
 
     public override string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
     {
         // OptiFine 版本格式: 1.19.2-HD_U_H9
-        return "{baseUrl}/optifine/{version}";
+        // BMCLAPI 实际下载 URL 形如：{baseUrl}/optifine/{mcVersion}/{type}/{patch}
+        // 具体的 mcVersion / type / patch 由上层根据 optifineVersion 解析并替换占位符
+        return "{baseUrl}/optifine/{mcVersion}/{type}/{patch}";
     }
 
     public override string GetLiteLoaderVersionsUrl()

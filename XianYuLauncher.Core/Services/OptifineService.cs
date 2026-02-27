@@ -50,9 +50,9 @@ public class OptifineService
             _logger.LogInformation("使用 OptiFine 源: {Source}, URL: {Url}", optifineSource.Name, url);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Optifine版本列表，请求URL: {url}");
 
-            // 创建请求消息并添加 BMCLAPI User-Agent（如果需要）
+            // 创建请求消息并添加 BMCLAPI User-Agent（如果是 BMCLAPI 源）
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (optifineSource.RequiresBmclapiUserAgent(url))
+            if (optifineSource.Key == "bmclapi")
             {
                 request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             }

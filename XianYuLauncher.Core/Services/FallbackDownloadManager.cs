@@ -643,14 +643,14 @@ public class FallbackDownloadManager
             // ModLoader - 通过资源类型前缀或名称判断
             var t when t.StartsWith("forge") || t.Contains("forge")
                 => _sourceFactory.GetForgeSource(),
+            var t when t.StartsWith("legacyfabric") || t.Contains("legacyfabric")
+                => _sourceFactory.GetLegacyFabricSource(),
             var t when t.StartsWith("fabric") || t.Contains("fabric")
                 => _sourceFactory.GetFabricSource(),
             var t when t.StartsWith("neoforge") || t.Contains("neoforge")
                 => _sourceFactory.GetNeoForgeSource(),
             var t when t.StartsWith("quilt") || t.Contains("quilt")
                 => _sourceFactory.GetQuiltSource(),
-            var t when t.StartsWith("legacyfabric") || t.Contains("legacyfabric")
-                => _sourceFactory.GetLegacyFabricSource(),
             var t when t.StartsWith("liteloader") || t.Contains("liteloader")
                 => _sourceFactory.GetLiteLoaderSource(),
             var t when t.StartsWith("optifine") || t.Contains("optifine")
