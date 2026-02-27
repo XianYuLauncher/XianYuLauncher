@@ -480,6 +480,11 @@ public class CustomDownloadSource : IDownloadSource
             return false;
         }
 
+        if (string.IsNullOrWhiteSpace(_baseUrl))
+        {
+            return false;
+        }
+
         if (templateUrl.Contains("{baseUrl}", StringComparison.OrdinalIgnoreCase))
         {
             return true;

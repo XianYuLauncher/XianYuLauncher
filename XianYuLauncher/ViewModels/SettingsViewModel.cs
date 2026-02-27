@@ -345,7 +345,7 @@ public partial class SettingsViewModel : ObservableRecipient
     public bool CanRunSpeedTest => !IsSpeedTestRunning && _speedTestService != null;
 
     /// <summary>
-    /// 测速结果列表（游戏资源源）
+    /// 测速结果列表（版本清单源）
     /// </summary>
     [ObservableProperty]
     private List<Core.Models.SpeedTestResult> _versionManifestSourceSpeedResults = new();

@@ -21,7 +21,7 @@ public sealed partial class SettingsPage : Page
     private bool _isTogglingSwitch = false;
 
     // 自动测速服务（用于事件驱动刷新缓存）
-    private readonly IAutoSpeedTestService? _autoSpeedTestService;
+    private readonly IAutoSpeedTestService _autoSpeedTestService;
 
     public SettingsPage()
     {
@@ -46,12 +46,9 @@ public sealed partial class SettingsPage : Page
                 await ViewModel.LoadSpeedTestCacheAsync();
                 System.Diagnostics.Debug.WriteLine("[SettingsPage] 测速缓存加载完成");
 
-                if (_autoSpeedTestService != null)
-                {
-                    _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
-                    _autoSpeedTestService.SpeedTestCompleted += AutoSpeedTestService_SpeedTestCompleted;
-                    System.Diagnostics.Debug.WriteLine("[SettingsPage] 已订阅自动测速完成事件");
-                }
+                _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
+                _autoSpeedTestService.SpeedTestCompleted += AutoSpeedTestService_SpeedTestCompleted;
+                System.Diagnostics.Debug.WriteLine("[SettingsPage] 已订阅自动测速完成事件");
             }
 
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] ViewModel 是否为 null: {ViewModel == null}");
@@ -77,11 +74,8 @@ public sealed partial class SettingsPage : Page
 
     private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
-        if (_autoSpeedTestService != null)
-        {
-            _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
-            System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
-        }
+        _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
+        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
     }
 
     private void AutoSpeedTestService_SpeedTestCompleted(object? sender, EventArgs e)

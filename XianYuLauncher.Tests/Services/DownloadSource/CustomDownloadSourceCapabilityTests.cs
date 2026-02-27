@@ -5,7 +5,7 @@ namespace XianYuLauncher.Tests.Services.DownloadSource;
 public class CustomDownloadSourceCapabilityTests
 {
     [Fact]
-    public void OfficialTemplateCustomSource_ShouldNotSupportLegacyFabric_WhenTemplateFallsBackToOfficialUrl()
+    public void BmclapiTemplateCustomSource_ShouldNotSupportLegacyFabric_WhenTemplateFallsBackToOfficialUrl()
     {
         var source = new CustomDownloadSource(
             key: "custom_official",
@@ -17,7 +17,7 @@ public class CustomDownloadSourceCapabilityTests
     }
 
     [Fact]
-    public void OfficialTemplateCustomSource_ShouldSupportForge_WhenTemplateUsesBaseUrl()
+    public void BmclapiTemplateCustomSource_ShouldSupportForge_WhenTemplateUsesBaseUrl()
     {
         var source = new CustomDownloadSource(
             key: "custom_official",
@@ -29,7 +29,7 @@ public class CustomDownloadSourceCapabilityTests
     }
 
     [Fact]
-    public void OfficialTemplateCustomSource_ShouldSupportLegacyFabric_WhenOverrideProvided()
+    public void BmclapiTemplateCustomSource_ShouldSupportLegacyFabric_WhenOverrideProvided()
     {
         var source = new CustomDownloadSource(
             key: "custom_official",

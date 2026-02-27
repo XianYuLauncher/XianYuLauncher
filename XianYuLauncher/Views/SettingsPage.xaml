@@ -574,7 +574,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedVersionManifestSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -592,7 +592,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedFileDownloadSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -610,7 +610,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedForgeSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -628,7 +628,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedFabricSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -646,7 +646,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedNeoForgeSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -664,7 +664,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedQuiltSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -682,7 +682,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedLiteLoaderSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -700,7 +700,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedLegacyFabricSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -718,7 +718,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedCleanroomSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />
@@ -736,7 +736,7 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedOptifineSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
                                     <Button.ContentTemplate>
                                         <DataTemplate>
                                             <FontIcon Glyph="&#xE710;" FontSize="14" />

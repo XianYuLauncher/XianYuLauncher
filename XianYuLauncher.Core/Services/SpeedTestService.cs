@@ -159,11 +159,8 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] 版本清单源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
@@ -207,11 +204,8 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] 文件下载源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
@@ -255,11 +249,8 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] 社区资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
@@ -303,11 +294,8 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] CurseForge 资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
@@ -462,15 +450,13 @@ public class SpeedTestService : ISpeedTestService
             _logger.LogInformation("[SpeedTest] {LoaderType} 测速已取消", loaderType);
         }
 
-        var successfulResults = results.Where(r => r.IsSuccess).ToList();
-
-        if (successfulResults.Count == 0)
+        if (results.All(r => !r.IsSuccess))
         {
             _logger.LogWarning("[SpeedTest] {LoaderType} 源测速全部失败", loaderType);
             LogSpeedTestSummary(loaderType, results, new List<SpeedTestResult>());
-            return results.OrderBy(r => r.LatencyMs).ToList();
+            return SortResultsForReturn(results);
         }
-        var sortedResults = successfulResults.OrderBy(r => r.LatencyMs).ToList();
+        var sortedResults = SortResultsForReturn(results);
         LogSpeedTestSummary(loaderType, results, sortedResults);
         return sortedResults;
     }
@@ -725,6 +711,14 @@ public class SpeedTestService : ISpeedTestService
         {
             _logger.LogWarning("[SpeedTest] {Category} 无可用测速结果（全部失败）", category);
         }
+    }
+
+    private List<SpeedTestResult> SortResultsForReturn(List<SpeedTestResult> results)
+    {
+        return results
+            .OrderByDescending(r => r.IsSuccess)
+            .ThenBy(r => r.IsSuccess ? r.LatencyMs : int.MaxValue)
+            .ToList();
     }
 
     /// <summary>
