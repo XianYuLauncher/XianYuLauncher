@@ -56,10 +56,16 @@ public class SpeedTestResult
 public class SpeedTestCache
 {
     /// <summary>
-    /// 游戏资源源测速结果
+    /// 版本清单源测速结果
     /// </summary>
-    [JsonProperty("gameSources")]
-    public Dictionary<string, SpeedTestResult> GameSources { get; set; } = new();
+    [JsonProperty("versionManifestSources")]
+    public Dictionary<string, SpeedTestResult> VersionManifestSources { get; set; } = new();
+
+    /// <summary>
+    /// 文件下载源测速结果
+    /// </summary>
+    [JsonProperty("fileDownloadSources")]
+    public Dictionary<string, SpeedTestResult> FileDownloadSources { get; set; } = new();
 
     /// <summary>
     /// 社区资源源测速结果（Modrinth）
@@ -74,6 +80,54 @@ public class SpeedTestCache
     public Dictionary<string, SpeedTestResult> CurseForgeSources { get; set; } = new();
 
     /// <summary>
+    /// Forge 源测速结果
+    /// </summary>
+    [JsonProperty("forgeSources")]
+    public Dictionary<string, SpeedTestResult> ForgeSources { get; set; } = new();
+
+    /// <summary>
+    /// Fabric 源测速结果
+    /// </summary>
+    [JsonProperty("fabricSources")]
+    public Dictionary<string, SpeedTestResult> FabricSources { get; set; } = new();
+
+    /// <summary>
+    /// NeoForge 源测速结果
+    /// </summary>
+    [JsonProperty("neoforgeSources")]
+    public Dictionary<string, SpeedTestResult> NeoForgeSources { get; set; } = new();
+
+    /// <summary>
+    /// LiteLoader 源测速结果
+    /// </summary>
+    [JsonProperty("liteloaderSources")]
+    public Dictionary<string, SpeedTestResult> LiteLoaderSources { get; set; } = new();
+
+    /// <summary>
+    /// Quilt 源测速结果
+    /// </summary>
+    [JsonProperty("quiltSources")]
+    public Dictionary<string, SpeedTestResult> QuiltSources { get; set; } = new();
+
+    /// <summary>
+    /// LegacyFabric 源测速结果
+    /// </summary>
+    [JsonProperty("legacyfabricSources")]
+    public Dictionary<string, SpeedTestResult> LegacyFabricSources { get; set; } = new();
+
+    /// <summary>
+    /// Cleanroom 源测速结果
+    /// </summary>
+    [JsonProperty("cleanroomSources")]
+    public Dictionary<string, SpeedTestResult> CleanroomSources { get; set; } = new();
+
+    /// <summary>
+    /// Optifine 源测速结果
+    /// </summary>
+    [JsonProperty("optifineSources")]
+    public Dictionary<string, SpeedTestResult> OptifineSources { get; set; } = new();
+
+    /// <summary>
     /// 最后更新时间
     /// </summary>
     [JsonProperty("lastUpdated")]
@@ -86,11 +140,22 @@ public class SpeedTestCache
     public bool IsExpired => (DateTime.UtcNow - LastUpdated).TotalHours >= 12;
 
     /// <summary>
-    /// 获取最快的游戏资源源
+    /// 获取最快的版本清单源
     /// </summary>
-    public string? GetFastestGameSourceKey()
+    public string? GetFastestVersionManifestSourceKey()
     {
-        return GameSources.Values
+        return VersionManifestSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的文件下载源
+    /// </summary>
+    public string? GetFastestFileDownloadSourceKey()
+    {
+        return FileDownloadSources.Values
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault()?.SourceKey;
@@ -113,6 +178,94 @@ public class SpeedTestCache
     public string? GetFastestCurseForgeSourceKey()
     {
         return CurseForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Forge 源
+    /// </summary>
+    public string? GetFastestForgeSourceKey()
+    {
+        return ForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Fabric 源
+    /// </summary>
+    public string? GetFastestFabricSourceKey()
+    {
+        return FabricSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 NeoForge 源
+    /// </summary>
+    public string? GetFastestNeoForgeSourceKey()
+    {
+        return NeoForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 LiteLoader 源
+    /// </summary>
+    public string? GetFastestLiteLoaderSourceKey()
+    {
+        return LiteLoaderSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Quilt 源
+    /// </summary>
+    public string? GetFastestQuiltSourceKey()
+    {
+        return QuiltSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 LegacyFabric 源
+    /// </summary>
+    public string? GetFastestLegacyFabricSourceKey()
+    {
+        return LegacyFabricSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Cleanroom 源
+    /// </summary>
+    public string? GetFastestCleanroomSourceKey()
+    {
+        return CleanroomSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Optifine 源
+    /// </summary>
+    public string? GetFastestOptifineSourceKey()
+    {
+        return OptifineSources.Values
             .Where(r => r.IsSuccess)
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault()?.SourceKey;

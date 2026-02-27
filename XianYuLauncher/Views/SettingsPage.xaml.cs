@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Views;
 
@@ -19,13 +20,18 @@ public sealed partial class SettingsPage : Page
     // 防止 ToggleSwitch 事件递归触发的标志
     private bool _isTogglingSwitch = false;
 
+    // 自动测速服务（用于事件驱动刷新缓存）
+    private readonly IAutoSpeedTestService _autoSpeedTestService;
+
     public SettingsPage()
     {
         ViewModel = App.GetService<SettingsViewModel>();
+        _autoSpeedTestService = App.GetService<IAutoSpeedTestService>();
         InitializeComponent();
         
         // 页面加载时刷新自定义源列表
         Loaded += SettingsPage_Loaded;
+        Unloaded += SettingsPage_Unloaded;
     }
 
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
@@ -39,6 +45,10 @@ public sealed partial class SettingsPage : Page
                 System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始加载测速缓存");
                 await ViewModel.LoadSpeedTestCacheAsync();
                 System.Diagnostics.Debug.WriteLine("[SettingsPage] 测速缓存加载完成");
+
+                _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
+                _autoSpeedTestService.SpeedTestCompleted += AutoSpeedTestService_SpeedTestCompleted;
+                System.Diagnostics.Debug.WriteLine("[SettingsPage] 已订阅自动测速完成事件");
             }
 
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] ViewModel 是否为 null: {ViewModel == null}");
@@ -59,6 +69,30 @@ public sealed partial class SettingsPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] 刷新自定义源列表失败: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] 堆栈跟踪: {ex.StackTrace}");
+        }
+    }
+
+    private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
+        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
+    }
+
+    private void AutoSpeedTestService_SpeedTestCompleted(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (ViewModel?.AutoSelectFastestSource == true)
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    _ = ViewModel.LoadSpeedTestCacheAsync();
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 处理自动测速完成事件失败: {ex.Message}");
         }
     }
 

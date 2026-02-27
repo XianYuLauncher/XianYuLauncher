@@ -15,9 +15,14 @@ namespace XianYuLauncher.Core.Services;
 public interface ISpeedTestService
 {
     /// <summary>
-    /// 测试所有游戏资源源的网速
+    /// 测试所有版本清单源的网速
     /// </summary>
-    Task<List<SpeedTestResult>> TestGameSourcesAsync(CancellationToken ct = default);
+    Task<List<SpeedTestResult>> TestVersionManifestSourcesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 测试所有文件下载源的网速
+    /// </summary>
+    Task<List<SpeedTestResult>> TestFileDownloadSourcesAsync(CancellationToken ct = default);
 
     /// <summary>
     /// 测试所有社区资源源的网速（Modrinth）
@@ -30,9 +35,14 @@ public interface ISpeedTestService
     Task<List<SpeedTestResult>> TestCurseForgeSourcesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// 获取最快的游戏资源源键
+    /// 获取最快的版本清单源键
     /// </summary>
-    Task<string?> GetFastestGameSourceKeyAsync(CancellationToken ct = default);
+    Task<string?> GetFastestVersionManifestSourceKeyAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 获取最快的文件下载源键
+    /// </summary>
+    Task<string?> GetFastestFileDownloadSourceKeyAsync(CancellationToken ct = default);
 
     /// <summary>
     /// 获取最快的社区资源源键（Modrinth）
@@ -115,14 +125,14 @@ public class SpeedTestService : ISpeedTestService
     }
 
     /// <inheritdoc />
-    public async Task<List<SpeedTestResult>> TestGameSourcesAsync(CancellationToken ct = default)
+    public async Task<List<SpeedTestResult>> TestVersionManifestSourcesAsync(CancellationToken ct = default)
     {
         var results = new List<SpeedTestResult>();
 
-        // 获取所有游戏资源源
-        var sources = GetAllGameSources();
+        // 获取所有版本清单源
+        var sources = _downloadSourceFactory.GetSourcesForVersionManifest();
 
-        _logger.LogInformation("[SpeedTest] 开始测试游戏资源源，数量: {Count}", sources.Count);
+        _logger.LogInformation("[SpeedTest] 开始测试版本清单源，数量: {Count}", sources.Count);
 
         // 并发测试，限制数量
         var semaphore = new SemaphoreSlim(MaxConcurrentTests);
@@ -149,14 +159,57 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
-        _logger.LogInformation("[SpeedTest] 游戏资源源测速完成，最快源: {Fastest}",
+        _logger.LogInformation("[SpeedTest] 版本清单源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("版本清单", results, sortedResults);
+
+        return sortedResults;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SpeedTestResult>> TestFileDownloadSourcesAsync(CancellationToken ct = default)
+    {
+        var results = new List<SpeedTestResult>();
+
+        // 获取所有文件下载源
+        var sources = _downloadSourceFactory.GetSourcesForFileDownload();
+
+        _logger.LogInformation("[SpeedTest] 开始测试文件下载源，数量: {Count}", sources.Count);
+
+        // 并发测试，限制数量
+        var semaphore = new SemaphoreSlim(MaxConcurrentTests);
+        try
+        {
+            var tasks = sources.Select(async source =>
+            {
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            var testResults = await Task.WhenAll(tasks);
+            results.AddRange(testResults.Where(r => r != null)!);
+        }
+        finally
+        {
+            semaphore.Dispose();
+        }
+
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
+
+        _logger.LogInformation("[SpeedTest] 文件下载源测速完成，最快源: {Fastest}",
+            sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("文件下载", results, sortedResults);
 
         return sortedResults;
     }
@@ -196,14 +249,12 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] 社区资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("社区资源", results, sortedResults);
 
         return sortedResults;
     }
@@ -243,39 +294,64 @@ public class SpeedTestService : ISpeedTestService
             semaphore.Dispose();
         }
 
-        // 按延迟排序
-        var sortedResults = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .ToList();
+        // 按成功优先 + 延迟排序，保留失败结果
+        var sortedResults = SortResultsForReturn(results);
 
         _logger.LogInformation("[SpeedTest] CurseForge 资源源测速完成，最快源: {Fastest}",
             sortedResults.FirstOrDefault()?.SourceKey ?? "无");
+        LogSpeedTestSummary("CurseForge", results, sortedResults);
 
         return sortedResults;
     }
 
     /// <inheritdoc />
-    public async Task<string?> GetFastestGameSourceKeyAsync(CancellationToken ct = default)
+    public async Task<string?> GetFastestVersionManifestSourceKeyAsync(CancellationToken ct = default)
     {
         var cache = await LoadCacheAsync();
 
         // 检查缓存是否有效
-        if (!cache.IsExpired && cache.GameSources.Count > 0)
+        if (!cache.IsExpired && cache.VersionManifestSources.Count > 0)
         {
-            var cachedFastest = cache.GetFastestGameSourceKey();
+            var cachedFastest = cache.GetFastestVersionManifestSourceKey();
             if (!string.IsNullOrEmpty(cachedFastest))
             {
-                _logger.LogInformation("[SpeedTest] 使用缓存的最快游戏源: {Fastest}", cachedFastest);
+                _logger.LogInformation("[SpeedTest] 使用缓存的最快版本清单源: {Fastest}", cachedFastest);
                 return cachedFastest;
             }
         }
 
         // 执行测速
-        var results = await TestGameSourcesAsync(ct);
+        var results = await TestVersionManifestSourcesAsync(ct);
 
         // 更新缓存
-        cache.GameSources = results.ToDictionary(r => r.SourceKey);
+        cache.VersionManifestSources = results.ToDictionary(r => r.SourceKey);
+        cache.LastUpdated = DateTime.UtcNow;
+        await SaveCacheAsync(cache);
+
+        return results.FirstOrDefault()?.SourceKey;
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFastestFileDownloadSourceKeyAsync(CancellationToken ct = default)
+    {
+        var cache = await LoadCacheAsync();
+
+        // 检查缓存是否有效
+        if (!cache.IsExpired && cache.FileDownloadSources.Count > 0)
+        {
+            var cachedFastest = cache.GetFastestFileDownloadSourceKey();
+            if (!string.IsNullOrEmpty(cachedFastest))
+            {
+                _logger.LogInformation("[SpeedTest] 使用缓存的最快文件下载源: {Fastest}", cachedFastest);
+                return cachedFastest;
+            }
+        }
+
+        // 执行测速
+        var results = await TestFileDownloadSourcesAsync(ct);
+
+        // 更新缓存
+        cache.FileDownloadSources = results.ToDictionary(r => r.SourceKey);
         cache.LastUpdated = DateTime.UtcNow;
         await SaveCacheAsync(cache);
 
@@ -374,15 +450,15 @@ public class SpeedTestService : ISpeedTestService
             _logger.LogInformation("[SpeedTest] {LoaderType} 测速已取消", loaderType);
         }
 
-        var successfulResults = results.Where(r => r.IsSuccess).ToList();
-
-        if (successfulResults.Count == 0)
+        if (results.All(r => !r.IsSuccess))
         {
             _logger.LogWarning("[SpeedTest] {LoaderType} 源测速全部失败", loaderType);
-            return results.OrderBy(r => r.LatencyMs).ToList();
+            LogSpeedTestSummary(loaderType, results, new List<SpeedTestResult>());
+            return SortResultsForReturn(results);
         }
-
-        return successfulResults.OrderBy(r => r.LatencyMs).ToList();
+        var sortedResults = SortResultsForReturn(results);
+        LogSpeedTestSummary(loaderType, results, sortedResults);
+        return sortedResults;
     }
 
     /// <summary>
@@ -391,36 +467,56 @@ public class SpeedTestService : ISpeedTestService
     private List<(string Key, string Host, string Name)> GetModLoaderSourceHosts(string loaderType, IEnumerable<IDownloadSource> sources)
     {
         var result = new List<(string Key, string Host, string Name)>();
+        var loaderTypeLower = loaderType.ToLowerInvariant();
 
         foreach (var source in sources)
         {
             try
             {
-                string? url = loaderType.ToLowerInvariant() switch
+                // 使用源的 SupportsXxx 属性检查是否支持该 ModLoader
+                bool sourceSupportsThisLoader = loaderTypeLower switch
                 {
-                    "forge" => source.GetForgeVersionsUrl("1.20.1"), // 用一个通用版本测试
+                    "forge" => source.SupportsForge,
+                    "fabric" => source.SupportsFabric,
+                    "neoforge" => source.SupportsNeoForge,
+                    "quilt" => source.SupportsQuilt,
+                    "liteloader" => source.SupportsLiteLoader,
+                    "legacyfabric" => source.SupportsLegacyFabric,
+                    "optifine" => source.SupportsOptifine,
+                    "cleanroom" => source.SupportsCleanroom,
+                    _ => false
+                };
+
+                if (!sourceSupportsThisLoader)
+                {
+                    continue;
+                }
+
+                var probeUrl = loaderTypeLower switch
+                {
+                    "forge" => source.GetForgeVersionsUrl("1.20.1"),
                     "fabric" => source.GetFabricVersionsUrl("1.20.1"),
                     "neoforge" => source.GetNeoForgeVersionsUrl("1.20.1"),
                     "quilt" => source.GetQuiltVersionsUrl("1.20.1"),
                     "liteloader" => source.GetLiteLoaderVersionsUrl(),
                     "legacyfabric" => source.GetLegacyFabricVersionsUrl("1.13.2"),
-                    "cleanroom" => null, // Cleanroom 不需要版本列表
-                    "optifine" => null, // Optifine 单独处理
-                    _ => null
+                    "optifine" => source.GetOptifineVersionsUrl("1.20.1"),
+                    // TODO(cleanroom-downloadsource-pr): 目前 Cleanroom 测速临时复用版本清单 URL。
+                    // TODO(cleanroom-downloadsource-pr): 下个 PR 需要为 IDownloadSource 增加 Cleanroom 专用元数据/安装器 URL 接口，
+                    // TODO(cleanroom-downloadsource-pr): 并在此处改用 Cleanroom 专用 probe URL，避免与 Mojang 版本清单语义混用。
+                    "cleanroom" => source.GetVersionManifestUrl(),
+                    _ => string.Empty
                 };
 
-                if (!string.IsNullOrEmpty(url))
+                var resolvedHost = ExtractHostWithPort(probeUrl) ?? source.Host;
+                if (!string.IsNullOrEmpty(resolvedHost))
                 {
-                    var host = ExtractHost(url);
-                    if (!string.IsNullOrEmpty(host))
-                    {
-                        result.Add((source.Key, host, source.Name));
-                    }
+                    result.Add((source.Key, resolvedHost, source.Name));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持 {LoaderType}", source.Key, loaderType);
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 获取 {LoaderType} 信息失败", source.Key, loaderType);
             }
         }
 
@@ -483,6 +579,19 @@ public class SpeedTestService : ISpeedTestService
                 var cache = JsonConvert.DeserializeObject<SpeedTestCache>(json);
                 if (cache != null)
                 {
+                    // 处理旧版本缓存文件中可能缺失的字典属性（JSON 反序列化会绕过属性初始化器）
+                    cache.VersionManifestSources ??= new();
+                    cache.FileDownloadSources ??= new();
+                    cache.CommunitySources ??= new();
+                    cache.CurseForgeSources ??= new();
+                    cache.ForgeSources ??= new();
+                    cache.FabricSources ??= new();
+                    cache.NeoForgeSources ??= new();
+                    cache.LiteLoaderSources ??= new();
+                    cache.QuiltSources ??= new();
+                    cache.LegacyFabricSources ??= new();
+                    cache.CleanroomSources ??= new();
+                    cache.OptifineSources ??= new();
                     _logger.LogInformation("[SpeedTest] 加载测速缓存成功，最后更新: {LastUpdated}", cache.LastUpdated);
                     return cache;
                 }
@@ -530,15 +639,23 @@ public class SpeedTestService : ISpeedTestService
             Timestamp = DateTime.UtcNow
         };
 
+        // 格式化 host 用于日志（确保有端口）
+        var hostWithPort = host.Contains(':') ? host : $"{host}:443";
+
         try
         {
-            _logger.LogInformation("[SpeedTest] 开始测试源: {Key}, Host: {Host}:443", key, host);
+            _logger.LogInformation("[SpeedTest] 开始测试源: {Key}, Host: {Host}", key, hostWithPort);
 
             var stopwatch = Stopwatch.StartNew();
 
+            // 解析 host 和端口
+            var hostParts = host.Split(':');
+            var hostName = hostParts[0];
+            var port = hostParts.Length > 1 && int.TryParse(hostParts[1], out var p) ? p : 443;
+
             // 使用 TCP 连接测试（仅 DNS 解析 + TCP 三次握手）
             using var tcpClient = new TcpClient();
-            await tcpClient.ConnectAsync(host, 443).WaitAsync(TimeSpan.FromSeconds(TimeoutSeconds), ct);
+            await tcpClient.ConnectAsync(hostName, port).WaitAsync(TimeSpan.FromSeconds(TimeoutSeconds), ct);
 
             stopwatch.Stop();
 
@@ -552,55 +669,56 @@ public class SpeedTestService : ISpeedTestService
         {
             result.IsSuccess = false;
             result.ErrorMessage = "测速取消";
-            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速取消", key, host);
+            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速取消", key, hostWithPort);
         }
         catch (TimeoutException)
         {
             result.IsSuccess = false;
             result.ErrorMessage = "测速超时";
-            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速超时", key, host);
+            _logger.LogWarning("[SpeedTest] 源 {Key} ({Host}) 测速超时", key, hostWithPort);
         }
         catch (Exception ex)
         {
             result.IsSuccess = false;
             result.ErrorMessage = ex.Message;
-            _logger.LogError(ex, "[SpeedTest] 源 {Key} ({Host}) 测速异常: {Error}, Type: {Type}", key, host, ex.Message, ex.GetType().FullName);
+            _logger.LogError(ex, "[SpeedTest] 源 {Key} ({Host}) 测速异常: {Error}, Type: {Type}", key, hostWithPort, ex.Message, ex.GetType().FullName);
         }
 
         return result;
     }
 
     /// <summary>
-    /// 获取所有游戏资源源
+    /// 输出测速汇总日志：各源测速结果与最终最快源
     /// </summary>
-    private List<(string Key, string Host, string Name)> GetAllGameSources()
+    private void LogSpeedTestSummary(string category, List<SpeedTestResult> allResults, List<SpeedTestResult> successfulSorted)
     {
-        var sources = new List<(string Key, string Host, string Name)>();
+        var details = allResults
+            .OrderBy(r => r.IsSuccess ? 0 : 1)
+            .ThenBy(r => r.IsSuccess ? r.LatencyMs : int.MaxValue)
+            .Select(r => r.IsSuccess
+                ? $"{r.SourceKey}={r.LatencyMs}ms"
+                : $"{r.SourceKey}=失败({r.ErrorMessage ?? "unknown"})")
+            .ToList();
 
-        // 使用统一的获取方法，自动过滤不支持的源
-        var gameSources = _downloadSourceFactory.GetSourcesForGameResources();
+        _logger.LogInformation("[SpeedTest] {Category} 源测速结果: {Details}", category, string.Join(", ", details));
 
-        foreach (var source in gameSources)
+        var fastest = successfulSorted.FirstOrDefault();
+        if (fastest != null)
         {
-            try
-            {
-                var url = source.GetVersionManifestUrl();
-                if (!string.IsNullOrEmpty(url))
-                {
-                    var host = ExtractHost(url);
-                    if (!string.IsNullOrEmpty(host))
-                    {
-                        sources.Add((source.Key, host, source.Name));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持游戏资源", source.Key);
-            }
+            _logger.LogInformation("[SpeedTest] {Category} 最快源: {SourceKey} ({Latency}ms)", category, fastest.SourceKey, fastest.LatencyMs);
         }
+        else
+        {
+            _logger.LogWarning("[SpeedTest] {Category} 无可用测速结果（全部失败）", category);
+        }
+    }
 
-        return sources;
+    private List<SpeedTestResult> SortResultsForReturn(List<SpeedTestResult> results)
+    {
+        return results
+            .OrderByDescending(r => r.IsSuccess)
+            .ThenBy(r => r.IsSuccess ? r.LatencyMs : int.MaxValue)
+            .ToList();
     }
 
     /// <summary>
@@ -615,21 +733,10 @@ public class SpeedTestService : ISpeedTestService
 
         foreach (var source in modrinthSources)
         {
-            try
+            var resolvedHost = ExtractHostWithPort(source.GetModrinthApiBaseUrl()) ?? source.Host;
+            if (!string.IsNullOrEmpty(resolvedHost))
             {
-                var url = source.GetModrinthApiBaseUrl();
-                if (!string.IsNullOrEmpty(url))
-                {
-                    var host = ExtractHost(url);
-                    if (!string.IsNullOrEmpty(host))
-                    {
-                        sources.Add((source.Key, host, source.Name));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", source.Key);
+                sources.Add((source.Key, resolvedHost, source.Name));
             }
         }
 
@@ -648,22 +755,10 @@ public class SpeedTestService : ISpeedTestService
 
         foreach (var source in curseforgeSources)
         {
-            try
+            var resolvedHost = ExtractHostWithPort(source.GetCurseForgeApiBaseUrl()) ?? source.Host;
+            if (!string.IsNullOrEmpty(resolvedHost))
             {
-                var url = source.GetCurseForgeApiBaseUrl();
-
-                if (!string.IsNullOrEmpty(url))
-                {
-                    var host = ExtractHost(url);
-                    if (!string.IsNullOrEmpty(host))
-                    {
-                        sources.Add((source.Key, host, source.Name));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持社区资源", source.Key);
+                sources.Add((source.Key, resolvedHost, source.Name));
             }
         }
 
@@ -673,24 +768,25 @@ public class SpeedTestService : ISpeedTestService
     /// <summary>
     /// 从 URL 中提取主机名
     /// </summary>
-    private string? ExtractHost(string url)
+    private string? ExtractHostWithPort(string url)
     {
         try
         {
-            if (url.StartsWith("http://"))
-                url = url.Substring(7);
-            else if (url.StartsWith("https://"))
-                url = url.Substring(8);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return null;
+            }
 
-            var slashIndex = url.IndexOf('/');
-            if (slashIndex >= 0)
-                url = url.Substring(0, slashIndex);
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
 
-            var colonIndex = url.IndexOf(':');
-            if (colonIndex >= 0)
-                url = url.Substring(0, colonIndex);
+            var port = uri.IsDefaultPort
+                ? (uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 80 : 443)
+                : uri.Port;
 
-            return url;
+            return $"{uri.Host}:{port}";
         }
         catch (Exception ex)
         {
