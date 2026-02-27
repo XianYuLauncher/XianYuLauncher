@@ -561,13 +561,13 @@
                 </controls:SettingsExpander>
 
                 <!-- 游戏资源下载源（SettingsExpander）-->
-                <controls:SettingsExpander x:Uid="Settings_GameResourceSourceExpander" Header="游戏资源下载源" Description="MC本体、ModLoader的下载源" IsExpanded="False">
+                <controls:SettingsExpander x:Uid="Settings_GameResourceSourceExpander" Header="游戏资源下载源" Description="游戏本体、ModLoader 的下载源" IsExpanded="False">
                     <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
                     </controls:SettingsExpander.HeaderIcon>
                     <controls:SettingsExpander.Items>
                         <!-- 版本清单 -->
-                        <controls:SettingsCard Header="版本清单" Description="获取版本列表等">
+                        <controls:SettingsCard x:Uid="Settings_VersionManifestSourceCard" Header="版本清单" Description="获取版本列表等">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="VersionManifestSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.VersionManifestSources, Mode=OneWay}"
@@ -585,7 +585,7 @@
                         </controls:SettingsCard>
 
                         <!-- 文件下载 -->
-                        <controls:SettingsCard Header="文件下载" Description="client.jar、libraries 等">
+                        <controls:SettingsCard x:Uid="Settings_FileDownloadSourceCard" Header="文件下载" Description="client.jar、libraries 等">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="FileDownloadSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.FileDownloadSources, Mode=OneWay}"
@@ -603,7 +603,7 @@
                         </controls:SettingsCard>
 
                         <!-- Forge -->
-                        <controls:SettingsCard Header="Forge" Description="Minecraft Forge">
+                        <controls:SettingsCard x:Uid="Settings_ForgeSourceCard" Header="Forge" Description="Minecraft Forge">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="ForgeSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.ForgeSources, Mode=OneWay}"
@@ -621,7 +621,7 @@
                         </controls:SettingsCard>
 
                         <!-- Fabric -->
-                        <controls:SettingsCard Header="Fabric" Description="Fabric">
+                        <controls:SettingsCard x:Uid="Settings_FabricSourceCard" Header="Fabric" Description="Fabric">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="FabricSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.FabricSources, Mode=OneWay}"
@@ -639,7 +639,7 @@
                         </controls:SettingsCard>
 
                         <!-- NeoForge -->
-                        <controls:SettingsCard Header="NeoForge" Description="NeoForge">
+                        <controls:SettingsCard x:Uid="Settings_NeoForgeSourceCard" Header="NeoForge" Description="NeoForge">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="NeoForgeSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.NeoForgeSources, Mode=OneWay}"
@@ -657,7 +657,7 @@
                         </controls:SettingsCard>
 
                         <!-- Quilt -->
-                        <controls:SettingsCard Header="Quilt" Description="Quilt">
+                        <controls:SettingsCard x:Uid="Settings_QuiltSourceCard" Header="Quilt" Description="Quilt">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="QuiltSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.QuiltSources, Mode=OneWay}"
@@ -675,7 +675,7 @@
                         </controls:SettingsCard>
 
                         <!-- LiteLoader -->
-                        <controls:SettingsCard Header="LiteLoader" Description="LiteLoader">
+                        <controls:SettingsCard x:Uid="Settings_LiteLoaderSourceCard" Header="LiteLoader" Description="LiteLoader">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="LiteLoaderSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.LiteLoaderSources, Mode=OneWay}"
@@ -693,7 +693,7 @@
                         </controls:SettingsCard>
 
                         <!-- LegacyFabric -->
-                        <controls:SettingsCard Header="LegacyFabric" Description="LegacyFabric">
+                        <controls:SettingsCard x:Uid="Settings_LegacyFabricSourceCard" Header="LegacyFabric" Description="LegacyFabric">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="LegacyFabricSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.LegacyFabricSources, Mode=OneWay}"
@@ -711,7 +711,7 @@
                         </controls:SettingsCard>
 
                         <!-- Cleanroom -->
-                        <controls:SettingsCard Header="Cleanroom" Description="Cleanroom">
+                        <controls:SettingsCard x:Uid="Settings_CleanroomSourceCard" Header="Cleanroom" Description="Cleanroom">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="CleanroomSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.CleanroomSources, Mode=OneWay}"
@@ -729,7 +729,7 @@
                         </controls:SettingsCard>
 
                         <!-- OptiFine -->
-                        <controls:SettingsCard Header="OptiFine" Description="OptiFine">
+                        <controls:SettingsCard x:Uid="Settings_OptiFineSourceCard" Header="OptiFine" Description="OptiFine">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Name="OptifineSourceComboBox"
                                           ItemsSource="{x:Bind ViewModel.OptifineSources, Mode=OneWay}"
