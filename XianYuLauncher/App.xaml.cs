@@ -156,7 +156,13 @@ public partial class App : Application
 
             services.AddSingleton<ILibraryManager, LibraryManager>();
             services.AddSingleton<IAssetManager, AssetManager>();
-            services.AddSingleton<IVersionInfoManager, VersionInfoManager>();
+            services.AddSingleton<IVersionInfoManager>(sp =>
+            {
+                var downloadManager = sp.GetRequiredService<IDownloadManager>();
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var logger = sp.GetRequiredService<ILogger<VersionInfoManager>>();
+                return new VersionInfoManager(downloadManager, downloadSourceFactory, logger);
+            });
             services.AddSingleton<IJavaRuntimeService, JavaRuntimeService>();
             services.AddSingleton<IJavaDownloadService, JavaDownloadService>();
             
@@ -333,7 +339,13 @@ public partial class App : Application
             services.AddSingleton<CleanroomService>();
             
             // Optifine Service
-            services.AddSingleton<OptifineService>();
+            services.AddSingleton<OptifineService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                var logger = sp.GetRequiredService<ILogger<OptifineService>>();
+                return new OptifineService(httpClientFactory, downloadSourceFactory, logger);
+            });
             
             // Mod Info Service (获取 Mod 描述信息)
             services.AddSingleton<ModInfoService>(sp =>

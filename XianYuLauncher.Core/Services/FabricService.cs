@@ -43,9 +43,10 @@ public class FabricService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[FabricService] 使用 FallbackDownloadManager 获取 Fabric 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetFabricVersionsUrl(minecraftVersion),
+                    "fabric",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
@@ -97,18 +98,8 @@ public class FabricService
     /// </summary>
     private async Task<List<FabricLoaderVersion>> GetFabricLoaderVersionsWithLegacyFallbackAsync(string minecraftVersion)
     {
-        // 获取当前版本列表源设置（枚举类型，然后转为字符串）
-        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
-        string versionListSource = versionListSourceEnum switch
-        {
-            0 => "official",
-            1 => "bmclapi",
-            2 => "mcim",
-            _ => "official"
-        };
-        
-        // 根据设置获取对应的下载源
-        var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
+        // 使用 Fabric 专用下载源
+        var downloadSource = _downloadSourceFactory.GetFabricSource();
         
         // 使用下载源获取Fabric版本列表URL
         string url = downloadSource.GetFabricVersionsUrl(minecraftVersion);

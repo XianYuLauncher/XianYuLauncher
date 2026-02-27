@@ -26,10 +26,44 @@ public class McimDownloadSource : IDownloadSource
     public bool SupportsGameResources => false;
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => false;
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => false;
+
+    /// <inheritdoc />
     public bool SupportsModrinth => true;
 
     /// <inheritdoc />
     public bool SupportsCurseForge => true;
+
+    #region ModLoader 支持（MCIM 不支持任何游戏资源/ModLoader）
+
+    /// <inheritdoc />
+    public bool SupportsForge => false;
+
+    /// <inheritdoc />
+    public bool SupportsFabric => false;
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => false;
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => false;
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => false;
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => false;
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => false;
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => false;
+
+    #endregion
 
     /// <summary>
     /// 获取Minecraft版本清单URL（MCIM不支持MC资源，使用官方源）
@@ -181,6 +215,12 @@ public class McimDownloadSource : IDownloadSource
 
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
         => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+        => throw new NotSupportedException("MCIM 源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+        => throw new NotSupportedException("MCIM 源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
 
     public string GetLiteLoaderVersionsUrl()
         => "https://dl.liteloader.com/versions/versions.json";

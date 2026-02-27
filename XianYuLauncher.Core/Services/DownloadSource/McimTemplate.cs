@@ -93,6 +93,16 @@ public class McimTemplate : DownloadSourceTemplate
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
     }
 
+    public override string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        throw new NotSupportedException("MCIM 模板不支持 OptiFine");
+    }
+
+    public override string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        throw new NotSupportedException("MCIM 模板不支持 OptiFine");
+    }
+
     public override string GetLiteLoaderVersionsUrl()
     {
         return "http://dl.liteloader.com/versions/versions.json";

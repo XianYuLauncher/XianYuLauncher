@@ -19,10 +19,44 @@ public class BmclapiDownloadSource : IDownloadSource
     public bool SupportsGameResources => true;
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => true;
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => true;
+
+    /// <inheritdoc />
     public bool SupportsModrinth => false;
 
     /// <inheritdoc />
     public bool SupportsCurseForge => false;
+
+    #region ModLoader 支持
+
+    /// <inheritdoc />
+    public bool SupportsForge => true;
+
+    /// <inheritdoc />
+    public bool SupportsFabric => true;
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => true;
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => true;
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => true;
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => false;
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => false;
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => true;
+
+    #endregion
 
     /// <summary>
     /// 获取Minecraft版本清单URL
@@ -361,6 +395,23 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI 暂不支持 Legacy Fabric，回退到官方源
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+    }
+
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersion}";
+    }
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        // 格式示例: 正式版 1.19.2-HD_U_H9, 1.19.2_HD_U_H9；预发布 pre1.19.2-rc2（走兜底）
+        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
+        {
+            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersion}/{type}/{patch}";
+        }
+
+        // 兜底：直接拼接（兼容无法解析为 HD_U_* 的版本）
+        return $"https://bmclapi2.bangbang93.com/optifine/{optifineVersion}";
     }
 
     public string GetLiteLoaderVersionsUrl()

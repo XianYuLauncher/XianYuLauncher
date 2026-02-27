@@ -490,13 +490,20 @@ public class ProcessorExecutor : IProcessorExecutor
         string version = parts[2];
         string classifier = parts.Length >= 4 ? parts[3] : "";
 
-        string fileName = string.IsNullOrEmpty(classifier) 
-            ? $"{artifactId}-{version}.jar" 
+        string fileName = string.IsNullOrEmpty(classifier)
+            ? $"{artifactId}-{version}.jar"
             : $"{artifactId}-{version}-{classifier}.jar";
 
-        // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 根据 groupId 上下文选择合适的下载源
+        IDownloadSource downloadSource;
+        if (groupId.StartsWith("net.neoforged", StringComparison.OrdinalIgnoreCase))
+        {
+            downloadSource = _downloadSourceFactory.GetNeoForgeSource();
+        }
+        else
+        {
+            downloadSource = _downloadSourceFactory.GetForgeSource();
+        }
         
         // 构建官方源URL
         string officialUrl = $"https://maven.minecraftforge.net/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";

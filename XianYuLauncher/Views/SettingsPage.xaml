@@ -533,26 +533,130 @@
                     </controls:SettingsExpander.Items>
                 </controls:SettingsExpander>
 
-                <!-- 游戏资源下载源（MC本体、ModLoader、版本列表）-->
-                <controls:SettingsCard x:Uid="Settings_GameResourceSource" Header="游戏资源下载源" Description="MC本体、ModLoader、版本列表的下载源">
-                    <controls:SettingsCard.HeaderIcon>
+                <!-- 游戏资源下载源（SettingsExpander）-->
+                <controls:SettingsExpander x:Uid="Settings_GameResourceSourceExpander" Header="游戏资源下载源" Description="MC本体、ModLoader的下载源" IsExpanded="False">
+                    <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
-                    </controls:SettingsCard.HeaderIcon>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ComboBox x:Name="GameResourceSourceComboBox"
-                                  ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}"
-                                  SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}"
-                                  MinWidth="200"
-                                  IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                        <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                            <Button.ContentTemplate>
-                                <DataTemplate>
-                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                </DataTemplate>
-                            </Button.ContentTemplate>
-                        </Button>
-                    </StackPanel>
-                </controls:SettingsCard>
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Items>
+                        <!-- 版本清单 -->
+                        <controls:SettingsCard Header="版本清单" Description="获取版本列表等">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="VersionManifestSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.VersionManifestSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedVersionManifestSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- 文件下载 -->
+                        <controls:SettingsCard Header="文件下载" Description="client.jar、libraries 等">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="FileDownloadSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.FileDownloadSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedFileDownloadSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                                <Button Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- Forge -->
+                        <controls:SettingsCard Header="Forge" Description="Minecraft Forge">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="ForgeSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.ForgeSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedForgeSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- Fabric -->
+                        <controls:SettingsCard Header="Fabric" Description="Fabric">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="FabricSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.FabricSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedFabricSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- NeoForge -->
+                        <controls:SettingsCard Header="NeoForge" Description="NeoForge">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="NeoForgeSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.NeoForgeSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedNeoForgeSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- Quilt -->
+                        <controls:SettingsCard Header="Quilt" Description="Quilt">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="QuiltSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.QuiltSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedQuiltSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- LiteLoader -->
+                        <controls:SettingsCard Header="LiteLoader" Description="LiteLoader">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="LiteLoaderSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.LiteLoaderSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedLiteLoaderSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- LegacyFabric -->
+                        <controls:SettingsCard Header="LegacyFabric" Description="LegacyFabric">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="LegacyFabricSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.LegacyFabricSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedLegacyFabricSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- Cleanroom -->
+                        <controls:SettingsCard Header="Cleanroom" Description="Cleanroom">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="CleanroomSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.CleanroomSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedCleanroomSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+
+                        <!-- OptiFine -->
+                        <controls:SettingsCard Header="OptiFine" Description="OptiFine">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="OptifineSourceComboBox"
+                                          ItemsSource="{x:Bind ViewModel.OptifineSources, Mode=OneWay}"
+                                          SelectedItem="{x:Bind ViewModel.SelectedOptifineSource, Mode=TwoWay}"
+                                          MinWidth="200"
+                                          IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- 社区资源下载源（SettingsExpander） -->
                 <controls:SettingsExpander x:Uid="Settings_CommunityResourceSourceExpander" Header="社区资源下载源" Description="Modrinth、CurseForge 资源的下载源" IsExpanded="False">
