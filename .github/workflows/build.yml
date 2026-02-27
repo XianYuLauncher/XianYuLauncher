@@ -161,7 +161,7 @@ jobs:
 
     # 5. 还原包
     - name: Restore
-      run: nuget restore ${{ env.Solution_Name }}
+      run: nuget restore ${{ env.Solution_Name }} -ConfigFile NuGet.config
 
     # 6. 构建并打包 (使用 MSBuild)
     - name: Build
