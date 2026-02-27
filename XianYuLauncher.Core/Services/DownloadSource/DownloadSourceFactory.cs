@@ -430,7 +430,12 @@ public class DownloadSourceFactory
     /// </summary>
     public IDownloadSource GetLegacyFabricSource()
     {
-        return _sources.TryGetValue(_legacyFabricSourceKey, out var source) ? source : GetDefaultSource();
+        if (_sources.TryGetValue(_legacyFabricSourceKey, out var source) && source.SupportsLegacyFabric)
+        {
+            return source;
+        }
+
+        return _sources["official"];
     }
 
     /// <summary>
@@ -444,6 +449,13 @@ public class DownloadSourceFactory
         if (!_sources.ContainsKey(key))
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
+        if (!_sources[key].SupportsLegacyFabric)
+        {
+            _legacyFabricSourceKey = "official";
+            System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric 下载源 {key} 不受支持，已回退到 official");
+            return;
+        }
+
         _legacyFabricSourceKey = key;
         System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric下载源已设置为: {key}");
     }
@@ -451,7 +463,12 @@ public class DownloadSourceFactory
     /// <summary>
     /// 获取当前LegacyFabric下载源标识
     /// </summary>
-    public string GetLegacyFabricSourceKey() => _legacyFabricSourceKey;
+    public string GetLegacyFabricSourceKey()
+    {
+        return _sources.TryGetValue(_legacyFabricSourceKey, out var source) && source.SupportsLegacyFabric
+            ? _legacyFabricSourceKey
+            : "official";
+    }
 
     /// <summary>
     /// 获取Cleanroom专用下载源

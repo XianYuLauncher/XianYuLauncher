@@ -16,6 +16,9 @@ public class BmclapiDownloadSource : IDownloadSource
     public string Key => "bmclapi";
 
     /// <inheritdoc />
+    public string Host => "bmclapi2.bangbang93.com:443";
+
+    /// <inheritdoc />
     public bool SupportsGameResources => true;
 
     /// <inheritdoc />

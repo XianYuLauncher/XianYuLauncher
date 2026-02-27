@@ -17,11 +17,11 @@ namespace XianYuLauncher.IntegrationTests
     public class SpeedTestServiceIntegrationTests
     {
         /// <summary>
-        /// 测试游戏资源源测速
+        /// 测试版本清单源测速
         /// 验证：能够成功测速并返回结果
         /// </summary>
         [Fact(Skip = "网络集成测试，需要外网连接")]
-        public async Task TestGameSources_Success()
+        public async Task TestVersionManifestSources_Success()
         {
             // Arrange
             var downloadSourceFactory = new DownloadSourceFactory();
@@ -30,7 +30,7 @@ namespace XianYuLauncher.IntegrationTests
             var speedTestService = new SpeedTestService(downloadSourceFactory, mockLogger.Object);
 
             // Act
-            var results = await speedTestService.TestGameSourcesAsync();
+            var results = await speedTestService.TestVersionManifestSourcesAsync();
 
             // Assert
             Assert.NotNull(results);
@@ -92,11 +92,11 @@ namespace XianYuLauncher.IntegrationTests
         }
 
         /// <summary>
-        /// 测试获取最快游戏源
+        /// 测试获取最快版本清单源
         /// 验证：能够正确返回延迟最低的源
         /// </summary>
         [Fact(Skip = "网络集成测试，需要外网连接")]
-        public async Task GetFastestGameSourceKey_ReturnsFastest()
+        public async Task GetFastestVersionManifestSourceKey_ReturnsFastest()
         {
             // Arrange
             var downloadSourceFactory = new DownloadSourceFactory();
@@ -105,7 +105,7 @@ namespace XianYuLauncher.IntegrationTests
             var speedTestService = new SpeedTestService(downloadSourceFactory, mockLogger.Object);
 
             // Act
-            var fastestKey = await speedTestService.GetFastestGameSourceKeyAsync();
+            var fastestKey = await speedTestService.GetFastestVersionManifestSourceKeyAsync();
 
             // Assert
             Assert.False(string.IsNullOrEmpty(fastestKey), "应该返回最快的源键");
@@ -114,7 +114,7 @@ namespace XianYuLauncher.IntegrationTests
             var sources = downloadSourceFactory.GetAllSources();
             Assert.True(sources.ContainsKey(fastestKey!), $"返回的源键 {fastestKey} 应该存在于下载源工厂中");
 
-            Console.WriteLine($"最快游戏源: {fastestKey}");
+            Console.WriteLine($"最快版本清单源: {fastestKey}");
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace XianYuLauncher.IntegrationTests
         /// 验证：测速结果按延迟从低到高排序
         /// </summary>
         [Fact(Skip = "网络集成测试，需要外网连接")]
-        public async Task TestGameSources_ResultsOrderedByLatency()
+        public async Task TestVersionManifestSources_ResultsOrderedByLatency()
         {
             // Arrange
             var downloadSourceFactory = new DownloadSourceFactory();
@@ -153,7 +153,7 @@ namespace XianYuLauncher.IntegrationTests
             var speedTestService = new SpeedTestService(downloadSourceFactory, mockLogger.Object);
 
             // Act
-            var results = await speedTestService.TestGameSourcesAsync();
+            var results = await speedTestService.TestVersionManifestSourcesAsync();
 
             // Assert
             // 筛选成功的测速结果并验证排序
@@ -185,7 +185,7 @@ namespace XianYuLauncher.IntegrationTests
             var testCache = new Core.Models.SpeedTestCache
             {
                 LastUpdated = DateTime.UtcNow,
-                GameSources = new Dictionary<string, Core.Models.SpeedTestResult>
+                VersionManifestSources = new Dictionary<string, Core.Models.SpeedTestResult>
                 {
                     ["bmclapi"] = new Core.Models.SpeedTestResult
                     {
@@ -213,9 +213,9 @@ namespace XianYuLauncher.IntegrationTests
 
             // Assert
             Assert.NotNull(loadedCache);
-            Assert.NotNull(loadedCache.GameSources);
-            Assert.True(loadedCache.GameSources.ContainsKey("bmclapi"));
-            Assert.Equal(50, loadedCache.GameSources["bmclapi"].LatencyMs);
+            Assert.NotNull(loadedCache.VersionManifestSources);
+            Assert.True(loadedCache.VersionManifestSources.ContainsKey("bmclapi"));
+            Assert.Equal(50, loadedCache.VersionManifestSources["bmclapi"].LatencyMs);
         }
     }
 }

@@ -2955,6 +2955,36 @@
   <data name="Settings_FastestGameSource.Header" xml:space="preserve">
     <value>最快游戏源</value>
   </data>
+  <data name="Settings_FastestVersionManifestSource.Header" xml:space="preserve">
+    <value>最快版本清单源</value>
+  </data>
+  <data name="Settings_FastestFileDownloadSource.Header" xml:space="preserve">
+    <value>最快文件下载源</value>
+  </data>
+  <data name="Settings_FastestForgeSource.Header" xml:space="preserve">
+    <value>最快 Forge 源</value>
+  </data>
+  <data name="Settings_FastestFabricSource.Header" xml:space="preserve">
+    <value>最快 Fabric 源</value>
+  </data>
+  <data name="Settings_FastestNeoForgeSource.Header" xml:space="preserve">
+    <value>最快 NeoForge 源</value>
+  </data>
+  <data name="Settings_FastestLiteLoaderSource.Header" xml:space="preserve">
+    <value>最快 LiteLoader 源</value>
+  </data>
+  <data name="Settings_FastestQuiltSource.Header" xml:space="preserve">
+    <value>最快 Quilt 源</value>
+  </data>
+  <data name="Settings_FastestLegacyFabricSource.Header" xml:space="preserve">
+    <value>最快 LegacyFabric 源</value>
+  </data>
+  <data name="Settings_FastestCleanroomSource.Header" xml:space="preserve">
+    <value>最快 Cleanroom 源</value>
+  </data>
+  <data name="Settings_FastestOptifineSource.Header" xml:space="preserve">
+    <value>最快 Optifine 源</value>
+  </data>
   <data name="Settings_FastestModrinthSource.Header" xml:space="preserve">
     <value>最快 Modrinth 源</value>
   </data>

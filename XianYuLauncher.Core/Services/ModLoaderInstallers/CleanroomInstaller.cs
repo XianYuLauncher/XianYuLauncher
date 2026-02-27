@@ -22,6 +22,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 {
     private readonly IProcessorExecutor _processorExecutor;
     
+    // TODO(cleanroom-downloadsource-pr): 将 Cleanroom Maven 基础地址迁移到下载源系统（IDownloadSource Cleanroom 专用接口）。
+    // TODO(cleanroom-downloadsource-pr): 安装器下载、库下载、版本解析统一走 DownloadSourceFactory + FallbackDownloadManager。
     /// <summary>
     /// Cleanroom Maven仓库URL
     /// </summary>
@@ -320,6 +322,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     /// </summary>
     private string GetCleanroomInstallerUrl(string cleanroomVersion)
     {
+        // TODO(cleanroom-downloadsource-pr): 使用下载源接口提供 Cleanroom Installer URL，不在安装器内拼接 URL。
         // URL格式: https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/{version}/cleanroom-{version}-installer.jar
         return $"{CleanroomMavenUrl}/com/cleanroommc/cleanroom/{cleanroomVersion}/cleanroom-{cleanroomVersion}-installer.jar";
     }
@@ -431,16 +434,19 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 string baseUrl;
                 if (library.Name.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase))
                 {
+                    // TODO(cleanroom-downloadsource-pr): 这里的仓库选择应由下载源系统统一提供，避免安装器内硬编码。
                     baseUrl = "https://repo.cleanroommc.com/releases/";
                     Logger.LogDebug("检测到 Cleanroom 库，使用 Cleanroom Maven 仓库");
                 }
                 else if (library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
                 {
+                    // TODO(cleanroom-downloadsource-pr): Forge Maven 地址同样迁移到下载源系统，统一镜像与回退。
                     baseUrl = "https://maven.minecraftforge.net/";
                     Logger.LogDebug("检测到 Forge 库，使用 Forge Maven 仓库");
                 }
                 else
                 {
+                    // TODO(cleanroom-downloadsource-pr): 默认库仓库地址迁移到下载源系统，避免与全局源配置脱节。
                     baseUrl = "https://libraries.minecraft.net/";
                     Logger.LogDebug("使用默认 Maven 仓库");
                 }
@@ -657,10 +663,12 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                     string baseUrl = "https://libraries.minecraft.net/";
                     if (library.Name?.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase) == true)
                     {
+                        // TODO(cleanroom-downloadsource-pr): 库 URL 生成规则应集中到下载源接口，避免多处重复硬编码。
                         baseUrl = $"{CleanroomMavenUrl}/";
                     }
                     else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
                     {
+                        // TODO(cleanroom-downloadsource-pr): Forge 库 URL 生成同上，统一接入下载源系统。
                         baseUrl = "https://maven.minecraftforge.net/";
                     }
                     
