@@ -12,6 +12,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -20,6 +21,8 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public class OptifineInstaller : ModLoaderInstallerBase
 {
+    private readonly DownloadSourceFactory _downloadSourceFactory;
+
     /// <inheritdoc/>
     public override string ModLoaderType => "Optifine";
 
@@ -28,9 +31,11 @@ public class OptifineInstaller : ModLoaderInstallerBase
         ILibraryManager libraryManager,
         IVersionInfoManager versionInfoManager,
         IJavaRuntimeService javaRuntimeService,
+        DownloadSourceFactory downloadSourceFactory,
         ILogger<OptifineInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
+        _downloadSourceFactory = downloadSourceFactory;
     }
 
     /// <inheritdoc/>
@@ -301,8 +306,12 @@ public class OptifineInstaller : ModLoaderInstallerBase
     {
         try
         {
-            var url = $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}";
-            
+            // 使用 OptiFine 专用下载源
+            var optifineSource = _downloadSourceFactory.GetOptifineSource();
+            var url = optifineSource.GetOptifineVersionsUrl(minecraftVersionId);
+
+            Logger.LogInformation("使用 OptiFine 源: {Source}, 获取版本列表: {Url}", optifineSource.Name, url);
+
             var responseContent = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var versions = JsonConvert.DeserializeObject<List<OptifineVersionInfo>>(responseContent);
 
@@ -321,37 +330,13 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
     private string GetOptifineDownloadUrl(string minecraftVersionId, string optifineVersion)
     {
-        // optifineVersion 格式可能是：
-        // 1. "HD_U:C5" (UI 层传递的格式，Type:Patch)
-        // 2. "HD_U_C5" (旧格式，Type_Patch)
-        
-        string type, patch;
-        
-        // 检查是否包含冒号（新格式）
-        if (optifineVersion.Contains(':'))
-        {
-            var parts = optifineVersion.Split(':');
-            type = parts[0];  // HD_U
-            patch = parts[1]; // C5
-        }
-        else
-        {
-            // 旧格式：HD_U_C5，需要拆分为 type 和 patch
-            var lastUnderscoreIndex = optifineVersion.LastIndexOf('_');
-            if (lastUnderscoreIndex > 0)
-            {
-                type = optifineVersion.Substring(0, lastUnderscoreIndex);
-                patch = optifineVersion.Substring(lastUnderscoreIndex + 1);
-            }
-            else
-            {
-                // 无法解析，直接使用原始格式
-                return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineVersion}";
-            }
-        }
-        
-        // 下载URL格式: /optifine/{mcVersion}/{type}/{patch}
-        return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{type}/{patch}";
+        // 使用 OptiFine 专用下载源
+        var optifineSource = _downloadSourceFactory.GetOptifineSource();
+        string optifineVersionForUrl = $"{minecraftVersionId}-{optifineVersion.Replace(":", "_")}";
+        var url = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
+
+        Logger.LogDebug("使用 OptiFine 源: {Source}, 下载 URL: {Url}", optifineSource.Name, url);
+        return url;
     }
 
     private async Task ExecuteOptifineInstallerAsync(

@@ -186,9 +186,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         string fabricVersion,
         CancellationToken cancellationToken)
     {
-        // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 使用 LegacyFabric 专用下载源
+        var downloadSource = _downloadSourceFactory.GetLegacyFabricSource();
         var url = downloadSource.GetLegacyFabricProfileUrl(minecraftVersionId, fabricVersion);
         var officialUrl = $"{LegacyFabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
         

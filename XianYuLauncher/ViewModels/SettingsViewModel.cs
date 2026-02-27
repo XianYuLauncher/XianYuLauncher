@@ -162,6 +162,76 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private ObservableCollection<DownloadSourceItem> _curseforgeResourceSources = new ObservableCollection<DownloadSourceItem>();
 
+    #region ModLoader 下载源
+
+    /// <summary>
+    /// 核心游戏资源下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _coreGameResourceSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// Forge 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _forgeSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// Fabric 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _fabricSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// NeoForge 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _neoForgeSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// Quilt 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _quiltSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// OptiFine 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _optifineSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// 版本清单下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _versionManifestSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// 文件下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _fileDownloadSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// LiteLoader 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _liteLoaderSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// LegacyFabric 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _legacyFabricSources = new ObservableCollection<DownloadSourceItem>();
+
+    /// <summary>
+    /// Cleanroom 下载源列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<DownloadSourceItem> _cleanroomSources = new ObservableCollection<DownloadSourceItem>();
+
+    #endregion
+
     /// <summary>
     /// 当前选中的游戏资源下载源
     /// </summary>
@@ -179,6 +249,76 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private DownloadSourceItem? _selectedCurseforgeResourceSource;
+
+    #region ModLoader 选中的下载源
+
+    /// <summary>
+    /// 当前选中的核心游戏资源下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCoreGameResourceSource;
+
+    /// <summary>
+    /// 当前选中的 Forge 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedForgeSource;
+
+    /// <summary>
+    /// 当前选中的 Fabric 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedFabricSource;
+
+    /// <summary>
+    /// 当前选中的 NeoForge 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedNeoForgeSource;
+
+    /// <summary>
+    /// 当前选中的 Quilt 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedQuiltSource;
+
+    /// <summary>
+    /// 当前选中的 OptiFine 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedOptifineSource;
+
+    /// <summary>
+    /// 当前选中的版本清单下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedVersionManifestSource;
+
+    /// <summary>
+    /// 当前选中的文件下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedFileDownloadSource;
+
+    /// <summary>
+    /// 当前选中的 LiteLoader 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedLiteLoaderSource;
+
+    /// <summary>
+    /// 当前选中的 LegacyFabric 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedLegacyFabricSource;
+
+    /// <summary>
+    /// 当前选中的 Cleanroom 下载源
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCleanroomSource;
+
+    #endregion
 
     /// <summary>
     /// 是否自动选择最优下载源
@@ -2809,6 +2949,17 @@ public partial class SettingsViewModel : ObservableRecipient
     private const string GameResourceSourceKey = "GameResourceSource";
     private const string CommunityResourceSourceKey = "CommunityResourceSource";
     private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
+    private const string VersionManifestSourceKey = "VersionManifestSource";
+    private const string FileDownloadSourceKey = "FileDownloadSource";
+    private const string CoreGameResourceSourceKey = "CoreGameResourceSource";
+    private const string ForgeSourceKey = "ForgeSource";
+    private const string FabricSourceKey = "FabricSource";
+    private const string NeoForgeSourceKey = "NeoForgeSource";
+    private const string QuiltSourceKey = "QuiltSource";
+    private const string LiteLoaderSourceKey = "LiteLoaderSource";
+    private const string LegacyFabricSourceKey = "LegacyFabricSource";
+    private const string CleanroomSourceKey = "CleanroomSource";
+    private const string OptifineSourceKey = "OptifineSource";
     private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
 
     /// <summary>
@@ -2818,17 +2969,26 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         // 1. 加载自定义源配置
         await _customSourceManager.LoadConfigurationAsync();
-        
+
         // 2. 构建游戏资源源列表（BMCLAPI 类型：MC本体、ModLoader、版本列表）
         await BuildGameResourceSourcesAsync();
-        
+
         // 3. 构建社区资源源列表（Modrinth）
         await BuildCommunityResourceSourcesAsync();
 
         // 4. 构建 CurseForge 资源源列表
         await BuildCurseForgeResourceSourcesAsync();
 
-        // 5. 加载用户选择的源
+        // 5. 构建版本清单和文件下载源列表
+        await BuildVersionManifestAndFileDownloadSourcesAsync();
+
+        // 6. 构建核心游戏资源源列表
+        await BuildCoreGameResourceSourcesAsync();
+
+        // 7. 构建 ModLoader 资源源列表
+        await BuildModLoaderSourcesAsync();
+
+        // 8. 加载用户选择的源
         await LoadSelectedSourcesAsync();
     }
     
@@ -2946,6 +3106,140 @@ public partial class SettingsViewModel : ObservableRecipient
     }
 
     /// <summary>
+    /// 构建核心游戏资源源列表
+    /// </summary>
+    private async Task BuildCoreGameResourceSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var sources = new List<DownloadSourceItem>();
+
+            // 使用统一的获取方法
+            var coreSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForGameResources());
+
+            foreach (var source in coreSources)
+            {
+                sources.Add(new DownloadSourceItem
+                {
+                    Key = source.Key,
+                    DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
+                });
+            }
+
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                CoreGameResourceSources.Clear();
+                foreach (var source in sources)
+                {
+                    CoreGameResourceSources.Add(source);
+                }
+                Log.Information($"[Settings] 已加载 {CoreGameResourceSources.Count} 个核心游戏资源源");
+            });
+        });
+    }
+
+    /// <summary>
+    /// 构建版本清单和文件下载源列表
+    /// </summary>
+    private async Task BuildVersionManifestAndFileDownloadSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var buildSourceList = (IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources) =>
+            {
+                var result = new List<DownloadSourceItem>();
+                foreach (var source in sources)
+                {
+                    result.Add(new DownloadSourceItem
+                    {
+                        Key = source.Key,
+                        DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                        IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
+                    });
+                }
+                return result;
+            };
+
+            var versionManifestSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForVersionManifest()));
+            var fileDownloadSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForFileDownload()));
+
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                VersionManifestSources.Clear();
+                foreach (var source in versionManifestSources) VersionManifestSources.Add(source);
+
+                FileDownloadSources.Clear();
+                foreach (var source in fileDownloadSources) FileDownloadSources.Add(source);
+
+                Log.Information($"[Settings] 已加载版本清单源: {VersionManifestSources.Count}, 文件下载源: {FileDownloadSources.Count}");
+            });
+        });
+    }
+
+    /// <summary>
+    /// 构建 ModLoader 资源源列表
+    /// </summary>
+    private async Task BuildModLoaderSourcesAsync()
+    {
+        await Task.Run(() =>
+        {
+            var buildSourceList = (IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources) =>
+            {
+                var result = new List<DownloadSourceItem>();
+                foreach (var source in sources)
+                {
+                    result.Add(new DownloadSourceItem
+                    {
+                        Key = source.Key,
+                        DisplayName = _downloadSourceFactory.GetDisplayName(source.Key),
+                        IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
+                    });
+                }
+                return result;
+            };
+
+            var forgeSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForForge()));
+            var fabricSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForFabric()));
+            var neoforgeSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForNeoForge()));
+            var quiltSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForQuilt()));
+            var liteLoaderSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForLiteLoader()));
+            var legacyFabricSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForLegacyFabric()));
+            var cleanroomSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForCleanroom()));
+            var optifineSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForOptifine()));
+
+            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                ForgeSources.Clear();
+                foreach (var source in forgeSources) ForgeSources.Add(source);
+
+                FabricSources.Clear();
+                foreach (var source in fabricSources) FabricSources.Add(source);
+
+                NeoForgeSources.Clear();
+                foreach (var source in neoforgeSources) NeoForgeSources.Add(source);
+
+                QuiltSources.Clear();
+                foreach (var source in quiltSources) QuiltSources.Add(source);
+
+                LiteLoaderSources.Clear();
+                foreach (var source in liteLoaderSources) LiteLoaderSources.Add(source);
+
+                LegacyFabricSources.Clear();
+                foreach (var source in legacyFabricSources) LegacyFabricSources.Add(source);
+
+                CleanroomSources.Clear();
+                foreach (var source in cleanroomSources) CleanroomSources.Add(source);
+
+                OptifineSources.Clear();
+                foreach (var source in optifineSources) OptifineSources.Add(source);
+
+                Log.Information($"[Settings] 已加载 ModLoader 源: Forge={ForgeSources.Count}, Fabric={FabricSources.Count}, NeoForge={NeoForgeSources.Count}, Quilt={QuiltSources.Count}, LiteLoader={LiteLoaderSources.Count}, LegacyFabric={LegacyFabricSources.Count}, Cleanroom={CleanroomSources.Count}, Optifine={OptifineSources.Count}");
+            });
+        });
+    }
+
+    /// <summary>
     /// 加载用户选择的源
     /// </summary>
     private async Task LoadSelectedSourcesAsync()
@@ -2957,9 +3251,9 @@ public partial class SettingsViewModel : ObservableRecipient
             // 首次启动，根据地区设置默认值
             savedGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
         }
-        
+
         Log.Information($"[Settings] 读取到保存的游戏资源源: {savedGameSource}");
-        
+
         // 读取保存的社区资源源
         var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>(CommunityResourceSourceKey);
         if (string.IsNullOrEmpty(savedCommunitySource))
@@ -2967,7 +3261,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 首次启动，根据地区设置默认值
             savedCommunitySource = GetDefaultSourceKeyByRegion("mcim", "official");
         }
-        
+
         Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
 
         // 读取保存的 CurseForge 资源源
@@ -2979,6 +3273,95 @@ public partial class SettingsViewModel : ObservableRecipient
         }
 
         Log.Information($"[Settings] 读取到保存的 CurseForge 资源源: {savedCurseForgeSource}");
+
+        // 读取保存的核心游戏资源源
+        var savedCoreGameSource = await _localSettingsService.ReadSettingAsync<string>(CoreGameResourceSourceKey);
+        if (string.IsNullOrEmpty(savedCoreGameSource))
+        {
+            savedCoreGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的核心游戏资源源: {savedCoreGameSource}");
+
+        // 读取保存的 Forge 源
+        var savedForgeSource = await _localSettingsService.ReadSettingAsync<string>(ForgeSourceKey);
+        if (string.IsNullOrEmpty(savedForgeSource))
+        {
+            savedForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 Forge 源: {savedForgeSource}");
+
+        // 读取保存的 Fabric 源
+        var savedFabricSource = await _localSettingsService.ReadSettingAsync<string>(FabricSourceKey);
+        if (string.IsNullOrEmpty(savedFabricSource))
+        {
+            savedFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 Fabric 源: {savedFabricSource}");
+
+        // 读取保存的 NeoForge 源
+        var savedNeoForgeSource = await _localSettingsService.ReadSettingAsync<string>(NeoForgeSourceKey);
+        if (string.IsNullOrEmpty(savedNeoForgeSource))
+        {
+            savedNeoForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 NeoForge 源: {savedNeoForgeSource}");
+
+        // 读取保存的 Quilt 源
+        var savedQuiltSource = await _localSettingsService.ReadSettingAsync<string>(QuiltSourceKey);
+        if (string.IsNullOrEmpty(savedQuiltSource))
+        {
+            savedQuiltSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 Quilt 源: {savedQuiltSource}");
+
+        // 读取保存的 OptiFine 源
+        var savedOptifineSource = await _localSettingsService.ReadSettingAsync<string>(OptifineSourceKey);
+        if (string.IsNullOrEmpty(savedOptifineSource))
+        {
+            savedOptifineSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
+
+        // 读取保存的版本清单源
+        var savedVersionManifestSource = await _localSettingsService.ReadSettingAsync<string>(VersionManifestSourceKey);
+        if (string.IsNullOrEmpty(savedVersionManifestSource))
+        {
+            savedVersionManifestSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的版本清单源: {savedVersionManifestSource}");
+
+        // 读取保存的文件下载源
+        var savedFileDownloadSource = await _localSettingsService.ReadSettingAsync<string>(FileDownloadSourceKey);
+        if (string.IsNullOrEmpty(savedFileDownloadSource))
+        {
+            savedFileDownloadSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的文件下载源: {savedFileDownloadSource}");
+
+        // 读取保存的 LiteLoader 源
+        var savedLiteLoaderSource = await _localSettingsService.ReadSettingAsync<string>(LiteLoaderSourceKey);
+        if (string.IsNullOrEmpty(savedLiteLoaderSource))
+        {
+            savedLiteLoaderSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 LiteLoader 源: {savedLiteLoaderSource}");
+
+        // 读取保存的 LegacyFabric 源
+        var savedLegacyFabricSource = await _localSettingsService.ReadSettingAsync<string>(LegacyFabricSourceKey);
+        if (string.IsNullOrEmpty(savedLegacyFabricSource))
+        {
+            savedLegacyFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 LegacyFabric 源: {savedLegacyFabricSource}");
+
+        // 读取保存的 Cleanroom 源
+        var savedCleanroomSource = await _localSettingsService.ReadSettingAsync<string>(CleanroomSourceKey);
+        if (string.IsNullOrEmpty(savedCleanroomSource))
+        {
+            savedCleanroomSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
+        }
+        Log.Information($"[Settings] 读取到保存的 Cleanroom 源: {savedCleanroomSource}");
+        Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
 
         // 读取自动选择最优下载源设置
         var savedAutoSelect = await _localSettingsService.ReadSettingAsync<bool>(AutoSelectFastestSourceKey);
@@ -2993,10 +3376,39 @@ public partial class SettingsViewModel : ObservableRecipient
                 ?? CommunityResourceSources.FirstOrDefault();
             SelectedCurseforgeResourceSource = CurseforgeResourceSources.FirstOrDefault(s => s.Key == savedCurseForgeSource)
                 ?? CurseforgeResourceSources.FirstOrDefault();
+            SelectedVersionManifestSource = VersionManifestSources.FirstOrDefault(s => s.Key == savedVersionManifestSource)
+                ?? VersionManifestSources.FirstOrDefault();
+            SelectedFileDownloadSource = FileDownloadSources.FirstOrDefault(s => s.Key == savedFileDownloadSource)
+                ?? FileDownloadSources.FirstOrDefault();
+            SelectedCoreGameResourceSource = CoreGameResourceSources.FirstOrDefault(s => s.Key == savedCoreGameSource)
+                ?? CoreGameResourceSources.FirstOrDefault();
+            SelectedForgeSource = ForgeSources.FirstOrDefault(s => s.Key == savedForgeSource)
+                ?? ForgeSources.FirstOrDefault();
+            SelectedFabricSource = FabricSources.FirstOrDefault(s => s.Key == savedFabricSource)
+                ?? FabricSources.FirstOrDefault();
+            SelectedNeoForgeSource = NeoForgeSources.FirstOrDefault(s => s.Key == savedNeoForgeSource)
+                ?? NeoForgeSources.FirstOrDefault();
+            SelectedQuiltSource = QuiltSources.FirstOrDefault(s => s.Key == savedQuiltSource)
+                ?? QuiltSources.FirstOrDefault();
+            SelectedLiteLoaderSource = LiteLoaderSources.FirstOrDefault(s => s.Key == savedLiteLoaderSource)
+                ?? LiteLoaderSources.FirstOrDefault();
+            SelectedLegacyFabricSource = LegacyFabricSources.FirstOrDefault(s => s.Key == savedLegacyFabricSource)
+                ?? LegacyFabricSources.FirstOrDefault();
+            SelectedCleanroomSource = CleanroomSources.FirstOrDefault(s => s.Key == savedCleanroomSource)
+                ?? CleanroomSources.FirstOrDefault();
+            SelectedOptifineSource = OptifineSources.FirstOrDefault(s => s.Key == savedOptifineSource)
+                ?? OptifineSources.FirstOrDefault();
             AutoSelectFastestSource = savedAutoSelect;
 
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName} ({SelectedGameResourceSource?.Key}), 社区资源源: {SelectedCommunityResourceSource?.DisplayName} ({SelectedCommunityResourceSource?.Key}), CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName} ({SelectedCurseforgeResourceSource?.Key}), 自动选择: {AutoSelectFastestSource}");
-            
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName}, 社区源: {SelectedCommunityResourceSource?.DisplayName}, " +
+                $"CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName}, 版本清单: {SelectedVersionManifestSource?.DisplayName}, " +
+                $"文件下载: {SelectedFileDownloadSource?.DisplayName}, 核心游戏: {SelectedCoreGameResourceSource?.DisplayName}, " +
+                $"Forge: {SelectedForgeSource?.DisplayName}, Fabric: {SelectedFabricSource?.DisplayName}, " +
+                $"NeoForge: {SelectedNeoForgeSource?.DisplayName}, Quilt: {SelectedQuiltSource?.DisplayName}, " +
+                $"LiteLoader: {SelectedLiteLoaderSource?.DisplayName}, LegacyFabric: {SelectedLegacyFabricSource?.DisplayName}, " +
+                $"Cleanroom: {SelectedCleanroomSource?.DisplayName}, OptiFine: {SelectedOptifineSource?.DisplayName}, " +
+                $"自动选择: {AutoSelectFastestSource}");
+
             // 同步到 DownloadSourceFactory
             if (SelectedGameResourceSource != null)
             {
@@ -3033,6 +3445,48 @@ public partial class SettingsViewModel : ObservableRecipient
                 {
                     Log.Error(ex, $"[Settings] 同步 CurseForge 资源源到 DownloadSourceFactory 失败: {SelectedCurseforgeResourceSource.Key}");
                 }
+            }
+            // 同步 ModLoader 源到 DownloadSourceFactory
+            if (SelectedForgeSource != null)
+            {
+                try { _downloadSourceFactory.SetForgeSource(SelectedForgeSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Forge 源失败"); }
+            }
+            if (SelectedFabricSource != null)
+            {
+                try { _downloadSourceFactory.SetFabricSource(SelectedFabricSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Fabric 源失败"); }
+            }
+            if (SelectedNeoForgeSource != null)
+            {
+                try { _downloadSourceFactory.SetNeoForgeSource(SelectedNeoForgeSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 NeoForge 源失败"); }
+            }
+            if (SelectedQuiltSource != null)
+            {
+                try { _downloadSourceFactory.SetQuiltSource(SelectedQuiltSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Quilt 源失败"); }
+            }
+            if (SelectedOptifineSource != null)
+            {
+                try { _downloadSourceFactory.SetOptifineSource(SelectedOptifineSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 OptiFine 源失败"); }
+            }
+            // 同步版本清单和文件下载源到 DownloadSourceFactory
+            if (SelectedVersionManifestSource != null)
+            {
+                try { _downloadSourceFactory.SetVersionManifestSource(SelectedVersionManifestSource.Key); } catch (Exception ex) { Log.Error(ex, "同步版本清单源失败"); }
+            }
+            if (SelectedFileDownloadSource != null)
+            {
+                try { _downloadSourceFactory.SetFileDownloadSource(SelectedFileDownloadSource.Key); } catch (Exception ex) { Log.Error(ex, "同步文件下载源失败"); }
+            }
+            if (SelectedLiteLoaderSource != null)
+            {
+                try { _downloadSourceFactory.SetLiteLoaderSource(SelectedLiteLoaderSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LiteLoader 源失败"); }
+            }
+            if (SelectedLegacyFabricSource != null)
+            {
+                try { _downloadSourceFactory.SetLegacyFabricSource(SelectedLegacyFabricSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LegacyFabric 源失败"); }
+            }
+            if (SelectedCleanroomSource != null)
+            {
+                try { _downloadSourceFactory.SetCleanroomSource(SelectedCleanroomSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Cleanroom 源失败"); }
             }
         });
     }
@@ -3107,6 +3561,132 @@ public partial class SettingsViewModel : ObservableRecipient
         _downloadSourceFactory.SetCurseForgeSource(value.Key);
 
         Log.Information($"[Settings] CurseForge 资源源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当核心游戏资源源选择变化时
+    /// </summary>
+    partial void OnSelectedCoreGameResourceSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(CoreGameResourceSourceKey, value.Key).ConfigureAwait(false);
+        Log.Information($"[Settings] 核心游戏资源源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 Forge 源选择变化时
+    /// </summary>
+    partial void OnSelectedForgeSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(ForgeSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Forge 源失败"); }
+        Log.Information($"[Settings] Forge 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 Fabric 源选择变化时
+    /// </summary>
+    partial void OnSelectedFabricSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(FabricSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Fabric 源失败"); }
+        Log.Information($"[Settings] Fabric 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 NeoForge 源选择变化时
+    /// </summary>
+    partial void OnSelectedNeoForgeSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(NeoForgeSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetNeoForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 NeoForge 源失败"); }
+        Log.Information($"[Settings] NeoForge 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 Quilt 源选择变化时
+    /// </summary>
+    partial void OnSelectedQuiltSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(QuiltSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetQuiltSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Quilt 源失败"); }
+        Log.Information($"[Settings] Quilt 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 OptiFine 源选择变化时
+    /// </summary>
+    partial void OnSelectedOptifineSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+
+        _localSettingsService.SaveSettingAsync(OptifineSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetOptifineSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 OptiFine 源失败"); }
+        Log.Information($"[Settings] OptiFine 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当版本清单源选择变化时
+    /// </summary>
+    partial void OnSelectedVersionManifestSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        _localSettingsService.SaveSettingAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetVersionManifestSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置版本清单源失败"); }
+        Log.Information($"[Settings] 版本清单源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当文件下载源选择变化时
+    /// </summary>
+    partial void OnSelectedFileDownloadSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        _localSettingsService.SaveSettingAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetFileDownloadSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置文件下载源失败"); }
+        Log.Information($"[Settings] 文件下载源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 LiteLoader 源选择变化时
+    /// </summary>
+    partial void OnSelectedLiteLoaderSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        _localSettingsService.SaveSettingAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetLiteLoaderSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LiteLoader 源失败"); }
+        Log.Information($"[Settings] LiteLoader 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 LegacyFabric 源选择变化时
+    /// </summary>
+    partial void OnSelectedLegacyFabricSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        _localSettingsService.SaveSettingAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetLegacyFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LegacyFabric 源失败"); }
+        Log.Information($"[Settings] LegacyFabric 源已切换为: {value.DisplayName} ({value.Key})");
+    }
+
+    /// <summary>
+    /// 当 Cleanroom 源选择变化时
+    /// </summary>
+    partial void OnSelectedCleanroomSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null) return;
+        _localSettingsService.SaveSettingAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
+        try { _downloadSourceFactory.SetCleanroomSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Cleanroom 源失败"); }
+        Log.Information($"[Settings] Cleanroom 源已切换为: {value.DisplayName} ({value.Key})");
     }
 
     /// <summary>

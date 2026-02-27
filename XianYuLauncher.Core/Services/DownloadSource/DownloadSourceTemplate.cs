@@ -29,6 +29,8 @@ public abstract class DownloadSourceTemplate
     public abstract string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion);
     public abstract string GetLegacyFabricVersionsUrl(string minecraftVersion);
     public abstract string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion);
+    public abstract string GetOptifineVersionsUrl(string minecraftVersion);
+    public abstract string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion);
     public abstract string GetLiteLoaderVersionsUrl();
     public abstract string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl);
 

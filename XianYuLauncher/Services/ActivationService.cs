@@ -185,6 +185,79 @@ public class ActivationService : IActivationService
             {
                 Serilog.Log.Information("[ActivationService] 未找到 CurseForgeResourceSource，保留默认 CurseForge 资源源设置");
             }
+
+            // 读取版本清单下载源
+            var versionManifestSource = await _localSettingsService.ReadSettingAsync<string>("VersionManifestSource");
+            if (!string.IsNullOrEmpty(versionManifestSource) && allSources.ContainsKey(versionManifestSource))
+            {
+                _downloadSourceFactory.SetVersionManifestSource(versionManifestSource);
+                Serilog.Log.Information($"[ActivationService] 版本清单下载源已设置为: {versionManifestSource}");
+            }
+
+            // 读取文件下载源
+            var fileDownloadSource = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource");
+            if (!string.IsNullOrEmpty(fileDownloadSource) && allSources.ContainsKey(fileDownloadSource))
+            {
+                _downloadSourceFactory.SetFileDownloadSource(fileDownloadSource);
+                Serilog.Log.Information($"[ActivationService] 文件下载源已设置为: {fileDownloadSource}");
+            }
+
+            // 读取各 ModLoader 下载源
+            var forgeSource = await _localSettingsService.ReadSettingAsync<string>("ForgeSource");
+            if (!string.IsNullOrEmpty(forgeSource) && allSources.ContainsKey(forgeSource))
+            {
+                _downloadSourceFactory.SetForgeSource(forgeSource);
+                Serilog.Log.Information($"[ActivationService] Forge 下载源已设置为: {forgeSource}");
+            }
+
+            var fabricSource = await _localSettingsService.ReadSettingAsync<string>("FabricSource");
+            if (!string.IsNullOrEmpty(fabricSource) && allSources.ContainsKey(fabricSource))
+            {
+                _downloadSourceFactory.SetFabricSource(fabricSource);
+                Serilog.Log.Information($"[ActivationService] Fabric 下载源已设置为: {fabricSource}");
+            }
+
+            var neoforgeSource = await _localSettingsService.ReadSettingAsync<string>("NeoForgeSource");
+            if (!string.IsNullOrEmpty(neoforgeSource) && allSources.ContainsKey(neoforgeSource))
+            {
+                _downloadSourceFactory.SetNeoForgeSource(neoforgeSource);
+                Serilog.Log.Information($"[ActivationService] NeoForge 下载源已设置为: {neoforgeSource}");
+            }
+
+            var quiltSource = await _localSettingsService.ReadSettingAsync<string>("QuiltSource");
+            if (!string.IsNullOrEmpty(quiltSource) && allSources.ContainsKey(quiltSource))
+            {
+                _downloadSourceFactory.SetQuiltSource(quiltSource);
+                Serilog.Log.Information($"[ActivationService] Quilt 下载源已设置为: {quiltSource}");
+            }
+
+            var liteloaderSource = await _localSettingsService.ReadSettingAsync<string>("LiteLoaderSource");
+            if (!string.IsNullOrEmpty(liteloaderSource) && allSources.ContainsKey(liteloaderSource))
+            {
+                _downloadSourceFactory.SetLiteLoaderSource(liteloaderSource);
+                Serilog.Log.Information($"[ActivationService] LiteLoader 下载源已设置为: {liteloaderSource}");
+            }
+
+            var legacyfabricSource = await _localSettingsService.ReadSettingAsync<string>("LegacyFabricSource");
+            if (!string.IsNullOrEmpty(legacyfabricSource) && allSources.ContainsKey(legacyfabricSource))
+            {
+                _downloadSourceFactory.SetLegacyFabricSource(legacyfabricSource);
+                Serilog.Log.Information($"[ActivationService] LegacyFabric 下载源已设置为: {legacyfabricSource}");
+            }
+
+            var cleanroomSource = await _localSettingsService.ReadSettingAsync<string>("CleanroomSource");
+            if (!string.IsNullOrEmpty(cleanroomSource) && allSources.ContainsKey(cleanroomSource))
+            {
+                _downloadSourceFactory.SetCleanroomSource(cleanroomSource);
+                Serilog.Log.Information($"[ActivationService] Cleanroom 下载源已设置为: {cleanroomSource}");
+            }
+
+            var optifineSource = await _localSettingsService.ReadSettingAsync<string>("OptifineSource");
+            if (!string.IsNullOrEmpty(optifineSource) && allSources.ContainsKey(optifineSource))
+            {
+                _downloadSourceFactory.SetOptifineSource(optifineSource);
+                Serilog.Log.Information($"[ActivationService] Optifine 下载源已设置为: {optifineSource}");
+            }
         }
         catch (Exception ex)
         {

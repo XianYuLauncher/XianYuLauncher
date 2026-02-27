@@ -74,10 +74,9 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     {
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 开始安装 LiteLoader {modLoaderVersion} for MC {minecraftVersionId}");
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] CustomVersionName: {options.CustomVersionName}");
-        
-        // 1. 获取源
-        var sourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
-        var source = _downloadSourceFactory.GetSource(sourceKey ?? "Official");
+
+        // 使用 LiteLoader 专用下载源
+        var source = _downloadSourceFactory.GetLiteLoaderSource();
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 使用下载源: {source.Name}");
 
         // 2. 获取元数据

@@ -44,6 +44,46 @@ public interface ISpeedTestService
     /// </summary>
     Task<string?> GetFastestCurseForgeSourceKeyAsync(CancellationToken ct = default);
 
+    #region ModLoader 测速
+
+    /// <summary>
+    /// 测试特定 ModLoader 的所有下载源
+    /// </summary>
+    /// <param name="loaderType">ModLoader 类型（forge/fabric/neoforge/quilt/liteloader/legacyfabric/cleanroom/optifine）</param>
+    Task<List<SpeedTestResult>> TestModLoaderSourcesAsync(string loaderType, CancellationToken ct = default);
+
+    /// <summary>
+    /// 测试 Forge 下载源
+    /// </summary>
+    Task<List<SpeedTestResult>> TestForgeSourcesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 测试 Fabric 下载源
+    /// </summary>
+    Task<List<SpeedTestResult>> TestFabricSourcesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 测试 NeoForge 下载源
+    /// </summary>
+    Task<List<SpeedTestResult>> TestNeoForgeSourcesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 获取最快的 Forge 源键
+    /// </summary>
+    Task<string?> GetFastestForgeSourceKeyAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 获取最快的 Fabric 源键
+    /// </summary>
+    Task<string?> GetFastestFabricSourceKeyAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 获取最快的 NeoForge 源键
+    /// </summary>
+    Task<string?> GetFastestNeoForgeSourceKeyAsync(CancellationToken ct = default);
+
+    #endregion
+
     /// <summary>
     /// 加载测速缓存
     /// </summary>
@@ -295,6 +335,138 @@ public class SpeedTestService : ISpeedTestService
 
         return results.FirstOrDefault()?.SourceKey;
     }
+
+    #region ModLoader 测速实现
+
+    /// <inheritdoc />
+    public async Task<List<SpeedTestResult>> TestModLoaderSourcesAsync(string loaderType, CancellationToken ct = default)
+    {
+        var results = new List<SpeedTestResult>();
+
+        // 使用 DownloadSourceFactory 获取对应 ModLoader 的下载源
+        var sources = _downloadSourceFactory.GetSourcesForModLoader(loaderType);
+
+        _logger.LogInformation("[SpeedTest] 开始测试 {LoaderType} 源，数量: {Count}", loaderType, sources.Count);
+
+        // 从下载源获取对应的 URL 并提取 Host
+        var sourceHosts = GetModLoaderSourceHosts(loaderType, sources);
+
+        var semaphore = new SemaphoreSlim(MaxConcurrentTests);
+        try
+        {
+            var tasks = sourceHosts.Select(async source =>
+            {
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    return await TestSourceAsync(source.Key, source.Host, source.Name, ct);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            results.AddRange(await Task.WhenAll(tasks));
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[SpeedTest] {LoaderType} 测速已取消", loaderType);
+        }
+
+        var successfulResults = results.Where(r => r.IsSuccess).ToList();
+
+        if (successfulResults.Count == 0)
+        {
+            _logger.LogWarning("[SpeedTest] {LoaderType} 源测速全部失败", loaderType);
+            return results.OrderBy(r => r.LatencyMs).ToList();
+        }
+
+        return successfulResults.OrderBy(r => r.LatencyMs).ToList();
+    }
+
+    /// <summary>
+    /// 获取 ModLoader 下载源的 Host 信息
+    /// </summary>
+    private List<(string Key, string Host, string Name)> GetModLoaderSourceHosts(string loaderType, IEnumerable<IDownloadSource> sources)
+    {
+        var result = new List<(string Key, string Host, string Name)>();
+
+        foreach (var source in sources)
+        {
+            try
+            {
+                string? url = loaderType.ToLowerInvariant() switch
+                {
+                    "forge" => source.GetForgeVersionsUrl("1.20.1"), // 用一个通用版本测试
+                    "fabric" => source.GetFabricVersionsUrl("1.20.1"),
+                    "neoforge" => source.GetNeoForgeVersionsUrl("1.20.1"),
+                    "quilt" => source.GetQuiltVersionsUrl("1.20.1"),
+                    "liteloader" => source.GetLiteLoaderVersionsUrl(),
+                    "legacyfabric" => source.GetLegacyFabricVersionsUrl("1.13.2"),
+                    "cleanroom" => null, // Cleanroom 不需要版本列表
+                    "optifine" => null, // Optifine 单独处理
+                    _ => null
+                };
+
+                if (!string.IsNullOrEmpty(url))
+                {
+                    var host = ExtractHost(url);
+                    if (!string.IsNullOrEmpty(host))
+                    {
+                        result.Add((source.Key, host, source.Name));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "[SpeedTest] 源 {Key} 不支持 {LoaderType}", source.Key, loaderType);
+            }
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SpeedTestResult>> TestForgeSourcesAsync(CancellationToken ct = default)
+    {
+        return await TestModLoaderSourcesAsync("forge", ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SpeedTestResult>> TestFabricSourcesAsync(CancellationToken ct = default)
+    {
+        return await TestModLoaderSourcesAsync("fabric", ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SpeedTestResult>> TestNeoForgeSourcesAsync(CancellationToken ct = default)
+    {
+        return await TestModLoaderSourcesAsync("neoforge", ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFastestForgeSourceKeyAsync(CancellationToken ct = default)
+    {
+        var results = await TestForgeSourcesAsync(ct);
+        return results.FirstOrDefault()?.SourceKey;
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFastestFabricSourceKeyAsync(CancellationToken ct = default)
+    {
+        var results = await TestFabricSourcesAsync(ct);
+        return results.FirstOrDefault()?.SourceKey;
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFastestNeoForgeSourceKeyAsync(CancellationToken ct = default)
+    {
+        var results = await TestNeoForgeSourcesAsync(ct);
+        return results.FirstOrDefault()?.SourceKey;
+    }
+
+    #endregion
 
     /// <inheritdoc />
     public async Task<SpeedTestCache> LoadCacheAsync()

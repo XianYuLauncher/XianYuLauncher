@@ -11,6 +11,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Tests.Services;
 
@@ -18,6 +19,7 @@ public class VersionInfoManagerTests : IDisposable
 {
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILogger<VersionInfoManager>> _mockLogger;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly VersionInfoManager _versionInfoManager;
     private readonly string _testDirectory;
 
@@ -25,7 +27,8 @@ public class VersionInfoManagerTests : IDisposable
     {
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLogger = new Mock<ILogger<VersionInfoManager>>();
-        _versionInfoManager = new VersionInfoManager(_mockDownloadManager.Object, _mockLogger.Object);
+        _downloadSourceFactory = new DownloadSourceFactory();
+        _versionInfoManager = new VersionInfoManager(_mockDownloadManager.Object, _downloadSourceFactory, _mockLogger.Object);
         _testDirectory = Path.Combine(Path.GetTempPath(), $"VersionInfoManagerTests_{Guid.NewGuid()}");
         Directory.CreateDirectory(_testDirectory);
     }

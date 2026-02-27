@@ -61,9 +61,10 @@ public class ForgeService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[ForgeService] 使用 FallbackDownloadManager 获取 Forge 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetForgeVersionsUrl(minecraftVersion),
+                    "forge",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
@@ -156,18 +157,8 @@ public class ForgeService
     /// </summary>
     private async Task<List<string>> GetForgeVersionsWithLegacyFallbackAsync(string minecraftVersion)
     {
-        // 获取当前版本列表源设置（枚举类型，然后转为字符串）
-        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
-        string versionListSource = versionListSourceEnum switch
-        {
-            0 => "official",
-            1 => "bmclapi",
-            2 => "mcim",
-            _ => "official"
-        };
-        
-        // 根据设置获取对应的下载源
-        var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
+        // 使用 Forge 专用下载源
+        var downloadSource = _downloadSourceFactory.GetForgeSource();
         
         // 获取Forge版本列表URL
         string url = downloadSource.GetForgeVersionsUrl(minecraftVersion);

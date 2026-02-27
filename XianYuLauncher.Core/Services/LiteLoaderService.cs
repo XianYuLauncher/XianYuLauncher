@@ -54,6 +54,7 @@ public class LiteLoaderService
         {
             var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetLiteLoaderVersionsUrl(),
+                    "liteloader",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）

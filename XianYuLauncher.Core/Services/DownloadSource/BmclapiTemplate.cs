@@ -117,6 +117,21 @@ public class BmclapiTemplate : DownloadSourceTemplate
         return "https://meta.legacyfabric.net/v2/versions/loader/{version}/{loaderVersion}/profile/json";
     }
 
+    public override string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        // OptiFine 版本列表：按 Minecraft 版本划分
+        // 实际 URL 形如：{baseUrl}/optifine/{mcVersion}
+        return "{baseUrl}/optifine/{mcVersion}";
+    }
+
+    public override string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        // OptiFine 版本格式: 1.19.2-HD_U_H9
+        // BMCLAPI 实际下载 URL 形如：{baseUrl}/optifine/{mcVersion}/{type}/{patch}
+        // 具体的 mcVersion / type / patch 由上层根据 optifineVersion 解析并替换占位符
+        return "{baseUrl}/optifine/{mcVersion}/{type}/{patch}";
+    }
+
     public override string GetLiteLoaderVersionsUrl()
     {
         return "{baseUrl}/maven/com/mumfrey/liteloader/versions.json";

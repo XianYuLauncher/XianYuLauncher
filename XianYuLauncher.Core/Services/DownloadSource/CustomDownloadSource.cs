@@ -40,10 +40,44 @@ public class CustomDownloadSource : IDownloadSource
     public bool SupportsGameResources => TemplateName == "official";
 
     /// <inheritdoc />
+    public bool SupportsVersionManifest => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsFileDownload => TemplateName == "official";
+
+    /// <inheritdoc />
     public bool SupportsModrinth => TemplateName == "community";
 
     /// <inheritdoc />
     public bool SupportsCurseForge => TemplateName == "community";
+
+    #region ModLoader 支持
+
+    /// <inheritdoc />
+    public bool SupportsForge => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsFabric => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsNeoForge => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsQuilt => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsLiteLoader => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsLegacyFabric => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsCleanroom => TemplateName == "official";
+
+    /// <inheritdoc />
+    public bool SupportsOptifine => TemplateName == "official";
+
+    #endregion
 
     /// <summary>
     /// 优先级（数值越大优先级越高）
@@ -186,12 +220,46 @@ public class CustomDownloadSource : IDownloadSource
 
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
     {
-        var context = new Dictionary<string, string> 
-        { 
+        var context = new Dictionary<string, string>
+        {
             { "version", minecraftVersion },
             { "loaderVersion", modLoaderVersion }
         };
         return ApplyTemplate("legacy_fabric_profile", _template.GetLegacyFabricProfileUrl(minecraftVersion, modLoaderVersion), context);
+    }
+
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        var context = new Dictionary<string, string> { { "mcVersion", minecraftVersion } };
+        return ApplyTemplate("optifine_versions", _template.GetOptifineVersionsUrl(minecraftVersion), context);
+    }
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        // 解析 OptiFine 版本后缀（如 1.19.2-HD_U_H9 → type=HD_U, patch=H9）
+        Dictionary<string, string> context;
+        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
+        {
+            context = new Dictionary<string, string>
+            {
+                { "mcVersion", minecraftVersion },
+                { "type", type! },
+                { "patch", patch! }
+            };
+        }
+        else
+        {
+            // 无法解析 type/patch（如预发布版），使用 optifineVersion 作为兜底路径段
+            _logger?.LogWarning("无法解析 OptiFine 版本格式 '{Version}'，type/patch 占位符将无法替换", optifineVersion);
+            context = new Dictionary<string, string>
+            {
+                { "mcVersion", minecraftVersion },
+                { "type", optifineVersion },
+                { "patch", string.Empty }
+            };
+        }
+
+        return ApplyTemplate("optifine_download", _template.GetOptifineDownloadUrl(minecraftVersion, optifineVersion), context);
     }
 
     public string GetLiteLoaderVersionsUrl()

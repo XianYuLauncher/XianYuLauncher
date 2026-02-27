@@ -58,9 +58,10 @@ public class NeoForgeService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 使用 FallbackDownloadManager 获取 NeoForge 版本列表");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetNeoForgeVersionsUrl(minecraftVersion),
+                    "neoforge",
                     (request, source) =>
                     {
                         // 所有源都添加 User-Agent（maven.neoforged.net 会拒绝没有 UA 的请求）
@@ -159,18 +160,8 @@ public class NeoForgeService
     /// </summary>
     private async Task<List<string>> GetNeoForgeVersionsWithLegacyFallbackAsync(string minecraftVersion)
     {
-        // 获取当前版本列表源设置（枚举类型，然后转为字符串）
-        var versionListSourceEnum = await _localSettingsService.ReadSettingAsync<int>("VersionListSource");
-        string versionListSource = versionListSourceEnum switch
-        {
-            0 => "official",
-            1 => "bmclapi",
-            2 => "mcim",
-            _ => "official"
-        };
-        
-        // 根据设置获取对应的下载源
-        var downloadSource = _downloadSourceFactory.GetSource(versionListSource);
+        // 使用 NeoForge 专用下载源
+        var downloadSource = _downloadSourceFactory.GetNeoForgeSource();
         
         // 获取NeoForge版本列表URL
         string url = downloadSource.GetNeoForgeVersionsUrl(minecraftVersion);

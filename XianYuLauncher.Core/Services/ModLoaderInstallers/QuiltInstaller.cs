@@ -185,9 +185,8 @@ public class QuiltInstaller : ModLoaderInstallerBase
         string quiltVersion,
         CancellationToken cancellationToken)
     {
-        // 获取当前下载源
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 使用 Quilt 专用下载源
+        var downloadSource = _downloadSourceFactory.GetQuiltSource();
         var url = downloadSource.GetQuiltProfileUrl(minecraftVersionId, quiltVersion);
         var officialUrl = $"{QuiltMetaApiUrl}/versions/loader/{minecraftVersionId}/{quiltVersion}/profile/json";
         

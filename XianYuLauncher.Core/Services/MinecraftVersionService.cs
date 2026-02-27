@@ -130,9 +130,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             if (_fallbackDownloadManager != null)
             {
                 System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 使用 FallbackDownloadManager 获取版本清单");
-                
+
                 var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
                     source => source.GetVersionManifestUrl(),
+                    "version_manifest",
                     (request, source) =>
                     {
                         // 为 BMCLAPI 类型的源添加 User-Agent（包括 BMCLAPI 镜像）
@@ -158,7 +159,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             
             // 回退到原有逻辑（兼容模式）
-            var downloadSource = _downloadSourceFactory.GetDefaultSource();
+            var downloadSource = _downloadSourceFactory.GetVersionManifestSource();
             _logger.LogInformation("当前版本列表源: {DownloadSourceName}", downloadSource.Name);
             
             var versionManifestUrl = downloadSource.GetVersionManifestUrl();
@@ -329,7 +330,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             throw new Exception($"Version {versionId} not found");
                         }
 
-                        var downloadSource = _downloadSourceFactory.GetDefaultSource();
+                        var downloadSource = _downloadSourceFactory.GetVersionManifestSource();
                         var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                         
                         var response = await _downloadManager.DownloadStringAsync(versionInfoUrl, cts.Token);
@@ -447,7 +448,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     throw new Exception($"Version {versionId} not found");
                 }
 
-                var downloadSource = _downloadSourceFactory.GetDefaultSource();
+                var downloadSource = _downloadSourceFactory.GetVersionManifestSource();
                 var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
                 
                 // 添加调试信息
@@ -552,8 +553,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 设置64KB缓冲区大小，提高下载速度
             const int bufferSize = 65536;
             
-            var downloadSource = _downloadSourceFactory.GetDefaultSource();
-            
+            var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
+
             // 使用下载源获取客户端JAR的下载URL
             var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR核心文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}, 下载URL: {clientJarUrl}");
@@ -1470,7 +1471,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            var downloadSource = _downloadSourceFactory.GetDefaultSource();
+            var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
             _logger.LogInformation("当前assets下载源: {DownloadSource}", downloadSource.Name);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets下载源: {downloadSource.Name}");
 
@@ -1929,7 +1930,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 // 报告资源索引文件下载开始
                 progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
-                var downloadSource = _downloadSourceFactory.GetDefaultSource();
+                var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
                 
                 // 转换资源索引URL
                 string convertedAssetIndexUrl = downloadSource.GetResourceUrl("asset_index", assetIndexUrl);
