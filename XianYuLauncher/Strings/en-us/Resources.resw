@@ -2943,6 +2943,36 @@ Continue downloading?</value>
   <data name="Settings_FastestGameSource.Header" xml:space="preserve">
     <value>Fastest Game Source</value>
   </data>
+  <data name="Settings_FastestVersionManifestSource.Header" xml:space="preserve">
+    <value>Fastest Version Manifest Source</value>
+  </data>
+  <data name="Settings_FastestFileDownloadSource.Header" xml:space="preserve">
+    <value>Fastest File Download Source</value>
+  </data>
+  <data name="Settings_FastestForgeSource.Header" xml:space="preserve">
+    <value>Fastest Forge Source</value>
+  </data>
+  <data name="Settings_FastestFabricSource.Header" xml:space="preserve">
+    <value>Fastest Fabric Source</value>
+  </data>
+  <data name="Settings_FastestNeoForgeSource.Header" xml:space="preserve">
+    <value>Fastest NeoForge Source</value>
+  </data>
+  <data name="Settings_FastestLiteLoaderSource.Header" xml:space="preserve">
+    <value>Fastest LiteLoader Source</value>
+  </data>
+  <data name="Settings_FastestQuiltSource.Header" xml:space="preserve">
+    <value>Fastest Quilt Source</value>
+  </data>
+  <data name="Settings_FastestLegacyFabricSource.Header" xml:space="preserve">
+    <value>Fastest LegacyFabric Source</value>
+  </data>
+  <data name="Settings_FastestCleanroomSource.Header" xml:space="preserve">
+    <value>Fastest Cleanroom Source</value>
+  </data>
+  <data name="Settings_FastestOptifineSource.Header" xml:space="preserve">
+    <value>Fastest Optifine Source</value>
+  </data>
   <data name="Settings_FastestModrinthSource.Header" xml:space="preserve">
     <value>Fastest Modrinth Source</value>
   </data>

@@ -24,22 +24,18 @@ public class CustomDownloadSource : IDownloadSource
     {
         get
         {
-            // 从 BaseUrl 提取主机名和端口
-            var url = _baseUrl.TrimEnd('/');
-            if (url.StartsWith("http://"))
-                url = url.Substring(7);
-            else if (url.StartsWith("https://"))
-                url = url.Substring(8);
+            if (string.IsNullOrEmpty(_baseUrl))
+                return string.Empty;
 
-            var slashIndex = url.IndexOf('/');
-            if (slashIndex >= 0)
-                url = url.Substring(0, slashIndex);
-
-            // 添加默认端口
-            if (!url.Contains(':'))
-                url = url + ":443";
-
-            return url;
+            try
+            {
+                var uri = new Uri(_baseUrl.TrimEnd('/'));
+                return $"{uri.Host}:{uri.Port}";
+            }
+            catch (UriFormatException)
+            {
+                return string.Empty;
+            }
         }
     }
 
