@@ -220,12 +220,22 @@ public class CustomDownloadSource : IDownloadSource
 
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
     {
-        var context = new Dictionary<string, string> 
-        { 
+        var context = new Dictionary<string, string>
+        {
             { "version", minecraftVersion },
             { "loaderVersion", modLoaderVersion }
         };
         return ApplyTemplate("legacy_fabric_profile", _template.GetLegacyFabricProfileUrl(minecraftVersion, modLoaderVersion), context);
+    }
+
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        return _template.GetOptifineVersionsUrl(minecraftVersion);
+    }
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        return _template.GetOptifineDownloadUrl(minecraftVersion, optifineVersion);
     }
 
     public string GetLiteLoaderVersionsUrl()

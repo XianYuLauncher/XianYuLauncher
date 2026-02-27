@@ -54,7 +54,7 @@ public class OfficialDownloadSource : IDownloadSource
     public bool SupportsCleanroom => true;
 
     /// <inheritdoc />
-    public bool SupportsOptifine => true;
+    public bool SupportsOptifine => false;
 
     #endregion
 
@@ -353,6 +353,16 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
     {
         return $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
+    }
+
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+    {
+        throw new NotSupportedException("官方源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
+    }
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+    {
+        throw new NotSupportedException("官方源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
     }
 
     public string GetLiteLoaderVersionsUrl()

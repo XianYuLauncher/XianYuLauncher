@@ -216,6 +216,12 @@ public class McimDownloadSource : IDownloadSource
     public string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion)
         => $"https://meta.legacyfabric.net/v2/versions/loader/{minecraftVersion}/{modLoaderVersion}/profile/json";
 
+    public string GetOptifineVersionsUrl(string minecraftVersion)
+        => throw new NotSupportedException("MCIM 源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
+
+    public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
+        => throw new NotSupportedException("MCIM 源不支持 OptiFine，请使用 BMCLAPI 或其他支持 OptiFine 的下载源");
+
     public string GetLiteLoaderVersionsUrl()
         => "https://dl.liteloader.com/versions/versions.json";
     

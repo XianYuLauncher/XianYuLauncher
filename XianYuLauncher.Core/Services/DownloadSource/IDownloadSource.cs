@@ -272,6 +272,21 @@ public interface IDownloadSource
     string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion);
 
     /// <summary>
+    /// 获取OptiFine版本列表URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <returns>OptiFine版本列表URL</returns>
+    string GetOptifineVersionsUrl(string minecraftVersion);
+
+    /// <summary>
+    /// 获取OptiFine下载URL
+    /// </summary>
+    /// <param name="minecraftVersion">Minecraft版本</param>
+    /// <param name="optifineVersion">OptiFine版本</param>
+    /// <returns>OptiFine下载URL</returns>
+    string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion);
+
+    /// <summary>
     /// 获取LiteLoader版本列表URL
     /// </summary>
     /// <returns>LiteLoader版本列表URL</returns>

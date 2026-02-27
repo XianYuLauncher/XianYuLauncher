@@ -236,9 +236,13 @@ public partial class MinecraftVersionService
 
         var optifineJarName = $"OptiFine_{minecraftVersionId}_{optifineType}_{optifinePatch}.jar";
         var optifineJarPath = Path.Combine(modsDirectory, optifineJarName);
-        var optifineDownloadUrl = $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersionId}/{optifineType}/{optifinePatch}";
 
-        _logger.LogInformation("下载 OptiFine JAR: {Url}", optifineDownloadUrl);
+        // 使用 OptiFine 专用下载源
+        var optifineSource = _downloadSourceFactory.GetOptifineSource();
+        string optifineVersionForUrl = $"{minecraftVersionId}-{optifineType}-{optifinePatch}";
+        var optifineDownloadUrl = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
+
+        _logger.LogInformation("使用 OptiFine 源: {Source}, 下载 OptiFine JAR: {Url}", optifineSource.Name, optifineDownloadUrl);
 
         var downloadResult = await _downloadManager.DownloadFileAsync(
             optifineDownloadUrl,

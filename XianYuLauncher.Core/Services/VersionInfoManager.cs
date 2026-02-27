@@ -10,6 +10,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -19,18 +20,19 @@ namespace XianYuLauncher.Core.Services;
 public class VersionInfoManager : IVersionInfoManager
 {
     private readonly IDownloadManager _downloadManager;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILogger<VersionInfoManager> _logger;
-    
+
     /// <summary>
     /// 官方版本清单URL
     /// </summary>
     private const string OfficialVersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-    
+
     /// <summary>
     /// 版本配置文件名
     /// </summary>
     private const string VersionConfigFileName = "XianYuL.cfg";
-    
+
     /// <summary>
     /// 版本清单缓存
     /// </summary>
@@ -40,11 +42,13 @@ public class VersionInfoManager : IVersionInfoManager
 
     public VersionInfoManager(
         IDownloadManager downloadManager,
+        DownloadSourceFactory downloadSourceFactory,
         ILogger<VersionInfoManager> logger)
     {
         _downloadManager = downloadManager;
+        _downloadSourceFactory = downloadSourceFactory;
         _logger = logger;
-        
+
         _logger.LogInformation("VersionInfoManager 初始化完成");
     }
 
@@ -63,8 +67,13 @@ public class VersionInfoManager : IVersionInfoManager
 
         try
         {
+            // 使用版本清单专用下载源
+            var versionManifestSource = _downloadSourceFactory.GetVersionManifestSource();
+            var versionManifestUrl = versionManifestSource.GetVersionManifestUrl();
+            _logger.LogInformation("使用版本清单源: {Source}", versionManifestSource.Name);
+
             var jsonContent = await _downloadManager.DownloadStringAsync(
-                OfficialVersionManifestUrl,
+                versionManifestUrl,
                 cancellationToken);
 
             var manifest = JsonConvert.DeserializeObject<VersionManifest>(jsonContent);

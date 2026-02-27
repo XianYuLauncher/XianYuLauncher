@@ -305,7 +305,20 @@ public class DownloadSourceFactory
     /// </summary>
     public IDownloadSource GetOptifineSource()
     {
-        return _sources.TryGetValue(_optifineSourceKey, out var source) ? source : GetDefaultSource();
+        if (_sources.TryGetValue(_optifineSourceKey, out var source) && source.SupportsOptifine)
+        {
+            return source;
+        }
+
+        // 当前选择的源不支持 OptiFine，回退到 BMCLAPI
+        if (_sources.TryGetValue("bmclapi", out var bmclapiSource))
+        {
+            System.Diagnostics.Debug.WriteLine("[DownloadSourceFactory] 当前 OptiFine 源不支持，回退到 BMCLAPI");
+            return bmclapiSource;
+        }
+
+        // 没有 BMCLAPI，返回默认源
+        return GetDefaultSource();
     }
 
     /// <summary>
