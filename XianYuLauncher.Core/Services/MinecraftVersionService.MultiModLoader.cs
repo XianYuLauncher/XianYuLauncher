@@ -239,7 +239,7 @@ public partial class MinecraftVersionService
 
         // 使用 OptiFine 专用下载源
         var optifineSource = _downloadSourceFactory.GetOptifineSource();
-        string optifineVersionForUrl = $"{minecraftVersionId}-{optifineType}-{optifinePatch}";
+        string optifineVersionForUrl = $"{optifineType}_{optifinePatch}";
         var optifineDownloadUrl = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
 
         _logger.LogInformation("使用 OptiFine 源: {Source}, 下载 OptiFine JAR: {Url}", optifineSource.Name, optifineDownloadUrl);
