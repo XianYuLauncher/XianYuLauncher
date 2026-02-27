@@ -15,9 +15,12 @@ public class CleanroomService
 {
     private readonly HttpClient _httpClient;
     
+    // TODO(cleanroom-downloadsource-pr): 将 Cleanroom 元数据 URL 从服务硬编码迁移到 DownloadSourceFactory / IDownloadSource。
+    // TODO(cleanroom-downloadsource-pr): 迁移后应支持按下载源切换（official/bmclapi/custom）并复用 FallbackDownloadManager。
     // Cleanroom版本列表URL（Maven仓库）
     private const string CleanroomMavenMetadataUrl = "https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/maven-metadata.xml";
     
+    // TODO(cleanroom-downloadsource-pr): 将 GitHub 备用源改为下载源系统内的可配置回退源，而不是服务内常量。
     // GitHub Releases备用URL
     private const string CleanroomGitHubReleasesUrl = "https://api.github.com/repos/CleanroomMC/Cleanroom/releases";
 
@@ -43,6 +46,8 @@ public class CleanroomService
 
         try
         {
+            // TODO(cleanroom-downloadsource-pr): 此处请求地址应来自下载源接口（例如 GetCleanroomMetadataUrl），
+            // TODO(cleanroom-downloadsource-pr): 并通过统一回退策略生成多源 URL。
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Cleanroom版本列表，请求URL: {CleanroomMavenMetadataUrl}");
             
             // 创建请求消息

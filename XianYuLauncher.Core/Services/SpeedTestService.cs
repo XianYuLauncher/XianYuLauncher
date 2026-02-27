@@ -515,6 +515,9 @@ public class SpeedTestService : ISpeedTestService
                     "liteloader" => source.GetLiteLoaderVersionsUrl(),
                     "legacyfabric" => source.GetLegacyFabricVersionsUrl("1.13.2"),
                     "optifine" => source.GetOptifineVersionsUrl("1.20.1"),
+                    // TODO(cleanroom-downloadsource-pr): 目前 Cleanroom 测速临时复用版本清单 URL。
+                    // TODO(cleanroom-downloadsource-pr): 下个 PR 需要为 IDownloadSource 增加 Cleanroom 专用元数据/安装器 URL 接口，
+                    // TODO(cleanroom-downloadsource-pr): 并在此处改用 Cleanroom 专用 probe URL，避免与 Mojang 版本清单语义混用。
                     "cleanroom" => source.GetVersionManifestUrl(),
                     _ => string.Empty
                 };
