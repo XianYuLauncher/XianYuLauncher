@@ -383,8 +383,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
-        // 使用文件下载专用源
-        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
+        // 使用 NeoForge 专用下载源
+        var downloadSource = _downloadSourceFactory.GetNeoForgeSource();
 
         foreach (var library in libraries)
         {

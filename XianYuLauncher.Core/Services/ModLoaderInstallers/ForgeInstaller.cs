@@ -448,8 +448,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
     {
         var downloadTasks = new List<DownloadTask>();
 
-        // 使用文件下载专用源
-        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
+        // 使用 Forge 专用下载源
+        var downloadSource = _downloadSourceFactory.GetForgeSource();
 
         foreach (var library in libraries)
         {

@@ -494,8 +494,16 @@ public class ProcessorExecutor : IProcessorExecutor
             ? $"{artifactId}-{version}.jar"
             : $"{artifactId}-{version}-{classifier}.jar";
 
-        // 使用文件下载专用源
-        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
+        // 根据 groupId 上下文选择合适的下载源
+        IDownloadSource downloadSource;
+        if (groupId.StartsWith("net.neoforged", StringComparison.OrdinalIgnoreCase))
+        {
+            downloadSource = _downloadSourceFactory.GetNeoForgeSource();
+        }
+        else
+        {
+            downloadSource = _downloadSourceFactory.GetForgeSource();
+        }
         
         // 构建官方源URL
         string officialUrl = $"https://maven.minecraftforge.net/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
