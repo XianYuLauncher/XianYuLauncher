@@ -374,7 +374,15 @@ public class SpeedTestService : ISpeedTestService
             _logger.LogInformation("[SpeedTest] {LoaderType} 测速已取消", loaderType);
         }
 
-        return results.OrderBy(r => r.LatencyMs).ToList();
+        var successfulResults = results.Where(r => r.IsSuccess).ToList();
+
+        if (successfulResults.Count == 0)
+        {
+            _logger.LogWarning("[SpeedTest] {LoaderType} 源测速全部失败", loaderType);
+            return results.OrderBy(r => r.LatencyMs).ToList();
+        }
+
+        return successfulResults.OrderBy(r => r.LatencyMs).ToList();
     }
 
     /// <summary>
