@@ -57,45 +57,72 @@ public class CustomDownloadSource : IDownloadSource
     }
 
     /// <inheritdoc />
-    public bool SupportsGameResources => TemplateName == "official";
+    public bool SupportsGameResources => SupportsTemplateResource(
+        "version_manifest",
+        () => _template.GetVersionManifestUrl());
 
     /// <inheritdoc />
-    public bool SupportsVersionManifest => TemplateName == "official";
+    public bool SupportsVersionManifest => SupportsTemplateResource(
+        "version_manifest",
+        () => _template.GetVersionManifestUrl());
 
     /// <inheritdoc />
-    public bool SupportsFileDownload => TemplateName == "official";
+    public bool SupportsFileDownload =>
+        SupportsTemplateResource("resource_assets", () => _template.GetResourceUrl("assets", "https://resources.download.minecraft.net")) ||
+        SupportsTemplateResource("library", () => _template.GetLibraryUrl("dummy", "https://repo1.maven.org/maven2")) ||
+        SupportsTemplateResource("client_jar", () => _template.GetClientJarUrl("1.20.1", string.Empty));
 
     /// <inheritdoc />
-    public bool SupportsModrinth => TemplateName == "community";
+    public bool SupportsModrinth => SupportsTemplateResource(
+        "modrinth_api_base",
+        () => _template.GetModrinthApiBaseUrl());
 
     /// <inheritdoc />
-    public bool SupportsCurseForge => TemplateName == "community";
+    public bool SupportsCurseForge => SupportsTemplateResource(
+        "curseforge_api_base",
+        () => _template.GetCurseForgeApiBaseUrl());
 
     #region ModLoader 支持
 
     /// <inheritdoc />
-    public bool SupportsForge => TemplateName == "official";
+    public bool SupportsForge => SupportsTemplateResource(
+        "forge_versions",
+        () => _template.GetForgeVersionsUrl("1.20.1"));
 
     /// <inheritdoc />
-    public bool SupportsFabric => TemplateName == "official";
+    public bool SupportsFabric => SupportsTemplateResource(
+        "fabric_versions",
+        () => _template.GetFabricVersionsUrl("1.20.1"));
 
     /// <inheritdoc />
-    public bool SupportsNeoForge => TemplateName == "official";
+    public bool SupportsNeoForge => SupportsTemplateResource(
+        "neoforge_versions",
+        () => _template.GetNeoForgeVersionsUrl("1.20.1"));
 
     /// <inheritdoc />
-    public bool SupportsQuilt => TemplateName == "official";
+    public bool SupportsQuilt => SupportsTemplateResource(
+        "quilt_versions",
+        () => _template.GetQuiltVersionsUrl("1.20.1"));
 
     /// <inheritdoc />
-    public bool SupportsLiteLoader => TemplateName == "official";
+    public bool SupportsLiteLoader => SupportsTemplateResource(
+        "liteloader_versions",
+        () => _template.GetLiteLoaderVersionsUrl());
 
     /// <inheritdoc />
-    public bool SupportsLegacyFabric => TemplateName == "official";
+    public bool SupportsLegacyFabric => SupportsTemplateResource(
+        "legacy_fabric_versions",
+        () => _template.GetLegacyFabricVersionsUrl("1.13.2"));
 
     /// <inheritdoc />
-    public bool SupportsCleanroom => TemplateName == "official";
+    public bool SupportsCleanroom => SupportsTemplateResource(
+        "version_manifest",
+        () => _template.GetVersionManifestUrl());
 
     /// <inheritdoc />
-    public bool SupportsOptifine => TemplateName == "official";
+    public bool SupportsOptifine => SupportsTemplateResource(
+        "optifine_versions",
+        () => _template.GetOptifineVersionsUrl("1.20.1"));
 
     #endregion
 
@@ -417,6 +444,63 @@ public class CustomDownloadSource : IDownloadSource
         }
 
         return result;
+    }
+
+    private bool SupportsTemplateResource(string resourceType, Func<string> templateUrlFactory)
+    {
+        string templateUrl;
+
+        if (_overrides.TryGetValue(resourceType, out var overrideUrl))
+        {
+            templateUrl = overrideUrl;
+        }
+        else
+        {
+            try
+            {
+                templateUrl = templateUrlFactory();
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        return IsTemplateBackedByCustomBase(templateUrl);
+    }
+
+    private bool IsTemplateBackedByCustomBase(string? templateUrl)
+    {
+        if (string.IsNullOrWhiteSpace(templateUrl))
+        {
+            return false;
+        }
+
+        if (templateUrl.Contains("{baseUrl}", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (templateUrl.Contains(_baseUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(templateUrl, UriKind.Absolute, out var templateUri))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(_baseUrl, UriKind.Absolute, out var baseUri))
+        {
+            return false;
+        }
+
+        return string.Equals(templateUri.Host, baseUri.Host, StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

@@ -76,28 +76,28 @@ public class SpeedTestCacheTests
 
     #endregion
 
-    #region GetFastestGameSourceKey 测试
+    #region GetFastestVersionManifestSourceKey 测试
 
     [Fact]
-    public void GetFastestGameSourceKey_EmptyCache_ReturnsNull()
+    public void GetFastestVersionManifestSourceKey_EmptyCache_ReturnsNull()
     {
         // Arrange
         var cache = new SpeedTestCache();
 
         // Act
-        var result = cache.GetFastestGameSourceKey();
+        var result = cache.GetFastestVersionManifestSourceKey();
 
         // Assert
         Assert.Null(result);
     }
 
     [Fact]
-    public void GetFastestGameSourceKey_ReturnsLowestLatency()
+    public void GetFastestVersionManifestSourceKey_ReturnsLowestLatency()
     {
         // Arrange
         var cache = new SpeedTestCache
         {
-            GameSources = new Dictionary<string, SpeedTestResult>
+            VersionManifestSources = new Dictionary<string, SpeedTestResult>
             {
                 ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = true },
                 ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 100, IsSuccess = true },
@@ -106,19 +106,19 @@ public class SpeedTestCacheTests
         };
 
         // Act
-        var result = cache.GetFastestGameSourceKey();
+        var result = cache.GetFastestVersionManifestSourceKey();
 
         // Assert
         Assert.Equal("bmclapi", result);
     }
 
     [Fact]
-    public void GetFastestGameSourceKey_IgnoresFailedSources()
+    public void GetFastestVersionManifestSourceKey_IgnoresFailedSources()
     {
         // Arrange
         var cache = new SpeedTestCache
         {
-            GameSources = new Dictionary<string, SpeedTestResult>
+            VersionManifestSources = new Dictionary<string, SpeedTestResult>
             {
                 ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = false },
                 ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 100, IsSuccess = true }
@@ -126,19 +126,19 @@ public class SpeedTestCacheTests
         };
 
         // Act
-        var result = cache.GetFastestGameSourceKey();
+        var result = cache.GetFastestVersionManifestSourceKey();
 
         // Assert
         Assert.Equal("official", result);
     }
 
     [Fact]
-    public void GetFastestGameSourceKey_AllFailed_ReturnsNull()
+    public void GetFastestVersionManifestSourceKey_AllFailed_ReturnsNull()
     {
         // Arrange
         var cache = new SpeedTestCache
         {
-            GameSources = new Dictionary<string, SpeedTestResult>
+            VersionManifestSources = new Dictionary<string, SpeedTestResult>
             {
                 ["bmclapi"] = new SpeedTestResult { SourceKey = "bmclapi", LatencyMs = 50, IsSuccess = false },
                 ["official"] = new SpeedTestResult { SourceKey = "official", LatencyMs = 100, IsSuccess = false }
@@ -146,7 +146,7 @@ public class SpeedTestCacheTests
         };
 
         // Act
-        var result = cache.GetFastestGameSourceKey();
+        var result = cache.GetFastestVersionManifestSourceKey();
 
         // Assert
         Assert.Null(result);
