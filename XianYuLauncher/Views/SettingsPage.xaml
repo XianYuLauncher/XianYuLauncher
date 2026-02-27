@@ -521,34 +521,34 @@
                         <controls:SettingsCard x:Uid="Settings_NextSpeedTestTime" Header="下次测速时间">
                             <TextBlock Text="{x:Bind ViewModel.NextSpeedTestTime, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快版本清单源">
+                        <controls:SettingsCard x:Uid="Settings_FastestVersionManifestSource" Header="最快版本清单源">
                             <TextBlock Text="{x:Bind ViewModel.FastestVersionManifestSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快文件下载源">
+                        <controls:SettingsCard x:Uid="Settings_FastestFileDownloadSource" Header="最快文件下载源">
                             <TextBlock Text="{x:Bind ViewModel.FastestFileDownloadSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Forge 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestForgeSource" Header="最快 Forge 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestForgeSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Fabric 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestFabricSource" Header="最快 Fabric 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestFabricSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 NeoForge 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestNeoForgeSource" Header="最快 NeoForge 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestNeoForgeSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 LiteLoader 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestLiteLoaderSource" Header="最快 LiteLoader 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestLiteLoaderSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Quilt 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestQuiltSource" Header="最快 Quilt 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestQuiltSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 LegacyFabric 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestLegacyFabricSource" Header="最快 LegacyFabric 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestLegacyFabricSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Cleanroom 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestCleanroomSource" Header="最快 Cleanroom 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestCleanroomSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
-                        <controls:SettingsCard Header="最快 Optifine 源">
+                        <controls:SettingsCard x:Uid="Settings_FastestOptifineSource" Header="最快 Optifine 源">
                             <TextBlock Text="{x:Bind ViewModel.FastestOptifineSourceInfo, Mode=OneWay}" Opacity="0.7" />
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_FastestModrinthSource" Header="最快 Modrinth 源">

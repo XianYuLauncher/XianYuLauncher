@@ -3964,6 +3964,10 @@ public partial class SettingsViewModel : ObservableRecipient
 
             var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
             Serilog.Log.Information("[SpeedTest] Forge 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+
+            await UpdateModLoaderSpeedTestCacheAsync(results,
+                (c, d) => c.ForgeSources = d,
+                v => FastestForgeSourceInfo = v);
         }
         catch (Exception ex)
         {
@@ -3992,6 +3996,10 @@ public partial class SettingsViewModel : ObservableRecipient
 
             var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
             Serilog.Log.Information("[SpeedTest] Fabric 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+
+            await UpdateModLoaderSpeedTestCacheAsync(results,
+                (c, d) => c.FabricSources = d,
+                v => FastestFabricSourceInfo = v);
         }
         catch (Exception ex)
         {
@@ -4020,6 +4028,10 @@ public partial class SettingsViewModel : ObservableRecipient
 
             var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
             Serilog.Log.Information("[SpeedTest] NeoForge 测速完成，最快源: {Source}", fastest?.SourceKey ?? "无");
+
+            await UpdateModLoaderSpeedTestCacheAsync(results,
+                (c, d) => c.NeoForgeSources = d,
+                v => FastestNeoForgeSourceInfo = v);
         }
         catch (Exception ex)
         {
@@ -4117,6 +4129,25 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             NextSpeedTestTime = "Settings_SpeedTest_MinutesLater".GetLocalized(Math.Ceiling(remaining.TotalMinutes));
         }
+    }
+
+    /// <summary>
+    /// 更新单个 ModLoader 测速缓存字段并刷新显示信息
+    /// </summary>
+    private async Task UpdateModLoaderSpeedTestCacheAsync(
+        List<Core.Models.SpeedTestResult> results,
+        Action<Core.Models.SpeedTestCache, Dictionary<string, Core.Models.SpeedTestResult>> setCacheField,
+        Action<string> setDisplayInfo)
+    {
+        var cache = await _speedTestService!.LoadCacheAsync();
+        setCacheField(cache, results.ToDictionary(r => r.SourceKey));
+        cache.LastUpdated = DateTime.UtcNow;
+        await _speedTestService.SaveCacheAsync(cache);
+
+        var fastest = results.Where(r => r.IsSuccess).OrderBy(r => r.LatencyMs).FirstOrDefault();
+        setDisplayInfo(fastest != null
+            ? $"{fastest.SourceName} ({fastest.LatencyMs}ms)"
+            : "Settings_SpeedTest_TestFailed".GetLocalized());
     }
 
     /// <summary>

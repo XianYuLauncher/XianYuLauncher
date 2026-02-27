@@ -481,30 +481,19 @@ public class SpeedTestService : ISpeedTestService
         {
             try
             {
-                // 直接使用源的 Host 属性，不再从 URL 解析
-                // 这样可以正确处理自定义源和硬编码 URL 的情况
-                string? url = null;
-                bool sourceSupportsThisLoader = true;
-
-                try
+                // 使用源的 SupportsXxx 属性检查是否支持该 ModLoader
+                bool sourceSupportsThisLoader = loaderTypeLower switch
                 {
-                    url = loaderTypeLower switch
-                    {
-                        "forge" => source.GetForgeVersionsUrl("1.20.1"),
-                        "fabric" => source.GetFabricVersionsUrl("1.20.1"),
-                        "neoforge" => source.GetNeoForgeVersionsUrl("1.20.1"),
-                        "quilt" => source.GetQuiltVersionsUrl("1.20.1"),
-                        "liteloader" => source.GetLiteLoaderVersionsUrl(),
-                        "legacyfabric" => source.GetLegacyFabricVersionsUrl("1.13.2"),
-                        "optifine" => source.GetOptifineVersionsUrl("1.20.1"),
-                        "cleanroom" => source.GetVersionManifestUrl(), // Cleanroom 使用版本清单作为替代
-                        _ => null
-                    };
-                }
-                catch (NotSupportedException)
-                {
-                    sourceSupportsThisLoader = false;
-                }
+                    "forge" => source.SupportsForge,
+                    "fabric" => source.SupportsFabric,
+                    "neoforge" => source.SupportsNeoForge,
+                    "quilt" => source.SupportsQuilt,
+                    "liteloader" => source.SupportsLiteLoader,
+                    "legacyfabric" => source.SupportsLegacyFabric,
+                    "optifine" => source.SupportsOptifine,
+                    "cleanroom" => source.SupportsCleanroom,
+                    _ => false
+                };
 
                 if (sourceSupportsThisLoader && !string.IsNullOrEmpty(source.Host))
                 {
@@ -576,6 +565,19 @@ public class SpeedTestService : ISpeedTestService
                 var cache = JsonConvert.DeserializeObject<SpeedTestCache>(json);
                 if (cache != null)
                 {
+                    // 处理旧版本缓存文件中可能缺失的字典属性（JSON 反序列化会绕过属性初始化器）
+                    cache.VersionManifestSources ??= new();
+                    cache.FileDownloadSources ??= new();
+                    cache.CommunitySources ??= new();
+                    cache.CurseForgeSources ??= new();
+                    cache.ForgeSources ??= new();
+                    cache.FabricSources ??= new();
+                    cache.NeoForgeSources ??= new();
+                    cache.LiteLoaderSources ??= new();
+                    cache.QuiltSources ??= new();
+                    cache.LegacyFabricSources ??= new();
+                    cache.CleanroomSources ??= new();
+                    cache.OptifineSources ??= new();
                     _logger.LogInformation("[SpeedTest] 加载测速缓存成功，最后更新: {LastUpdated}", cache.LastUpdated);
                     return cache;
                 }
