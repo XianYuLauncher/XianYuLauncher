@@ -640,20 +640,20 @@ public class FallbackDownloadManager
             "library" or "client_jar" or "asset" or "asset_index"
                 => _sourceFactory.GetFileDownloadSource(),
 
-            // ModLoader - 通过资源类型前缀或名称判断
-            var t when t.StartsWith("forge") || t.Contains("forge")
-                => _sourceFactory.GetForgeSource(),
-            var t when t.StartsWith("legacyfabric") || t.Contains("legacyfabric")
-                => _sourceFactory.GetLegacyFabricSource(),
-            var t when t.StartsWith("fabric") || t.Contains("fabric")
-                => _sourceFactory.GetFabricSource(),
-            var t when t.StartsWith("neoforge") || t.Contains("neoforge")
+            // ModLoader - 通过资源类型前缀判断（更具体的规则须在更通用的规则之前，避免交叉命中）
+            var t when t.StartsWith("neoforge")
                 => _sourceFactory.GetNeoForgeSource(),
-            var t when t.StartsWith("quilt") || t.Contains("quilt")
+            var t when t.StartsWith("forge")
+                => _sourceFactory.GetForgeSource(),
+            var t when t.StartsWith("legacyfabric")
+                => _sourceFactory.GetLegacyFabricSource(),
+            var t when t.StartsWith("fabric")
+                => _sourceFactory.GetFabricSource(),
+            var t when t.StartsWith("quilt")
                 => _sourceFactory.GetQuiltSource(),
-            var t when t.StartsWith("liteloader") || t.Contains("liteloader")
+            var t when t.StartsWith("liteloader")
                 => _sourceFactory.GetLiteLoaderSource(),
-            var t when t.StartsWith("optifine") || t.Contains("optifine")
+            var t when t.StartsWith("optifine")
                 => _sourceFactory.GetOptifineSource(),
 
             // Quilt/Fabric Meta URL

@@ -7,6 +7,7 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
@@ -18,6 +19,7 @@ public class OptifineInstallerTests : IDisposable
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
     private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<OptifineInstaller>> _mockLogger;
+    private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly OptifineInstaller _optifineInstaller;
     private readonly string _testDirectory;
 
@@ -28,12 +30,14 @@ public class OptifineInstallerTests : IDisposable
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
         _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<OptifineInstaller>>();
+        _downloadSourceFactory = new DownloadSourceFactory();
 
         _optifineInstaller = new OptifineInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,
             _mockVersionInfoManager.Object,
             _mockJavaRuntimeService.Object,
+            _downloadSourceFactory,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"OptifineInstallerTests_{Guid.NewGuid()}");
