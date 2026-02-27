@@ -4353,6 +4353,110 @@ public partial class SettingsViewModel : ObservableRecipient
                     Log.Information("[Settings] 自动选择最快CurseForge源: {Source}", fastestCurseForgeKey);
                 }
             }
+
+            // 应用最快的 Forge 源
+            var fastestForgeKey = cache.GetFastestForgeSourceKey();
+            if (!string.IsNullOrEmpty(fastestForgeKey))
+            {
+                var forgeSourceItem = ForgeSources.FirstOrDefault(s => s.Key == fastestForgeKey);
+                if (forgeSourceItem != null)
+                {
+                    SelectedForgeSource = forgeSourceItem;
+                    _downloadSourceFactory.SetForgeSource(fastestForgeKey);
+                    Log.Information("[Settings] 自动选择最快Forge源: {Source}", fastestForgeKey);
+                }
+            }
+
+            // 应用最快的 Fabric 源
+            var fastestFabricKey = cache.GetFastestFabricSourceKey();
+            if (!string.IsNullOrEmpty(fastestFabricKey))
+            {
+                var fabricSourceItem = FabricSources.FirstOrDefault(s => s.Key == fastestFabricKey);
+                if (fabricSourceItem != null)
+                {
+                    SelectedFabricSource = fabricSourceItem;
+                    _downloadSourceFactory.SetFabricSource(fastestFabricKey);
+                    Log.Information("[Settings] 自动选择最快Fabric源: {Source}", fastestFabricKey);
+                }
+            }
+
+            // 应用最快的 NeoForge 源
+            var fastestNeoForgeKey = cache.GetFastestNeoForgeSourceKey();
+            if (!string.IsNullOrEmpty(fastestNeoForgeKey))
+            {
+                var neoForgeSourceItem = NeoForgeSources.FirstOrDefault(s => s.Key == fastestNeoForgeKey);
+                if (neoForgeSourceItem != null)
+                {
+                    SelectedNeoForgeSource = neoForgeSourceItem;
+                    _downloadSourceFactory.SetNeoForgeSource(fastestNeoForgeKey);
+                    Log.Information("[Settings] 自动选择最快NeoForge源: {Source}", fastestNeoForgeKey);
+                }
+            }
+
+            // 应用最快的 LiteLoader 源
+            var fastestLiteLoaderKey = cache.GetFastestLiteLoaderSourceKey();
+            if (!string.IsNullOrEmpty(fastestLiteLoaderKey))
+            {
+                var liteLoaderSourceItem = LiteLoaderSources.FirstOrDefault(s => s.Key == fastestLiteLoaderKey);
+                if (liteLoaderSourceItem != null)
+                {
+                    SelectedLiteLoaderSource = liteLoaderSourceItem;
+                    _downloadSourceFactory.SetLiteLoaderSource(fastestLiteLoaderKey);
+                    Log.Information("[Settings] 自动选择最快LiteLoader源: {Source}", fastestLiteLoaderKey);
+                }
+            }
+
+            // 应用最快的 Quilt 源
+            var fastestQuiltKey = cache.GetFastestQuiltSourceKey();
+            if (!string.IsNullOrEmpty(fastestQuiltKey))
+            {
+                var quiltSourceItem = QuiltSources.FirstOrDefault(s => s.Key == fastestQuiltKey);
+                if (quiltSourceItem != null)
+                {
+                    SelectedQuiltSource = quiltSourceItem;
+                    _downloadSourceFactory.SetQuiltSource(fastestQuiltKey);
+                    Log.Information("[Settings] 自动选择最快Quilt源: {Source}", fastestQuiltKey);
+                }
+            }
+
+            // 应用最快的 LegacyFabric 源
+            var fastestLegacyFabricKey = cache.GetFastestLegacyFabricSourceKey();
+            if (!string.IsNullOrEmpty(fastestLegacyFabricKey))
+            {
+                var legacyFabricSourceItem = LegacyFabricSources.FirstOrDefault(s => s.Key == fastestLegacyFabricKey);
+                if (legacyFabricSourceItem != null)
+                {
+                    SelectedLegacyFabricSource = legacyFabricSourceItem;
+                    _downloadSourceFactory.SetLegacyFabricSource(fastestLegacyFabricKey);
+                    Log.Information("[Settings] 自动选择最快LegacyFabric源: {Source}", fastestLegacyFabricKey);
+                }
+            }
+
+            // 应用最快的 Cleanroom 源
+            var fastestCleanroomKey = cache.GetFastestCleanroomSourceKey();
+            if (!string.IsNullOrEmpty(fastestCleanroomKey))
+            {
+                var cleanroomSourceItem = CleanroomSources.FirstOrDefault(s => s.Key == fastestCleanroomKey);
+                if (cleanroomSourceItem != null)
+                {
+                    SelectedCleanroomSource = cleanroomSourceItem;
+                    _downloadSourceFactory.SetCleanroomSource(fastestCleanroomKey);
+                    Log.Information("[Settings] 自动选择最快Cleanroom源: {Source}", fastestCleanroomKey);
+                }
+            }
+
+            // 应用最快的 Optifine 源
+            var fastestOptifineKey = cache.GetFastestOptifineSourceKey();
+            if (!string.IsNullOrEmpty(fastestOptifineKey))
+            {
+                var optifineSourceItem = OptifineSources.FirstOrDefault(s => s.Key == fastestOptifineKey);
+                if (optifineSourceItem != null)
+                {
+                    SelectedOptifineSource = optifineSourceItem;
+                    _downloadSourceFactory.SetOptifineSource(fastestOptifineKey);
+                    Log.Information("[Settings] 自动选择最快Optifine源: {Source}", fastestOptifineKey);
+                }
+            }
         }
         catch (Exception ex)
         {

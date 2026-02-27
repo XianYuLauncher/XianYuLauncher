@@ -182,4 +182,92 @@ public class SpeedTestCache
             .OrderBy(r => r.LatencyMs)
             .FirstOrDefault()?.SourceKey;
     }
+
+    /// <summary>
+    /// 获取最快的 Forge 源
+    /// </summary>
+    public string? GetFastestForgeSourceKey()
+    {
+        return ForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Fabric 源
+    /// </summary>
+    public string? GetFastestFabricSourceKey()
+    {
+        return FabricSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 NeoForge 源
+    /// </summary>
+    public string? GetFastestNeoForgeSourceKey()
+    {
+        return NeoForgeSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 LiteLoader 源
+    /// </summary>
+    public string? GetFastestLiteLoaderSourceKey()
+    {
+        return LiteLoaderSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Quilt 源
+    /// </summary>
+    public string? GetFastestQuiltSourceKey()
+    {
+        return QuiltSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 LegacyFabric 源
+    /// </summary>
+    public string? GetFastestLegacyFabricSourceKey()
+    {
+        return LegacyFabricSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Cleanroom 源
+    /// </summary>
+    public string? GetFastestCleanroomSourceKey()
+    {
+        return CleanroomSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
+
+    /// <summary>
+    /// 获取最快的 Optifine 源
+    /// </summary>
+    public string? GetFastestOptifineSourceKey()
+    {
+        return OptifineSources.Values
+            .Where(r => r.IsSuccess)
+            .OrderBy(r => r.LatencyMs)
+            .FirstOrDefault()?.SourceKey;
+    }
 }
