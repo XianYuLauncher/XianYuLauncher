@@ -194,9 +194,9 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task<JavaRuntimeManifest?> FetchMainManifestAsync(CancellationToken token)
     {
-        // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 读取文件下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource") ?? "official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLowerInvariant());
         
         // 使用下载源转换清单 URL
         string url = downloadSource.GetResourceUrl("java_runtime", ManifestUrl);
@@ -229,9 +229,9 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task<JavaRuntimeFileManifest> FetchFileManifestAsync(string url, CancellationToken token)
     {
-        // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 读取文件下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource") ?? "official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLowerInvariant());
         
         string transformedUrl = downloadSource.GetResourceUrl("java_runtime", url);
 
@@ -251,9 +251,9 @@ public class JavaDownloadService : IJavaDownloadService
 
     private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string> statusCallback, CancellationToken token)
     {
-        // 读取用户下载源设置
-        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "Official";
-        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLower());
+        // 读取文件下载源设置
+        var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource") ?? "official";
+        var downloadSource = _downloadSourceFactory.GetSource(downloadSourceType.ToLowerInvariant());
         
         var filesToDownload = manifest.Files.Where(f => f.Value.Type == "file").ToList();
         var downloadTasks = new List<DownloadTask>();

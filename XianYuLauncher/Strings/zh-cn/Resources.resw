@@ -3006,16 +3006,16 @@
   <data name="Settings_SpeedTest_MinutesLater" xml:space="preserve">
     <value>约 {0} 分钟后</value>
   </data>
-  <data name="Settings_GameResourceSource.Header" xml:space="preserve">
+  <data name="Settings_GameDownloadSource.Header" xml:space="preserve">
     <value>游戏资源下载源</value>
   </data>
-  <data name="Settings_GameResourceSource.Description" xml:space="preserve">
+  <data name="Settings_GameDownloadSource.Description" xml:space="preserve">
     <value>MC本体、ModLoader、版本列表的下载源</value>
   </data>
-  <data name="Settings_GameResourceSourceExpander.Header" xml:space="preserve">
+  <data name="Settings_GameDownloadSourceExpander.Header" xml:space="preserve">
     <value>游戏资源下载源</value>
   </data>
-  <data name="Settings_GameResourceSourceExpander.Description" xml:space="preserve">
+  <data name="Settings_GameDownloadSourceExpander.Description" xml:space="preserve">
     <value>游戏本体、ModLoader 的下载源</value>
   </data>
   <data name="Settings_VersionManifestSourceCard.Header" xml:space="preserve">
