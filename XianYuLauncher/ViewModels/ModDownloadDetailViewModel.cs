@@ -75,27 +75,20 @@ namespace XianYuLauncher.ViewModels
         private bool _isPublisherListDialogOpen = false;
 
         private string _modTeamId; // 保存Modrinth Team ID用于懒加载
+        private bool _isBackgroundPublisherLoading;
 
         [RelayCommand]
         public async Task ShowPublishers()
         {
             // 如果列表为空且有Modrinth Team ID，尝试懒加载
-            if (PublisherList.Count == 0 && !string.IsNullOrEmpty(_modTeamId))
+            if (PublisherList.Count == 0 && !string.IsNullOrEmpty(_modTeamId) && !_isBackgroundPublisherLoading)
             {
                 // 使用 ProgressRing 指示加载，但不阻塞 UI (可选：使用专门的 IsLoadingPublishers 属性)
                 IsLoading = true; 
                 try 
                 {
                     var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
-                    foreach(var m in members) 
-                    {
-                         PublisherList.Add(new PublisherInfo { 
-                             Name = m.User.Username, 
-                             Role = m.Role, 
-                             AvatarUrl = m.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
-                             Url = $"https://modrinth.com/user/{m.User.Username}"
-                         });
-                    }
+                    AddPublishers(members);
                 } 
                 catch (Exception ex)
                 {
@@ -602,6 +595,12 @@ namespace XianYuLauncher.ViewModels
 
         public async Task LoadModDetailsAsync(string modId)
         {
+            if (_passedModInfo == null || !string.Equals(_passedModInfo.ProjectId, modId, StringComparison.OrdinalIgnoreCase))
+            {
+                _passedModInfo = null;
+                _sourceType = null;
+            }
+
             ModId = modId;
             IsLoading = true;
             ErrorMessage = string.Empty;
@@ -631,6 +630,64 @@ namespace XianYuLauncher.ViewModels
                 IsLoading = false;
             }
         }
+
+        private void StartLoadPublishersInBackground()
+        {
+            if (string.IsNullOrWhiteSpace(_modTeamId) || PublisherList.Count > 0 || _isBackgroundPublisherLoading)
+            {
+                return;
+            }
+
+            _isBackgroundPublisherLoading = true;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() => AddPublishers(members));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"后台加载发布者失败: {ex.Message}");
+                }
+                finally
+                {
+                    _isBackgroundPublisherLoading = false;
+                }
+            });
+        }
+
+        private void AddPublishers(IEnumerable<ModrinthTeamMember> members)
+        {
+            if (members == null)
+            {
+                return;
+            }
+
+            var existingNames = PublisherList
+                .Select(p => p.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var member in members)
+            {
+                var userName = member?.User?.Username;
+                if (string.IsNullOrWhiteSpace(userName) || existingNames.Contains(userName))
+                {
+                    continue;
+                }
+
+                PublisherList.Add(new PublisherInfo
+                {
+                    Name = userName,
+                    Role = member.Role,
+                    AvatarUrl = member.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                    Url = $"https://modrinth.com/user/{userName}"
+                });
+
+                existingNames.Add(userName);
+            }
+        }
         
         /// <summary>
         /// 加载Modrinth Mod详情
@@ -641,16 +698,24 @@ namespace XianYuLauncher.ViewModels
             {
                 // 调用Modrinth API获取项目详情
                 var projectDetail = await _modrinthService.GetProjectDetailAsync(modId);
+
+                var passedDescription = _passedModInfo?.DisplayDescription;
+                if (string.IsNullOrWhiteSpace(passedDescription))
+                {
+                    passedDescription = _passedModInfo?.Description;
+                }
                 
                 // 更新ViewModel属性
                 ModName = _translationService.GetTranslatedName(projectDetail.Slug, projectDetail.Title);
-                ModDescriptionOriginal = projectDetail.Description;
-                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(projectDetail.Body); // 完整描述（Markdown格式，预处理HTML）
+                ModDescriptionOriginal = !string.IsNullOrWhiteSpace(passedDescription)
+                    ? passedDescription
+                    : projectDetail.Description;
+                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(projectDetail.Body);
                 IsFullDescriptionVisible = false; // 默认折叠
                 ModDescriptionTranslated = string.Empty; // 先清空翻译
-                
-                // 翻译描述（如果当前语言是中文）
-                if (_translationService.ShouldUseTranslation())
+
+                // 非资源下载页入口（没有传入描述）时，回退到详情页翻译API
+                if (string.IsNullOrWhiteSpace(passedDescription) && _translationService.ShouldUseTranslation())
                 {
                     try
                     {
@@ -658,12 +723,12 @@ namespace XianYuLauncher.ViewModels
                         if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                         {
                             ModDescriptionTranslated = translation.Translated;
-                            System.Diagnostics.Debug.WriteLine($"[翻译] Modrinth项目 {modId} 描述已翻译");
+                            System.Diagnostics.Debug.WriteLine($"[翻译] Modrinth项目 {modId} 描述已翻译（回退路径）");
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[翻译] 翻译Modrinth项目 {modId} 失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[翻译] 翻译Modrinth项目 {modId} 失败（回退路径）: {ex.Message}");
                     }
                 }
                 
@@ -679,20 +744,9 @@ namespace XianYuLauncher.ViewModels
                 // 处理发布者列表
                 PublisherList.Clear();
                 _modTeamId = projectDetail.Team;
-                
-                // 如果API自动获取了成员列表（"Fix"逻辑触发），直接使用
-                if (projectDetail.TeamMembers != null && projectDetail.TeamMembers.Count > 0)
-                {
-                    foreach (var m in projectDetail.TeamMembers)
-                    {
-                        PublisherList.Add(new PublisherInfo { 
-                             Name = m.User.Username, 
-                             Role = m.Role, 
-                             AvatarUrl = m.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
-                             Url = $"https://modrinth.com/user/{m.User.Username}"
-                         });
-                    }
-                }
+
+                // 团队成员改为后台加载，不阻塞页面主内容
+                StartLoadPublishersInBackground();
                 
                 // 设置平台信息
                 ModSlug = projectDetail.Slug;
@@ -960,16 +1014,24 @@ namespace XianYuLauncher.ViewModels
             
             // 调用CurseForge API获取Mod详情
             var modDetail = await _curseForgeService.GetModDetailAsync(curseForgeModId);
+
+            var passedDescription = _passedModInfo?.DisplayDescription;
+            if (string.IsNullOrWhiteSpace(passedDescription))
+            {
+                passedDescription = _passedModInfo?.Description;
+            }
             
             // 更新ViewModel属性
             ModName = _translationService.GetTranslatedName(modDetail.Slug, modDetail.Name);
-            ModDescriptionOriginal = modDetail.Summary;
-                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(modDetail.Description); // CurseForge的完整描述（HTML格式，转换为Markdown）
+            ModDescriptionOriginal = !string.IsNullOrWhiteSpace(passedDescription)
+                ? passedDescription
+                : modDetail.Summary;
+            ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(modDetail.Description);
             IsFullDescriptionVisible = false; // 默认折叠
             ModDescriptionTranslated = string.Empty; // 先清空翻译
-            
-            // 翻译描述（如果当前语言是中文）
-            if (_translationService.ShouldUseTranslation())
+
+            // 非资源下载页入口（没有传入描述）时，回退到详情页翻译API
+            if (string.IsNullOrWhiteSpace(passedDescription) && _translationService.ShouldUseTranslation())
             {
                 try
                 {
@@ -977,12 +1039,12 @@ namespace XianYuLauncher.ViewModels
                     if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                     {
                         ModDescriptionTranslated = translation.Translated;
-                        System.Diagnostics.Debug.WriteLine($"[翻译] CurseForge项目 {curseForgeModId} 描述已翻译");
+                        System.Diagnostics.Debug.WriteLine($"[翻译] CurseForge项目 {curseForgeModId} 描述已翻译（回退路径）");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[翻译] 翻译CurseForge项目 {curseForgeModId} 失败: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[翻译] 翻译CurseForge项目 {curseForgeModId} 失败（回退路径）: {ex.Message}");
                 }
             }
             
