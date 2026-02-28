@@ -102,6 +102,23 @@ public class ModInfoService
     /// <returns>Mod 元数据，如果未找到则返回 null</returns>
     public async Task<ModMetadata?> GetModInfoAsync(string modFilePath, CancellationToken cancellationToken = default)
     {
+        return await GetModInfoAsync(modFilePath, null, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// 获取 Mod 信息（优先 Modrinth，其次 CurseForge），支持传入预计算哈希避免重复计算。
+    /// </summary>
+    /// <param name="modFilePath">Mod 文件路径</param>
+    /// <param name="precomputedSha1">预计算的 SHA1（可选）</param>
+    /// <param name="precomputedFingerprint">预计算的 CurseForge Fingerprint（可选）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>Mod 元数据，如果未找到则返回 null</returns>
+    public async Task<ModMetadata?> GetModInfoAsync(
+        string modFilePath,
+        string? precomputedSha1,
+        uint? precomputedFingerprint,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrEmpty(modFilePath) || !File.Exists(modFilePath))
         {
             return null;
@@ -139,7 +156,7 @@ public class ModInfoService
         try
         {
             // 1. 计算 SHA1 哈希（用于 Modrinth）
-            var sha1Hash = await CalculateSHA1Async(modFilePath, cancellationToken);
+            var sha1Hash = precomputedSha1 ?? await CalculateSHA1Async(modFilePath, cancellationToken);
             
             // 2. 尝试从 Modrinth 获取
             var modrinthInfo = await GetModrinthInfoBySHA1Async(sha1Hash, cancellationToken);
@@ -153,7 +170,7 @@ public class ModInfoService
             }
             
             // 3. 尝试从 CurseForge 获取
-            var fingerprint = await Task.Run(() => CurseForgeFingerprintHelper.ComputeFingerprint(modFilePath), cancellationToken);
+            var fingerprint = precomputedFingerprint ?? await Task.Run(() => CurseForgeFingerprintHelper.ComputeFingerprint(modFilePath), cancellationToken);
             var curseforgeInfo = await GetCurseForgeInfoByFingerprintAsync(fingerprint, cancellationToken);
             if (curseforgeInfo != null)
             {

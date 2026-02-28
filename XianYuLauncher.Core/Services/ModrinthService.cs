@@ -22,6 +22,7 @@ public class ModrinthService
     private readonly HttpClient _httpClient;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FallbackDownloadManager? _fallbackDownloadManager;
+    private readonly IHashLookupCenter? _hashLookupCenter;
     
     /// <summary>
     /// Modrinth官方API基础URL
@@ -38,11 +39,16 @@ public class ModrinthService
     /// </summary>
     private const string DefaultUserAgent = "XianYuLauncher";
 
-    public ModrinthService(HttpClient httpClient, DownloadSourceFactory downloadSourceFactory = null, FallbackDownloadManager? fallbackDownloadManager = null)
+    public ModrinthService(
+        HttpClient httpClient,
+        DownloadSourceFactory downloadSourceFactory = null,
+        FallbackDownloadManager? fallbackDownloadManager = null,
+        IHashLookupCenter? hashLookupCenter = null)
     {
         _httpClient = httpClient;
         _downloadSourceFactory = downloadSourceFactory ?? new DownloadSourceFactory();
         _fallbackDownloadManager = fallbackDownloadManager;
+        _hashLookupCenter = hashLookupCenter;
         // 不在构造函数中设置默认UA，而是在每次请求时动态设置
     }
     
@@ -294,6 +300,27 @@ public class ModrinthService
     /// <returns>项目详情</returns>
     public async Task<ModrinthProjectDetail> GetProjectDetailAsync(string projectIdOrSlug)
     {
+        if (string.IsNullOrWhiteSpace(projectIdOrSlug))
+        {
+            return null;
+        }
+
+        var normalizedProject = projectIdOrSlug.Trim();
+        if (_hashLookupCenter == null)
+        {
+            return await GetProjectDetailFromApiAsync(normalizedProject);
+        }
+
+        return await _hashLookupCenter.GetOrFetchModrinthProjectDetailAsync(
+            "modrinth:project:detail",
+            normalizedProject,
+            GetProjectDetailFromApiAsync,
+            successTtl: TimeSpan.FromMinutes(5),
+            emptyTtl: TimeSpan.FromSeconds(20));
+    }
+
+    private async Task<ModrinthProjectDetail> GetProjectDetailFromApiAsync(string projectIdOrSlug)
+    {
         string url = string.Empty;
         string responseContent = string.Empty;
         try
@@ -449,38 +476,14 @@ public class ModrinthService
     /// <returns>Modrinth版本信息</returns>
     public async Task<ModrinthVersion> GetVersionFileByHashAsync(string hash, string algorithm = "sha1")
     {
-        string url = string.Empty;
-        string responseContent = string.Empty;
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            return null;
+        }
+
         try
         {
-            // 构建请求URL
-            url = $"{OfficialApiBaseUrl}/v2/version_files";
-
-            // 构建请求体，包含单个哈希
-            var requestBody = new
-            {
-                hashes = new List<string> { hash },
-                algorithm = algorithm
-            };
-
-            // 将请求体转换为JSON字符串
-            string jsonBody = JsonSerializer.Serialize(requestBody);
-
-            // 输出调试信息
-            System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
-            System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
-
-            // 使用带回退的POST请求
-            var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
-            
-            // 获取完整响应内容
-            responseContent = await response.Content.ReadAsStringAsync();
-
-            // 确保响应成功
-            response.EnsureSuccessStatusCode();
-
-            // 解析响应，返回哈希值到版本信息的映射
-            var versionMap = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(responseContent);
+            var versionMap = await GetVersionFilesByHashesAsync(new List<string> { hash }, algorithm);
             
             // 如果找到对应的版本信息，则返回，否则返回null
             if (versionMap != null && versionMap.TryGetValue(hash, out var versionInfo))
@@ -528,6 +531,37 @@ public class ModrinthService
         /// <returns>哈希值到Modrinth版本信息的映射</returns>
         public async Task<Dictionary<string, ModrinthVersion>> GetVersionFilesByHashesAsync(List<string> hashes, string algorithm = "sha1")
         {
+            if (hashes == null || hashes.Count == 0)
+            {
+                return new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var normalizedHashes = hashes
+                .Where(hash => !string.IsNullOrWhiteSpace(hash))
+                .Select(hash => hash.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (normalizedHashes.Count == 0)
+            {
+                return new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (_hashLookupCenter == null)
+            {
+                return await GetVersionFilesByHashesFromApiAsync(normalizedHashes, algorithm);
+            }
+
+            return await _hashLookupCenter.GetOrFetchModrinthVersionsByHashesAsync(
+                $"modrinth:version_files:{algorithm}",
+                normalizedHashes,
+                queryHashes => GetVersionFilesByHashesFromApiAsync(queryHashes.ToList(), algorithm),
+                successTtl: TimeSpan.FromMinutes(5),
+                emptyTtl: TimeSpan.FromSeconds(20));
+        }
+
+        private async Task<Dictionary<string, ModrinthVersion>> GetVersionFilesByHashesFromApiAsync(List<string> hashes, string algorithm = "sha1")
+        {
             string url = string.Empty;
             string responseContent = string.Empty;
             try
@@ -562,7 +596,8 @@ public class ModrinthService
                 response.EnsureSuccessStatusCode();
 
                 // 解析响应，返回哈希值到版本信息的映射
-                return JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(responseContent);
+                return JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(responseContent)
+                    ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
             }
             catch (HttpRequestException ex)
             {
@@ -604,27 +639,95 @@ public class ModrinthService
         {
             try
             {
-                string url = $"{OfficialApiBaseUrl}/v2/version_files/update";
-                var requestBody = new
+                if (hashes == null || hashes.Count == 0)
                 {
-                    hashes = hashes,
-                    algorithm = algorithm,
-                    loaders = loaders,
-                    game_versions = gameVersions
-                };
-                string jsonBody = JsonSerializer.Serialize(requestBody);
+                    return new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+                }
 
-                var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
-                response.EnsureSuccessStatusCode();
+                var normalizedHashes = hashes
+                    .Where(hash => !string.IsNullOrWhiteSpace(hash))
+                    .Select(hash => hash.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(content);
+                if (normalizedHashes.Count == 0)
+                {
+                    return new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                var normalizedAlgorithm = string.IsNullOrWhiteSpace(algorithm)
+                    ? "sha1"
+                    : algorithm.Trim().ToLowerInvariant();
+                var normalizedLoaders = (loaders ?? Array.Empty<string>())
+                    .Where(loader => !string.IsNullOrWhiteSpace(loader))
+                    .Select(loader => loader.Trim().ToLowerInvariant())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(loader => loader, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var normalizedGameVersions = (gameVersions ?? Array.Empty<string>())
+                    .Where(version => !string.IsNullOrWhiteSpace(version))
+                    .Select(version => version.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(version => version, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                if (_hashLookupCenter == null)
+                {
+                    return await UpdateVersionFilesFromApiAsync(
+                        normalizedHashes,
+                        normalizedLoaders,
+                        normalizedGameVersions,
+                        normalizedAlgorithm);
+                }
+
+                var scope = BuildVersionFilesUpdateScope(normalizedAlgorithm, normalizedLoaders, normalizedGameVersions);
+                return await _hashLookupCenter.GetOrFetchModrinthVersionsByHashesAsync(
+                    scope,
+                    normalizedHashes,
+                    queryHashes => UpdateVersionFilesFromApiAsync(
+                        queryHashes.ToList(),
+                        normalizedLoaders,
+                        normalizedGameVersions,
+                        normalizedAlgorithm),
+                    successTtl: TimeSpan.FromMinutes(3),
+                    emptyTtl: TimeSpan.FromSeconds(20));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 批量检查更新失败: {ex.Message}");
                 return null;
             }
+        }
+
+        private async Task<Dictionary<string, ModrinthVersion>> UpdateVersionFilesFromApiAsync(
+            List<string> hashes,
+            string[] loaders,
+            string[] gameVersions,
+            string algorithm)
+        {
+            string url = $"{OfficialApiBaseUrl}/v2/version_files/update";
+            var requestBody = new
+            {
+                hashes = hashes,
+                algorithm = algorithm,
+                loaders = loaders,
+                game_versions = gameVersions
+            };
+            string jsonBody = JsonSerializer.Serialize(requestBody);
+
+            var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(content)
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string BuildVersionFilesUpdateScope(string algorithm, string[] loaders, string[] gameVersions)
+        {
+            var loadersPart = loaders.Length == 0 ? "none" : string.Join(",", loaders);
+            var gameVersionsPart = gameVersions.Length == 0 ? "none" : string.Join(",", gameVersions);
+            return $"modrinth:version_files:update:{algorithm}:loaders={loadersPart}:gameVersions={gameVersionsPart}";
         }
         
         /// <summary>

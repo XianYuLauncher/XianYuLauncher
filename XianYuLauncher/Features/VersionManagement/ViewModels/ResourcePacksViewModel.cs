@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -23,7 +24,7 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ResourcePacksViewModel : ObservableObject
 {
-    private readonly IVersionManagementContext _context;
+    private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
     private readonly ModrinthService _modrinthService;
@@ -32,9 +33,11 @@ public partial class ResourcePacksViewModel : ObservableObject
 
     private List<ResourcePackInfo> _allResourcePacks = new();
     private List<ResourcePackInfo>? _selectedResourcePacksForMove;
+    private CancellationTokenSource? _resourcePackUpdateDetectCts;
+    private int _resourcePackUpdateDetectGeneration;
 
     public ResourcePacksViewModel(
-        IVersionManagementContext context,
+        IVersionManagementResourceContext context,
         INavigationService navigationService,
         IDialogService dialogService,
         ModrinthService modrinthService,
@@ -129,10 +132,12 @@ public partial class ResourcePacksViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Description)) pack.Description = existing.Description;
                 if (!string.IsNullOrEmpty(existing.Source)) pack.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) pack.ProjectId = existing.ProjectId;
+                pack.HasUpdate = existing.HasUpdate;
             }
         }
 
         _allResourcePacks = newPackList;
+        StartResourcePackUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
         {
@@ -224,7 +229,7 @@ public partial class ResourcePacksViewModel : ObservableObject
         {
             App.MainWindow.DispatcherQueue.TryEnqueue(() => resourcePack.IsLoadingDescription = true);
 
-            var metadata = await _modInfoService.GetModInfoAsync(resourcePack.FilePath, cancellationToken);
+            var metadata = await _context.GetResourceMetadataAsync(resourcePack.FilePath, cancellationToken);
 
             if (metadata != null)
             {
@@ -633,19 +638,14 @@ public partial class ResourcePacksViewModel : ObservableObject
         return ResourcePackFilterOption switch
         {
             "可更新" => source.Where(IsResourcePackUpdatable),
-            "重复" => ApplyDuplicateFilter(source, _allResourcePacks, pack => NormalizeDuplicateKey(pack.FileName)),
+            "重复" => ApplyDuplicateFilter(source, _allResourcePacks, BuildResourcePackDuplicateKey),
             _ => source
         };
     }
 
     private static bool IsResourcePackUpdatable(ResourcePackInfo resourcePack)
     {
-        var isZipFile = !Directory.Exists(resourcePack.FilePath)
-            && resourcePack.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
-
-        return isZipFile
-            && !string.IsNullOrWhiteSpace(resourcePack.Source)
-            && !string.IsNullOrWhiteSpace(resourcePack.ProjectId);
+        return resourcePack.HasUpdate;
     }
 
     private static string NormalizeDuplicateKey(string fileName)
@@ -657,6 +657,16 @@ public partial class ResourcePacksViewModel : ObservableObject
         }
 
         return Path.GetFileNameWithoutExtension(normalized);
+    }
+
+    private static string BuildResourcePackDuplicateKey(ResourcePackInfo resourcePack)
+    {
+        if (!string.IsNullOrWhiteSpace(resourcePack.Source) && !string.IsNullOrWhiteSpace(resourcePack.ProjectId))
+        {
+            return $"{resourcePack.Source.Trim().ToLowerInvariant()}:{resourcePack.ProjectId.Trim()}";
+        }
+
+        return $"file:{NormalizeDuplicateKey(resourcePack.FileName)}";
     }
 
     private static IEnumerable<T> ApplyDuplicateFilter<T>(
@@ -673,6 +683,220 @@ public partial class ResourcePacksViewModel : ObservableObject
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
+    }
+
+    private void StartResourcePackUpdateDetection(CancellationToken externalToken)
+    {
+        _resourcePackUpdateDetectCts?.Cancel();
+        _resourcePackUpdateDetectCts?.Dispose();
+
+        _resourcePackUpdateDetectCts = CancellationTokenSource.CreateLinkedTokenSource(_context.PageCancellationToken, externalToken);
+        var token = _resourcePackUpdateDetectCts.Token;
+        var snapshot = _allResourcePacks.ToList();
+        var generation = Interlocked.Increment(ref _resourcePackUpdateDetectGeneration);
+
+        _ = Task.Run(() => DetectResourcePackUpdatesAsync(snapshot, generation, token), token);
+    }
+
+    private async Task DetectResourcePackUpdatesAsync(
+        IReadOnlyCollection<ResourcePackInfo> resourcePacks,
+        int generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updatableByFile = resourcePacks
+                .Where(pack => !string.IsNullOrWhiteSpace(pack.FilePath))
+                .ToDictionary(pack => pack.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
+            var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+
+            if (updatableByFile.Count == 0)
+            {
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
+                resourcePacks,
+                pack => pack.FilePath,
+                _context.CalculateSHA1,
+                shouldSkip: pack => Directory.Exists(pack.FilePath),
+                onHashFailed: (pack, ex) =>
+                    System.Diagnostics.Debug.WriteLine($"[ResourcePackUpdateDetect] SHA1计算失败: {pack.Name}, {ex.Message}")), cancellationToken);
+
+            var hashes = hashIndex.Hashes;
+            var filePathMap = hashIndex.FilePathMap;
+
+            if (hashes.Count == 0)
+            {
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+            var gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(_context.SelectedVersion, versionInfoService);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
+                hashes,
+                new[] { "minecraft" },
+                new[] { gameVersion })
+                ?? new Dictionary<string, Core.Models.ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+            var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var hash in hashes)
+            {
+                if (!filePathMap.TryGetValue(hash, out var filePath))
+                {
+                    continue;
+                }
+
+                if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
+                {
+                    continue;
+                }
+
+                var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
+                var hasUpdate = true;
+                if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
+                {
+                    hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
+                }
+
+                updatableByFile[filePath] = hasUpdate;
+                processedFilePaths.Add(filePath);
+                if (!string.IsNullOrWhiteSpace(version.ProjectId))
+                {
+                    projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
+                }
+            }
+
+            var unresolvedPacks = resourcePacks
+                .Where(pack => !Directory.Exists(pack.FilePath) && !processedFilePaths.Contains(pack.FilePath) && File.Exists(pack.FilePath))
+                .ToList();
+
+            if (unresolvedPacks.Count > 0)
+            {
+                await DetectResourcePackUpdatesViaCurseForgeAsync(
+                    unresolvedPacks,
+                    gameVersion,
+                    updatableByFile,
+                    projectIdentityByFile,
+                    cancellationToken);
+            }
+
+            ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ResourcePackUpdateDetect] 检测失败: {ex.Message}");
+        }
+    }
+
+    private async Task DetectResourcePackUpdatesViaCurseForgeAsync(
+        IReadOnlyCollection<ResourcePackInfo> resourcePacks,
+        string gameVersion,
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        CancellationToken cancellationToken)
+    {
+        var fingerprintToFilePath = new Dictionary<uint, string>();
+        var fingerprints = new List<uint>();
+
+        foreach (var pack in resourcePacks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(pack.FilePath);
+                if (!fingerprintToFilePath.ContainsKey(fingerprint))
+                {
+                    fingerprintToFilePath[fingerprint] = pack.FilePath;
+                    fingerprints.Add(fingerprint);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ResourcePackUpdateDetect] Fingerprint计算失败: {pack.Name}, {ex.Message}");
+            }
+        }
+
+        if (fingerprints.Count == 0)
+        {
+            return;
+        }
+
+        var matchResult = await _curseForgeService.GetFingerprintMatchesAsync(fingerprints);
+        var exactMatches = matchResult?.ExactMatches ?? new List<Core.Models.CurseForgeFingerprintMatch>();
+
+        foreach (var match in exactMatches)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (match?.File == null)
+            {
+                continue;
+            }
+
+            var fingerprint = (uint)match.File.FileFingerprint;
+            if (!fingerprintToFilePath.TryGetValue(fingerprint, out var filePath))
+            {
+                continue;
+            }
+
+            if (match.Id > 0)
+            {
+                projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
+            }
+
+            var latestFile = match.LatestFiles?
+                .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
+                .OrderByDescending(file => file.FileDate)
+                .FirstOrDefault();
+
+            if (latestFile == null)
+            {
+                continue;
+            }
+
+            updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
+        }
+    }
+
+    private void ApplyResourcePackUpdateFlags(
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        int generation)
+    {
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (generation != _resourcePackUpdateDetectGeneration)
+            {
+                return;
+            }
+
+            var allItems = _allResourcePacks.Concat(ResourcePacks)
+                .GroupBy(pack => pack.FilePath, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First());
+
+            foreach (var pack in allItems)
+            {
+                pack.HasUpdate = updatableByFile.TryGetValue(pack.FilePath, out var hasUpdate) && hasUpdate;
+                if (projectIdentityByFile.TryGetValue(pack.FilePath, out var identity))
+                {
+                    pack.Source = identity.Source;
+                    pack.ProjectId = identity.ProjectId;
+                }
+            }
+
+            if (ResourcePackFilterOption == "可更新")
+            {
+                FilterResourcePacks();
+            }
+        });
     }
 
     #endregion

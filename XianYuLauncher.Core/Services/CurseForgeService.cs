@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -15,6 +16,7 @@ public class CurseForgeService
     private readonly string _apiKey;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FallbackDownloadManager? _fallbackDownloadManager;
+    private readonly IHashLookupCenter? _hashLookupCenter;
     
     /// <summary>
     /// CurseForge官方API基础URL
@@ -54,11 +56,13 @@ public class CurseForgeService
     public CurseForgeService(
         HttpClient httpClient, 
         DownloadSourceFactory downloadSourceFactory,
-        FallbackDownloadManager? fallbackDownloadManager = null)
+        FallbackDownloadManager? fallbackDownloadManager = null,
+        IHashLookupCenter? hashLookupCenter = null)
     {
         _httpClient = httpClient;
         _downloadSourceFactory = downloadSourceFactory;
         _fallbackDownloadManager = fallbackDownloadManager;
+        _hashLookupCenter = hashLookupCenter;
         _apiKey = SecretsService.Config.CurseForge.ApiKey;
         
         if (string.IsNullOrEmpty(_apiKey))
@@ -1085,41 +1089,48 @@ public class CurseForgeService
     {
         if (fingerprints == null || fingerprints.Count == 0)
         {
-            return new CurseForgeFingerprintMatchesResult
-            {
-                ExactMatches = new List<CurseForgeFingerprintMatch>(),
-                ExactFingerprints = new List<uint>(),
-                UnmatchedFingerprints = new List<uint>()
-            };
+            return CreateEmptyFingerprintResult();
         }
 
+        var normalizedFingerprints = fingerprints.Distinct().ToList();
+
+        if (_hashLookupCenter == null)
+        {
+            return await GetFingerprintMatchesFromApiAsync(normalizedFingerprints);
+        }
+
+        return await _hashLookupCenter.GetOrFetchCurseForgeMatchesByFingerprintsAsync(
+            "curseforge:fingerprints",
+            normalizedFingerprints,
+            queryFingerprints => GetFingerprintMatchesFromApiAsync(new List<uint>(queryFingerprints)),
+            successTtl: TimeSpan.FromMinutes(5),
+            emptyTtl: TimeSpan.FromSeconds(20));
+    }
+
+    private async Task<CurseForgeFingerprintMatchesResult> GetFingerprintMatchesFromApiAsync(List<uint> fingerprints)
+    {
         try
         {
             var url = $"{OfficialApiBaseUrl}/v1/fingerprints/{MinecraftGameId}";
             var requestBody = new { fingerprints = fingerprints };
             string jsonBody = JsonSerializer.Serialize(requestBody);
-            
+
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 查询 Fingerprint，数量: {fingerprints.Count}");
-            
+
             var response = await SendPostWithFallbackAsync(url,
                 () => new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json"));
-            
+
             var json = await response.Content.ReadAsStringAsync();
             response.EnsureSuccessStatusCode();
-            
+
             var result = JsonSerializer.Deserialize<CurseForgeFingerprintMatchesResponse>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
-            
+
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 精确匹配: {result?.Data?.ExactMatches?.Count ?? 0}, 未匹配: {result?.Data?.UnmatchedFingerprints?.Count ?? 0}");
-            
-            return result?.Data ?? new CurseForgeFingerprintMatchesResult
-            {
-                ExactMatches = new List<CurseForgeFingerprintMatch>(),
-                ExactFingerprints = new List<uint>(),
-                UnmatchedFingerprints = new List<uint>()
-            };
+
+            return result?.Data ?? CreateEmptyFingerprintResult();
         }
         catch (HttpRequestException ex)
         {
@@ -1137,6 +1148,16 @@ public class CurseForgeService
         {
             throw new Exception($"查询 Fingerprint 时发生错误: {ex.Message}");
         }
+    }
+
+    private static CurseForgeFingerprintMatchesResult CreateEmptyFingerprintResult()
+    {
+        return new CurseForgeFingerprintMatchesResult
+        {
+            ExactMatches = new List<CurseForgeFingerprintMatch>(),
+            ExactFingerprints = new List<uint>(),
+            UnmatchedFingerprints = new List<uint>()
+        };
     }
 }
 
