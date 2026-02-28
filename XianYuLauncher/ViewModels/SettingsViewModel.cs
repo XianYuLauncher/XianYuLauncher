@@ -154,7 +154,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 社区资源下载源列表（Modrinth）
     /// </summary>
     [ObservableProperty]
-    private ObservableCollection<DownloadSourceItem> _communityResourceSources = new ObservableCollection<DownloadSourceItem>();
+    private ObservableCollection<DownloadSourceItem> _modrinthResourceSources = new ObservableCollection<DownloadSourceItem>();
 
     /// <summary>
     /// CurseForge 资源下载源列表
@@ -242,7 +242,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 当前选中的社区资源下载源（Modrinth）
     /// </summary>
     [ObservableProperty]
-    private DownloadSourceItem? _selectedCommunityResourceSource;
+    private DownloadSourceItem? _selectedModrinthResourceSource;
 
     /// <summary>
     /// 当前选中的社区资源顶层下载源（聚合显示）
@@ -3067,7 +3067,7 @@ public partial class SettingsViewModel : ObservableRecipient
     #region 下载源管理（新版统一管理）
 
     private const string GameDownloadSourceKey = "GameDownloadSource";
-    private const string CommunityResourceSourceKey = "CommunityResourceSource";
+    private const string ModrinthResourceSourceKey = "ModrinthResourceSource";
     private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
     private const string VersionManifestSourceKey = "VersionManifestSource";
     private const string FileDownloadSourceKey = "FileDownloadSource";
@@ -3094,7 +3094,7 @@ public partial class SettingsViewModel : ObservableRecipient
         await BuildGameDownloadSourcesAsync();
 
         // 3. 构建社区资源源列表（Modrinth）
-        await BuildCommunityResourceSourcesAsync();
+        await BuildModrinthResourceSourcesAsync();
 
         // 4. 构建 CurseForge 资源源列表
         await BuildCurseForgeResourceSourcesAsync();
@@ -3244,7 +3244,7 @@ public partial class SettingsViewModel : ObservableRecipient
             return;
         }
 
-        var modrinthKey = SelectedCommunityResourceSource?.Key;
+        var modrinthKey = SelectedModrinthResourceSource?.Key;
         var curseForgeKey = SelectedCurseforgeResourceSource?.Key;
         if (string.IsNullOrWhiteSpace(modrinthKey) && string.IsNullOrWhiteSpace(curseForgeKey))
         {
@@ -3259,12 +3259,12 @@ public partial class SettingsViewModel : ObservableRecipient
                 && !string.IsNullOrWhiteSpace(curseForgeKey)
                 && string.Equals(modrinthKey, curseForgeKey, StringComparison.OrdinalIgnoreCase))
             {
-                target = CommunityResourceSources.FirstOrDefault(s => string.Equals(s.Key, modrinthKey, StringComparison.OrdinalIgnoreCase))
-                    ?? CommunityResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+                target = ModrinthResourceSources.FirstOrDefault(s => string.Equals(s.Key, modrinthKey, StringComparison.OrdinalIgnoreCase))
+                    ?? ModrinthResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
             }
             else
             {
-                target = CommunityResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+                target = ModrinthResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
             }
 
             if (target != null && !ReferenceEquals(SelectedCommunityResourceMasterSource, target))
@@ -3283,7 +3283,7 @@ public partial class SettingsViewModel : ObservableRecipient
         _isApplyingCommunitySourceFromMaster = true;
         try
         {
-            TryApplySelectedSourceToTarget(sourceKey, CommunityResourceSources, item => SelectedCommunityResourceSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, ModrinthResourceSources, item => SelectedModrinthResourceSource = item);
             TryApplySelectedSourceToTarget(sourceKey, CurseforgeResourceSources, item => SelectedCurseforgeResourceSource = item);
         }
         finally
@@ -3332,7 +3332,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// <summary>
     /// 构建社区资源源列表（Modrinth）
     /// </summary>
-    private async Task BuildCommunityResourceSourcesAsync()
+    private async Task BuildModrinthResourceSourcesAsync()
     {
         await Task.Run(() =>
         {
@@ -3353,13 +3353,13 @@ public partial class SettingsViewModel : ObservableRecipient
 
             App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
-                CommunityResourceSources.Clear();
+                ModrinthResourceSources.Clear();
                 foreach (var source in sources)
                 {
-                    CommunityResourceSources.Add(source);
+                    ModrinthResourceSources.Add(source);
                 }
-                EnsureAggregateCustomSourceItem(CommunityResourceSources);
-                Log.Information($"[Settings] 已加载 {CommunityResourceSources.Count} 个社区资源源");
+                EnsureAggregateCustomSourceItem(ModrinthResourceSources);
+                Log.Information($"[Settings] 已加载 {ModrinthResourceSources.Count} 个 Modrinth 资源源");
             });
         });
     }
@@ -3559,14 +3559,14 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的游戏资源源: {savedGameSource}");
 
         // 读取保存的社区资源源
-        var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>(CommunityResourceSourceKey);
-        if (string.IsNullOrEmpty(savedCommunitySource))
+        var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>(ModrinthResourceSourceKey);
+        if (string.IsNullOrEmpty(savedModrinthSource))
         {
             // 首次启动，根据地区设置默认值
-            savedCommunitySource = GetDefaultSourceKeyByRegion("mcim", "official");
+            savedModrinthSource = GetDefaultSourceKeyByRegion("mcim", "official");
         }
 
-        Log.Information($"[Settings] 读取到保存的社区资源源: {savedCommunitySource}");
+        Log.Information($"[Settings] 读取到保存的 Modrinth 资源源: {savedModrinthSource}");
 
         // 读取保存的 CurseForge 资源源
         var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>(CurseForgeResourceSourceKey);
@@ -3682,8 +3682,8 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             SelectedGameDownloadSource = GameDownloadSources.FirstOrDefault(s => s.Key == savedGameSource)
                 ?? GameDownloadSources.FirstOrDefault();
-            SelectedCommunityResourceSource = CommunityResourceSources.FirstOrDefault(s => s.Key == savedCommunitySource)
-                ?? CommunityResourceSources.FirstOrDefault();
+            SelectedModrinthResourceSource = ModrinthResourceSources.FirstOrDefault(s => s.Key == savedModrinthSource)
+                ?? ModrinthResourceSources.FirstOrDefault();
             SelectedCurseforgeResourceSource = CurseforgeResourceSources.FirstOrDefault(s => s.Key == savedCurseForgeSource)
                 ?? CurseforgeResourceSources.FirstOrDefault();
             SelectedVersionManifestSource = VersionManifestSources.FirstOrDefault(s => s.Key == savedVersionManifestSource)
@@ -3712,7 +3712,7 @@ public partial class SettingsViewModel : ObservableRecipient
             RefreshCommunityResourceMasterSelection();
             AutoSelectFastestSource = savedAutoSelect;
 
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameDownloadSource?.DisplayName}, 社区源: {SelectedCommunityResourceSource?.DisplayName}, " +
+            Log.Information($"[Settings] 游戏资源源: {SelectedGameDownloadSource?.DisplayName}, Modrinth源: {SelectedModrinthResourceSource?.DisplayName}, " +
                 $"CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName}, 版本清单: {SelectedVersionManifestSource?.DisplayName}, " +
                 $"文件下载: {SelectedFileDownloadSource?.DisplayName}, 核心游戏: {SelectedCoreGameDownloadSource?.DisplayName}, " +
                 $"Forge: {SelectedForgeSource?.DisplayName}, Fabric: {SelectedFabricSource?.DisplayName}, " +
@@ -3734,16 +3734,16 @@ public partial class SettingsViewModel : ObservableRecipient
                     Log.Error(ex, $"[Settings] 同步游戏资源源到 DownloadSourceFactory 失败: {SelectedGameDownloadSource.Key}");
                 }
             }
-            if (SelectedCommunityResourceSource != null)
+            if (SelectedModrinthResourceSource != null)
             {
                 try
                 {
-                    _downloadSourceFactory.SetModrinthSource(SelectedCommunityResourceSource.Key);
-                    Log.Information($"[Settings] 已同步社区资源源到 DownloadSourceFactory: {SelectedCommunityResourceSource.Key}");
+                    _downloadSourceFactory.SetModrinthSource(SelectedModrinthResourceSource.Key);
+                    Log.Information($"[Settings] 已同步 Modrinth 资源源到 DownloadSourceFactory: {SelectedModrinthResourceSource.Key}");
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"[Settings] 同步社区资源源到 DownloadSourceFactory 失败: {SelectedCommunityResourceSource.Key}");
+                    Log.Error(ex, $"[Settings] 同步 Modrinth 资源源到 DownloadSourceFactory 失败: {SelectedModrinthResourceSource.Key}");
                 }
             }
             if (SelectedCurseforgeResourceSource != null)
@@ -3864,12 +3864,12 @@ public partial class SettingsViewModel : ObservableRecipient
     /// <summary>
     /// 当社区资源源选择变化时
     /// </summary>
-    partial void OnSelectedCommunityResourceSourceChanged(DownloadSourceItem? value)
+    partial void OnSelectedModrinthResourceSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
         
         // 保存选择
-        _localSettingsService.SaveSettingAsync(CommunityResourceSourceKey, value.Key).ConfigureAwait(false);
+        _localSettingsService.SaveSettingAsync(ModrinthResourceSourceKey, value.Key).ConfigureAwait(false);
         
         // 同步到 DownloadSourceFactory
         _downloadSourceFactory.SetModrinthSource(value.Key);
@@ -4158,7 +4158,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// 添加自定义社区资源源命令
     /// </summary>
     [RelayCommand]
-    private async Task AddCommunityResourceSourceAsync()
+    private async Task AddModrinthResourceSourceAsync()
     {
         await AddCustomSourceWithTemplateAsync(DownloadSourceTemplateType.Community);
     }
@@ -4580,12 +4580,12 @@ public partial class SettingsViewModel : ObservableRecipient
             var fastestCommunityKey = cache.GetFastestCommunitySourceKey();
             if (!string.IsNullOrEmpty(fastestCommunityKey))
             {
-                var communitySourceItem = CommunityResourceSources.FirstOrDefault(s => s.Key == fastestCommunityKey);
-                if (communitySourceItem != null)
+                var modrinthSourceItem = ModrinthResourceSources.FirstOrDefault(s => s.Key == fastestCommunityKey);
+                if (modrinthSourceItem != null)
                 {
-                    SelectedCommunityResourceSource = communitySourceItem;
+                    SelectedModrinthResourceSource = modrinthSourceItem;
                     _downloadSourceFactory.SetModrinthSource(fastestCommunityKey);
-                    Log.Information("[Settings] 自动选择最快社区源: {Source}", fastestCommunityKey);
+                    Log.Information("[Settings] 自动选择最快Modrinth源: {Source}", fastestCommunityKey);
                 }
             }
 

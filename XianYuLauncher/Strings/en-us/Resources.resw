@@ -3078,10 +3078,10 @@ Continue downloading?</value>
   <data name="DownloadSource_DisplayName_Custom" xml:space="preserve">
     <value>Custom</value>
   </data>
-  <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
+  <data name="Settings_ModrinthCurseForgeSourceExpander.Header" xml:space="preserve">
     <value>Community Resource Source</value>
   </data>
-  <data name="Settings_CommunityResourceSourceExpander.Description" xml:space="preserve">
+  <data name="Settings_ModrinthCurseForgeSourceExpander.Description" xml:space="preserve">
     <value>Download source for Modrinth and CurseForge resources</value>
   </data>
   <data name="Settings_ModrinthResourceSource.Header" xml:space="preserve">

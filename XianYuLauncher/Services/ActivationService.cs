@@ -145,25 +145,25 @@ public class ActivationService : IActivationService
             _downloadSourceFactory.SetDefaultSource(sourceKey);
             Serilog.Log.Information($"[ActivationService] 游戏资源下载源已设置为: {sourceKey}");
 
-            // 优先读取新配置键 CommunityResourceSource（社区资源下载源）
-            var communityResourceSource = await _localSettingsService.ReadSettingAsync<string>("CommunityResourceSource");
+            // 优先读取配置键 ModrinthResourceSource（Modrinth 资源下载源）
+            var modrinthResourceSource = await _localSettingsService.ReadSettingAsync<string>("ModrinthResourceSource");
             
-            if (!string.IsNullOrEmpty(communityResourceSource))
+            if (!string.IsNullOrEmpty(modrinthResourceSource))
             {
                 // 使用新配置键的值（支持自定义源）
-                if (allSources.ContainsKey(communityResourceSource))
+                if (allSources.ContainsKey(modrinthResourceSource))
                 {
-                    _downloadSourceFactory.SetModrinthSource(communityResourceSource);
-                    Serilog.Log.Information($"[ActivationService] 社区资源下载源已设置为: {communityResourceSource}");
+                    _downloadSourceFactory.SetModrinthSource(modrinthResourceSource);
+                    Serilog.Log.Information($"[ActivationService] Modrinth 资源下载源已设置为: {modrinthResourceSource}");
                 }
                 else
                 {
-                    Serilog.Log.Warning($"[ActivationService] 社区资源源 {communityResourceSource} 不存在，使用默认值");
+                    Serilog.Log.Warning($"[ActivationService] Modrinth 资源源 {modrinthResourceSource} 不存在，使用默认值");
                 }
             }
             else
             {
-                Serilog.Log.Information("[ActivationService] 未找到 CommunityResourceSource，保留默认社区资源源设置");
+                Serilog.Log.Information("[ActivationService] 未找到 ModrinthResourceSource，保留默认 Modrinth 资源源设置");
             }
 
             // 读取 CurseForge 资源下载源
