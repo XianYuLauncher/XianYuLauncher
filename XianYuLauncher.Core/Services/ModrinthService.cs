@@ -311,34 +311,7 @@ public class ModrinthService
             response.EnsureSuccessStatusCode();
 
             // 解析响应
-              var detail = JsonSerializer.Deserialize<ModrinthProjectDetail>(responseContent);
-
-              // 如果没有作者信息但有团队ID，尝试获取团队成员作为补充
-              if (detail != null && string.IsNullOrEmpty(detail.Author) && !string.IsNullOrEmpty(detail.Team))
-              {
-                  try 
-                  {
-                      var members = await GetProjectTeamMembersAsync(detail.Team);
-                      if (members != null && members.Count > 0)
-                      {
-                          // 保存获取到的成员列表，供"查看所有发布者"功能直接使用，无需再次请求
-                          detail.TeamMembers = members;
-
-                          // 寻找所有者或第一个成员
-                          var owner = members.FirstOrDefault(m => m.Role == "Owner") ?? members.First();
-                          if (owner.User != null)
-                          {
-                              detail.Author = owner.User.Username;
-                          }
-                      }
-                  } 
-                  catch (Exception) 
-                  { 
-                      // 忽略获取作者信息的错误，以免影响主要功能的显示
-                  }
-              }
-
-              return detail;
+            return JsonSerializer.Deserialize<ModrinthProjectDetail>(responseContent);
           }
           catch (HttpRequestException ex)
           {
