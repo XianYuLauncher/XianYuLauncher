@@ -64,6 +64,12 @@ public partial class ResourcePackInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private string? _source;
+
+    /// <summary>
+    /// 是否有可更新版本
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasUpdate;
     
     /// <summary>
     /// 预览是否打开
@@ -112,6 +118,7 @@ public partial class ResourcePackInfo : ObservableObject
         // 初始化描述相关属性
         Description = null;
         IsLoadingDescription = false;
+        HasUpdate = false;
         Source = null;
     }
 }
