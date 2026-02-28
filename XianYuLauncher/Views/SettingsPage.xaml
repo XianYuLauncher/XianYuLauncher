@@ -561,17 +561,17 @@
                 </controls:SettingsExpander>
 
                 <!-- 游戏资源下载源（SettingsExpander）-->
-                <controls:SettingsExpander x:Uid="Settings_GameResourceSourceExpander" Header="游戏资源下载源" Description="游戏本体、ModLoader 的下载源" IsExpanded="False">
+                <controls:SettingsExpander x:Uid="Settings_GameDownloadSourceExpander" Header="游戏资源下载源" Description="游戏本体、ModLoader 的下载源" IsExpanded="False">
                     <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
                     </controls:SettingsExpander.HeaderIcon>
                     <controls:SettingsExpander.Content>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ComboBox ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}"
-                                      SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}"
+                            <ComboBox ItemsSource="{x:Bind ViewModel.GameDownloadSources, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedGameDownloadSource, Mode=TwoWay}"
                                       MinWidth="200"
                                       IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                            <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                            <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameDownloadSourceCommand}">
                                 <Button.ContentTemplate>
                                     <DataTemplate>
                                         <FontIcon Glyph="&#xE710;" FontSize="14" />

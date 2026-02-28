@@ -62,8 +62,8 @@ public sealed class AuthlibInjectorService
             
         try
         {
-            // 1. 获取当前下载源设置（统一使用新配置键）
-            var downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource") ?? "bmclapi";
+            // 1. 获取当前文件下载源设置
+            var downloadSourceKey = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource") ?? "official";
             _logger.LogInformation("[AuthlibInjector] 当前下载源设置: {DownloadSource}", downloadSourceKey);
                 
             // 2. 判断是否使用 BMCLAPI 类型的源（通过 key 或 URL 判断）

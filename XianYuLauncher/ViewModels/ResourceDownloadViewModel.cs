@@ -1757,9 +1757,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         // 加载保存的平台选择
         LoadPlatformSelection();
         
-        // 加载下载源配置
-        LoadDownloadSourceSettings();
-        
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
     }
@@ -1810,86 +1807,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
     }
     
-    /// <summary>
-    /// 加载下载源配置
-    /// </summary>
-    private async void LoadDownloadSourceSettings()
-    {
-        try
-        {
-            var factory = App.GetService<XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory>();
-            if (factory == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[下载源配置] DownloadSourceFactory 未找到");
-                return;
-            }
-            
-            // 加载游戏资源下载源配置（新版）
-            var savedGameSource = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
-            if (!string.IsNullOrEmpty(savedGameSource))
-            {
-                try
-                {
-                    factory.SetDefaultSource(savedGameSource);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 游戏资源源已设置为: {savedGameSource}");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置游戏资源源失败: {ex.Message}，回退到 official");
-                    factory.SetDefaultSource("official");
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 GameResourceSource，保留当前默认游戏资源源设置");
-            }
-            
-            // 加载社区资源下载源配置（Modrinth）
-            var savedCommunitySource = await _localSettingsService.ReadSettingAsync<string>("CommunityResourceSource");
-            if (!string.IsNullOrEmpty(savedCommunitySource))
-            {
-                try
-                {
-                    factory.SetModrinthSource(savedCommunitySource);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] Modrinth 社区资源源已设置为: {savedCommunitySource}");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置 Modrinth 社区资源源失败: {ex.Message}，回退到 official");
-                    factory.SetModrinthSource("official");
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 CommunityResourceSource，保留当前默认社区资源源设置");
-            }
-
-            // 加载社区资源下载源配置（CurseForge）
-            var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>("CurseForgeResourceSource");
-            if (!string.IsNullOrEmpty(savedCurseForgeSource))
-            {
-                try
-                {
-                    factory.SetCurseForgeSource(savedCurseForgeSource);
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] CurseForge 社区资源源已设置为: {savedCurseForgeSource}");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[下载源配置] 设置 CurseForge 社区资源源失败: {ex.Message}，回退到 official");
-                    factory.SetCurseForgeSource("official");
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[下载源配置] 未找到 CurseForgeResourceSource，保留当前默认 CurseForge 资源源设置");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[下载源配置] 加载失败: {ex.Message}");
-        }
-    }
-
     public void SetSelectedModCategories(IEnumerable<string> categoryTags)
     {
         // TODO: 后续将加载器/类型/版本归并到统一筛选模型，再统一生成检索参数。

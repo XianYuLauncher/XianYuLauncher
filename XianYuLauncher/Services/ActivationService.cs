@@ -107,15 +107,15 @@ public class ActivationService : IActivationService
     {
         try
         {
-            // 优先读取新配置键 GameResourceSource（游戏资源下载源）
-            var gameResourceSource = await _localSettingsService.ReadSettingAsync<string>("GameResourceSource");
+            // 优先读取配置键 GameDownloadSource（游戏资源下载源）
+            var gameDownloadSource = await _localSettingsService.ReadSettingAsync<string>("GameDownloadSource");
             string sourceKey;
 
-            if (!string.IsNullOrEmpty(gameResourceSource))
+            if (!string.IsNullOrEmpty(gameDownloadSource))
             {
-                // 使用新配置键的值（支持自定义源）
-                sourceKey = gameResourceSource;
-                Serilog.Log.Information($"[ActivationService] 使用新配置键 GameResourceSource: {sourceKey}");
+                // 使用配置键的值（支持自定义源）
+                sourceKey = gameDownloadSource;
+                Serilog.Log.Information($"[ActivationService] 使用配置键 GameDownloadSource: {sourceKey}");
             }
             else
             {
