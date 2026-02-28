@@ -245,6 +245,12 @@ public partial class SettingsViewModel : ObservableRecipient
     private DownloadSourceItem? _selectedCommunityResourceSource;
 
     /// <summary>
+    /// 当前选中的社区资源顶层下载源（聚合显示）
+    /// </summary>
+    [ObservableProperty]
+    private DownloadSourceItem? _selectedCommunityResourceMasterSource;
+
+    /// <summary>
     /// 当前选中的 CurseForge 资源下载源
     /// </summary>
     [ObservableProperty]
@@ -326,6 +332,12 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSelectDownloadSource))]
     private bool _autoSelectFastestSource = false;
+
+    private const string AggregateCustomSourceKey = "__custom__";
+    private bool _isApplyingGameSourceFromMaster;
+    private bool _isReconcilingGameMasterSelection;
+    private bool _isApplyingCommunitySourceFromMaster;
+    private bool _isReconcilingCommunityMasterSelection;
 
     /// <summary>
     /// 是否可以手动选择下载源（当自动选择关闭时为true）
@@ -3111,6 +3123,177 @@ public partial class SettingsViewModel : ObservableRecipient
             .ThenByDescending(s => (s as Core.Services.DownloadSource.CustomDownloadSource)?.Priority ?? 0);
     }
 
+    private static DownloadSourceItem CreateAggregateCustomSourceItem()
+    {
+        return new DownloadSourceItem
+        {
+            Key = AggregateCustomSourceKey,
+            DisplayName = "DownloadSource_DisplayName_Custom".GetLocalized(),
+            IsCustom = true
+        };
+    }
+
+    private static void EnsureAggregateCustomSourceItem(ObservableCollection<DownloadSourceItem> sources)
+    {
+        if (!sources.Any(s => s.Key == AggregateCustomSourceKey))
+        {
+            sources.Insert(0, CreateAggregateCustomSourceItem());
+        }
+    }
+
+    private static bool TryApplySelectedSourceToTarget(
+        string sourceKey,
+        ObservableCollection<DownloadSourceItem> sourcePool,
+        Action<DownloadSourceItem?> setSelectedAction)
+    {
+        var target = sourcePool.FirstOrDefault(s => s.Key == sourceKey);
+        if (target == null)
+        {
+            return false;
+        }
+
+        setSelectedAction(target);
+        return true;
+    }
+
+    private void RefreshGameResourceMasterSelection()
+    {
+        if (_isApplyingGameSourceFromMaster)
+        {
+            return;
+        }
+
+        var selectedKeys = new[]
+        {
+            SelectedVersionManifestSource?.Key,
+            SelectedFileDownloadSource?.Key,
+            SelectedCoreGameResourceSource?.Key,
+            SelectedForgeSource?.Key,
+            SelectedFabricSource?.Key,
+            SelectedNeoForgeSource?.Key,
+            SelectedQuiltSource?.Key,
+            SelectedLiteLoaderSource?.Key,
+            SelectedLegacyFabricSource?.Key,
+            SelectedCleanroomSource?.Key,
+            SelectedOptifineSource?.Key
+        }
+        .Where(k => !string.IsNullOrWhiteSpace(k))
+        .Cast<string>()
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+        if (selectedKeys.Count == 0)
+        {
+            return;
+        }
+
+        _isReconcilingGameMasterSelection = true;
+        try
+        {
+            DownloadSourceItem? target;
+            if (selectedKeys.Count == 1)
+            {
+                target = GameResourceSources.FirstOrDefault(s => string.Equals(s.Key, selectedKeys[0], StringComparison.OrdinalIgnoreCase))
+                    ?? GameResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+            }
+            else
+            {
+                target = GameResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+            }
+
+            if (target != null && !ReferenceEquals(SelectedGameResourceSource, target))
+            {
+                SelectedGameResourceSource = target;
+            }
+        }
+        finally
+        {
+            _isReconcilingGameMasterSelection = false;
+        }
+    }
+
+    private void ApplyGameResourceMasterSelection(string sourceKey)
+    {
+        _isApplyingGameSourceFromMaster = true;
+        try
+        {
+            TryApplySelectedSourceToTarget(sourceKey, VersionManifestSources, item => SelectedVersionManifestSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, FileDownloadSources, item => SelectedFileDownloadSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, CoreGameResourceSources, item => SelectedCoreGameResourceSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, ForgeSources, item => SelectedForgeSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, FabricSources, item => SelectedFabricSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, NeoForgeSources, item => SelectedNeoForgeSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, QuiltSources, item => SelectedQuiltSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, LiteLoaderSources, item => SelectedLiteLoaderSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, LegacyFabricSources, item => SelectedLegacyFabricSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, CleanroomSources, item => SelectedCleanroomSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, OptifineSources, item => SelectedOptifineSource = item);
+        }
+        finally
+        {
+            _isApplyingGameSourceFromMaster = false;
+        }
+
+        RefreshGameResourceMasterSelection();
+    }
+
+    private void RefreshCommunityResourceMasterSelection()
+    {
+        if (_isApplyingCommunitySourceFromMaster)
+        {
+            return;
+        }
+
+        var modrinthKey = SelectedCommunityResourceSource?.Key;
+        var curseForgeKey = SelectedCurseforgeResourceSource?.Key;
+        if (string.IsNullOrWhiteSpace(modrinthKey) && string.IsNullOrWhiteSpace(curseForgeKey))
+        {
+            return;
+        }
+
+        _isReconcilingCommunityMasterSelection = true;
+        try
+        {
+            DownloadSourceItem? target;
+            if (!string.IsNullOrWhiteSpace(modrinthKey)
+                && !string.IsNullOrWhiteSpace(curseForgeKey)
+                && string.Equals(modrinthKey, curseForgeKey, StringComparison.OrdinalIgnoreCase))
+            {
+                target = CommunityResourceSources.FirstOrDefault(s => string.Equals(s.Key, modrinthKey, StringComparison.OrdinalIgnoreCase))
+                    ?? CommunityResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+            }
+            else
+            {
+                target = CommunityResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
+            }
+
+            if (target != null && !ReferenceEquals(SelectedCommunityResourceMasterSource, target))
+            {
+                SelectedCommunityResourceMasterSource = target;
+            }
+        }
+        finally
+        {
+            _isReconcilingCommunityMasterSelection = false;
+        }
+    }
+
+    private void ApplyCommunityResourceMasterSelection(string sourceKey)
+    {
+        _isApplyingCommunitySourceFromMaster = true;
+        try
+        {
+            TryApplySelectedSourceToTarget(sourceKey, CommunityResourceSources, item => SelectedCommunityResourceSource = item);
+            TryApplySelectedSourceToTarget(sourceKey, CurseforgeResourceSources, item => SelectedCurseforgeResourceSource = item);
+        }
+        finally
+        {
+            _isApplyingCommunitySourceFromMaster = false;
+        }
+
+        RefreshCommunityResourceMasterSelection();
+    }
+
     /// <summary>
     /// 构建游戏资源源列表
     /// </summary>
@@ -3140,6 +3323,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 {
                     GameResourceSources.Add(source);
                 }
+                EnsureAggregateCustomSourceItem(GameResourceSources);
                 Log.Information($"[Settings] 已加载 {GameResourceSources.Count} 个游戏资源源");
             });
         });
@@ -3174,6 +3358,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 {
                     CommunityResourceSources.Add(source);
                 }
+                EnsureAggregateCustomSourceItem(CommunityResourceSources);
                 Log.Information($"[Settings] 已加载 {CommunityResourceSources.Count} 个社区资源源");
             });
         });
@@ -3523,6 +3708,8 @@ public partial class SettingsViewModel : ObservableRecipient
                 ?? CleanroomSources.FirstOrDefault();
             SelectedOptifineSource = OptifineSources.FirstOrDefault(s => s.Key == savedOptifineSource)
                 ?? OptifineSources.FirstOrDefault();
+            RefreshGameResourceMasterSelection();
+            RefreshCommunityResourceMasterSelection();
             AutoSelectFastestSource = savedAutoSelect;
 
             Log.Information($"[Settings] 游戏资源源: {SelectedGameResourceSource?.DisplayName}, 社区源: {SelectedCommunityResourceSource?.DisplayName}, " +
@@ -3637,14 +3824,25 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedGameResourceSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        
+        if (value == null)
+        {
+            return;
+        }
+
+        if (string.Equals(value.Key, AggregateCustomSourceKey, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!_isReconcilingGameMasterSelection)
+            {
+                RefreshGameResourceMasterSelection();
+            }
+
+            return;
+        }
+
         Log.Information($"[Settings] 游戏资源源选择变化: {value.DisplayName} ({value.Key})");
-        
-        // 保存选择
+
         _localSettingsService.SaveSettingAsync(GameResourceSourceKey, value.Key).ConfigureAwait(false);
-        
-        // 同步到 DownloadSourceFactory
+
         try
         {
             _downloadSourceFactory.SetDefaultSource(value.Key);
@@ -3654,6 +3852,13 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             Log.Error(ex, $"[Settings] 设置默认下载源失败: {value.Key}");
         }
+
+        if (_isReconcilingGameMasterSelection)
+        {
+            return;
+        }
+
+        ApplyGameResourceMasterSelection(value.Key);
     }
     
     /// <summary>
@@ -3670,6 +3875,36 @@ public partial class SettingsViewModel : ObservableRecipient
         _downloadSourceFactory.SetModrinthSource(value.Key);
         
         Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingCommunitySourceFromMaster)
+        {
+            RefreshCommunityResourceMasterSelection();
+        }
+    }
+
+    partial void OnSelectedCommunityResourceMasterSourceChanged(DownloadSourceItem? value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+
+        if (string.Equals(value.Key, AggregateCustomSourceKey, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!_isReconcilingCommunityMasterSelection)
+            {
+                RefreshCommunityResourceMasterSelection();
+            }
+
+            return;
+        }
+
+        if (_isReconcilingCommunityMasterSelection)
+        {
+            return;
+        }
+
+        ApplyCommunityResourceMasterSelection(value.Key);
     }
 
     /// <summary>
@@ -3686,6 +3921,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _downloadSourceFactory.SetCurseForgeSource(value.Key);
 
         Log.Information($"[Settings] CurseForge 资源源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingCommunitySourceFromMaster)
+        {
+            RefreshCommunityResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3697,6 +3937,11 @@ public partial class SettingsViewModel : ObservableRecipient
 
         _localSettingsService.SaveSettingAsync(CoreGameResourceSourceKey, value.Key).ConfigureAwait(false);
         Log.Information($"[Settings] 核心游戏资源源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3709,6 +3954,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(ForgeSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Forge 源失败"); }
         Log.Information($"[Settings] Forge 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3721,6 +3971,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(FabricSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Fabric 源失败"); }
         Log.Information($"[Settings] Fabric 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3733,6 +3988,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(NeoForgeSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetNeoForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 NeoForge 源失败"); }
         Log.Information($"[Settings] NeoForge 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3745,6 +4005,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(QuiltSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetQuiltSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Quilt 源失败"); }
         Log.Information($"[Settings] Quilt 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3757,6 +4022,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(OptifineSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetOptifineSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 OptiFine 源失败"); }
         Log.Information($"[Settings] OptiFine 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3768,6 +4038,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetVersionManifestSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置版本清单源失败"); }
         Log.Information($"[Settings] 版本清单源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3779,6 +4054,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetFileDownloadSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置文件下载源失败"); }
         Log.Information($"[Settings] 文件下载源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3790,6 +4070,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetLiteLoaderSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LiteLoader 源失败"); }
         Log.Information($"[Settings] LiteLoader 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3801,6 +4086,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetLegacyFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LegacyFabric 源失败"); }
         Log.Information($"[Settings] LegacyFabric 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>
@@ -3812,6 +4102,11 @@ public partial class SettingsViewModel : ObservableRecipient
         _localSettingsService.SaveSettingAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetCleanroomSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Cleanroom 源失败"); }
         Log.Information($"[Settings] Cleanroom 源已切换为: {value.DisplayName} ({value.Key})");
+
+        if (!_isApplyingGameSourceFromMaster)
+        {
+            RefreshGameResourceMasterSelection();
+        }
     }
 
     /// <summary>

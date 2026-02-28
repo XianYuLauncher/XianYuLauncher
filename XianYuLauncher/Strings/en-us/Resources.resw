@@ -3075,6 +3075,9 @@ Continue downloading?</value>
   <data name="DownloadSource_DisplayName_Mcim" xml:space="preserve">
     <value>MCIM Mirror</value>
   </data>
+  <data name="DownloadSource_DisplayName_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
   <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>Community Resource Source</value>
   </data>
