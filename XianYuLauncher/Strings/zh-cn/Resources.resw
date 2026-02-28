@@ -3090,10 +3090,10 @@
   <data name="DownloadSource_DisplayName_Custom" xml:space="preserve">
     <value>自定义</value>
   </data>
-  <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
+  <data name="Settings_ModrinthCurseForgeSourceExpander.Header" xml:space="preserve">
     <value>社区资源下载源</value>
   </data>
-  <data name="Settings_CommunityResourceSourceExpander.Description" xml:space="preserve">
+  <data name="Settings_ModrinthCurseForgeSourceExpander.Description" xml:space="preserve">
     <value>Modrinth、CurseForge 资源的下载源</value>
   </data>
   <data name="Settings_ModrinthResourceSource.Header" xml:space="preserve">
