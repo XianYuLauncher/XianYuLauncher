@@ -63,11 +63,17 @@ public partial class ShadersViewModel : ObservableObject
     [ObservableProperty]
     private string _shaderSearchText = string.Empty;
 
+    /// <summary>光影筛选类型（全部/可更新/重复）</summary>
+    [ObservableProperty]
+    private string _shaderFilterOption = "全部";
+
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
     private bool _isShaderSelectionModeEnabled;
 
     partial void OnShaderSearchTextChanged(string value) => FilterShaders();
+
+    partial void OnShaderFilterOptionChanged(string value) => FilterShaders();
 
     partial void OnShadersChanged(ObservableCollection<ShaderInfo> value)
     {
@@ -151,17 +157,22 @@ public partial class ShadersViewModel : ObservableObject
     /// <summary>过滤光影列表</summary>
     public void FilterShaders()
     {
-        if (string.IsNullOrWhiteSpace(ShaderSearchText))
+        IEnumerable<ShaderInfo> filtered = _allShaders;
+
+        if (!string.IsNullOrWhiteSpace(ShaderSearchText))
         {
-            if (!HasSameFilePathSnapshot(Shaders, _allShaders, s => s.FilePath))
-                Shaders = new ObservableCollection<ShaderInfo>(_allShaders);
-        }
-        else
-        {
-            var filtered = _allShaders.Where(x =>
+            filtered = filtered.Where(x =>
                 x.Name.Contains(ShaderSearchText, StringComparison.OrdinalIgnoreCase));
-            Shaders = new ObservableCollection<ShaderInfo>(filtered);
         }
+
+        filtered = ApplyShaderFilterOption(filtered);
+        var filteredList = filtered.ToList();
+
+        if (!HasSameFilePathSnapshot(Shaders, filteredList, s => s.FilePath))
+        {
+            Shaders = new ObservableCollection<ShaderInfo>(filteredList);
+        }
+
         OnPropertyChanged(nameof(IsShaderListEmpty));
     }
 
@@ -525,6 +536,53 @@ public partial class ShadersViewModel : ObservableObject
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return BuildPathSet(currentItems).SetEquals(BuildPathSet(sourceItems));
+    }
+
+    private IEnumerable<ShaderInfo> ApplyShaderFilterOption(IEnumerable<ShaderInfo> source)
+    {
+        return ShaderFilterOption switch
+        {
+            "可更新" => source.Where(IsShaderUpdatable),
+            "重复" => ApplyDuplicateFilter(source, _allShaders, shader => NormalizeDuplicateKey(shader.FileName)),
+            _ => source
+        };
+    }
+
+    private static bool IsShaderUpdatable(ShaderInfo shader)
+    {
+        var isZipFile = !Directory.Exists(shader.FilePath)
+            && shader.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+
+        return isZipFile
+            && !string.IsNullOrWhiteSpace(shader.Source)
+            && !string.IsNullOrWhiteSpace(shader.ProjectId);
+    }
+
+    private static string NormalizeDuplicateKey(string fileName)
+    {
+        var normalized = fileName;
+        if (normalized.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(0, normalized.Length - ".disabled".Length);
+        }
+
+        return Path.GetFileNameWithoutExtension(normalized);
+    }
+
+    private static IEnumerable<T> ApplyDuplicateFilter<T>(
+        IEnumerable<T> filteredSource,
+        IEnumerable<T> allSource,
+        Func<T, string> duplicateKeySelector)
+    {
+        var duplicateKeys = allSource
+            .Select(duplicateKeySelector)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
     }
 
     #endregion

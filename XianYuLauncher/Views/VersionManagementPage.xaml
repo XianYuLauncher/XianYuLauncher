@@ -558,11 +558,25 @@
                     
                     <!-- 搜索栏 -->
                     <Grid Grid.Row="0" Margin="0,20,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchModPlaceholder"
                             Text="{Binding ModsModule.ModSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
+                            Grid.Column="0"
                             HorizontalAlignment="Stretch" />
+                        <ComboBox
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            SelectedValuePath="Content"
+                            SelectedValue="{Binding ModsModule.ModFilterOption, Mode=TwoWay}">
+                            <ComboBoxItem Content="全部" />
+                            <ComboBoxItem Content="可更新" />
+                            <ComboBoxItem Content="重复" />
+                        </ComboBox>
                     </Grid>
                     
                     <!-- Mod列表容器 -->
@@ -838,11 +852,25 @@
                     
                     <!-- 搜索栏 -->
                     <Grid Grid.Row="0" Margin="0,20,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchShaderPlaceholder"
                             Text="{Binding ShadersModule.ShaderSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
+                            Grid.Column="0"
                             HorizontalAlignment="Stretch" />
+                        <ComboBox
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            SelectedValuePath="Content"
+                            SelectedValue="{Binding ShadersModule.ShaderFilterOption, Mode=TwoWay}">
+                            <ComboBoxItem Content="全部" />
+                            <ComboBoxItem Content="可更新" />
+                            <ComboBoxItem Content="重复" />
+                        </ComboBox>
                     </Grid>
                     
                     <!-- 光影列表容器 -->
@@ -1098,11 +1126,25 @@
                     
                     <!-- 搜索栏 -->
                     <Grid Grid.Row="0" Margin="0,20,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <AutoSuggestBox 
                             x:Uid="VersionManagerPage_SearchResourcePackPlaceholder"
                             Text="{Binding ResourcePacksModule.ResourcePackSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             QueryIcon="Find"
+                            Grid.Column="0"
                             HorizontalAlignment="Stretch" />
+                        <ComboBox
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            SelectedValuePath="Content"
+                            SelectedValue="{Binding ResourcePacksModule.ResourcePackFilterOption, Mode=TwoWay}">
+                            <ComboBoxItem Content="全部" />
+                            <ComboBoxItem Content="可更新" />
+                            <ComboBoxItem Content="重复" />
+                        </ComboBox>
                     </Grid>
                     
                     <!-- 资源包列表容器 -->

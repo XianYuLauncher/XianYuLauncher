@@ -66,11 +66,17 @@ public partial class ModsViewModel : ObservableObject
     [ObservableProperty]
     private string _modSearchText = string.Empty;
 
+    /// <summary>Mod 筛选类型（全部/可更新/重复）</summary>
+    [ObservableProperty]
+    private string _modFilterOption = "全部";
+
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
     private bool _isModSelectionModeEnabled;
 
     partial void OnModSearchTextChanged(string value) => FilterMods();
+
+    partial void OnModFilterOptionChanged(string value) => FilterMods();
 
     partial void OnModsChanged(ObservableCollection<ModInfo> value)
     {
@@ -170,18 +176,23 @@ public partial class ModsViewModel : ObservableObject
             _allMods = Mods.ToList();
         }
 
-        if (string.IsNullOrWhiteSpace(ModSearchText))
+        IEnumerable<ModInfo> filtered = _allMods;
+
+        if (!string.IsNullOrWhiteSpace(ModSearchText))
         {
-            if (!HasSameFilePathSnapshot(Mods, _allMods, mod => mod.FilePath))
-                Mods = new ObservableCollection<ModInfo>(_allMods);
-        }
-        else
-        {
-            var filtered = _allMods.Where(x =>
+            filtered = filtered.Where(x =>
                 x.Name.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ||
                 (x.Description?.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-            Mods = new ObservableCollection<ModInfo>(filtered);
         }
+
+        filtered = ApplyModFilterOption(filtered);
+        var filteredList = filtered.ToList();
+
+        if (!HasSameFilePathSnapshot(Mods, filteredList, mod => mod.FilePath))
+        {
+            Mods = new ObservableCollection<ModInfo>(filteredList);
+        }
+
         OnPropertyChanged(nameof(IsModListEmpty));
 
         // 启动描述加载任务（完全在后台，不阻塞）
@@ -1004,6 +1015,49 @@ public partial class ModsViewModel : ObservableObject
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return BuildPathSet(currentItems).SetEquals(BuildPathSet(sourceItems));
+    }
+
+    private IEnumerable<ModInfo> ApplyModFilterOption(IEnumerable<ModInfo> source)
+    {
+        return ModFilterOption switch
+        {
+            "可更新" => source.Where(IsModUpdatable),
+            "重复" => ApplyDuplicateFilter(source, _allMods, mod => NormalizeDuplicateKey(mod.FileName)),
+            _ => source
+        };
+    }
+
+    private static bool IsModUpdatable(ModInfo mod)
+    {
+        return !string.IsNullOrWhiteSpace(mod.Source)
+            && !string.IsNullOrWhiteSpace(mod.ProjectId);
+    }
+
+    private static string NormalizeDuplicateKey(string fileName)
+    {
+        var normalized = fileName;
+        if (normalized.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(0, normalized.Length - ".disabled".Length);
+        }
+
+        return Path.GetFileNameWithoutExtension(normalized);
+    }
+
+    private static IEnumerable<T> ApplyDuplicateFilter<T>(
+        IEnumerable<T> filteredSource,
+        IEnumerable<T> allSource,
+        Func<T, string> duplicateKeySelector)
+    {
+        var duplicateKeys = allSource
+            .Select(duplicateKeySelector)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
     }
 
     #endregion
