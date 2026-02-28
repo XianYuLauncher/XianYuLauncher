@@ -3087,6 +3087,9 @@
   <data name="DownloadSource_DisplayName_Mcim" xml:space="preserve">
     <value>MCIM 镜像</value>
   </data>
+  <data name="DownloadSource_DisplayName_Custom" xml:space="preserve">
+    <value>自定义</value>
+  </data>
   <data name="Settings_CommunityResourceSourceExpander.Header" xml:space="preserve">
     <value>社区资源下载源</value>
   </data>

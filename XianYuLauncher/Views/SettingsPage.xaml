@@ -565,6 +565,21 @@
                     <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE896;" />
                     </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox ItemsSource="{x:Bind ViewModel.GameResourceSources, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedGameResourceSource, Mode=TwoWay}"
+                                      MinWidth="200"
+                                      IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </StackPanel>
+                    </controls:SettingsExpander.Content>
                     <controls:SettingsExpander.Items>
                         <!-- 版本清单 -->
                         <controls:SettingsCard x:Uid="Settings_VersionManifestSourceCard" Header="版本清单" Description="获取版本列表等">
@@ -574,13 +589,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedVersionManifestSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -592,13 +600,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedFileDownloadSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -610,13 +611,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedForgeSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -628,13 +622,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedFabricSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -646,13 +633,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedNeoForgeSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -664,13 +644,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedQuiltSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -682,13 +655,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedLiteLoaderSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -700,13 +666,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedLegacyFabricSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -718,13 +677,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedCleanroomSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -736,13 +688,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedOptifineSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button Command="{x:Bind ViewModel.AddGameResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
@@ -753,6 +698,21 @@
                     <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE753;" />
                     </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ComboBox ItemsSource="{x:Bind ViewModel.CommunityResourceSources, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceMasterSource, Mode=TwoWay}"
+                                      MinWidth="200"
+                                      IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
+                            <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </StackPanel>
+                    </controls:SettingsExpander.Content>
                     <controls:SettingsExpander.Items>
                         <!-- Modrinth 下载源 -->
                         <controls:SettingsCard x:Uid="Settings_ModrinthResourceSource" Header="Modrinth 下载源" Description="Modrinth 资源的下载源">
@@ -762,13 +722,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedCommunityResourceSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
 
@@ -780,13 +733,6 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedCurseforgeResourceSource, Mode=TwoWay}"
                                           MinWidth="200"
                                           IsEnabled="{x:Bind ViewModel.CanSelectDownloadSource, Mode=OneWay}" />
-                                <Button x:Uid="Settings_AddCustomSource" Content="添加自定义源" Command="{x:Bind ViewModel.AddCommunityResourceSourceCommand}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
                             </StackPanel>
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
