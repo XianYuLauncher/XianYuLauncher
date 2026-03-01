@@ -39,6 +39,12 @@ public class ModrinthService
     /// </summary>
     private const string DefaultUserAgent = "XianYuLauncher";
 
+    private sealed class DependencyProcessContext
+    {
+        public HashSet<string> ProcessedDependencies { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, Dictionary<string, string>?> ExistingProjectIdsByPath { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
     public ModrinthService(
         HttpClient httpClient,
         DownloadSourceFactory downloadSourceFactory = null,
@@ -806,6 +812,27 @@ public class ModrinthService
             bool checkProjectId = true,
             Func<string, Task<string>>? resolveDestinationPathAsync = null)
         {
+            return await ProcessDependenciesInternalAsync(
+                dependencies,
+                destinationPath,
+                currentModVersion,
+                progressCallback,
+                cancellationToken,
+                checkProjectId,
+                resolveDestinationPathAsync,
+                new DependencyProcessContext());
+        }
+
+        private async Task<int> ProcessDependenciesInternalAsync(
+            List<Dependency> dependencies,
+            string destinationPath,
+            ModrinthVersion? currentModVersion,
+            Action<string, double>? progressCallback,
+            CancellationToken cancellationToken,
+            bool checkProjectId,
+            Func<string, Task<string>>? resolveDestinationPathAsync,
+            DependencyProcessContext context)
+        {
             int processedCount = 0;
             
             if (dependencies == null || dependencies.Count == 0)
@@ -830,14 +857,8 @@ public class ModrinthService
             
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始处理{dependencies.Count}个依赖");
             
-            // 跟踪已处理的依赖，避免循环依赖
-            var processedDependencies = new HashSet<string>();
-            
-            // 获取现有mod的项目ID映射（按目标路径缓存）
-            Dictionary<string, Dictionary<string, string>?>? existingProjectIdsByPath = null;
             if (checkProjectId)
             {
-                existingProjectIdsByPath = new Dictionary<string, Dictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
                 System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 已启用 ProjectID 去重检测");
             }
             
@@ -855,7 +876,7 @@ public class ModrinthService
                 string dependencyKey = !string.IsNullOrEmpty(dependency.VersionId) ? dependency.VersionId : 
                                       (!string.IsNullOrEmpty(dependency.ProjectId) ? dependency.ProjectId : "unknown");
                 
-                if (!processedDependencies.Add(dependencyKey))
+                if (!context.ProcessedDependencies.Add(dependencyKey))
                 {
                     System.Diagnostics.Debug.WriteLine($"  - 跳过：依赖{dependencyKey}已处理");
                     continue;
@@ -952,11 +973,11 @@ public class ModrinthService
                     Dictionary<string, string>? existingProjectIds = null;
                     if (checkProjectId)
                     {
-                        if (existingProjectIdsByPath != null && !existingProjectIdsByPath.TryGetValue(dependencyDestinationPath, out existingProjectIds))
+                        if (!context.ExistingProjectIdsByPath.TryGetValue(dependencyDestinationPath, out existingProjectIds))
                         {
                             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 为路径构建本地项目索引: {dependencyDestinationPath}");
                             existingProjectIds = await GetExistingModProjectIdsAsync(dependencyDestinationPath, cancellationToken);
-                            existingProjectIdsByPath[dependencyDestinationPath] = existingProjectIds;
+                            context.ExistingProjectIdsByPath[dependencyDestinationPath] = existingProjectIds;
                             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 本地项目索引构建完成: 路径={dependencyDestinationPath}, 项目数={existingProjectIds?.Count ?? 0}");
                         }
                     }
@@ -1096,14 +1117,15 @@ public class ModrinthService
                         if (depVersionInfo.Dependencies != null && depVersionInfo.Dependencies.Count > 0)
                         {
                             System.Diagnostics.Debug.WriteLine($"  - 开始处理子依赖（{depVersionInfo.Dependencies.Count}个）");
-                            int subDependenciesCount = await ProcessDependenciesAsync(
+                            int subDependenciesCount = await ProcessDependenciesInternalAsync(
                                 depVersionInfo.Dependencies, 
                                 dependencyDestinationPath, 
                                 depVersionInfo, // 传递当前依赖的版本信息作为子依赖的参考
                                 progressCallback,
                                 cancellationToken,
                                 checkProjectId,
-                                resolveDestinationPathAsync);
+                                resolveDestinationPathAsync,
+                                context);
                             System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
                         }
                         
@@ -1230,6 +1252,12 @@ public class ModrinthService
             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 单文件补查完成: 命中项目={singleResolvedCount}, 最终项目总数={result.Count}");
 
             return result;
+        }
+
+        public async Task<Dictionary<string, string>> GetExistingProjectIdsByPathAsync(string destinationPath, CancellationToken cancellationToken = default)
+        {
+            var existing = await GetExistingModProjectIdsAsync(destinationPath, cancellationToken);
+            return existing ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
