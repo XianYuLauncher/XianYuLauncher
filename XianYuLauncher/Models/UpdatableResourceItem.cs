@@ -8,6 +8,9 @@ public partial class UpdatableResourceItem : ObservableObject
     [ObservableProperty]
     private bool _isSelected = true;
 
+    [ObservableProperty]
+    private ImageSource? _iconSource;
+
     public string Id { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string CurrentVersion { get; set; } = string.Empty;
@@ -18,7 +21,7 @@ public partial class UpdatableResourceItem : ObservableObject
     /// </summary>
     public string ResourceType { get; set; } = string.Empty;
 
-    public ImageSource? IconSource { get; set; }
+    public bool HasIconSource => IconSource != null;
     
     /// <summary>
     /// Default icon to show if Logo/IconSource is not available
@@ -27,4 +30,9 @@ public partial class UpdatableResourceItem : ObservableObject
 
     // Used by backend to store the original dependency instance or mod version wrapper
     public object? OriginalResource { get; set; }
+
+    partial void OnIconSourceChanged(ImageSource? value)
+    {
+        OnPropertyChanged(nameof(HasIconSource));
+    }
 }
