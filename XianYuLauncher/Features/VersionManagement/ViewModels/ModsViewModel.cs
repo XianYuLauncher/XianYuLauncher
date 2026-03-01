@@ -533,17 +533,27 @@ public partial class ModsViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateModsAsync(ModInfo? mod = null)
     {
+        var selectedMods = Mods.Where(item => item.IsSelected).ToList();
+        if (selectedMods.Count == 0 && mod != null)
+        {
+            selectedMods.Add(mod);
+        }
+
+        await UpdateSelectedModsAsync(selectedMods);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedModsAsync(IReadOnlyList<ModInfo> selectedMods)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedMods = Mods.Where(mod => mod.IsSelected).ToList();
-            if (selectedMods.Count == 0 && mod != null)
-            {
-                selectedMods.Add(mod);
-            }
-            if (selectedMods.Count == 0)
+            if (selectedMods == null || selectedMods.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的Mod";
-                return;
+                result.IsSuccess = false;
+                result.Message = _context.StatusMessage;
+                return result;
             }
 
             _context.IsDownloading = true;
@@ -551,9 +561,11 @@ public partial class ModsViewModel : ObservableObject
             _context.DownloadProgress = 0;
             _context.CurrentDownloadItem = string.Empty;
 
+            var updateTargets = selectedMods.ToList();
+
             // 计算选中 Mod 的 SHA1 哈希值（用于 Modrinth）
             var modHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedMods,
+                updateTargets,
                 mod => mod.FilePath,
                 _context.CalculateSHA1,
                 onHashed: (mod, sha1Hash) =>
@@ -591,7 +603,7 @@ public partial class ModsViewModel : ObservableObject
             int upToDateCount = 0;
 
             // 第一步：尝试通过 Modrinth 更新
-            System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {selectedMods.Count} 个Mod");
+            System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {updateTargets.Count} 个Mod");
             var modrinthResult = await TryUpdateModsViaModrinthAsync(
                 modHashes,
                 modFilePathMap,
@@ -603,7 +615,7 @@ public partial class ModsViewModel : ObservableObject
             upToDateCount += modrinthResult.UpToDateCount;
 
             // 第二步：对于 Modrinth 未找到的 Mod，尝试通过 CurseForge 更新
-            var modrinthFailedMods = selectedMods
+            var modrinthFailedMods = updateTargets
                 .Where(mod => !modrinthResult.ProcessedMods.Contains(mod.FilePath))
                 .ToList();
 
@@ -627,17 +639,28 @@ public partial class ModsViewModel : ObservableObject
             _context.StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
             _context.UpdateResults = _context.StatusMessage;
             _context.IsResultDialogVisible = true;
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = _context.StatusMessage;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"更新Mod失败: {ex.Message}");
             _context.StatusMessage = $"更新Mod失败: {ex.Message}";
+            result.IsSuccess = false;
+            result.Message = _context.StatusMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
             _context.IsDownloading = false;
             _context.DownloadProgress = 0;
         }
+
+        return result;
     }
 
     [RelayCommand]

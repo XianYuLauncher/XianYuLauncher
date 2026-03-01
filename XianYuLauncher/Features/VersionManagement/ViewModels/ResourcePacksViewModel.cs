@@ -541,18 +541,30 @@ public partial class ResourcePacksViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateResourcePacksAsync(ResourcePackInfo? resourcePack = null)
     {
+        var selectedPacks = ResourcePacks.Where(item => item.IsSelected).ToList();
+        if (selectedPacks.Count == 0 && resourcePack != null)
+        {
+            selectedPacks.Add(resourcePack);
+        }
+
+        await UpdateSelectedResourcePacksAsync(selectedPacks);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedResourcePacksAsync(IReadOnlyList<ResourcePackInfo> selectedPacks)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedPacks = ResourcePacks.Where(r => r.IsSelected).ToList();
-            if (selectedPacks.Count == 0 && resourcePack != null)
-            {
-                selectedPacks.Add(resourcePack);
-            }
-            if (selectedPacks.Count == 0)
+            if (selectedPacks == null || selectedPacks.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的资源包";
-                return;
+                result.IsSuccess = false;
+                result.Message = _context.StatusMessage;
+                return result;
             }
+
+            var updateTargets = selectedPacks.ToList();
 
             _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在更新资源包...";
@@ -560,7 +572,7 @@ public partial class ResourcePacksViewModel : ObservableObject
             _context.CurrentDownloadItem = string.Empty;
 
             var packHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedPacks,
+                updateTargets,
                 pack => pack.FilePath,
                 _context.CalculateSHA1,
                 shouldSkip: pack => Directory.Exists(pack.FilePath),
@@ -573,7 +585,9 @@ public partial class ResourcePacksViewModel : ObservableObject
             {
                 _context.StatusMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
                 _context.IsDownloading = false;
-                return;
+                result.IsSuccess = false;
+                result.Message = _context.StatusMessage;
+                return result;
             }
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
@@ -591,7 +605,7 @@ public partial class ResourcePacksViewModel : ObservableObject
             updatedCount += modrinthResult.UpdatedCount;
             upToDateCount += modrinthResult.UpToDateCount;
 
-            var failedPacks = selectedPacks
+            var failedPacks = updateTargets
                 .Where(p => !Directory.Exists(p.FilePath) && !modrinthResult.ProcessedMods.Contains(p.FilePath))
                 .ToList();
 
@@ -609,18 +623,30 @@ public partial class ResourcePacksViewModel : ObservableObject
             _context.StatusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
             _context.UpdateResults = _context.StatusMessage;
             _context.IsResultDialogVisible = true;
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = _context.StatusMessage;
         }
         catch (Exception ex)
         {
             _context.StatusMessage = $"更新资源包失败: {ex.Message}";
             _context.IsResultDialogVisible = true;
             _context.UpdateResults = $"更新失败: {ex.Message}";
+
+            result.IsSuccess = false;
+            result.Message = _context.StatusMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
             _context.IsDownloading = false;
             _context.DownloadProgress = 0;
         }
+
+        return result;
     }
 
     [RelayCommand]

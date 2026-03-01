@@ -449,18 +449,30 @@ public partial class ShadersViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateShadersAsync(ShaderInfo? shader = null)
     {
+        var selectedShaders = Shaders.Where(item => item.IsSelected).ToList();
+        if (selectedShaders.Count == 0 && shader != null)
+        {
+            selectedShaders.Add(shader);
+        }
+
+        await UpdateSelectedShadersAsync(selectedShaders);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedShadersAsync(IReadOnlyList<ShaderInfo> selectedShaders)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedShaders = Shaders.Where(s => s.IsSelected).ToList();
-            if (selectedShaders.Count == 0 && shader != null)
-            {
-                selectedShaders.Add(shader);
-            }
-            if (selectedShaders.Count == 0)
+            if (selectedShaders == null || selectedShaders.Count == 0)
             {
                 _context.StatusMessage = "请先选择要更新的光影";
-                return;
+                result.IsSuccess = false;
+                result.Message = _context.StatusMessage;
+                return result;
             }
+
+            var updateTargets = selectedShaders.ToList();
 
             _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在更新光影...";
@@ -468,7 +480,7 @@ public partial class ShadersViewModel : ObservableObject
             _context.CurrentDownloadItem = string.Empty;
 
             var shaderHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedShaders,
+                updateTargets,
                 shader => shader.FilePath,
                 _context.CalculateSHA1,
                 shouldSkip: shader => Directory.Exists(shader.FilePath),
@@ -483,7 +495,9 @@ public partial class ShadersViewModel : ObservableObject
             {
                 _context.StatusMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
                 _context.IsDownloading = false;
-                return;
+                result.IsSuccess = false;
+                result.Message = _context.StatusMessage;
+                return result;
             }
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
@@ -501,7 +515,7 @@ public partial class ShadersViewModel : ObservableObject
             updatedCount += modrinthResult.UpdatedCount;
             upToDateCount += modrinthResult.UpToDateCount;
 
-            var failedShaders = selectedShaders
+            var failedShaders = updateTargets
                 .Where(s => !Directory.Exists(s.FilePath) && !modrinthResult.ProcessedMods.Contains(s.FilePath))
                 .ToList();
 
@@ -519,18 +533,30 @@ public partial class ShadersViewModel : ObservableObject
             _context.StatusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
             _context.UpdateResults = _context.StatusMessage;
             _context.IsResultDialogVisible = true;
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = _context.StatusMessage;
         }
         catch (Exception ex)
         {
             _context.StatusMessage = $"更新光影失败: {ex.Message}";
             _context.IsResultDialogVisible = true;
             _context.UpdateResults = $"更新失败: {ex.Message}";
+
+            result.IsSuccess = false;
+            result.Message = _context.StatusMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
             _context.IsDownloading = false;
             _context.DownloadProgress = 0;
         }
+
+        return result;
     }
 
     [RelayCommand]
