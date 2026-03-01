@@ -126,9 +126,9 @@ public sealed partial class VersionManagementPage : Page
                     ExtensionInstallDialog.Hide();
 
                     await _dialogService.ShowMessageDialogAsync(
-                        title: "更新完成",
+                        title: "VersionManagerPage_UpdateResultDialog.Title".GetLocalized(),
                         message: ViewModel.UpdateResults,
-                        closeButtonText: "确定");
+                        closeButtonText: "VersionManagerPage_UpdateResultDialog.PrimaryButtonText".GetLocalized());
 
                     ViewModel.IsResultDialogVisible = false;
                 }
@@ -138,12 +138,12 @@ public sealed partial class VersionManagementPage : Page
                     ExtensionInstallDialog.Hide();
 
                     var selectedTarget = await _dialogService.ShowListSelectionDialogAsync(
-                        title: "转移到其它版本",
-                        instruction: "请选择要转移到的 Minecraft 版本：",
+                        title: "VersionManagerPage_MoveModsDialog.Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveModsDialog_InstructionText.Text".GetLocalized(),
                         items: ViewModel.TargetVersions,
                         displayMemberFunc: item => item.VersionName,
-                        primaryButtonText: "确认",
-                        closeButtonText: "取消");
+                        primaryButtonText: "VersionManagerPage_MoveModsDialog.PrimaryButtonText".GetLocalized(),
+                        closeButtonText: "VersionManagerPage_MoveModsDialog.CloseButtonText".GetLocalized());
 
                     ViewModel.IsMoveResourcesDialogVisible = false;
 
@@ -160,8 +160,8 @@ public sealed partial class VersionManagementPage : Page
 
                     await _dialogService.ShowMoveResultDialogAsync(
                         ViewModel.MoveResults,
-                        title: "转移结果",
-                        instruction: "以下是资源转移结果：");
+                        title: "VersionManagerPage_MoveResultDialog.Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveResultDialog_InstructionText.Text".GetLocalized());
 
                     ViewModel.IsMoveResultDialogVisible = false;
                 }
