@@ -220,6 +220,22 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 资源包数量
     /// </summary>
     public int ResourcePackCount => ResourcePacksModule?.ResourcePacks.Count ?? 0;
+
+    /// <summary>
+    /// 可更新资源总数（Mod + 光影 + 资源包）
+    /// </summary>
+    [ObservableProperty]
+    private int _updatableResourceCount = 0;
+
+    /// <summary>
+    /// 是否存在可更新资源（用于控制概览卡片显示）
+    /// </summary>
+    public bool HasUpdatableResources => UpdatableResourceCount > 0;
+
+    /// <summary>
+    /// 概览页可更新资源描述文本
+    /// </summary>
+    public string UpdatableResourcesDescription => $"检测到此版本有 {UpdatableResourceCount} 项组件更新";
     
     /// <summary>
     /// 截图数量
@@ -257,6 +273,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnLastLaunchTimeChanged(DateTime? value)
     {
         OnPropertyChanged(nameof(FormattedLastLaunchTime));
+    }
+
+    partial void OnUpdatableResourceCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasUpdatableResources));
+        OnPropertyChanged(nameof(UpdatableResourcesDescription));
     }
     
     #endregion
@@ -611,6 +633,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 AttachModsCollectionObserver();
             }
+            else if (e.PropertyName == nameof(ModsViewModel.UpdatableModCount))
+            {
+                RefreshUpdatableResourceSummary();
+            }
         };
 
         ShadersModule.PropertyChanged += (_, e) =>
@@ -618,6 +644,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (e.PropertyName == nameof(ShadersViewModel.Shaders))
             {
                 AttachShadersCollectionObserver();
+            }
+            else if (e.PropertyName == nameof(ShadersViewModel.UpdatableShaderCount))
+            {
+                RefreshUpdatableResourceSummary();
             }
         };
 
@@ -627,12 +657,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 AttachResourcePacksCollectionObserver();
             }
+            else if (e.PropertyName == nameof(ResourcePacksViewModel.UpdatableResourcePackCount))
+            {
+                RefreshUpdatableResourceSummary();
+            }
         };
 
         AttachModsCollectionObserver();
         AttachShadersCollectionObserver();
         AttachResourcePacksCollectionObserver();
         NotifyOverviewCountsChanged();
+        RefreshUpdatableResourceSummary();
+    }
+
+    private void RefreshUpdatableResourceSummary()
+    {
+        UpdatableResourceCount =
+            (ModsModule?.UpdatableModCount ?? 0) +
+            (ShadersModule?.UpdatableShaderCount ?? 0) +
+            (ResourcePacksModule?.UpdatableResourcePackCount ?? 0);
     }
 
     private void AttachModsCollectionObserver()
@@ -1293,6 +1336,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
+            UpdatableResourceCount = 0;
             StatusMessage = "正在加载版本数据...";
 
             try

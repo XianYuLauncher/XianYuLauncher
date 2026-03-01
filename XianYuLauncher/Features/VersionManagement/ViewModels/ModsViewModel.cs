@@ -80,6 +80,9 @@ public partial class ModsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isModSelectionModeEnabled;
 
+    /// <summary>可更新 Mod 数量（基于全量列表）</summary>
+    public int UpdatableModCount => _allMods.Count(mod => mod.HasUpdate);
+
     partial void OnModSearchTextChanged(string value) => FilterMods();
 
     partial void OnModFilterOptionChanged(string value) => FilterMods();
@@ -154,6 +157,7 @@ public partial class ModsViewModel : ObservableObject
         }
 
         _allMods = newModsList;
+        OnPropertyChanged(nameof(UpdatableModCount));
         StartModUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -1328,6 +1332,8 @@ public partial class ModsViewModel : ObservableObject
                     mod.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableModCount));
 
             if (ModFilterOption != FilterAllKey)
             {
