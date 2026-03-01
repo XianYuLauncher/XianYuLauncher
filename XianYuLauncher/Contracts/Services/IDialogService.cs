@@ -160,4 +160,12 @@ public interface IDialogService
     /// 显示一个带有独立复选框的多类型资源更新选择弹窗
     /// </summary>
     Task<System.Collections.Generic.List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates);
+
+    /// <summary>
+    /// 显示资源迁移结果弹窗
+    /// </summary>
+    Task ShowMoveResultDialogAsync(
+        System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
+        string title = "转移结果",
+        string instruction = "以下是资源转移结果：");
 }
