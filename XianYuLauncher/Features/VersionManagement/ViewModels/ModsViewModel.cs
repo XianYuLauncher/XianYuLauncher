@@ -389,12 +389,9 @@ public partial class ModsViewModel : ObservableObject
 
                         if (!curseForgeSuccess)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[MoveMod] CurseForge 失败，直接复制: {mod.Name}");
-                            string targetFilePath = Path.Combine(targetVersionPath, Path.GetFileName(mod.FilePath));
-                            Directory.CreateDirectory(targetVersionPath);
-                            File.Copy(mod.FilePath, targetFilePath, true);
-                            result.Status = MoveModStatus.Copied;
-                            result.TargetPath = targetFilePath;
+                            System.Diagnostics.Debug.WriteLine($"[MoveMod] CurseForge 失败，标记转移失败: {mod.Name}");
+                            result.Status = MoveModStatus.Failed;
+                            result.ErrorMessage = "未找到兼容目标版本的可用文件，已取消转移";
                         }
                     }
 
