@@ -1,6 +1,7 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:helpers="using:XianYuLauncher.Helpers">
 
     <DataTemplate x:Key="ProfileSelectionItemTemplate">
         <StackPanel Orientation="Horizontal" Padding="10">
@@ -26,8 +27,8 @@
 
             <Border Grid.Column="1" CornerRadius="4" Width="32" Height="32" Background="{ThemeResource LayerFillColorDefaultBrush}" HorizontalAlignment="Left">
                 <Grid>
-                    <FontIcon Glyph="{Binding FallbackIconGlyph}" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <Image Source="{Binding IconSource}" Stretch="UniformToFill" />
+                    <FontIcon Glyph="{Binding FallbackIconGlyph}" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{Binding HasIconSource, Converter={StaticResource BoolToVisibilityInverseConverter}}" />
+                    <Image Source="{Binding IconSource}" Stretch="UniformToFill" Visibility="{Binding HasIconSource, Converter={StaticResource BoolToVisibilityConverter}}" />
                 </Grid>
             </Border>
 
