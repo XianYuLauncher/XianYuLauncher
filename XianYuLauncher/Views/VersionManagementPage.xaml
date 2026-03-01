@@ -310,7 +310,7 @@
                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
                                               VerticalAlignment="Center" />
                                     <StackPanel VerticalAlignment="Center" Spacing="2">
-                                        <TextBlock Text="有可更新组件" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        <TextBlock x:Uid="VersionManagerPage_UpdatableResourcesBannerTitle" Text="有可更新组件" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                                         <TextBlock Text="{Binding UpdatableResourcesDescription}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -318,7 +318,6 @@
                                 <Button Grid.Column="1" 
                                         x:Uid="VersionManagerPage_UpdateAllResourcesButton"
                                         Command="{x:Bind ViewModel.UpdateAllResourcesCommand}"
-                                        ToolTipService.ToolTip="一键更新"
                                         Style="{StaticResource DefaultButtonStyle}"
                                         Width="32"
                                         Height="32"

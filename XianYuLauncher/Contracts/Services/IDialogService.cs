@@ -166,6 +166,6 @@ public interface IDialogService
     /// </summary>
     Task ShowMoveResultDialogAsync(
         System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
-        string title = "转移结果",
-        string instruction = "以下是资源转移结果：");
+        string title,
+        string instruction);
 }

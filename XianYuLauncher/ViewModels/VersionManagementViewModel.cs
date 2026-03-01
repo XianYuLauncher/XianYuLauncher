@@ -235,7 +235,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 概览页可更新资源描述文本
     /// </summary>
-    public string UpdatableResourcesDescription => $"检测到此版本有 {UpdatableResourceCount} 项组件更新";
+    public string UpdatableResourcesDescription =>
+        string.Format("VersionManagerPage_UpdatableResourcesDescriptionFormat".GetLocalized(), UpdatableResourceCount);
     
     /// <summary>
     /// 截图数量

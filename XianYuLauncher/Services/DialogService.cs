@@ -872,7 +872,7 @@ public class DialogService : IDialogService
         var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 400 };
 
         panel.Children.Add(new TextBlock {
-            Text = "请勾选你想要更新的组件：",
+            Text = "VersionManagerPage_UpdatableResourcesUpdateDialog.InstructionText".GetLocalized(),
             FontSize = 14
         });
 
@@ -889,11 +889,10 @@ public class DialogService : IDialogService
 
         var dialog = new ContentDialog
         {
-            // title should not be directly string bound if not localized, but we can localize it next
-            Title = "一键更新", 
+            Title = "VersionManagerPage_UpdatableResourcesUpdateDialog.Title".GetLocalized(), 
             Content = panel,
-            PrimaryButtonText = "确认更新",
-            CloseButtonText = "取消",
+            PrimaryButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.PrimaryButtonText".GetLocalized(),
+            CloseButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
@@ -908,8 +907,8 @@ public class DialogService : IDialogService
 
     public async Task ShowMoveResultDialogAsync(
         System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
-        string title = "转移结果",
-        string instruction = "以下是资源转移结果：")
+        string title,
+        string instruction)
     {
         var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 420 };
 
@@ -933,7 +932,7 @@ public class DialogService : IDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "确定",
+            PrimaryButtonText = "VersionManagerPage_UpdateResultDialog.PrimaryButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };

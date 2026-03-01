@@ -3147,10 +3147,28 @@
   <data name="VersionManagerPage_UpdatableResourcesLabel.Text" xml:space="preserve">
     <value>可更新资源</value>
   </data>
+  <data name="VersionManagerPage_UpdatableResourcesBannerTitle.Text" xml:space="preserve">
+    <value>有可更新组件</value>
+  </data>
   <data name="VersionManagerPage_UpdatableResourcesCount.Text" xml:space="preserve">
     <value>0</value>
   </data>
+  <data name="VersionManagerPage_UpdatableResourcesDescriptionFormat" xml:space="preserve">
+    <value>检测到此版本有 {0} 项组件更新</value>
+  </data>
   <data name="VersionManagerPage_UpdateAllResourcesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>一键更新</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.Title" xml:space="preserve">
+    <value>一键更新</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.InstructionText" xml:space="preserve">
+    <value>请勾选你想要更新的组件：</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确认更新</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText" xml:space="preserve">
+    <value>取消</value>
   </data>
 </root>
