@@ -358,7 +358,23 @@ public partial class ModsViewModel : ObservableObject
                 {
                     System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
 
-                    bool modrinthSuccess = await TryMoveModViaModrinthAsync(mod, modLoader, gameVersion, targetVersionPath, result);
+                    string sourceSha1 = _context.CalculateSHA1(mod.FilePath);
+                    var sourceVersion = await _modrinthService.GetVersionFileByHashAsync(sourceSha1);
+                    if (!string.IsNullOrWhiteSpace(sourceVersion?.ProjectId))
+                    {
+                        var existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
+                        if (existingProjects.TryGetValue(sourceVersion.ProjectId, out var existingFilePath) && File.Exists(existingFilePath))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MoveMod][Dedup] 目标目录已存在同项目文件，跳过重复处理: 项目={sourceVersion.ProjectId}, 文件={existingFilePath}");
+                            result.Status = MoveModStatus.Success;
+                            result.TargetPath = existingFilePath;
+                            moveResults.Add(result);
+                            _context.DownloadProgress = (i + 1) / (double)_selectedModsForMove.Count * 100;
+                            continue;
+                        }
+                    }
+
+                    bool modrinthSuccess = await TryMoveModViaModrinthAsync(mod, modLoader, gameVersion, targetVersionPath, result, sourceVersion);
 
                     if (!modrinthSuccess)
                     {
@@ -714,13 +730,16 @@ public partial class ModsViewModel : ObservableObject
 
     /// <summary>尝试通过 Modrinth 转移 Mod</summary>
     private async Task<bool> TryMoveModViaModrinthAsync(
-        ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result)
+        ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result, ModrinthVersion? sourceVersion = null)
     {
         try
         {
-            string sha1Hash = _context.CalculateSHA1(mod.FilePath);
-
-            ModrinthVersion modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+            ModrinthVersion modrinthVersion = sourceVersion;
+            if (modrinthVersion == null)
+            {
+                string sha1Hash = _context.CalculateSHA1(mod.FilePath);
+                modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+            }
 
             if (modrinthVersion == null)
             {
