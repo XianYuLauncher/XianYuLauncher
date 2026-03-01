@@ -380,6 +380,7 @@
                                 
                                 <Button Grid.Column="1" 
                                         x:Uid="VersionManagerPage_UpdateAllResourcesButton"
+                                        Command="{x:Bind ViewModel.UpdateAllResourcesCommand}"
                                         ToolTipService.ToolTip="一键更新"
                                         Style="{StaticResource DefaultButtonStyle}"
                                         Width="32"
