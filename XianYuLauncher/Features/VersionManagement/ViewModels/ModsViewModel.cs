@@ -25,7 +25,11 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ModsViewModel : ObservableObject
 {
-    private readonly IVersionManagementContext _context;
+    private const string FilterAllKey = "all";
+    private const string FilterUpdatableKey = "updatable";
+    private const string FilterDuplicateKey = "duplicate";
+
+    private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
     private readonly ModrinthService _modrinthService;
@@ -34,9 +38,11 @@ public partial class ModsViewModel : ObservableObject
 
     private List<ModInfo> _allMods = new();
     private List<ModInfo>? _selectedModsForMove;
+    private CancellationTokenSource? _modUpdateDetectCts;
+    private int _modUpdateDetectGeneration;
 
     public ModsViewModel(
-        IVersionManagementContext context,
+        IVersionManagementResourceContext context,
         INavigationService navigationService,
         IDialogService dialogService,
         ModrinthService modrinthService,
@@ -66,11 +72,17 @@ public partial class ModsViewModel : ObservableObject
     [ObservableProperty]
     private string _modSearchText = string.Empty;
 
+    /// <summary>Mod 筛选类型（全部/可更新/重复）</summary>
+    [ObservableProperty]
+    private string _modFilterOption = FilterAllKey;
+
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
     private bool _isModSelectionModeEnabled;
 
     partial void OnModSearchTextChanged(string value) => FilterMods();
+
+    partial void OnModFilterOptionChanged(string value) => FilterMods();
 
     partial void OnModsChanged(ObservableCollection<ModInfo> value)
     {
@@ -137,10 +149,12 @@ public partial class ModsViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Description)) mod.Description = existing.Description;
                 if (!string.IsNullOrEmpty(existing.Source)) mod.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) mod.ProjectId = existing.ProjectId;
+                mod.HasUpdate = existing.HasUpdate;
             }
         }
 
         _allMods = newModsList;
+        StartModUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
         {
@@ -170,18 +184,23 @@ public partial class ModsViewModel : ObservableObject
             _allMods = Mods.ToList();
         }
 
-        if (string.IsNullOrWhiteSpace(ModSearchText))
+        IEnumerable<ModInfo> filtered = _allMods;
+
+        if (!string.IsNullOrWhiteSpace(ModSearchText))
         {
-            if (!HasSameFilePathSnapshot(Mods, _allMods, mod => mod.FilePath))
-                Mods = new ObservableCollection<ModInfo>(_allMods);
-        }
-        else
-        {
-            var filtered = _allMods.Where(x =>
+            filtered = filtered.Where(x =>
                 x.Name.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ||
                 (x.Description?.Contains(ModSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
-            Mods = new ObservableCollection<ModInfo>(filtered);
         }
+
+        filtered = ApplyModFilterOption(filtered);
+        var filteredList = filtered.ToList();
+
+        if (!HasSameFilePathSnapshot(Mods, filteredList, mod => mod.FilePath))
+        {
+            Mods = new ObservableCollection<ModInfo>(filteredList);
+        }
+
         OnPropertyChanged(nameof(IsModListEmpty));
 
         // 启动描述加载任务（完全在后台，不阻塞）
@@ -941,7 +960,7 @@ public partial class ModsViewModel : ObservableObject
                 mod.IsLoadingDescription = true;
             });
 
-            var metadata = await _modInfoService.GetModInfoAsync(mod.FilePath, cancellationToken);
+            var metadata = await _context.GetResourceMetadataAsync(mod.FilePath, cancellationToken);
 
             if (metadata != null)
             {
@@ -1004,6 +1023,317 @@ public partial class ModsViewModel : ObservableObject
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return BuildPathSet(currentItems).SetEquals(BuildPathSet(sourceItems));
+    }
+
+    private IEnumerable<ModInfo> ApplyModFilterOption(IEnumerable<ModInfo> source)
+    {
+        return ModFilterOption switch
+        {
+            FilterUpdatableKey => source.Where(IsModUpdatable),
+            FilterDuplicateKey => ApplyDuplicateFilter(source, _allMods, BuildModDuplicateKey),
+            _ => source
+        };
+    }
+
+    private static bool IsModUpdatable(ModInfo mod)
+    {
+        return mod.HasUpdate;
+    }
+
+    private static string NormalizeDuplicateKey(string fileName)
+    {
+        var normalized = fileName;
+        if (normalized.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(0, normalized.Length - ".disabled".Length);
+        }
+
+        return Path.GetFileNameWithoutExtension(normalized);
+    }
+
+    private static string BuildModDuplicateKey(ModInfo mod)
+    {
+        if (!string.IsNullOrWhiteSpace(mod.Source) && !string.IsNullOrWhiteSpace(mod.ProjectId))
+        {
+            return $"{mod.Source.Trim().ToLowerInvariant()}:{mod.ProjectId.Trim()}";
+        }
+
+        return $"file:{NormalizeDuplicateKey(mod.FileName)}";
+    }
+
+    private static IEnumerable<T> ApplyDuplicateFilter<T>(
+        IEnumerable<T> filteredSource,
+        IEnumerable<T> allSource,
+        Func<T, string> duplicateKeySelector)
+    {
+        var duplicateKeys = allSource
+            .Select(duplicateKeySelector)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
+    }
+
+    private void StartModUpdateDetection(CancellationToken externalToken)
+    {
+        _modUpdateDetectCts?.Cancel();
+        _modUpdateDetectCts?.Dispose();
+
+        _modUpdateDetectCts = CancellationTokenSource.CreateLinkedTokenSource(_context.PageCancellationToken, externalToken);
+        var token = _modUpdateDetectCts.Token;
+        var snapshot = _allMods.ToList();
+        var generation = Interlocked.Increment(ref _modUpdateDetectGeneration);
+
+        _ = Task.Run(() => DetectModUpdatesAsync(snapshot, generation, token), token);
+    }
+
+    private async Task DetectModUpdatesAsync(
+        IReadOnlyCollection<ModInfo> mods,
+        int generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updatableByFile = mods
+                .Where(mod => !string.IsNullOrWhiteSpace(mod.FilePath))
+                .ToDictionary(mod => mod.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
+            var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+
+            if (updatableByFile.Count == 0)
+            {
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
+                mods,
+                mod => mod.FilePath,
+                _context.CalculateSHA1,
+                shouldSkip: mod => !File.Exists(mod.FilePath),
+                onHashFailed: (mod, ex) =>
+                    System.Diagnostics.Debug.WriteLine($"[ModUpdateDetect] SHA1计算失败: {mod.Name}, {ex.Message}")), cancellationToken);
+
+            var hashList = hashIndex.Hashes;
+            var filePathMap = hashIndex.FilePathMap;
+
+            if (hashList.Count == 0)
+            {
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var runtime = await ResolveCurrentRuntimeAsync(cancellationToken);
+            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
+                hashList,
+                new[] { runtime.ModLoader },
+                new[] { runtime.GameVersion })
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+            var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var hash in hashList)
+            {
+                if (!filePathMap.TryGetValue(hash, out var filePath))
+                {
+                    continue;
+                }
+
+                if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
+                {
+                    continue;
+                }
+
+                var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
+                var hasUpdate = true;
+                if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
+                {
+                    hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
+                }
+
+                updatableByFile[filePath] = hasUpdate;
+                processedFilePaths.Add(filePath);
+                if (!string.IsNullOrWhiteSpace(version.ProjectId))
+                {
+                    projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
+                }
+            }
+
+            var unresolvedMods = mods
+                .Where(mod => !processedFilePaths.Contains(mod.FilePath) && File.Exists(mod.FilePath))
+                .ToList();
+
+            if (unresolvedMods.Count > 0)
+            {
+                await DetectModUpdatesViaCurseForgeAsync(
+                    unresolvedMods,
+                    runtime.ModLoader,
+                    runtime.GameVersion,
+                    updatableByFile,
+                    projectIdentityByFile,
+                    cancellationToken);
+            }
+
+            ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModUpdateDetect] 检测失败: {ex.Message}");
+        }
+    }
+
+    private async Task DetectModUpdatesViaCurseForgeAsync(
+        IReadOnlyCollection<ModInfo> mods,
+        string modLoader,
+        string gameVersion,
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        CancellationToken cancellationToken)
+    {
+        var fingerprintToFilePath = new Dictionary<uint, string>();
+        var fingerprints = new List<uint>();
+
+        foreach (var mod in mods)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var fingerprint = await _context.GetSharedCurseForgeFingerprintAsync(mod.FilePath, cancellationToken);
+                if (!fingerprintToFilePath.ContainsKey(fingerprint))
+                {
+                    fingerprintToFilePath[fingerprint] = mod.FilePath;
+                    fingerprints.Add(fingerprint);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModUpdateDetect] Fingerprint计算失败: {mod.Name}, {ex.Message}");
+            }
+        }
+
+        if (fingerprints.Count == 0)
+        {
+            return;
+        }
+
+        var matchResult = await _curseForgeService.GetFingerprintMatchesAsync(fingerprints);
+        var exactMatches = matchResult?.ExactMatches ?? new List<CurseForgeFingerprintMatch>();
+        var normalizedModLoader = modLoader?.Trim();
+
+        foreach (var match in exactMatches)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (match?.File == null)
+            {
+                continue;
+            }
+
+            var fingerprint = (uint)match.File.FileFingerprint;
+            if (!fingerprintToFilePath.TryGetValue(fingerprint, out var filePath))
+            {
+                continue;
+            }
+
+            if (match.Id > 0)
+            {
+                projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
+            }
+
+            if (match.LatestFiles == null || match.LatestFiles.Count == 0)
+            {
+                continue;
+            }
+
+            var compatibleFiles = match.LatestFiles
+                .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!string.IsNullOrWhiteSpace(normalizedModLoader))
+            {
+                var loaderCompatible = compatibleFiles
+                    .Where(file => file.GameVersions.Any(version => version.Equals(normalizedModLoader, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                if (loaderCompatible.Count > 0)
+                {
+                    compatibleFiles = loaderCompatible;
+                }
+            }
+
+            var latestFile = compatibleFiles.OrderByDescending(file => file.FileDate).FirstOrDefault();
+            if (latestFile == null)
+            {
+                continue;
+            }
+
+            updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
+        }
+    }
+
+    private async Task<(string ModLoader, string GameVersion)> ResolveCurrentRuntimeAsync(CancellationToken cancellationToken)
+    {
+        var modLoader = "fabric";
+        var gameVersion = _context.SelectedVersion?.VersionNumber ?? "1.19.2";
+
+        var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+        if (versionInfoService == null || _context.SelectedVersion == null)
+        {
+            return (modLoader, gameVersion);
+        }
+
+        var versionConfig = await versionInfoService.GetFullVersionInfoAsync(
+            _context.SelectedVersion.Name,
+            _context.SelectedVersion.Path);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (versionConfig != null)
+        {
+            modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, _context.SelectedVersion.Name);
+            if (!string.IsNullOrWhiteSpace(versionConfig.MinecraftVersion))
+            {
+                gameVersion = versionConfig.MinecraftVersion;
+            }
+        }
+
+        return (modLoader, gameVersion);
+    }
+
+    private void ApplyModUpdateFlags(
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        int generation)
+    {
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (generation != _modUpdateDetectGeneration)
+            {
+                return;
+            }
+
+            var allItems = _allMods.Concat(Mods)
+                .GroupBy(mod => mod.FilePath, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First());
+
+            foreach (var mod in allItems)
+            {
+                mod.HasUpdate = updatableByFile.TryGetValue(mod.FilePath, out var hasUpdate) && hasUpdate;
+                if (projectIdentityByFile.TryGetValue(mod.FilePath, out var identity))
+                {
+                    mod.Source = identity.Source;
+                    mod.ProjectId = identity.ProjectId;
+                }
+            }
+
+            if (ModFilterOption != FilterAllKey)
+            {
+                FilterMods();
+            }
+        });
     }
 
     #endregion

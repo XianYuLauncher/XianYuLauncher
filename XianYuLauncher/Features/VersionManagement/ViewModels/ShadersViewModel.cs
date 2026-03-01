@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -22,7 +23,11 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ShadersViewModel : ObservableObject
 {
-    private readonly IVersionManagementContext _context;
+    private const string FilterAllKey = "all";
+    private const string FilterUpdatableKey = "updatable";
+    private const string FilterDuplicateKey = "duplicate";
+
+    private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
     private readonly ModrinthService _modrinthService;
@@ -31,9 +36,11 @@ public partial class ShadersViewModel : ObservableObject
 
     private List<ShaderInfo> _allShaders = new();
     private List<ShaderInfo>? _selectedShadersForMove;
+    private CancellationTokenSource? _shaderUpdateDetectCts;
+    private int _shaderUpdateDetectGeneration;
 
     public ShadersViewModel(
-        IVersionManagementContext context,
+        IVersionManagementResourceContext context,
         INavigationService navigationService,
         IDialogService dialogService,
         ModrinthService modrinthService,
@@ -63,11 +70,17 @@ public partial class ShadersViewModel : ObservableObject
     [ObservableProperty]
     private string _shaderSearchText = string.Empty;
 
+    /// <summary>光影筛选类型（全部/可更新/重复）</summary>
+    [ObservableProperty]
+    private string _shaderFilterOption = FilterAllKey;
+
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
     private bool _isShaderSelectionModeEnabled;
 
     partial void OnShaderSearchTextChanged(string value) => FilterShaders();
+
+    partial void OnShaderFilterOptionChanged(string value) => FilterShaders();
 
     partial void OnShadersChanged(ObservableCollection<ShaderInfo> value)
     {
@@ -120,10 +133,12 @@ public partial class ShadersViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Description)) shader.Description = existing.Description;
                 if (!string.IsNullOrEmpty(existing.Source)) shader.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) shader.ProjectId = existing.ProjectId;
+                shader.HasUpdate = existing.HasUpdate;
             }
         }
 
         _allShaders = newShadersList;
+        StartShaderUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
         {
@@ -151,17 +166,22 @@ public partial class ShadersViewModel : ObservableObject
     /// <summary>过滤光影列表</summary>
     public void FilterShaders()
     {
-        if (string.IsNullOrWhiteSpace(ShaderSearchText))
+        IEnumerable<ShaderInfo> filtered = _allShaders;
+
+        if (!string.IsNullOrWhiteSpace(ShaderSearchText))
         {
-            if (!HasSameFilePathSnapshot(Shaders, _allShaders, s => s.FilePath))
-                Shaders = new ObservableCollection<ShaderInfo>(_allShaders);
-        }
-        else
-        {
-            var filtered = _allShaders.Where(x =>
+            filtered = filtered.Where(x =>
                 x.Name.Contains(ShaderSearchText, StringComparison.OrdinalIgnoreCase));
-            Shaders = new ObservableCollection<ShaderInfo>(filtered);
         }
+
+        filtered = ApplyShaderFilterOption(filtered);
+        var filteredList = filtered.ToList();
+
+        if (!HasSameFilePathSnapshot(Shaders, filteredList, s => s.FilePath))
+        {
+            Shaders = new ObservableCollection<ShaderInfo>(filteredList);
+        }
+
         OnPropertyChanged(nameof(IsShaderListEmpty));
     }
 
@@ -186,7 +206,7 @@ public partial class ShadersViewModel : ObservableObject
         {
             App.MainWindow.DispatcherQueue.TryEnqueue(() => shader.IsLoadingDescription = true);
 
-            var metadata = await _modInfoService.GetModInfoAsync(shader.FilePath, cancellationToken);
+            var metadata = await _context.GetResourceMetadataAsync(shader.FilePath, cancellationToken);
 
             if (metadata != null)
             {
@@ -525,6 +545,272 @@ public partial class ShadersViewModel : ObservableObject
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return BuildPathSet(currentItems).SetEquals(BuildPathSet(sourceItems));
+    }
+
+    private IEnumerable<ShaderInfo> ApplyShaderFilterOption(IEnumerable<ShaderInfo> source)
+    {
+        return ShaderFilterOption switch
+        {
+            FilterUpdatableKey => source.Where(IsShaderUpdatable),
+            FilterDuplicateKey => ApplyDuplicateFilter(source, _allShaders, BuildShaderDuplicateKey),
+            _ => source
+        };
+    }
+
+    private static bool IsShaderUpdatable(ShaderInfo shader)
+    {
+        return shader.HasUpdate;
+    }
+
+    private static string NormalizeDuplicateKey(string fileName)
+    {
+        var normalized = fileName;
+        if (normalized.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(0, normalized.Length - ".disabled".Length);
+        }
+
+        return Path.GetFileNameWithoutExtension(normalized);
+    }
+
+    private static string BuildShaderDuplicateKey(ShaderInfo shader)
+    {
+        if (!string.IsNullOrWhiteSpace(shader.Source) && !string.IsNullOrWhiteSpace(shader.ProjectId))
+        {
+            return $"{shader.Source.Trim().ToLowerInvariant()}:{shader.ProjectId.Trim()}";
+        }
+
+        return $"file:{NormalizeDuplicateKey(shader.FileName)}";
+    }
+
+    private static IEnumerable<T> ApplyDuplicateFilter<T>(
+        IEnumerable<T> filteredSource,
+        IEnumerable<T> allSource,
+        Func<T, string> duplicateKeySelector)
+    {
+        var duplicateKeys = allSource
+            .Select(duplicateKeySelector)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
+    }
+
+    private void StartShaderUpdateDetection(CancellationToken externalToken)
+    {
+        _shaderUpdateDetectCts?.Cancel();
+        _shaderUpdateDetectCts?.Dispose();
+
+        _shaderUpdateDetectCts = CancellationTokenSource.CreateLinkedTokenSource(_context.PageCancellationToken, externalToken);
+        var token = _shaderUpdateDetectCts.Token;
+        var snapshot = _allShaders.ToList();
+        var generation = Interlocked.Increment(ref _shaderUpdateDetectGeneration);
+
+        _ = Task.Run(() => DetectShaderUpdatesAsync(snapshot, generation, token), token);
+    }
+
+    private async Task DetectShaderUpdatesAsync(
+        IReadOnlyCollection<ShaderInfo> shaders,
+        int generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updatableByFile = shaders
+                .Where(shader => !string.IsNullOrWhiteSpace(shader.FilePath))
+                .ToDictionary(shader => shader.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
+            var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+
+            if (updatableByFile.Count == 0)
+            {
+                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
+                shaders,
+                shader => shader.FilePath,
+                _context.CalculateSHA1,
+                shouldSkip: shader => Directory.Exists(shader.FilePath),
+                onHashFailed: (shader, ex) =>
+                    System.Diagnostics.Debug.WriteLine($"[ShaderUpdateDetect] SHA1计算失败: {shader.Name}, {ex.Message}")), cancellationToken);
+
+            var hashes = hashIndex.Hashes;
+            var filePathMap = hashIndex.FilePathMap;
+
+            if (hashes.Count == 0)
+            {
+                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                return;
+            }
+
+            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
+            var gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(_context.SelectedVersion, versionInfoService);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
+                hashes,
+                new[] { "iris", "optifine", "minecraft" },
+                new[] { gameVersion })
+                ?? new Dictionary<string, Core.Models.ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+            var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var hash in hashes)
+            {
+                if (!filePathMap.TryGetValue(hash, out var filePath))
+                {
+                    continue;
+                }
+
+                if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
+                {
+                    continue;
+                }
+
+                var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
+                var hasUpdate = true;
+                if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
+                {
+                    hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
+                }
+
+                updatableByFile[filePath] = hasUpdate;
+                processedFilePaths.Add(filePath);
+                if (!string.IsNullOrWhiteSpace(version.ProjectId))
+                {
+                    projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
+                }
+            }
+
+            var unresolvedShaders = shaders
+                .Where(shader => !Directory.Exists(shader.FilePath) && !processedFilePaths.Contains(shader.FilePath) && File.Exists(shader.FilePath))
+                .ToList();
+
+            if (unresolvedShaders.Count > 0)
+            {
+                await DetectShaderUpdatesViaCurseForgeAsync(
+                    unresolvedShaders,
+                    gameVersion,
+                    updatableByFile,
+                    projectIdentityByFile,
+                    cancellationToken);
+            }
+
+            ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ShaderUpdateDetect] 检测失败: {ex.Message}");
+        }
+    }
+
+    private async Task DetectShaderUpdatesViaCurseForgeAsync(
+        IReadOnlyCollection<ShaderInfo> shaders,
+        string gameVersion,
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        CancellationToken cancellationToken)
+    {
+        var fingerprintToFilePath = new Dictionary<uint, string>();
+        var fingerprints = new List<uint>();
+
+        foreach (var shader in shaders)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var fingerprint = await _context.GetSharedCurseForgeFingerprintAsync(shader.FilePath, cancellationToken);
+                if (!fingerprintToFilePath.ContainsKey(fingerprint))
+                {
+                    fingerprintToFilePath[fingerprint] = shader.FilePath;
+                    fingerprints.Add(fingerprint);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShaderUpdateDetect] Fingerprint计算失败: {shader.Name}, {ex.Message}");
+            }
+        }
+
+        if (fingerprints.Count == 0)
+        {
+            return;
+        }
+
+        var matchResult = await _curseForgeService.GetFingerprintMatchesAsync(fingerprints);
+        var exactMatches = matchResult?.ExactMatches ?? new List<Core.Models.CurseForgeFingerprintMatch>();
+
+        foreach (var match in exactMatches)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (match?.File == null)
+            {
+                continue;
+            }
+
+            var fingerprint = (uint)match.File.FileFingerprint;
+            if (!fingerprintToFilePath.TryGetValue(fingerprint, out var filePath))
+            {
+                continue;
+            }
+
+            if (match.Id > 0)
+            {
+                projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
+            }
+
+            var latestFile = match.LatestFiles?
+                .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
+                .OrderByDescending(file => file.FileDate)
+                .FirstOrDefault();
+
+            if (latestFile == null)
+            {
+                continue;
+            }
+
+            updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
+        }
+    }
+
+    private void ApplyShaderUpdateFlags(
+        Dictionary<string, bool> updatableByFile,
+        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        int generation)
+    {
+        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (generation != _shaderUpdateDetectGeneration)
+            {
+                return;
+            }
+
+            var allItems = _allShaders.Concat(Shaders)
+                .GroupBy(shader => shader.FilePath, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First());
+
+            foreach (var shader in allItems)
+            {
+                shader.HasUpdate = updatableByFile.TryGetValue(shader.FilePath, out var hasUpdate) && hasUpdate;
+                if (projectIdentityByFile.TryGetValue(shader.FilePath, out var identity))
+                {
+                    shader.Source = identity.Source;
+                    shader.ProjectId = identity.ProjectId;
+                }
+            }
+
+            if (ShaderFilterOption != FilterAllKey)
+            {
+                FilterShaders();
+            }
+        });
     }
 
     #endregion
