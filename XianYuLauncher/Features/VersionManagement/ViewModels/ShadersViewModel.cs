@@ -78,6 +78,9 @@ public partial class ShadersViewModel : ObservableObject
     [ObservableProperty]
     private bool _isShaderSelectionModeEnabled;
 
+    /// <summary>可更新光影数量（基于全量列表）</summary>
+    public int UpdatableShaderCount => _allShaders.Count(shader => shader.HasUpdate);
+
     partial void OnShaderSearchTextChanged(string value) => FilterShaders();
 
     partial void OnShaderFilterOptionChanged(string value) => FilterShaders();
@@ -138,6 +141,7 @@ public partial class ShadersViewModel : ObservableObject
         }
 
         _allShaders = newShadersList;
+        OnPropertyChanged(nameof(UpdatableShaderCount));
         StartShaderUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -805,6 +809,8 @@ public partial class ShadersViewModel : ObservableObject
                     shader.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableShaderCount));
 
             if (ShaderFilterOption != FilterAllKey)
             {

@@ -359,7 +359,8 @@
                                 BorderBrush="{StaticResource OverviewCardBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="8"
-                                Padding="16,12">
+                                                        Padding="16,12"
+                                                        Visibility="{Binding HasUpdatableResources, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -374,7 +375,7 @@
                                               VerticalAlignment="Center" />
                                     <StackPanel VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Text="有可更新组件" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                                        <TextBlock Text="检测到此版本有 5 项组件更新" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding UpdatableResourcesDescription}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
                                 

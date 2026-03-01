@@ -79,6 +79,9 @@ public partial class ResourcePacksViewModel : ObservableObject
     [ObservableProperty]
     private bool _isResourcePackSelectionModeEnabled;
 
+    /// <summary>可更新资源包数量（基于全量列表）</summary>
+    public int UpdatableResourcePackCount => _allResourcePacks.Count(pack => pack.HasUpdate);
+
     partial void OnResourcePackSearchTextChanged(string value) => FilterResourcePacks();
 
     partial void OnResourcePackFilterOptionChanged(string value) => FilterResourcePacks();
@@ -141,6 +144,7 @@ public partial class ResourcePacksViewModel : ObservableObject
         }
 
         _allResourcePacks = newPackList;
+        OnPropertyChanged(nameof(UpdatableResourcePackCount));
         StartResourcePackUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -895,6 +899,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                     pack.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableResourcePackCount));
 
             if (ResourcePackFilterOption != FilterAllKey)
             {
