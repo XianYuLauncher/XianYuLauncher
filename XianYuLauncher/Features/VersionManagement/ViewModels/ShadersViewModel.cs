@@ -460,7 +460,8 @@ public partial class ShadersViewModel : ObservableObject
 
     public async Task<ResourceUpdateBatchResult> UpdateSelectedShadersAsync(
         IReadOnlyList<ShaderInfo> selectedShaders,
-        bool showResultDialog = true)
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -468,18 +469,25 @@ public partial class ShadersViewModel : ObservableObject
         {
             if (selectedShaders == null || selectedShaders.Count == 0)
             {
-                _context.StatusMessage = "请先选择要更新的光影";
+                var emptyMessage = "请先选择要更新的光影";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
                 result.IsSuccess = false;
-                result.Message = _context.StatusMessage;
+                result.Message = emptyMessage;
                 return result;
             }
 
             var updateTargets = selectedShaders.ToList();
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "正在更新光影...";
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = true;
+                _context.DownloadProgressDialogTitle = "正在更新光影...";
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
 
             var shaderHashIndex = VersionManagementUpdateOps.BuildHashIndex(
                 updateTargets,
@@ -495,10 +503,14 @@ public partial class ShadersViewModel : ObservableObject
 
             if (shaderHashes.Count == 0)
             {
-                _context.StatusMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
-                _context.IsDownloading = false;
+                var noZipMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = noZipMessage;
+                    _context.IsDownloading = false;
+                }
                 result.IsSuccess = false;
-                result.Message = _context.StatusMessage;
+                result.Message = noZipMessage;
                 return result;
             }
 
@@ -532,36 +544,47 @@ public partial class ShadersViewModel : ObservableObject
 
             await ReloadShadersWithIconsAsync();
 
-            _context.StatusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
-            if (showResultDialog)
+            var statusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
+            if (!suppressUiFeedback)
             {
-                _context.UpdateResults = _context.StatusMessage;
-                _context.IsResultDialogVisible = true;
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
             }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
             result.UpToDateCount = upToDateCount;
             result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = _context.StatusMessage;
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
-            _context.StatusMessage = $"更新光影失败: {ex.Message}";
-            if (showResultDialog)
+            var errorMessage = $"更新光影失败: {ex.Message}";
+            if (!suppressUiFeedback)
             {
-                _context.IsResultDialogVisible = true;
-                _context.UpdateResults = $"更新失败: {ex.Message}";
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.IsResultDialogVisible = true;
+                    _context.UpdateResults = $"更新失败: {ex.Message}";
+                }
             }
 
             result.IsSuccess = false;
-            result.Message = _context.StatusMessage;
+            result.Message = errorMessage;
             result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
 
         return result;

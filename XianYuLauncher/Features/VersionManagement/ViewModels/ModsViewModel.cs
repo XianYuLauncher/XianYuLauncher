@@ -544,7 +544,8 @@ public partial class ModsViewModel : ObservableObject
 
     public async Task<ResourceUpdateBatchResult> UpdateSelectedModsAsync(
         IReadOnlyList<ModInfo> selectedMods,
-        bool showResultDialog = true)
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -552,16 +553,23 @@ public partial class ModsViewModel : ObservableObject
         {
             if (selectedMods == null || selectedMods.Count == 0)
             {
-                _context.StatusMessage = "请先选择要更新的Mod";
+                var emptyMessage = "请先选择要更新的Mod";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
                 result.IsSuccess = false;
-                result.Message = _context.StatusMessage;
+                result.Message = emptyMessage;
                 return result;
             }
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = true;
+                _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
 
             var updateTargets = selectedMods.ToList();
 
@@ -638,36 +646,47 @@ public partial class ModsViewModel : ObservableObject
             await ReloadModsWithIconsAsync();
 
             // 显示结果
-            _context.StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-            if (showResultDialog)
+            var statusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
+            if (!suppressUiFeedback)
             {
-                _context.UpdateResults = _context.StatusMessage;
-                _context.IsResultDialogVisible = true;
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
             }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
             result.UpToDateCount = upToDateCount;
             result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = _context.StatusMessage;
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"更新Mod失败: {ex.Message}");
-            _context.StatusMessage = $"更新Mod失败: {ex.Message}";
-            if (showResultDialog)
+            var errorMessage = $"更新Mod失败: {ex.Message}";
+            if (!suppressUiFeedback)
             {
-                _context.UpdateResults = _context.StatusMessage;
-                _context.IsResultDialogVisible = true;
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = errorMessage;
+                    _context.IsResultDialogVisible = true;
+                }
             }
             result.IsSuccess = false;
-            result.Message = _context.StatusMessage;
+            result.Message = errorMessage;
             result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
 
         return result;
