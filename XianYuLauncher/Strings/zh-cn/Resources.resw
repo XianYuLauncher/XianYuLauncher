@@ -1373,13 +1373,13 @@
     <value>取消全选</value>
   </data>
   <data name="VersionManagerPage_UpdatingModsText" xml:space="preserve">
-    <value>正在更新Mod</value>
+    <value>正在更新 Mod</value>
   </data>
   <data name="VersionManagerPage_MigratingModsText" xml:space="preserve">
-    <value>正在迁移Mod</value>
+    <value>正在迁移 Mod</value>
   </data>
   <data name="VersionManagerPage_PreparingModTransferText" xml:space="preserve">
-    <value>正在准备转移Mod...</value>
+    <value>正在准备转移 Mod...</value>
   </data>
   <data name="VersionManagerPage_UpdatedAndMovedText" xml:space="preserve">
     <value>已更新并转移</value>

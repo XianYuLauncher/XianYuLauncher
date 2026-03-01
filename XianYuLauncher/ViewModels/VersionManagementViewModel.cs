@@ -2070,8 +2070,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         var batchResults = new List<ResourceUpdateBatchResult>();
 
-        IsDownloading = true;
         DownloadProgressDialogTitle = "正在更新资源...";
+        IsDownloading = true;
         DownloadProgress = 0;
         CurrentDownloadItem = string.Empty;
 

@@ -324,12 +324,11 @@ public partial class ShadersViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在转移光影";
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.StatusMessage = "正在准备光影转移...";
 
-            var originalSelectedVersion = _context.SelectedVersion;
             string targetVersion = _context.SelectedTargetVersion.VersionName;
 
             var targetVersionInfo = new VersionListViewModel.VersionInfoItem
@@ -341,10 +340,8 @@ public partial class ShadersViewModel : ObservableObject
             if (!Directory.Exists(targetVersionInfo.Path))
                 throw new Exception($"无法找到目标版本: {targetVersion}");
 
-            _context.SelectedVersion = targetVersionInfo;
-            string targetVersionPath = _context.GetVersionSpecificPath("shaderpacks");
+            string targetVersionPath = Path.Combine(targetVersionInfo.Path, "shaderpacks");
             Directory.CreateDirectory(targetVersionPath);
-            _context.SelectedVersion = originalSelectedVersion;
 
             var moveResults = new List<MoveModResult>();
 
@@ -483,8 +480,8 @@ public partial class ShadersViewModel : ObservableObject
 
             if (!suppressUiFeedback)
             {
-                _context.IsDownloading = true;
                 _context.DownloadProgressDialogTitle = "正在更新光影...";
+                _context.IsDownloading = true;
                 _context.DownloadProgress = 0;
                 _context.CurrentDownloadItem = string.Empty;
             }

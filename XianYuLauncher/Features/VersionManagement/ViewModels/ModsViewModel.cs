@@ -293,46 +293,44 @@ public partial class ModsViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "VersionManagerPage_MigratingModsText".GetLocalized();
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.CurrentDownloadItem = string.Empty;
             _context.StatusMessage = "VersionManagerPage_PreparingModTransferText".GetLocalized();
 
             var moveResults = new List<MoveModResult>();
 
-            string sourceVersionPath = _context.GetVersionSpecificPath("mods");
             string targetVersion = _context.SelectedTargetVersion.VersionName;
 
-            var originalSelectedVersion = _context.SelectedVersion;
-
-            _context.SelectedVersion = new VersionListViewModel.VersionInfoItem
+            var targetVersionInfo = new VersionListViewModel.VersionInfoItem
             {
                 Name = targetVersion,
                 Path = Path.Combine(_context.GetMinecraftDataPath(), "versions", targetVersion)
             };
 
-            if (_context.SelectedVersion == null || !Directory.Exists(_context.SelectedVersion.Path))
+            if (!Directory.Exists(targetVersionInfo.Path))
             {
                 throw new Exception($"无法找到目标版本: {targetVersion}");
             }
 
-            string targetVersionPath = _context.GetVersionSpecificPath("mods");
+            string targetVersionPath = Path.Combine(targetVersionInfo.Path, "mods");
+            Directory.CreateDirectory(targetVersionPath);
 
             // 获取目标版本的 ModLoader 和游戏版本
             string modLoader = "fabric";
-            string gameVersion = _context.SelectedVersion?.VersionNumber ?? "1.19.2";
+            string gameVersion = targetVersionInfo.VersionNumber ?? "1.19.2";
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-            if (versionInfoService != null && _context.SelectedVersion != null)
+            if (versionInfoService != null)
             {
-                string versionDir = _context.SelectedVersion.Path;
+                string versionDir = targetVersionInfo.Path;
                 Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(
-                    _context.SelectedVersion.Name, versionDir);
+                    targetVersionInfo.Name, versionDir);
 
                 if (versionConfig != null)
                 {
-                    modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, _context.SelectedVersion.Name);
+                    modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, targetVersionInfo.Name);
 
                     if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
                     {
@@ -402,9 +400,6 @@ public partial class ModsViewModel : ObservableObject
                 moveResults.Add(result);
                 _context.DownloadProgress = (i + 1) / (double)_selectedModsForMove.Count * 100;
             }
-
-            // 恢复原始选中版本
-            _context.SelectedVersion = originalSelectedVersion;
 
             _context.MoveResults = moveResults;
             _context.IsMoveResultDialogVisible = true;
@@ -581,8 +576,8 @@ public partial class ModsViewModel : ObservableObject
 
             if (!suppressUiFeedback)
             {
-                _context.IsDownloading = true;
                 _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
+                _context.IsDownloading = true;
                 _context.DownloadProgress = 0;
                 _context.CurrentDownloadItem = string.Empty;
             }
