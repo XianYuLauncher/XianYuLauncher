@@ -5,7 +5,6 @@ using System.Net.Http;
 using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -378,19 +377,7 @@ public class DialogService : IDialogService
             }
         });
 
-        // 创建数据模板
-        string xaml = @"
-<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-    <StackPanel Orientation='Horizontal' Padding='10'>
-        <Border CornerRadius='4' Width='40' Height='40' Margin='0,0,12,0' Background='#E5E7EB'>
-             <Image Source='{Binding Avatar}' Stretch='Fill'/>
-        </Border>
-        <StackPanel VerticalAlignment='Center'>
-            <TextBlock Text='{Binding Name}' FontWeight='SemiBold'/>
-            <TextBlock Text='{Binding Id}' FontSize='12' Opacity='0.6'/>
-        </StackPanel>
-    </StackPanel>
-</DataTemplate>";
+        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
 
         var listView = new ListView
         {
@@ -398,7 +385,7 @@ public class DialogService : IDialogService
             ItemsSource = items,
             SelectedIndex = 0,
             MaxHeight = 300,
-            ItemTemplate = (DataTemplate)XamlReader.Load(xaml)
+            ItemTemplate = itemTemplate
         };
 
         // 如果列表为空，SelectedIndex设为-1
@@ -878,5 +865,78 @@ public class DialogService : IDialogService
         {
             propertyChanged.PropertyChanged -= OnPropertyChanged;
         }
+    }
+
+    public async Task<System.Collections.Generic.List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates)
+    {
+        var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 400 };
+
+        panel.Children.Add(new TextBlock {
+            Text = "VersionManagerPage_UpdatableResourcesUpdateDialog.InstructionText".GetLocalized(),
+            FontSize = 14
+        });
+
+        var itemsList = availableUpdates.ToList();
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.None,
+            MaxHeight = 350,
+            ItemsSource = itemsList
+        };
+        listView.ItemTemplate = Application.Current.Resources["UpdatableResourceSelectionItemTemplate"] as DataTemplate;
+
+        panel.Children.Add(listView);
+
+        var dialog = new ContentDialog
+        {
+            Title = "VersionManagerPage_UpdatableResourcesUpdateDialog.Title".GetLocalized(), 
+            Content = panel,
+            PrimaryButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.PrimaryButtonText".GetLocalized(),
+            CloseButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText".GetLocalized(),
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result == ContentDialogResult.Primary)
+        {
+            return itemsList.Where(x => x.IsSelected).ToList();
+        }
+        return null;
+    }
+
+    public async Task ShowMoveResultDialogAsync(
+        System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
+        string title,
+        string instruction)
+    {
+        var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 420 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = instruction,
+            FontSize = 14
+        });
+
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.None,
+            MaxHeight = 400,
+            ItemsSource = moveResults?.ToList() ?? new System.Collections.Generic.List<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult>()
+        };
+
+        listView.ItemTemplate = Application.Current.Resources["MoveResultDialogItemTemplate"] as DataTemplate;
+        panel.Children.Add(listView);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = "VersionManagerPage_MoveResultDialog.PrimaryButtonText".GetLocalized(),
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        await ShowSafeAsync(dialog);
     }
 }

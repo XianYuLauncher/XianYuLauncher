@@ -78,6 +78,9 @@ public partial class ShadersViewModel : ObservableObject
     [ObservableProperty]
     private bool _isShaderSelectionModeEnabled;
 
+    /// <summary>可更新光影数量（基于全量列表）</summary>
+    public int UpdatableShaderCount => _allShaders.Count(shader => shader.HasUpdate);
+
     partial void OnShaderSearchTextChanged(string value) => FilterShaders();
 
     partial void OnShaderFilterOptionChanged(string value) => FilterShaders();
@@ -134,10 +137,13 @@ public partial class ShadersViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Source)) shader.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) shader.ProjectId = existing.ProjectId;
                 shader.HasUpdate = existing.HasUpdate;
+                shader.CurrentVersion = existing.CurrentVersion;
+                shader.LatestVersion = existing.LatestVersion;
             }
         }
 
         _allShaders = newShadersList;
+        OnPropertyChanged(nameof(UpdatableShaderCount));
         StartShaderUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -161,6 +167,11 @@ public partial class ShadersViewModel : ObservableObject
                 _context.LoadResourceIconAsync(icon => shader.Icon = icon, shader.FilePath, "shader", true, default));
             await Task.WhenAll(tasks);
         }
+    }
+
+    public IReadOnlyList<ShaderInfo> GetUpdatableShadersSnapshot()
+    {
+        return _allShaders.Where(shader => shader.HasUpdate).ToList();
     }
 
     /// <summary>过滤光影列表</summary>
@@ -313,12 +324,11 @@ public partial class ShadersViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在转移光影";
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.StatusMessage = "正在准备光影转移...";
 
-            var originalSelectedVersion = _context.SelectedVersion;
             string targetVersion = _context.SelectedTargetVersion.VersionName;
 
             var targetVersionInfo = new VersionListViewModel.VersionInfoItem
@@ -330,10 +340,8 @@ public partial class ShadersViewModel : ObservableObject
             if (!Directory.Exists(targetVersionInfo.Path))
                 throw new Exception($"无法找到目标版本: {targetVersion}");
 
-            _context.SelectedVersion = targetVersionInfo;
-            string targetVersionPath = _context.GetVersionSpecificPath("shaderpacks");
+            string targetVersionPath = Path.Combine(targetVersionInfo.Path, "shaderpacks");
             Directory.CreateDirectory(targetVersionPath);
-            _context.SelectedVersion = originalSelectedVersion;
 
             var moveResults = new List<MoveModResult>();
 
@@ -438,26 +446,48 @@ public partial class ShadersViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateShadersAsync(ShaderInfo? shader = null)
     {
+        var selectedShaders = Shaders.Where(item => item.IsSelected).ToList();
+        if (selectedShaders.Count == 0 && shader != null)
+        {
+            selectedShaders.Add(shader);
+        }
+
+        await UpdateSelectedShadersAsync(selectedShaders);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedShadersAsync(
+        IReadOnlyList<ShaderInfo> selectedShaders,
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedShaders = Shaders.Where(s => s.IsSelected).ToList();
-            if (selectedShaders.Count == 0 && shader != null)
+            if (selectedShaders == null || selectedShaders.Count == 0)
             {
-                selectedShaders.Add(shader);
-            }
-            if (selectedShaders.Count == 0)
-            {
-                _context.StatusMessage = "请先选择要更新的光影";
-                return;
+                var emptyMessage = "请先选择要更新的光影";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
+                result.IsSuccess = false;
+                result.Message = emptyMessage;
+                return result;
             }
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "正在更新光影...";
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            var updateTargets = selectedShaders.ToList();
+
+            if (!suppressUiFeedback)
+            {
+                _context.DownloadProgressDialogTitle = "正在更新光影...";
+                _context.IsDownloading = true;
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
 
             var shaderHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedShaders,
+                updateTargets,
                 shader => shader.FilePath,
                 _context.CalculateSHA1,
                 shouldSkip: shader => Directory.Exists(shader.FilePath),
@@ -470,9 +500,15 @@ public partial class ShadersViewModel : ObservableObject
 
             if (shaderHashes.Count == 0)
             {
-                _context.StatusMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
-                _context.IsDownloading = false;
-                return;
+                var noZipMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = noZipMessage;
+                    _context.IsDownloading = false;
+                }
+                result.IsSuccess = false;
+                result.Message = noZipMessage;
+                return result;
             }
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
@@ -490,7 +526,7 @@ public partial class ShadersViewModel : ObservableObject
             updatedCount += modrinthResult.UpdatedCount;
             upToDateCount += modrinthResult.UpToDateCount;
 
-            var failedShaders = selectedShaders
+            var failedShaders = updateTargets
                 .Where(s => !Directory.Exists(s.FilePath) && !modrinthResult.ProcessedMods.Contains(s.FilePath))
                 .ToList();
 
@@ -505,21 +541,50 @@ public partial class ShadersViewModel : ObservableObject
 
             await ReloadShadersWithIconsAsync();
 
-            _context.StatusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            var statusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
+            }
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
-            _context.StatusMessage = $"更新光影失败: {ex.Message}";
-            _context.IsResultDialogVisible = true;
-            _context.UpdateResults = $"更新失败: {ex.Message}";
+            var errorMessage = $"更新光影失败: {ex.Message}";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.IsResultDialogVisible = true;
+                    _context.UpdateResults = $"更新失败: {ex.Message}";
+                }
+            }
+
+            result.IsSuccess = false;
+            result.Message = errorMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
+
+        return result;
     }
 
     [RelayCommand]
@@ -623,10 +688,12 @@ public partial class ShadersViewModel : ObservableObject
                 .Where(shader => !string.IsNullOrWhiteSpace(shader.FilePath))
                 .ToDictionary(shader => shader.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
             var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (updatableByFile.Count == 0)
             {
-                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
 
@@ -643,9 +710,12 @@ public partial class ShadersViewModel : ObservableObject
 
             if (hashes.Count == 0)
             {
-                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
+                ?? new Dictionary<string, Core.Models.ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
             var gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(_context.SelectedVersion, versionInfoService);
@@ -666,10 +736,17 @@ public partial class ShadersViewModel : ObservableObject
                     continue;
                 }
 
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                {
+                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
+                }
+
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
                 {
                     continue;
                 }
+
+                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -697,10 +774,12 @@ public partial class ShadersViewModel : ObservableObject
                     gameVersion,
                     updatableByFile,
                     projectIdentityByFile,
+                        currentVersionByFile,
+                        latestVersionByFile,
                     cancellationToken);
             }
 
-            ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                    ApplyShaderUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException)
         {
@@ -716,6 +795,8 @@ public partial class ShadersViewModel : ObservableObject
         string gameVersion,
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         CancellationToken cancellationToken)
     {
         var fingerprintToFilePath = new Dictionary<uint, string>();
@@ -766,6 +847,8 @@ public partial class ShadersViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
+            currentVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(match.File);
+
             var latestFile = match.LatestFiles?
                 .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
                 .OrderByDescending(file => file.FileDate)
@@ -776,6 +859,8 @@ public partial class ShadersViewModel : ObservableObject
                 continue;
             }
 
+            latestVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(latestFile);
+
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
     }
@@ -783,6 +868,8 @@ public partial class ShadersViewModel : ObservableObject
     private void ApplyShaderUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         int generation)
     {
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -799,12 +886,20 @@ public partial class ShadersViewModel : ObservableObject
             foreach (var shader in allItems)
             {
                 shader.HasUpdate = updatableByFile.TryGetValue(shader.FilePath, out var hasUpdate) && hasUpdate;
+                shader.CurrentVersion = currentVersionByFile.TryGetValue(shader.FilePath, out var currentVersion)
+                    ? currentVersion
+                    : string.Empty;
+                shader.LatestVersion = latestVersionByFile.TryGetValue(shader.FilePath, out var latestVersion)
+                    ? latestVersion
+                    : string.Empty;
                 if (projectIdentityByFile.TryGetValue(shader.FilePath, out var identity))
                 {
                     shader.Source = identity.Source;
                     shader.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableShaderCount));
 
             if (ShaderFilterOption != FilterAllKey)
             {
