@@ -3174,4 +3174,43 @@
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
+  <data name="VersionManagerPage_UpdateResultDialog_Title" xml:space="preserve">
+    <value>更新完成</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog_PrimaryButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_Title" xml:space="preserve">
+    <value>选择目标版本</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_InstructionContent" xml:space="preserve">
+    <value>请选择要迁移到的目标版本：</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_PrimaryButtonText" xml:space="preserve">
+    <value>确认迁移</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_Title" xml:space="preserve">
+    <value>迁移结果</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_InstructionContent" xml:space="preserve">
+    <value>以下是本次迁移结果：</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_PrimaryButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_Title" xml:space="preserve">
+    <value>一键更新</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_InstructionText" xml:space="preserve">
+    <value>请勾选你想要更新的组件：</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_PrimaryButtonText" xml:space="preserve">
+    <value>确认更新</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
 </root>

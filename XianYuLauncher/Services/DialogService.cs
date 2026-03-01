@@ -872,7 +872,7 @@ public class DialogService : IDialogService
         var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 400 };
 
         panel.Children.Add(new TextBlock {
-            Text = "VersionManagerPage_UpdatableResourcesUpdateDialog.InstructionText".GetLocalized(),
+            Text = "VersionManagerPage_UpdatableResourcesUpdateDialog_InstructionText".GetLocalized(),
             FontSize = 14
         });
 
@@ -889,10 +889,10 @@ public class DialogService : IDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "VersionManagerPage_UpdatableResourcesUpdateDialog.Title".GetLocalized(), 
+            Title = "VersionManagerPage_UpdatableResourcesUpdateDialog_Title".GetLocalized(), 
             Content = panel,
-            PrimaryButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.PrimaryButtonText".GetLocalized(),
-            CloseButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText".GetLocalized(),
+            PrimaryButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog_PrimaryButtonText".GetLocalized(),
+            CloseButtonText = "VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
@@ -932,7 +932,7 @@ public class DialogService : IDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "VersionManagerPage_MoveResultDialog.PrimaryButtonText".GetLocalized(),
+            PrimaryButtonText = "VersionManagerPage_MoveResultDialog_PrimaryButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
