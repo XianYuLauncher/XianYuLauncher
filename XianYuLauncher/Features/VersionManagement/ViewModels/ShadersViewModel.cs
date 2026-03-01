@@ -458,7 +458,9 @@ public partial class ShadersViewModel : ObservableObject
         await UpdateSelectedShadersAsync(selectedShaders);
     }
 
-    public async Task<ResourceUpdateBatchResult> UpdateSelectedShadersAsync(IReadOnlyList<ShaderInfo> selectedShaders)
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedShadersAsync(
+        IReadOnlyList<ShaderInfo> selectedShaders,
+        bool showResultDialog = true)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -531,8 +533,11 @@ public partial class ShadersViewModel : ObservableObject
             await ReloadShadersWithIconsAsync();
 
             _context.StatusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            if (showResultDialog)
+            {
+                _context.UpdateResults = _context.StatusMessage;
+                _context.IsResultDialogVisible = true;
+            }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
@@ -543,8 +548,11 @@ public partial class ShadersViewModel : ObservableObject
         catch (Exception ex)
         {
             _context.StatusMessage = $"更新光影失败: {ex.Message}";
-            _context.IsResultDialogVisible = true;
-            _context.UpdateResults = $"更新失败: {ex.Message}";
+            if (showResultDialog)
+            {
+                _context.IsResultDialogVisible = true;
+                _context.UpdateResults = $"更新失败: {ex.Message}";
+            }
 
             result.IsSuccess = false;
             result.Message = _context.StatusMessage;

@@ -2045,13 +2045,74 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         var selectedItems = await _dialogService.ShowUpdatableResourcesSelectionDialogAsync(updatableItems);
-        
-        if (selectedItems != null && selectedItems.Count > 0)
+
+        if (selectedItems == null || selectedItems.Count == 0)
         {
-            // 给后端接手的人的占位符注释
-            System.Diagnostics.Debug.WriteLine($"User confirmed. Proceeding to update {selectedItems.Count} items.");
-            // Do actual update queue push here
+            StatusMessage = "已取消更新。";
+            return;
         }
+
+        var selectedMods = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ModInfo>()
+            .DistinctBy(mod => mod.FilePath)
+            .ToList();
+        var selectedShaders = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ShaderInfo>()
+            .DistinctBy(shader => shader.FilePath)
+            .ToList();
+        var selectedResourcePacks = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ResourcePackInfo>()
+            .DistinctBy(pack => pack.FilePath)
+            .ToList();
+
+        var batchResults = new List<ResourceUpdateBatchResult>();
+
+        if (selectedMods.Count > 0)
+        {
+            var modResult = await ModsModule.UpdateSelectedModsAsync(selectedMods, showResultDialog: false);
+            batchResults.Add(modResult);
+        }
+
+        if (selectedShaders.Count > 0)
+        {
+            var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(selectedShaders, showResultDialog: false);
+            batchResults.Add(shaderResult);
+        }
+
+        if (selectedResourcePacks.Count > 0)
+        {
+            var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(selectedResourcePacks, showResultDialog: false);
+            batchResults.Add(resourcePackResult);
+        }
+
+        if (batchResults.Count == 0)
+        {
+            StatusMessage = "未识别到可更新的目标资源。";
+            return;
+        }
+
+        int updatedCount = batchResults.Sum(result => result.UpdatedCount);
+        int upToDateCount = batchResults.Sum(result => result.UpToDateCount);
+        int failedCount = batchResults.Sum(result => result.FailedCount);
+        var errors = batchResults.SelectMany(result => result.Errors).Where(error => !string.IsNullOrWhiteSpace(error)).ToList();
+
+        var summaryMessage = $"已更新 {updatedCount} 项，已是最新 {upToDateCount} 项";
+        if (failedCount > 0)
+        {
+            summaryMessage += $"，失败 {failedCount} 项";
+        }
+
+        if (errors.Count > 0)
+        {
+            summaryMessage += $"。错误：{string.Join("；", errors)}";
+        }
+
+        StatusMessage = summaryMessage;
+        UpdateResults = summaryMessage;
+        IsResultDialogVisible = true;
     }
 
     private List<UpdatableResourceItem> BuildUpdatableResourceItems()
