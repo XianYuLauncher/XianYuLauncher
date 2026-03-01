@@ -3132,4 +3132,13 @@ Continue downloading?</value>
   <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
     <value>Open Config Folder</value>
   </data>
+  <data name="VersionManagerPage_UpdatableResourcesLabel.Text" xml:space="preserve">
+    <value>Updatable Resources</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesCount.Text" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="VersionManagerPage_UpdateAllResourcesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Update All</value>
+  </data>
 </root>

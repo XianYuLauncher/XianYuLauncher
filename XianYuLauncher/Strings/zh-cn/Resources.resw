@@ -3144,4 +3144,13 @@
   <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
     <value>打开配置文件夹</value>
   </data>
+  <data name="VersionManagerPage_UpdatableResourcesLabel.Text" xml:space="preserve">
+    <value>可更新资源</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesCount.Text" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="VersionManagerPage_UpdateAllResourcesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>一键更新</value>
+  </data>
 </root>
