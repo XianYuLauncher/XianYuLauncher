@@ -24,6 +24,10 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ResourcePacksViewModel : ObservableObject
 {
+    private const string FilterAllKey = "all";
+    private const string FilterUpdatableKey = "updatable";
+    private const string FilterDuplicateKey = "duplicate";
+
     private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
@@ -69,7 +73,7 @@ public partial class ResourcePacksViewModel : ObservableObject
 
     /// <summary>资源包筛选类型（全部/可更新/重复）</summary>
     [ObservableProperty]
-    private string _resourcePackFilterOption = "全部";
+    private string _resourcePackFilterOption = FilterAllKey;
 
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
@@ -637,8 +641,8 @@ public partial class ResourcePacksViewModel : ObservableObject
     {
         return ResourcePackFilterOption switch
         {
-            "可更新" => source.Where(IsResourcePackUpdatable),
-            "重复" => ApplyDuplicateFilter(source, _allResourcePacks, BuildResourcePackDuplicateKey),
+            FilterUpdatableKey => source.Where(IsResourcePackUpdatable),
+            FilterDuplicateKey => ApplyDuplicateFilter(source, _allResourcePacks, BuildResourcePackDuplicateKey),
             _ => source
         };
     }
@@ -812,7 +816,7 @@ public partial class ResourcePacksViewModel : ObservableObject
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(pack.FilePath);
+                var fingerprint = await _context.GetSharedCurseForgeFingerprintAsync(pack.FilePath, cancellationToken);
                 if (!fingerprintToFilePath.ContainsKey(fingerprint))
                 {
                     fingerprintToFilePath[fingerprint] = pack.FilePath;
@@ -892,7 +896,7 @@ public partial class ResourcePacksViewModel : ObservableObject
                 }
             }
 
-            if (ResourcePackFilterOption == "可更新")
+            if (ResourcePackFilterOption != FilterAllKey)
             {
                 FilterResourcePacks();
             }

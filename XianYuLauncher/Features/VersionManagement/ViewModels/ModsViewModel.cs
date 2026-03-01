@@ -25,6 +25,10 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ModsViewModel : ObservableObject
 {
+    private const string FilterAllKey = "all";
+    private const string FilterUpdatableKey = "updatable";
+    private const string FilterDuplicateKey = "duplicate";
+
     private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
@@ -70,7 +74,7 @@ public partial class ModsViewModel : ObservableObject
 
     /// <summary>Mod 筛选类型（全部/可更新/重复）</summary>
     [ObservableProperty]
-    private string _modFilterOption = "全部";
+    private string _modFilterOption = FilterAllKey;
 
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
@@ -1025,8 +1029,8 @@ public partial class ModsViewModel : ObservableObject
     {
         return ModFilterOption switch
         {
-            "可更新" => source.Where(IsModUpdatable),
-            "重复" => ApplyDuplicateFilter(source, _allMods, BuildModDuplicateKey),
+            FilterUpdatableKey => source.Where(IsModUpdatable),
+            FilterDuplicateKey => ApplyDuplicateFilter(source, _allMods, BuildModDuplicateKey),
             _ => source
         };
     }
@@ -1199,7 +1203,7 @@ public partial class ModsViewModel : ObservableObject
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(mod.FilePath);
+                var fingerprint = await _context.GetSharedCurseForgeFingerprintAsync(mod.FilePath, cancellationToken);
                 if (!fingerprintToFilePath.ContainsKey(fingerprint))
                 {
                     fingerprintToFilePath[fingerprint] = mod.FilePath;
@@ -1219,14 +1223,7 @@ public partial class ModsViewModel : ObservableObject
 
         var matchResult = await _curseForgeService.GetFingerprintMatchesAsync(fingerprints);
         var exactMatches = matchResult?.ExactMatches ?? new List<CurseForgeFingerprintMatch>();
-        int? modLoaderType = modLoader.ToLowerInvariant() switch
-        {
-            "forge" => 1,
-            "fabric" => 4,
-            "quilt" => 5,
-            "neoforge" => 6,
-            _ => null
-        };
+        var normalizedModLoader = modLoader?.Trim();
 
         foreach (var match in exactMatches)
         {
@@ -1256,10 +1253,10 @@ public partial class ModsViewModel : ObservableObject
                 .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
                 .ToList();
 
-            if (modLoaderType.HasValue)
+            if (!string.IsNullOrWhiteSpace(normalizedModLoader))
             {
                 var loaderCompatible = compatibleFiles
-                    .Where(file => file.GameVersions.Any(version => version.Equals(modLoader, StringComparison.OrdinalIgnoreCase)))
+                    .Where(file => file.GameVersions.Any(version => version.Equals(normalizedModLoader, StringComparison.OrdinalIgnoreCase)))
                     .ToList();
                 if (loaderCompatible.Count > 0)
                 {
@@ -1332,7 +1329,7 @@ public partial class ModsViewModel : ObservableObject
                 }
             }
 
-            if (ModFilterOption == "可更新")
+            if (ModFilterOption != FilterAllKey)
             {
                 FilterMods();
             }
