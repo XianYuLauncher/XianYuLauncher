@@ -5,7 +5,6 @@ using System.Net.Http;
 using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -378,19 +377,7 @@ public class DialogService : IDialogService
             }
         });
 
-        // 创建数据模板
-        string xaml = @"
-<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-    <StackPanel Orientation='Horizontal' Padding='10'>
-        <Border CornerRadius='4' Width='40' Height='40' Margin='0,0,12,0' Background='#E5E7EB'>
-             <Image Source='{Binding Avatar}' Stretch='Fill'/>
-        </Border>
-        <StackPanel VerticalAlignment='Center'>
-            <TextBlock Text='{Binding Name}' FontWeight='SemiBold'/>
-            <TextBlock Text='{Binding Id}' FontSize='12' Opacity='0.6'/>
-        </StackPanel>
-    </StackPanel>
-</DataTemplate>";
+        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
 
         var listView = new ListView
         {
@@ -398,7 +385,7 @@ public class DialogService : IDialogService
             ItemsSource = items,
             SelectedIndex = 0,
             MaxHeight = 300,
-            ItemTemplate = (DataTemplate)XamlReader.Load(xaml)
+            ItemTemplate = itemTemplate
         };
 
         // 如果列表为空，SelectedIndex设为-1
@@ -896,40 +883,7 @@ public class DialogService : IDialogService
             MaxHeight = 350,
             ItemsSource = itemsList
         };
-        // 绑定使用类似收藏夹的样式
-        string xaml = @"
-<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-    <Grid Margin='0,8'>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width='Auto'/>
-            <ColumnDefinition Width='40'/>
-            <ColumnDefinition Width='*'/>
-        </Grid.ColumnDefinitions>
-        
-        <CheckBox Grid.Column='0' IsChecked='{Binding IsSelected, Mode=TwoWay}' VerticalAlignment='Center' Margin='0,0,12,0' MinWidth='0'/>
-        
-        <Border Grid.Column='1' CornerRadius='4' Width='32' Height='32' Background='{ThemeResource LayerFillColorDefaultBrush}' HorizontalAlignment='Left'>
-            <Grid>
-                <FontIcon Glyph='{Binding FallbackIconGlyph}' FontSize='16' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
-                <Image Source='{Binding IconSource}' Stretch='UniformToFill'/>
-            </Grid>
-        </Border>
-        
-        <StackPanel Grid.Column='2' Margin='8,0,0,0' VerticalAlignment='Center'>
-            <TextBlock Text='{Binding DisplayName}' MaxLines='1' TextTrimming='CharacterEllipsis' FontWeight='SemiBold'/>
-            <StackPanel Orientation='Horizontal' Spacing='4'>
-                <TextBlock Text='{Binding ResourceType}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorTertiaryBrush}'/>
-                <TextBlock Text='·' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorTertiaryBrush}'/>
-                <TextBlock Text='{Binding CurrentVersion}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
-                <FontIcon Glyph='&#xE709;' FontSize='10' Foreground='{ThemeResource TextFillColorTertiaryBrush}' Margin='2,0'/>
-                <TextBlock Text='{Binding NewVersion}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
-            </StackPanel>
-        </StackPanel>
-    </Grid>
-</DataTemplate>";
-
-        var dataTemplate = (DataTemplate)XamlReader.Load(xaml);
-        listView.ItemTemplate = dataTemplate;
+        listView.ItemTemplate = Application.Current.Resources["UpdatableResourceSelectionItemTemplate"] as DataTemplate;
 
         panel.Children.Add(listView);
 
