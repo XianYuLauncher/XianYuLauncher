@@ -1309,6 +1309,9 @@
   <data name="VersionManagerPage_MoveResultDialog_InstructionText.Text" xml:space="preserve">
     <value>以下是Mod转移结果：</value>
   </data>
+  <data name="VersionManagerPage_MoveResultDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确定</value>
+  </data>
   <data name="Settings_RealTimeLogsDescription.Text" xml:space="preserve">
     <value>开启后，启动游戏成功后会自动打开实时日志页面</value>
   </data>

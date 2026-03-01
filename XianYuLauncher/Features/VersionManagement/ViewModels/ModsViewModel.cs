@@ -342,6 +342,9 @@ public partial class ModsViewModel : ObservableObject
             System.Diagnostics.Debug.WriteLine($"转移Mod到目标版本: {targetVersion}");
             System.Diagnostics.Debug.WriteLine($"目标版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
 
+            var existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
+            bool shouldRefreshExistingProjects = false;
+
             for (int i = 0; i < _selectedModsForMove.Count; i++)
             {
                 var mod = _selectedModsForMove[i];
@@ -356,11 +359,16 @@ public partial class ModsViewModel : ObservableObject
                 {
                     System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
 
+                    if (shouldRefreshExistingProjects)
+                    {
+                        existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
+                        shouldRefreshExistingProjects = false;
+                    }
+
                     string sourceSha1 = _context.CalculateSHA1(mod.FilePath);
                     var sourceVersion = await _modrinthService.GetVersionFileByHashAsync(sourceSha1);
                     if (!string.IsNullOrWhiteSpace(sourceVersion?.ProjectId))
                     {
-                        var existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
                         if (existingProjects.TryGetValue(sourceVersion.ProjectId, out var existingFilePath) && File.Exists(existingFilePath))
                         {
                             System.Diagnostics.Debug.WriteLine($"[MoveMod][Dedup] 目标目录已存在同项目文件，跳过重复处理: 项目={sourceVersion.ProjectId}, 文件={existingFilePath}");
@@ -388,6 +396,16 @@ public partial class ModsViewModel : ObservableObject
                             result.Status = MoveModStatus.Copied;
                             result.TargetPath = targetFilePath;
                         }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(sourceVersion?.ProjectId) && !string.IsNullOrWhiteSpace(result.TargetPath))
+                    {
+                        existingProjects[sourceVersion.ProjectId] = result.TargetPath;
+                    }
+
+                    if (modrinthSuccess)
+                    {
+                        shouldRefreshExistingProjects = true;
                     }
                 }
                 catch (Exception ex)
