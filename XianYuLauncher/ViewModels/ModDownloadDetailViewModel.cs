@@ -278,6 +278,10 @@ namespace XianYuLauncher.ViewModels
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在访问API: {apiUrl}");
                         
                         var projectDetail = await _modrinthService.GetProjectDetailAsync(dependency.ProjectId);
+                        if (projectDetail == null)
+                        {
+                            continue;
+                        }
                         
                         // 创建依赖项目对象
                         var dependencyProject = new DependencyProject
@@ -698,6 +702,10 @@ namespace XianYuLauncher.ViewModels
             {
                 // 调用Modrinth API获取项目详情
                 var projectDetail = await _modrinthService.GetProjectDetailAsync(modId);
+                if (projectDetail == null)
+                {
+                    throw new Exception("未能获取 Modrinth 项目详情");
+                }
 
                 var passedDescription = _passedModInfo?.DisplayDescription;
                 if (string.IsNullOrWhiteSpace(passedDescription))

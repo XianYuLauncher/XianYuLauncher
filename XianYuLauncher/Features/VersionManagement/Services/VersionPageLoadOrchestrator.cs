@@ -8,15 +8,30 @@ public sealed class VersionPageLoadOrchestrator : IVersionPageLoadOrchestrator
         {
             request.CancellationToken.ThrowIfCancellationRequested();
 
-            _ = request.LoadSettingsFastAsync(request.CancellationToken);
-            _ = request.LoadOverviewAsync(request.CancellationToken);
-            _ = request.LoadModsAsync(request.CancellationToken);
-            _ = request.LoadShadersAsync(request.CancellationToken);
-            _ = request.LoadResourcePacksAsync(request.CancellationToken);
-            _ = request.LoadMapsAsync(request.CancellationToken);
-            _ = request.LoadScreenshotsAsync(request.CancellationToken);
-            _ = request.LoadSavesAsync(request.CancellationToken);
-            _ = request.LoadServersAsync(request.CancellationToken);
+            Task[] frontLoadTasks =
+            {
+                request.LoadSettingsFastAsync(request.CancellationToken),
+                request.LoadOverviewAsync(request.CancellationToken),
+                request.LoadModsAsync(request.CancellationToken),
+                request.LoadShadersAsync(request.CancellationToken),
+                request.LoadResourcePacksAsync(request.CancellationToken),
+                request.LoadMapsAsync(request.CancellationToken),
+                request.LoadScreenshotsAsync(request.CancellationToken),
+                request.LoadSavesAsync(request.CancellationToken),
+                request.LoadServersAsync(request.CancellationToken)
+            };
+
+            _ = Task.WhenAll(frontLoadTasks).ContinueWith(
+                task =>
+                {
+                    var aggregateException = task.Exception;
+                    if (aggregateException != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[VersionPageLoadOrchestrator] 前台加载任务出现异常: {aggregateException.Flatten().Message}");
+                    }
+                },
+                TaskContinuationOptions.OnlyOnFaulted);
 
             await Task.Delay(request.AnimationDelayMilliseconds, request.CancellationToken);
 

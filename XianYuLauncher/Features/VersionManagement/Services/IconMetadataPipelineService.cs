@@ -9,6 +9,7 @@ namespace XianYuLauncher.Features.VersionManagement.Services;
 public class IconMetadataPipelineService : IIconMetadataPipelineService
 {
     private readonly IFileService _fileService;
+    private readonly IDownloadManager _downloadManager;
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
     private readonly ModInfoService _modInfoService;
@@ -20,11 +21,13 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
 
     public IconMetadataPipelineService(
         IFileService fileService,
+        IDownloadManager downloadManager,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService)
     {
         _fileService = fileService;
+        _downloadManager = downloadManager;
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _modInfoService = modInfoService;
@@ -255,9 +258,17 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
 
             var iconFilePath = BuildIconCacheFilePath(filePath, iconDir, "modrinth");
 
-            using var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            var iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
-            await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
+            var downloadResult = await _downloadManager.DownloadFileAsync(
+                iconUrl,
+                iconFilePath,
+                expectedSha1: null,
+                progressCallback: null,
+                cancellationToken: cancellationToken);
+
+            if (!downloadResult.Success || !File.Exists(iconFilePath))
+            {
+                return null;
+            }
 
             return iconFilePath;
         }
@@ -287,9 +298,17 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
 
             var iconFilePath = BuildIconCacheFilePath(filePath, iconDir, "curseforge");
 
-            using var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            var iconBytes = await httpClient.GetByteArrayAsync(iconUrl, cancellationToken);
-            await File.WriteAllBytesAsync(iconFilePath, iconBytes, cancellationToken);
+            var downloadResult = await _downloadManager.DownloadFileAsync(
+                iconUrl,
+                iconFilePath,
+                expectedSha1: null,
+                progressCallback: null,
+                cancellationToken: cancellationToken);
+
+            if (!downloadResult.Success || !File.Exists(iconFilePath))
+            {
+                return null;
+            }
 
             return iconFilePath;
         }

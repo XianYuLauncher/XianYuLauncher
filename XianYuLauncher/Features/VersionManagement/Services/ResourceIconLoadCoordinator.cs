@@ -9,33 +9,28 @@ public sealed class ResourceIconLoadCoordinator : IResourceIconLoadCoordinator
         Func<System.Threading.SemaphoreSlim, CancellationToken, Task> loadResourcePacksAsync,
         Func<Task> loadMapsAsync)
     {
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                var semaphore = new System.Threading.SemaphoreSlim(3);
+            using var semaphore = new System.Threading.SemaphoreSlim(3);
 
-                await loadModsAsync(semaphore, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+            await loadModsAsync(semaphore, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
-                await loadShadersAsync(semaphore, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+            await loadShadersAsync(semaphore, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
-                await loadResourcePacksAsync(semaphore, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+            await loadResourcePacksAsync(semaphore, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
-                await loadMapsAsync();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"加载图标失败：{ex.Message}");
-            }
-        }, cancellationToken);
-
-        await Task.CompletedTask;
+            await loadMapsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载图标失败：{ex.Message}");
+        }
     }
 
     public async Task LoadWithSemaphoreAsync(

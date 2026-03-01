@@ -297,12 +297,13 @@ public class ModrinthService
     /// 获取项目详情
     /// </summary>
     /// <param name="projectIdOrSlug">项目ID或Slug</param>
-    /// <returns>项目详情</returns>
-    public async Task<ModrinthProjectDetail> GetProjectDetailAsync(string projectIdOrSlug)
+    /// <returns>项目详情；当远端无结果或反序列化失败时可能返回 null</returns>
+    /// <exception cref="ArgumentException">projectIdOrSlug 为空或全空白</exception>
+    public async Task<ModrinthProjectDetail?> GetProjectDetailAsync(string projectIdOrSlug)
     {
         if (string.IsNullOrWhiteSpace(projectIdOrSlug))
         {
-            return null;
+            throw new ArgumentException("项目 ID 或 Slug 不能为空或全为空白字符。", nameof(projectIdOrSlug));
         }
 
         var normalizedProject = projectIdOrSlug.Trim();
@@ -319,7 +320,7 @@ public class ModrinthService
             emptyTtl: TimeSpan.FromSeconds(20));
     }
 
-    private async Task<ModrinthProjectDetail> GetProjectDetailFromApiAsync(string projectIdOrSlug)
+    private async Task<ModrinthProjectDetail?> GetProjectDetailFromApiAsync(string projectIdOrSlug)
     {
         string url = string.Empty;
         string responseContent = string.Empty;
@@ -474,7 +475,7 @@ public class ModrinthService
     /// <param name="hash">文件哈希值</param>
     /// <param name="algorithm">哈希算法，默认为sha1</param>
     /// <returns>Modrinth版本信息</returns>
-    public async Task<ModrinthVersion> GetVersionFileByHashAsync(string hash, string algorithm = "sha1")
+    public async Task<ModrinthVersion?> GetVersionFileByHashAsync(string hash, string algorithm = "sha1")
     {
         if (string.IsNullOrWhiteSpace(hash))
         {

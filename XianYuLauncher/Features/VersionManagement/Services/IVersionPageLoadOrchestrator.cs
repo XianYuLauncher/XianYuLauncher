@@ -31,8 +31,6 @@ public sealed class VersionPageLoadRequest
 
     public required Func<CancellationToken, Task> LoadServersAsync { get; init; }
 
-    public required Action RefreshAllCollections { get; init; }
-
     public required Func<Task> LoadSettingsDeepAsync { get; init; }
 
     public required Func<CancellationToken, Task> LoadAllIconsAsync { get; init; }

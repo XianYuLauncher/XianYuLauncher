@@ -18,6 +18,12 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private static readonly TimeSpan DefaultSuccessTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan DefaultEmptyTtl = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan BatchWindow = TimeSpan.FromMilliseconds(30);
+    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
+    private const int CleanupTriggerThreshold = 256;
+
+    private readonly object _cleanupSyncRoot = new();
+    private DateTimeOffset _lastCleanupAt = DateTimeOffset.UtcNow;
+    private int _cleanupCounter;
 
     public async Task<Dictionary<string, ModrinthVersion>> GetOrFetchModrinthVersionsByHashesAsync(
         string scope,
@@ -38,6 +44,8 @@ public sealed class HashLookupCenter : IHashLookupCenter
         {
             return new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
         }
+
+        TryCleanupExpiredCaches();
 
         var state = _modrinthBatchStates.GetOrAdd(scope, _ => new ModrinthBatchScopeState());
         var request = new ModrinthRequest(normalized);
@@ -76,6 +84,8 @@ public sealed class HashLookupCenter : IHashLookupCenter
             return CreateEmptyCurseForgeResult();
         }
 
+        TryCleanupExpiredCaches();
+
         var state = _curseForgeBatchStates.GetOrAdd(scope, _ => new CurseForgeBatchScopeState());
         var request = new CurseForgeRequest(normalized);
 
@@ -112,6 +122,8 @@ public sealed class HashLookupCenter : IHashLookupCenter
         var key = BuildPerItemKey(scope, normalizedProject);
         var successDuration = successTtl ?? DefaultSuccessTtl;
         var emptyDuration = emptyTtl ?? DefaultEmptyTtl;
+
+        TryCleanupExpiredCaches();
 
         if (TryGetModrinthProjectCache(key, out var cached))
         {
@@ -398,6 +410,48 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private static string BuildPerItemKey(string scope, string item)
     {
         return $"{scope}|{item}";
+    }
+
+    private void TryCleanupExpiredCaches()
+    {
+        if (Interlocked.Increment(ref _cleanupCounter) < CleanupTriggerThreshold)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        lock (_cleanupSyncRoot)
+        {
+            if (_cleanupCounter < CleanupTriggerThreshold)
+            {
+                return;
+            }
+
+            if (now - _lastCleanupAt < CleanupInterval)
+            {
+                return;
+            }
+
+            _cleanupCounter = 0;
+            _lastCleanupAt = now;
+        }
+
+        RemoveExpiredEntries(_modrinthHashCache, now);
+        RemoveExpiredEntries(_modrinthProjectCache, now);
+        RemoveExpiredEntries(_curseForgeExactCache, now);
+        RemoveExpiredEntries(_curseForgeUnmatchedCache, now);
+    }
+
+    private static void RemoveExpiredEntries<TValue>(ConcurrentDictionary<string, CacheEntry<TValue>> cache, DateTimeOffset now)
+    {
+        foreach (var kv in cache)
+        {
+            if (kv.Value.ExpiresAt <= now)
+            {
+                cache.TryRemove(kv.Key, out _);
+            }
+        }
     }
 
     private bool TryGetModrinthProjectCache(string key, out ModrinthProjectDetail? value)

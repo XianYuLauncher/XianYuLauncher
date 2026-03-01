@@ -1,5 +1,4 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
@@ -7,10 +6,14 @@ namespace XianYuLauncher.Features.VersionManagement.Services;
 public sealed class ScreenshotInteractionService : IScreenshotInteractionService
 {
     private readonly IOverviewDataService _overviewDataService;
+    private readonly IDialogService _dialogService;
 
-    public ScreenshotInteractionService(IOverviewDataService overviewDataService)
+    public ScreenshotInteractionService(
+        IOverviewDataService overviewDataService,
+        IDialogService dialogService)
     {
         _overviewDataService = overviewDataService;
+        _dialogService = dialogService;
     }
 
     public async Task<(bool IsDeleted, string StatusMessage)> DeleteScreenshotAsync(ScreenshotInfo? screenshot)
@@ -22,19 +25,12 @@ public sealed class ScreenshotInteractionService : IScreenshotInteractionService
 
         try
         {
-            var dialog = new ContentDialog
-            {
-                Title = "确认删除",
-                Content = $"确定要删除截图 '{screenshot.Name}' 吗？此操作不可恢复。",
-                PrimaryButtonText = "确定删除",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            var result = await dialog.ShowAsync();
-            if (result != ContentDialogResult.Primary)
+            var confirmed = await _dialogService.ShowConfirmationDialogAsync(
+                "确认删除",
+                $"确定要删除截图 '{screenshot.Name}' 吗？此操作不可恢复。",
+                "确定删除",
+                "取消");
+            if (!confirmed)
             {
                 return (false, string.Empty);
             }

@@ -571,11 +571,11 @@
                         <ComboBox
                             Grid.Column="1"
                             Margin="12,0,0,0"
-                            SelectedValuePath="Content"
+                            SelectedValuePath="Tag"
                             SelectedValue="{Binding ModsModule.ModFilterOption, Mode=TwoWay}">
-                            <ComboBoxItem Content="全部" />
-                            <ComboBoxItem Content="可更新" />
-                            <ComboBoxItem Content="重复" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ModFilterAll" Tag="all" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ModFilterUpdatable" Tag="updatable" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ModFilterDuplicate" Tag="duplicate" />
                         </ComboBox>
                     </Grid>
                     
@@ -865,11 +865,11 @@
                         <ComboBox
                             Grid.Column="1"
                             Margin="12,0,0,0"
-                            SelectedValuePath="Content"
+                            SelectedValuePath="Tag"
                             SelectedValue="{Binding ShadersModule.ShaderFilterOption, Mode=TwoWay}">
-                            <ComboBoxItem Content="全部" />
-                            <ComboBoxItem Content="可更新" />
-                            <ComboBoxItem Content="重复" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ShaderFilterAll" Tag="all" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ShaderFilterUpdatable" Tag="updatable" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ShaderFilterDuplicate" Tag="duplicate" />
                         </ComboBox>
                     </Grid>
                     
@@ -1139,11 +1139,11 @@
                         <ComboBox
                             Grid.Column="1"
                             Margin="12,0,0,0"
-                            SelectedValuePath="Content"
+                            SelectedValuePath="Tag"
                             SelectedValue="{Binding ResourcePacksModule.ResourcePackFilterOption, Mode=TwoWay}">
-                            <ComboBoxItem Content="全部" />
-                            <ComboBoxItem Content="可更新" />
-                            <ComboBoxItem Content="重复" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ResourcePackFilterAll" Tag="all" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ResourcePackFilterUpdatable" Tag="updatable" />
+                            <ComboBoxItem x:Uid="VersionManagerPage_ResourcePackFilterDuplicate" Tag="duplicate" />
                         </ComboBox>
                     </Grid>
                     

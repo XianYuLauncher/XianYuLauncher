@@ -2476,6 +2476,33 @@ Continue downloading?</value>
   <data name="VersionManagerPage_SearchMapPlaceholder.PlaceholderText" xml:space="preserve">
     <value>Search Maps...</value>
   </data>
+  <data name="VersionManagerPage_ModFilterAll.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="VersionManagerPage_ModFilterUpdatable.Content" xml:space="preserve">
+    <value>Updatable</value>
+  </data>
+  <data name="VersionManagerPage_ModFilterDuplicate.Content" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="VersionManagerPage_ShaderFilterAll.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="VersionManagerPage_ShaderFilterUpdatable.Content" xml:space="preserve">
+    <value>Updatable</value>
+  </data>
+  <data name="VersionManagerPage_ShaderFilterDuplicate.Content" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="VersionManagerPage_ResourcePackFilterAll.Content" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="VersionManagerPage_ResourcePackFilterUpdatable.Content" xml:space="preserve">
+    <value>Updatable</value>
+  </data>
+  <data name="VersionManagerPage_ResourcePackFilterDuplicate.Content" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
   <data name="ModLoaderSelector_VersionNameDescription_Default" xml:space="preserve">
     <value>Custom version name. A version folder, jar file, and json file will be created with this name upon download.</value>
   </data>

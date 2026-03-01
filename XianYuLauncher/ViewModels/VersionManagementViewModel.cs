@@ -1119,22 +1119,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 移除加载器命令 - 只清除临时选择状态，不修改配置文件
     /// </summary>
     [RelayCommand]
-    private async Task RemoveLoaderAsync(LoaderItemViewModel loader)
+    private Task RemoveLoaderAsync(LoaderItemViewModel loader)
     {
         if (loader == null)
         {
-            return;
+            return Task.CompletedTask;
         }
-        
-        try
-        {
-            // 清除临时选择状态
-            loader.SelectedVersion = null;
-            loader.IsExpanded = false;
-        }
-        catch (Exception ex)
-        {
-        }
+
+        // 清除临时选择状态
+        loader.SelectedVersion = null;
+        loader.IsExpanded = false;
+        return Task.CompletedTask;
     }
     
     /// <summary>
@@ -1316,7 +1311,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     LoadScreenshotsAsync = LoadScreenshotsAsync,
                     LoadSavesAsync = LoadSavesAsync,
                     LoadServersAsync = token => ServersModule.LoadServersAsync(token),
-                    RefreshAllCollections = RefreshAllCollections,
                     LoadSettingsDeepAsync = LoadSettingsDeepAsync,
                     LoadAllIconsAsync = LoadAllIconsAsync
                 });
@@ -1339,8 +1333,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
                 IsLoading = false;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[VersionManagement] 页面加载异常: {ex}");
+                StatusMessage = $"加载版本数据失败：{ex.Message}";
                 IsLoading = false;
             }
         }
@@ -1899,7 +1895,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         public async Task RunUiRefreshAsync(Action refreshAction)
         {
-            var refreshTcs = new TaskCompletionSource<bool>();
+            var refreshTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 try
@@ -1930,7 +1926,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        var tcs = new TaskCompletionSource<bool>();
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
         {
             try
@@ -1946,8 +1942,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         if (!enqueued)
         {
-            await asyncAction();
-            return;
+            throw new InvalidOperationException("无法将操作调度到 UI 线程。");
         }
 
         await tcs.Task;

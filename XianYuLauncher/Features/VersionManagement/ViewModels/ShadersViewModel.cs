@@ -23,6 +23,10 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 /// </summary>
 public partial class ShadersViewModel : ObservableObject
 {
+    private const string FilterAllKey = "all";
+    private const string FilterUpdatableKey = "updatable";
+    private const string FilterDuplicateKey = "duplicate";
+
     private readonly IVersionManagementResourceContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
@@ -68,7 +72,7 @@ public partial class ShadersViewModel : ObservableObject
 
     /// <summary>光影筛选类型（全部/可更新/重复）</summary>
     [ObservableProperty]
-    private string _shaderFilterOption = "全部";
+    private string _shaderFilterOption = FilterAllKey;
 
     /// <summary>是否启用多选模式</summary>
     [ObservableProperty]
@@ -547,8 +551,8 @@ public partial class ShadersViewModel : ObservableObject
     {
         return ShaderFilterOption switch
         {
-            "可更新" => source.Where(IsShaderUpdatable),
-            "重复" => ApplyDuplicateFilter(source, _allShaders, BuildShaderDuplicateKey),
+            FilterUpdatableKey => source.Where(IsShaderUpdatable),
+            FilterDuplicateKey => ApplyDuplicateFilter(source, _allShaders, BuildShaderDuplicateKey),
             _ => source
         };
     }
@@ -722,7 +726,7 @@ public partial class ShadersViewModel : ObservableObject
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(shader.FilePath);
+                var fingerprint = await _context.GetSharedCurseForgeFingerprintAsync(shader.FilePath, cancellationToken);
                 if (!fingerprintToFilePath.ContainsKey(fingerprint))
                 {
                     fingerprintToFilePath[fingerprint] = shader.FilePath;
@@ -802,7 +806,7 @@ public partial class ShadersViewModel : ObservableObject
                 }
             }
 
-            if (ShaderFilterOption == "可更新")
+            if (ShaderFilterOption != FilterAllKey)
             {
                 FilterShaders();
             }
