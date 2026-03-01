@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
@@ -36,6 +37,17 @@ public interface IVersionManagementContext
 
     /// <summary>根据版本隔离设置获取文件路径（如 servers.dat）</summary>
     Task<string> GetVersionSpecificFilePathAsync(string fileName);
+
+    /// <summary>获取 Minecraft 数据路径</summary>
+    string GetMinecraftDataPath();
+}
+
+/// <summary>
+/// 资源模块（Mods/Shaders/ResourcePacks）专用上下文。
+/// 在核心上下文之上扩展下载、转移、更新结果和资源工具能力，避免污染通用接口。
+/// </summary>
+public interface IVersionManagementResourceContext : IVersionManagementContext
+{
 
     #region 下载进度共享状态
 
@@ -96,11 +108,17 @@ public interface IVersionManagementContext
     /// <summary>计算文件的 SHA1 哈希值</summary>
     string CalculateSHA1(string filePath);
 
+    /// <summary>获取共享缓存的 SHA1（用于并发链路复用）</summary>
+    Task<string> GetSharedSha1Async(string filePath, CancellationToken cancellationToken);
+
+    /// <summary>获取共享缓存的 CurseForge Fingerprint（用于并发链路复用）</summary>
+    Task<uint> GetSharedCurseForgeFingerprintAsync(string filePath, CancellationToken cancellationToken);
+
+    /// <summary>基于共享缓存哈希获取资源元数据</summary>
+    Task<ModMetadata?> GetResourceMetadataAsync(string filePath, CancellationToken cancellationToken);
+
     /// <summary>复制目录</summary>
     void CopyDirectory(string sourceDir, string destinationDir);
-
-    /// <summary>获取 Minecraft 数据路径</summary>
-    string GetMinecraftDataPath();
 
     /// <summary>获取启动器缓存路径</summary>
     string GetLauncherCachePath();

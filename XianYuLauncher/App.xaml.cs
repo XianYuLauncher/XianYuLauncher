@@ -16,6 +16,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.Features.VersionManagement.Services;
 using XianYuLauncher.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
@@ -125,6 +126,7 @@ public partial class App : Application
                 return new AutoSpeedTestService(speedTestService);
             });
             services.AddSingleton<IDownloadManager, DownloadManager>();
+            services.AddSingleton<IHashLookupCenter, HashLookupCenter>();
             
             // FallbackDownloadManager - 带回退功能的下载管理器（可选使用）
             services.AddSingleton<FallbackDownloadManager>(sp =>
@@ -278,7 +280,8 @@ public partial class App : Application
                 var httpClient = httpClientFactory.CreateClient(nameof(ModrinthService));
                 var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
                 var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
-                return new ModrinthService(httpClient, downloadSourceFactory, fallbackDownloadManager);
+                var hashLookupCenter = sp.GetRequiredService<IHashLookupCenter>();
+                return new ModrinthService(httpClient, downloadSourceFactory, fallbackDownloadManager, hashLookupCenter);
             });
             
             // Modrinth Cache Service
@@ -292,7 +295,8 @@ public partial class App : Application
                 var httpClient = httpClientFactory.CreateClient(nameof(CurseForgeService));
                 var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
                 var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
-                return new CurseForgeService(httpClient, downloadSourceFactory, fallbackDownloadManager);
+                var hashLookupCenter = sp.GetRequiredService<IHashLookupCenter>();
+                return new CurseForgeService(httpClient, downloadSourceFactory, fallbackDownloadManager, hashLookupCenter);
             });
             
             // CurseForge Cache Service
@@ -355,6 +359,16 @@ public partial class App : Application
                 var curseForgeService = sp.GetRequiredService<CurseForgeService>();
                 return new ModInfoService(modrinthService, translationService, curseForgeService);
             });
+            services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
+            services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();
+            services.AddSingleton<IOverviewDataService, OverviewDataService>();
+            services.AddSingleton<IDragDropImportService, DragDropImportService>();
+            services.AddSingleton<IResourceTransferInfrastructureService, ResourceTransferInfrastructureService>();
+            services.AddSingleton<IVersionPageLoadOrchestrator, VersionPageLoadOrchestrator>();
+            services.AddSingleton<ILoaderUiOrchestrator, LoaderUiOrchestrator>();
+            services.AddSingleton<IVersionPathNavigationService, VersionPathNavigationService>();
+            services.AddSingleton<IScreenshotInteractionService, ScreenshotInteractionService>();
+            services.AddSingleton<IResourceIconLoadCoordinator, ResourceIconLoadCoordinator>();
             
             // AuthlibInjector Service
             services.AddSingleton<AuthlibInjectorService>();

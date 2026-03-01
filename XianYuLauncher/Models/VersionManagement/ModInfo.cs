@@ -64,6 +64,12 @@ public partial class ModInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isLoadingDescription;
+
+    /// <summary>
+    /// 是否有可更新版本
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasUpdate;
     
     /// <summary>
     /// Mod显示名称
@@ -96,6 +102,7 @@ public partial class ModInfo : ObservableObject
         IsSelected = false; // 初始未选中
         Description = null; // 初始无描述
         IsLoadingDescription = false;
+        HasUpdate = false;
         Source = null;
     }
 }
