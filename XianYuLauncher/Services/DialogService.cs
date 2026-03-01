@@ -879,4 +879,76 @@ public class DialogService : IDialogService
             propertyChanged.PropertyChanged -= OnPropertyChanged;
         }
     }
+
+    public async Task<System.Collections.Generic.List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates)
+    {
+        var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 400 };
+
+        panel.Children.Add(new TextBlock {
+            Text = "请勾选你想要更新的组件：",
+            FontSize = 14
+        });
+
+        var itemsList = availableUpdates.ToList();
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.None,
+            MaxHeight = 350,
+            ItemsSource = itemsList
+        };
+        // 绑定使用类似收藏夹的样式
+        string xaml = @"
+<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+    <Grid Margin='0,8'>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width='Auto'/>
+            <ColumnDefinition Width='40'/>
+            <ColumnDefinition Width='*'/>
+        </Grid.ColumnDefinitions>
+        
+        <CheckBox Grid.Column='0' IsChecked='{Binding IsSelected, Mode=TwoWay}' VerticalAlignment='Center' Margin='0,0,12,0' MinWidth='0'/>
+        
+        <Border Grid.Column='1' CornerRadius='4' Width='32' Height='32' Background='{ThemeResource LayerFillColorDefaultBrush}' HorizontalAlignment='Left'>
+            <Grid>
+                <FontIcon Glyph='{Binding FallbackIconGlyph}' FontSize='16' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
+                <Image Source='{Binding IconSource}' Stretch='UniformToFill'/>
+            </Grid>
+        </Border>
+        
+        <StackPanel Grid.Column='2' Margin='8,0,0,0' VerticalAlignment='Center'>
+            <TextBlock Text='{Binding DisplayName}' MaxLines='1' TextTrimming='CharacterEllipsis' FontWeight='SemiBold'/>
+            <StackPanel Orientation='Horizontal' Spacing='4'>
+                <TextBlock Text='{Binding ResourceType}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorTertiaryBrush}'/>
+                <TextBlock Text='·' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorTertiaryBrush}'/>
+                <TextBlock Text='{Binding CurrentVersion}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
+                <FontIcon Glyph='&#xE709;' FontSize='10' Foreground='{ThemeResource TextFillColorTertiaryBrush}' Margin='2,0'/>
+                <TextBlock Text='{Binding NewVersion}' MaxLines='1' Style='{ThemeResource CaptionTextBlockStyle}' Foreground='{ThemeResource TextFillColorSecondaryBrush}'/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</DataTemplate>";
+
+        var dataTemplate = (DataTemplate)XamlReader.Load(xaml);
+        listView.ItemTemplate = dataTemplate;
+
+        panel.Children.Add(listView);
+
+        var dialog = new ContentDialog
+        {
+            // title should not be directly string bound if not localized, but we can localize it next
+            Title = "一键更新", 
+            Content = panel,
+            PrimaryButtonText = "确认更新",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result == ContentDialogResult.Primary)
+        {
+            return itemsList.Where(x => x.IsSelected).ToList();
+        }
+        return null;
+    }
 }

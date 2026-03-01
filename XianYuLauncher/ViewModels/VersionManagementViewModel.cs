@@ -1990,6 +1990,31 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
     }
 
+    [RelayCommand]
+    public async Task UpdateAllResourcesAsync()
+    {
+        // 模拟生成一些可更新资源的测试数据，供你在进行界面审查时参考交互
+        // 此模块后续转交由后端负责查询实际数据并填充
+        var mockItems = new List<UpdatableResourceItem>
+        {
+            new UpdatableResourceItem { DisplayName = "Sodium", ResourceType = "Mod", CurrentVersion = "mc1.20.1-0.5.3", NewVersion = "mc1.20.1-0.5.8", FallbackIconGlyph = "\uE74C" },
+            new UpdatableResourceItem { DisplayName = "Iris Shaders", ResourceType = "Mod", CurrentVersion = "1.6.4", NewVersion = "1.6.17", FallbackIconGlyph = "\uE74C" },
+            new UpdatableResourceItem { DisplayName = "Complementary Reimagined", ResourceType = "Shader", CurrentVersion = "r5.0.1", NewVersion = "r5.1.1", FallbackIconGlyph = "\uE7B3" },
+            new UpdatableResourceItem { DisplayName = "Faithful 32x", ResourceType = "ResourcePack", CurrentVersion = "1.20.1", NewVersion = "1.20.4", FallbackIconGlyph = "\uE7B8" },
+            new UpdatableResourceItem { DisplayName = "Fabric API", ResourceType = "Mod", CurrentVersion = "0.85.0", NewVersion = "0.92.0", FallbackIconGlyph = "\uE74C" }
+        };
+
+        var dialogService = App.GetService<IDialogService>();
+        var selectedItems = await dialogService.ShowUpdatableResourcesSelectionDialogAsync(mockItems);
+        
+        if (selectedItems != null && selectedItems.Count > 0)
+        {
+            // 给后端接手的人的占位符注释
+            System.Diagnostics.Debug.WriteLine($"User confirmed. Proceeding to update {selectedItems.Count} items.");
+            // Do actual update queue push here
+        }
+    }
+
     #endregion
     #endregion
 }
