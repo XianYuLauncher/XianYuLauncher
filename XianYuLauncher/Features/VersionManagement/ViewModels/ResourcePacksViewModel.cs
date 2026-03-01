@@ -429,8 +429,8 @@ public partial class ResourcePacksViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在转移资源包";
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.StatusMessage = "正在准备资源包转移...";
 
@@ -575,8 +575,8 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             if (!suppressUiFeedback)
             {
-                _context.IsDownloading = true;
                 _context.DownloadProgressDialogTitle = "正在更新资源包...";
+                _context.IsDownloading = true;
                 _context.DownloadProgress = 0;
                 _context.CurrentDownloadItem = string.Empty;
             }
