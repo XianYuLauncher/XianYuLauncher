@@ -542,7 +542,9 @@ public partial class ModsViewModel : ObservableObject
         await UpdateSelectedModsAsync(selectedMods);
     }
 
-    public async Task<ResourceUpdateBatchResult> UpdateSelectedModsAsync(IReadOnlyList<ModInfo> selectedMods)
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedModsAsync(
+        IReadOnlyList<ModInfo> selectedMods,
+        bool showResultDialog = true)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -637,8 +639,11 @@ public partial class ModsViewModel : ObservableObject
 
             // 显示结果
             _context.StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            if (showResultDialog)
+            {
+                _context.UpdateResults = _context.StatusMessage;
+                _context.IsResultDialogVisible = true;
+            }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
@@ -650,6 +655,11 @@ public partial class ModsViewModel : ObservableObject
         {
             System.Diagnostics.Debug.WriteLine($"更新Mod失败: {ex.Message}");
             _context.StatusMessage = $"更新Mod失败: {ex.Message}";
+            if (showResultDialog)
+            {
+                _context.UpdateResults = _context.StatusMessage;
+                _context.IsResultDialogVisible = true;
+            }
             result.IsSuccess = false;
             result.Message = _context.StatusMessage;
             result.Errors.Add(ex.Message);

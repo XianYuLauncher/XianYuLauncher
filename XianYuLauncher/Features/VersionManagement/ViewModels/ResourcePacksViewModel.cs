@@ -550,7 +550,9 @@ public partial class ResourcePacksViewModel : ObservableObject
         await UpdateSelectedResourcePacksAsync(selectedPacks);
     }
 
-    public async Task<ResourceUpdateBatchResult> UpdateSelectedResourcePacksAsync(IReadOnlyList<ResourcePackInfo> selectedPacks)
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedResourcePacksAsync(
+        IReadOnlyList<ResourcePackInfo> selectedPacks,
+        bool showResultDialog = true)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -621,8 +623,11 @@ public partial class ResourcePacksViewModel : ObservableObject
             await ReloadResourcePacksWithIconsAsync();
 
             _context.StatusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            if (showResultDialog)
+            {
+                _context.UpdateResults = _context.StatusMessage;
+                _context.IsResultDialogVisible = true;
+            }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
@@ -633,8 +638,11 @@ public partial class ResourcePacksViewModel : ObservableObject
         catch (Exception ex)
         {
             _context.StatusMessage = $"更新资源包失败: {ex.Message}";
-            _context.IsResultDialogVisible = true;
-            _context.UpdateResults = $"更新失败: {ex.Message}";
+            if (showResultDialog)
+            {
+                _context.IsResultDialogVisible = true;
+                _context.UpdateResults = $"更新失败: {ex.Message}";
+            }
 
             result.IsSuccess = false;
             result.Message = _context.StatusMessage;
