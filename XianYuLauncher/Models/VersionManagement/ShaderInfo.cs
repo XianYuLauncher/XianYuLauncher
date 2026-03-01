@@ -69,6 +69,18 @@ public partial class ShaderInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _hasUpdate;
+
+    /// <summary>
+    /// 当前版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _currentVersion = string.Empty;
+
+    /// <summary>
+    /// 可升级版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _latestVersion = string.Empty;
     
     /// <summary>
     /// 构造函数
@@ -93,5 +105,7 @@ public partial class ShaderInfo : ObservableObject
         Description = null;
         IsLoadingDescription = false;
         HasUpdate = false;
+        CurrentVersion = string.Empty;
+        LatestVersion = string.Empty;
     }
 }

@@ -80,6 +80,9 @@ public partial class ModsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isModSelectionModeEnabled;
 
+    /// <summary>可更新 Mod 数量（基于全量列表）</summary>
+    public int UpdatableModCount => _allMods.Count(mod => mod.HasUpdate);
+
     partial void OnModSearchTextChanged(string value) => FilterMods();
 
     partial void OnModFilterOptionChanged(string value) => FilterMods();
@@ -150,10 +153,13 @@ public partial class ModsViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Source)) mod.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) mod.ProjectId = existing.ProjectId;
                 mod.HasUpdate = existing.HasUpdate;
+                mod.CurrentVersion = existing.CurrentVersion;
+                mod.LatestVersion = existing.LatestVersion;
             }
         }
 
         _allMods = newModsList;
+        OnPropertyChanged(nameof(UpdatableModCount));
         StartModUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -174,6 +180,11 @@ public partial class ModsViewModel : ObservableObject
                 _context.LoadResourceIconAsync(icon => mod.Icon = icon, mod.FilePath, "mod", true, default));
             await Task.WhenAll(tasks);
         }
+    }
+
+    public IReadOnlyList<ModInfo> GetUpdatableModsSnapshot()
+    {
+        return _allMods.Where(mod => mod.HasUpdate).ToList();
     }
 
     /// <summary>过滤 Mod 列表</summary>
@@ -282,46 +293,44 @@ public partial class ModsViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "VersionManagerPage_MigratingModsText".GetLocalized();
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.CurrentDownloadItem = string.Empty;
             _context.StatusMessage = "VersionManagerPage_PreparingModTransferText".GetLocalized();
 
             var moveResults = new List<MoveModResult>();
 
-            string sourceVersionPath = _context.GetVersionSpecificPath("mods");
             string targetVersion = _context.SelectedTargetVersion.VersionName;
 
-            var originalSelectedVersion = _context.SelectedVersion;
-
-            _context.SelectedVersion = new VersionListViewModel.VersionInfoItem
+            var targetVersionInfo = new VersionListViewModel.VersionInfoItem
             {
                 Name = targetVersion,
                 Path = Path.Combine(_context.GetMinecraftDataPath(), "versions", targetVersion)
             };
 
-            if (_context.SelectedVersion == null || !Directory.Exists(_context.SelectedVersion.Path))
+            if (!Directory.Exists(targetVersionInfo.Path))
             {
                 throw new Exception($"无法找到目标版本: {targetVersion}");
             }
 
-            string targetVersionPath = _context.GetVersionSpecificPath("mods");
+            string targetVersionPath = Path.Combine(targetVersionInfo.Path, "mods");
+            Directory.CreateDirectory(targetVersionPath);
 
             // 获取目标版本的 ModLoader 和游戏版本
             string modLoader = "fabric";
-            string gameVersion = _context.SelectedVersion?.VersionNumber ?? "1.19.2";
+            string gameVersion = targetVersionInfo.VersionNumber ?? "1.19.2";
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-            if (versionInfoService != null && _context.SelectedVersion != null)
+            if (versionInfoService != null)
             {
-                string versionDir = _context.SelectedVersion.Path;
+                string versionDir = targetVersionInfo.Path;
                 Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(
-                    _context.SelectedVersion.Name, versionDir);
+                    targetVersionInfo.Name, versionDir);
 
                 if (versionConfig != null)
                 {
-                    modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, _context.SelectedVersion.Name);
+                    modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, targetVersionInfo.Name);
 
                     if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
                     {
@@ -332,6 +341,9 @@ public partial class ModsViewModel : ObservableObject
 
             System.Diagnostics.Debug.WriteLine($"转移Mod到目标版本: {targetVersion}");
             System.Diagnostics.Debug.WriteLine($"目标版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
+
+            var existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
+            bool shouldRefreshExistingProjects = false;
 
             for (int i = 0; i < _selectedModsForMove.Count; i++)
             {
@@ -347,7 +359,28 @@ public partial class ModsViewModel : ObservableObject
                 {
                     System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
 
-                    bool modrinthSuccess = await TryMoveModViaModrinthAsync(mod, modLoader, gameVersion, targetVersionPath, result);
+                    if (shouldRefreshExistingProjects)
+                    {
+                        existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
+                        shouldRefreshExistingProjects = false;
+                    }
+
+                    string sourceSha1 = _context.CalculateSHA1(mod.FilePath);
+                    var sourceVersion = await _modrinthService.GetVersionFileByHashAsync(sourceSha1);
+                    if (!string.IsNullOrWhiteSpace(sourceVersion?.ProjectId))
+                    {
+                        if (existingProjects.TryGetValue(sourceVersion.ProjectId, out var existingFilePath) && File.Exists(existingFilePath))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MoveMod][Dedup] 目标目录已存在同项目文件，跳过重复处理: 项目={sourceVersion.ProjectId}, 文件={existingFilePath}");
+                            result.Status = MoveModStatus.Success;
+                            result.TargetPath = existingFilePath;
+                            moveResults.Add(result);
+                            _context.DownloadProgress = (i + 1) / (double)_selectedModsForMove.Count * 100;
+                            continue;
+                        }
+                    }
+
+                    bool modrinthSuccess = await TryMoveModViaModrinthAsync(mod, modLoader, gameVersion, targetVersionPath, result, sourceVersion);
 
                     if (!modrinthSuccess)
                     {
@@ -364,6 +397,16 @@ public partial class ModsViewModel : ObservableObject
                             result.TargetPath = targetFilePath;
                         }
                     }
+
+                    if (!string.IsNullOrWhiteSpace(sourceVersion?.ProjectId) && !string.IsNullOrWhiteSpace(result.TargetPath))
+                    {
+                        existingProjects[sourceVersion.ProjectId] = result.TargetPath;
+                    }
+
+                    if (modrinthSuccess)
+                    {
+                        shouldRefreshExistingProjects = true;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -375,9 +418,6 @@ public partial class ModsViewModel : ObservableObject
                 moveResults.Add(result);
                 _context.DownloadProgress = (i + 1) / (double)_selectedModsForMove.Count * 100;
             }
-
-            // 恢复原始选中版本
-            _context.SelectedVersion = originalSelectedVersion;
 
             _context.MoveResults = moveResults;
             _context.IsMoveResultDialogVisible = true;
@@ -522,27 +562,49 @@ public partial class ModsViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateModsAsync(ModInfo? mod = null)
     {
+        var selectedMods = Mods.Where(item => item.IsSelected).ToList();
+        if (selectedMods.Count == 0 && mod != null)
+        {
+            selectedMods.Add(mod);
+        }
+
+        await UpdateSelectedModsAsync(selectedMods);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedModsAsync(
+        IReadOnlyList<ModInfo> selectedMods,
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedMods = Mods.Where(mod => mod.IsSelected).ToList();
-            if (selectedMods.Count == 0 && mod != null)
+            if (selectedMods == null || selectedMods.Count == 0)
             {
-                selectedMods.Add(mod);
-            }
-            if (selectedMods.Count == 0)
-            {
-                _context.StatusMessage = "请先选择要更新的Mod";
-                return;
+                var emptyMessage = "请先选择要更新的Mod";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
+                result.IsSuccess = false;
+                result.Message = emptyMessage;
+                return result;
             }
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            if (!suppressUiFeedback)
+            {
+                _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
+                _context.IsDownloading = true;
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
+
+            var updateTargets = selectedMods.ToList();
 
             // 计算选中 Mod 的 SHA1 哈希值（用于 Modrinth）
             var modHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedMods,
+                updateTargets,
                 mod => mod.FilePath,
                 _context.CalculateSHA1,
                 onHashed: (mod, sha1Hash) =>
@@ -580,7 +642,7 @@ public partial class ModsViewModel : ObservableObject
             int upToDateCount = 0;
 
             // 第一步：尝试通过 Modrinth 更新
-            System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {selectedMods.Count} 个Mod");
+            System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {updateTargets.Count} 个Mod");
             var modrinthResult = await TryUpdateModsViaModrinthAsync(
                 modHashes,
                 modFilePathMap,
@@ -592,7 +654,7 @@ public partial class ModsViewModel : ObservableObject
             upToDateCount += modrinthResult.UpToDateCount;
 
             // 第二步：对于 Modrinth 未找到的 Mod，尝试通过 CurseForge 更新
-            var modrinthFailedMods = selectedMods
+            var modrinthFailedMods = updateTargets
                 .Where(mod => !modrinthResult.ProcessedMods.Contains(mod.FilePath))
                 .ToList();
 
@@ -613,20 +675,50 @@ public partial class ModsViewModel : ObservableObject
             await ReloadModsWithIconsAsync();
 
             // 显示结果
-            _context.StatusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            var statusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
+            }
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"更新Mod失败: {ex.Message}");
-            _context.StatusMessage = $"更新Mod失败: {ex.Message}";
+            var errorMessage = $"更新Mod失败: {ex.Message}";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = errorMessage;
+                    _context.IsResultDialogVisible = true;
+                }
+            }
+            result.IsSuccess = false;
+            result.Message = errorMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
+
+        return result;
     }
 
     [RelayCommand]
@@ -651,13 +743,16 @@ public partial class ModsViewModel : ObservableObject
 
     /// <summary>尝试通过 Modrinth 转移 Mod</summary>
     private async Task<bool> TryMoveModViaModrinthAsync(
-        ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result)
+        ModInfo mod, string modLoader, string gameVersion, string targetVersionPath, MoveModResult result, ModrinthVersion? sourceVersion = null)
     {
         try
         {
-            string sha1Hash = _context.CalculateSHA1(mod.FilePath);
-
-            ModrinthVersion modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+            ModrinthVersion modrinthVersion = sourceVersion;
+            if (modrinthVersion == null)
+            {
+                string sha1Hash = _context.CalculateSHA1(mod.FilePath);
+                modrinthVersion = await _modrinthService.GetVersionFileByHashAsync(sha1Hash);
+            }
 
             if (modrinthVersion == null)
             {
@@ -1101,10 +1196,12 @@ public partial class ModsViewModel : ObservableObject
                 .Where(mod => !string.IsNullOrWhiteSpace(mod.FilePath))
                 .ToDictionary(mod => mod.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
             var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (updatableByFile.Count == 0)
             {
-                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
 
@@ -1121,9 +1218,12 @@ public partial class ModsViewModel : ObservableObject
 
             if (hashList.Count == 0)
             {
-                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashList, "sha1")
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
 
             var runtime = await ResolveCurrentRuntimeAsync(cancellationToken);
             var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
@@ -1141,10 +1241,17 @@ public partial class ModsViewModel : ObservableObject
                     continue;
                 }
 
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                {
+                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
+                }
+
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
                 {
                     continue;
                 }
+
+                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -1173,10 +1280,12 @@ public partial class ModsViewModel : ObservableObject
                     runtime.GameVersion,
                     updatableByFile,
                     projectIdentityByFile,
+                        currentVersionByFile,
+                        latestVersionByFile,
                     cancellationToken);
             }
 
-            ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                    ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException)
         {
@@ -1193,6 +1302,8 @@ public partial class ModsViewModel : ObservableObject
         string gameVersion,
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         CancellationToken cancellationToken)
     {
         var fingerprintToFilePath = new Dictionary<uint, string>();
@@ -1244,6 +1355,8 @@ public partial class ModsViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
+            currentVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(match.File);
+
             if (match.LatestFiles == null || match.LatestFiles.Count == 0)
             {
                 continue;
@@ -1269,6 +1382,8 @@ public partial class ModsViewModel : ObservableObject
             {
                 continue;
             }
+
+            latestVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(latestFile);
 
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
@@ -1306,6 +1421,8 @@ public partial class ModsViewModel : ObservableObject
     private void ApplyModUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         int generation)
     {
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -1322,12 +1439,20 @@ public partial class ModsViewModel : ObservableObject
             foreach (var mod in allItems)
             {
                 mod.HasUpdate = updatableByFile.TryGetValue(mod.FilePath, out var hasUpdate) && hasUpdate;
+                mod.CurrentVersion = currentVersionByFile.TryGetValue(mod.FilePath, out var currentVersion)
+                    ? currentVersion
+                    : string.Empty;
+                mod.LatestVersion = latestVersionByFile.TryGetValue(mod.FilePath, out var latestVersion)
+                    ? latestVersion
+                    : string.Empty;
                 if (projectIdentityByFile.TryGetValue(mod.FilePath, out var identity))
                 {
                     mod.Source = identity.Source;
                     mod.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableModCount));
 
             if (ModFilterOption != FilterAllKey)
             {

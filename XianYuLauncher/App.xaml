@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="/Styles/FontSizes.xaml" />
                 <ResourceDictionary Source="/Styles/Thickness.xaml" />
                 <ResourceDictionary Source="/Styles/TextBlock.xaml" />
+                <ResourceDictionary Source="/Styles/DialogTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:BoolNegationConverter x:Key="BoolNegationConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />

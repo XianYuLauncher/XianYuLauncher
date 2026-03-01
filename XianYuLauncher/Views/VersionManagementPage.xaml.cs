@@ -8,6 +8,7 @@ using Windows.Storage;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
+using XianYuLauncher.Contracts.Services;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using System.IO.Compression;
@@ -18,13 +19,16 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionManagementPage : Page
 {
     public VersionManagementViewModel ViewModel { get; }
+    private readonly IDialogService _dialogService;
     
     // 标记页面是否正在卸载
     private bool _isUnloading = false;
+    private TaskCompletionSource<object?>? _downloadDialogCloseSignal;
 
     public VersionManagementPage()
     {
         ViewModel = App.GetService<VersionManagementViewModel>();
+        _dialogService = App.GetService<IDialogService>();
         this.DataContext = ViewModel;
         InitializeComponent();
         
@@ -67,6 +71,8 @@ public sealed partial class VersionManagementPage : Page
         });
         
         // 取消注册事件，防止内存泄漏
+        _downloadDialogCloseSignal?.TrySetResult(null);
+        _downloadDialogCloseSignal = null;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         this.Unloaded -= VersionManagementPage_Unloaded;
     }
@@ -87,10 +93,7 @@ public sealed partial class VersionManagementPage : Page
                     if (ViewModel.IsInstallingExtension)
                     {
                         // 关闭所有可能打开的弹窗
-                        MoveResourcesDialog.Hide();
-                        ResultDialog.Hide();
-                        MoveResultDialog.Hide();
-                        DownloadProgressDialog.Hide();
+                        _downloadDialogCloseSignal?.TrySetResult(null);
                         
                         // 等待足够长的时间，确保所有弹窗完全关闭
                         await Task.Delay(100);
@@ -106,55 +109,61 @@ public sealed partial class VersionManagementPage : Page
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
                 {
-                    // 关闭所有可能打开的弹窗
-                    MoveResourcesDialog.Hide();
-                    ResultDialog.Hide();
-                    MoveResultDialog.Hide();
                     ExtensionInstallDialog.Hide();
-                    
-                    // 等待足够长的时间，确保所有弹窗完全关闭
-                    await Task.Delay(100);
-                    
-                    // 显示下载进度弹窗
-                    await DownloadProgressDialog.ShowAsync();
+
+                    _downloadDialogCloseSignal?.TrySetResult(null);
+                    _downloadDialogCloseSignal = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                    _ = ShowDownloadProgressDialogAsync(_downloadDialogCloseSignal.Task);
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsDownloading) && !ViewModel.IsDownloading)
+                {
+                    _downloadDialogCloseSignal?.TrySetResult(null);
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsResultDialogVisible) && ViewModel.IsResultDialogVisible)
                 {
-                    // 关闭下载进度弹窗（如果显示）
-                    DownloadProgressDialog.Hide();
+                    _downloadDialogCloseSignal?.TrySetResult(null);
                     ExtensionInstallDialog.Hide();
-                    
-                    // 等待足够长的时间，确保弹窗完全关闭
-                    await Task.Delay(100);
-                    
-                    // 显示结果弹窗
-                    await ResultDialog.ShowAsync();
+
+                    await _dialogService.ShowMessageDialogAsync(
+                        title: "VersionManagerPage_UpdateResultDialog.Title".GetLocalized(),
+                        message: ViewModel.UpdateResults,
+                        closeButtonText: "VersionManagerPage_UpdateResultDialog.PrimaryButtonText".GetLocalized());
+
+                    ViewModel.IsResultDialogVisible = false;
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsMoveResourcesDialogVisible) && ViewModel.IsMoveResourcesDialogVisible)
                 {
-                    // 关闭所有可能打开的弹窗
-                    DownloadProgressDialog.Hide();
-                    ResultDialog.Hide();
-                    MoveResultDialog.Hide();
+                    _downloadDialogCloseSignal?.TrySetResult(null);
                     ExtensionInstallDialog.Hide();
-                    
-                    // 等待足够长的时间，确保所有弹窗完全关闭
-                    await Task.Delay(100);
-                    
-                    // 显示转移资源到其他版本弹窗
-                    await MoveResourcesDialog.ShowAsync();
+
+                    var selectedTarget = await _dialogService.ShowListSelectionDialogAsync(
+                        title: "VersionManagerPage_MoveModsDialog.Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveModsDialog_InstructionText.Text".GetLocalized(),
+                        items: ViewModel.TargetVersions,
+                        displayMemberFunc: item => item.VersionName,
+                        primaryButtonText: "VersionManagerPage_MoveModsDialog.PrimaryButtonText".GetLocalized(),
+                        closeButtonText: "VersionManagerPage_MoveModsDialog.CloseButtonText".GetLocalized());
+
+                    ViewModel.IsMoveResourcesDialogVisible = false;
+
+                    if (selectedTarget != null)
+                    {
+                        ViewModel.SelectedTargetVersion = selectedTarget;
+                        await ViewModel.ConfirmMoveResourcesCommand.ExecuteAsync(null);
+                    }
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsMoveResultDialogVisible) && ViewModel.IsMoveResultDialogVisible)
                 {
-                    // 关闭下载进度弹窗（如果显示）
-                    DownloadProgressDialog.Hide();
+                    _downloadDialogCloseSignal?.TrySetResult(null);
                     ExtensionInstallDialog.Hide();
-                    
-                    // 等待足够长的时间，确保弹窗完全关闭
-                    await Task.Delay(100);
-                    
-                    // 显示转移结果弹窗
-                    await MoveResultDialog.ShowAsync();
+
+                    await _dialogService.ShowMoveResultDialogAsync(
+                        ViewModel.MoveResults,
+                        title: "VersionManagerPage_MoveResultDialog.Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveResultDialog_InstructionText.Text".GetLocalized());
+
+                    ViewModel.IsMoveResultDialogVisible = false;
                 }
                 else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
                 {
@@ -169,51 +178,25 @@ public sealed partial class VersionManagementPage : Page
             }
         }
     
-    /// <summary>
-    /// 结果弹窗确定按钮点击事件处理
-    /// </summary>
-    private void ResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private async Task ShowDownloadProgressDialogAsync(Task closeSignal)
     {
-        // 关闭结果弹窗
-        ViewModel.IsResultDialogVisible = false;
-    }
-    
-    /// <summary>
-        /// 转移Mod到其他版本弹窗 - 确认按钮点击事件
-        /// </summary>
-    /// <summary>
-    /// 转移资源到其他版本弹窗 - 确定按钮点击事件
-    /// </summary>
-    private async void MoveResourcesDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        // 关闭当前弹窗
-        sender.Hide();
-        ViewModel.IsMoveResourcesDialogVisible = false;
-        
-        // 等待足够长的时间，确保弹窗完全关闭
-        await Task.Delay(200);
-        
-        // 调用ViewModel的确认转移命令
-        await ViewModel.ConfirmMoveResourcesCommand.ExecuteAsync(null);
-    }
-
-    /// <summary>
-    /// 转移资源到其他版本弹窗 - 取消按钮点击事件
-    /// </summary>
-    private void MoveResourcesDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        // 关闭弹窗
-        ViewModel.IsMoveResourcesDialogVisible = false;
-    }
-        
-        /// <summary>
-        /// 转移Mod结果弹窗 - 确定按钮点击事件
-        /// </summary>
-        private void MoveResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+        try
         {
-            // 关闭转移结果弹窗
-            ViewModel.IsMoveResultDialogVisible = false;
+            await _dialogService.ShowObservableProgressDialogAsync(
+                title: ViewModel.DownloadProgressDialogTitle,
+                getStatus: () => ViewModel.CurrentDownloadItem,
+                getProgress: () => ViewModel.DownloadProgress,
+                getProgressText: () => $"{ViewModel.DownloadProgress:F0}%",
+                propertyChanged: ViewModel,
+                primaryButtonText: null,
+                closeButtonText: null,
+                autoCloseWhen: closeSignal);
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"显示下载进度弹窗失败: {ex.Message}");
+        }
+    }
     
     /// <summary>
     /// 更新页面标题

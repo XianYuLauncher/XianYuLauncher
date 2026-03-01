@@ -3132,4 +3132,31 @@ Continue downloading?</value>
   <data name="Settings_OpenConfigFolder.Content" xml:space="preserve">
     <value>Open Config Folder</value>
   </data>
+  <data name="VersionManagerPage_UpdatableResourcesLabel.Text" xml:space="preserve">
+    <value>Updatable Resources</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesBannerTitle.Text" xml:space="preserve">
+    <value>Updates Available</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesCount.Text" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesDescriptionFormat" xml:space="preserve">
+    <value>Detected {0} updatable components for this version</value>
+  </data>
+  <data name="VersionManagerPage_UpdateAllResourcesButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Update All</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.Title" xml:space="preserve">
+    <value>Update All</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.InstructionText" xml:space="preserve">
+    <value>Select the components you want to update:</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Confirm Update</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

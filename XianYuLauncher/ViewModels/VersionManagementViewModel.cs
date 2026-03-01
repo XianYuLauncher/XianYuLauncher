@@ -220,6 +220,23 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 资源包数量
     /// </summary>
     public int ResourcePackCount => ResourcePacksModule?.ResourcePacks.Count ?? 0;
+
+    /// <summary>
+    /// 可更新资源总数（Mod + 光影 + 资源包）
+    /// </summary>
+    [ObservableProperty]
+    private int _updatableResourceCount = 0;
+
+    /// <summary>
+    /// 是否存在可更新资源（用于控制概览卡片显示）
+    /// </summary>
+    public bool HasUpdatableResources => UpdatableResourceCount > 0;
+
+    /// <summary>
+    /// 概览页可更新资源描述文本
+    /// </summary>
+    public string UpdatableResourcesDescription =>
+        string.Format("VersionManagerPage_UpdatableResourcesDescriptionFormat".GetLocalized(), UpdatableResourceCount);
     
     /// <summary>
     /// 截图数量
@@ -257,6 +274,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnLastLaunchTimeChanged(DateTime? value)
     {
         OnPropertyChanged(nameof(FormattedLastLaunchTime));
+    }
+
+    partial void OnUpdatableResourceCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasUpdatableResources));
+        OnPropertyChanged(nameof(UpdatableResourcesDescription));
     }
     
     #endregion
@@ -611,6 +634,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 AttachModsCollectionObserver();
             }
+            else if (e.PropertyName == nameof(ModsViewModel.UpdatableModCount))
+            {
+                RefreshUpdatableResourceSummary();
+            }
         };
 
         ShadersModule.PropertyChanged += (_, e) =>
@@ -618,6 +645,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             if (e.PropertyName == nameof(ShadersViewModel.Shaders))
             {
                 AttachShadersCollectionObserver();
+            }
+            else if (e.PropertyName == nameof(ShadersViewModel.UpdatableShaderCount))
+            {
+                RefreshUpdatableResourceSummary();
             }
         };
 
@@ -627,12 +658,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 AttachResourcePacksCollectionObserver();
             }
+            else if (e.PropertyName == nameof(ResourcePacksViewModel.UpdatableResourcePackCount))
+            {
+                RefreshUpdatableResourceSummary();
+            }
         };
 
         AttachModsCollectionObserver();
         AttachShadersCollectionObserver();
         AttachResourcePacksCollectionObserver();
         NotifyOverviewCountsChanged();
+        RefreshUpdatableResourceSummary();
+    }
+
+    private void RefreshUpdatableResourceSummary()
+    {
+        UpdatableResourceCount =
+            (ModsModule?.UpdatableModCount ?? 0) +
+            (ShadersModule?.UpdatableShaderCount ?? 0) +
+            (ResourcePacksModule?.UpdatableResourcePackCount ?? 0);
     }
 
     private void AttachModsCollectionObserver()
@@ -1293,6 +1337,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
+            UpdatableResourceCount = 0;
             StatusMessage = "正在加载版本数据...";
 
             try
@@ -1988,6 +2033,201 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         // 导航到ResourceDownloadPage
         _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+    }
+
+    [RelayCommand]
+    public async Task UpdateAllResourcesAsync()
+    {
+        var updatableItems = BuildUpdatableResourceItems();
+        if (updatableItems.Count == 0)
+        {
+            StatusMessage = "当前没有可更新的资源。";
+            return;
+        }
+
+        var selectedItems = await _dialogService.ShowUpdatableResourcesSelectionDialogAsync(updatableItems);
+
+        if (selectedItems == null || selectedItems.Count == 0)
+        {
+            StatusMessage = "已取消更新。";
+            return;
+        }
+
+        var selectedMods = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ModInfo>()
+            .DistinctBy(mod => mod.FilePath)
+            .ToList();
+        var selectedShaders = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ShaderInfo>()
+            .DistinctBy(shader => shader.FilePath)
+            .ToList();
+        var selectedResourcePacks = selectedItems
+            .Select(item => item.OriginalResource)
+            .OfType<ResourcePackInfo>()
+            .DistinctBy(pack => pack.FilePath)
+            .ToList();
+
+        var batchResults = new List<ResourceUpdateBatchResult>();
+
+        DownloadProgressDialogTitle = "正在更新资源...";
+        IsDownloading = true;
+        DownloadProgress = 0;
+        CurrentDownloadItem = string.Empty;
+
+        try
+        {
+            if (selectedMods.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新 Mod...";
+                var modResult = await ModsModule.UpdateSelectedModsAsync(
+                    selectedMods,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(modResult);
+            }
+
+            if (selectedShaders.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新光影...";
+                var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(
+                    selectedShaders,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(shaderResult);
+            }
+
+            if (selectedResourcePacks.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新资源包...";
+                var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(
+                    selectedResourcePacks,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(resourcePackResult);
+            }
+        }
+        finally
+        {
+            IsDownloading = false;
+            DownloadProgress = 0;
+        }
+
+        if (batchResults.Count == 0)
+        {
+            StatusMessage = "未识别到可更新的目标资源。";
+            return;
+        }
+
+        int updatedCount = batchResults.Sum(result => result.UpdatedCount);
+        int upToDateCount = batchResults.Sum(result => result.UpToDateCount);
+        int failedCount = batchResults.Sum(result => result.FailedCount);
+        var errors = batchResults.SelectMany(result => result.Errors).Where(error => !string.IsNullOrWhiteSpace(error)).ToList();
+
+        var summaryMessage = $"已更新 {updatedCount} 项，已是最新 {upToDateCount} 项";
+        if (failedCount > 0)
+        {
+            summaryMessage += $"，失败 {failedCount} 项";
+        }
+
+        if (errors.Count > 0)
+        {
+            summaryMessage += $"。错误：{string.Join("；", errors)}";
+        }
+
+        StatusMessage = summaryMessage;
+        UpdateResults = summaryMessage;
+        IsResultDialogVisible = true;
+    }
+
+    private List<UpdatableResourceItem> BuildUpdatableResourceItems()
+    {
+        var result = new List<UpdatableResourceItem>();
+
+        result.AddRange(ModsModule.GetUpdatableModsSnapshot().Select(mod => new UpdatableResourceItem
+        {
+            Id = mod.FilePath,
+            DisplayName = mod.Name,
+            ResourceType = "Mod",
+            CurrentVersion = NormalizeVersionText(mod.CurrentVersion, mod.FileName),
+            NewVersion = NormalizeVersionText(mod.LatestVersion, mod.FileName),
+            FallbackIconGlyph = "\uE74C",
+            IconSource = BuildIconSource(mod.Icon),
+            OriginalResource = mod
+        }));
+
+        result.AddRange(ShadersModule.GetUpdatableShadersSnapshot().Select(shader => new UpdatableResourceItem
+        {
+            Id = shader.FilePath,
+            DisplayName = shader.Name,
+            ResourceType = "Shader",
+            CurrentVersion = NormalizeVersionText(shader.CurrentVersion, shader.FileName),
+            NewVersion = NormalizeVersionText(shader.LatestVersion, shader.FileName),
+            FallbackIconGlyph = "\uE7B3",
+            IconSource = BuildIconSource(shader.Icon),
+            OriginalResource = shader
+        }));
+
+        result.AddRange(ResourcePacksModule.GetUpdatableResourcePacksSnapshot().Select(pack => new UpdatableResourceItem
+        {
+            Id = pack.FilePath,
+            DisplayName = pack.Name,
+            ResourceType = "ResourcePack",
+            CurrentVersion = NormalizeVersionText(pack.CurrentVersion, pack.FileName),
+            NewVersion = NormalizeVersionText(pack.LatestVersion, pack.FileName),
+            FallbackIconGlyph = "\uE7B8",
+            IconSource = BuildIconSource(pack.Icon),
+            OriginalResource = pack
+        }));
+
+        return result;
+    }
+
+    private static string NormalizeVersionText(string? version, string fallback)
+    {
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            return version.Trim();
+        }
+
+        return fallback;
+    }
+
+    private static ImageSource? BuildIconSource(string? iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(iconPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var path = iconPath.Trim();
+            Uri? iconUri = null;
+
+            if (Uri.TryCreate(path, UriKind.Absolute, out var absoluteUri))
+            {
+                iconUri = absoluteUri;
+            }
+            else if (Path.IsPathRooted(path))
+            {
+                iconUri = new Uri(path, UriKind.Absolute);
+            }
+
+            if (iconUri == null)
+            {
+                return null;
+            }
+
+            var image = new BitmapImage();
+            image.UriSource = iconUri;
+            return image;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     #endregion

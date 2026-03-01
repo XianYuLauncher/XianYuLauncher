@@ -71,7 +71,7 @@ internal static class VersionManagementModUpdateOps
                         continue;
                     }
 
-                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新Mod: {Path.GetFileName(modFilePath)}");
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新 Mod: {Path.GetFileName(modFilePath)}");
                     var latestFile = info.Files.FirstOrDefault(file => file.Primary) ?? info.Files[0];
                     if (string.IsNullOrEmpty(latestFile.Url?.ToString()) || string.IsNullOrEmpty(latestFile.Filename))
                     {
@@ -248,7 +248,7 @@ internal static class VersionManagementModUpdateOps
                         continue;
                     }
 
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 正在更新Mod: {Path.GetFileName(modFilePath)}");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 正在更新 Mod: {Path.GetFileName(modFilePath)}");
                     if (string.IsNullOrEmpty(latestFile.DownloadUrl) || string.IsNullOrEmpty(latestFile.FileName))
                     {
                         continue;

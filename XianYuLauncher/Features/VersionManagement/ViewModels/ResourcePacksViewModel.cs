@@ -79,6 +79,9 @@ public partial class ResourcePacksViewModel : ObservableObject
     [ObservableProperty]
     private bool _isResourcePackSelectionModeEnabled;
 
+    /// <summary>可更新资源包数量（基于全量列表）</summary>
+    public int UpdatableResourcePackCount => _allResourcePacks.Count(pack => pack.HasUpdate);
+
     partial void OnResourcePackSearchTextChanged(string value) => FilterResourcePacks();
 
     partial void OnResourcePackFilterOptionChanged(string value) => FilterResourcePacks();
@@ -137,10 +140,13 @@ public partial class ResourcePacksViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Source)) pack.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) pack.ProjectId = existing.ProjectId;
                 pack.HasUpdate = existing.HasUpdate;
+                pack.CurrentVersion = existing.CurrentVersion;
+                pack.LatestVersion = existing.LatestVersion;
             }
         }
 
         _allResourcePacks = newPackList;
+        OnPropertyChanged(nameof(UpdatableResourcePackCount));
         StartResourcePackUpdateDetection(cancellationToken);
 
         if (_context.IsPageReady)
@@ -161,6 +167,11 @@ public partial class ResourcePacksViewModel : ObservableObject
                 _context.LoadResourceIconAsync(icon => pack.Icon = icon, pack.FilePath, "resourcepack", false, default));
             await Task.WhenAll(tasks);
         }
+    }
+
+    public IReadOnlyList<ResourcePackInfo> GetUpdatableResourcePacksSnapshot()
+    {
+        return _allResourcePacks.Where(pack => pack.HasUpdate).ToList();
     }
 
     /// <summary>加载资源包（别名）</summary>
@@ -418,8 +429,8 @@ public partial class ResourcePacksViewModel : ObservableObject
 
         try
         {
-            _context.IsDownloading = true;
             _context.DownloadProgressDialogTitle = "正在转移资源包";
+            _context.IsDownloading = true;
             _context.DownloadProgress = 0;
             _context.StatusMessage = "正在准备资源包转移...";
 
@@ -530,26 +541,48 @@ public partial class ResourcePacksViewModel : ObservableObject
     [RelayCommand]
     private async Task UpdateResourcePacksAsync(ResourcePackInfo? resourcePack = null)
     {
+        var selectedPacks = ResourcePacks.Where(item => item.IsSelected).ToList();
+        if (selectedPacks.Count == 0 && resourcePack != null)
+        {
+            selectedPacks.Add(resourcePack);
+        }
+
+        await UpdateSelectedResourcePacksAsync(selectedPacks);
+    }
+
+    public async Task<ResourceUpdateBatchResult> UpdateSelectedResourcePacksAsync(
+        IReadOnlyList<ResourcePackInfo> selectedPacks,
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
+    {
+        var result = new ResourceUpdateBatchResult();
+
         try
         {
-            var selectedPacks = ResourcePacks.Where(r => r.IsSelected).ToList();
-            if (selectedPacks.Count == 0 && resourcePack != null)
+            if (selectedPacks == null || selectedPacks.Count == 0)
             {
-                selectedPacks.Add(resourcePack);
-            }
-            if (selectedPacks.Count == 0)
-            {
-                _context.StatusMessage = "请先选择要更新的资源包";
-                return;
+                var emptyMessage = "请先选择要更新的资源包";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
+                result.IsSuccess = false;
+                result.Message = emptyMessage;
+                return result;
             }
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "正在更新资源包...";
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            var updateTargets = selectedPacks.ToList();
+
+            if (!suppressUiFeedback)
+            {
+                _context.DownloadProgressDialogTitle = "正在更新资源包...";
+                _context.IsDownloading = true;
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
 
             var packHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                selectedPacks,
+                updateTargets,
                 pack => pack.FilePath,
                 _context.CalculateSHA1,
                 shouldSkip: pack => Directory.Exists(pack.FilePath),
@@ -560,9 +593,15 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             if (packHashes.Count == 0)
             {
-                _context.StatusMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
-                _context.IsDownloading = false;
-                return;
+                var noZipMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = noZipMessage;
+                    _context.IsDownloading = false;
+                }
+                result.IsSuccess = false;
+                result.Message = noZipMessage;
+                return result;
             }
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
@@ -580,7 +619,7 @@ public partial class ResourcePacksViewModel : ObservableObject
             updatedCount += modrinthResult.UpdatedCount;
             upToDateCount += modrinthResult.UpToDateCount;
 
-            var failedPacks = selectedPacks
+            var failedPacks = updateTargets
                 .Where(p => !Directory.Exists(p.FilePath) && !modrinthResult.ProcessedMods.Contains(p.FilePath))
                 .ToList();
 
@@ -595,21 +634,50 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             await ReloadResourcePacksWithIconsAsync();
 
-            _context.StatusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
-            _context.UpdateResults = _context.StatusMessage;
-            _context.IsResultDialogVisible = true;
+            var statusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
+            }
+
+            result.IsSuccess = true;
+            result.UpdatedCount = updatedCount;
+            result.UpToDateCount = upToDateCount;
+            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
-            _context.StatusMessage = $"更新资源包失败: {ex.Message}";
-            _context.IsResultDialogVisible = true;
-            _context.UpdateResults = $"更新失败: {ex.Message}";
+            var errorMessage = $"更新资源包失败: {ex.Message}";
+            if (!suppressUiFeedback)
+            {
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.IsResultDialogVisible = true;
+                    _context.UpdateResults = $"更新失败: {ex.Message}";
+                }
+            }
+
+            result.IsSuccess = false;
+            result.Message = errorMessage;
+            result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
+
+        return result;
     }
 
     [RelayCommand]
@@ -713,10 +781,12 @@ public partial class ResourcePacksViewModel : ObservableObject
                 .Where(pack => !string.IsNullOrWhiteSpace(pack.FilePath))
                 .ToDictionary(pack => pack.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
             var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (updatableByFile.Count == 0)
             {
-                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
 
@@ -733,9 +803,12 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             if (hashes.Count == 0)
             {
-                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
+                ?? new Dictionary<string, Core.Models.ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
             var gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(_context.SelectedVersion, versionInfoService);
@@ -756,10 +829,17 @@ public partial class ResourcePacksViewModel : ObservableObject
                     continue;
                 }
 
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                {
+                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
+                }
+
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
                 {
                     continue;
                 }
+
+                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -787,10 +867,12 @@ public partial class ResourcePacksViewModel : ObservableObject
                     gameVersion,
                     updatableByFile,
                     projectIdentityByFile,
+                        currentVersionByFile,
+                        latestVersionByFile,
                     cancellationToken);
             }
 
-            ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                    ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException)
         {
@@ -806,6 +888,8 @@ public partial class ResourcePacksViewModel : ObservableObject
         string gameVersion,
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         CancellationToken cancellationToken)
     {
         var fingerprintToFilePath = new Dictionary<uint, string>();
@@ -856,6 +940,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
+            currentVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(match.File);
+
             var latestFile = match.LatestFiles?
                 .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
                 .OrderByDescending(file => file.FileDate)
@@ -866,6 +952,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                 continue;
             }
 
+            latestVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(latestFile);
+
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
     }
@@ -873,6 +961,8 @@ public partial class ResourcePacksViewModel : ObservableObject
     private void ApplyResourcePackUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         int generation)
     {
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -889,12 +979,20 @@ public partial class ResourcePacksViewModel : ObservableObject
             foreach (var pack in allItems)
             {
                 pack.HasUpdate = updatableByFile.TryGetValue(pack.FilePath, out var hasUpdate) && hasUpdate;
+                pack.CurrentVersion = currentVersionByFile.TryGetValue(pack.FilePath, out var currentVersion)
+                    ? currentVersion
+                    : string.Empty;
+                pack.LatestVersion = latestVersionByFile.TryGetValue(pack.FilePath, out var latestVersion)
+                    ? latestVersion
+                    : string.Empty;
                 if (projectIdentityByFile.TryGetValue(pack.FilePath, out var identity))
                 {
                     pack.Source = identity.Source;
                     pack.ProjectId = identity.ProjectId;
                 }
             }
+
+            OnPropertyChanged(nameof(UpdatableResourcePackCount));
 
             if (ResourcePackFilterOption != FilterAllKey)
             {
