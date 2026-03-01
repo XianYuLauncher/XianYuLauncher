@@ -905,4 +905,39 @@ public class DialogService : IDialogService
         }
         return null;
     }
+
+    public async Task ShowMoveResultDialogAsync(
+        System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
+        string title = "转移结果",
+        string instruction = "以下是资源转移结果：")
+    {
+        var panel = new StackPanel { Spacing = 12, MaxWidth = 600, MinWidth = 420 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = instruction,
+            FontSize = 14
+        });
+
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.None,
+            MaxHeight = 400,
+            ItemsSource = moveResults?.ToList() ?? new System.Collections.Generic.List<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult>()
+        };
+
+        listView.ItemTemplate = Application.Current.Resources["MoveResultDialogItemTemplate"] as DataTemplate;
+        panel.Children.Add(listView);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = "确定",
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        await ShowSafeAsync(dialog);
+    }
 }
