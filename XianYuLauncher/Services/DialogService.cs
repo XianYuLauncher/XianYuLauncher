@@ -932,7 +932,7 @@ public class DialogService : IDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "VersionManagerPage_UpdateResultDialog.PrimaryButtonText".GetLocalized(),
+            PrimaryButtonText = "VersionManagerPage_MoveResultDialog.PrimaryButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
