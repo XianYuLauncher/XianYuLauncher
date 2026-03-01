@@ -126,9 +126,9 @@ public sealed partial class VersionManagementPage : Page
                     ExtensionInstallDialog.Hide();
 
                     await _dialogService.ShowMessageDialogAsync(
-                        title: "VersionManagerPage_UpdateResultDialog.Title".GetLocalized(),
+                        title: "VersionManagerPage_UpdateResultDialog_Title".GetLocalized(),
                         message: ViewModel.UpdateResults,
-                        closeButtonText: "VersionManagerPage_UpdateResultDialog.PrimaryButtonText".GetLocalized());
+                        closeButtonText: "VersionManagerPage_UpdateResultDialog_PrimaryButtonText".GetLocalized());
 
                     ViewModel.IsResultDialogVisible = false;
                 }
@@ -138,12 +138,12 @@ public sealed partial class VersionManagementPage : Page
                     ExtensionInstallDialog.Hide();
 
                     var selectedTarget = await _dialogService.ShowListSelectionDialogAsync(
-                        title: "VersionManagerPage_MoveModsDialog.Title".GetLocalized(),
-                        instruction: "VersionManagerPage_MoveModsDialog_InstructionText.Text".GetLocalized(),
+                        title: "VersionManagerPage_MoveModsDialog_Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveModsDialog_InstructionContent".GetLocalized(),
                         items: ViewModel.TargetVersions,
                         displayMemberFunc: item => item.VersionName,
-                        primaryButtonText: "VersionManagerPage_MoveModsDialog.PrimaryButtonText".GetLocalized(),
-                        closeButtonText: "VersionManagerPage_MoveModsDialog.CloseButtonText".GetLocalized());
+                        primaryButtonText: "VersionManagerPage_MoveModsDialog_PrimaryButtonText".GetLocalized(),
+                        closeButtonText: "VersionManagerPage_MoveModsDialog_CloseButtonText".GetLocalized());
 
                     ViewModel.IsMoveResourcesDialogVisible = false;
 
@@ -160,8 +160,8 @@ public sealed partial class VersionManagementPage : Page
 
                     await _dialogService.ShowMoveResultDialogAsync(
                         ViewModel.MoveResults,
-                        title: "VersionManagerPage_MoveResultDialog.Title".GetLocalized(),
-                        instruction: "VersionManagerPage_MoveResultDialog_InstructionText.Text".GetLocalized());
+                        title: "VersionManagerPage_MoveResultDialog_Title".GetLocalized(),
+                        instruction: "VersionManagerPage_MoveResultDialog_InstructionContent".GetLocalized());
 
                     ViewModel.IsMoveResultDialogVisible = false;
                 }

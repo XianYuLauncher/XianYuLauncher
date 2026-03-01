@@ -3159,4 +3159,43 @@ Continue downloading?</value>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog.CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="VersionManagerPage_UpdateResultDialog_Title" xml:space="preserve">
+    <value>Update Complete</value>
+  </data>
+  <data name="VersionManagerPage_UpdateResultDialog_PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_Title" xml:space="preserve">
+    <value>Select Target Version</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_InstructionContent" xml:space="preserve">
+    <value>Please select the target version to migrate to:</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_PrimaryButtonText" xml:space="preserve">
+    <value>Confirm Migration</value>
+  </data>
+  <data name="VersionManagerPage_MoveModsDialog_CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_Title" xml:space="preserve">
+    <value>Migration Result</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_InstructionContent" xml:space="preserve">
+    <value>The following are the migration results:</value>
+  </data>
+  <data name="VersionManagerPage_MoveResultDialog_PrimaryButtonText" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_Title" xml:space="preserve">
+    <value>Update All</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_InstructionText" xml:space="preserve">
+    <value>Select the components you want to update:</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_PrimaryButtonText" xml:space="preserve">
+    <value>Confirm Update</value>
+  </data>
+  <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>
