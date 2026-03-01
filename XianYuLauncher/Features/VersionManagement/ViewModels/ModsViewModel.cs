@@ -153,6 +153,8 @@ public partial class ModsViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Source)) mod.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) mod.ProjectId = existing.ProjectId;
                 mod.HasUpdate = existing.HasUpdate;
+                mod.CurrentVersion = existing.CurrentVersion;
+                mod.LatestVersion = existing.LatestVersion;
             }
         }
 
@@ -178,6 +180,11 @@ public partial class ModsViewModel : ObservableObject
                 _context.LoadResourceIconAsync(icon => mod.Icon = icon, mod.FilePath, "mod", true, default));
             await Task.WhenAll(tasks);
         }
+    }
+
+    public IReadOnlyList<ModInfo> GetUpdatableModsSnapshot()
+    {
+        return _allMods.Where(mod => mod.HasUpdate).ToList();
     }
 
     /// <summary>过滤 Mod 列表</summary>
@@ -1105,10 +1112,12 @@ public partial class ModsViewModel : ObservableObject
                 .Where(mod => !string.IsNullOrWhiteSpace(mod.FilePath))
                 .ToDictionary(mod => mod.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
             var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (updatableByFile.Count == 0)
             {
-                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
 
@@ -1125,9 +1134,12 @@ public partial class ModsViewModel : ObservableObject
 
             if (hashList.Count == 0)
             {
-                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashList, "sha1")
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
 
             var runtime = await ResolveCurrentRuntimeAsync(cancellationToken);
             var updateInfo = await _modrinthService.UpdateVersionFilesAsync(
@@ -1145,10 +1157,17 @@ public partial class ModsViewModel : ObservableObject
                     continue;
                 }
 
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                {
+                    currentVersionByFile[filePath] = BuildModrinthVersionDisplay(currentVersion);
+                }
+
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
                 {
                     continue;
                 }
+
+                latestVersionByFile[filePath] = BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -1177,10 +1196,12 @@ public partial class ModsViewModel : ObservableObject
                     runtime.GameVersion,
                     updatableByFile,
                     projectIdentityByFile,
+                        currentVersionByFile,
+                        latestVersionByFile,
                     cancellationToken);
             }
 
-            ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                    ApplyModUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException)
         {
@@ -1197,6 +1218,8 @@ public partial class ModsViewModel : ObservableObject
         string gameVersion,
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         CancellationToken cancellationToken)
     {
         var fingerprintToFilePath = new Dictionary<uint, string>();
@@ -1248,6 +1271,8 @@ public partial class ModsViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
+            currentVersionByFile[filePath] = BuildCurseForgeFileDisplay(match.File);
+
             if (match.LatestFiles == null || match.LatestFiles.Count == 0)
             {
                 continue;
@@ -1273,6 +1298,8 @@ public partial class ModsViewModel : ObservableObject
             {
                 continue;
             }
+
+            latestVersionByFile[filePath] = BuildCurseForgeFileDisplay(latestFile);
 
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
@@ -1310,6 +1337,8 @@ public partial class ModsViewModel : ObservableObject
     private void ApplyModUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         int generation)
     {
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -1326,6 +1355,12 @@ public partial class ModsViewModel : ObservableObject
             foreach (var mod in allItems)
             {
                 mod.HasUpdate = updatableByFile.TryGetValue(mod.FilePath, out var hasUpdate) && hasUpdate;
+                mod.CurrentVersion = currentVersionByFile.TryGetValue(mod.FilePath, out var currentVersion)
+                    ? currentVersion
+                    : string.Empty;
+                mod.LatestVersion = latestVersionByFile.TryGetValue(mod.FilePath, out var latestVersion)
+                    ? latestVersion
+                    : string.Empty;
                 if (projectIdentityByFile.TryGetValue(mod.FilePath, out var identity))
                 {
                     mod.Source = identity.Source;
@@ -1340,6 +1375,36 @@ public partial class ModsViewModel : ObservableObject
                 FilterMods();
             }
         });
+    }
+
+    private static string BuildModrinthVersionDisplay(ModrinthVersion? version)
+    {
+        if (version == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(version.VersionNumber))
+        {
+            return version.VersionNumber;
+        }
+
+        return version.Name ?? string.Empty;
+    }
+
+    private static string BuildCurseForgeFileDisplay(CurseForgeFile? file)
+    {
+        if (file == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.DisplayName))
+        {
+            return file.DisplayName;
+        }
+
+        return file.FileName ?? string.Empty;
     }
 
     #endregion

@@ -70,6 +70,18 @@ public partial class ModInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _hasUpdate;
+
+    /// <summary>
+    /// 当前版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _currentVersion = string.Empty;
+
+    /// <summary>
+    /// 可升级版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _latestVersion = string.Empty;
     
     /// <summary>
     /// Mod显示名称
@@ -103,6 +115,8 @@ public partial class ModInfo : ObservableObject
         Description = null; // 初始无描述
         IsLoadingDescription = false;
         HasUpdate = false;
+        CurrentVersion = string.Empty;
+        LatestVersion = string.Empty;
         Source = null;
     }
 }

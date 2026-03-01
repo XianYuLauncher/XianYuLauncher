@@ -2037,25 +2037,109 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     public async Task UpdateAllResourcesAsync()
     {
-        // 模拟生成一些可更新资源的测试数据，供你在进行界面审查时参考交互
-        // 此模块后续转交由后端负责查询实际数据并填充
-        var mockItems = new List<UpdatableResourceItem>
+        var updatableItems = BuildUpdatableResourceItems();
+        if (updatableItems.Count == 0)
         {
-            new UpdatableResourceItem { DisplayName = "Sodium", ResourceType = "Mod", CurrentVersion = "mc1.20.1-0.5.3", NewVersion = "mc1.20.1-0.5.8", FallbackIconGlyph = "\uE74C" },
-            new UpdatableResourceItem { DisplayName = "Iris Shaders", ResourceType = "Mod", CurrentVersion = "1.6.4", NewVersion = "1.6.17", FallbackIconGlyph = "\uE74C" },
-            new UpdatableResourceItem { DisplayName = "Complementary Reimagined", ResourceType = "Shader", CurrentVersion = "r5.0.1", NewVersion = "r5.1.1", FallbackIconGlyph = "\uE7B3" },
-            new UpdatableResourceItem { DisplayName = "Faithful 32x", ResourceType = "ResourcePack", CurrentVersion = "1.20.1", NewVersion = "1.20.4", FallbackIconGlyph = "\uE7B8" },
-            new UpdatableResourceItem { DisplayName = "Fabric API", ResourceType = "Mod", CurrentVersion = "0.85.0", NewVersion = "0.92.0", FallbackIconGlyph = "\uE74C" }
-        };
+            StatusMessage = "当前没有可更新的资源。";
+            return;
+        }
 
-        var dialogService = App.GetService<IDialogService>();
-        var selectedItems = await dialogService.ShowUpdatableResourcesSelectionDialogAsync(mockItems);
+        var selectedItems = await _dialogService.ShowUpdatableResourcesSelectionDialogAsync(updatableItems);
         
         if (selectedItems != null && selectedItems.Count > 0)
         {
             // 给后端接手的人的占位符注释
             System.Diagnostics.Debug.WriteLine($"User confirmed. Proceeding to update {selectedItems.Count} items.");
             // Do actual update queue push here
+        }
+    }
+
+    private List<UpdatableResourceItem> BuildUpdatableResourceItems()
+    {
+        var result = new List<UpdatableResourceItem>();
+
+        result.AddRange(ModsModule.GetUpdatableModsSnapshot().Select(mod => new UpdatableResourceItem
+        {
+            Id = mod.FilePath,
+            DisplayName = mod.Name,
+            ResourceType = "Mod",
+            CurrentVersion = NormalizeVersionText(mod.CurrentVersion, mod.FileName),
+            NewVersion = NormalizeVersionText(mod.LatestVersion, mod.FileName),
+            FallbackIconGlyph = "\uE74C",
+            IconSource = BuildIconSource(mod.Icon),
+            OriginalResource = mod
+        }));
+
+        result.AddRange(ShadersModule.GetUpdatableShadersSnapshot().Select(shader => new UpdatableResourceItem
+        {
+            Id = shader.FilePath,
+            DisplayName = shader.Name,
+            ResourceType = "Shader",
+            CurrentVersion = NormalizeVersionText(shader.CurrentVersion, shader.FileName),
+            NewVersion = NormalizeVersionText(shader.LatestVersion, shader.FileName),
+            FallbackIconGlyph = "\uE7B3",
+            IconSource = BuildIconSource(shader.Icon),
+            OriginalResource = shader
+        }));
+
+        result.AddRange(ResourcePacksModule.GetUpdatableResourcePacksSnapshot().Select(pack => new UpdatableResourceItem
+        {
+            Id = pack.FilePath,
+            DisplayName = pack.Name,
+            ResourceType = "ResourcePack",
+            CurrentVersion = NormalizeVersionText(pack.CurrentVersion, pack.FileName),
+            NewVersion = NormalizeVersionText(pack.LatestVersion, pack.FileName),
+            FallbackIconGlyph = "\uE7B8",
+            IconSource = BuildIconSource(pack.Icon),
+            OriginalResource = pack
+        }));
+
+        return result;
+    }
+
+    private static string NormalizeVersionText(string? version, string fallback)
+    {
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            return version.Trim();
+        }
+
+        return fallback;
+    }
+
+    private static ImageSource? BuildIconSource(string? iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(iconPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var path = iconPath.Trim();
+            Uri? iconUri = null;
+
+            if (Uri.TryCreate(path, UriKind.Absolute, out var absoluteUri))
+            {
+                iconUri = absoluteUri;
+            }
+            else if (Path.IsPathRooted(path))
+            {
+                iconUri = new Uri(path, UriKind.Absolute);
+            }
+
+            if (iconUri == null)
+            {
+                return null;
+            }
+
+            var image = new BitmapImage();
+            image.UriSource = iconUri;
+            return image;
+        }
+        catch
+        {
+            return null;
         }
     }
 

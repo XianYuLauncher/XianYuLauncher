@@ -140,6 +140,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                 if (!string.IsNullOrEmpty(existing.Source)) pack.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) pack.ProjectId = existing.ProjectId;
                 pack.HasUpdate = existing.HasUpdate;
+                pack.CurrentVersion = existing.CurrentVersion;
+                pack.LatestVersion = existing.LatestVersion;
             }
         }
 
@@ -165,6 +167,11 @@ public partial class ResourcePacksViewModel : ObservableObject
                 _context.LoadResourceIconAsync(icon => pack.Icon = icon, pack.FilePath, "resourcepack", false, default));
             await Task.WhenAll(tasks);
         }
+    }
+
+    public IReadOnlyList<ResourcePackInfo> GetUpdatableResourcePacksSnapshot()
+    {
+        return _allResourcePacks.Where(pack => pack.HasUpdate).ToList();
     }
 
     /// <summary>加载资源包（别名）</summary>
@@ -717,10 +724,12 @@ public partial class ResourcePacksViewModel : ObservableObject
                 .Where(pack => !string.IsNullOrWhiteSpace(pack.FilePath))
                 .ToDictionary(pack => pack.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
             var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (updatableByFile.Count == 0)
             {
-                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
 
@@ -737,9 +746,12 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             if (hashes.Count == 0)
             {
-                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
                 return;
             }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
+                ?? new Dictionary<string, Core.Models.ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
 
             var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
             var gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(_context.SelectedVersion, versionInfoService);
@@ -760,10 +772,17 @@ public partial class ResourcePacksViewModel : ObservableObject
                     continue;
                 }
 
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                {
+                    currentVersionByFile[filePath] = BuildModrinthVersionDisplay(currentVersion);
+                }
+
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
                 {
                     continue;
                 }
+
+                latestVersionByFile[filePath] = BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -791,10 +810,12 @@ public partial class ResourcePacksViewModel : ObservableObject
                     gameVersion,
                     updatableByFile,
                     projectIdentityByFile,
+                        currentVersionByFile,
+                        latestVersionByFile,
                     cancellationToken);
             }
 
-            ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, generation);
+                    ApplyResourcePackUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException)
         {
@@ -810,6 +831,8 @@ public partial class ResourcePacksViewModel : ObservableObject
         string gameVersion,
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         CancellationToken cancellationToken)
     {
         var fingerprintToFilePath = new Dictionary<uint, string>();
@@ -860,6 +883,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
+            currentVersionByFile[filePath] = BuildCurseForgeFileDisplay(match.File);
+
             var latestFile = match.LatestFiles?
                 .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
                 .OrderByDescending(file => file.FileDate)
@@ -870,6 +895,8 @@ public partial class ResourcePacksViewModel : ObservableObject
                 continue;
             }
 
+            latestVersionByFile[filePath] = BuildCurseForgeFileDisplay(latestFile);
+
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
     }
@@ -877,6 +904,8 @@ public partial class ResourcePacksViewModel : ObservableObject
     private void ApplyResourcePackUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> currentVersionByFile,
+        Dictionary<string, string> latestVersionByFile,
         int generation)
     {
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
@@ -893,6 +922,12 @@ public partial class ResourcePacksViewModel : ObservableObject
             foreach (var pack in allItems)
             {
                 pack.HasUpdate = updatableByFile.TryGetValue(pack.FilePath, out var hasUpdate) && hasUpdate;
+                pack.CurrentVersion = currentVersionByFile.TryGetValue(pack.FilePath, out var currentVersion)
+                    ? currentVersion
+                    : string.Empty;
+                pack.LatestVersion = latestVersionByFile.TryGetValue(pack.FilePath, out var latestVersion)
+                    ? latestVersion
+                    : string.Empty;
                 if (projectIdentityByFile.TryGetValue(pack.FilePath, out var identity))
                 {
                     pack.Source = identity.Source;
@@ -907,6 +942,36 @@ public partial class ResourcePacksViewModel : ObservableObject
                 FilterResourcePacks();
             }
         });
+    }
+
+    private static string BuildModrinthVersionDisplay(Core.Models.ModrinthVersion? version)
+    {
+        if (version == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(version.VersionNumber))
+        {
+            return version.VersionNumber;
+        }
+
+        return version.Name ?? string.Empty;
+    }
+
+    private static string BuildCurseForgeFileDisplay(Core.Models.CurseForgeFile? file)
+    {
+        if (file == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.DisplayName))
+        {
+            return file.DisplayName;
+        }
+
+        return file.FileName ?? string.Empty;
     }
 
     #endregion

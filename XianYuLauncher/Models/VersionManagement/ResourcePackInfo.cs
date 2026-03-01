@@ -70,6 +70,18 @@ public partial class ResourcePackInfo : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _hasUpdate;
+
+    /// <summary>
+    /// 当前版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _currentVersion = string.Empty;
+
+    /// <summary>
+    /// 可升级版本展示文本
+    /// </summary>
+    [ObservableProperty]
+    private string _latestVersion = string.Empty;
     
     /// <summary>
     /// 预览是否打开
@@ -119,6 +131,8 @@ public partial class ResourcePackInfo : ObservableObject
         Description = null;
         IsLoadingDescription = false;
         HasUpdate = false;
+        CurrentVersion = string.Empty;
+        LatestVersion = string.Empty;
         Source = null;
     }
 }
