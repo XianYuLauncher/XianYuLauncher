@@ -552,7 +552,8 @@ public partial class ResourcePacksViewModel : ObservableObject
 
     public async Task<ResourceUpdateBatchResult> UpdateSelectedResourcePacksAsync(
         IReadOnlyList<ResourcePackInfo> selectedPacks,
-        bool showResultDialog = true)
+        bool showResultDialog = true,
+        bool suppressUiFeedback = false)
     {
         var result = new ResourceUpdateBatchResult();
 
@@ -560,18 +561,25 @@ public partial class ResourcePacksViewModel : ObservableObject
         {
             if (selectedPacks == null || selectedPacks.Count == 0)
             {
-                _context.StatusMessage = "请先选择要更新的资源包";
+                var emptyMessage = "请先选择要更新的资源包";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = emptyMessage;
+                }
                 result.IsSuccess = false;
-                result.Message = _context.StatusMessage;
+                result.Message = emptyMessage;
                 return result;
             }
 
             var updateTargets = selectedPacks.ToList();
 
-            _context.IsDownloading = true;
-            _context.DownloadProgressDialogTitle = "正在更新资源包...";
-            _context.DownloadProgress = 0;
-            _context.CurrentDownloadItem = string.Empty;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = true;
+                _context.DownloadProgressDialogTitle = "正在更新资源包...";
+                _context.DownloadProgress = 0;
+                _context.CurrentDownloadItem = string.Empty;
+            }
 
             var packHashIndex = VersionManagementUpdateOps.BuildHashIndex(
                 updateTargets,
@@ -585,10 +593,14 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             if (packHashes.Count == 0)
             {
-                _context.StatusMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
-                _context.IsDownloading = false;
+                var noZipMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
+                if (!suppressUiFeedback)
+                {
+                    _context.StatusMessage = noZipMessage;
+                    _context.IsDownloading = false;
+                }
                 result.IsSuccess = false;
-                result.Message = _context.StatusMessage;
+                result.Message = noZipMessage;
                 return result;
             }
 
@@ -622,36 +634,47 @@ public partial class ResourcePacksViewModel : ObservableObject
 
             await ReloadResourcePacksWithIconsAsync();
 
-            _context.StatusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
-            if (showResultDialog)
+            var statusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
+            if (!suppressUiFeedback)
             {
-                _context.UpdateResults = _context.StatusMessage;
-                _context.IsResultDialogVisible = true;
+                _context.StatusMessage = statusMessage;
+                if (showResultDialog)
+                {
+                    _context.UpdateResults = statusMessage;
+                    _context.IsResultDialogVisible = true;
+                }
             }
 
             result.IsSuccess = true;
             result.UpdatedCount = updatedCount;
             result.UpToDateCount = upToDateCount;
             result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = _context.StatusMessage;
+            result.Message = statusMessage;
         }
         catch (Exception ex)
         {
-            _context.StatusMessage = $"更新资源包失败: {ex.Message}";
-            if (showResultDialog)
+            var errorMessage = $"更新资源包失败: {ex.Message}";
+            if (!suppressUiFeedback)
             {
-                _context.IsResultDialogVisible = true;
-                _context.UpdateResults = $"更新失败: {ex.Message}";
+                _context.StatusMessage = errorMessage;
+                if (showResultDialog)
+                {
+                    _context.IsResultDialogVisible = true;
+                    _context.UpdateResults = $"更新失败: {ex.Message}";
+                }
             }
 
             result.IsSuccess = false;
-            result.Message = _context.StatusMessage;
+            result.Message = errorMessage;
             result.Errors.Add(ex.Message);
         }
         finally
         {
-            _context.IsDownloading = false;
-            _context.DownloadProgress = 0;
+            if (!suppressUiFeedback)
+            {
+                _context.IsDownloading = false;
+                _context.DownloadProgress = 0;
+            }
         }
 
         return result;

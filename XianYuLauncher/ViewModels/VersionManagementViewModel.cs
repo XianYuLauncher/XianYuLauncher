@@ -2070,22 +2070,47 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         var batchResults = new List<ResourceUpdateBatchResult>();
 
-        if (selectedMods.Count > 0)
-        {
-            var modResult = await ModsModule.UpdateSelectedModsAsync(selectedMods, showResultDialog: false);
-            batchResults.Add(modResult);
-        }
+        IsDownloading = true;
+        DownloadProgressDialogTitle = "正在更新资源...";
+        DownloadProgress = 0;
+        CurrentDownloadItem = string.Empty;
 
-        if (selectedShaders.Count > 0)
+        try
         {
-            var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(selectedShaders, showResultDialog: false);
-            batchResults.Add(shaderResult);
-        }
+            if (selectedMods.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新 Mod...";
+                var modResult = await ModsModule.UpdateSelectedModsAsync(
+                    selectedMods,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(modResult);
+            }
 
-        if (selectedResourcePacks.Count > 0)
+            if (selectedShaders.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新光影...";
+                var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(
+                    selectedShaders,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(shaderResult);
+            }
+
+            if (selectedResourcePacks.Count > 0)
+            {
+                DownloadProgressDialogTitle = "正在更新资源包...";
+                var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(
+                    selectedResourcePacks,
+                    showResultDialog: false,
+                    suppressUiFeedback: true);
+                batchResults.Add(resourcePackResult);
+            }
+        }
+        finally
         {
-            var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(selectedResourcePacks, showResultDialog: false);
-            batchResults.Add(resourcePackResult);
+            IsDownloading = false;
+            DownloadProgress = 0;
         }
 
         if (batchResults.Count == 0)
