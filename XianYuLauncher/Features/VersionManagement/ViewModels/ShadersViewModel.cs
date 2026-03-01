@@ -738,7 +738,7 @@ public partial class ShadersViewModel : ObservableObject
 
                 if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
                 {
-                    currentVersionByFile[filePath] = BuildModrinthVersionDisplay(currentVersion);
+                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
                 }
 
                 if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
@@ -746,7 +746,7 @@ public partial class ShadersViewModel : ObservableObject
                     continue;
                 }
 
-                latestVersionByFile[filePath] = BuildModrinthVersionDisplay(version);
+                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
 
                 var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files[0];
                 var hasUpdate = true;
@@ -847,7 +847,7 @@ public partial class ShadersViewModel : ObservableObject
                 projectIdentityByFile[filePath] = ("CurseForge", match.Id.ToString());
             }
 
-            currentVersionByFile[filePath] = BuildCurseForgeFileDisplay(match.File);
+            currentVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(match.File);
 
             var latestFile = match.LatestFiles?
                 .Where(file => file.GameVersions != null && file.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
@@ -859,7 +859,7 @@ public partial class ShadersViewModel : ObservableObject
                 continue;
             }
 
-            latestVersionByFile[filePath] = BuildCurseForgeFileDisplay(latestFile);
+            latestVersionByFile[filePath] = VersionDisplayHelper.BuildCurseForgeFileDisplay(latestFile);
 
             updatableByFile[filePath] = latestFile.FileFingerprint != fingerprint;
         }
@@ -906,36 +906,6 @@ public partial class ShadersViewModel : ObservableObject
                 FilterShaders();
             }
         });
-    }
-
-    private static string BuildModrinthVersionDisplay(Core.Models.ModrinthVersion? version)
-    {
-        if (version == null)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(version.VersionNumber))
-        {
-            return version.VersionNumber;
-        }
-
-        return version.Name ?? string.Empty;
-    }
-
-    private static string BuildCurseForgeFileDisplay(Core.Models.CurseForgeFile? file)
-    {
-        if (file == null)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(file.DisplayName))
-        {
-            return file.DisplayName;
-        }
-
-        return file.FileName ?? string.Empty;
     }
 
     #endregion
