@@ -8,6 +8,8 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
+using System.IO;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -17,9 +19,21 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IModLoaderVersionLoaderService _versionLoaderService;
     private readonly IModLoaderVersionNameService _versionNameService;
+    private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
+    private bool _isIconManuallySelected;
+    private string? _lastSelectedLoaderName;
+
+    [ObservableProperty]
+    private ObservableCollection<VersionIconOption> _availableIcons = new();
+
+    [ObservableProperty]
+    private string _selectedIconPath = string.Empty;
 
     [ObservableProperty]
     private string _selectedMinecraftVersion = "";
+
+    [ObservableProperty]
+    private string _selectedVersionDisplayText = "";
 
     [ObservableProperty]
     private ObservableCollection<ModLoaderItem> _modLoaderItems = new();
@@ -75,6 +89,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     /// </summary>
     partial void OnSelectedModLoaderItemChanged(ModLoaderItem? oldValue, ModLoaderItem? newValue)
     {
+        if (newValue != null)
+        {
+            _lastSelectedLoaderName = newValue.Name;
+        }
+
         // 通知计算属性变化
         OnPropertyChanged(nameof(SelectedModLoader));
         OnPropertyChanged(nameof(SelectedModLoaderVersion));
@@ -87,6 +106,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     
     partial void OnIsOptifineSelectedChanged(bool oldValue, bool newValue)
     {
+        if (newValue)
+        {
+            _lastSelectedLoaderName = "Optifine";
+        }
+
         // 更新版本名称
         UpdateVersionName();
     }
@@ -95,6 +119,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         if (newValue)
         {
+            _lastSelectedLoaderName = "LiteLoader";
+
             // 互斥逻辑：LiteLoader 与 OptiFine 不兼容（除非有 Forge）
             if (IsOptifineSelected && (SelectedModLoaderItem == null || SelectedModLoaderItem.Name != "Forge"))
             {
@@ -211,6 +237,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _downloadTaskManager = App.GetService<IDownloadTaskManager>();
         _versionLoaderService = App.GetService<IModLoaderVersionLoaderService>();
         _versionNameService = App.GetService<IModLoaderVersionNameService>();
+        _modLoaderIconPresentationService = App.GetService<IModLoaderIconPresentationService>();
+        SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
         
         // 订阅下载事件以更新弹窗进度
         _downloadTaskManager.TaskProgressChanged += OnDownloadProgressChanged;
@@ -303,12 +331,28 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void ClearSelection(ModLoaderItem modLoaderItem)
     {
-        // 取消选择当前ModLoader
-        modLoaderItem.IsSelected = false;
-        SelectedModLoaderItem = null;
-        
-        // 清空选择的版本
-        modLoaderItem.SelectedVersion = null;
+        if (modLoaderItem.Name == "Optifine")
+        {
+            IsOptifineSelected = false;
+            SelectedOptifineVersion = null;
+            modLoaderItem.IsSelected = false;
+            modLoaderItem.SelectedVersion = null;
+        }
+        else
+        {
+            modLoaderItem.IsSelected = false;
+            modLoaderItem.SelectedVersion = null;
+
+            if (SelectedModLoaderItem == modLoaderItem)
+            {
+                SelectedModLoaderItem = null;
+            }
+        }
+
+        if (!IsOptifineSelected && !IsLiteLoaderSelected && SelectedModLoaderItem == null)
+        {
+            _lastSelectedLoaderName = null;
+        }
         
         // 通知计算属性变化
         OnPropertyChanged(nameof(IsNeoForgeSelected));
@@ -377,10 +421,54 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         if (parameter is string version)
         {
+            _isIconManuallySelected = false;
+            _lastSelectedLoaderName = null;
+
             SelectedMinecraftVersion = version;
+            SelectedVersionDisplayText = SelectedMinecraftVersion;
             VersionName = SelectedMinecraftVersion; // 初始化版本名称
-            
+            SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
+            InitializeBuiltInIcons();
+
             LoadModLoaders();
+        }
+    }
+
+    [RelayCommand]
+    private void SelectBuiltInIcon(VersionIconOption? iconOption)
+    {
+        if (iconOption == null || string.IsNullOrWhiteSpace(iconOption.IconPath))
+        {
+            return;
+        }
+
+        _isIconManuallySelected = true;
+        SelectedIconPath = iconOption.IconPath;
+    }
+
+    public void SetCustomIcon(string iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(iconPath))
+        {
+            return;
+        }
+
+        _isIconManuallySelected = true;
+        SelectedIconPath = iconPath;
+    }
+
+    private void InitializeBuiltInIcons()
+    {
+        AvailableIcons.Clear();
+
+        foreach (var icon in _modLoaderIconPresentationService.LoadBuiltInIcons())
+        {
+            AvailableIcons.Add(icon);
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedIconPath))
+        {
+            SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
         }
     }
 
@@ -517,54 +605,68 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             {
                 if (e.PropertyName == nameof(ModLoaderItem.IsSelected) && item.IsSelected)
                 {
-                    // 当IsSelected变为true时，设置为当前选中的ModLoader并加载版本
-                    if (item.Name == "Optifine")
-                    {
-                        IsOptifineSelected = true;
-                        SelectedOptifineVersion = item.SelectedVersion;
-                        
-                        // 互斥逻辑：OptiFine 与 LiteLoader 不兼容（除非有 Forge）
-                        if (IsLiteLoaderSelected && (SelectedModLoaderItem == null || SelectedModLoaderItem.Name != "Forge"))
-                        {
-                            IsLiteLoaderSelected = false;
-                            SelectedLiteLoaderVersion = null;
-                        }
-                        
-                        // 互斥逻辑：如果当前选中的是Fabric/Quilt等不兼容的，则取消选中它们
-                        if (SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
-                        {
-                            SelectedModLoaderItem.IsSelected = false;
-                            SelectedModLoaderItem = null;
-                        }
-                    }
-                    else
-                    {
-                        // 互斥逻辑：如果选中的是 NeoForge/Fabric 等非 Forge 加载器，且 Optifine 已被选中，则取消 Optifine
-                        if (item.Name != "Forge" && IsOptifineSelected)
-                        {
-                            IsOptifineSelected = false;
-                            SelectedOptifineVersion = null;
-                            
-                            // 确保 UI 上的 Optifine 状态同步更新
-                            var optifineItem = ModLoaderItems.FirstOrDefault(x => x.Name == "Optifine");
-                            if (optifineItem != null)
-                            {
-                                optifineItem.IsSelected = false;
-                            }
-                        }
-                        
-                        SelectedModLoaderItem = item;
-                    }
                     await ExpandModLoaderAsync(item);
                 }
                 else if (e.PropertyName == nameof(ModLoaderItem.SelectedVersion))
                 {
-                    // 当SelectedVersion变化时，更新版本名称
-                    if (item.Name == "Optifine" && IsOptifineSelected)
+                    var hasSelectedVersion = !string.IsNullOrWhiteSpace(item.SelectedVersion);
+
+                    if (item.Name == "Optifine")
                     {
-                        // 如果是Optifine且已选中，更新SelectedOptifineVersion
-                        SelectedOptifineVersion = item.SelectedVersion;
+                        if (hasSelectedVersion)
+                        {
+                            _lastSelectedLoaderName = item.Name;
+                            IsOptifineSelected = true;
+                            SelectedOptifineVersion = item.SelectedVersion;
+                            item.IsSelected = true;
+
+                            if (SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
+                            {
+                                SelectedModLoaderItem.IsSelected = false;
+                                SelectedModLoaderItem = null;
+                            }
+                        }
+                        else
+                        {
+                            IsOptifineSelected = false;
+                            SelectedOptifineVersion = null;
+                            item.IsSelected = false;
+                        }
                     }
+                    else
+                    {
+                        if (hasSelectedVersion)
+                        {
+                            _lastSelectedLoaderName = item.Name;
+
+                            foreach (var existing in ModLoaderItems.Where(x => x != item && x.Name != "Optifine" && x.IsSelected))
+                            {
+                                existing.IsSelected = false;
+                            }
+
+                            if (item.Name != "Forge" && IsOptifineSelected)
+                            {
+                                IsOptifineSelected = false;
+                                SelectedOptifineVersion = null;
+
+                                var optifineItem = ModLoaderItems.FirstOrDefault(x => x.Name == "Optifine");
+                                if (optifineItem != null)
+                                {
+                                    optifineItem.IsSelected = false;
+                                    optifineItem.SelectedVersion = null;
+                                }
+                            }
+
+                            item.IsSelected = true;
+                            SelectedModLoaderItem = item;
+                        }
+                        else if (SelectedModLoaderItem == item)
+                        {
+                            item.IsSelected = false;
+                            SelectedModLoaderItem = null;
+                        }
+                    }
+
                     UpdateVersionName();
                 }
             }
@@ -656,6 +758,22 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             SelectedOptifineVersion,
             IsLiteLoaderSelected,
             SelectedLiteLoaderVersion);
+
+        SelectedVersionDisplayText = _modLoaderIconPresentationService.BuildVersionDisplayText(
+            SelectedMinecraftVersion,
+            SelectedModLoaderItem?.Name,
+            IsOptifineSelected,
+            IsLiteLoaderSelected);
+
+        if (!_isIconManuallySelected)
+        {
+            SelectedIconPath = _modLoaderIconPresentationService.ResolveAutoIconPath(
+                _lastSelectedLoaderName,
+                SelectedModLoaderItem?.Name,
+                IsOptifineSelected,
+                IsLiteLoaderSelected,
+                AvailableIcons);
+        }
     }
 
     [RelayCommand]
@@ -698,8 +816,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             
             // 设置已加载状态
             modLoaderItem.HasLoaded = true;
-            
-            // 默认选择第一个版本
+
+            // 默认选择第一个版本（保持原交互行为）
             if (modLoaderItem.Versions.Count > 0 && string.IsNullOrEmpty(modLoaderItem.SelectedVersion))
             {
                 modLoaderItem.SelectedVersion = modLoaderItem.Versions[0];
