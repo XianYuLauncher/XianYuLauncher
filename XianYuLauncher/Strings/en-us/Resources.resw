@@ -2871,6 +2871,18 @@ Continue downloading?</value>
   <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
     <value>Specify Java executable path</value>
   </data>
+  <data name="VersionSettings_IconCard.Header" xml:space="preserve">
+    <value>Version Icon</value>
+  </data>
+  <data name="VersionSettings_IconCard.Description" xml:space="preserve">
+    <value>Select or customize icon for current version</value>
+  </data>
+  <data name="VersionIconPickerFlyoutContent_TitleTextBlock.Text" xml:space="preserve">
+    <value>Select Version Icon</value>
+  </data>
+  <data name="VersionIconPickerFlyoutContent_BrowseCustomIconTextBlock.Text" xml:space="preserve">
+    <value>Browse Custom Icon...</value>
+  </data>
   <data name="VersionSettings_JavaPathBox.PlaceholderText" xml:space="preserve">
     <value>Select Java Path</value>
   </data>

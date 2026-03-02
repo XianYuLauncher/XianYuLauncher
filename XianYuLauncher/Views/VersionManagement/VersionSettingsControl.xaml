@@ -134,7 +134,7 @@
                 <!-- 版本设置 -->
                 <TextBlock x:Uid="VersionManagerPage_VersionSettingsSection" Text="版本设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
-                <controls:SettingsCard Header="版本图标" Description="为当前版本选择或自定义图标">
+                <controls:SettingsCard x:Uid="VersionSettings_IconCard">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE790;" />
                     </controls:SettingsCard.HeaderIcon>

@@ -14,6 +14,8 @@ public interface IMinecraftVersionService
     Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true);
     Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null, string? versionIconPath = null);
     Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null);
+    [Obsolete("此重载已过时，请使用包含 versionIconPath 参数的 DownloadVersionAsync 重载。")]
+    Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback, string customVersionName = null);
     Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<DownloadProgressStatus> progressCallback = null, bool allowNetwork = true);
     Task ExtractNativeLibrariesAsync(string versionId, string librariesDirectory, string nativesDirectory);
     Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null);

@@ -2886,6 +2886,18 @@
   <data name="VersionSettings_JavaPathCard.Description" xml:space="preserve">
     <value>指定 Java 可执行文件路径</value>
   </data>
+  <data name="VersionSettings_IconCard.Header" xml:space="preserve">
+    <value>版本图标</value>
+  </data>
+  <data name="VersionSettings_IconCard.Description" xml:space="preserve">
+    <value>为当前版本选择或自定义图标</value>
+  </data>
+  <data name="VersionIconPickerFlyoutContent_TitleTextBlock.Text" xml:space="preserve">
+    <value>选择版本图标</value>
+  </data>
+  <data name="VersionIconPickerFlyoutContent_BrowseCustomIconTextBlock.Text" xml:space="preserve">
+    <value>浏览自定义图标...</value>
+  </data>
   <data name="VersionSettings_JavaPathBox.PlaceholderText" xml:space="preserve">
     <value>请选择 Java 路径</value>
   </data>

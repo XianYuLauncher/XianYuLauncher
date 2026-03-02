@@ -27,7 +27,6 @@ public sealed partial class VersionSettingsControl : UserControl
     private void VersionSettingsControl_Loaded(object sender, RoutedEventArgs e)
     {
         AttachViewModel(DataContext as VersionManagementViewModel);
-        _ = RefreshVersionIconsAsync();
     }
 
     private void VersionSettingsControl_Unloaded(object sender, RoutedEventArgs e)
