@@ -165,12 +165,15 @@ public class VersionInfoService : IVersionInfoService
                 result.ModLoaderType = legacyConfig.ModLoaderType;
                 result.ModLoaderVersion = legacyConfig.ModLoaderVersion;
             }
+
+            result.Icon = VersionIconPathHelper.NormalizeOrDefault(legacyConfig.Icon);
         }
         else
         {
             // 确保默认值正确
             result.AutoMemoryAllocation = true;
             result.UseGlobalJavaSetting = true;
+            result.Icon = VersionIconPathHelper.DefaultIconPath;
         }
 
         // Step 5: 保存/更新 XianYuL.cfg

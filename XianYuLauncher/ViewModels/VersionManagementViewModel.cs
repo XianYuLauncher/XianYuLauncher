@@ -303,6 +303,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string? _currentLoaderIconUrl;
+
+    /// <summary>
+    /// 当前版本图标路径（来自 XianYuL.cfg 的 Icon 字段）
+    /// </summary>
+    [ObservableProperty]
+    private string _currentVersionIconPath = VersionIconPathHelper.DefaultIconPath;
     
     /// <summary>
     /// 当前安装的所有加载器图标列表（用于多图标叠加显示）
@@ -1028,6 +1034,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         WindowHeight = versionConfig.WindowHeight;
 
         UseGlobalSettings = UseGlobalJavaSetting && !OverrideMemory && !OverrideResolution;
+
+        var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionConfig.Icon);
+        CurrentVersionIconPath = normalizedIconPath;
+        System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] CurrentVersionIconPath={CurrentVersionIconPath}");
 
         LaunchCount = versionConfig.LaunchCount;
         TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
