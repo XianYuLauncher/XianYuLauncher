@@ -890,7 +890,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
             {
                 // 下载原版Minecraft（没有选择任何加载器）
-                await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName);
+                await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName, SelectedIconPath);
             }
             else
             {
@@ -1004,7 +1004,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     await _downloadTaskManager.StartMultiModLoaderDownloadAsync(
                         SelectedMinecraftVersion,
                         modLoaderSelections,
-                        VersionName);
+                        VersionName,
+                        SelectedIconPath);
                 }
                 else
                 {

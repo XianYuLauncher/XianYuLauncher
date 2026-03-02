@@ -25,7 +25,8 @@ public partial class MinecraftVersionService
         string minecraftDirectory,
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
-        string? customVersionName = null)
+        string? customVersionName = null,
+        string? versionIconPath = null)
     {
         var selections = modLoaderSelections.OrderBy(s => s.InstallOrder).ToList();
         
@@ -88,6 +89,8 @@ public partial class MinecraftVersionService
                 currentProgress = endProgress;
                 _logger.LogInformation("===== {Type} 安装完成 =====", selection.Type);
             }
+
+            await SaveOrUpdateVersionIconAsync(versionId, minecraftDirectory, versionIconPath);
 
             progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             _logger.LogInformation("多加载器组合安装完成: {VersionId}", versionId);

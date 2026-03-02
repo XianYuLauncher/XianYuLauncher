@@ -32,7 +32,7 @@ public interface IDownloadTaskManager
     /// </summary>
     /// <param name="versionId">版本ID</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    Task StartVanillaDownloadAsync(string versionId, string customVersionName);
+    Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null);
 
     /// <summary>
     /// 启动 ModLoader 版本下载
@@ -45,7 +45,8 @@ public interface IDownloadTaskManager
         string minecraftVersion,
         string modLoaderType,
         string modLoaderVersion,
-        string customVersionName);
+        string customVersionName,
+        string? versionIconPath = null);
 
     /// <summary>
     /// 启动多加载器组合版本下载（新）
@@ -56,7 +57,8 @@ public interface IDownloadTaskManager
     Task StartMultiModLoaderDownloadAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
-        string customVersionName);
+        string customVersionName,
+        string? versionIconPath = null);
 
     /// <summary>
     /// 启动 Optifine+Forge 版本下载（已废弃，保留用于向后兼容）
