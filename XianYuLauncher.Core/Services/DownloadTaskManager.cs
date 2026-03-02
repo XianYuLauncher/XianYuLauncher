@@ -47,7 +47,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    public Task StartVanillaDownloadAsync(string versionId, string customVersionName)
+    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null)
     {
         if (HasActiveDownload)
         {
@@ -59,7 +59,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var task = CreateTask(taskName, customVersionName);
 
         // 在后台执行下载，方法立即返回
-        _ = ExecuteVanillaDownloadAsync(versionId, customVersionName, task);
+        _ = ExecuteVanillaDownloadAsync(versionId, customVersionName, task, versionIconPath);
 
         return Task.CompletedTask;
     }
@@ -71,7 +71,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string minecraftVersion,
         string modLoaderType,
         string modLoaderVersion,
-        string customVersionName)
+        string customVersionName,
+        string? versionIconPath = null)
     {
         if (HasActiveDownload)
         {
@@ -85,7 +86,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var task = CreateTask(taskName, customVersionName);
 
         // 在后台执行下载，方法立即返回
-        _ = ExecuteModLoaderDownloadAsync(minecraftVersion, modLoaderType, modLoaderVersion, customVersionName, task);
+        _ = ExecuteModLoaderDownloadAsync(minecraftVersion, modLoaderType, modLoaderVersion, customVersionName, task, versionIconPath);
 
         return Task.CompletedTask;
     }
@@ -96,7 +97,8 @@ public class DownloadTaskManager : IDownloadTaskManager
     public Task StartMultiModLoaderDownloadAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
-        string customVersionName)
+        string customVersionName,
+        string? versionIconPath = null)
     {
         if (HasActiveDownload)
         {
@@ -111,7 +113,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var task = CreateTask(taskName, customVersionName);
 
         // 在后台执行下载，方法立即返回
-        _ = ExecuteMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName, task);
+        _ = ExecuteMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName, task, versionIconPath);
 
         return Task.CompletedTask;
     }
@@ -277,7 +279,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return $"{len:0.##} {sizes[order]}";
     }
 
-    private async Task ExecuteVanillaDownloadAsync(string versionId, string customVersionName, DownloadTaskInfo task)
+    private async Task ExecuteVanillaDownloadAsync(string versionId, string customVersionName, DownloadTaskInfo task, string? versionIconPath)
     {
         try
         {
@@ -301,7 +303,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                     task.SpeedText = status.SpeedText;
                     OnTaskProgressChanged(task);
                 },
-                customVersionName);
+                customVersionName,
+                versionIconPath);
 
             if (_currentCts?.IsCancellationRequested == true)
             {
@@ -327,7 +330,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string modLoaderType,
         string modLoaderVersion,
         string customVersionName,
-        DownloadTaskInfo task)
+        DownloadTaskInfo task,
+        string? versionIconPath)
     {
         try
         {
@@ -351,7 +355,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                     OnTaskProgressChanged(task);
                 },
                 _currentCts?.Token ?? CancellationToken.None,
-                customVersionName);
+                customVersionName,
+                versionIconPath);
 
             if (_currentCts?.IsCancellationRequested == true)
             {
@@ -811,7 +816,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string minecraftVersion,
         List<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
-        DownloadTaskInfo task)
+        DownloadTaskInfo task,
+        string? versionIconPath)
     {
         try
         {
@@ -834,7 +840,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                     OnTaskProgressChanged(task);
                 },
                 _currentCts?.Token ?? CancellationToken.None,
-                customVersionName);
+                customVersionName,
+                versionIconPath);
 
             if (_currentCts?.IsCancellationRequested == true)
             {
