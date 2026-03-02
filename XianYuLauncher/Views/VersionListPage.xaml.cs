@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage;
 using Windows.Storage.Pickers;
 using System;
 using System.Collections.Generic;
@@ -1280,7 +1281,7 @@ public sealed partial class VersionListPage : Page
                             });
                             
                             // 创建zip压缩包，使用FileMode.Create覆盖已存在的文件
-                            using (var fileStream = new FileStream(file.Path, FileMode.Create))
+                            using (var fileStream = new FileStream(file.Path, FileMode.Create, FileAccess.Write))
                             using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
                             {
                                 if (_isExportCancelled)
