@@ -77,12 +77,12 @@
                                         Grid.Column="0"
                                         Width="32" Height="32"
                                         CornerRadius="6"
-                                        Background="{ThemeResource AccentFillColorDefaultBrush}">
-                                        <FontIcon 
-                                            FontFamily="{StaticResource SymbolThemeFontFamily}" 
-                                            Glyph="&#xE7FC;" 
-                                            FontSize="14"
-                                            Foreground="White" />
+                                        Background="Transparent">
+                                        <Image
+                                            x:Name="VersionIconImage"
+                                            Width="32"
+                                            Height="32"
+                                            Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                         <TextBlock 

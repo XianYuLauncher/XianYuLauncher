@@ -226,6 +226,17 @@ public class VersionInfoManager : IVersionInfoManager
         {
             var jsonContent = await File.ReadAllTextAsync(configPath);
             var config = JsonConvert.DeserializeObject<VersionConfig>(jsonContent);
+
+            if (config != null)
+            {
+                var normalizedIcon = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+                if (!string.Equals(config.Icon, normalizedIcon, StringComparison.OrdinalIgnoreCase))
+                {
+                    config.Icon = normalizedIcon;
+                    await SaveVersionConfigAsync(versionId, minecraftDirectory, config);
+                }
+            }
+
             return config;
         }
         catch (Exception ex)
@@ -238,6 +249,8 @@ public class VersionInfoManager : IVersionInfoManager
     /// <inheritdoc/>
     public async Task SaveVersionConfigAsync(string versionId, string minecraftDirectory, VersionConfig config)
     {
+        config.Icon = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+
         var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
 

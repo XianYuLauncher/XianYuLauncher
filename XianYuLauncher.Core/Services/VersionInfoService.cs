@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.VersionAnalysis;
 using XianYuLauncher.Core.VersionAnalysis.Models;
@@ -250,6 +251,15 @@ public class VersionInfoService : IVersionInfoService
                     var config = JsonConvert.DeserializeObject<VersionConfig>(configContent);
                     if (config != null)
                     {
+                        var normalizedIcon = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+                        var shouldWriteBack = !string.Equals(config.Icon, normalizedIcon, StringComparison.OrdinalIgnoreCase);
+                        config.Icon = normalizedIcon;
+
+                        if (shouldWriteBack)
+                        {
+                            await CreateOrUpdateXianYuLConfigAsync(versionDirectory, config);
+                        }
+
                         System.Diagnostics.Debug.WriteLine($"[VersionInfoService]   解析XianYuL.cfg配置文件成功");
                         return config;
                     }
@@ -368,7 +378,8 @@ public class VersionInfoService : IVersionInfoService
                     ModLoaderVersion = modLoaderVersion,
                     MinecraftVersion = minecraftVersion,
                     OptifineVersion = optifineVersion,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.Now,
+                    Icon = VersionIconPathHelper.DefaultIconPath
                 };
                 
                 System.Diagnostics.Debug.WriteLine("[VersionInfoService]   成功创建VersionConfig对象");
@@ -482,6 +493,7 @@ public class VersionInfoService : IVersionInfoService
                     MinecraftVersion = config.MinecraftVersion ?? string.Empty,
                     OptifineVersion = config.OptifineVersion ?? existingConfig?.OptifineVersion ?? string.Empty,
                     LiteLoaderVersion = config.LiteLoaderVersion ?? existingConfig?.LiteLoaderVersion,
+                    Icon = VersionIconPathHelper.NormalizeOrDefault(config.Icon ?? existingConfig?.Icon),
                     CreatedAt = existingConfig?.CreatedAt ?? DateTime.Now,
                     
                     // 使用传入的 config 中的设置（因为 config 已经融合了 legacyConfig 的用户设置）

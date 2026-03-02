@@ -22,6 +22,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
@@ -1619,6 +1620,17 @@ public partial class LaunchViewModel : ObservableRecipient
         OnPropertyChanged(nameof(SelectedVersionDisplay));
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
+    }
+
+    public async Task<string> GetVersionIconPathAsync(string? versionName)
+    {
+        if (string.IsNullOrWhiteSpace(versionName))
+        {
+            return VersionIconPathHelper.DefaultIconPath;
+        }
+
+        var config = await _versionConfigService.LoadConfigAsync(versionName);
+        return VersionIconPathHelper.NormalizeOrDefault(config?.Icon);
     }
     
     /// <summary>
