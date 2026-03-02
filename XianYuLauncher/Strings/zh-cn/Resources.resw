@@ -2838,6 +2838,9 @@
   <data name="Settings_CurrentLoaderSection.Text" xml:space="preserve">
     <value>当前加载器</value>
   </data>
+  <data name="VersionManagerPage_CurrentVersionTitle.Text" xml:space="preserve">
+    <value>当前版本</value>
+  </data>
   <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
     <value>管理加载器</value>
   </data>

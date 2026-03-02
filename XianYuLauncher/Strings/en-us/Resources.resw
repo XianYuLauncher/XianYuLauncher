@@ -2823,6 +2823,9 @@ Continue downloading?</value>
   <data name="Settings_CurrentLoaderSection.Text" xml:space="preserve">
     <value>Current Loader</value>
   </data>
+  <data name="VersionManagerPage_CurrentVersionTitle.Text" xml:space="preserve">
+    <value>Current Version</value>
+  </data>
   <data name="VersionManagerPage_ManageLoaderTitle.Text" xml:space="preserve">
     <value>Manage Loaders</value>
   </data>
