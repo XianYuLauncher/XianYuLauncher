@@ -590,7 +590,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 检查文件是否已存在
             if (File.Exists(settingsFilePath))
             {
-                await SaveOrUpdateVersionIconAsync(finalVersionName, minecraftDirectory, normalizedIconPath);
+                // 已存在配置文件时，仅在调用方显式提供图标路径时才更新图标，
+                // 避免在 versionIconPath 为空时将已有自定义图标覆盖为默认图标。
+                if (!string.IsNullOrWhiteSpace(versionIconPath))
+                {
+                    await SaveOrUpdateVersionIconAsync(finalVersionName, minecraftDirectory, normalizedIconPath);
+                }
                 return;
             }
             
@@ -772,10 +777,19 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
     private async Task SaveOrUpdateVersionIconAsync(string versionId, string minecraftDirectory, string? versionIconPath)
     {
+        if (string.IsNullOrWhiteSpace(versionIconPath))
+        {
+            return;
+        }
+
         var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionIconPath);
         var config = await _versionInfoManager.GetVersionConfigAsync(versionId, minecraftDirectory) ?? new VersionConfig();
-        config.Icon = normalizedIconPath;
-        await _versionInfoManager.SaveVersionConfigAsync(versionId, minecraftDirectory, config);
+
+        if (!string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase))
+        {
+            config.Icon = normalizedIconPath;
+            await _versionInfoManager.SaveVersionConfigAsync(versionId, minecraftDirectory, config);
+        }
     }
 
     /// <summary>

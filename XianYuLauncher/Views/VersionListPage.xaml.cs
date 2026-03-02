@@ -1,12 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.UI.Xaml;
-using Microsoft.UI;
 using Windows.Storage.Pickers;
-using Windows.Storage;
-using Windows.Storage.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -94,7 +89,7 @@ public sealed partial class VersionListPage : Page
         }
     }
 
-    private async void VersionIconImage_Loaded(object sender, RoutedEventArgs e)
+    private async void VersionIconImage_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
         if (sender is not Image image || image.DataContext is not VersionListViewModel.VersionInfoItem versionItem)
         {
@@ -137,7 +132,7 @@ public sealed partial class VersionListPage : Page
             return await existingTask;
         }
 
-        var processingTask = ProcessVersionIconAsync(iconPath);
+        var processingTask = VersionIconProcessingHelper.ProcessAsync(iconPath);
         _versionIconProcessingTasks[iconPath] = processingTask;
 
         try
@@ -171,81 +166,6 @@ public sealed partial class VersionListPage : Page
         return null;
     }
 
-    private static async Task<BitmapImage?> ProcessVersionIconAsync(string? iconPath)
-    {
-        try
-        {
-            var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(iconPath);
-            var device = CanvasDevice.GetSharedDevice();
-            var canvasBitmap = await LoadVersionIconCanvasBitmapAsync(device, normalizedPath);
-
-            if (canvasBitmap == null)
-            {
-                if (!string.Equals(normalizedPath, VersionIconPathHelper.DefaultIconPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    return await ProcessVersionIconAsync(VersionIconPathHelper.DefaultIconPath);
-                }
-
-                return null;
-            }
-
-            using var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
-            using (var drawingSession = renderTarget.CreateDrawingSession())
-            {
-                drawingSession.Clear(Colors.Transparent);
-                PixelArtRenderHelper.DrawNearestNeighbor(
-                    drawingSession,
-                    canvasBitmap,
-                    new Windows.Foundation.Rect(0, 0, 32, 32),
-                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height));
-            }
-
-            using var outputStream = new InMemoryRandomAccessStream();
-            await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-            outputStream.Seek(0);
-
-            var bitmapImage = new BitmapImage();
-            await bitmapImage.SetSourceAsync(outputStream);
-            return bitmapImage;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static async Task<CanvasBitmap?> LoadVersionIconCanvasBitmapAsync(CanvasDevice device, string iconPath)
-    {
-        try
-        {
-            StorageFile file;
-
-            if (iconPath.StartsWith("ms-appx:///", StringComparison.OrdinalIgnoreCase))
-            {
-                file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(iconPath));
-            }
-            else if (Path.IsPathRooted(iconPath))
-            {
-                file = await StorageFile.GetFileFromPathAsync(iconPath);
-            }
-            else if (Uri.TryCreate(iconPath, UriKind.Absolute, out var uri) && uri.IsFile)
-            {
-                file = await StorageFile.GetFileFromPathAsync(uri.LocalPath);
-            }
-            else
-            {
-                return null;
-            }
-
-            using var stream = await file.OpenReadAsync();
-            return await CanvasBitmap.LoadAsync(device, stream);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-    
     /// <summary>
     /// ViewModel属性变化事件处理
     /// </summary>

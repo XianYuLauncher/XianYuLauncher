@@ -19,10 +19,10 @@ public class PathToImageSourceConverter : IValueConverter
                 return new BitmapImage(absoluteUri);
             }
 
-            if (System.IO.Path.IsPathRooted(path))
+            if (System.IO.Path.IsPathRooted(path) && Uri.TryCreate(path, UriKind.Absolute, out var localUri))
             {
-                var fileUri = new Uri($"file:///{path.Replace('\\', '/')}?t={DateTime.Now.Ticks}");
-                return new BitmapImage(fileUri);
+                var builder = new UriBuilder(localUri) { Query = $"t={DateTime.Now.Ticks}" };
+                return new BitmapImage(builder.Uri);
             }
         }
         catch

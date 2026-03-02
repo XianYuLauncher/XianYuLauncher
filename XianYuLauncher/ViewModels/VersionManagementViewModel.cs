@@ -1107,7 +1107,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionConfig.Icon);
         CurrentVersionIconPath = normalizedIconPath;
-        System.Diagnostics.Debug.WriteLine($"[VersionManagementViewModel] CurrentVersionIconPath={CurrentVersionIconPath}");
 
         LaunchCount = versionConfig.LaunchCount;
         TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
