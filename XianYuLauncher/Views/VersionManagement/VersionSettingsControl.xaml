@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:XianYuLauncher.Models.VersionManagement"
+    xmlns:appControls="using:XianYuLauncher.Controls"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
@@ -139,13 +140,26 @@
                 <!-- 版本设置 -->
                 <TextBlock x:Uid="VersionManagerPage_VersionSettingsSection" Text="版本设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
-                <controls:SettingsCard Header="版本图标" Description="当前仅展示该版本图标，修改入口即将开放">
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <Border Width="32" Height="32" CornerRadius="6" Background="Transparent">
-                            <Image x:Name="VersionSettingsIconImage" Width="32" Height="32" Stretch="UniformToFill" />
-                        </Border>
-                        <Button Content="自定义图标（即将支持）" IsEnabled="False" />
-                    </StackPanel>
+                <controls:SettingsCard Header="版本图标" Description="为当前版本选择或自定义图标">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE790;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <DropDownButton>
+                        <DropDownButton.Content>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Image x:Name="VersionSettingsIconImage" Width="18" Height="18" Stretch="UniformToFill" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SelectedVersionIconDisplayName, Mode=OneWay}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DropDownButton.Content>
+                        <DropDownButton.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft">
+                                <appControls:VersionIconPickerFlyoutContent
+                                    AvailableIcons="{Binding AvailableVersionIcons, Mode=OneWay}"
+                                    BuiltInIconSelected="VersionIconPicker_BuiltInIconSelected"
+                                    CustomIconRequested="VersionIconPicker_CustomIconRequested" />
+                            </Flyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
                 </controls:SettingsCard>
                 
                 <!-- 全局设置模式切换 -->

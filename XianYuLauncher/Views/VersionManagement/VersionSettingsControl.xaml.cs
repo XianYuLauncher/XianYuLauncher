@@ -3,7 +3,10 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Graphics.Canvas;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using WinRT.Interop;
+using XianYuLauncher.Controls;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
@@ -119,6 +122,47 @@ public sealed partial class VersionSettingsControl : UserControl
         if (VersionSettingsIconImage != null)
         {
             VersionSettingsIconImage.Source = processedIcon;
+        }
+    }
+
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    {
+        if (_viewModel == null || e.IconOption == null)
+        {
+            return;
+        }
+
+        _viewModel.SelectVersionBuiltInIconCommand.Execute(e.IconOption);
+    }
+
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    {
+        if (_viewModel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                await _viewModel.SetCustomVersionIconAsync(file.Path);
+            }
+        }
+        catch
+        {
         }
     }
 
