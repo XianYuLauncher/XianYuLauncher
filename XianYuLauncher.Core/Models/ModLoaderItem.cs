@@ -47,6 +47,7 @@ public class OptifineVersionInfo
 public class ModLoaderItem : INotifyPropertyChanged
 {
     private string _name;
+    private bool _isExpanded;
     private bool _isSelected;
     private bool _isLoading;
     private bool _hasLoaded;
@@ -69,6 +70,15 @@ public class ModLoaderItem : INotifyPropertyChanged
     {
         get => _name;
         set => SetProperty(ref _name, value);
+    }
+
+    /// <summary>
+    /// Expander 展开状态（仅UI状态）
+    /// </summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
     }
 
     /// <summary>
@@ -208,6 +218,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     public ModLoaderItem(string name)
     {
         _name = name;
+        _isExpanded = false;
         _isSelected = false;
         _isLoading = false;
         _hasLoaded = false;

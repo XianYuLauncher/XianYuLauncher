@@ -1,7 +1,10 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
 using System.ComponentModel;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace XianYuLauncher.Views;
 
@@ -74,6 +77,40 @@ public sealed partial class ModLoaderSelectorPage : Page
     {
         ViewModel.IsLiteLoaderSelected = false;
         ViewModel.SelectedLiteLoaderVersion = null;
+    }
+
+    private async void CustomIconButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                ViewModel.SetCustomIcon(file.Path);
+            }
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private void BuiltInIconButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is VersionIconOption iconOption)
+        {
+            ViewModel.SelectBuiltInIconCommand.Execute(iconOption);
+        }
     }
     
     /// <summary>
