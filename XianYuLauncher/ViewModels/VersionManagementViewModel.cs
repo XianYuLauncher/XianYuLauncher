@@ -292,12 +292,24 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string _currentLoaderDisplayName = "原版";
+
+    /// <summary>
+    /// 当前 Minecraft 版本显示名称
+    /// </summary>
+    [ObservableProperty]
+    private string _currentMinecraftVersionDisplay = string.Empty;
     
     /// <summary>
     /// 当前加载器版本
     /// </summary>
     [ObservableProperty]
     private string _currentLoaderVersion = string.Empty;
+
+    /// <summary>
+    /// 当前加载器摘要显示（如：Forge 47.3.0 + LiteLoader 1.12.2）
+    /// </summary>
+    [ObservableProperty]
+    private string _currentLoaderSummaryDisplay = string.Empty;
     
     /// <summary>
     /// 当前加载器图标URL（主加载器）
@@ -1119,13 +1131,40 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void UpdateCurrentLoaderInfo(VersionSettings? settings)
     {
         var displayState = _loaderUiOrchestrator.BuildDisplayState(settings);
+        CurrentMinecraftVersionDisplay = settings?.MinecraftVersion ?? string.Empty;
         CurrentLoaderDisplayName = displayState.CurrentLoaderDisplayName;
         CurrentLoaderVersion = displayState.CurrentLoaderVersion;
         CurrentLoaderIconUrl = displayState.CurrentLoaderIconUrl;
         IsVanillaLoader = displayState.IsVanillaLoader;
         CurrentLoaderIcons = new ObservableCollection<LoaderIconInfo>(displayState.CurrentLoaderIcons);
+        CurrentLoaderSummaryDisplay = BuildLoaderSummaryDisplay(displayState);
 
         OnPropertyChanged(nameof(HasMultipleLoaders));
+    }
+
+    private static string BuildLoaderSummaryDisplay(Features.VersionManagement.Services.LoaderDisplayState displayState)
+    {
+        if (displayState.CurrentLoaderIcons.Count > 0)
+        {
+            var parts = displayState.CurrentLoaderIcons
+                .Select(loader => string.IsNullOrWhiteSpace(loader.Version)
+                    ? loader.Name
+                    : $"{loader.Name} {loader.Version}")
+                .Where(part => !string.IsNullOrWhiteSpace(part));
+
+            var summary = string.Join(" + ", parts);
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                return summary;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(displayState.CurrentLoaderVersion))
+        {
+            return $"{displayState.CurrentLoaderDisplayName} {displayState.CurrentLoaderVersion}";
+        }
+
+        return displayState.CurrentLoaderDisplayName;
     }
 
     /// <summary>

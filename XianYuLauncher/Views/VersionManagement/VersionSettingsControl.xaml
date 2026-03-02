@@ -37,8 +37,8 @@
                     <RepositionThemeTransition IsStaggeringEnabled="False" />
                 </StackPanel.ChildrenTransitions>
                 
-                <!-- 当前加载器信息 -->
-                <TextBlock x:Uid="Settings_CurrentLoaderSection" Text="当前加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
+                <!-- 当前版本信息 -->
+                <TextBlock x:Uid="VersionManagerPage_CurrentVersionTitle" Text="当前版本" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
                 
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
@@ -54,18 +54,12 @@
                             
                             <!-- 文字信息 -->
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock Text="{Binding CurrentLoaderDisplayName, Mode=OneWay}" 
+                                <TextBlock Text="{Binding CurrentMinecraftVersionDisplay, Mode=OneWay}" 
                                            Style="{StaticResource BodyTextBlockStyle}"
                                            FontWeight="SemiBold" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock x:Uid="Settings_CurrentLoaderSection" 
-                                               Text="当前加载器"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{Binding CurrentLoaderVersion, Mode=OneWay}" 
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
+                                <TextBlock Text="{Binding CurrentLoaderSummaryDisplay, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                         </Grid>
                     </controls:SettingsCard.Header>
