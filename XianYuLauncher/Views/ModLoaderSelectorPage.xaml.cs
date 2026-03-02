@@ -1,7 +1,11 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Controls;
+using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
 using System.ComponentModel;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace XianYuLauncher.Views;
 
@@ -74,6 +78,41 @@ public sealed partial class ModLoaderSelectorPage : Page
     {
         ViewModel.IsLiteLoaderSelected = false;
         ViewModel.SelectedLiteLoaderVersion = null;
+    }
+
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                ViewModel.SetCustomIcon(file.Path);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModLoaderSelectorPage] 自定义图标选择失败: {ex.Message}");
+        }
+    }
+
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    {
+        if (e.IconOption != null)
+        {
+            ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
+        }
     }
     
     /// <summary>

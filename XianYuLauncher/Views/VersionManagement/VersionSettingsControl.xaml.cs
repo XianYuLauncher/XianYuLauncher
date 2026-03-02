@@ -1,7 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
+using XianYuLauncher.Controls;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
 
@@ -9,9 +13,63 @@ namespace XianYuLauncher.Views.VersionManagement;
 
 public sealed partial class VersionSettingsControl : UserControl
 {
+    private VersionManagementViewModel? _viewModel;
+    private int _iconLoadRequestId;
+
     public VersionSettingsControl()
     {
         InitializeComponent();
+        DataContextChanged += VersionSettingsControl_DataContextChanged;
+        Loaded += VersionSettingsControl_Loaded;
+        Unloaded += VersionSettingsControl_Unloaded;
+    }
+
+    private void VersionSettingsControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        AttachViewModel(DataContext as VersionManagementViewModel);
+    }
+
+    private void VersionSettingsControl_Unloaded(object sender, RoutedEventArgs e)
+    {
+        DetachViewModel();
+    }
+
+    private void VersionSettingsControl_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        AttachViewModel(args.NewValue as VersionManagementViewModel);
+        _ = RefreshVersionIconsAsync();
+    }
+
+    private void AttachViewModel(VersionManagementViewModel? viewModel)
+    {
+        if (ReferenceEquals(_viewModel, viewModel))
+        {
+            return;
+        }
+
+        DetachViewModel();
+        _viewModel = viewModel;
+        if (_viewModel != null)
+        {
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        }
+    }
+
+    private void DetachViewModel()
+    {
+        if (_viewModel != null)
+        {
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            _viewModel = null;
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(VersionManagementViewModel.CurrentVersionIconPath))
+        {
+            _ = RefreshVersionIconsAsync();
+        }
     }
 
     private async void LoaderExpander_Expanding(Expander sender, ExpanderExpandingEventArgs args)
@@ -41,48 +99,67 @@ public sealed partial class VersionSettingsControl : UserControl
         }
     }
 
-    /// <summary>
-    /// 加载器图标悬浮进入 - 弹性放大并提升层级
-    /// </summary>
-    private void LoaderIcon_PointerEntered(object sender, PointerRoutedEventArgs e)
+    private async Task RefreshVersionIconsAsync()
     {
-        if (sender is Grid grid)
+        var requestId = ++_iconLoadRequestId;
+        var iconPath = _viewModel?.CurrentVersionIconPath;
+        var processedIcon = await VersionIconProcessingHelper.ProcessAsync(iconPath);
+
+        if (requestId != _iconLoadRequestId)
         {
-            // 使用 Composition 弹性动画实现 Fluent 缩放
-            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(grid);
-            var compositor = visual.Compositor;
-            
-            visual.CenterPoint = new System.Numerics.Vector3((float)grid.ActualWidth / 2, (float)grid.ActualHeight / 2, 0);
-            
-            var springAnimation = compositor.CreateSpringVector3Animation();
-            springAnimation.FinalValue = new System.Numerics.Vector3(1.3f, 1.3f, 1f);
-            springAnimation.DampingRatio = 0.6f;
-            springAnimation.Period = TimeSpan.FromMilliseconds(50);
-            
-            visual.StartAnimation("Scale", springAnimation);
-            Canvas.SetZIndex(grid, 10);
+            return;
+        }
+
+        if (CurrentLoaderVersionIconImage != null)
+        {
+            CurrentLoaderVersionIconImage.Source = processedIcon;
+        }
+
+        if (VersionSettingsIconImage != null)
+        {
+            VersionSettingsIconImage.Source = processedIcon;
         }
     }
 
-    /// <summary>
-    /// 加载器图标悬浮离开 - 弹性恢复并降低层级
-    /// </summary>
-    private void LoaderIcon_PointerExited(object sender, PointerRoutedEventArgs e)
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
     {
-        if (sender is Grid grid)
+        if (_viewModel == null || e.IconOption == null)
         {
-            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(grid);
-            var compositor = visual.Compositor;
-            
-            visual.CenterPoint = new System.Numerics.Vector3((float)grid.ActualWidth / 2, (float)grid.ActualHeight / 2, 0);
-            
-            var springAnimation = compositor.CreateSpringVector3Animation();
-            springAnimation.FinalValue = new System.Numerics.Vector3(1f, 1f, 1f);
-            springAnimation.DampingRatio = 0.6f;
-            springAnimation.Period = TimeSpan.FromMilliseconds(50);
-            
-            visual.StartAnimation("Scale", springAnimation);
-            Canvas.SetZIndex(grid, 0);
+            return;
+        }
+
+        _viewModel.SelectVersionBuiltInIconCommand.Execute(e.IconOption);
+    }
+
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    {
+        if (_viewModel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                await _viewModel.SetCustomVersionIconAsync(file.Path);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionSettingsControl] 自定义图标选择失败: {ex.Message}");
         }
     }
 }

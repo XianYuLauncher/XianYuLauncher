@@ -57,6 +57,11 @@ public partial class VersionListViewModel : ObservableRecipient
         public string VersionNumber { get; set; } = string.Empty;
 
         /// <summary>
+        /// 版本图标路径
+        /// </summary>
+        public string VersionIconPath { get; set; } = VersionIconPathHelper.DefaultIconPath;
+
+        /// <summary>
         /// 版本文件夹路径
         /// </summary>
         public string Path { get; set; } = string.Empty;
@@ -321,6 +326,7 @@ public partial class VersionListViewModel : ObservableRecipient
                             LoaderTags = loaderTags,
                             InstallDate = installDate,
                             VersionNumber = versionNumber,
+                            VersionIconPath = VersionIconPathHelper.NormalizeOrDefault(versionConfig.Icon),
                             Path = versionDir,
                             IsValid = isValidVersion
                         };
@@ -355,6 +361,7 @@ public partial class VersionListViewModel : ObservableRecipient
                     LoaderTags = new List<string> { type },
                     InstallDate = installDate,
                     VersionNumber = versionNumber,
+                    VersionIconPath = VersionIconPathHelper.DefaultIconPath,
                     Path = versionDir,
                     IsValid = isValidVersion
                 };
@@ -450,6 +457,8 @@ public partial class VersionListViewModel : ObservableRecipient
                 
                 // 设置整合包名称
                 modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
+                modDownloadViewModel.ModIconUrl = string.Empty;
+                modDownloadViewModel.ModId = string.Empty;
                 
                 // 创建ModVersionViewModel实例
                 var modVersion = new ModVersionViewModel
@@ -520,6 +529,8 @@ public partial class VersionListViewModel : ObservableRecipient
 
             var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
             modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
+            modDownloadViewModel.ModIconUrl = string.Empty;
+            modDownloadViewModel.ModId = string.Empty;
 
             var modVersion = new ModVersionViewModel
             {

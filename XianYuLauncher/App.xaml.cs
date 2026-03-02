@@ -155,6 +155,7 @@ public partial class App : Application
             // ModLoader Services (抽离自 ModLoaderSelectorViewModel)
             services.AddSingleton<IModLoaderVersionLoaderService, ModLoaderVersionLoaderService>();
             services.AddSingleton<IModLoaderVersionNameService, ModLoaderVersionNameService>();
+            services.AddSingleton<IModLoaderIconPresentationService, ModLoaderIconPresentationService>();
 
             services.AddSingleton<ILibraryManager, LibraryManager>();
             services.AddSingleton<IAssetManager, AssetManager>();

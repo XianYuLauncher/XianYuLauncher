@@ -4,10 +4,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:models="using:XianYuLauncher.Models"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:core="using:XianYuLauncher.Core.Models"
     xmlns:services="using:XianYuLauncher.Core.Services"
+    xmlns:controls="using:XianYuLauncher.Controls"
     mc:Ignorable="d"
     HorizontalAlignment="Stretch">
 
@@ -21,6 +22,7 @@
         <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" />
         <helpers:ModLoaderToIconConverter x:Key="ModLoaderToIconConverter" />
         <helpers:StringEqualsConverter x:Key="StringEqualsConverter" />
+        <helpers:PathToImageSourceConverter x:Key="PathToImageSourceConverter" />
         
         <Style x:Key="VersionListViewItemStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -38,12 +40,34 @@
         </Grid.RowDefinitions>
 
         <!-- 页面标题 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock x:Uid="ModLoaderSelectionPage_TitleText" Text="下载Minecraft" FontSize="28" FontWeight="Bold" />
-            <TextBlock Margin="0,8,0,0" FontSize="16">
-                <Run x:Uid="ModLoaderSelectionPage_CurrentVersionText" Text="当前Minecraft版本: " />
-                <Run Text="{x:Bind ViewModel.SelectedMinecraftVersion, Mode=OneWay}" FontWeight="SemiBold" />
-            </TextBlock>
+        <StackPanel Grid.Row="0" Margin="0,0,0,24" Spacing="8">
+            <TextBlock x:Uid="ModLoaderSelectionPage_TitleText" Text="下载 Minecraft" Style="{ThemeResource TitleTextBlockStyle}" />
+            
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock x:Uid="ModLoaderSelectionPage_CurrentVersionText" Text="当前版本:" Style="{StaticResource BodyTextStyle}" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,0,2" />
+
+                <DropDownButton Padding="8,4" VerticalAlignment="Center" CornerRadius="4" BorderThickness="0" Background="Transparent" Margin="-8,0,0,0">
+                    <DropDownButton.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Image
+                                Source="{x:Bind ViewModel.SelectedIconPath, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                Width="16" Height="16" Stretch="UniformToFill" VerticalAlignment="Center" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.SelectedVersionDisplayText, Mode=OneWay}"
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                VerticalAlignment="Center" Margin="0,0,4,0" />
+                        </StackPanel>
+                    </DropDownButton.Content>
+                    <DropDownButton.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft">
+                            <controls:VersionIconPickerFlyoutContent
+                                AvailableIcons="{x:Bind ViewModel.AvailableIcons, Mode=OneWay}"
+                                BuiltInIconSelected="VersionIconPicker_BuiltInIconSelected"
+                                CustomIconRequested="VersionIconPicker_CustomIconRequested" />
+                        </Flyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
+            </StackPanel>
         </StackPanel>
 
         <!-- 版本名称编辑卡片 -->

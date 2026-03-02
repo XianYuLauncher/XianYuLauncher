@@ -2,6 +2,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 
@@ -39,6 +42,9 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftPath,
         bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
+        string? modpackIconUrl = null,
+        string? sourceProjectId = null,
+        string? sourceVersionId = null,
         CancellationToken cancellationToken = default)
     {
         string tempDir = string.Empty;
@@ -53,6 +59,13 @@ public class ModpackInstallationService : IModpackInstallationService
             await DownloadModpackFileAsync(downloadUrl, mrpackPath, isFromCurseForge, progress, cancellationToken);
 
             Report(progress, 30, "30%", "下载完成，正在解压整合包...");
+
+            var resolvedVersionIconPath = await ResolveAndPersistModpackIconAsync(
+                modpackIconUrl,
+                isFromCurseForge,
+                sourceProjectId,
+                sourceVersionId,
+                cancellationToken);
 
             // 2. 解压
             string extractDir = Path.Combine(tempDir, "extract");
@@ -73,14 +86,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, minecraftPath, progress, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, cancellationToken);
             }
 
             return ModpackInstallResult.Failed("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
@@ -109,6 +122,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackDisplayName,
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -134,7 +148,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 double p = 50 + (status.Percent / 100) * 30;
                 Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
             },
-            cancellationToken, modpackVersionId);
+            cancellationToken, modpackVersionId, versionIconPath);
 
         Report(progress, 80, "80%", "版本下载完成，正在部署整合包文件...");
 
@@ -255,6 +269,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackDisplayName,
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -282,7 +297,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 double p = 45 + (status.Percent / 100) * 15;
                 Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
             },
-            cancellationToken, modpackVersionId);
+            cancellationToken, modpackVersionId, versionIconPath);
 
         Report(progress, 60, "60%", "版本下载完成，正在部署整合包文件...");
 
@@ -307,6 +322,144 @@ public class ModpackInstallationService : IModpackInstallationService
 
         Report(progress, 100, "100%", "整合包安装完成！");
         return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, modpackVersionId);
+    }
+
+    private async Task<string?> ResolveAndPersistModpackIconAsync(
+        string? modpackIconUrl,
+        bool isFromCurseForge,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(modpackIconUrl))
+        {
+            return null;
+        }
+
+        if (modpackIconUrl.StartsWith("ms-appx://", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            var persistentDir = Path.Combine(AppEnvironment.SafeAppDataPath, "VersionIcons", "Modpacks");
+            var cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "modpack_icon_cache");
+            Directory.CreateDirectory(persistentDir);
+            Directory.CreateDirectory(cacheDir);
+
+            var sourceTag = isFromCurseForge ? "curseforge" : "modrinth";
+            var projectTag = SanitizePathSegment(sourceProjectId, 64);
+            var versionTag = SanitizePathSegment(sourceVersionId, 64);
+
+            var extension = ResolveIconExtension(modpackIconUrl);
+            var nameSeed = $"{sourceTag}|{sourceProjectId}|{sourceVersionId}|{modpackIconUrl}";
+            var hash = ComputeSha256Hex(nameSeed)[..16];
+            var fileName = $"{sourceTag}_{projectTag}_{versionTag}_{hash}{extension}";
+
+            var cacheFilePath = Path.Combine(cacheDir, fileName);
+            var persistentFilePath = Path.Combine(persistentDir, fileName);
+
+            if (Uri.TryCreate(modpackIconUrl, UriKind.Absolute, out var uri))
+            {
+                if (uri.Scheme.Equals("file", StringComparison.OrdinalIgnoreCase))
+                {
+                    var localPath = uri.LocalPath;
+                    if (File.Exists(localPath))
+                    {
+                        File.Copy(localPath, cacheFilePath, true);
+                    }
+                }
+                else if (uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ||
+                         uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!File.Exists(cacheFilePath))
+                    {
+                        await _downloadManager.DownloadFileAsync(modpackIconUrl, cacheFilePath, null, null, cancellationToken);
+                    }
+                }
+            }
+            else if (File.Exists(modpackIconUrl))
+            {
+                File.Copy(modpackIconUrl, cacheFilePath, true);
+            }
+
+            if (!File.Exists(cacheFilePath))
+            {
+                return null;
+            }
+
+            File.Copy(cacheFilePath, persistentFilePath, true);
+            return persistentFilePath;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[整合包安装] 处理图标失败，将回退默认图标: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static string SanitizePathSegment(string? raw, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return "unknown";
+        }
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            builder.Append(invalid.Contains(ch) ? '_' : ch);
+        }
+
+        var sanitized = builder.ToString().Trim();
+        if (sanitized.Length == 0)
+        {
+            sanitized = "unknown";
+        }
+
+        if (sanitized.Length > maxLength)
+        {
+            sanitized = sanitized[..maxLength];
+        }
+
+        return sanitized;
+    }
+
+    private static string ResolveIconExtension(string iconPathOrUrl)
+    {
+        try
+        {
+            var path = iconPathOrUrl;
+            if (Uri.TryCreate(iconPathOrUrl, UriKind.Absolute, out var uri))
+            {
+                path = uri.IsFile ? uri.LocalPath : uri.AbsolutePath;
+            }
+
+            var ext = Path.GetExtension(path);
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                return ".png";
+            }
+
+            ext = ext.ToLowerInvariant();
+            return ext is ".png" or ".jpg" or ".jpeg" or ".webp" or ".bmp" ? ext : ".png";
+        }
+        catch
+        {
+            return ".png";
+        }
+    }
+
+    private static string ComputeSha256Hex(string text)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     private static (string Type, string Name, string Version) ParseCurseForgeDependencies(CurseForgeManifest manifest)

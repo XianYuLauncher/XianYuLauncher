@@ -1,11 +1,16 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.Storage.Pickers;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
@@ -13,6 +18,9 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
+    private readonly Dictionary<string, BitmapImage?> _versionIconImageCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Task<BitmapImage?>> _versionIconProcessingTasks = new(StringComparer.OrdinalIgnoreCase);
+    private int _iconWarmupRequestId;
     private bool _isExportCancelled = false;
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
     private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
@@ -57,7 +65,115 @@ public sealed partial class VersionListPage : Page
         }
         
     }
-    
+
+    private async Task WarmupVersionIconsAsync(VersionListViewModel viewModel, int requestId)
+    {
+        var uniquePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in viewModel.FilteredVersions)
+        {
+            uniquePaths.Add(VersionIconPathHelper.NormalizeOrDefault(item.VersionIconPath));
+        }
+
+        foreach (var iconPath in uniquePaths)
+        {
+            if (requestId != _iconWarmupRequestId)
+            {
+                return;
+            }
+
+            if (_versionIconImageCache.ContainsKey(iconPath))
+            {
+                continue;
+            }
+
+            var processedIcon = await GetOrCreateProcessedIconAsync(iconPath);
+            if (processedIcon != null)
+            {
+                _versionIconImageCache[iconPath] = processedIcon;
+            }
+        }
+    }
+
+    private async void VersionIconImage_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        if (sender is not Image image || image.DataContext is not VersionListViewModel.VersionInfoItem versionItem)
+        {
+            return;
+        }
+
+        var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(versionItem.VersionIconPath);
+
+        if (Equals(image.Tag, normalizedPath) && image.Source != null)
+        {
+            return;
+        }
+
+        image.Tag = normalizedPath;
+
+        if (_versionIconImageCache.TryGetValue(normalizedPath, out var cachedIcon))
+        {
+            image.Source = cachedIcon;
+            return;
+        }
+
+        if (image.Source == null)
+        {
+            image.Source = BuildImmediateIconSource(normalizedPath);
+        }
+
+        var processedIcon = await GetOrCreateProcessedIconAsync(normalizedPath);
+        if (processedIcon != null)
+        {
+            _versionIconImageCache[normalizedPath] = processedIcon;
+        }
+
+        if (Equals(image.Tag, normalizedPath))
+        {
+            image.Source = processedIcon;
+        }
+    }
+
+    private async Task<BitmapImage?> GetOrCreateProcessedIconAsync(string iconPath)
+    {
+        if (_versionIconProcessingTasks.TryGetValue(iconPath, out var existingTask))
+        {
+            return await existingTask;
+        }
+
+        var processingTask = VersionIconProcessingHelper.ProcessAsync(iconPath);
+        _versionIconProcessingTasks[iconPath] = processingTask;
+
+        try
+        {
+            return await processingTask;
+        }
+        finally
+        {
+            _versionIconProcessingTasks.Remove(iconPath);
+        }
+    }
+
+    private static BitmapImage? BuildImmediateIconSource(string iconPath)
+    {
+        try
+        {
+            if (Uri.TryCreate(iconPath, UriKind.Absolute, out var absoluteUri))
+            {
+                return new BitmapImage(absoluteUri);
+            }
+
+            if (Path.IsPathRooted(iconPath))
+            {
+                return new BitmapImage(new Uri(iconPath, UriKind.Absolute));
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// ViewModel属性变化事件处理
     /// </summary>
@@ -65,6 +181,28 @@ public sealed partial class VersionListPage : Page
     {
         if (sender is not VersionListViewModel viewModel)
             return;
+
+        if (e.PropertyName == nameof(viewModel.FilteredVersions))
+        {
+            var requestId = ++_iconWarmupRequestId;
+            _ = WarmupVersionIconsAsync(viewModel, requestId);
+            return;
+        }
+
+        if (e.PropertyName == nameof(viewModel.IsLoading))
+        {
+            if (viewModel.IsLoading)
+            {
+                _iconWarmupRequestId++;
+            }
+            else
+            {
+                var requestId = ++_iconWarmupRequestId;
+                _ = WarmupVersionIconsAsync(viewModel, requestId);
+            }
+
+            return;
+        }
         
         // 处理重命名弹窗显示/隐藏
         if (e.PropertyName == nameof(viewModel.IsRenameDialogVisible))
@@ -1150,7 +1288,7 @@ public sealed partial class VersionListPage : Page
                             });
                             
                             // 创建zip压缩包，使用FileMode.Create覆盖已存在的文件
-                            using (var fileStream = new FileStream(file.Path, FileMode.Create))
+                            using (var fileStream = new FileStream(file.Path, FileMode.Create, FileAccess.Write))
                             using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
                             {
                                 if (_isExportCancelled)

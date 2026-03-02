@@ -509,14 +509,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
 
     // 接口实现 - 与IMinecraftVersionService接口保持一致
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null, string? versionIconPath = null)
     {
         // 调用带有进度回调的重载版本，传递null作为进度回调
-        await DownloadVersionAsync(versionId, targetDirectory, null, customVersionName);
+        await DownloadVersionAsync(versionId, targetDirectory, null, customVersionName, versionIconPath);
+    }
+
+    [Obsolete("此重载已过时，请使用包含 versionIconPath 参数的 DownloadVersionAsync 重载。")]
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback, string customVersionName = null)
+    {
+        await DownloadVersionAsync(versionId, targetDirectory, progressCallback, customVersionName, null);
     }
     
     // 带有进度回调的重载版本
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null)
     {
         try
         {
@@ -585,11 +591,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 创建XianYuL.cfg配置文件
             string settingsFileName = "XianYuL.cfg";
             string settingsFilePath = Path.Combine(targetDirectory, settingsFileName);
+            var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionIconPath);
             
             // 检查文件是否已存在
             if (File.Exists(settingsFilePath))
             {
-                // 文件已存在，跳过创建
+                // 已存在配置文件时，仅在调用方显式提供图标路径时才更新图标，
+                // 避免在 versionIconPath 为空时将已有自定义图标覆盖为默认图标。
+                if (!string.IsNullOrWhiteSpace(versionIconPath))
+                {
+                    await SaveOrUpdateVersionIconAsync(finalVersionName, minecraftDirectory, normalizedIconPath);
+                }
                 return;
             }
             
@@ -640,7 +652,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             
             // 完整配置
-            var versionConfig = new
+            var versionConfig = new VersionConfig
             {
                 ModLoaderType = modLoaderType,
                 ModLoaderVersion = modLoaderVersion,
@@ -651,7 +663,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 MaximumHeapMemory = 12.0,
                 JavaPath = string.Empty,
                 WindowWidth = 1280,
-                WindowHeight = 720
+                WindowHeight = 720,
+                Icon = normalizedIconPath
             };
             
             // 序列化到JSON
@@ -678,9 +691,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="modLoaderVersion">Mod Loader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null)
     {
-        await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None, customVersionName);
+        await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None, customVersionName, versionIconPath);
     }
 
     /// <summary>
@@ -693,7 +706,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null, string? versionIconPath = null)
     {
         try
         {
@@ -722,13 +735,15 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 actualModLoaderVersion = modLoaderVersion.Replace(":", "_");
             }
             
-            await installer.InstallAsync(
+            var installedVersionId = await installer.InstallAsync(
                 minecraftVersionId,
                 actualModLoaderVersion,
                 minecraftDirectory,
                 progressCallback,
                 cancellationToken,
                 customVersionName);
+
+            await SaveOrUpdateVersionIconAsync(installedVersionId, minecraftDirectory, versionIconPath);
             
             _logger.LogInformation("使用新安装器完成 {ModLoaderType} 安装", modLoaderType);
 
@@ -763,6 +778,23 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 
                 throw new Exception(detailedMessage, ex);
             }
+        }
+    }
+
+    private async Task SaveOrUpdateVersionIconAsync(string versionId, string minecraftDirectory, string? versionIconPath)
+    {
+        if (string.IsNullOrWhiteSpace(versionIconPath))
+        {
+            return;
+        }
+
+        var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionIconPath);
+        var config = await _versionInfoManager.GetVersionConfigAsync(versionId, minecraftDirectory) ?? new VersionConfig();
+
+        if (!string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase))
+        {
+            config.Icon = normalizedIconPath;
+            await _versionInfoManager.SaveVersionConfigAsync(versionId, minecraftDirectory, config);
         }
     }
 

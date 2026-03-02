@@ -99,4 +99,9 @@ public class VersionSettings
     /// 自定义 JVM 参数
     /// </summary>
     public string CustomJvmArguments { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 版本图标路径（支持 ms-appx:/// 与本地绝对路径）
+    /// </summary>
+    public string? Icon { get; set; }
 }
