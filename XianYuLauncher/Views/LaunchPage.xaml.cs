@@ -9,9 +9,11 @@ using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.UI;
 
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
@@ -31,6 +33,8 @@ public sealed partial class LaunchPage : Page
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
     private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+    private BitmapImage? _processedDefaultVersionIcon;
+    private int _versionIconLoadRequestId;
     public LaunchPage()
     {
         ViewModel = App.GetService<LaunchViewModel>();
@@ -101,6 +105,7 @@ public sealed partial class LaunchPage : Page
         // 每次导航到该页面时都加载头像
         // 对于正版玩家，会先显示缓存头像，然后后台静默刷新
         LoadAvatar();
+        LoadVersionIcon();
         
         // 预热完毕（已移除无效的预热逻辑）
 
@@ -125,6 +130,117 @@ public sealed partial class LaunchPage : Page
         if (e.PropertyName == nameof(ViewModel.SelectedProfile))
         {
             LoadAvatar();
+        }
+        else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
+        {
+            LoadVersionIcon();
+        }
+    }
+
+    private async void LoadVersionIcon()
+    {
+        if (VersionIconImage == null)
+        {
+            return;
+        }
+
+        var currentRequestId = ++_versionIconLoadRequestId;
+        var selectedVersion = ViewModel.SelectedVersion;
+        var iconPath = await ViewModel.GetVersionIconPathAsync(selectedVersion);
+        var iconImage = await ProcessVersionIconAsync(iconPath);
+
+        if (currentRequestId != _versionIconLoadRequestId)
+        {
+            return;
+        }
+
+        if (iconImage != null)
+        {
+            VersionIconImage.Source = iconImage;
+            return;
+        }
+
+        VersionIconImage.Source = null;
+    }
+
+    private async Task<BitmapImage?> ProcessVersionIconAsync(string? iconPath)
+    {
+        try
+        {
+            var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(iconPath);
+            var device = CanvasDevice.GetSharedDevice();
+
+            var canvasBitmap = await LoadVersionIconCanvasBitmapAsync(device, normalizedPath);
+            if (canvasBitmap == null)
+            {
+                if (string.Equals(normalizedPath, VersionIconPathHelper.DefaultIconPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                if (_processedDefaultVersionIcon != null)
+                {
+                    return _processedDefaultVersionIcon;
+                }
+
+                _processedDefaultVersionIcon = await ProcessVersionIconAsync(VersionIconPathHelper.DefaultIconPath);
+                return _processedDefaultVersionIcon;
+            }
+
+            using var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
+            using (var drawingSession = renderTarget.CreateDrawingSession())
+            {
+                drawingSession.Clear(Colors.Transparent);
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    drawingSession,
+                    canvasBitmap,
+                    new Windows.Foundation.Rect(0, 0, 32, 32),
+                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height));
+            }
+
+            using var outputStream = new InMemoryRandomAccessStream();
+            await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
+            outputStream.Seek(0);
+
+            var bitmapImage = new BitmapImage();
+            await bitmapImage.SetSourceAsync(outputStream);
+            return bitmapImage;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static async Task<CanvasBitmap?> LoadVersionIconCanvasBitmapAsync(CanvasDevice device, string iconPath)
+    {
+        try
+        {
+            StorageFile file;
+
+            if (iconPath.StartsWith("ms-appx:///", StringComparison.OrdinalIgnoreCase))
+            {
+                file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(iconPath));
+            }
+            else if (Path.IsPathRooted(iconPath))
+            {
+                file = await StorageFile.GetFileFromPathAsync(iconPath);
+            }
+            else if (Uri.TryCreate(iconPath, UriKind.Absolute, out var uri) && uri.IsFile)
+            {
+                file = await StorageFile.GetFileFromPathAsync(uri.LocalPath);
+            }
+            else
+            {
+                return null;
+            }
+
+            using var stream = await file.OpenReadAsync();
+            return await CanvasBitmap.LoadAsync(device, stream);
+        }
+        catch
+        {
+            return null;
         }
     }
 

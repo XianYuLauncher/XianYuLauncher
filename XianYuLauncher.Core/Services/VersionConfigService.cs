@@ -256,6 +256,8 @@ public class VersionConfigService : IVersionConfigService
     {
         try
         {
+            config.Icon = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+
             var minecraftPath = _fileService.GetMinecraftDataPath();
             var versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
             
