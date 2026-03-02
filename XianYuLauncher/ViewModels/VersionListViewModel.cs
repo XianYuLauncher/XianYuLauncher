@@ -457,6 +457,8 @@ public partial class VersionListViewModel : ObservableRecipient
                 
                 // 设置整合包名称
                 modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
+                modDownloadViewModel.ModIconUrl = string.Empty;
+                modDownloadViewModel.ModId = string.Empty;
                 
                 // 创建ModVersionViewModel实例
                 var modVersion = new ModVersionViewModel
@@ -527,6 +529,8 @@ public partial class VersionListViewModel : ObservableRecipient
 
             var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
             modDownloadViewModel.ModName = Path.GetFileNameWithoutExtension(modpackFileName);
+            modDownloadViewModel.ModIconUrl = string.Empty;
+            modDownloadViewModel.ModId = string.Empty;
 
             var modVersion = new ModVersionViewModel
             {

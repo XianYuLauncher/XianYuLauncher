@@ -25,5 +25,8 @@ public interface IModpackInstallationService
         string minecraftPath,
         bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
+        string? modpackIconUrl = null,
+        string? sourceProjectId = null,
+        string? sourceVersionId = null,
         CancellationToken cancellationToken = default);
 }
