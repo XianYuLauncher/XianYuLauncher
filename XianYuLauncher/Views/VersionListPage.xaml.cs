@@ -86,7 +86,11 @@ public sealed partial class VersionListPage : Page
                 continue;
             }
 
-            _versionIconImageCache[iconPath] = await GetOrCreateProcessedIconAsync(iconPath);
+            var processedIcon = await GetOrCreateProcessedIconAsync(iconPath);
+            if (processedIcon != null)
+            {
+                _versionIconImageCache[iconPath] = processedIcon;
+            }
         }
     }
 
@@ -118,7 +122,10 @@ public sealed partial class VersionListPage : Page
         }
 
         var processedIcon = await GetOrCreateProcessedIconAsync(normalizedPath);
-        _versionIconImageCache[normalizedPath] = processedIcon;
+        if (processedIcon != null)
+        {
+            _versionIconImageCache[normalizedPath] = processedIcon;
+        }
 
         if (Equals(image.Tag, normalizedPath))
         {
