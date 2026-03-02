@@ -7,6 +7,8 @@ namespace XianYuLauncher.Services;
 public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentationService
 {
     public string DefaultVersionIconPath => "ms-appx:///Assets/Icons/Download_Options/Vanilla/icon_128x128.png";
+    private readonly object _builtInIconsLock = new();
+    private IReadOnlyList<VersionIconOption>? _builtInIcons;
 
     private static readonly Dictionary<string, string> LoaderIconFallbackMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -21,12 +23,25 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
 
     public IReadOnlyList<VersionIconOption> LoadBuiltInIcons()
     {
+        if (_builtInIcons is not null)
+        {
+            return _builtInIcons;
+        }
+
+        lock (_builtInIconsLock)
+        {
+            if (_builtInIcons is not null)
+            {
+                return _builtInIcons;
+            }
+
         var result = new List<VersionIconOption>();
         var baseDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", "Download_Options");
 
         if (!Directory.Exists(baseDirectory))
         {
-            return result;
+            _builtInIcons = result.AsReadOnly();
+            return _builtInIcons;
         }
 
         var iconFiles = Directory
@@ -54,7 +69,9 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
             });
         }
 
-        return result;
+            _builtInIcons = result.AsReadOnly();
+            return _builtInIcons;
+        }
     }
 
     public string BuildVersionDisplayText(string minecraftVersion, string? selectedModLoaderName, bool isOptifineSelected, bool isLiteLoaderSelected)

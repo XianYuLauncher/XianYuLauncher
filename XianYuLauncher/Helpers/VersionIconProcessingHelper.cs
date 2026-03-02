@@ -20,7 +20,7 @@ internal static class VersionIconProcessingHelper
         {
             var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(iconPath);
             var device = CanvasDevice.GetSharedDevice();
-            var canvasBitmap = await LoadCanvasBitmapAsync(device, normalizedPath);
+            using var canvasBitmap = await LoadCanvasBitmapAsync(device, normalizedPath);
 
             if (canvasBitmap == null)
             {

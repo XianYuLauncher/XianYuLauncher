@@ -13,7 +13,7 @@
     </UserControl.Resources>
 
     <StackPanel Spacing="12" MinWidth="320" MaxWidth="400" Padding="16">
-        <TextBlock Text="选择版本图标" Style="{StaticResource BaseTextBlockStyle}" />
+        <TextBlock x:Uid="VersionIconPickerFlyoutContent_TitleTextBlock" Style="{ThemeResource BodyStrongTextBlockStyle}" />
 
         <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0" Padding="0,0,12,0">
             <ItemsControl ItemsSource="{x:Bind AvailableIcons, Mode=OneWay}">
@@ -48,7 +48,7 @@
         <Button Click="CustomIconButton_Click" HorizontalAlignment="Stretch" Padding="12,8" Background="Transparent" BorderThickness="0">
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <FontIcon Glyph="&#xE8E5;" FontSize="16" />
-                <TextBlock Text="浏览自定义图标..." />
+                <TextBlock x:Uid="VersionIconPickerFlyoutContent_BrowseCustomIconTextBlock" />
             </StackPanel>
         </Button>
     </StackPanel>

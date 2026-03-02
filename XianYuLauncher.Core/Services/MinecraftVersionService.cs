@@ -514,6 +514,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // 调用带有进度回调的重载版本，传递null作为进度回调
         await DownloadVersionAsync(versionId, targetDirectory, null, customVersionName, versionIconPath);
     }
+
+    [Obsolete("此重载已过时，请使用包含 versionIconPath 参数的 DownloadVersionAsync 重载。")]
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback, string customVersionName = null)
+    {
+        await DownloadVersionAsync(versionId, targetDirectory, progressCallback, customVersionName, null);
+    }
     
     // 带有进度回调的重载版本
     public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null)
