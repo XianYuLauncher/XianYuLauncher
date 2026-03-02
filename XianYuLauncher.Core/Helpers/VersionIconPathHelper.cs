@@ -5,7 +5,7 @@ namespace XianYuLauncher.Core.Helpers;
 
 public static class VersionIconPathHelper
 {
-    public const string DefaultIconPath = "ms-appx:///Assets/Icons/Download_Options/Vanilla/grass_block_side.png";
+    public const string DefaultIconPath = "ms-appx:///Assets/Icons/Download_Options/Vanilla/icon_128x128.png";
 
     public static string NormalizeOrDefault(string? iconPath)
     {

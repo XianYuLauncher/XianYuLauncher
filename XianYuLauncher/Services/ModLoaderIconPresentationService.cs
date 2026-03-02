@@ -6,7 +6,7 @@ namespace XianYuLauncher.Services;
 
 public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentationService
 {
-    public string DefaultVersionIconPath => "ms-appx:///Assets/Icons/Download_Options/Vanilla/grass_block_side.png";
+    public string DefaultVersionIconPath => "ms-appx:///Assets/Icons/Download_Options/Vanilla/icon_128x128.png";
 
     private static readonly Dictionary<string, string> LoaderIconFallbackMap = new(StringComparer.OrdinalIgnoreCase)
     {
