@@ -426,15 +426,15 @@ public class DialogService : IDialogService
                 var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
+                    PixelArtRenderHelper.SetAliased(ds);
                     
                     // 假设 steve.png 是已经提取好的头部或者需要整体显示的图片
                     // 我们对其进行整体缩放
-                    ds.DrawImage(originalBitmap, 
-                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
-                                 originalBitmap.Bounds,
-                                 1.0f,
-                                 CanvasImageInterpolation.NearestNeighbor);
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
+                        originalBitmap,
+                        new Windows.Foundation.Rect(0, 0, 32, 32),
+                        originalBitmap.Bounds);
                 }
 
                 using (var outputStream = new InMemoryRandomAccessStream())
@@ -466,21 +466,21 @@ public class DialogService : IDialogService
                 var renderTarget = new CanvasRenderTarget(device, 32, 32, 96); // 弹窗使用32x32即可
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
+                    PixelArtRenderHelper.SetAliased(ds);
                     
                     // 绘制头部 (Source: 8,8, 8,8) -> Target: 0,0, 32,32 (放大4倍)
-                    ds.DrawImage(originalBitmap, 
-                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
-                                 new Windows.Foundation.Rect(8, 8, 8, 8),
-                                 1.0f,
-                                 CanvasImageInterpolation.NearestNeighbor);
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
+                        originalBitmap,
+                        new Windows.Foundation.Rect(0, 0, 32, 32),
+                        new Windows.Foundation.Rect(8, 8, 8, 8));
                                  
                     // 绘制第二层头部 (Source: 40,8, 8,8) if exists
-                     ds.DrawImage(originalBitmap, 
-                                 new Windows.Foundation.Rect(0, 0, 32, 32), 
-                                 new Windows.Foundation.Rect(40, 8, 8, 8),
-                                 1.0f,
-                                 CanvasImageInterpolation.NearestNeighbor);
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
+                        originalBitmap,
+                        new Windows.Foundation.Rect(0, 0, 32, 32),
+                        new Windows.Foundation.Rect(40, 8, 8, 8));
                 }
 
                 using (var outputStream = new InMemoryRandomAccessStream())

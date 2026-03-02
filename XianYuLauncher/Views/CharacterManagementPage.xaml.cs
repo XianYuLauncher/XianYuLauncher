@@ -16,6 +16,7 @@ using Windows.Storage.Streams;
 using WinRT.Interop;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Helpers;
 using Microsoft.Graphics.Canvas;
 using System;
 using System.Diagnostics;
@@ -778,13 +779,11 @@ namespace XianYuLauncher.Views
                 // 执行裁剪和放大，使用最近邻插值保持像素锐利
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                        new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(8, 8, 8, 8)); // 源位置和大小
                 }
                 
                 // 如果提供了UUID，保存头像到缓存
@@ -856,13 +855,11 @@ namespace XianYuLauncher.Views
                 // 执行处理，使用最近邻插值保持像素锐利
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
                 }
                 
                 // 转换为BitmapImage

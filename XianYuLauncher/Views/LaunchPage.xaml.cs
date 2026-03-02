@@ -676,13 +676,11 @@ public sealed partial class LaunchPage : Page
             {
                 // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
                 // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
-                ds.DrawImage(
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    ds,
                     canvasBitmap,
                     new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                    new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
-                    1.0f, // 不透明度
-                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                );
+                    new Windows.Foundation.Rect(8, 8, 8, 8)); // 源位置和大小
             }
 
             // 5. 如果提供了UUID，保存头像到缓存
@@ -755,13 +753,11 @@ public sealed partial class LaunchPage : Page
             using (var ds = renderTarget.CreateDrawingSession())
             {
                 // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                ds.DrawImage(
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    ds,
                     canvasBitmap,
                     new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
-                    1.0f, // 不透明度
-                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                );
+                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
             }
 
             // 5. 转换为BitmapImage
