@@ -384,10 +384,9 @@
                                             Background="Transparent" 
                                             VerticalAlignment="Center">
                                             <Image 
-                                                Source="{Binding VersionIconPath}" 
                                                 Width="32" 
                                                 Height="32" 
-                                                Loaded="VersionIconImage_Loaded"
+                                                DataContextChanged="VersionIconImage_DataContextChanged"
                                                 Stretch="UniformToFill" 
                                                 HorizontalAlignment="Center" 
                                                 VerticalAlignment="Center" />

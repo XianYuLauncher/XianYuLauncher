@@ -101,8 +101,9 @@ public sealed partial class ModLoaderSelectorPage : Page
                 ViewModel.SetCustomIcon(file.Path);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ModLoaderSelectorPage] 自定义图标选择失败: {ex.Message}");
         }
     }
 
