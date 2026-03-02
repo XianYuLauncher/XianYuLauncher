@@ -15,6 +15,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -109,23 +110,19 @@ namespace XianYuLauncher.ViewModels
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
                     // 头部区域通常是 (8, 8, 8, 8)
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 32, 32), // 目标：放大到32x32
-                        new Windows.Foundation.Rect(8, 8, 8, 8),   // 源：头部区域
-                        1.0f,
-                        CanvasImageInterpolation.NearestNeighbor
-                    );
+                        new Windows.Foundation.Rect(8, 8, 8, 8)); // 源：头部区域
                     
                     // 绘制头部外层 (Hat) - 如果有
                     // 外层通常在 (40, 8, 8, 8)
-                     ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 32, 32),
-                        new Windows.Foundation.Rect(40, 8, 8, 8),
-                        1.0f,
-                        CanvasImageInterpolation.NearestNeighbor
-                    );
+                        new Windows.Foundation.Rect(40, 8, 8, 8));
                 }
 
                 using (var outputStream = new InMemoryRandomAccessStream())
@@ -265,13 +262,11 @@ namespace XianYuLauncher.ViewModels
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
                     // 绘制整个皮肤纹理，使用最近邻插值确保像素清晰
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定128x128显示）
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
                 // 转换为BitmapImage
@@ -787,13 +782,11 @@ namespace XianYuLauncher.ViewModels
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
                     // 从源图片的(1,1)位置裁剪9x16区域（披风图标区域：1,1到10,16）
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(1, 1, 10, 16), // 目标位置和大小（放大到16x16显示）
-                        new Windows.Foundation.Rect(1, 1, 10, 16),  // 源位置和大小（1,1-10,17）
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(1, 1, 10, 16)); // 源位置和大小（1,1-10,17）
                 }
                 
                 // 转换为BitmapImage
@@ -1120,13 +1113,11 @@ namespace XianYuLauncher.ViewModels
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
                     // 绘制整个披风纹理，使用最近邻插值确保像素清晰
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定128x128显示）
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
                 // 转换为BitmapImage
