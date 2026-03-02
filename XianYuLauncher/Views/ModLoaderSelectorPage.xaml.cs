@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Controls;
 using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
 using System.ComponentModel;
@@ -79,7 +80,7 @@ public sealed partial class ModLoaderSelectorPage : Page
         ViewModel.SelectedLiteLoaderVersion = null;
     }
 
-    private async void CustomIconButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
     {
         try
         {
@@ -105,11 +106,11 @@ public sealed partial class ModLoaderSelectorPage : Page
         }
     }
 
-    private void BuiltInIconButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
     {
-        if (sender is Button button && button.Tag is VersionIconOption iconOption)
+        if (e.IconOption != null)
         {
-            ViewModel.SelectBuiltInIconCommand.Execute(iconOption);
+            ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
         }
     }
     
