@@ -195,13 +195,11 @@ namespace XianYuLauncher.Views
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
                     // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                    ds.DrawImage(
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
                         new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height),  // 源位置和大小
-                        1.0f, // 不透明度
-                        CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                    );
+                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
                 // 5. 转换为BitmapImage并显示
@@ -391,14 +389,12 @@ namespace XianYuLauncher.Views
 
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    ds.Antialiasing = CanvasAntialiasing.Aliased; 
-                    ds.DrawImage(
+                    PixelArtRenderHelper.SetAliased(ds);
+                    PixelArtRenderHelper.DrawNearestNeighbor(
+                        ds,
                         canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), 
-                        new Windows.Foundation.Rect(8, 8, 8, 8),
-                        1.0f,
-                        CanvasImageInterpolation.NearestNeighbor
-                    );
+                        new Windows.Foundation.Rect(0, 0, 48, 48),
+                        new Windows.Foundation.Rect(8, 8, 8, 8));
                 }
 
                 using (var outputStream = new InMemoryRandomAccessStream())

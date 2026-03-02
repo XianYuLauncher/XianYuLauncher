@@ -70,7 +70,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -85,6 +86,37 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadAsync_ShouldForwardVersionIconPath()
+    {
+        // Arrange
+        var expectedIconPath = @"C:\\icons\\vanilla.png";
+        string? actualIconPath = null;
+        var callbackTriggered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Callback<string, string, Action<DownloadProgressStatus>, string, string?>((_, _, _, _, versionIconPath) =>
+            {
+                actualIconPath = versionIconPath;
+                callbackTriggered.TrySetResult(true);
+            })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion", expectedIconPath);
+
+        // Assert
+        var completedTask = await Task.WhenAny(callbackTriggered.Task, Task.Delay(1000));
+        completedTask.Should().Be(callbackTriggered.Task);
+        actualIconPath.Should().Be(expectedIconPath);
+    }
+
+    [Fact]
     public async Task StartVanillaDownloadAsync_WhenDownloadActive_ShouldThrow()
     {
         // Arrange
@@ -93,7 +125,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .Returns(async () => await Task.Delay(5000)); // 模拟长时间下载
 
         await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "Version1");
@@ -116,7 +149,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -142,7 +176,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .ThrowsAsync(new Exception("下载失败"));
 
         // Act
@@ -169,7 +204,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .Returns(async () => await Task.Delay(5000));
 
         await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
@@ -202,8 +238,9 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
-                It.IsAny<string>()))
-            .Callback<string, string, Action<DownloadProgressStatus>, string>((_, _, callback, _) =>
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Callback<string, string, Action<DownloadProgressStatus>, string, string?>((_, _, callback, _, _) =>
             {
                 callback?.Invoke(new DownloadProgressStatus(0, 0, 25));
                 callback?.Invoke(new DownloadProgressStatus(0, 0, 50));
@@ -247,7 +284,8 @@ public class DownloadTaskManagerTests
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>(),
-                It.IsAny<string>()))
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -259,6 +297,83 @@ public class DownloadTaskManagerTests
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("MyFabricVersion");
         firstState.State.Should().Be(DownloadTaskState.Downloading);
+    }
+
+    [Fact]
+    public async Task StartModLoaderDownloadAsync_ShouldForwardEmptyVersionIconPath()
+    {
+        // Arrange
+        var expectedIconPath = string.Empty;
+        string? actualIconPath = null;
+        var callbackTriggered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Callback<string, string, string, string, Action<DownloadProgressStatus>, CancellationToken, string, string?>((_, _, _, _, _, _, _, versionIconPath) =>
+            {
+                actualIconPath = versionIconPath;
+                callbackTriggered.TrySetResult(true);
+            })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartModLoaderDownloadAsync("1.20.1", "Fabric", "0.15.0", "MyFabricVersion", expectedIconPath);
+
+        // Assert
+        var completedTask = await Task.WhenAny(callbackTriggered.Task, Task.Delay(1000));
+        completedTask.Should().Be(callbackTriggered.Task);
+        actualIconPath.Should().Be(expectedIconPath);
+    }
+
+    [Fact]
+    public async Task StartMultiModLoaderDownloadAsync_ShouldForwardVersionIconPath()
+    {
+        // Arrange
+        var expectedIconPath = @"C:\\icons\\multi.png";
+        string? actualIconPath = null;
+        var callbackTriggered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var selections = new List<ModLoaderSelection>
+        {
+            new()
+            {
+                Type = "Forge",
+                Version = "47.2.0",
+                InstallOrder = 1,
+                IsAddon = false
+            }
+        };
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadMultiModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<ModLoaderSelection>>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>()))
+            .Callback<string, IEnumerable<ModLoaderSelection>, string, Action<DownloadProgressStatus>, CancellationToken, string?, string?>((_, _, _, _, _, _, versionIconPath) =>
+            {
+                actualIconPath = versionIconPath;
+                callbackTriggered.TrySetResult(true);
+            })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartMultiModLoaderDownloadAsync("1.20.1", selections, "MyMultiVersion", expectedIconPath);
+
+        // Assert
+        var completedTask = await Task.WhenAny(callbackTriggered.Task, Task.Delay(1000));
+        completedTask.Should().Be(callbackTriggered.Task);
+        actualIconPath.Should().Be(expectedIconPath);
     }
 }
 

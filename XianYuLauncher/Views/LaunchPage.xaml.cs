@@ -9,9 +9,11 @@ using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.UI;
 
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
@@ -31,6 +33,7 @@ public sealed partial class LaunchPage : Page
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
     private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+    private int _versionIconLoadRequestId;
     public LaunchPage()
     {
         ViewModel = App.GetService<LaunchViewModel>();
@@ -101,6 +104,7 @@ public sealed partial class LaunchPage : Page
         // 每次导航到该页面时都加载头像
         // 对于正版玩家，会先显示缓存头像，然后后台静默刷新
         LoadAvatar();
+        LoadVersionIcon();
         
         // 预热完毕（已移除无效的预热逻辑）
 
@@ -126,6 +130,36 @@ public sealed partial class LaunchPage : Page
         {
             LoadAvatar();
         }
+        else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
+        {
+            LoadVersionIcon();
+        }
+    }
+
+    private async void LoadVersionIcon()
+    {
+        if (VersionIconImage == null)
+        {
+            return;
+        }
+
+        var currentRequestId = ++_versionIconLoadRequestId;
+        var selectedVersion = ViewModel.SelectedVersion;
+        var iconPath = await ViewModel.GetVersionIconPathAsync(selectedVersion);
+        var iconImage = await VersionIconProcessingHelper.ProcessAsync(iconPath);
+
+        if (currentRequestId != _versionIconLoadRequestId)
+        {
+            return;
+        }
+
+        if (iconImage != null)
+        {
+            VersionIconImage.Source = iconImage;
+            return;
+        }
+
+        VersionIconImage.Source = null;
     }
 
     /// <summary>
@@ -676,13 +710,11 @@ public sealed partial class LaunchPage : Page
             {
                 // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
                 // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
-                ds.DrawImage(
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    ds,
                     canvasBitmap,
                     new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                    new Windows.Foundation.Rect(8, 8, 8, 8),  // 源位置和大小
-                    1.0f, // 不透明度
-                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                );
+                    new Windows.Foundation.Rect(8, 8, 8, 8)); // 源位置和大小
             }
 
             // 5. 如果提供了UUID，保存头像到缓存
@@ -755,13 +787,11 @@ public sealed partial class LaunchPage : Page
             using (var ds = renderTarget.CreateDrawingSession())
             {
                 // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                ds.DrawImage(
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    ds,
                     canvasBitmap,
                     new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
-                    1.0f, // 不透明度
-                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                );
+                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
             }
 
             // 5. 转换为BitmapImage

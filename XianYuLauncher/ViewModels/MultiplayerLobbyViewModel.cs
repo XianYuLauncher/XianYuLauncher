@@ -293,13 +293,11 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
             using (var ds = renderTarget.CreateDrawingSession())
             {
                 // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                ds.DrawImage(
+                PixelArtRenderHelper.DrawNearestNeighbor(
+                    ds,
                     canvasBitmap,
                     new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小
-                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height), // 源位置和大小
-                    1.0f, // 不透明度
-                    CanvasImageInterpolation.NearestNeighbor // 最近邻插值，保持像素锐利
-                );
+                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
             }
 
             // 5. 转换为BitmapImage

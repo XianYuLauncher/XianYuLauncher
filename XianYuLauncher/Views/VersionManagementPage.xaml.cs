@@ -719,7 +719,7 @@ public sealed partial class VersionManagementPage : Page
         var session = args.DrawingSession;
         
         // 设置最近邻插值，保持像素艺术风格（Minecraft 纹理都是低分辨率像素）
-        session.Antialiasing = Microsoft.Graphics.Canvas.CanvasAntialiasing.Aliased;
+        PixelArtRenderHelper.SetAliased(session);
         
         // 画布尺寸 340x340 (正方形)
         float canvasWidth = 340;
@@ -767,8 +767,11 @@ public sealed partial class VersionManagementPage : Page
             drawHeight = (float)Math.Round(drawHeight);
             
             // 使用最近邻插值绘制图像
-            session.DrawImage(bitmap, new Rect(drawX, drawY, drawWidth, drawHeight), 
-                bitmap.Bounds, 1.0f, Microsoft.Graphics.Canvas.CanvasImageInterpolation.NearestNeighbor);
+            PixelArtRenderHelper.DrawNearestNeighbor(
+                session,
+                bitmap,
+                new Rect(drawX, drawY, drawWidth, drawHeight),
+                bitmap.Bounds);
             
             index++;
         }

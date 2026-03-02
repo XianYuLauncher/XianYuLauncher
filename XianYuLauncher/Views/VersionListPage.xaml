@@ -286,10 +286,10 @@
                     <!-- 列表项模板 -->
                     <ListView.ItemTemplate>
                         <DataTemplate>
-                            <Grid Height="130" 
+                            <Grid HorizontalAlignment="Stretch"
                                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                   CornerRadius="12" 
-                                  Padding="20" 
+                                  Padding="24" 
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                   BorderThickness="1">
                                 <!-- 右键菜单 -->
@@ -362,30 +362,83 @@
                                         </MenuFlyoutItem>
                                     </MenuFlyout>
                                 </Grid.ContextFlyout>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
+
+                                <!-- 左侧内容：图标与信息组合 -->
+                                <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                                    <!-- 顶部：图标 + 名称 -->
+                                    <Grid VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <!-- 版本图标 -->
+                                        <Border 
+                                            Grid.Column="0"
+                                            Width="32" 
+                                            Height="32" 
+                                            CornerRadius="4" 
+                                            Background="Transparent" 
+                                            VerticalAlignment="Center">
+                                            <Image 
+                                                Width="32" 
+                                                Height="32" 
+                                                DataContextChanged="VersionIconImage_DataContextChanged"
+                                                Stretch="UniformToFill" 
+                                                HorizontalAlignment="Center" 
+                                                VerticalAlignment="Center" />
+                                        </Border>
+                                        
+                                        <!-- 版本名称 -->
+                                        <TextBlock 
+                                            Grid.Column="1"
+                                            Margin="12,0,0,0"
+                                            Text="{Binding Name}" 
+                                            Style="{StaticResource TitleTextBlockStyle}" 
+                                            FontWeight="SemiBold" 
+                                            FontSize="18" 
+                                            VerticalAlignment="Center"
+                                            TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                    
+                                    <!-- 底部：详细信息 -->
+                                    <StackPanel Spacing="6" Margin="0,4,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock 
+                                                x:Uid="VersionListPage_VersionNumberLabel" 
+                                                Text="版本号: " 
+                                                FontSize="13" 
+                                                Opacity="0.6" />
+                                            <TextBlock 
+                                                Text="{Binding VersionNumber}" 
+                                                FontSize="13" 
+                                                Opacity="0.6" 
+                                                FontWeight="SemiBold" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock 
+                                                x:Uid="VersionListPage_InstallDateLabel" 
+                                                Text="安装日期: " 
+                                                FontSize="13" 
+                                                Opacity="0.6" />
+                                            <TextBlock 
+                                                Text="{Binding InstallDate, Mode=OneWay, Converter={StaticResource DateTimeConverter}}" 
+                                                FontSize="13" 
+                                                Opacity="0.6" 
+                                                FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
                                 
-                                <!-- 版本名称 -->
-                                <TextBlock 
-                                    Grid.Row="0" Grid.Column="0"
-                                    Text="{Binding Name}" 
-                                    Style="{StaticResource PageTitleStyle}" 
-                                    FontWeight="SemiBold" 
-                                    FontSize="18" 
-                                    Margin="0,0,8,0"/>
-                                
-                                <!-- 版本类型标签（支持多标签） -->
+                                <!-- 右侧：版本类型标签（支持多标签） -->
                                 <ItemsControl 
-                                    Grid.Row="0" Grid.Column="1"
+                                    Grid.Column="1"
                                     ItemsSource="{Binding LoaderTags}"
-                                    HorizontalAlignment="Right">
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="6" />
@@ -409,28 +462,6 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                
-                                <!-- 版本号 -->
-                                <TextBlock 
-                                    Grid.Row="1" Grid.Column="0"
-                                    Style="{StaticResource BodyTextStyle}" 
-                                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                    FontSize="14" 
-                                    VerticalAlignment="Center">
-                                    <Run x:Uid="VersionListPage_VersionNumberLabel" Text="版本号: " />
-                                    <Run Text="{Binding VersionNumber}" />
-                                </TextBlock>
-                                
-                                <!-- 安装日期 -->
-                                <TextBlock 
-                                    Grid.Row="2" Grid.Column="0"
-                                    Style="{StaticResource BodyTextStyle}" 
-                                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                                    FontSize="14" 
-                                    VerticalAlignment="Bottom">
-                                    <Run x:Uid="VersionListPage_InstallDateLabel" Text="安装日期: " />
-                                    <Run Text="{Binding InstallDate, Mode=OneWay, Converter={StaticResource DateTimeConverter}}" />
-                                </TextBlock>
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

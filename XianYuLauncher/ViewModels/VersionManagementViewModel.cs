@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Models;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models.VersionManagement;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Features.VersionManagement.Services;
@@ -291,18 +292,42 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string _currentLoaderDisplayName = "原版";
+
+    /// <summary>
+    /// 当前 Minecraft 版本显示名称
+    /// </summary>
+    [ObservableProperty]
+    private string _currentMinecraftVersionDisplay = string.Empty;
     
     /// <summary>
     /// 当前加载器版本
     /// </summary>
     [ObservableProperty]
     private string _currentLoaderVersion = string.Empty;
+
+    /// <summary>
+    /// 当前加载器摘要显示（如：Forge 47.3.0 + LiteLoader 1.12.2）
+    /// </summary>
+    [ObservableProperty]
+    private string _currentLoaderSummaryDisplay = string.Empty;
     
     /// <summary>
     /// 当前加载器图标URL（主加载器）
     /// </summary>
     [ObservableProperty]
     private string? _currentLoaderIconUrl;
+
+    /// <summary>
+    /// 当前版本图标路径（来自 XianYuL.cfg 的 Icon 字段）
+    /// </summary>
+    [ObservableProperty]
+    private string _currentVersionIconPath = VersionIconPathHelper.DefaultIconPath;
+
+    [ObservableProperty]
+    private ObservableCollection<VersionIconOption> _availableVersionIcons = new();
+
+    [ObservableProperty]
+    private string _selectedVersionIconDisplayName = "Vanilla";
     
     /// <summary>
     /// 当前安装的所有加载器图标列表（用于多图标叠加显示）
@@ -532,6 +557,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionPathNavigationService _versionPathNavigationService;
     private readonly IScreenshotInteractionService _screenshotInteractionService;
     private readonly IResourceIconLoadCoordinator _resourceIconLoadCoordinator;
+    private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
+    private readonly IVersionConfigService _versionConfigService;
     private ObservableCollection<ModInfo>? _observedMods;
     private ObservableCollection<ShaderInfo>? _observedShaders;
     private ObservableCollection<ResourcePackInfo>? _observedResourcePacks;
@@ -589,7 +616,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ILoaderUiOrchestrator loaderUiOrchestrator,
         IVersionPathNavigationService versionPathNavigationService,
         IScreenshotInteractionService screenshotInteractionService,
-        IResourceIconLoadCoordinator resourceIconLoadCoordinator)
+        IResourceIconLoadCoordinator resourceIconLoadCoordinator,
+        IModLoaderIconPresentationService modLoaderIconPresentationService,
+        IVersionConfigService versionConfigService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -610,6 +639,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionPathNavigationService = versionPathNavigationService;
         _screenshotInteractionService = screenshotInteractionService;
         _resourceIconLoadCoordinator = resourceIconLoadCoordinator;
+        _modLoaderIconPresentationService = modLoaderIconPresentationService;
+        _versionConfigService = versionConfigService;
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
         
@@ -623,7 +654,52 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
         ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
 
+        InitializeVersionIcons();
+
         InitializeOverviewCountObservers();
+    }
+
+    private void InitializeVersionIcons()
+    {
+        AvailableVersionIcons.Clear();
+
+        foreach (var icon in _modLoaderIconPresentationService.LoadBuiltInIcons())
+        {
+            AvailableVersionIcons.Add(icon);
+        }
+
+        UpdateSelectedVersionIconDisplayName(CurrentVersionIconPath);
+    }
+
+    partial void OnCurrentVersionIconPathChanged(string value)
+    {
+        UpdateSelectedVersionIconDisplayName(value);
+    }
+
+    private void UpdateSelectedVersionIconDisplayName(string? iconPath)
+    {
+        var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(iconPath);
+        var builtInIcon = AvailableVersionIcons.FirstOrDefault(icon =>
+            string.Equals(icon.IconPath, normalizedPath, StringComparison.OrdinalIgnoreCase));
+
+        if (builtInIcon != null && !string.IsNullOrWhiteSpace(builtInIcon.DisplayName))
+        {
+            SelectedVersionIconDisplayName = builtInIcon.DisplayName;
+            return;
+        }
+
+        if (Uri.TryCreate(normalizedPath, UriKind.Absolute, out var fileUri) && fileUri.IsFile)
+        {
+            var fileNameFromUri = Path.GetFileNameWithoutExtension(fileUri.LocalPath);
+            if (!string.IsNullOrWhiteSpace(fileNameFromUri))
+            {
+                SelectedVersionIconDisplayName = fileNameFromUri;
+                return;
+            }
+        }
+
+        var fileName = Path.GetFileNameWithoutExtension(normalizedPath);
+        SelectedVersionIconDisplayName = string.IsNullOrWhiteSpace(fileName) ? "Vanilla" : fileName;
     }
 
     private void InitializeOverviewCountObservers()
@@ -1029,6 +1105,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         UseGlobalSettings = UseGlobalJavaSetting && !OverrideMemory && !OverrideResolution;
 
+        var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionConfig.Icon);
+        CurrentVersionIconPath = normalizedIconPath;
+
         LaunchCount = versionConfig.LaunchCount;
         TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
         LastLaunchTime = versionConfig.LastLaunchTime;
@@ -1051,13 +1130,40 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void UpdateCurrentLoaderInfo(VersionSettings? settings)
     {
         var displayState = _loaderUiOrchestrator.BuildDisplayState(settings);
+        CurrentMinecraftVersionDisplay = settings?.MinecraftVersion ?? string.Empty;
         CurrentLoaderDisplayName = displayState.CurrentLoaderDisplayName;
         CurrentLoaderVersion = displayState.CurrentLoaderVersion;
         CurrentLoaderIconUrl = displayState.CurrentLoaderIconUrl;
         IsVanillaLoader = displayState.IsVanillaLoader;
         CurrentLoaderIcons = new ObservableCollection<LoaderIconInfo>(displayState.CurrentLoaderIcons);
+        CurrentLoaderSummaryDisplay = BuildLoaderSummaryDisplay(displayState);
 
         OnPropertyChanged(nameof(HasMultipleLoaders));
+    }
+
+    private static string BuildLoaderSummaryDisplay(Features.VersionManagement.Services.LoaderDisplayState displayState)
+    {
+        if (displayState.CurrentLoaderIcons.Count > 0)
+        {
+            var parts = displayState.CurrentLoaderIcons
+                .Select(loader => string.IsNullOrWhiteSpace(loader.Version)
+                    ? loader.Name
+                    : $"{loader.Name} {loader.Version}")
+                .Where(part => !string.IsNullOrWhiteSpace(part));
+
+            var summary = string.Join(" + ", parts);
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                return summary;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(displayState.CurrentLoaderVersion))
+        {
+            return $"{displayState.CurrentLoaderDisplayName} {displayState.CurrentLoaderVersion}";
+        }
+
+        return displayState.CurrentLoaderDisplayName;
     }
 
     /// <summary>
@@ -1094,6 +1200,49 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             loader.LoaderType.Equals(loaderType, StringComparison.OrdinalIgnoreCase));
 
         return matchedLoader != null && matchedLoader.Versions.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task SelectVersionBuiltInIcon(VersionIconOption? iconOption)
+    {
+        if (iconOption == null || string.IsNullOrWhiteSpace(iconOption.IconPath))
+        {
+            return;
+        }
+
+        await UpdateVersionIconAsync(iconOption.IconPath);
+    }
+
+    public async Task SetCustomVersionIconAsync(string iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(iconPath))
+        {
+            return;
+        }
+
+        await UpdateVersionIconAsync(iconPath);
+    }
+
+    private async Task UpdateVersionIconAsync(string iconPath)
+    {
+        var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(iconPath);
+        CurrentVersionIconPath = normalizedIconPath;
+
+        if (SelectedVersion == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var config = await _versionConfigService.LoadConfigAsync(SelectedVersion.Name);
+            config.Icon = normalizedIconPath;
+            await _versionConfigService.SaveConfigAsync(SelectedVersion.Name, config);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"更新版本图标失败：{ex.Message}";
+        }
     }
     
     /// <summary>

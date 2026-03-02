@@ -75,7 +75,10 @@ public class VersionConfigService : IVersionConfigService
             if (!File.Exists(configPath))
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 配置文件不存在，返回默认配置: {configPath}");
-                return new VersionConfig();
+                return new VersionConfig
+                {
+                    Icon = VersionIconPathHelper.DefaultIconPath
+                };
             }
             
             var json = await File.ReadAllTextAsync(configPath);
@@ -192,6 +195,18 @@ public class VersionConfigService : IVersionConfigService
                     if (DateTime.TryParse(jObject["LastLaunchTime"].ToString(), out var lastLaunch))
                         config.LastLaunchTime = lastLaunch;
                 }
+
+                if (jObject["Icon"] != null)
+                    config.Icon = jObject["Icon"]?.ToString();
+
+                var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+                var shouldWriteBackIcon = !string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase);
+                config.Icon = normalizedIconPath;
+
+                if (shouldWriteBackIcon)
+                {
+                    await SaveConfigAsync(versionName, config);
+                }
                 
                 System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 成功加载配置: {versionName}");
                 System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 窗口大小: {config.WindowWidth}x{config.WindowHeight}");
@@ -205,17 +220,32 @@ public class VersionConfigService : IVersionConfigService
                 var config = JsonConvert.DeserializeObject<VersionConfig>(json, settings);
                 if (config != null)
                 {
+                    var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+                    var shouldWriteBackIcon = !string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase);
+                    config.Icon = normalizedIconPath;
+
+                    if (shouldWriteBackIcon)
+                    {
+                        await SaveConfigAsync(versionName, config);
+                    }
+
                     return config;
                 }
             }
             
-            return new VersionConfig();
+            return new VersionConfig
+            {
+                Icon = VersionIconPathHelper.DefaultIconPath
+            };
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 加载配置失败: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[VersionConfigService] 堆栈跟踪: {ex.StackTrace}");
-            return new VersionConfig();
+            return new VersionConfig
+            {
+                Icon = VersionIconPathHelper.DefaultIconPath
+            };
         }
     }
     
@@ -226,6 +256,8 @@ public class VersionConfigService : IVersionConfigService
     {
         try
         {
+            config.Icon = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
+
             var minecraftPath = _fileService.GetMinecraftDataPath();
             var versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
             
