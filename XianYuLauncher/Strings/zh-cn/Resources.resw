@@ -3249,4 +3249,13 @@
   <data name="VersionManagerPage_ModpackUpdateReservedStatus" xml:space="preserve">
     <value>整合包自动更新即将上线，敬请期待</value>
   </data>
+  <data name="VersionManagerPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>请选择整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
+    <value>请先选择目标整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
+    <value>整合包自动更新即将上线，已选择目标版本：{0}</value>
+  </data>
 </root>

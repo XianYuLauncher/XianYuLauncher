@@ -258,6 +258,24 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _modpackUpdateLatestVersion = string.Empty;
 
     /// <summary>
+    /// 整合包可选更新版本列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ModpackVersionOption> _modpackAvailableVersions = new();
+
+    /// <summary>
+    /// 整合包版本层级结构 (GameVersion -> Loader -> Version)
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ModpackGameVersionViewModel> _modpackUpdateStructure = new();
+
+    /// <summary>
+    /// 当前选择的整合包目标版本
+    /// </summary>
+    [ObservableProperty]
+    private ModpackVersionOption? _selectedModpackVersion;
+
+    /// <summary>
     /// 概览页可更新资源描述文本
     /// </summary>
     public string UpdatableResourcesDescription =>
@@ -271,7 +289,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 是否允许执行整合包更新（预留按钮）
     /// </summary>
-    public bool CanUpdateModpack => HasModpackUpdate && !IsModpackUpdateChecking;
+    public bool CanUpdateModpack => HasModpackUpdate && !IsModpackUpdateChecking && SelectedModpackVersion != null && !SelectedModpackVersion.IsCurrentVersion;
 
     /// <summary>
     /// 整合包更新状态文案
@@ -362,6 +380,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnModpackUpdateLatestVersionChanged(string value)
     {
         OnPropertyChanged(nameof(ModpackUpdateStatusText));
+    }
+
+    partial void OnSelectedModpackVersionChanged(ModpackVersionOption? value)
+    {
+        OnPropertyChanged(nameof(CanUpdateModpack));
     }
     
     #endregion
@@ -1258,6 +1281,127 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IsModpackUpdateChecking = false;
         HasModpackUpdate = false;
         ModpackUpdateLatestVersion = string.Empty;
+        ModpackAvailableVersions.Clear();
+        SelectedModpackVersion = null;
+    }
+
+    private async Task LoadModpackVersionOptionsAsync(ModpackUpdateCheckRequest request, CancellationToken cancellationToken)
+    {
+        var versions = await _modpackUpdateService.GetAvailableVersionsAsync(request, cancellationToken);
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var options = versions
+            .Select(version => new ModpackVersionOption
+            {
+                VersionId = version.VersionId,
+                DisplayName = version.DisplayName,
+                IsCurrentVersion = version.IsCurrentVersion
+            })
+            .ToList();
+
+        ModpackAvailableVersions.Clear();
+        foreach (var option in options)
+        {
+            ModpackAvailableVersions.Add(option);
+        }
+
+        // 构建层级结构
+        ModpackUpdateStructure.Clear();
+        var flattened = new List<(string GameVersion, string Loader, Core.Models.ModpackVersionItem Version)>();
+        foreach (var v in versions)
+        {
+            var gameVersions = (v.GameVersions != null && v.GameVersions.Any()) ? v.GameVersions : new List<string> { "通用" };
+            var loaders = (v.Loaders != null && v.Loaders.Any()) ? v.Loaders : new List<string> { "通用" };
+            
+            foreach (var gv in gameVersions)
+            {
+                foreach (var loader in loaders)
+                {
+                    flattened.Add((gv, loader, v));
+                }
+            }
+        }
+        
+        var gameVersionGroups = flattened
+            .GroupBy(x => x.GameVersion)
+            .OrderByDescending(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var gvGroup in gameVersionGroups)
+        {
+            var gvViewModel = new ModpackGameVersionViewModel
+            {
+                GameVersion = gvGroup.Key,
+                IsExpanded = false
+            };
+            
+            var loaderGroups = gvGroup
+                .GroupBy(x => x.Loader)
+                .OrderBy(g => g.Key);
+            
+            foreach (var loaderGroup in loaderGroups)
+            {
+                var loaderViewModel = new ModpackLoaderViewModel
+                {
+                    LoaderName = loaderGroup.Key,
+                    IsExpanded = false
+                };
+                
+                var distinctVersions = loaderGroup
+                    .Select(x => x.Version)
+                    .DistinctBy(v => v.VersionId)
+                    .OrderByDescending(v => v.PublishedAt)
+                    .ThenByDescending(v => v.VersionId, StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var v in distinctVersions)
+                {
+                    // 用于闭包捕获
+                    var currentVersionId = v.VersionId;
+                    var versionViewModel = new ModpackVersionViewModel
+                    {
+                        VersionId = v.VersionId,
+                        DisplayName = v.DisplayName,
+                        PublishedAt = v.PublishedAt,
+                        IsCurrentVersion = v.IsCurrentVersion,
+                        UpdateCommand = new RelayCommand(() =>
+                        {
+                            var target = ModpackAvailableVersions.FirstOrDefault(x => x.VersionId == currentVersionId);
+                            if (target != null)
+                            {
+                                SelectedModpackVersion = target;
+                                UpdateModpackCommand.Execute(null);
+                            }
+                        })
+                    };
+                    loaderViewModel.Versions.Add(versionViewModel);
+                }
+                
+                if (loaderViewModel.Versions.Any())
+                {
+                    gvViewModel.Loaders.Add(loaderViewModel);
+                }
+            }
+            
+            if (gvViewModel.Loaders.Any())
+            {
+                ModpackUpdateStructure.Add(gvViewModel);
+            }
+        }
+        
+        if (ModpackUpdateStructure.Any())
+        {
+            var first = ModpackUpdateStructure.First();
+            first.IsExpanded = true;
+            if (first.Loaders.Any())
+            {
+                first.Loaders.First().IsExpanded = true;
+            }
+        }
+
+        SelectedModpackVersion = ModpackAvailableVersions.FirstOrDefault(option => !option.IsCurrentVersion)
+                                 ?? ModpackAvailableVersions.FirstOrDefault();
     }
 
     private async Task CheckCurrentModpackUpdateAsync(CancellationToken cancellationToken)
@@ -1282,6 +1426,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IsModpackUpdateChecking = true;
         HasModpackUpdate = false;
         ModpackUpdateLatestVersion = string.Empty;
+        ModpackAvailableVersions.Clear();
+        SelectedModpackVersion = null;
 
         try
         {
@@ -1293,6 +1439,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 MinecraftVersion = _currentModpackMinecraftVersion,
                 ModLoaderType = _currentModpackLoaderType
             };
+
+            await LoadModpackVersionOptionsAsync(request, token);
 
             var result = await _modpackUpdateService.CheckForUpdatesAsync(request, token);
             if (token.IsCancellationRequested)
@@ -2519,7 +2667,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private Task UpdateModpackAsync()
     {
-        StatusMessage = "VersionManagerPage_ModpackUpdateReservedStatus".GetLocalized();
+        if (SelectedModpackVersion == null)
+        {
+            StatusMessage = "VersionManagerPage_ModpackVersionNotSelectedStatus".GetLocalized();
+            return Task.CompletedTask;
+        }
+
+        StatusMessage = string.Format(
+            "VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat".GetLocalized(),
+            SelectedModpackVersion.DisplayName);
         return Task.CompletedTask;
     }
 
@@ -2615,3 +2771,37 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     #endregion
     #endregion
 }
+
+    #region Modpack Update Structure Models
+
+    public partial class ModpackGameVersionViewModel : ObservableObject
+    {
+        [ObservableProperty] private string _gameVersion = "";
+        [ObservableProperty] private bool _isExpanded;
+        public ObservableCollection<ModpackLoaderViewModel> Loaders { get; } = new();
+
+        public string Description => $"{Loaders.Count} 个加载器可用";
+    }
+
+    public partial class ModpackLoaderViewModel : ObservableObject
+    {
+        [ObservableProperty] private string _loaderName = "";
+        [ObservableProperty] private bool _isExpanded;
+        public ObservableCollection<ModpackVersionViewModel> Versions { get; } = new();
+
+        public string Description => $"{Versions.Count} 个版本可用";
+    }
+
+    public partial class ModpackVersionViewModel : ObservableObject
+    {
+        public string VersionId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public DateTimeOffset PublishedAt { get; set; }
+        public bool IsCurrentVersion { get; set; }
+        
+        // Command to update to this version, assigned during creation
+        public IRelayCommand? UpdateCommand { get; set; }
+    }
+    
+    #endregion
+

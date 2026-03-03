@@ -3234,4 +3234,13 @@ Continue downloading?</value>
   <data name="VersionManagerPage_ModpackUpdateReservedStatus" xml:space="preserve">
     <value>Automatic modpack update is coming soon</value>
   </data>
+  <data name="VersionManagerPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>Select a modpack version</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
+    <value>Please select a target modpack version first</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
+    <value>Automatic modpack update is coming soon. Selected target version: {0}</value>
+  </data>
 </root>
