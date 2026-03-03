@@ -16,6 +16,36 @@ public class ModpackUpdateService : IModpackUpdateService
         _curseForgeService = curseForgeService;
     }
 
+    public async Task<IReadOnlyList<ModpackVersionItem>> GetAvailableVersionsAsync(
+        ModpackUpdateCheckRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request == null)
+        {
+            return Array.Empty<ModpackVersionItem>();
+        }
+
+        var platform = NormalizePlatform(request.Platform);
+        var projectId = request.ProjectId.Trim();
+        var currentVersionId = request.CurrentVersionId.Trim();
+
+        if (string.IsNullOrWhiteSpace(platform)
+            || string.IsNullOrWhiteSpace(projectId)
+            || string.IsNullOrWhiteSpace(currentVersionId))
+        {
+            return Array.Empty<ModpackVersionItem>();
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return platform switch
+        {
+            "modrinth" => await GetModrinthVersionsAsync(projectId, currentVersionId, cancellationToken),
+            "curseforge" => await GetCurseForgeVersionsAsync(projectId, currentVersionId, cancellationToken),
+            _ => Array.Empty<ModpackVersionItem>()
+        };
+    }
+
     public async Task<ModpackUpdateCheckResult> CheckForUpdatesAsync(
         ModpackUpdateCheckRequest request,
         CancellationToken cancellationToken = default)
@@ -44,11 +74,32 @@ public class ModpackUpdateService : IModpackUpdateService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return platform switch
+            var versions = await GetAvailableVersionsAsync(request, cancellationToken);
+            if (versions.Count == 0)
             {
-                "modrinth" => await CheckModrinthAsync(request, platform, projectId, currentVersionId, cancellationToken),
-                "curseforge" => await CheckCurseForgeAsync(request, platform, projectId, currentVersionId, cancellationToken),
-                _ => ModpackUpdateCheckResult.Failure($"不支持的平台: {request.Platform}", platform, projectId, currentVersionId)
+                return ModpackUpdateCheckResult.NoUpdate(platform, projectId, currentVersionId);
+            }
+
+            var latest = versions[0];
+            if (latest.IsCurrentVersion)
+            {
+                return ModpackUpdateCheckResult.NoUpdate(
+                    platform,
+                    projectId,
+                    currentVersionId,
+                    latest.VersionId,
+                    latest.DisplayName);
+            }
+
+            return new ModpackUpdateCheckResult
+            {
+                Success = true,
+                HasUpdate = true,
+                Platform = platform,
+                ProjectId = projectId,
+                CurrentVersionId = currentVersionId,
+                LatestVersionId = latest.VersionId,
+                LatestVersionName = latest.DisplayName
             };
         }
         catch (OperationCanceledException)
@@ -65,151 +116,117 @@ public class ModpackUpdateService : IModpackUpdateService
         }
     }
 
-    private async Task<ModpackUpdateCheckResult> CheckModrinthAsync(
-        ModpackUpdateCheckRequest request,
-        string platform,
+    private async Task<IReadOnlyList<ModpackVersionItem>> GetModrinthVersionsAsync(
         string projectId,
         string currentVersionId,
         CancellationToken cancellationToken)
     {
-        var loaders = BuildModrinthLoaders(request.ModLoaderType);
-        var gameVersions = BuildGameVersions(request.MinecraftVersion);
+        cancellationToken.ThrowIfCancellationRequested();
+        var versions = await _modrinthService.GetProjectVersionsAsync(projectId);
 
-        List<ModrinthVersion> versions = new();
-
-        if (loaders != null && gameVersions != null)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            versions = await _modrinthService.GetProjectVersionsAsync(projectId, loaders, gameVersions);
-        }
-
-        if (versions.Count == 0 && gameVersions != null)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            versions = await _modrinthService.GetProjectVersionsAsync(projectId, null, gameVersions);
-        }
-
-        if (versions.Count == 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            versions = await _modrinthService.GetProjectVersionsAsync(projectId);
-        }
-
-        if (versions.Count == 0)
-        {
-            return ModpackUpdateCheckResult.NoUpdate(platform, projectId, currentVersionId);
-        }
-
-        var latest = versions
-            .OrderByDescending(v => ParseDatePublished(v.DatePublished))
-            .First();
-
-        var latestVersionId = !string.IsNullOrWhiteSpace(latest.VersionNumber)
-            ? latest.VersionNumber
-            : latest.Id;
-
-        if (IsSameVersion(currentVersionId, latest.Id)
-            || IsSameVersion(currentVersionId, latest.VersionNumber))
-        {
-            return ModpackUpdateCheckResult.NoUpdate(
-                platform,
-                projectId,
-                currentVersionId,
-                latestVersionId,
-                latest.Name);
-        }
-
-        return new ModpackUpdateCheckResult
-        {
-            Success = true,
-            HasUpdate = true,
-            Platform = platform,
-            ProjectId = projectId,
-            CurrentVersionId = currentVersionId,
-            LatestVersionId = latestVersionId,
-            LatestVersionName = latest.Name
-        };
+        return versions
+            .Select(v =>
+            {
+                var versionId = !string.IsNullOrWhiteSpace(v.VersionNumber) ? v.VersionNumber : v.Id;
+                var versionName = string.IsNullOrWhiteSpace(v.Name) ? versionId : v.Name;
+                return new ModpackVersionItem
+                {
+                    VersionId = versionId,
+                    DisplayName = $"{versionName}",
+                    PublishedAt = ParseDatePublished(v.DatePublished),
+                    IsCurrentVersion = IsSameVersion(currentVersionId, v.Id) || IsSameVersion(currentVersionId, v.VersionNumber),
+                    GameVersions = v.GameVersions ?? new List<string>(),
+                    Loaders = v.Loaders ?? new List<string>()
+                };
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.VersionId))
+            .OrderByDescending(item => item.PublishedAt)
+                .ThenByDescending(item => item.VersionId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
-    private async Task<ModpackUpdateCheckResult> CheckCurseForgeAsync(
-        ModpackUpdateCheckRequest request,
-        string platform,
+    private async Task<IReadOnlyList<ModpackVersionItem>> GetCurseForgeVersionsAsync(
         string projectId,
         string currentVersionId,
         CancellationToken cancellationToken)
     {
         if (!int.TryParse(projectId, out var modId))
         {
-            return ModpackUpdateCheckResult.Failure(
-                "CurseForge 项目ID不是有效数字",
-                platform,
-                projectId,
-                currentVersionId);
+            return Array.Empty<ModpackVersionItem>();
         }
 
-        var gameVersion = NormalizeOptional(request.MinecraftVersion);
-        var modLoaderType = MapCurseForgeModLoaderType(request.ModLoaderType);
-
-        List<CurseForgeFile> files = new();
-
-        if (!string.IsNullOrWhiteSpace(gameVersion) && modLoaderType.HasValue)
+        var allFiles = new List<CurseForgeFile>();
+        const int pageSize = 50;
+        for (var index = 0; ; index += pageSize)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            files = await _curseForgeService.GetModFilesAsync(modId, gameVersion, modLoaderType);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            var page = await _curseForgeService.GetModFilesAsync(modId, null, null, index, pageSize);
+            if (page.Count == 0)
+            {
+                break;
+            }
+
+            allFiles.AddRange(page);
+            if (page.Count < pageSize)
+            {
+                break;
+            }
         }
 
-        if (files.Count == 0 && !string.IsNullOrWhiteSpace(gameVersion))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            files = await _curseForgeService.GetModFilesAsync(modId, gameVersion, null);
-        }
+        return allFiles
+            .Where(file => file.DisplayName != null && !file.DisplayName.Contains("Server", StringComparison.OrdinalIgnoreCase))
+            .Select(file =>
+            {
+                var versionId = !string.IsNullOrWhiteSpace(file.DisplayName) ? file.DisplayName : file.Id.ToString();
+                var versionName = !string.IsNullOrWhiteSpace(file.FileName) ? file.FileName : versionId;
+                
+                var loaders = new List<string>();
+                var gameVersions = new List<string>();
+                
+                if (file.GameVersions != null)
+                {
+                    foreach (var v in file.GameVersions)
+                    {
+                        if (IsLoader(v))
+                        {
+                            loaders.Add(v);
+                        }
+                        else
+                        {
+                            gameVersions.Add(v);
+                        }
+                    }
+                }
 
-        if (files.Count == 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            files = await _curseForgeService.GetModFilesAsync(modId);
-        }
-
-        if (files.Count == 0)
-        {
-            return ModpackUpdateCheckResult.NoUpdate(platform, projectId, currentVersionId);
-        }
-
-        var latest = files
-            .Where(file => file.IsAvailable && !file.IsServerPack)
-            .OrderByDescending(file => file.FileDate)
-            .FirstOrDefault()
-            ?? files.OrderByDescending(file => file.FileDate).First();
-
-        var latestVersionId = !string.IsNullOrWhiteSpace(latest.DisplayName)
-            ? latest.DisplayName
-            : latest.Id.ToString();
-
-        var latestVersionName = !string.IsNullOrWhiteSpace(latest.FileName)
-            ? latest.FileName
-            : latest.DisplayName;
-
-        if (IsSameVersion(currentVersionId, latest.DisplayName)
-            || IsSameVersion(currentVersionId, latest.Id.ToString()))
-        {
-            return ModpackUpdateCheckResult.NoUpdate(
-                platform,
-                projectId,
-                currentVersionId,
-                latestVersionId,
-                latestVersionName);
-        }
-
-        return new ModpackUpdateCheckResult
-        {
-            Success = true,
-            HasUpdate = true,
-            Platform = platform,
-            ProjectId = projectId,
-            CurrentVersionId = currentVersionId,
-            LatestVersionId = latestVersionId,
-            LatestVersionName = latestVersionName
-        };
+                return new ModpackVersionItem
+                {
+                    VersionId = versionId,
+                    DisplayName = versionName,
+                    PublishedAt = file.FileDate,
+                    IsCurrentVersion = IsSameVersion(currentVersionId, versionId) || IsSameVersion(currentVersionId, file.Id.ToString()),
+                    GameVersions = gameVersions,
+                    Loaders = loaders
+                };
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.VersionId))
+            .GroupBy(item => item.VersionId, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(item => item.PublishedAt).First())
+            .OrderByDescending(item => item.PublishedAt)
+                .ThenByDescending(item => item.VersionId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+    
+    private static bool IsLoader(string version)
+    {
+        return version.Equals("Forge", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("Fabric", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("Quilt", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("NeoForge", StringComparison.OrdinalIgnoreCase)
+            || version.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizePlatform(string? platform)
@@ -226,48 +243,6 @@ public class ModpackUpdateService : IModpackUpdateService
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    }
-
-    private static List<string>? BuildGameVersions(string? minecraftVersion)
-    {
-        var version = NormalizeOptional(minecraftVersion);
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return null;
-        }
-
-        return new List<string> { version };
-    }
-
-    private static List<string>? BuildModrinthLoaders(string? modLoaderType)
-    {
-        var loader = NormalizeOptional(modLoaderType)?.ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(loader))
-        {
-            return null;
-        }
-
-        return loader switch
-        {
-            "forge" => new List<string> { "forge" },
-            "fabric" => new List<string> { "fabric" },
-            "quilt" => new List<string> { "quilt" },
-            "neoforge" => new List<string> { "neoforge" },
-            "vanilla" => new List<string> { "vanilla" },
-            _ => null
-        };
-    }
-
-    private static int? MapCurseForgeModLoaderType(string? modLoaderType)
-    {
-        return NormalizeOptional(modLoaderType)?.ToLowerInvariant() switch
-        {
-            "forge" => 1,
-            "fabric" => 4,
-            "quilt" => 5,
-            "neoforge" => 6,
-            _ => null
-        };
     }
 
     private static DateTimeOffset ParseDatePublished(string? publishedAt)

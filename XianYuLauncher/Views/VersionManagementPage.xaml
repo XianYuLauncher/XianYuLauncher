@@ -301,6 +301,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 
                                 <StackPanel Orientation="Horizontal" Spacing="12">
@@ -328,42 +329,102 @@
                             </Grid>
                         </Border>
 
-                        <Border Background="{StaticResource OverviewCardBackgroundBrush}"
-                                BorderBrush="{StaticResource OverviewCardBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16,12"
-                                Visibility="{Binding ShowModpackUpdateCard, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                        <controls:SettingsExpander x:Uid="VersionManagerPage_ModpackUpdateExpander"
+                                                   Header="整合包更新"
+                                                   Description="{Binding ModpackUpdateStatusText}"
+                                                   Visibility="{Binding ShowModpackUpdateCard, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <controls:SettingsExpander.HeaderIcon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE895;" />
+                            </controls:SettingsExpander.HeaderIcon>
 
-                                <StackPanel Orientation="Horizontal" Spacing="12">
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                              Glyph="&#xE895;"
-                                              FontSize="16"
-                                              Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                              VerticalAlignment="Center" />
-                                    <StackPanel VerticalAlignment="Center" Spacing="2">
-                                        <TextBlock x:Uid="VersionManagerPage_ModpackUpdateBannerTitle" Text="整合包更新" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding ModpackUpdateStatusText}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <Button Grid.Column="1"
-                                        Command="{x:Bind ViewModel.UpdateModpackCommand}"
-                                        IsEnabled="{Binding CanUpdateModpack}"
-                                        Style="{StaticResource DefaultButtonStyle}"
+                            <Button Command="{x:Bind ViewModel.UpdateModpackCommand}"
+                                    IsEnabled="{Binding CanUpdateModpack}"
+                                    Style="{StaticResource DefaultButtonStyle}"
                                     Width="32"
                                     Height="32"
                                     Padding="0"
                                     VerticalAlignment="Center">
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE117;" FontSize="14" />
-                                </Button>
-                            </Grid>
-                        </Border>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE117;" FontSize="14" />
+                            </Button>
+                            
+                            <controls:SettingsExpander.Items>
+                                <ItemsControl ItemsSource="{Binding ModpackUpdateStructure}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="viewModels:ModpackGameVersionViewModel">
+                                            <Expander HorizontalAlignment="Stretch"
+                                                      HorizontalContentAlignment="Stretch"
+                                                      IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                                      Padding="0"
+                                                      Margin="0,0,0,4">
+                                                <Expander.Header>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{x:Bind GameVersion}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind Description}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </Expander.Header>
+                                                <Expander.Content>
+                                                    <ItemsControl ItemsSource="{x:Bind Loaders}" Margin="0,4,0,0">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="viewModels:ModpackLoaderViewModel">
+                                                                <Expander HorizontalAlignment="Stretch"
+                                                                          HorizontalContentAlignment="Stretch"
+                                                                          IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                                                          Padding="0"
+                                                                          Margin="0,0,0,4">
+                                                                    <Expander.Header>
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                                <FontIcon Glyph="&#xE74C;" FontSize="14" Foreground="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center" />
+                                                                                <TextBlock Text="{x:Bind LoaderName}" FontWeight="Medium" VerticalAlignment="Center" />
+                                                                            </StackPanel>
+                                                                            <TextBlock Grid.Column="1" Text="{x:Bind Description}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                                        </Grid>
+                                                                    </Expander.Header>
+                                                                    <Expander.Content>
+                                                                        <ItemsControl ItemsSource="{x:Bind Versions}" Margin="0,4,0,0">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate x:DataType="viewModels:ModpackVersionViewModel">
+                                                                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                                                            BorderThickness="1"
+                                                                                            CornerRadius="4"
+                                                                                            Margin="0,0,0,4"
+                                                                                            Padding="12,8">
+                                                                                        <Grid>
+                                                                                            <Grid.ColumnDefinitions>
+                                                                                                <ColumnDefinition Width="*" />
+                                                                                                <ColumnDefinition Width="Auto" />
+                                                                                            </Grid.ColumnDefinitions>
+                                                                                            <StackPanel Spacing="2">
+                                                                                                <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" />
+                                                                                                <TextBlock Text="{x:Bind PublishedAt}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                                                            </StackPanel>
+                                                                                            <Button Grid.Column="1" Command="{x:Bind UpdateCommand}" Content="更新" Style="{StaticResource AccentButtonStyle}" VerticalAlignment="Center" />
+                                                                                        </Grid>
+                                                                                    </Border>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+                                                                    </Expander.Content>
+                                                                </Expander>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Expander.Content>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </controls:SettingsExpander.Items>
+                        </controls:SettingsExpander>
                         
                         <!-- 详细信息 - 两列布局 -->
                         <Grid ColumnSpacing="16">
