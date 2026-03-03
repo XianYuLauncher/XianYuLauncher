@@ -64,7 +64,7 @@
                         </Grid>
                     </controls:SettingsCard.Header>
                 </controls:SettingsCard>
-                
+
                 <!-- 管理加载器 -->
                 <TextBlock x:Uid="VersionManagerPage_ManageLoaderTitle" Text="管理加载器" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
                 
@@ -130,6 +130,50 @@
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
+
+                <TextBlock Text="整合包" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4"
+                           Visibility="{Binding IsCurrentVersionModpack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <controls:SettingsExpander Header="修改整合包版本"
+                                           Description="{Binding ModpackUpdateStatusText}"
+                                           IsExpanded="{Binding IsModpackVersionExpanderExpanded, Mode=TwoWay}"
+                                           Visibility="{Binding IsCurrentVersionModpack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE895;" />
+                    </controls:SettingsExpander.HeaderIcon>
+
+                    <Button Command="{Binding UpdateModpackCommand}"
+                            IsEnabled="{Binding CanUpdateModpack}"
+                            Style="{StaticResource DefaultButtonStyle}"
+                            Width="32"
+                            Height="32"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE117;" FontSize="14" />
+                    </Button>
+
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard ContentAlignment="Vertical"
+                                               HorizontalContentAlignment="Stretch"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               Padding="0">
+                            <Grid MinHeight="120">
+                                <ProgressRing IsActive="{Binding IsModpackVersionStructureLoading, Mode=OneWay}"
+                                              Width="32"
+                                              Height="32"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Visibility="{Binding IsModpackVersionStructureLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                                <appControls:VersionHierarchySelector
+                                    ItemsSource="{Binding ModpackUpdateStructure}"
+                                    SelectedVersion="{Binding SelectedModpackHierarchyVersion, Mode=TwoWay}"
+                                    Visibility="{Binding IsModpackVersionStructureLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                            </Grid>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
                 
                 <!-- 版本设置 -->
                 <TextBlock x:Uid="VersionManagerPage_VersionSettingsSection" Text="版本设置" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />

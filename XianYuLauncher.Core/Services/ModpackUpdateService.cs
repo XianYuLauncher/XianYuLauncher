@@ -129,10 +129,14 @@ public class ModpackUpdateService : IModpackUpdateService
             {
                 var versionId = !string.IsNullOrWhiteSpace(v.VersionNumber) ? v.VersionNumber : v.Id;
                 var versionName = string.IsNullOrWhiteSpace(v.Name) ? versionId : v.Name;
+                var primaryFileName = v.Files?.FirstOrDefault(file => file.Primary)?.Filename
+                                      ?? v.Files?.FirstOrDefault()?.Filename
+                                      ?? string.Empty;
                 return new ModpackVersionItem
                 {
                     VersionId = versionId,
                     DisplayName = $"{versionName}",
+                    FileName = primaryFileName,
                     PublishedAt = ParseDatePublished(v.DatePublished),
                     IsCurrentVersion = IsSameVersion(currentVersionId, v.Id) || IsSameVersion(currentVersionId, v.VersionNumber),
                     GameVersions = v.GameVersions ?? new List<string>(),
@@ -182,7 +186,8 @@ public class ModpackUpdateService : IModpackUpdateService
             .Select(file =>
             {
                 var versionId = !string.IsNullOrWhiteSpace(file.DisplayName) ? file.DisplayName : file.Id.ToString();
-                var versionName = !string.IsNullOrWhiteSpace(file.FileName) ? file.FileName : versionId;
+                var versionName = !string.IsNullOrWhiteSpace(file.DisplayName) ? file.DisplayName : file.Id.ToString();
+                var fileName = file.FileName ?? string.Empty;
                 
                 var loaders = new List<string>();
                 var gameVersions = new List<string>();
@@ -206,6 +211,7 @@ public class ModpackUpdateService : IModpackUpdateService
                 {
                     VersionId = versionId,
                     DisplayName = versionName,
+                    FileName = fileName,
                     PublishedAt = file.FileDate,
                     IsCurrentVersion = IsSameVersion(currentVersionId, versionId) || IsSameVersion(currentVersionId, file.Id.ToString()),
                     GameVersions = gameVersions,
