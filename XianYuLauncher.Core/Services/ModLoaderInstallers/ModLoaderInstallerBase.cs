@@ -117,16 +117,41 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string? liteLoaderVersion = null)
     {
         var configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
-        
-        var config = new VersionConfig
+
+        VersionConfig config;
+        if (File.Exists(configPath))
         {
-            ModLoaderType = ModLoaderType,
-            ModLoaderVersion = modLoaderVersion,
-            MinecraftVersion = minecraftVersionId,
-            OptifineVersion = optifineVersion,
-            LiteLoaderVersion = liteLoaderVersion,
-            CreatedAt = DateTime.Now
-        };
+            try
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath);
+                config = JsonConvert.DeserializeObject<VersionConfig>(existingJson) ?? new VersionConfig();
+            }
+            catch
+            {
+                config = new VersionConfig();
+            }
+        }
+        else
+        {
+            config = new VersionConfig
+            {
+                AutoMemoryAllocation = true,
+                InitialHeapMemory = 6.0,
+                MaximumHeapMemory = 12.0,
+                WindowWidth = 1280,
+                WindowHeight = 720
+            };
+        }
+
+        config.ModLoaderType = ModLoaderType;
+        config.ModLoaderVersion = modLoaderVersion;
+        config.MinecraftVersion = minecraftVersionId;
+        config.OptifineVersion = optifineVersion;
+        config.LiteLoaderVersion = liteLoaderVersion;
+        if (config.CreatedAt == default)
+        {
+            config.CreatedAt = DateTime.Now;
+        }
 
         var jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
         await File.WriteAllTextAsync(configPath, jsonContent);
