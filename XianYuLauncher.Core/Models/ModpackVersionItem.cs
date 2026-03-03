@@ -6,6 +6,8 @@ public class ModpackVersionItem
 
     public string DisplayName { get; set; } = string.Empty;
 
+    public string FileName { get; set; } = string.Empty;
+
     public DateTimeOffset PublishedAt { get; set; }
 
     public bool IsCurrentVersion { get; set; }

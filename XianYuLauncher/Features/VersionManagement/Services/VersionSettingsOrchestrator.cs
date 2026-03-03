@@ -292,6 +292,29 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         };
     }
 
+    public async Task<bool> NeedsExtensionReinstallAsync(
+        VersionListViewModel.VersionInfoItem selectedVersion,
+        IReadOnlyList<LoaderSelection> selectedLoaders)
+    {
+        var versionDirectory = selectedVersion.Path;
+        var versionId = selectedVersion.Name;
+
+        var primaryLoader = selectedLoaders.FirstOrDefault(loader =>
+            !loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase)
+            && !loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+        var optifineLoader = selectedLoaders.FirstOrDefault(loader =>
+            loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase));
+        var liteLoaderLoader = selectedLoaders.FirstOrDefault(loader =>
+            loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+
+        return await CheckNeedsReinstallAsync(
+            versionId,
+            versionDirectory,
+            primaryLoader,
+            optifineLoader,
+            liteLoaderLoader);
+    }
+
     public void ParseVersionNameToSettings(VersionSettings settings, string versionName)
     {
         var lowerVersionName = versionName.ToLowerInvariant();

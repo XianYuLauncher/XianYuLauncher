@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Graphics.Canvas;
@@ -270,10 +271,27 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private ObservableCollection<ModpackGameVersionViewModel> _modpackUpdateStructure = new();
 
     /// <summary>
+    /// 是否正在加载整合包版本层级结构（用于设置页展开后懒加载）
+    /// </summary>
+    [ObservableProperty]
+    private bool _isModpackVersionStructureLoading;
+
+    [ObservableProperty]
+    private bool _isModpackVersionExpanderExpanded;
+
+    /// <summary>
     /// 当前选择的整合包目标版本
     /// </summary>
     [ObservableProperty]
     private ModpackVersionOption? _selectedModpackVersion;
+
+    /// <summary>
+    /// 三级菜单中当前选中的整合包版本
+    /// </summary>
+    [ObservableProperty]
+    private ModpackVersionViewModel? _selectedModpackHierarchyVersion;
+
+    private bool _isSyncingModpackSelection;
 
     /// <summary>
     /// 概览页可更新资源描述文本
@@ -385,6 +403,51 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnSelectedModpackVersionChanged(ModpackVersionOption? value)
     {
         OnPropertyChanged(nameof(CanUpdateModpack));
+
+        if (_isSyncingModpackSelection)
+        {
+            return;
+        }
+
+        _isSyncingModpackSelection = true;
+        try
+        {
+            SelectedModpackHierarchyVersion = value == null
+                ? null
+                : FindHierarchyVersionById(value.VersionId);
+        }
+        finally
+        {
+            _isSyncingModpackSelection = false;
+        }
+    }
+
+    partial void OnSelectedModpackHierarchyVersionChanged(ModpackVersionViewModel? value)
+    {
+        if (_isSyncingModpackSelection)
+        {
+            return;
+        }
+
+        _isSyncingModpackSelection = true;
+        try
+        {
+            SelectedModpackVersion = value == null
+                ? null
+                : ModpackAvailableVersions.FirstOrDefault(option => IsSameVersionId(option.VersionId, value.VersionId));
+        }
+        finally
+        {
+            _isSyncingModpackSelection = false;
+        }
+    }
+
+    partial void OnIsModpackVersionExpanderExpandedChanged(bool value)
+    {
+        if (value)
+        {
+            _ = EnsureModpackUpdateStructureLoadedAsync();
+        }
     }
     
     #endregion
@@ -1233,7 +1296,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         if (IsCurrentVersionModpack)
         {
-            _ = CheckCurrentModpackUpdateAsync(_pageCancellationTokenSource?.Token ?? CancellationToken.None);
+            ModpackUpdateStructure.Clear();
+            ModpackAvailableVersions.Clear();
+            SelectedModpackHierarchyVersion = null;
+            SelectedModpackVersion = null;
+
+            // 页面加载会先走 Fast 再走 Deep，两次都会调用 ApplyVersionConfigToViewModel。
+            // 仅在 Fast 阶段触发一次自动检查，避免同一版本短时间重复请求同一 URL。
+            if (!includeCustomJvmArguments)
+            {
+                _ = CheckCurrentModpackUpdateAsync(_pageCancellationTokenSource?.Token ?? CancellationToken.None);
+            }
         }
         else
         {
@@ -1279,10 +1352,65 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void ResetModpackUpdateState()
     {
         IsModpackUpdateChecking = false;
+        IsModpackVersionStructureLoading = false;
+        IsModpackVersionExpanderExpanded = false;
         HasModpackUpdate = false;
         ModpackUpdateLatestVersion = string.Empty;
+        ModpackUpdateStructure.Clear();
         ModpackAvailableVersions.Clear();
+        SelectedModpackHierarchyVersion = null;
         SelectedModpackVersion = null;
+    }
+
+    private ModpackUpdateCheckRequest? BuildCurrentModpackUpdateRequest()
+    {
+        if (!IsCurrentVersionModpack
+            || string.IsNullOrWhiteSpace(_currentModpackPlatform)
+            || string.IsNullOrWhiteSpace(_currentModpackProjectId)
+            || string.IsNullOrWhiteSpace(_currentModpackVersionId))
+        {
+            return null;
+        }
+
+        return new ModpackUpdateCheckRequest
+        {
+            Platform = _currentModpackPlatform,
+            ProjectId = _currentModpackProjectId,
+            CurrentVersionId = _currentModpackVersionId,
+            MinecraftVersion = _currentModpackMinecraftVersion,
+            ModLoaderType = _currentModpackLoaderType
+        };
+    }
+
+    public async Task EnsureModpackUpdateStructureLoadedAsync()
+    {
+        if (!IsCurrentVersionModpack || IsModpackVersionStructureLoading || ModpackUpdateStructure.Count > 0)
+        {
+            return;
+        }
+
+        var request = BuildCurrentModpackUpdateRequest();
+        if (request == null)
+        {
+            return;
+        }
+
+        IsModpackVersionStructureLoading = true;
+        try
+        {
+            await LoadModpackVersionOptionsAsync(request, _pageCancellationTokenSource?.Token ?? CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 加载整合包版本层级失败: {ex.Message}");
+        }
+        finally
+        {
+            IsModpackVersionStructureLoading = false;
+        }
     }
 
     private async Task LoadModpackVersionOptionsAsync(ModpackUpdateCheckRequest request, CancellationToken cancellationToken)
@@ -1292,6 +1420,22 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             return;
         }
+
+        await BuildModpackVersionOptionsAsync(versions);
+    }
+
+    private async Task BuildModpackVersionOptionsAsync(IReadOnlyList<Core.Models.ModpackVersionItem> versions)
+    {
+        if (versions == null)
+        {
+            ModpackUpdateStructure.Clear();
+            ModpackAvailableVersions.Clear();
+            SelectedModpackHierarchyVersion = null;
+            SelectedModpackVersion = null;
+            return;
+        }
+
+        var hideSnapshots = await App.GetService<ILocalSettingsService>().ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
 
         var options = versions
             .Select(version => new ModpackVersionOption
@@ -1314,6 +1458,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         foreach (var v in versions)
         {
             var gameVersions = (v.GameVersions != null && v.GameVersions.Any()) ? v.GameVersions : new List<string> { "通用" };
+            if (hideSnapshots)
+            {
+                gameVersions = gameVersions
+                    .Where(gameVersion => !ModVersionClassifierHelper.IsSnapshotVersion(gameVersion))
+                    .ToList();
+            }
+
+            if (!gameVersions.Any())
+            {
+                continue;
+            }
+
             var loaders = (v.Loaders != null && v.Loaders.Any()) ? v.Loaders : new List<string> { "通用" };
             
             foreach (var gv in gameVersions)
@@ -1327,7 +1483,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         var gameVersionGroups = flattened
             .GroupBy(x => x.GameVersion)
-            .OrderByDescending(g => g.Key, StringComparer.OrdinalIgnoreCase);
+            .OrderByDescending(g => g.Key, new MinecraftVersionComparer());
 
         foreach (var gvGroup in gameVersionGroups)
         {
@@ -1364,6 +1520,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         VersionId = v.VersionId,
                         DisplayName = v.DisplayName,
                         PublishedAt = v.PublishedAt,
+                        VersionNumberText = v.DisplayName,
+                        VersionTypeText = "release",
+                        ReleaseDateText = v.PublishedAt == DateTimeOffset.MinValue
+                            ? string.Empty
+                            : v.PublishedAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff'Z'"),
+                        FileNameText = v.FileName,
+                        ShowVersionTypeBadge = true,
+                        ShowFileName = !string.IsNullOrWhiteSpace(v.FileName),
+                        InlineActionText = "更新",
+                        ShowInlineActionButton = false,
+                        ShowSelectRadio = true,
+                        SelectionGroupName = "VersionManagement_ModpackSelection",
+                        InlineActionCommand = null,
+                        InlineActionParameter = null,
                         IsCurrentVersion = v.IsCurrentVersion,
                         UpdateCommand = new RelayCommand(() =>
                         {
@@ -1402,6 +1572,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         SelectedModpackVersion = ModpackAvailableVersions.FirstOrDefault(option => !option.IsCurrentVersion)
                                  ?? ModpackAvailableVersions.FirstOrDefault();
+
+        SelectedModpackHierarchyVersion = SelectedModpackVersion == null
+            ? null
+            : FindHierarchyVersionById(SelectedModpackVersion.VersionId);
+
+        if (SelectedModpackHierarchyVersion != null)
+        {
+            SelectedModpackHierarchyVersion.IsSelected = true;
+        }
     }
 
     private async Task CheckCurrentModpackUpdateAsync(CancellationToken cancellationToken)
@@ -1424,32 +1603,37 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         var token = currentCts.Token;
 
         IsModpackUpdateChecking = true;
+        IsModpackVersionStructureLoading = true;
         HasModpackUpdate = false;
         ModpackUpdateLatestVersion = string.Empty;
-        ModpackAvailableVersions.Clear();
-        SelectedModpackVersion = null;
 
         try
         {
-            var request = new ModpackUpdateCheckRequest
+            var request = BuildCurrentModpackUpdateRequest();
+            if (request == null)
             {
-                Platform = _currentModpackPlatform,
-                ProjectId = _currentModpackProjectId,
-                CurrentVersionId = _currentModpackVersionId,
-                MinecraftVersion = _currentModpackMinecraftVersion,
-                ModLoaderType = _currentModpackLoaderType
-            };
+                return;
+            }
 
-            await LoadModpackVersionOptionsAsync(request, token);
-
-            var result = await _modpackUpdateService.CheckForUpdatesAsync(request, token);
+            var versions = await _modpackUpdateService.GetAvailableVersionsAsync(request, token);
             if (token.IsCancellationRequested)
             {
                 return;
             }
 
-            HasModpackUpdate = result.Success && result.HasUpdate;
-            ModpackUpdateLatestVersion = result.LatestVersionId ?? string.Empty;
+            await BuildModpackVersionOptionsAsync(versions);
+
+            if (versions.Count == 0)
+            {
+                HasModpackUpdate = false;
+                ModpackUpdateLatestVersion = string.Empty;
+            }
+            else
+            {
+                var latest = versions[0];
+                HasModpackUpdate = !latest.IsCurrentVersion;
+                ModpackUpdateLatestVersion = latest.VersionId ?? string.Empty;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -1462,6 +1646,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         finally
         {
+            IsModpackVersionStructureLoading = false;
             if (ReferenceEquals(_modpackUpdateCheckCancellationTokenSource, currentCts))
             {
                 IsModpackUpdateChecking = false;
@@ -1474,6 +1659,90 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         return !string.IsNullOrWhiteSpace(versionConfig.ModpackPlatform)
             && !string.IsNullOrWhiteSpace(versionConfig.ModpackProjectId)
             && !string.IsNullOrWhiteSpace(versionConfig.ModpackVersionId);
+    }
+
+    private ModpackVersionViewModel? FindHierarchyVersionById(string? versionId)
+    {
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return null;
+        }
+
+        foreach (var gameVersion in ModpackUpdateStructure)
+        {
+            foreach (var loader in gameVersion.Loaders)
+            {
+                var match = loader.Versions.FirstOrDefault(version => IsSameVersionId(version.VersionId, versionId));
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsSameVersionId(string? left, string? right)
+    {
+        return string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class MinecraftVersionComparer : IComparer<string>
+    {
+        public int Compare(string? x, string? y)
+        {
+            if (string.Equals(x, y, StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (string.IsNullOrWhiteSpace(x))
+            {
+                return -1;
+            }
+
+            if (string.IsNullOrWhiteSpace(y))
+            {
+                return 1;
+            }
+
+            var xParts = ParseVersionParts(x);
+            var yParts = ParseVersionParts(y);
+            var maxLength = Math.Max(xParts.Length, yParts.Length);
+
+            for (var i = 0; i < maxLength; i++)
+            {
+                var xPart = i < xParts.Length ? xParts[i] : 0;
+                var yPart = i < yParts.Length ? yParts[i] : 0;
+                if (xPart != yPart)
+                {
+                    return xPart.CompareTo(yPart);
+                }
+            }
+
+            return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int[] ParseVersionParts(string version)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(version, @"^(\d+)\.(\d+)(?:\.(\d+))?");
+            if (!match.Success)
+            {
+                return Array.Empty<int>();
+            }
+
+            var parts = new List<int>();
+            for (var i = 1; i < match.Groups.Count; i++)
+            {
+                if (match.Groups[i].Success && int.TryParse(match.Groups[i].Value, out var parsed))
+                {
+                    parts.Add(parsed);
+                }
+            }
+
+            return parts.ToArray();
+        }
     }
     
     /// <summary>
@@ -1699,12 +1968,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
         
+        var showInstallProgressDialog = false;
+
         try
         {
-            IsInstallingExtension = true;
-            ExtensionInstallProgress = 0;
-            ExtensionInstallStatus = "正在准备安装...";
-
             var selectedLoaders = AvailableLoaders
                 .Where(loader => !string.IsNullOrEmpty(loader.SelectedVersion))
                 .Select(loader => new LoaderSelection
@@ -1728,15 +1995,28 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 WindowHeight = WindowHeight
             };
 
+            showInstallProgressDialog = await _versionSettingsOrchestrator.NeedsExtensionReinstallAsync(
+                SelectedVersion,
+                selectedLoaders);
+
+            if (showInstallProgressDialog)
+            {
+                IsInstallingExtension = true;
+                ExtensionInstallProgress = 0;
+                ExtensionInstallStatus = "正在准备安装...";
+            }
+
             var result = await _versionSettingsOrchestrator.InstallExtensionsAsync(
                 SelectedVersion,
                 selectedLoaders,
                 options,
-                (status, progress) =>
-                {
-                    ExtensionInstallStatus = status;
-                    ExtensionInstallProgress = progress;
-                });
+                showInstallProgressDialog
+                    ? (status, progress) =>
+                    {
+                        ExtensionInstallStatus = status;
+                        ExtensionInstallProgress = progress;
+                    }
+                    : null);
 
             UpdateCurrentLoaderInfo(new VersionSettings
             {
@@ -1755,6 +2035,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             StatusMessage = result.SelectedLoaders.Count > 0
                 ? $"配置已保存，已安装：{string.Join(", ", result.SelectedLoaders.Select(loader => loader.Name))}"
                 : "已重置为原版";
+
+            if (!result.NeedsReinstall)
+            {
+                ExtensionInstallStatus = "检测到加载器未变更，已仅保存配置。";
+            }
         }
         catch (Exception ex)
         {
@@ -1763,9 +2048,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         finally
         {
-            // 延迟关闭弹窗，让用户看到完成状态
-            await Task.Delay(500);
-            IsInstallingExtension = false;
+            if (showInstallProgressDialog)
+            {
+                // 延迟关闭弹窗，让用户看到完成状态
+                await Task.Delay(500);
+                IsInstallingExtension = false;
+            }
         }
     }
     
@@ -2781,6 +3069,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         public ObservableCollection<ModpackLoaderViewModel> Loaders { get; } = new();
 
         public string Description => $"{Loaders.Count} 个加载器可用";
+        public int TotalVersionCount => Loaders.Sum(loader => loader.Versions.Count);
     }
 
     public partial class ModpackLoaderViewModel : ObservableObject
@@ -2797,7 +3086,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         public string VersionId { get; set; } = "";
         public string DisplayName { get; set; } = "";
         public DateTimeOffset PublishedAt { get; set; }
+        public string VersionNumberText { get; set; } = "";
+        public string VersionTypeText { get; set; } = "";
+        public string ReleaseDateText { get; set; } = "";
+        public string FileNameText { get; set; } = "";
+        public bool ShowVersionTypeBadge { get; set; }
+        public bool ShowFileName { get; set; }
+        public string InlineActionText { get; set; } = "";
+        public bool ShowInlineActionButton { get; set; }
+        public bool ShowSelectRadio { get; set; }
+        public string SelectionGroupName { get; set; } = string.Empty;
+        public ICommand? InlineActionCommand { get; set; }
+        public object? InlineActionParameter { get; set; }
         public bool IsCurrentVersion { get; set; }
+        [ObservableProperty] private bool _isSelected;
         
         // Command to update to this version, assigned during creation
         public IRelayCommand? UpdateCommand { get; set; }

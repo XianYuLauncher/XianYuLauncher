@@ -27,5 +27,9 @@ public interface IVersionSettingsOrchestrator
         ExtensionInstallOptions options,
         Action<string, double>? onProgress = null);
 
+    Task<bool> NeedsExtensionReinstallAsync(
+        VersionListViewModel.VersionInfoItem selectedVersion,
+        IReadOnlyList<LoaderSelection> selectedLoaders);
+
     void ParseVersionNameToSettings(VersionSettings settings, string versionName);
 }
