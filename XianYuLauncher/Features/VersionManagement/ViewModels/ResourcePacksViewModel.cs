@@ -146,6 +146,30 @@ public partial class ResourcePacksViewModel : ObservableObject
         }
 
         _allResourcePacks = newPackList;
+
+        if (_context.IsCurrentVersionModpack)
+        {
+            _resourcePackUpdateDetectCts?.Cancel();
+            _resourcePackUpdateDetectCts?.Dispose();
+            _resourcePackUpdateDetectCts = null;
+
+            foreach (var pack in _allResourcePacks)
+            {
+                pack.HasUpdate = false;
+                pack.CurrentVersion = string.Empty;
+                pack.LatestVersion = string.Empty;
+            }
+
+            OnPropertyChanged(nameof(UpdatableResourcePackCount));
+
+            if (_context.IsPageReady)
+            {
+                await _context.RunUiRefreshAsync(FilterResourcePacks);
+            }
+
+            return;
+        }
+
         OnPropertyChanged(nameof(UpdatableResourcePackCount));
         StartResourcePackUpdateDetection(cancellationToken);
 
