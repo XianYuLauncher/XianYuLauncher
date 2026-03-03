@@ -231,7 +231,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <summary>
     /// 是否存在可更新资源（用于控制概览卡片显示）
     /// </summary>
-    public bool HasUpdatableResources => UpdatableResourceCount > 0;
+    public bool HasUpdatableResources => !IsCurrentVersionModpack && UpdatableResourceCount > 0;
+
+    /// <summary>
+    /// 当前版本是否为整合包实例
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCurrentVersionModpack;
 
     /// <summary>
     /// 概览页可更新资源描述文本
@@ -281,6 +287,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         OnPropertyChanged(nameof(HasUpdatableResources));
         OnPropertyChanged(nameof(UpdatableResourcesDescription));
+    }
+
+    partial void OnIsCurrentVersionModpackChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasUpdatableResources));
     }
     
     #endregion
@@ -749,6 +760,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     private void RefreshUpdatableResourceSummary()
     {
+        if (IsCurrentVersionModpack)
+        {
+            UpdatableResourceCount = 0;
+            return;
+        }
+
         UpdatableResourceCount =
             (ModsModule?.UpdatableModCount ?? 0) +
             (ShadersModule?.UpdatableShaderCount ?? 0) +
@@ -1088,6 +1105,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     private void ApplyVersionConfigToViewModel(Core.Models.VersionConfig versionConfig, bool includeCustomJvmArguments)
     {
+        IsCurrentVersionModpack = IsModpackVersion(versionConfig);
+
         OverrideMemory = versionConfig.OverrideMemory;
         AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
         InitialHeapMemory = versionConfig.InitialHeapMemory;
@@ -1122,6 +1141,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
 
         UpdateCurrentLoaderInfo(uiSettings);
+    }
+
+    private static bool IsModpackVersion(Core.Models.VersionConfig versionConfig)
+    {
+        return !string.IsNullOrWhiteSpace(versionConfig.ModpackPlatform)
+            && !string.IsNullOrWhiteSpace(versionConfig.ModpackProjectId)
+            && !string.IsNullOrWhiteSpace(versionConfig.ModpackVersionId);
     }
     
     /// <summary>
@@ -1486,6 +1512,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
+            IsCurrentVersionModpack = false;
             UpdatableResourceCount = 0;
             StatusMessage = "正在加载版本数据...";
 

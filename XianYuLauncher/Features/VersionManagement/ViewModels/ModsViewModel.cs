@@ -159,6 +159,30 @@ public partial class ModsViewModel : ObservableObject
         }
 
         _allMods = newModsList;
+
+        if (_context.IsCurrentVersionModpack)
+        {
+            _modUpdateDetectCts?.Cancel();
+            _modUpdateDetectCts?.Dispose();
+            _modUpdateDetectCts = null;
+
+            foreach (var mod in _allMods)
+            {
+                mod.HasUpdate = false;
+                mod.CurrentVersion = string.Empty;
+                mod.LatestVersion = string.Empty;
+            }
+
+            OnPropertyChanged(nameof(UpdatableModCount));
+
+            if (_context.IsPageReady)
+            {
+                await _context.RunUiRefreshAsync(FilterMods);
+            }
+
+            return;
+        }
+
         OnPropertyChanged(nameof(UpdatableModCount));
         StartModUpdateDetection(cancellationToken);
 

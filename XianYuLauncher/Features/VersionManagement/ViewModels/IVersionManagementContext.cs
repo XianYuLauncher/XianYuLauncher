@@ -32,6 +32,9 @@ public interface IVersionManagementContext
     /// <summary>页面动画播放完毕，可以安全刷新 UI 列表</summary>
     bool IsPageReady { get; }
 
+    /// <summary>当前版本是否为整合包实例</summary>
+    bool IsCurrentVersionModpack { get; }
+
     /// <summary>全局加载中状态</summary>
     bool IsLoading { get; set; }
 
