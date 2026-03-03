@@ -303,6 +303,7 @@ public partial class App : Application
             
             // CurseForge Cache Service
             services.AddSingleton<CurseForgeCacheService>();
+            services.AddSingleton<IModpackUpdateService, ModpackUpdateService>();
             
             // Translation Service (MCIM)
             services.AddHttpClient<ITranslationService, TranslationService>();
