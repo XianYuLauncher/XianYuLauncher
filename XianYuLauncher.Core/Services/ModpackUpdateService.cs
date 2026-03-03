@@ -135,8 +135,10 @@ public class ModpackUpdateService : IModpackUpdateService
                 return new ModpackVersionItem
                 {
                     VersionId = versionId,
+                    SourceVersionId = v.Id ?? string.Empty,
                     DisplayName = $"{versionName}",
                     FileName = primaryFileName,
+                    DownloadUrl = (v.Files?.FirstOrDefault(file => file.Primary)?.Url ?? v.Files?.FirstOrDefault()?.Url)?.AbsoluteUri ?? string.Empty,
                     PublishedAt = ParseDatePublished(v.DatePublished),
                     IsCurrentVersion = IsSameVersion(currentVersionId, v.Id) || IsSameVersion(currentVersionId, v.VersionNumber),
                     GameVersions = v.GameVersions ?? new List<string>(),
@@ -210,8 +212,10 @@ public class ModpackUpdateService : IModpackUpdateService
                 return new ModpackVersionItem
                 {
                     VersionId = versionId,
+                    SourceVersionId = file.Id.ToString(),
                     DisplayName = versionName,
                     FileName = fileName,
+                    DownloadUrl = ResolveCurseForgeDownloadUrl(file),
                     PublishedAt = file.FileDate,
                     IsCurrentVersion = IsSameVersion(currentVersionId, versionId) || IsSameVersion(currentVersionId, file.Id.ToString()),
                     GameVersions = gameVersions,
@@ -233,6 +237,21 @@ public class ModpackUpdateService : IModpackUpdateService
             || version.Equals("Quilt", StringComparison.OrdinalIgnoreCase)
             || version.Equals("NeoForge", StringComparison.OrdinalIgnoreCase)
             || version.Equals("LiteLoader", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string ResolveCurseForgeDownloadUrl(CurseForgeFile file)
+    {
+        if (!string.IsNullOrWhiteSpace(file.DownloadUrl))
+        {
+            return file.DownloadUrl;
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.FileName))
+        {
+            return _curseForgeService.ConstructDownloadUrl(file.Id, file.FileName);
+        }
+
+        return string.Empty;
     }
 
     private static string NormalizePlatform(string? platform)
