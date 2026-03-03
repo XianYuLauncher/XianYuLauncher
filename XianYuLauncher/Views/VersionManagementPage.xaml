@@ -197,7 +197,6 @@
                                                Margin="0,12,0,0"/>
                                 </Grid>
                             </Border>
-                            
                             <!-- 游戏时长卡片 -->
                             <Border Grid.Column="1" 
                                     Background="{StaticResource OverviewCardBackgroundBrush}"
@@ -356,7 +355,7 @@
 
                                 <Button Grid.Column="1"
                                         Command="{x:Bind ViewModel.UpdateModpackCommand}"
-                                        IsEnabled="{Binding CanUpdateModpack}"
+                                    IsEnabled="{Binding CanQuickUpdateModpack}"
                                         Style="{StaticResource DefaultButtonStyle}"
                                         Width="32"
                                         Height="32"
