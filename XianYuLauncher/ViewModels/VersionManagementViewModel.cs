@@ -240,10 +240,61 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private bool _isCurrentVersionModpack;
 
     /// <summary>
+    /// 是否正在检测整合包更新
+    /// </summary>
+    [ObservableProperty]
+    private bool _isModpackUpdateChecking;
+
+    /// <summary>
+    /// 当前整合包是否有可更新版本
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasModpackUpdate;
+
+    /// <summary>
+    /// 检测到的最新整合包版本标识
+    /// </summary>
+    [ObservableProperty]
+    private string _modpackUpdateLatestVersion = string.Empty;
+
+    /// <summary>
     /// 概览页可更新资源描述文本
     /// </summary>
     public string UpdatableResourcesDescription =>
         string.Format("VersionManagerPage_UpdatableResourcesDescriptionFormat".GetLocalized(), UpdatableResourceCount);
+
+    /// <summary>
+    /// 是否显示整合包更新卡片
+    /// </summary>
+    public bool ShowModpackUpdateCard => IsCurrentVersionModpack && HasModpackUpdate;
+
+    /// <summary>
+    /// 是否允许执行整合包更新（预留按钮）
+    /// </summary>
+    public bool CanUpdateModpack => HasModpackUpdate && !IsModpackUpdateChecking;
+
+    /// <summary>
+    /// 整合包更新状态文案
+    /// </summary>
+    public string ModpackUpdateStatusText
+    {
+        get
+        {
+            if (IsModpackUpdateChecking)
+            {
+                return "VersionManagerPage_ModpackUpdateCheckingStatus".GetLocalized();
+            }
+
+            if (HasModpackUpdate)
+            {
+                return string.IsNullOrWhiteSpace(ModpackUpdateLatestVersion)
+                    ? "VersionManagerPage_ModpackUpdateAvailableStatus".GetLocalized()
+                    : string.Format("VersionManagerPage_ModpackUpdateAvailableWithVersionStatusFormat".GetLocalized(), ModpackUpdateLatestVersion);
+            }
+
+            return "VersionManagerPage_ModpackAlreadyLatestStatus".GetLocalized();
+        }
+    }
     
     /// <summary>
     /// 截图数量
@@ -292,6 +343,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnIsCurrentVersionModpackChanged(bool value)
     {
         OnPropertyChanged(nameof(HasUpdatableResources));
+        OnPropertyChanged(nameof(ShowModpackUpdateCard));
+    }
+
+    partial void OnIsModpackUpdateCheckingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanUpdateModpack));
+        OnPropertyChanged(nameof(ModpackUpdateStatusText));
+    }
+
+    partial void OnHasModpackUpdateChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowModpackUpdateCard));
+        OnPropertyChanged(nameof(CanUpdateModpack));
+        OnPropertyChanged(nameof(ModpackUpdateStatusText));
+    }
+
+    partial void OnModpackUpdateLatestVersionChanged(string value)
+    {
+        OnPropertyChanged(nameof(ModpackUpdateStatusText));
     }
     
     #endregion
@@ -570,9 +640,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IResourceIconLoadCoordinator _resourceIconLoadCoordinator;
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
     private readonly IVersionConfigService _versionConfigService;
+    private readonly IModpackUpdateService _modpackUpdateService;
     private ObservableCollection<ModInfo>? _observedMods;
     private ObservableCollection<ShaderInfo>? _observedShaders;
     private ObservableCollection<ResourcePackInfo>? _observedResourcePacks;
+    private CancellationTokenSource? _modpackUpdateCheckCancellationTokenSource;
+    private string? _currentModpackPlatform;
+    private string? _currentModpackProjectId;
+    private string? _currentModpackVersionId;
+    private string? _currentModpackMinecraftVersion;
+    private string? _currentModpackLoaderType;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -629,7 +706,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IScreenshotInteractionService screenshotInteractionService,
         IResourceIconLoadCoordinator resourceIconLoadCoordinator,
         IModLoaderIconPresentationService modLoaderIconPresentationService,
-        IVersionConfigService versionConfigService)
+        IVersionConfigService versionConfigService,
+        IModpackUpdateService modpackUpdateService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -652,6 +730,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _resourceIconLoadCoordinator = resourceIconLoadCoordinator;
         _modLoaderIconPresentationService = modLoaderIconPresentationService;
         _versionConfigService = versionConfigService;
+        _modpackUpdateService = modpackUpdateService;
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
         
@@ -998,6 +1077,23 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 }
             });
         }
+
+        var oldModpackCts = _modpackUpdateCheckCancellationTokenSource;
+        _modpackUpdateCheckCancellationTokenSource = null;
+        if (oldModpackCts != null)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    oldModpackCts.Cancel();
+                    oldModpackCts.Dispose();
+                }
+                catch
+                {
+                }
+            });
+        }
     }
 
     /// <summary>
@@ -1106,6 +1202,20 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void ApplyVersionConfigToViewModel(Core.Models.VersionConfig versionConfig, bool includeCustomJvmArguments)
     {
         IsCurrentVersionModpack = IsModpackVersion(versionConfig);
+        _currentModpackPlatform = versionConfig.ModpackPlatform;
+        _currentModpackProjectId = versionConfig.ModpackProjectId;
+        _currentModpackVersionId = versionConfig.ModpackVersionId;
+        _currentModpackMinecraftVersion = versionConfig.MinecraftVersion;
+        _currentModpackLoaderType = versionConfig.ModLoaderType;
+
+        if (IsCurrentVersionModpack)
+        {
+            _ = CheckCurrentModpackUpdateAsync(_pageCancellationTokenSource?.Token ?? CancellationToken.None);
+        }
+        else
+        {
+            ResetModpackUpdateState();
+        }
 
         OverrideMemory = versionConfig.OverrideMemory;
         AutoMemoryAllocation = versionConfig.AutoMemoryAllocation;
@@ -1141,6 +1251,74 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
 
         UpdateCurrentLoaderInfo(uiSettings);
+    }
+
+    private void ResetModpackUpdateState()
+    {
+        IsModpackUpdateChecking = false;
+        HasModpackUpdate = false;
+        ModpackUpdateLatestVersion = string.Empty;
+    }
+
+    private async Task CheckCurrentModpackUpdateAsync(CancellationToken cancellationToken)
+    {
+        if (!IsCurrentVersionModpack
+            || string.IsNullOrWhiteSpace(_currentModpackPlatform)
+            || string.IsNullOrWhiteSpace(_currentModpackProjectId)
+            || string.IsNullOrWhiteSpace(_currentModpackVersionId))
+        {
+            ResetModpackUpdateState();
+            return;
+        }
+
+        var oldCts = _modpackUpdateCheckCancellationTokenSource;
+        _modpackUpdateCheckCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        oldCts?.Cancel();
+        oldCts?.Dispose();
+
+        var currentCts = _modpackUpdateCheckCancellationTokenSource;
+        var token = currentCts.Token;
+
+        IsModpackUpdateChecking = true;
+        HasModpackUpdate = false;
+        ModpackUpdateLatestVersion = string.Empty;
+
+        try
+        {
+            var request = new ModpackUpdateCheckRequest
+            {
+                Platform = _currentModpackPlatform,
+                ProjectId = _currentModpackProjectId,
+                CurrentVersionId = _currentModpackVersionId,
+                MinecraftVersion = _currentModpackMinecraftVersion,
+                ModLoaderType = _currentModpackLoaderType
+            };
+
+            var result = await _modpackUpdateService.CheckForUpdatesAsync(request, token);
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            HasModpackUpdate = result.Success && result.HasUpdate;
+            ModpackUpdateLatestVersion = result.LatestVersionId ?? string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VersionManagement] 检测整合包更新失败: {ex.Message}");
+            HasModpackUpdate = false;
+            ModpackUpdateLatestVersion = string.Empty;
+        }
+        finally
+        {
+            if (ReferenceEquals(_modpackUpdateCheckCancellationTokenSource, currentCts))
+            {
+                IsModpackUpdateChecking = false;
+            }
+        }
     }
 
     private static bool IsModpackVersion(Core.Models.VersionConfig versionConfig)
@@ -1514,6 +1692,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             IsLoading = true;
             IsCurrentVersionModpack = false;
             UpdatableResourceCount = 0;
+            _currentModpackPlatform = null;
+            _currentModpackProjectId = null;
+            _currentModpackVersionId = null;
+            _currentModpackMinecraftVersion = null;
+            _currentModpackLoaderType = null;
+            _modpackUpdateCheckCancellationTokenSource?.Cancel();
+            _modpackUpdateCheckCancellationTokenSource?.Dispose();
+            _modpackUpdateCheckCancellationTokenSource = null;
+            ResetModpackUpdateState();
             StatusMessage = "正在加载版本数据...";
 
             try
@@ -2315,6 +2502,25 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         StatusMessage = summaryMessage;
         UpdateResults = summaryMessage;
         IsResultDialogVisible = true;
+    }
+
+    [RelayCommand]
+    private async Task CheckModpackUpdateAsync()
+    {
+        if (!IsCurrentVersionModpack)
+        {
+            StatusMessage = "VersionManagerPage_ModpackNotDetectedStatus".GetLocalized();
+            return;
+        }
+
+        await CheckCurrentModpackUpdateAsync(_pageCancellationTokenSource?.Token ?? CancellationToken.None);
+    }
+
+    [RelayCommand]
+    private Task UpdateModpackAsync()
+    {
+        StatusMessage = "VersionManagerPage_ModpackUpdateReservedStatus".GetLocalized();
+        return Task.CompletedTask;
     }
 
     private List<UpdatableResourceItem> BuildUpdatableResourceItems()

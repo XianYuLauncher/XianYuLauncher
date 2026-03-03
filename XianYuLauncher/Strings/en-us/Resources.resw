@@ -3213,4 +3213,25 @@ Continue downloading?</value>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="VersionManagerPage_ModpackUpdateBannerTitle.Text" xml:space="preserve">
+    <value>Modpack Update</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateCheckingStatus" xml:space="preserve">
+    <value>Checking modpack updates...</value>
+  </data>
+  <data name="VersionManagerPage_ModpackAlreadyLatestStatus" xml:space="preserve">
+    <value>You are already on the latest modpack version</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableStatus" xml:space="preserve">
+    <value>A newer modpack version is available</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableWithVersionStatusFormat" xml:space="preserve">
+    <value>New version detected: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackNotDetectedStatus" xml:space="preserve">
+    <value>Current version is not a modpack instance</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedStatus" xml:space="preserve">
+    <value>Automatic modpack update is coming soon</value>
+  </data>
 </root>

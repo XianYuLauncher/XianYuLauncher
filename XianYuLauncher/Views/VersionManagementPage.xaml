@@ -327,6 +327,43 @@
                                 </Button>
                             </Grid>
                         </Border>
+
+                        <Border Background="{StaticResource OverviewCardBackgroundBrush}"
+                                BorderBrush="{StaticResource OverviewCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16,12"
+                                Visibility="{Binding ShowModpackUpdateCard, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                              Glyph="&#xE895;"
+                                              FontSize="16"
+                                              Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                              VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock x:Uid="VersionManagerPage_ModpackUpdateBannerTitle" Text="整合包更新" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding ModpackUpdateStatusText}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Command="{x:Bind ViewModel.UpdateModpackCommand}"
+                                        IsEnabled="{Binding CanUpdateModpack}"
+                                        Style="{StaticResource DefaultButtonStyle}"
+                                    Width="32"
+                                    Height="32"
+                                    Padding="0"
+                                    VerticalAlignment="Center">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE117;" FontSize="14" />
+                                </Button>
+                            </Grid>
+                        </Border>
                         
                         <!-- 详细信息 - 两列布局 -->
                         <Grid ColumnSpacing="16">
