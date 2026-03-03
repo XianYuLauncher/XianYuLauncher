@@ -1589,16 +1589,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
         }
         
-        if (ModpackUpdateStructure.Any())
-        {
-            var first = ModpackUpdateStructure.First();
-            first.IsExpanded = true;
-            if (first.Loaders.Any())
-            {
-                first.Loaders.First().IsExpanded = true;
-            }
-        }
-
         SelectedModpackVersion = null;
         SelectedModpackHierarchyVersion = null;
         OnPropertyChanged(nameof(CanQuickUpdateModpack));
