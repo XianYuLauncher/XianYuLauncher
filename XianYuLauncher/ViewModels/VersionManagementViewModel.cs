@@ -1579,17 +1579,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             }
         }
 
-        SelectedModpackVersion = ModpackAvailableVersions.FirstOrDefault(option => !option.IsCurrentVersion)
-                                 ?? ModpackAvailableVersions.FirstOrDefault();
-
-        SelectedModpackHierarchyVersion = SelectedModpackVersion == null
-            ? null
-            : FindHierarchyVersionById(SelectedModpackVersion.VersionId);
-
-        if (SelectedModpackHierarchyVersion != null)
-        {
-            SelectedModpackHierarchyVersion.IsSelected = true;
-        }
+        SelectedModpackVersion = null;
+        SelectedModpackHierarchyVersion = null;
     }
 
     private async Task CheckCurrentModpackUpdateAsync(CancellationToken cancellationToken)
