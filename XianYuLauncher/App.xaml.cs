@@ -140,6 +140,7 @@ public partial class App : Application
             });
             
             services.AddSingleton<IDownloadTaskManager, DownloadTaskManager>();
+            services.AddSingleton<IOperationQueueService, OperationQueueService>();
             services.AddSingleton<IModpackInstallationService>(sp =>
             {
                 var downloadManager = sp.GetRequiredService<IDownloadManager>();

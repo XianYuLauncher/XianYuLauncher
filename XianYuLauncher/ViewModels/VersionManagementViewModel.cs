@@ -727,6 +727,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
     private readonly IVersionConfigService _versionConfigService;
     private readonly IModpackUpdateService _modpackUpdateService;
+    private readonly IOperationQueueService _operationQueueService;
     private ObservableCollection<ModInfo>? _observedMods;
     private ObservableCollection<ShaderInfo>? _observedShaders;
     private ObservableCollection<ResourcePackInfo>? _observedResourcePacks;
@@ -736,6 +737,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string? _currentModpackVersionId;
     private string? _currentModpackMinecraftVersion;
     private string? _currentModpackLoaderType;
+    private string? _currentOperationQueueScopeKey;
+    private int _currentOperationQueuePendingCount;
+    private bool _isOperationQueueEventsSubscribed;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -793,7 +797,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IResourceIconLoadCoordinator resourceIconLoadCoordinator,
         IModLoaderIconPresentationService modLoaderIconPresentationService,
         IVersionConfigService versionConfigService,
-        IModpackUpdateService modpackUpdateService)
+        IModpackUpdateService modpackUpdateService,
+        IOperationQueueService operationQueueService)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -817,6 +822,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _modLoaderIconPresentationService = modLoaderIconPresentationService;
         _versionConfigService = versionConfigService;
         _modpackUpdateService = modpackUpdateService;
+        _operationQueueService = operationQueueService;
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
         
@@ -1126,6 +1132,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedTo(object parameter)
     {
+        SubscribeOperationQueueEvents();
         _isPageReady = false;
         if (parameter is VersionListViewModel.VersionInfoItem version)
         {
@@ -1142,6 +1149,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     public void OnNavigatedFrom()
     {
+        UnsubscribeOperationQueueEvents();
+
         // 极速退出策略：直接放弃清理，让 GC 处理
         // 标记为 null，防止后续访问
         var oldCts = _pageCancellationTokenSource;
@@ -1968,8 +1977,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
         
-        var showInstallProgressDialog = false;
-
         try
         {
             var selectedLoaders = AvailableLoaders
@@ -1995,36 +2002,92 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 WindowHeight = WindowHeight
             };
 
-            showInstallProgressDialog = await _versionSettingsOrchestrator.NeedsExtensionReinstallAsync(
+            var needsLoaderReinstall = await _versionSettingsOrchestrator.NeedsExtensionReinstallAsync(
                 SelectedVersion,
                 selectedLoaders);
 
-            if (showInstallProgressDialog)
+            var shouldQueueModpackUpdate = IsCurrentVersionModpack
+                && SelectedModpackVersion != null
+                && !SelectedModpackVersion.IsCurrentVersion;
+
+            _currentOperationQueueScopeKey = BuildOperationScopeKey(SelectedVersion);
+            _currentOperationQueuePendingCount = (needsLoaderReinstall ? 1 : 0) + (shouldQueueModpackUpdate ? 1 : 0);
+
+            ExtensionInstallResult? installResult = null;
+
+            if (needsLoaderReinstall)
             {
-                IsInstallingExtension = true;
-                ExtensionInstallProgress = 0;
-                ExtensionInstallStatus = "正在准备安装...";
+                var loaderInstallResult = await _operationQueueService.EnqueueAsync(
+                    new OperationTaskRequest
+                    {
+                        TaskName = "安装加载器",
+                        TaskType = OperationTaskType.LoaderInstall,
+                        ScopeKey = _currentOperationQueueScopeKey,
+                        AllowParallel = true,
+                        ExecuteAsync = async (context, token) =>
+                        {
+                            token.ThrowIfCancellationRequested();
+                            installResult = await _versionSettingsOrchestrator.InstallExtensionsAsync(
+                                SelectedVersion,
+                                selectedLoaders,
+                                options,
+                                (status, progress) => context.ReportProgress(status, progress));
+                        }
+                    },
+                    _pageCancellationTokenSource?.Token ?? CancellationToken.None);
+
+                if (!loaderInstallResult.Success)
+                {
+                    throw new InvalidOperationException(loaderInstallResult.ErrorMessage ?? "加载器安装任务失败");
+                }
             }
 
-            var result = await _versionSettingsOrchestrator.InstallExtensionsAsync(
-                SelectedVersion,
-                selectedLoaders,
-                options,
-                showInstallProgressDialog
-                    ? (status, progress) =>
+            if (shouldQueueModpackUpdate)
+            {
+                var modpackUpdateResult = await _operationQueueService.EnqueueAsync(
+                    new OperationTaskRequest
                     {
-                        ExtensionInstallStatus = status;
-                        ExtensionInstallProgress = progress;
-                    }
-                    : null);
+                        TaskName = "更新整合包",
+                        TaskType = OperationTaskType.ModpackUpdate,
+                        ScopeKey = _currentOperationQueueScopeKey,
+                        AllowParallel = true,
+                        ExecuteAsync = async (context, token) =>
+                        {
+                            token.ThrowIfCancellationRequested();
+                            context.ReportProgress("正在更新整合包版本...", 0);
+                            await UpdateModpackAsync();
+                            context.ReportProgress("整合包更新任务完成", 100);
+                        }
+                    },
+                    _pageCancellationTokenSource?.Token ?? CancellationToken.None);
+
+                if (!modpackUpdateResult.Success)
+                {
+                    throw new InvalidOperationException(modpackUpdateResult.ErrorMessage ?? "整合包更新任务失败");
+                }
+            }
+
+            if (!needsLoaderReinstall)
+            {
+                installResult = await _versionSettingsOrchestrator.InstallExtensionsAsync(
+                    SelectedVersion,
+                    selectedLoaders,
+                    options,
+                    null);
+            }
+
+            if (installResult == null)
+            {
+                throw new InvalidOperationException("扩展配置保存结果为空");
+            }
 
             UpdateCurrentLoaderInfo(new VersionSettings
             {
-                ModLoaderType = result.SavedConfig.ModLoaderType,
-                ModLoaderVersion = result.SavedConfig.ModLoaderVersion,
-                MinecraftVersion = result.SavedConfig.MinecraftVersion,
-                OptifineVersion = result.SavedConfig.OptifineVersion,
-                LiteLoaderVersion = result.SavedConfig.LiteLoaderVersion
+                ModLoaderType = installResult.SavedConfig.ModLoaderType,
+                ModLoaderVersion = installResult.SavedConfig.ModLoaderVersion,
+                MinecraftVersion = installResult.SavedConfig.MinecraftVersion,
+                OptifineVersion = installResult.SavedConfig.OptifineVersion,
+                LiteLoaderVersion = installResult.SavedConfig.LiteLoaderVersion
             });
 
             foreach (var loader in AvailableLoaders)
@@ -2032,11 +2095,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 loader.IsInstalled = IsLoaderInstalled(loader.LoaderType);
             }
 
-            StatusMessage = result.SelectedLoaders.Count > 0
-                ? $"配置已保存，已安装：{string.Join(", ", result.SelectedLoaders.Select(loader => loader.Name))}"
+            StatusMessage = installResult.SelectedLoaders.Count > 0
+                ? $"配置已保存，已安装：{string.Join(", ", installResult.SelectedLoaders.Select(loader => loader.Name))}"
                 : "已重置为原版";
 
-            if (!result.NeedsReinstall)
+            if (!installResult.NeedsReinstall)
             {
                 ExtensionInstallStatus = "检测到加载器未变更，已仅保存配置。";
             }
@@ -2045,16 +2108,114 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             ExtensionInstallStatus = $"安装失败：{ex.Message}";
             StatusMessage = $"安装失败：{ex.Message}";
+            _currentOperationQueuePendingCount = 0;
+            IsInstallingExtension = false;
         }
-        finally
+    }
+
+    private void SubscribeOperationQueueEvents()
+    {
+        if (_isOperationQueueEventsSubscribed)
         {
-            if (showInstallProgressDialog)
-            {
-                // 延迟关闭弹窗，让用户看到完成状态
-                await Task.Delay(500);
-                IsInstallingExtension = false;
-            }
+            return;
         }
+
+        _operationQueueService.TaskStateChanged += OperationQueueService_TaskStateChanged;
+        _operationQueueService.TaskProgressChanged += OperationQueueService_TaskProgressChanged;
+        _isOperationQueueEventsSubscribed = true;
+    }
+
+    private void UnsubscribeOperationQueueEvents()
+    {
+        if (!_isOperationQueueEventsSubscribed)
+        {
+            return;
+        }
+
+        _operationQueueService.TaskStateChanged -= OperationQueueService_TaskStateChanged;
+        _operationQueueService.TaskProgressChanged -= OperationQueueService_TaskProgressChanged;
+        _isOperationQueueEventsSubscribed = false;
+    }
+
+    private void OperationQueueService_TaskStateChanged(object? sender, OperationTaskInfo e)
+    {
+        if (!IsCurrentOperationScope(e.ScopeKey))
+        {
+            return;
+        }
+
+        _ = RunOnUiThreadAsync(async () =>
+        {
+            switch (e.State)
+            {
+                case OperationTaskState.Queued:
+                case OperationTaskState.Running:
+                    IsInstallingExtension = true;
+                    ExtensionInstallStatus = e.StatusMessage;
+                    break;
+
+                case OperationTaskState.Completed:
+                    ExtensionInstallStatus = e.StatusMessage;
+                    await CompleteCurrentQueuedOperationAsync();
+                    break;
+
+                case OperationTaskState.Failed:
+                    ExtensionInstallStatus = e.ErrorMessage ?? e.StatusMessage;
+                    await CompleteCurrentQueuedOperationAsync();
+                    break;
+
+                case OperationTaskState.Cancelled:
+                    ExtensionInstallStatus = "任务已取消";
+                    await CompleteCurrentQueuedOperationAsync();
+                    break;
+            }
+        });
+    }
+
+    private void OperationQueueService_TaskProgressChanged(object? sender, OperationTaskInfo e)
+    {
+        if (!IsCurrentOperationScope(e.ScopeKey))
+        {
+            return;
+        }
+
+        _ = RunOnUiThreadAsync(() =>
+        {
+            ExtensionInstallProgress = e.Progress;
+            if (!string.IsNullOrWhiteSpace(e.StatusMessage))
+            {
+                ExtensionInstallStatus = e.StatusMessage;
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
+    private bool IsCurrentOperationScope(string? scopeKey)
+    {
+        return !string.IsNullOrWhiteSpace(_currentOperationQueueScopeKey)
+            && string.Equals(scopeKey, _currentOperationQueueScopeKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task CompleteCurrentQueuedOperationAsync()
+    {
+        if (_currentOperationQueuePendingCount > 0)
+        {
+            _currentOperationQueuePendingCount--;
+        }
+
+        if (_currentOperationQueuePendingCount > 0)
+        {
+            return;
+        }
+
+        await Task.Delay(500);
+        IsInstallingExtension = false;
+    }
+
+    private static string BuildOperationScopeKey(VersionListViewModel.VersionInfoItem version)
+    {
+        return $"version:{version.Name}";
     }
     
     /// <summary>
