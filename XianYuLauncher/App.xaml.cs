@@ -145,11 +145,12 @@ public partial class App : Application
                 var downloadManager = sp.GetRequiredService<IDownloadManager>();
                 var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
                 var minecraftVersionService = sp.GetRequiredService<IMinecraftVersionService>();
+                var versionInfoManager = sp.GetRequiredService<IVersionInfoManager>();
                 var curseForgeService = sp.GetRequiredService<CurseForgeService>();
                 var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
                 return new ModpackInstallationService(
                     downloadManager, fallbackDownloadManager,
-                    minecraftVersionService, curseForgeService, localSettingsService);
+                    minecraftVersionService, versionInfoManager, curseForgeService, localSettingsService);
             });
 
             // ModLoader Services (抽离自 ModLoaderSelectorViewModel)
