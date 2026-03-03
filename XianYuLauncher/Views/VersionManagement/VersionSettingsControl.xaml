@@ -142,16 +142,6 @@
                         <FontIcon Glyph="&#xE895;" />
                     </controls:SettingsExpander.HeaderIcon>
 
-                    <Button Command="{Binding UpdateModpackCommand}"
-                            IsEnabled="{Binding CanUpdateModpack}"
-                            Style="{StaticResource DefaultButtonStyle}"
-                            Width="32"
-                            Height="32"
-                            Padding="0"
-                            VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE117;" FontSize="14" />
-                    </Button>
-
                     <controls:SettingsExpander.Items>
                         <controls:SettingsCard ContentAlignment="Vertical"
                                                HorizontalContentAlignment="Stretch"
