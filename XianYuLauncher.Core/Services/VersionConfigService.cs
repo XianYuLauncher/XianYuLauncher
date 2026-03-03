@@ -199,6 +199,15 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["Icon"] != null)
                     config.Icon = jObject["Icon"]?.ToString();
 
+                if (jObject["ModpackPlatform"] != null)
+                    config.ModpackPlatform = jObject["ModpackPlatform"]?.ToString();
+
+                if (jObject["ModpackProjectId"] != null)
+                    config.ModpackProjectId = jObject["ModpackProjectId"]?.ToString();
+
+                if (jObject["ModpackVersionId"] != null)
+                    config.ModpackVersionId = jObject["ModpackVersionId"]?.ToString();
+
                 var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
                 var shouldWriteBackIcon = !string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase);
                 config.Icon = normalizedIconPath;

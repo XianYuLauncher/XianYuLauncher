@@ -189,6 +189,30 @@ public class VersionInfoManagerTests : IDisposable
         Assert.Equal("49.0.0", savedConfig.ModLoaderVersion);
     }
 
+    [Fact]
+    public async Task SaveVersionConfigAsync_ShouldPersistModpackMetadata()
+    {
+        var versionId = "modpack-test";
+        var config = new VersionConfig
+        {
+            ModLoaderType = "forge",
+            ModLoaderVersion = "49.0.0",
+            MinecraftVersion = "1.20.4",
+            ModpackPlatform = "curseforge",
+            ModpackProjectId = "12345",
+            ModpackVersionId = "1.0.0"
+        };
+
+        await _versionInfoManager.SaveVersionConfigAsync(versionId, _testDirectory, config);
+
+        var loaded = await _versionInfoManager.GetVersionConfigAsync(versionId, _testDirectory);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("curseforge", loaded!.ModpackPlatform);
+        Assert.Equal("12345", loaded.ModpackProjectId);
+        Assert.Equal("1.0.0", loaded.ModpackVersionId);
+    }
+
     #endregion
 
     #region MergeVersionInfo 测试

@@ -167,6 +167,9 @@ public class VersionInfoService : IVersionInfoService
             }
 
             result.Icon = VersionIconPathHelper.NormalizeOrDefault(legacyConfig.Icon);
+            result.ModpackPlatform = legacyConfig.ModpackPlatform;
+            result.ModpackProjectId = legacyConfig.ModpackProjectId;
+            result.ModpackVersionId = legacyConfig.ModpackVersionId;
         }
         else
         {
@@ -512,7 +515,11 @@ public class VersionInfoService : IVersionInfoService
                     // 保留统计数据
                     LaunchCount = config.LaunchCount,
                     TotalPlayTimeSeconds = config.TotalPlayTimeSeconds,
-                    LastLaunchTime = config.LastLaunchTime
+                    LastLaunchTime = config.LastLaunchTime,
+
+                    ModpackPlatform = config.ModpackPlatform ?? existingConfig?.ModpackPlatform,
+                    ModpackProjectId = config.ModpackProjectId ?? existingConfig?.ModpackProjectId,
+                    ModpackVersionId = config.ModpackVersionId ?? existingConfig?.ModpackVersionId
                 };
 
                 _logger.LogInformation($"[VersionInfoService]   >> 最终写入文件的内存设置: Initial={standardConfig.InitialHeapMemory}GB, Max={standardConfig.MaximumHeapMemory}GB");
