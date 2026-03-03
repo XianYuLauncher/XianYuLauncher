@@ -3216,6 +3216,9 @@
   <data name="VersionManagerPage_MoveResultDialog_PrimaryButtonText" xml:space="preserve">
     <value>确定</value>
   </data>
+  <data name="VersionManagerPage_SaveConfigDialog_Title" xml:space="preserve">
+    <value>保存配置</value>
+  </data>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_Title" xml:space="preserve">
     <value>一键更新</value>
   </data>
