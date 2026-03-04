@@ -782,6 +782,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _extensionInstallStatus = string.Empty;
 
+    /// <summary>
+    /// 扩展安装进度弹窗标题
+    /// </summary>
+    [ObservableProperty]
+    private string _extensionInstallDialogTitle = string.Empty;
+
     public VersionManagementViewModel(
         IFileService fileService, 
         IMinecraftVersionService minecraftVersionService, 
@@ -836,6 +842,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _modpackUpdateService = modpackUpdateService;
         _modpackInstallationService = modpackInstallationService;
         _operationQueueService = operationQueueService;
+        ExtensionInstallDialogTitle = "VersionManagerPage_SaveConfigDialog_Title".GetLocalized();
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
         
@@ -2019,6 +2026,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (needsLoaderReinstall)
             {
+                ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.LoaderInstall);
+
                 var loaderInstallResult = await _operationQueueService.EnqueueAsync(
                     new OperationTaskRequest
                     {
@@ -2046,6 +2055,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (shouldQueueModpackUpdate)
             {
+                ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
+
                 var modpackUpdateResult = await _operationQueueService.EnqueueAsync(
                     new OperationTaskRequest
                     {
@@ -2151,6 +2162,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 case OperationTaskState.Queued:
                 case OperationTaskState.Running:
                     IsInstallingExtension = true;
+                    ExtensionInstallDialogTitle = GetOperationDialogTitle(e.TaskType);
                     ExtensionInstallStatus = e.StatusMessage;
                     break;
 
@@ -2211,6 +2223,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         await Task.Delay(500);
         IsInstallingExtension = false;
+    }
+
+    private static string GetOperationDialogTitle(OperationTaskType taskType)
+    {
+        return taskType switch
+        {
+            OperationTaskType.ModpackUpdate => "VersionManagerPage_ModpackUpdateDialog_Title".GetLocalized(),
+            _ => "VersionManagerPage_SaveConfigDialog_Title".GetLocalized()
+        };
     }
 
     private static string BuildOperationScopeKey(VersionListViewModel.VersionInfoItem version)
@@ -3133,6 +3154,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             _currentOperationQueueScopeKey = BuildOperationScopeKey(SelectedVersion);
             _currentOperationQueuePendingCount = 1;
+            ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
 
             var enqueueResult = await _operationQueueService.EnqueueAsync(
                 new OperationTaskRequest
@@ -3168,20 +3190,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         var targetVersion = ResolveModpackTargetVersion(preferLatestWhenNoSelection);
         if (targetVersion == null)
         {
-            StatusMessage = "VersionManagerPage_ModpackVersionNotSelectedStatus".GetLocalized();
-            return;
+            throw new InvalidOperationException("VersionManagerPage_ModpackVersionNotSelectedStatus".GetLocalized());
         }
 
         if (SelectedVersion == null)
         {
-            StatusMessage = "未选择版本";
-            return;
+            throw new InvalidOperationException("未选择版本");
         }
 
         if (string.IsNullOrWhiteSpace(targetVersion.DownloadUrl))
         {
-            StatusMessage = "目标整合包版本缺少下载地址";
-            return;
+            throw new InvalidOperationException("目标整合包版本缺少下载地址");
         }
 
         var isFromCurseForge = string.Equals(_currentModpackPlatform, "curseforge", StringComparison.OrdinalIgnoreCase);
@@ -3222,7 +3241,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         await RefreshAfterModpackUpdateAsync(cancellationToken);
 
         StatusMessage = string.Format(
-            "VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat".GetLocalized(),
+            "VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat".GetLocalized(),
             targetVersion.DisplayName);
     }
 

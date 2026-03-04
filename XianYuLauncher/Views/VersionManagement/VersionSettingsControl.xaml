@@ -131,10 +131,10 @@
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
 
-                <TextBlock Text="整合包" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4"
+                <TextBlock x:Uid="VersionManagerPage_ModpackSectionTitle" Text="整合包" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4"
                            Visibility="{Binding IsCurrentVersionModpack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                <controls:SettingsExpander Header="修改整合包版本"
+                <controls:SettingsExpander x:Uid="VersionManagerPage_ModpackVersionExpander" Header="修改整合包版本"
                                            Description="{Binding ModpackUpdateStatusText}"
                                            IsExpanded="{Binding IsModpackVersionExpanderExpanded, Mode=TwoWay}"
                                            Visibility="{Binding IsCurrentVersionModpack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">

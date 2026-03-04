@@ -11,9 +11,16 @@ public class OperationQueueService : IOperationQueueService
 {
     private readonly ILogger<OperationQueueService> _logger;
     private readonly SemaphoreSlim _globalConcurrencyGate;
-    private readonly Dictionary<string, SemaphoreSlim> _scopeLocks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ScopeLockEntry> _scopeLocks = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _syncRoot = new();
     private int _activeOperationCount;
+
+    private sealed class ScopeLockEntry
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+
+        public int RefCount;
+    }
 
     public OperationQueueService(ILogger<OperationQueueService> logger)
     {
@@ -44,21 +51,21 @@ public class OperationQueueService : IOperationQueueService
         UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
 
         var globalLockAcquired = false;
-        SemaphoreSlim? scopeLock = null;
+        ScopeLockEntry? scopeLockEntry = null;
         var scopeLockAcquired = false;
 
         Interlocked.Increment(ref _activeOperationCount);
 
         try
         {
-            if (request.AllowParallel)
+            if (!request.AllowParallel)
             {
                 await _globalConcurrencyGate.WaitAsync(cancellationToken);
                 globalLockAcquired = true;
             }
 
-            scopeLock = GetScopeLock(taskInfo.ScopeKey);
-            await scopeLock.WaitAsync(cancellationToken);
+            scopeLockEntry = AcquireScopeLock(taskInfo.ScopeKey);
+            await scopeLockEntry.Semaphore.WaitAsync(cancellationToken);
             scopeLockAcquired = true;
 
             UpdateTaskState(taskInfo, OperationTaskState.Running, "任务开始执行", null);
@@ -110,7 +117,12 @@ public class OperationQueueService : IOperationQueueService
         {
             if (scopeLockAcquired)
             {
-                scopeLock?.Release();
+                scopeLockEntry?.Semaphore.Release();
+            }
+
+            if (scopeLockEntry != null)
+            {
+                ReleaseScopeLock(taskInfo.ScopeKey, scopeLockEntry);
             }
 
             if (globalLockAcquired)
@@ -122,18 +134,40 @@ public class OperationQueueService : IOperationQueueService
         }
     }
 
-    private SemaphoreSlim GetScopeLock(string scopeKey)
+    private ScopeLockEntry AcquireScopeLock(string scopeKey)
     {
         lock (_syncRoot)
         {
             if (_scopeLocks.TryGetValue(scopeKey, out var existingLock))
             {
+                existingLock.RefCount++;
                 return existingLock;
             }
 
-            var newLock = new SemaphoreSlim(1, 1);
+            var newLock = new ScopeLockEntry
+            {
+                RefCount = 1
+            };
+
             _scopeLocks[scopeKey] = newLock;
             return newLock;
+        }
+    }
+
+    private void ReleaseScopeLock(string scopeKey, ScopeLockEntry entry)
+    {
+        lock (_syncRoot)
+        {
+            if (!_scopeLocks.TryGetValue(scopeKey, out var existingLock) || !ReferenceEquals(existingLock, entry))
+            {
+                return;
+            }
+
+            existingLock.RefCount--;
+            if (existingLock.RefCount <= 0)
+            {
+                _scopeLocks.Remove(scopeKey);
+            }
         }
     }
 
