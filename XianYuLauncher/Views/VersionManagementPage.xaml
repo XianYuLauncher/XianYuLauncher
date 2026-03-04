@@ -35,7 +35,7 @@
         <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="{ThemeResource SystemControlForegroundBaseLowBrush}" />
         
         <!-- 概览Tab专用的可见卡片样式 -->
-        <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}" />
+        <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource CardBackgroundFillColorDefault}" />
         <SolidColorBrush x:Key="OverviewCardBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
         
         <!-- 转换器引用 -->

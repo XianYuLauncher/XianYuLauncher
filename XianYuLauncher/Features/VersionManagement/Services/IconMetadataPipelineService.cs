@@ -134,6 +134,11 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
             return null;
         }
 
+        if (!IsRegularFilePath(filePath))
+        {
+            return null;
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         var modrinthIconUrl = await GetModrinthIconUrlAsync(filePath, cancellationToken);
@@ -343,5 +348,23 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
         }
 
         return Path.GetFullPath(filePath).Trim();
+    }
+
+    private static bool IsRegularFilePath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var attributes = File.GetAttributes(filePath);
+            return (attributes & FileAttributes.Directory) == 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
