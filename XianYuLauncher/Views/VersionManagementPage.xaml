@@ -11,6 +11,7 @@
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:vmviews="using:XianYuLauncher.Views.VersionManagement"
+    xmlns:appControls="using:XianYuLauncher.Controls"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
 
@@ -196,7 +197,6 @@
                                                Margin="0,12,0,0"/>
                                 </Grid>
                             </Border>
-                            
                             <!-- 游戏时长卡片 -->
                             <Border Grid.Column="1" 
                                     Background="{StaticResource OverviewCardBackgroundBrush}"
@@ -301,6 +301,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 
                                 <StackPanel Orientation="Horizontal" Spacing="12">
@@ -318,6 +319,43 @@
                                 <Button Grid.Column="1" 
                                         x:Uid="VersionManagerPage_UpdateAllResourcesButton"
                                         Command="{x:Bind ViewModel.UpdateAllResourcesCommand}"
+                                        Style="{StaticResource DefaultButtonStyle}"
+                                        Width="32"
+                                        Height="32"
+                                        Padding="0"
+                                        VerticalAlignment="Center">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE117;" FontSize="14" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{StaticResource OverviewCardBackgroundBrush}"
+                                BorderBrush="{StaticResource OverviewCardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16,12"
+                                Visibility="{Binding ShowModpackUpdateCard, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                              Glyph="&#xE895;"
+                                              FontSize="16"
+                                              Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                              VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock x:Uid="VersionManagerPage_ModpackUpdateBannerTitle" Text="整合包更新" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding ModpackUpdateStatusText}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Command="{x:Bind ViewModel.UpdateModpackCommand}"
+                                    IsEnabled="{Binding CanQuickUpdateModpack}"
                                         Style="{StaticResource DefaultButtonStyle}"
                                         Width="32"
                                         Height="32"
@@ -1752,41 +1790,6 @@
                 <vmviews:ServerListControl DataContext="{Binding ServersModule}" />
             </TabViewItem>
         </TabView>
-        <!-- 扩展安装进度弹窗 -->
-        <ContentDialog 
-            x:Name="ExtensionInstallDialog"
-            Grid.RowSpan="3"
-            x:Uid="VersionManagerPage_ExtensionInstallDialog"
-            Title="安装加载器"
-            PrimaryButtonText=""
-            IsPrimaryButtonEnabled="False"
-            CloseButtonText=""
-            DefaultButton="None"
-            Width="400">
-            <StackPanel Spacing="16">
-                <!-- 当前安装状态 -->
-                <TextBlock 
-                    Text="{Binding ExtensionInstallStatus, Mode=OneWay}" 
-                    FontSize="16" 
-                    FontWeight="Medium"
-                    TextWrapping="WrapWholeWords"/>
-                
-                <!-- 进度条 -->
-                <ProgressBar 
-                    Value="{Binding ExtensionInstallProgress, Mode=OneWay}" 
-                    Minimum="0" 
-                    Maximum="100" 
-                    Height="8"
-                    CornerRadius="4"/>
-                
-                <!-- 进度百分比 -->
-                <TextBlock 
-                    Text="{Binding ExtensionInstallProgress, Mode=OneWay, Converter={StaticResource DoubleToPercentageConverter}}" 
-                    FontSize="12" 
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    HorizontalAlignment="Right"/>
-            </StackPanel>
-        </ContentDialog>
-        
+
     </Grid>
 </Page>

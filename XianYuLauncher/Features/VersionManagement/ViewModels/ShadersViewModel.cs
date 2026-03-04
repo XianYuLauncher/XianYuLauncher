@@ -143,6 +143,33 @@ public partial class ShadersViewModel : ObservableObject
         }
 
         _allShaders = newShadersList;
+
+        if (_context.IsCurrentVersionModpack)
+        {
+            _shaderUpdateDetectCts?.Cancel();
+            _shaderUpdateDetectCts?.Dispose();
+            _shaderUpdateDetectCts = null;
+
+            foreach (var shader in _allShaders)
+            {
+                shader.HasUpdate = false;
+                shader.CurrentVersion = string.Empty;
+                shader.LatestVersion = string.Empty;
+            }
+
+            OnPropertyChanged(nameof(UpdatableShaderCount));
+
+            if (_context.IsPageReady)
+            {
+                await _context.RunUiRefreshAsync(() =>
+                {
+                    if (_context.IsPageReady) FilterShaders();
+                });
+            }
+
+            return;
+        }
+
         OnPropertyChanged(nameof(UpdatableShaderCount));
         StartShaderUpdateDetection(cancellationToken);
 

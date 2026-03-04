@@ -18,6 +18,7 @@ public class ModpackInstallationService : IModpackInstallationService
     private readonly IDownloadManager _downloadManager;
     private readonly FallbackDownloadManager _fallbackDownloadManager;
     private readonly IMinecraftVersionService _minecraftVersionService;
+    private readonly IVersionInfoManager _versionInfoManager;
     private readonly CurseForgeService _curseForgeService;
     private readonly ILocalSettingsService _localSettingsService;
 
@@ -25,12 +26,14 @@ public class ModpackInstallationService : IModpackInstallationService
         IDownloadManager downloadManager,
         FallbackDownloadManager fallbackDownloadManager,
         IMinecraftVersionService minecraftVersionService,
+        IVersionInfoManager versionInfoManager,
         CurseForgeService curseForgeService,
         ILocalSettingsService localSettingsService)
     {
         _downloadManager = downloadManager;
         _fallbackDownloadManager = fallbackDownloadManager;
         _minecraftVersionService = minecraftVersionService;
+        _versionInfoManager = versionInfoManager;
         _curseForgeService = curseForgeService;
         _localSettingsService = localSettingsService;
     }
@@ -86,14 +89,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
             }
 
             return ModpackInstallResult.Failed("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
@@ -114,7 +117,165 @@ public class ModpackInstallationService : IModpackInstallationService
         }
     }
 
+    public async Task<ModpackInstallResult> UpdateModpackInPlaceAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath = null,
+        string? sourceProjectId = null,
+        string? sourceVersionId = null,
+        CancellationToken cancellationToken = default)
+    {
+        string tempDir = string.Empty;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(targetVersionId))
+            {
+                return ModpackInstallResult.Failed("目标实例不能为空");
+            }
+
+            var targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+            if (!Directory.Exists(targetVersionDir))
+            {
+                return ModpackInstallResult.Failed($"目标实例不存在: {targetVersionId}");
+            }
+
+            tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string modpackPath = Path.Combine(tempDir, fileName);
+            Directory.CreateDirectory(tempDir);
+
+            await DownloadModpackFileAsync(downloadUrl, modpackPath, isFromCurseForge, progress, cancellationToken);
+            Report(progress, 30, "30%", "下载完成，正在解压整合包...");
+
+            string extractDir = Path.Combine(tempDir, "extract");
+            Directory.CreateDirectory(extractDir);
+            await Task.Run(() =>
+            {
+                using var archive = ZipFile.OpenRead(modpackPath);
+                archive.ExtractToDirectory(extractDir);
+            }, cancellationToken);
+
+            Report(progress, 40, "40%", "解压完成，正在解析整合包信息...");
+
+            string curseForgeManifestPath = Path.Combine(extractDir, "manifest.json");
+            string modrinthIndexPath = Path.Combine(extractDir, "modrinth.index.json");
+
+            if (File.Exists(curseForgeManifestPath))
+            {
+                return await UpdateCurseForgeModpackInPlaceAsync(
+                    extractDir,
+                    curseForgeManifestPath,
+                    modpackDisplayName,
+                    minecraftPath,
+                    targetVersionId,
+                    progress,
+                    versionIconPath,
+                    sourceProjectId,
+                    sourceVersionId,
+                    cancellationToken);
+            }
+
+            if (File.Exists(modrinthIndexPath))
+            {
+                return await UpdateModrinthModpackInPlaceAsync(
+                    extractDir,
+                    modrinthIndexPath,
+                    modpackDisplayName,
+                    minecraftPath,
+                    targetVersionId,
+                    progress,
+                    versionIconPath,
+                    sourceProjectId,
+                    sourceVersionId,
+                    cancellationToken);
+            }
+
+            return ModpackInstallResult.Failed("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
+        }
+        catch (OperationCanceledException)
+        {
+            Report(progress, 0, "0%", "更新已取消");
+            return ModpackInstallResult.Failed("更新已取消");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[整合包更新] 更新失败: {ex}");
+            return ModpackInstallResult.Failed(ex.Message);
+        }
+        finally
+        {
+            CleanupTempDir(tempDir);
+        }
+    }
+
     #region Modrinth 整合包
+
+    private async Task<ModpackInstallResult> UpdateModrinthModpackInPlaceAsync(
+        string extractDir,
+        string indexPath,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        CancellationToken cancellationToken)
+    {
+        string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
+        var indexData = JObject.Parse(indexJson);
+
+        string minecraftVersion = indexData["dependencies"]?["minecraft"]?.ToString()
+            ?? throw new Exception("整合包中缺少Minecraft版本依赖信息");
+
+        var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
+
+        Report(progress, 50, "50%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...");
+
+        await _minecraftVersionService.DownloadModLoaderVersionAsync(
+            minecraftVersion,
+            modLoaderType,
+            modLoaderVersion,
+            minecraftPath,
+            status =>
+            {
+                double p = 50 + (status.Percent / 100) * 20;
+                Report(progress, p, $"{p:F1}%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...", status.SpeedText);
+            },
+            cancellationToken,
+            targetVersionId,
+            versionIconPath);
+
+        var targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+        Report(progress, 72, "72%", "正在清理旧整合包文件...");
+        await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
+
+        string overridesDir = Path.Combine(extractDir, "overrides");
+        if (Directory.Exists(overridesDir))
+        {
+            Report(progress, 78, "78%", "正在覆盖整合包配置文件...");
+            await Task.Run(() => CopyDirectory(overridesDir, targetVersionDir), cancellationToken);
+        }
+
+        var files = indexData["files"] as JArray;
+        if (files != null && files.Count > 0)
+        {
+            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, cancellationToken);
+        }
+
+        var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
+            ?? NormalizeModpackVersionId(sourceVersionId);
+        var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
+        await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
+
+        Report(progress, 100, "100%", "整合包更新完成！");
+        return ModpackInstallResult.Succeeded(modpackDisplayName, targetVersionId);
+    }
 
     private async Task<ModpackInstallResult> InstallModrinthModpackCoreAsync(
         string extractDir,
@@ -123,6 +284,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
         string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -167,6 +330,11 @@ public class ModpackInstallationService : IModpackInstallationService
         {
             await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, cancellationToken);
         }
+
+        var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
+            ?? NormalizeModpackVersionId(sourceVersionId);
+        var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
+        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
 
         Report(progress, 100, "100%", "整合包安装完成！");
         return ModpackInstallResult.Succeeded(modpackDisplayName, modpackVersionId);
@@ -263,6 +431,70 @@ public class ModpackInstallationService : IModpackInstallationService
 
     #region CurseForge 整合包
 
+    private async Task<ModpackInstallResult> UpdateCurseForgeModpackInPlaceAsync(
+        string extractDir,
+        string manifestPath,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        CancellationToken cancellationToken)
+    {
+        string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
+        var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new Exception("无法解析CurseForge整合包manifest.json");
+
+        string minecraftVersion = manifest.Minecraft?.Version
+            ?? throw new Exception("整合包中缺少Minecraft版本信息");
+
+        var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
+
+        Report(progress, 50, "50%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...");
+
+        await _minecraftVersionService.DownloadModLoaderVersionAsync(
+            minecraftVersion,
+            modLoaderType,
+            modLoaderVersion,
+            minecraftPath,
+            status =>
+            {
+                double p = 50 + (status.Percent / 100) * 15;
+                Report(progress, p, $"{p:F1}%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...", status.SpeedText);
+            },
+            cancellationToken,
+            targetVersionId,
+            versionIconPath);
+
+        string targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+        Report(progress, 66, "66%", "正在清理旧整合包文件...");
+        await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
+
+        string overridesFolderName = manifest.Overrides ?? "overrides";
+        string overridesDir = Path.Combine(extractDir, overridesFolderName);
+        if (Directory.Exists(overridesDir))
+        {
+            Report(progress, 70, "70%", "正在覆盖整合包配置文件...");
+            await Task.Run(() => CopyDirectory(overridesDir, targetVersionDir), cancellationToken);
+        }
+
+        if (manifest.Files != null && manifest.Files.Count > 0)
+        {
+            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, cancellationToken);
+        }
+
+        var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
+            ?? NormalizeModpackVersionId(sourceVersionId);
+        var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
+        await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
+
+        Report(progress, 100, "100%", "整合包更新完成！");
+        return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, targetVersionId);
+    }
+
     private async Task<ModpackInstallResult> InstallCurseForgeModpackCoreAsync(
         string extractDir,
         string manifestPath,
@@ -270,6 +502,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
         string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -320,8 +554,84 @@ public class ModpackInstallationService : IModpackInstallationService
             await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, cancellationToken);
         }
 
+        var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
+            ?? NormalizeModpackVersionId(sourceVersionId);
+        var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
+        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
+
         Report(progress, 100, "100%", "整合包安装完成！");
         return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, modpackVersionId);
+    }
+
+    private async Task SaveModpackMetadataAsync(
+        string installedVersionId,
+        string minecraftPath,
+        string platform,
+        string? projectId,
+        string? versionId)
+    {
+        var config = await _versionInfoManager.GetVersionConfigAsync(installedVersionId, minecraftPath) ?? new VersionConfig();
+        config.ModpackPlatform = string.IsNullOrWhiteSpace(platform) ? null : platform.Trim().ToLowerInvariant();
+        config.ModpackProjectId = NormalizeExternalProjectId(platform, projectId);
+        config.ModpackVersionId = NormalizeModpackVersionId(versionId);
+
+        await _versionInfoManager.SaveVersionConfigAsync(installedVersionId, minecraftPath, config);
+    }
+
+    private static string? NormalizeModpackVersionId(string? rawVersionId)
+    {
+        if (string.IsNullOrWhiteSpace(rawVersionId))
+        {
+            return null;
+        }
+
+        return rawVersionId.Trim();
+    }
+
+    private static string? NormalizeExternalProjectId(string platform, string? rawProjectId)
+    {
+        if (string.IsNullOrWhiteSpace(rawProjectId))
+        {
+            return null;
+        }
+
+        var normalized = rawProjectId.Trim();
+        if (platform.Equals("curseforge", StringComparison.OrdinalIgnoreCase))
+        {
+            const string curseForgePrefix = "curseforge-";
+            if (normalized.StartsWith(curseForgePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = normalized[curseForgePrefix.Length..];
+            }
+
+            var digitsOnly = ExtractDigits(normalized);
+            return string.IsNullOrWhiteSpace(digitsOnly) ? normalized : digitsOnly;
+        }
+
+        if (platform.Equals("modrinth", StringComparison.OrdinalIgnoreCase))
+        {
+            const string modrinthPrefix = "modrinth-";
+            if (normalized.StartsWith(modrinthPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = normalized[modrinthPrefix.Length..];
+            }
+        }
+
+        return normalized;
+    }
+
+    private static string ExtractDigits(string raw)
+    {
+        var builder = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (char.IsDigit(ch))
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.ToString();
     }
 
     private async Task<string?> ResolveAndPersistModpackIconAsync(
@@ -697,6 +1007,26 @@ public class ModpackInstallationService : IModpackInstallationService
         {
             string destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
             CopyDirectory(subDir, destSubDir);
+        }
+    }
+
+    private static void CleanManagedDirectories(string versionDirectory)
+    {
+        var managedDirs = new[]
+        {
+            "mods",
+            "resourcepacks",
+            "shaderpacks",
+            "datapacks"
+        };
+
+        foreach (var dir in managedDirs)
+        {
+            var fullPath = Path.Combine(versionDirectory, dir);
+            if (Directory.Exists(fullPath))
+            {
+                Directory.Delete(fullPath, true);
+            }
         }
     }
 
