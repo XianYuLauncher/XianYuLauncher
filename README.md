@@ -35,6 +35,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 - **Smart Dependency Management**: Automatically identify and download dependency Mods to avoid dependency hell.
 - **Favorites System**: Collect favorite resources, supports import/export and batch installation.
 - **Resource Types**: Modpacks, Mods, Resource Packs, Shaders, Data Packs, Maps.
+- **Modpack Update Support**: Update installed modpacks to newer versions.
 
 ### ⚡ Performance Optimization
 - **Segmented Download**: Multi-threaded segmented downloading for significantly improved speeds.
