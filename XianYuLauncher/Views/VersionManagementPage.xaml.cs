@@ -24,6 +24,7 @@ public sealed partial class VersionManagementPage : Page
     // 标记页面是否正在卸载
     private bool _isUnloading = false;
     private TaskCompletionSource<object?>? _downloadDialogCloseSignal;
+    private TaskCompletionSource<object?>? _extensionInstallDialogCloseSignal;
 
     public VersionManagementPage()
     {
@@ -73,6 +74,8 @@ public sealed partial class VersionManagementPage : Page
         // 取消注册事件，防止内存泄漏
         _downloadDialogCloseSignal?.TrySetResult(null);
         _downloadDialogCloseSignal = null;
+        _extensionInstallDialogCloseSignal?.TrySetResult(null);
+        _extensionInstallDialogCloseSignal = null;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         this.Unloaded -= VersionManagementPage_Unloaded;
     }
@@ -94,22 +97,20 @@ public sealed partial class VersionManagementPage : Page
                     {
                         // 关闭所有可能打开的弹窗
                         _downloadDialogCloseSignal?.TrySetResult(null);
-                        
-                        // 等待足够长的时间，确保所有弹窗完全关闭
-                        await Task.Delay(100);
-                        
-                        // 显示扩展安装进度弹窗
-                        await ExtensionInstallDialog.ShowAsync();
+
+                        _extensionInstallDialogCloseSignal?.TrySetResult(null);
+                        _extensionInstallDialogCloseSignal = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                        _ = ShowExtensionInstallProgressDialogAsync(_extensionInstallDialogCloseSignal.Task);
                     }
                     else
                     {
-                        // 关闭扩展安装进度弹窗
-                        ExtensionInstallDialog.Hide();
+                        _extensionInstallDialogCloseSignal?.TrySetResult(null);
                     }
                 }
                 else if (e.PropertyName == nameof(ViewModel.IsDownloading) && ViewModel.IsDownloading)
                 {
-                    ExtensionInstallDialog.Hide();
+                    _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
                     _downloadDialogCloseSignal?.TrySetResult(null);
                     _downloadDialogCloseSignal = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -123,7 +124,7 @@ public sealed partial class VersionManagementPage : Page
                 else if (e.PropertyName == nameof(ViewModel.IsResultDialogVisible) && ViewModel.IsResultDialogVisible)
                 {
                     _downloadDialogCloseSignal?.TrySetResult(null);
-                    ExtensionInstallDialog.Hide();
+                    _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
                     await _dialogService.ShowMessageDialogAsync(
                         title: "VersionManagerPage_UpdateResultDialog_Title".GetLocalized(),
@@ -135,7 +136,7 @@ public sealed partial class VersionManagementPage : Page
                 else if (e.PropertyName == nameof(ViewModel.IsMoveResourcesDialogVisible) && ViewModel.IsMoveResourcesDialogVisible)
                 {
                     _downloadDialogCloseSignal?.TrySetResult(null);
-                    ExtensionInstallDialog.Hide();
+                    _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
                     var selectedTarget = await _dialogService.ShowListSelectionDialogAsync(
                         title: "VersionManagerPage_MoveModsDialog_Title".GetLocalized(),
@@ -156,7 +157,7 @@ public sealed partial class VersionManagementPage : Page
                 else if (e.PropertyName == nameof(ViewModel.IsMoveResultDialogVisible) && ViewModel.IsMoveResultDialogVisible)
                 {
                     _downloadDialogCloseSignal?.TrySetResult(null);
-                    ExtensionInstallDialog.Hide();
+                    _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
                     await _dialogService.ShowMoveResultDialogAsync(
                         ViewModel.MoveResults,
@@ -195,6 +196,28 @@ public sealed partial class VersionManagementPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"显示下载进度弹窗失败: {ex.Message}");
+        }
+    }
+
+    private async Task ShowExtensionInstallProgressDialogAsync(Task closeSignal)
+    {
+        try
+        {
+            await _dialogService.ShowObservableProgressDialogAsync(
+                title: string.IsNullOrWhiteSpace(ViewModel.ExtensionInstallDialogTitle)
+                    ? "VersionManagerPage_SaveConfigDialog_Title".GetLocalized()
+                    : ViewModel.ExtensionInstallDialogTitle,
+                getStatus: () => ViewModel.ExtensionInstallStatus,
+                getProgress: () => ViewModel.ExtensionInstallProgress,
+                getProgressText: () => $"{ViewModel.ExtensionInstallProgress:F0}%",
+                propertyChanged: ViewModel,
+                primaryButtonText: null,
+                closeButtonText: null,
+                autoCloseWhen: closeSignal);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"显示安装进度弹窗失败: {ex.Message}");
         }
     }
     

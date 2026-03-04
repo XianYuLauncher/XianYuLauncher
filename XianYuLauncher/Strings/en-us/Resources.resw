@@ -3201,6 +3201,12 @@ Continue downloading?</value>
   <data name="VersionManagerPage_MoveResultDialog_PrimaryButtonText" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="VersionManagerPage_SaveConfigDialog_Title" xml:space="preserve">
+    <value>Save Configuration</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateDialog_Title" xml:space="preserve">
+    <value>Update Modpack</value>
+  </data>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_Title" xml:space="preserve">
     <value>Update All</value>
   </data>
@@ -3212,5 +3218,44 @@ Continue downloading?</value>
   </data>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateBannerTitle.Text" xml:space="preserve">
+    <value>Modpack Update</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateCheckingStatus" xml:space="preserve">
+    <value>Checking modpack updates...</value>
+  </data>
+  <data name="VersionManagerPage_ModpackAlreadyLatestStatus" xml:space="preserve">
+    <value>You are already on the latest modpack version</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableStatus" xml:space="preserve">
+    <value>A newer modpack version is available</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableWithVersionStatusFormat" xml:space="preserve">
+    <value>New version detected: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackNotDetectedStatus" xml:space="preserve">
+    <value>Current version is not a modpack instance</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedStatus" xml:space="preserve">
+    <value>Automatic modpack update is coming soon</value>
+  </data>
+  <data name="VersionManagerPage_ModpackSectionTitle.Text" xml:space="preserve">
+    <value>Modpack</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionExpander.Header" xml:space="preserve">
+    <value>Change Modpack Version</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>Select a modpack version</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
+    <value>Please select a target modpack version first</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat" xml:space="preserve">
+    <value>Modpack update completed. Current version: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
+    <value>Automatic modpack update is coming soon. Selected target version: {0}</value>
   </data>
 </root>

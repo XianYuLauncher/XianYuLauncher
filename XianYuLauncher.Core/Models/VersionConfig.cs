@@ -106,4 +106,19 @@ public class VersionConfig
     /// 版本图标路径（支持 ms-appx:/// 与本地绝对路径）
     /// </summary>
     public string? Icon { get; set; }
+
+    /// <summary>
+    /// 整合包来源平台（如 modrinth / curseforge）
+    /// </summary>
+    public string? ModpackPlatform { get; set; }
+
+    /// <summary>
+    /// 整合包项目 ID（外部原始 ID，不带内部前缀）
+    /// </summary>
+    public string? ModpackProjectId { get; set; }
+
+    /// <summary>
+    /// 整合包版本 ID（来自整合包清单）
+    /// </summary>
+    public string? ModpackVersionId { get; set; }
 }

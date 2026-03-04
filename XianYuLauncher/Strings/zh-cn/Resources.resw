@@ -3216,6 +3216,12 @@
   <data name="VersionManagerPage_MoveResultDialog_PrimaryButtonText" xml:space="preserve">
     <value>确定</value>
   </data>
+  <data name="VersionManagerPage_SaveConfigDialog_Title" xml:space="preserve">
+    <value>保存配置</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateDialog_Title" xml:space="preserve">
+    <value>更新整合包</value>
+  </data>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_Title" xml:space="preserve">
     <value>一键更新</value>
   </data>
@@ -3227,5 +3233,44 @@
   </data>
   <data name="VersionManagerPage_UpdatableResourcesUpdateDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateBannerTitle.Text" xml:space="preserve">
+    <value>整合包更新</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateCheckingStatus" xml:space="preserve">
+    <value>正在检查整合包更新...</value>
+  </data>
+  <data name="VersionManagerPage_ModpackAlreadyLatestStatus" xml:space="preserve">
+    <value>当前已是最新整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableStatus" xml:space="preserve">
+    <value>检测到新版本整合包可更新</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateAvailableWithVersionStatusFormat" xml:space="preserve">
+    <value>检测到新版本：{0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackNotDetectedStatus" xml:space="preserve">
+    <value>当前版本不是整合包实例</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedStatus" xml:space="preserve">
+    <value>整合包自动更新即将上线，敬请期待</value>
+  </data>
+  <data name="VersionManagerPage_ModpackSectionTitle.Text" xml:space="preserve">
+    <value>整合包</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionExpander.Header" xml:space="preserve">
+    <value>修改整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionComboBox.PlaceholderText" xml:space="preserve">
+    <value>请选择整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
+    <value>请先选择目标整合包版本</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat" xml:space="preserve">
+    <value>整合包更新完成，当前版本：{0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
+    <value>整合包自动更新即将上线，已选择目标版本：{0}</value>
   </data>
 </root>
