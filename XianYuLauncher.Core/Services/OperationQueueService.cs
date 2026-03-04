@@ -25,7 +25,7 @@ public class OperationQueueService : IOperationQueueService
     public OperationQueueService(ILogger<OperationQueueService> logger)
     {
         _logger = logger;
-        _globalConcurrencyGate = new SemaphoreSlim(1, 8);
+        _globalConcurrencyGate = new SemaphoreSlim(1, 1);
     }
 
     public bool HasActiveOperation => Volatile.Read(ref _activeOperationCount) > 0;
@@ -37,12 +37,16 @@ public class OperationQueueService : IOperationQueueService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var normalizedScopeKey = string.IsNullOrWhiteSpace(request.ScopeKey)
+            ? "global"
+            : request.ScopeKey.Trim();
+
         var taskInfo = new OperationTaskInfo
         {
             TaskId = Guid.NewGuid().ToString(),
             TaskName = request.TaskName,
             TaskType = request.TaskType,
-            ScopeKey = string.IsNullOrWhiteSpace(request.ScopeKey) ? "global" : request.ScopeKey,
+            ScopeKey = normalizedScopeKey,
             State = OperationTaskState.Queued,
             Progress = 0,
             StatusMessage = "已加入任务队列"
@@ -167,6 +171,7 @@ public class OperationQueueService : IOperationQueueService
             if (existingLock.RefCount <= 0)
             {
                 _scopeLocks.Remove(scopeKey);
+                existingLock.Semaphore.Dispose();
             }
         }
     }
