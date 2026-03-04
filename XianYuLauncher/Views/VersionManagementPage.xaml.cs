@@ -204,7 +204,9 @@ public sealed partial class VersionManagementPage : Page
         try
         {
             await _dialogService.ShowObservableProgressDialogAsync(
-                title: "VersionManagerPage_SaveConfigDialog_Title".GetLocalized(),
+                title: string.IsNullOrWhiteSpace(ViewModel.ExtensionInstallDialogTitle)
+                    ? "VersionManagerPage_SaveConfigDialog_Title".GetLocalized()
+                    : ViewModel.ExtensionInstallDialogTitle,
                 getStatus: () => ViewModel.ExtensionInstallStatus,
                 getProgress: () => ViewModel.ExtensionInstallProgress,
                 getProgressText: () => $"{ViewModel.ExtensionInstallProgress:F0}%",
