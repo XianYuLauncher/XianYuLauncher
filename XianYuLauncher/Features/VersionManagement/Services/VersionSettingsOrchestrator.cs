@@ -155,6 +155,9 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
                 settings.MinecraftVersion = versionConfig.MinecraftVersion ?? selectedVersion.Name;
                 settings.ModLoaderVersion = versionConfig.ModLoaderVersion ?? string.Empty;
                 settings.CreatedAt = versionConfig.CreatedAt;
+                settings.ModpackPlatform = versionConfig.ModpackPlatform;
+                settings.ModpackProjectId = versionConfig.ModpackProjectId;
+                settings.ModpackVersionId = versionConfig.ModpackVersionId;
             }
             else
             {
