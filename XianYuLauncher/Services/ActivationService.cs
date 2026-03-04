@@ -346,13 +346,15 @@ public class ActivationService : IActivationService
             updateService.SetCurrentVersion(currentVersion);
             
             // 检查是否有更新
-            var updateInfo = await updateService.CheckForUpdatesAsync();
-
-            // 如果未发现正式版更新，且当前为 Dev 通道，则检查 Dev 更新
-            if (updateInfo == null && updateService.IsDevChannel())
+            UpdateInfo? updateInfo;
+            if (updateService.IsDevChannel())
             {
-                Serilog.Log.Information("Dev 通道：未发现正式版更新，尝试检查 Dev 更新...");
+                Serilog.Log.Information("Dev 通道：仅检查 Dev 更新...");
                 updateInfo = await updateService.CheckForDevUpdateAsync();
+            }
+            else
+            {
+                updateInfo = await updateService.CheckForUpdatesAsync();
             }
             
             if (updateInfo != null)
