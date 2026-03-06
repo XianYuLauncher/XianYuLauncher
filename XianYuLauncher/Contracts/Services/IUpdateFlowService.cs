@@ -12,11 +12,13 @@ public sealed class UpdateFlowResult
 
     public bool HasUpdate { get; set; }
 
+    public bool InstallationStarted { get; set; }
+
     public string? ErrorMessage { get; set; }
 }
 
 /// <summary>
-/// 更新检查与安装流程抽象（Phase 1 仅定义壳）。
+/// 更新检查与安装流程抽象（Phase 2 已接管更新弹窗流）。
 /// </summary>
 public interface IUpdateFlowService
 {

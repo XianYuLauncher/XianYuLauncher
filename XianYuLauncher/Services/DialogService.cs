@@ -10,6 +10,7 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Services;
@@ -938,5 +939,89 @@ public class DialogService : IDialogService
         };
 
         await ShowSafeAsync(dialog);
+    }
+
+    public async Task<SettingsCustomSourceDialogResult?> ShowSettingsCustomSourceDialogAsync(SettingsCustomSourceDialogRequest request)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = request.Title,
+            PrimaryButtonText = request.PrimaryButtonText,
+            CloseButtonText = request.CloseButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var stackPanel = new StackPanel { Spacing = 12 };
+
+        var nameBox = new TextBox { Text = request.Name, PlaceholderText = "例如：我的镜像站", Header = "源名称" };
+        var urlBox = new TextBox { Text = request.BaseUrl, PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
+        var priorityBox = new NumberBox
+        {
+            Header = "优先级（数值越大优先级越高）",
+            Value = request.Priority,
+            Minimum = 1,
+            Maximum = 1000,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
+        };
+
+        stackPanel.Children.Add(nameBox);
+        stackPanel.Children.Add(urlBox);
+
+        ComboBox? templateCombo = null;
+        if (request.ShowTemplateSelection)
+        {
+            templateCombo = new ComboBox
+            {
+                Header = "模板类型",
+                ItemsSource = new[] { "官方资源", "社区资源" },
+                SelectedIndex = request.Template == DownloadSourceTemplateType.Official ? 0 : 1
+            };
+            stackPanel.Children.Add(templateCombo);
+        }
+        else
+        {
+            var templateText = new TextBlock
+            {
+                Text = $"模板类型: {(request.Template == DownloadSourceTemplateType.Official ? "官方资源" : "社区资源")}",
+                Opacity = 0.7,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            stackPanel.Children.Add(templateText);
+        }
+
+        stackPanel.Children.Add(priorityBox);
+
+        ToggleSwitch? enabledSwitch = null;
+        if (request.ShowEnabledSwitch)
+        {
+            enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = request.Enabled };
+            stackPanel.Children.Add(enabledSwitch);
+        }
+
+        dialog.Content = stackPanel;
+
+        var result = await ShowSafeAsync(dialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        var template = request.Template;
+        if (templateCombo != null)
+        {
+            template = templateCombo.SelectedIndex == 0
+                ? DownloadSourceTemplateType.Official
+                : DownloadSourceTemplateType.Community;
+        }
+
+        return new SettingsCustomSourceDialogResult
+        {
+            Name = nameBox.Text?.Trim() ?? string.Empty,
+            BaseUrl = urlBox.Text?.Trim() ?? string.Empty,
+            Template = template,
+            Priority = (int)priorityBox.Value,
+            Enabled = enabledSwitch?.IsOn ?? request.Enabled
+        };
     }
 }

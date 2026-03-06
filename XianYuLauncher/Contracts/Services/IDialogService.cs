@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Contracts.Services;
 
@@ -168,4 +169,46 @@ public interface IDialogService
         System.Collections.Generic.IEnumerable<XianYuLauncher.Features.VersionManagement.ViewModels.MoveModResult> moveResults,
         string title,
         string instruction);
+
+    /// <summary>
+    /// 显示自定义下载源编辑弹窗。
+    /// </summary>
+    /// <returns>返回填写结果；取消返回 null。</returns>
+    Task<SettingsCustomSourceDialogResult?> ShowSettingsCustomSourceDialogAsync(SettingsCustomSourceDialogRequest request);
+}
+
+public sealed class SettingsCustomSourceDialogRequest
+{
+    public string Title { get; init; } = string.Empty;
+
+    public string PrimaryButtonText { get; init; } = "保存";
+
+    public string CloseButtonText { get; init; } = "取消";
+
+    public string Name { get; init; } = string.Empty;
+
+    public string BaseUrl { get; init; } = string.Empty;
+
+    public DownloadSourceTemplateType Template { get; init; } = DownloadSourceTemplateType.Official;
+
+    public int Priority { get; init; } = 100;
+
+    public bool Enabled { get; init; } = true;
+
+    public bool ShowEnabledSwitch { get; init; } = true;
+
+    public bool ShowTemplateSelection { get; init; } = true;
+}
+
+public sealed class SettingsCustomSourceDialogResult
+{
+    public string Name { get; init; } = string.Empty;
+
+    public string BaseUrl { get; init; } = string.Empty;
+
+    public DownloadSourceTemplateType Template { get; init; }
+
+    public int Priority { get; init; }
+
+    public bool Enabled { get; init; }
 }
