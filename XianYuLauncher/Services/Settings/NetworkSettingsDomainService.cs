@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
 using XianYuLauncher.Contracts.Services;
@@ -48,21 +49,22 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 		return _settingsRepository.SaveAsync(AutoSelectFastestSourceKey, value);
 	}
 
-	public async Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources)
+	public async Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		// 强制执行新测速（忽略缓存）
-		var versionManifestResults = await _speedTestService.TestVersionManifestSourcesAsync();
-		var fileDownloadResults = await _speedTestService.TestFileDownloadSourcesAsync();
-		var communityResults = await _speedTestService.TestCommunitySourcesAsync();
-		var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
-		var forgeResults = await _speedTestService.TestForgeSourcesAsync();
-		var fabricResults = await _speedTestService.TestFabricSourcesAsync();
-		var neoforgeResults = await _speedTestService.TestNeoForgeSourcesAsync();
-		var liteLoaderResults = await _speedTestService.TestModLoaderSourcesAsync("liteloader");
-		var quiltResults = await _speedTestService.TestModLoaderSourcesAsync("quilt");
-		var legacyFabricResults = await _speedTestService.TestModLoaderSourcesAsync("legacyfabric");
-		var cleanroomResults = await _speedTestService.TestModLoaderSourcesAsync("cleanroom");
-		var optifineResults = await _speedTestService.TestModLoaderSourcesAsync("optifine");
+		var versionManifestResults = await _speedTestService.TestVersionManifestSourcesAsync(cancellationToken);
+		var fileDownloadResults = await _speedTestService.TestFileDownloadSourcesAsync(cancellationToken);
+		var communityResults = await _speedTestService.TestCommunitySourcesAsync(cancellationToken);
+		var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync(cancellationToken);
+		var forgeResults = await _speedTestService.TestForgeSourcesAsync(cancellationToken);
+		var fabricResults = await _speedTestService.TestFabricSourcesAsync(cancellationToken);
+		var neoforgeResults = await _speedTestService.TestNeoForgeSourcesAsync(cancellationToken);
+		var liteLoaderResults = await _speedTestService.TestModLoaderSourcesAsync("liteloader", cancellationToken);
+		var quiltResults = await _speedTestService.TestModLoaderSourcesAsync("quilt", cancellationToken);
+		var legacyFabricResults = await _speedTestService.TestModLoaderSourcesAsync("legacyfabric", cancellationToken);
+		var cleanroomResults = await _speedTestService.TestModLoaderSourcesAsync("cleanroom", cancellationToken);
+		var optifineResults = await _speedTestService.TestModLoaderSourcesAsync("optifine", cancellationToken);
 
 		var cache = new Core.Models.SpeedTestCache
 		{

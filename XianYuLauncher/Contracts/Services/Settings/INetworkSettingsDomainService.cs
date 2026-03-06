@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace XianYuLauncher.Contracts.Services.Settings;
@@ -104,7 +105,7 @@ public interface INetworkSettingsDomainService
 
 	Task SaveAutoSelectFastestSourceAsync(bool value);
 
-	Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources);
+	Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default);
 
 	Task<NetworkSpeedTestState> LoadSpeedTestCacheStateAsync(bool autoSelectFastestSourceEnabled);
 
