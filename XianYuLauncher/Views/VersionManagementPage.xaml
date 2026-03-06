@@ -30,10 +30,6 @@
             <Setter Property="Foreground" Value="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
         </Style>
         
-        <!-- 卡片样式 -->
-        <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" />
-        <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="{ThemeResource SystemControlForegroundBaseLowBrush}" />
-        
         <!-- 概览Tab专用的可见卡片样式 -->
         <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource CardBackgroundFillColorDefault}" />
         <SolidColorBrush x:Key="OverviewCardBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
@@ -630,11 +626,11 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:ModInfo">
-                                        <Grid MinHeight="70" 
-                                              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            <Grid MinHeight="70" 
+                                                Background="Transparent"
                                               CornerRadius="8" 
                                               Padding="16,12,16,12" 
-                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderBrush="Transparent"
                                               BorderThickness="1">
                                             <!-- 右键菜单 -->
                                             <Grid.ContextFlyout>
@@ -805,9 +801,9 @@
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
                             Padding="60,40,60,40"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Background="Transparent"
                             CornerRadius="16"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderBrush="Transparent"
                             BorderThickness="1">
                             <FontIcon 
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
@@ -924,8 +920,8 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:ShaderInfo">
-                                        <Grid MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            <Grid MinHeight="70" Background="Transparent"
+                                                CornerRadius="8" Padding="16,12,16,12" BorderBrush="Transparent"
                                               BorderThickness="1">
                                             <!-- 右键菜单 -->
                                             <Grid.ContextFlyout>
@@ -1079,9 +1075,9 @@
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
                             Padding="60,40,60,40"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Background="Transparent"
                             CornerRadius="16"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderBrush="Transparent"
                             BorderThickness="1">
                             <FontIcon 
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
@@ -1198,8 +1194,8 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:ResourcePackInfo">
-                                        <Grid x:Name="ResourcePackItemGrid" MinHeight="70" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                              CornerRadius="8" Padding="16,12,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            <Grid x:Name="ResourcePackItemGrid" MinHeight="70" Background="Transparent"
+                                                CornerRadius="8" Padding="16,12,16,12" BorderBrush="Transparent"
                                               BorderThickness="1"
                                               PointerPressed="ResourcePackItem_PointerPressed">
                                             <!-- Context Flyout -->
@@ -1378,9 +1374,9 @@
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
                             Padding="60,40,60,40"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Background="Transparent"
                             CornerRadius="16"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderBrush="Transparent"
                             BorderThickness="1">
                             <FontIcon 
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
@@ -1516,10 +1512,10 @@
                                 </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:ScreenshotInfo">
-                                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            <Grid Background="Transparent"
                                               CornerRadius="8" 
                                               Padding="16" 
-                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderBrush="Transparent"
                                               BorderThickness="1">
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
@@ -1593,9 +1589,9 @@
                                 VerticalAlignment="Center" 
                                 Margin="0,100,0,0"
                                 Padding="60,40,60,40"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                Background="Transparent"
                                 CornerRadius="16"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderBrush="Transparent"
                                 BorderThickness="1">
                                 <FontIcon 
                                     FontFamily="{StaticResource SymbolThemeFontFamily}" 
@@ -1695,7 +1691,7 @@
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:MapInfo">
-                                        <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                        <Grid CornerRadius="8" Padding="12" Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
@@ -1743,9 +1739,9 @@
                             VerticalAlignment="Center" 
                             Margin="0,100,0,0"
                             Padding="60,40,60,40"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Background="Transparent"
                             CornerRadius="16"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderBrush="Transparent"
                             BorderThickness="1">
                             <FontIcon 
                                 FontFamily="{StaticResource SymbolThemeFontFamily}" 
