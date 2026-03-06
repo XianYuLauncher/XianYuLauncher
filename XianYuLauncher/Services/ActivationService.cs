@@ -9,6 +9,7 @@ using XianYuLauncher.Activation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
 
@@ -327,10 +328,10 @@ public class ActivationService : IActivationService
             // 获取自动检查更新设置
             var localSettingsService = App.GetService<ILocalSettingsService>();
             var autoUpdateCheckModeStr = await localSettingsService.ReadSettingAsync<string>("AutoUpdateCheckMode");
-            var autoUpdateCheckMode = SettingsViewModel.AutoUpdateCheckModeType.Always; // 默认每次启动检查
+            var autoUpdateCheckMode = AutoUpdateCheckModeType.Always; // 默认每次启动检查
             
             if (!string.IsNullOrEmpty(autoUpdateCheckModeStr) && 
-                Enum.TryParse<SettingsViewModel.AutoUpdateCheckModeType>(autoUpdateCheckModeStr, out var mode))
+                Enum.TryParse<AutoUpdateCheckModeType>(autoUpdateCheckModeStr, out var mode))
             {
                 autoUpdateCheckMode = mode;
             }
@@ -360,7 +361,7 @@ public class ActivationService : IActivationService
             if (updateInfo != null)
             {
                 // 根据设置决定是否显示更新弹窗
-                bool shouldShowUpdate = autoUpdateCheckMode == SettingsViewModel.AutoUpdateCheckModeType.Always || 
+                bool shouldShowUpdate = autoUpdateCheckMode == AutoUpdateCheckModeType.Always || 
                                         updateInfo.important_update;
                 
                 if (!shouldShowUpdate)
