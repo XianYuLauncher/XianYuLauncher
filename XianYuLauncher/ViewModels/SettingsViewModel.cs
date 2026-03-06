@@ -102,7 +102,6 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IUiDispatcher _uiDispatcher;
         private readonly IUpdateFlowService _updateFlowService;
         private readonly UpdateService _updateService;
-        private readonly ILogger<UpdateDialogViewModel> _updateDialogLogger;
         private readonly DownloadSourceFactory _downloadSourceFactory;
         private readonly ISpeedTestService? _speedTestService;
         private const string JavaPathKey = "JavaPath";
@@ -1114,7 +1113,6 @@ public partial class SettingsViewModel : ObservableRecipient
         IUiDispatcher uiDispatcher,
         IUpdateFlowService updateFlowService,
         UpdateService updateService,
-        ILogger<UpdateDialogViewModel> updateDialogLogger,
         DownloadSourceFactory downloadSourceFactory,
         CustomSourceManager customSourceManager,
         ISpeedTestService? speedTestService,
@@ -1138,7 +1136,6 @@ public partial class SettingsViewModel : ObservableRecipient
         _uiDispatcher = uiDispatcher;
         _updateFlowService = updateFlowService;
         _updateService = updateService;
-        _updateDialogLogger = updateDialogLogger;
         _downloadSourceFactory = downloadSourceFactory;
         _customSourceManager = customSourceManager;
         _speedTestService = speedTestService;
@@ -2087,62 +2084,19 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
 
-            // 2. 构建选择对话框
-            var dialog = new ContentDialog
+            // 2. 显示选择对话框并处理结果
+            var selectedOption = await _dialogService.ShowListSelectionDialogAsync(
+                title: "下载 Java 运行时",
+                instruction: "请选择要安装的 Java 版本:",
+                items: availableVersions,
+                displayMemberFunc: option => option.DisplayName,
+                tip: "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
+                primaryButtonText: "下载",
+                closeButtonText: "取消");
+
+            if (selectedOption != null)
             {
-                Title = "下载 Java 运行时",
-                PrimaryButtonText = "下载",
-                CloseButtonText = "取消",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                DefaultButton = ContentDialogButton.Primary,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
-            stackPanel.Children.Add(new TextBlock { Text = "请选择要安装的 Java 版本:", TextWrapping = TextWrapping.Wrap });
-
-            var listView = new ListView
-            {
-                ItemsSource = availableVersions,
-                SelectionMode = ListViewSelectionMode.Single,
-                MaxHeight = 300,
-                SelectedIndex = 0,
-                BorderThickness = new Thickness(1),
-                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                CornerRadius = new CornerRadius(4)
-            };
-
-            // 创建 DataTemplate
-            var templateXaml = @"
-                <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-                    <Grid Padding='12,8'>
-                        <TextBlock Text='{Binding DisplayName}' VerticalAlignment='Center' Style='{ThemeResource BodyTextBlockStyle}' />
-                    </Grid>
-                </DataTemplate>";
-            
-            listView.ItemTemplate = (DataTemplate)XamlReader.Load(templateXaml);
-
-            stackPanel.Children.Add(listView);
-            
-            stackPanel.Children.Add(new TextBlock 
-            { 
-               Text = "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
-               FontSize = 12, 
-               Opacity = 0.7,
-               TextWrapping = TextWrapping.Wrap
-            });
-
-            dialog.Content = stackPanel;
-
-            // 3. 显示并处理结果
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                 var selectedOption = listView.SelectedItem as JavaVersionDownloadOption;
-                 if (selectedOption != null)
-                 {
-                      await InstallJavaFromSettingsAsync(selectedOption);
-                 }
+                await InstallJavaFromSettingsAsync(selectedOption);
             }
         }
         catch (Exception ex)
@@ -2575,126 +2529,7 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 检查是否从微软商店安装
-            if (IsInstalledFromMicrosoftStore())
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 应用从微软商店安装，不支持手动更新");
-                
-                var storeDialog = new ContentDialog
-                {
-                    Title = "检查更新",
-                    Content = "您使用的是微软商店版本，应用将通过商店自动更新。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await storeDialog.ShowAsync();
-                return;
-            }
-            
-            var updateService = _updateService;
-            
-            // 设置当前应用版本（从 MSIX 包获取）
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            updateService.SetCurrentVersion(currentVersion);
-            
-            UpdateInfo? updateInfo;
-            if (IsDevChannel)
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] Dev 通道：仅检查 Dev 更新...");
-                updateInfo = await updateService.CheckForDevUpdateAsync();
-            }
-            else
-            {
-                updateInfo = await updateService.CheckForUpdatesAsync();
-            }
-            
-            if (updateInfo != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现新版本: {updateInfo.version}");
-                
-                // 创建更新弹窗ViewModel
-                var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, updateService, updateInfo);
-                
-                // 创建并显示更新弹窗
-                var updateDialog = new ContentDialog
-                {
-                    Title = string.Format("Version {0} 更新", updateInfo.version),
-                    Content = new Views.UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "更新",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-                
-                var result = await updateDialog.ShowAsync();
-                
-                if (result == ContentDialogResult.Primary)
-                {
-                    // 用户点击更新，显示下载进度弹窗
-                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意更新");
-                    
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = string.Format("Version {0} 更新", updateInfo.version),
-                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    bool dialogResult = false;
-                    updateDialogViewModel.CloseDialog += (sender, res) =>
-                    {
-                        dialogResult = res;
-                        downloadDialog.Hide();
-                    };
-                    
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    await downloadDialog.ShowAsync();
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 当前已是最新版本");
-                
-                // 显示已是最新版本的提示
-                var dialog = new ContentDialog
-                {
-                    Title = "检查更新",
-                    Content = "当前已是最新版本！",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查更新失败: {ex.Message}");
-            
-            var dialog = new ContentDialog
-            {
-                Title = "检查更新失败",
-                Content = $"无法检查更新：{ex.Message}",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            await dialog.ShowAsync();
+            await _updateFlowService.CheckForUpdatesAsync(IsDevChannel);
         }
         finally
         {
@@ -2715,117 +2550,11 @@ public partial class SettingsViewModel : ObservableRecipient
 
         try
         {
-            var updateService = _updateService;
-            var updateInfo = await updateService.CheckForDevUpdateAsync();
-
-            if (updateInfo != null)
-            {
-                 System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现 Dev 版本: {updateInfo.version}");
-
-                 var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, updateService, updateInfo);
-                 
-                 var devDialog = new ContentDialog
-                 {
-                    Title = $"安装 Dev 通道版本 ({updateInfo.version})",
-                    Content = new Views.UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "安装",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                 };
-                 
-                 var result = await devDialog.ShowAsync();
-                 
-                 if (result == ContentDialogResult.Primary)
-                 {
-                    // 用户点击安装，显示下载进度弹窗
-                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意安装 Dev 版本");
-                    
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = $"安装 Dev 通道版本 ({updateInfo.version})",
-                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    updateDialogViewModel.CloseDialog += (sender, res) =>
-                    {
-                        downloadDialog.Hide();
-                    };
-                    
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    await downloadDialog.ShowAsync();
-                 }
-            }
-            else
-            {
-                var noDevDialog = new ContentDialog
-                {
-                    Title = "Dev 通道",
-                    Content = "当前没有可用的 Dev 版本。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await noDevDialog.ShowAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查 Dev 更新失败: {ex.Message}");
-            var errorDialog = new ContentDialog
-            {
-                Title = "Dev 通道检查失败",
-                Content = $"无法获取 Dev 版本: {ex.Message}",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            await errorDialog.ShowAsync();
+            await _updateFlowService.InstallDevChannelAsync();
         }
         finally
         {
             IsCheckingForUpdates = false;
-        }
-    }
-    
-    /// <summary>
-    /// 检查应用是否从微软商店安装
-    /// </summary>
-    /// <returns>如果从商店安装返回true，否则返回false</returns>
-    private bool IsInstalledFromMicrosoftStore()
-    {
-        try
-        {
-            // 检查应用的签名证书发布者
-            var package = Windows.ApplicationModel.Package.Current;
-            var publisherId = package.Id.Publisher;
-            
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 应用发布者: {publisherId}");
-            
-            // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
-            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
-            
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 是否为商店版本: {isStoreVersion}");
-            
-            return isStoreVersion;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查应用安装来源失败: {ex.Message}");
-            return false;
         }
     }
     
@@ -2912,16 +2641,10 @@ public partial class SettingsViewModel : ObservableRecipient
             // 检查是否已存在
             if (MinecraftPaths.Any(p => p.Path.Equals(selectedPath, StringComparison.OrdinalIgnoreCase)))
             {
-                var dialog = new ContentDialog
-                {
-                    Title = "Settings_Hint".GetLocalized(),
-                    Content = "Settings_DirectoryAlreadyExists".GetLocalized(),
-                    CloseButtonText = "Settings_OK".GetLocalized(),
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync(
+                    "Settings_Hint".GetLocalized(),
+                    "Settings_DirectoryAlreadyExists".GetLocalized(),
+                    "Settings_OK".GetLocalized());
                 return;
             }
             
@@ -2953,20 +2676,13 @@ public partial class SettingsViewModel : ObservableRecipient
         
         var itemToRemove = SelectedMinecraftPathItem;
         
-        // 确认删除
-        var confirmDialog = new ContentDialog
-        {
-            Title = "确认删除",
-            Content = $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
-            PrimaryButtonText = "删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-        
-        var result = await confirmDialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        var confirmed = await _dialogService.ShowConfirmationDialogAsync(
+            "确认删除",
+            $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
+            "删除",
+            "取消");
+
+        if (confirmed)
         {
             // 如果删除的是当前激活的目录，需要先切换到其他目录
             if (itemToRemove.IsActive && MinecraftPaths.Count > 1)
@@ -4691,76 +4407,34 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 首先显示免责声明
-            var disclaimerDialog = new ContentDialog
-            {
-                Title = "重要提示",
-                Content = new TextBlock
-                {
-                    Text = "请仅添加您信任的下载源。\n\n" +
-                           "使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
-                    TextWrapping = TextWrapping.Wrap
-                },
-                PrimaryButtonText = "我已了解，继续添加",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            var disclaimerResult = await disclaimerDialog.ShowAsync();
-            if (disclaimerResult != ContentDialogResult.Primary)
+            var acknowledged = await _dialogService.ShowConfirmationDialogAsync(
+                "重要提示",
+                "请仅添加您信任的下载源。\n\n使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
+                "我已了解，继续添加",
+                "取消");
+
+            if (!acknowledged)
             {
                 return; // 用户取消
             }
-            
-            var templateName = template == DownloadSourceTemplateType.Official ? "官方资源" : "社区资源";
-            
-            // 创建添加对话框
-            var dialog = new ContentDialog
+
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = $"添加自定义{(template == DownloadSourceTemplateType.Official ? "游戏资源" : "社区资源")}源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
-            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
-            var templateText = new TextBlock 
-            { 
-                Text = $"模板类型: {templateName}",
-                Opacity = 0.7,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级（数值越大优先级越高）",
-                Value = 100,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateText);
-            stackPanel.Children.Add(priorityBox);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Template = template,
+                Priority = 100,
+                Enabled = true,
+                ShowEnabledSwitch = false,
+                ShowTemplateSelection = false
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var priority = (int)priorityBox.Value;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var priority = dialogResult.Priority;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -4843,57 +4517,25 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 创建添加对话框
-            var dialog = new ContentDialog
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "添加自定义下载源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
-            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
-            var templateCombo = new ComboBox 
-            { 
-                Header = "模板类型",
-                ItemsSource = new[] { "BMCLAPI (官方资源)", "MCIM (社区资源)" },
-                SelectedIndex = 0
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级",
-                Value = 100,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = true };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateCombo);
-            stackPanel.Children.Add(priorityBox);
-            stackPanel.Children.Add(enabledSwitch);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Template = DownloadSourceTemplateType.Official,
+                Priority = 100,
+                Enabled = true,
+                ShowEnabledSwitch = true,
+                ShowTemplateSelection = true
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Official 
-                    : DownloadSourceTemplateType.Community;
-                var priority = (int)priorityBox.Value;
-                var enabled = enabledSwitch.IsOn;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var template = dialogResult.Template;
+                var priority = dialogResult.Priority;
+                var enabled = dialogResult.Enabled;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -4932,57 +4574,27 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 创建编辑对话框
-            var dialog = new ContentDialog
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "编辑自定义下载源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单（预填充当前值）
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { Text = source.Name, Header = "源名称" };
-            var urlBox = new TextBox { Text = source.BaseUrl, Header = "Base URL" };
-            var templateCombo = new ComboBox 
-            { 
-                Header = "模板类型",
-                ItemsSource = new[] { "官方资源", "社区资源" },
-                SelectedIndex = source.Template == DownloadSourceTemplateType.Official ? 0 : 1
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级",
-                Value = source.Priority,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = source.Enabled };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateCombo);
-            stackPanel.Children.Add(priorityBox);
-            stackPanel.Children.Add(enabledSwitch);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Name = source.Name,
+                BaseUrl = source.BaseUrl,
+                Template = source.Template,
+                Priority = source.Priority,
+                Enabled = source.Enabled,
+                ShowEnabledSwitch = true,
+                ShowTemplateSelection = true
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Official 
-                    : DownloadSourceTemplateType.Community;
-                var priority = (int)priorityBox.Value;
-                var enabled = enabledSwitch.IsOn;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var template = dialogResult.Template;
+                var priority = dialogResult.Priority;
+                var enabled = dialogResult.Enabled;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -5022,21 +4634,13 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 显示确认对话框
-            var confirmDialog = new ContentDialog
-            {
-                Title = "确认删除",
-                Content = $"确定要删除下载源 \"{source.Name}\" 吗？",
-                PrimaryButtonText = "删除",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            var result = await confirmDialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+            var confirmed = await _dialogService.ShowConfirmationDialogAsync(
+                "确认删除",
+                $"确定要删除下载源 \"{source.Name}\" 吗？",
+                "删除",
+                "取消");
+
+            if (confirmed)
             {
                 var deleteResult = await _customSourceManager.DeleteSourceAsync(source.Key);
                 
