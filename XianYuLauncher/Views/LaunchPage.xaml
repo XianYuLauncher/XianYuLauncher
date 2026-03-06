@@ -357,46 +357,46 @@
             </TeachingTip.Content>
         </TeachingTip>
 
-        <!-- 开发版警告 (浮动在底部) -->
-        <InfoBar
-            x:Name="DevBuildInfoBar"
-            IsOpen="{x:Bind ViewModel.IsDevBuild, Mode=OneWay}"
-            Severity="Warning"
-            Title="开发版"
-            Message="可能不稳定，遇到问题请向开发人员反馈。"
-            IsClosable="False"
+        <!-- 底部状态提示：统一堆叠，避免多个 InfoBar 出现时重叠 -->
+        <StackPanel
             VerticalAlignment="Bottom"
             Margin="20,0,20,20"
-            CornerRadius="8" />
+            Spacing="10">
+            <InfoBar
+                x:Name="DevBuildInfoBar"
+                IsOpen="{x:Bind ViewModel.IsDevBuild, Mode=OneWay}"
+                Severity="Warning"
+                Title="开发版"
+                Message="可能不稳定，遇到问题请向开发人员反馈。"
+                IsClosable="False"
+                CornerRadius="8" />
 
-        <!-- InfoBar 浮动在底部 -->
-        <InfoBar 
-            x:Name="LaunchSuccessInfoBar"
-            x:Uid="LaunchPage_SuccessTitle"
-            Title="游戏启动成功"
-            Message="{x:Bind ViewModel.LaunchSuccessMessage, Mode=OneWay}"
-            IsOpen="{x:Bind ViewModel.IsInfoBarOpen, Mode=OneWay}"
-            Visibility="{x:Bind ViewModel.IsInfoBarOpen, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-            VerticalAlignment="Bottom"
-            Margin="20,0,20,20"
-            CornerRadius="8"
-            Closed="LaunchSuccessInfoBar_Closed">
-            <InfoBar.ActionButton>
-                <Button 
-                    x:Uid="LaunchPage_ViewLogsButton"
-                    ToolTipService.ToolTip="查看日志"
-                    Command="{x:Bind ViewModel.ViewLogsCommand}"
-                    Visibility="{x:Bind ViewModel.IsViewLogsButtonVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                    Style="{StaticResource SubtleButtonStyle}"
-                    Width="40"
-                    Height="40"
-                    Padding="0"
-                    Margin="0,-4,-8,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center">
-                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8A7;" FontSize="16" />
-                </Button>
-            </InfoBar.ActionButton>
-        </InfoBar>
+            <InfoBar 
+                x:Name="LaunchSuccessInfoBar"
+                x:Uid="LaunchPage_SuccessTitle"
+                Title="游戏启动成功"
+                Message="{x:Bind ViewModel.LaunchSuccessMessage, Mode=OneWay}"
+                IsOpen="{x:Bind ViewModel.IsInfoBarOpen, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.IsInfoBarOpen, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                CornerRadius="8"
+                Closed="LaunchSuccessInfoBar_Closed">
+                <InfoBar.ActionButton>
+                    <Button 
+                        x:Uid="LaunchPage_ViewLogsButton"
+                        ToolTipService.ToolTip="查看日志"
+                        Command="{x:Bind ViewModel.ViewLogsCommand}"
+                        Visibility="{x:Bind ViewModel.IsViewLogsButtonVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Width="40"
+                        Height="40"
+                        Padding="0"
+                        Margin="0,-4,-8,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8A7;" FontSize="16" />
+                    </Button>
+                </InfoBar.ActionButton>
+            </InfoBar>
+        </StackPanel>
     </Grid>
 </Page>
