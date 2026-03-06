@@ -107,6 +107,11 @@ public partial class App : Application
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<ISettingsRepository, LocalSettingsRepository>();
+            services.AddSingleton<IFilePickerService, FilePickerService>();
+            services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
+            services.AddSingleton<IUiDispatcher, UiDispatcher>();
+            services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();

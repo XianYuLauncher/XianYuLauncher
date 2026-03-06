@@ -4,6 +4,7 @@ using Windows.Storage.Pickers;
 using Windows.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using Serilog;
 
@@ -95,6 +96,13 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IDialogService _dialogService;
+        private readonly ISettingsRepository _settingsRepository;
+        private readonly IFilePickerService _filePickerService;
+        private readonly IApplicationLifecycleService _applicationLifecycleService;
+        private readonly IUiDispatcher _uiDispatcher;
+        private readonly IUpdateFlowService _updateFlowService;
+        private readonly UpdateService _updateService;
+        private readonly ILogger<UpdateDialogViewModel> _updateDialogLogger;
         private readonly DownloadSourceFactory _downloadSourceFactory;
         private readonly ISpeedTestService? _speedTestService;
         private const string JavaPathKey = "JavaPath";
@@ -639,7 +647,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (!_isInitializingNavigationStyle)
         {
-            _localSettingsService.SaveSettingAsync(NavigationStyleKey, value).ConfigureAwait(false);
+            _settingsRepository.SaveAsync(NavigationStyleKey, value).ConfigureAwait(false);
             NavigationStyleChanged?.Invoke(this, value);
         }
         else
@@ -661,7 +669,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadNavigationStyleAsync()
     {
-        var saved = await _localSettingsService.ReadSettingAsync<string>(NavigationStyleKey);
+        var saved = await _settingsRepository.ReadAsync<string>(NavigationStyleKey);
         NavigationStyle = saved ?? "Left";
     }
     
@@ -691,7 +699,7 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadFontFamilies();
         
         // 再加载已保存的字体设置
-        var fontFamily = await _localSettingsService.ReadSettingAsync<string>(FontFamilyKey);
+        var fontFamily = await _settingsRepository.ReadAsync<string>(FontFamilyKey);
         SelectedFontFamily = fontFamily ?? "默认";
     }
     
@@ -1032,7 +1040,7 @@ public partial class SettingsViewModel : ObservableRecipient
             if (sponsors.Count > 0)
             {
                 // 在 UI 线程上添加赞助者
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     foreach (var sponsor in sponsors)
                     {
@@ -1100,6 +1108,13 @@ public partial class SettingsViewModel : ObservableRecipient
         IJavaRuntimeService javaRuntimeService,
         IJavaDownloadService javaDownloadService,
         IDialogService dialogService,
+        ISettingsRepository settingsRepository,
+        IFilePickerService filePickerService,
+        IApplicationLifecycleService applicationLifecycleService,
+        IUiDispatcher uiDispatcher,
+        IUpdateFlowService updateFlowService,
+        UpdateService updateService,
+        ILogger<UpdateDialogViewModel> updateDialogLogger,
         DownloadSourceFactory downloadSourceFactory,
         CustomSourceManager customSourceManager,
         ISpeedTestService? speedTestService,
@@ -1117,6 +1132,13 @@ public partial class SettingsViewModel : ObservableRecipient
         _javaRuntimeService = javaRuntimeService;
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
+        _settingsRepository = settingsRepository;
+        _filePickerService = filePickerService;
+        _applicationLifecycleService = applicationLifecycleService;
+        _uiDispatcher = uiDispatcher;
+        _updateFlowService = updateFlowService;
+        _updateService = updateService;
+        _updateDialogLogger = updateDialogLogger;
         _downloadSourceFactory = downloadSourceFactory;
         _customSourceManager = customSourceManager;
         _speedTestService = speedTestService;
@@ -1127,8 +1149,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 初始化 Dev 通道状态
         try
         {
-            var updateService = App.GetService<UpdateService>();
-            IsDevChannel = updateService.IsDevChannel();
+            IsDevChannel = _updateService.IsDevChannel();
         }
         catch { }
 
@@ -1164,28 +1185,15 @@ public partial class SettingsViewModel : ObservableRecipient
                     
                     // WinUI 3 限制：运行时无法刷新 x:Uid 资源绑定，必须重启应用
                     var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
-                    
-                    var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                    var shouldRestart = await _dialogService.ShowConfirmationDialogAsync(
+                        resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                        resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                        resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                        resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
+
+                    if (shouldRestart)
                     {
-                        Title = resourceLoader.GetString("Settings_LanguageChanged_Title"),
-                        Content = resourceLoader.GetString("Settings_LanguageChanged_Content"),
-                        PrimaryButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
-                        CloseButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartLater"),
-                        DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary
-                    };
-                    
-                    dialog.XamlRoot = App.MainWindow.Content.XamlRoot;
-                    var result = await dialog.ShowAsync();
-                    
-                    if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
-                    {
-                        // 重启应用
-                        var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-                        if (!string.IsNullOrEmpty(exePath))
-                        {
-                            System.Diagnostics.Process.Start(exePath);
-                            App.MainWindow.Close();
-                        }
+                        await _applicationLifecycleService.RestartApplicationAsync();
                     }
                 }
             });
@@ -1271,7 +1279,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadDownloadDependenciesAsync()
     {
         // 读取下载前置Mod设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(DownloadDependenciesKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(DownloadDependenciesKey);
         DownloadDependencies = value ?? true;
     }
     
@@ -1280,7 +1288,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnDownloadDependenciesChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1289,7 +1297,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadHideSnapshotVersionsAsync()
     {
         // 读取隐藏快照版本设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(HideSnapshotVersionsKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(HideSnapshotVersionsKey);
         HideSnapshotVersions = value ?? true;
     }
     
@@ -1298,7 +1306,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnHideSnapshotVersionsChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(HideSnapshotVersionsKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(HideSnapshotVersionsKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1307,11 +1315,11 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadDownloadThreadCountAsync()
     {
         // 读取下载线程数设置，如果不存在则使用默认值32
-        var value = await _localSettingsService.ReadSettingAsync<int?>(DownloadThreadCountKey);
+        var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
 
          // 读取下载分片数设置，如果不存在则使用默认值4
-        var shardValue = await _localSettingsService.ReadSettingAsync<int?>(DownloadShardCountKey);
+        var shardValue = await _settingsRepository.ReadAsync<int?>(DownloadShardCountKey);
         DownloadShardCount = shardValue ?? 4;
     }
     
@@ -1323,7 +1331,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 限制范围在 1-128 之间
         if (value < 1) value = 1;
         if (value > 128) value = 128;
-        _localSettingsService.SaveSettingAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1334,7 +1342,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 限制范围在 1-32 之间
         if (value < 1) value = 1;
         if (value > 32) value = 32;
-        _localSettingsService.SaveSettingAsync(DownloadShardCountKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(DownloadShardCountKey, value).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1342,23 +1350,23 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnIsAIAnalysisEnabledChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableAIAnalysisKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(EnableAIAnalysisKey, value).ConfigureAwait(false);
     }
 
     partial void OnAiApiEndpointChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(AIApiEndpointKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(AIApiEndpointKey, value).ConfigureAwait(false);
     }
 
     partial void OnAiApiKeyChanged(string value)
     {
         var encrypted = TokenEncryption.Encrypt(value);
-        _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(AIApiKeyKey, encrypted).ConfigureAwait(false);
     }
 
     partial void OnAiModelChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(AIModelKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(AIModelKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1537,7 +1545,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadEnableRealTimeLogsAsync()
     {
         // 读取实时日志设置，如果不存在则使用默认值false
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableRealTimeLogsKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(EnableRealTimeLogsKey);
         EnableRealTimeLogs = value ?? false;
         System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 加载实时日志设置，值为: {EnableRealTimeLogs}");
     }
@@ -1548,7 +1556,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnEnableRealTimeLogsChanged(bool value)
     {
         System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 保存实时日志设置，值为: {value}");
-        _localSettingsService.SaveSettingAsync(EnableRealTimeLogsKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(EnableRealTimeLogsKey, value).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1557,7 +1565,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadEnableTelemetryAsync()
     {
         // 读取遥测设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(EnableTelemetryKey);
         EnableTelemetry = value ?? true;
     }
 
@@ -1566,7 +1574,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnEnableTelemetryChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableTelemetryKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(EnableTelemetryKey, value).ConfigureAwait(false);
     }
     
     #region 全局启动设置加载/保存
@@ -1576,42 +1584,42 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadGlobalLaunchSettingsAsync()
     {
-        GlobalAutoMemoryAllocation = await _localSettingsService.ReadSettingAsync<bool?>(GlobalAutoMemoryKey) ?? true;
-        GlobalInitialHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
-        GlobalMaximumHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
-        GlobalCustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
-        GlobalWindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
-        GlobalWindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
+        GlobalAutoMemoryAllocation = await _settingsRepository.ReadAsync<bool?>(GlobalAutoMemoryKey) ?? true;
+        GlobalInitialHeapMemory = await _settingsRepository.ReadAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
+        GlobalMaximumHeapMemory = await _settingsRepository.ReadAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
+        GlobalCustomJvmArguments = await _settingsRepository.ReadAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
+        GlobalWindowWidth = await _settingsRepository.ReadAsync<int?>(GlobalWindowWidthKey) ?? 1280;
+        GlobalWindowHeight = await _settingsRepository.ReadAsync<int?>(GlobalWindowHeightKey) ?? 720;
     }
     
     partial void OnGlobalAutoMemoryAllocationChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalAutoMemoryKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalAutoMemoryKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalInitialHeapMemoryChanged(double value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalInitialHeapKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalInitialHeapKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalMaximumHeapMemoryChanged(double value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalMaxHeapKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalMaxHeapKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalCustomJvmArgumentsChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalCustomJvmArgumentsKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalCustomJvmArgumentsKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalWindowWidthChanged(int value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalWindowWidthKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalWindowWidthKey, value).ConfigureAwait(false);
     }
     
     partial void OnGlobalWindowHeightChanged(int value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalWindowHeightKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GlobalWindowHeightKey, value).ConfigureAwait(false);
     }
     
     #endregion
@@ -1764,23 +1772,13 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var picker = new FileOpenPicker();
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".bmp");
-            picker.FileTypeFilter.Add(".gif");
-            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            
-            // 获取当前窗口句柄
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-            
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
+            var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+                new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" },
+                PickerLocationId.PicturesLibrary);
+
+            if (!string.IsNullOrWhiteSpace(selectedPath))
             {
-                BackgroundImagePath = file.Path;
+                BackgroundImagePath = selectedPath;
             }
         }
         catch (Exception ex)
@@ -1806,7 +1804,7 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             // 保存字体设置
-            _localSettingsService.SaveSettingAsync(FontFamilyKey, value).ConfigureAwait(false);
+            _settingsRepository.SaveAsync(FontFamilyKey, value).ConfigureAwait(false);
             
             // 应用字体到应用程序
             ApplyFontToApplication(value);
@@ -1959,7 +1957,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadEnableVersionIsolationAsync()
     {
         // 读取版本隔离设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(EnableVersionIsolationKey);
         EnableVersionIsolation = value ?? true;
     }
     
@@ -1968,7 +1966,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnEnableVersionIsolationChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableVersionIsolationKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(EnableVersionIsolationKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -1976,7 +1974,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadJavaSelectionModeAsync()
     {
-        JavaSelectionMode = await _localSettingsService.ReadSettingAsync<JavaSelectionModeType>(JavaSelectionModeKey);
+        JavaSelectionMode = await _settingsRepository.ReadAsync<JavaSelectionModeType>(JavaSelectionModeKey);
     }
     
     /// <summary>
@@ -1984,7 +1982,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnJavaSelectionModeChanged(JavaSelectionModeType value)
     {
-        _localSettingsService.SaveSettingAsync(JavaSelectionModeKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(JavaSelectionModeKey, value).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -2216,7 +2214,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
                 // 修复方案：先读取为 JavaVersion，再映射到 JavaVersionInfo。
 
-                var savedCoreVersions = await _localSettingsService.ReadSettingAsync<List<XianYuLauncher.Core.Models.JavaVersion>>(JavaVersionsKey);
+                var savedCoreVersions = await _settingsRepository.ReadAsync<List<XianYuLauncher.Core.Models.JavaVersion>>(JavaVersionsKey);
 
                 if (savedCoreVersions != null && savedCoreVersions.Count > 0)
                 {
@@ -2299,7 +2297,7 @@ public partial class SettingsViewModel : ObservableRecipient
                  IsJDK = info.IsJDK
             }).ToList();
             
-            await _localSettingsService.SaveSettingAsync(JavaVersionsKey, coreVersions);
+            await _settingsRepository.SaveAsync(JavaVersionsKey, coreVersions);
             Console.WriteLine("Java版本列表保存成功");
         }
         catch (Exception ex)
@@ -2347,28 +2345,22 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value != null)
         {
             JavaPath = value.Path;
-            _localSettingsService.SaveSettingAsync(SelectedJavaVersionKey, value.Path).ConfigureAwait(false);
-            _localSettingsService.SaveSettingAsync(JavaPathKey, value.Path).ConfigureAwait(false);
+            _settingsRepository.SaveAsync(SelectedJavaVersionKey, value.Path).ConfigureAwait(false);
+            _settingsRepository.SaveAsync(JavaPathKey, value.Path).ConfigureAwait(false);
         }
     }
 
     [RelayCommand]
     private async Task BrowseJavaPathAsync()
     {
-        var openPicker = new FileOpenPicker();
-        openPicker.FileTypeFilter.Add(".exe");
-        openPicker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
+        var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+            new[] { ".exe" },
+            PickerLocationId.ComputerFolder);
 
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-
-        var file = await openPicker.PickSingleFileAsync();
-        if (file != null)
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
-            JavaPath = file.Path;
-            await _localSettingsService.SaveSettingAsync(JavaPathKey, JavaPath);
+            JavaPath = selectedPath;
+            await _settingsRepository.SaveAsync(JavaPathKey, JavaPath);
 
         }
     }
@@ -2379,27 +2371,21 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddJavaVersionAsync()
     {
-        var openPicker = new FileOpenPicker();
-        openPicker.FileTypeFilter.Add(".exe");
-        openPicker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
-        openPicker.ViewMode = PickerViewMode.List;
-        openPicker.SettingsIdentifier = "JavaExePicker";
-        openPicker.CommitButtonText = "添加到列表";
+        var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+            new[] { ".exe" },
+            PickerLocationId.ComputerFolder,
+            PickerViewMode.List,
+            "JavaExePicker",
+            "添加到列表");
 
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-
-        var file = await openPicker.PickSingleFileAsync();
-        if (file != null)
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             IsLoadingJavaVersions = true;
             try
             {
-                Console.WriteLine($"正在解析Java可执行文件: {file.Path}");
+                Console.WriteLine($"正在解析Java可执行文件: {selectedPath}");
                 // 使用JavaRuntimeService解析Java版本信息
-                var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(file.Path);
+                var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(selectedPath);
                 if (javaVersion != null)
                 {
                     Console.WriteLine($"解析成功: Java {javaVersion.MajorVersion} ({javaVersion.FullVersion})");
@@ -2446,24 +2432,24 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         JavaPath = string.Empty;
         SelectedJavaVersion = null;
-        await _localSettingsService.SaveSettingAsync(JavaPathKey, string.Empty);
-        await _localSettingsService.SaveSettingAsync(SelectedJavaVersionKey, string.Empty);
+        await _settingsRepository.SaveAsync(JavaPathKey, string.Empty);
+        await _settingsRepository.SaveAsync(SelectedJavaVersionKey, string.Empty);
 
     }
 
     private async Task LoadAISettingsAsync()
     {
-        IsAIAnalysisEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableAIAnalysisKey) ?? false;
+        IsAIAnalysisEnabled = await _settingsRepository.ReadAsync<bool?>(EnableAIAnalysisKey) ?? false;
         // 这里只是个默认值嗷，实际上会优先读取用户保存的设置。
         // 如果用户没设置，才用这个。国内用户会自己填兼容的国内大模型API地址的。
-        AiApiEndpoint = await _localSettingsService.ReadSettingAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
-        var storedKey = await _localSettingsService.ReadSettingAsync<string>(AIApiKeyKey) ?? string.Empty;
+        AiApiEndpoint = await _settingsRepository.ReadAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
+        var storedKey = await _settingsRepository.ReadAsync<string>(AIApiKeyKey) ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(storedKey))
         {
             if (!TokenEncryption.IsEncrypted(storedKey))
             {
                 var encrypted = TokenEncryption.Encrypt(storedKey);
-                await _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted);
+                await _settingsRepository.SaveAsync(AIApiKeyKey, encrypted);
                 AiApiKey = storedKey;
             }
             else
@@ -2475,12 +2461,12 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             AiApiKey = string.Empty;
         }
-        AiModel = await _localSettingsService.ReadSettingAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
+        AiModel = await _settingsRepository.ReadAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
     }
 
     private async Task LoadJavaPathAsync()
     {
-        var path = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+        var path = await _settingsRepository.ReadAsync<string>(JavaPathKey);
         if (!string.IsNullOrEmpty(path))
         {
             JavaPath = path;
@@ -2497,7 +2483,7 @@ public partial class SettingsViewModel : ObservableRecipient
             _previousMinecraftPath = value;
             
             // 保存设置并更新文件服务
-            _localSettingsService.SaveSettingAsync(MinecraftPathKey, value).ConfigureAwait(false);
+            _settingsRepository.SaveAsync(MinecraftPathKey, value).ConfigureAwait(false);
             _fileService.SetMinecraftDataPath(value);
         }
     }
@@ -2505,18 +2491,10 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task BrowseMinecraftPathAsync()
     {
-        var folderPicker = new Windows.Storage.Pickers.FolderPicker();
-        folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
-
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-
-        var folder = await folderPicker.PickSingleFolderAsync();
-        if (folder != null)
+        var selectedPath = await _filePickerService.PickSingleFolderPathAsync(PickerLocationId.ComputerFolder);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
-            MinecraftPath = folder.Path;
+            MinecraftPath = selectedPath;
         }
     }
 
@@ -2555,7 +2533,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadAutoUpdateCheckModeAsync()
     {
-        var savedValue = await _localSettingsService.ReadSettingAsync<string>(AutoUpdateCheckModeKey);
+        var savedValue = await _settingsRepository.ReadAsync<string>(AutoUpdateCheckModeKey);
         if (!string.IsNullOrEmpty(savedValue) && Enum.TryParse<AutoUpdateCheckModeType>(savedValue, out var mode))
         {
             AutoUpdateCheckMode = mode;
@@ -2568,7 +2546,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnAutoUpdateCheckModeChanged(AutoUpdateCheckModeType value)
     {
-        _localSettingsService.SaveSettingAsync(AutoUpdateCheckModeKey, value.ToString()).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(AutoUpdateCheckModeKey, value.ToString()).ConfigureAwait(false);
         System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 自动检查更新模式已保存: {value}");
     }
     
@@ -2615,7 +2593,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
             
-            var updateService = App.GetService<UpdateService>();
+            var updateService = _updateService;
             
             // 设置当前应用版本（从 MSIX 包获取）
             var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
@@ -2638,8 +2616,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现新版本: {updateInfo.version}");
                 
                 // 创建更新弹窗ViewModel
-                var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
-                var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
+                var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, updateService, updateInfo);
                 
                 // 创建并显示更新弹窗
                 var updateDialog = new ContentDialog
@@ -2738,15 +2715,14 @@ public partial class SettingsViewModel : ObservableRecipient
 
         try
         {
-            var updateService = App.GetService<UpdateService>();
+            var updateService = _updateService;
             var updateInfo = await updateService.CheckForDevUpdateAsync();
 
             if (updateInfo != null)
             {
                  System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现 Dev 版本: {updateInfo.version}");
 
-                 var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
-                 var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
+                 var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, updateService, updateInfo);
                  
                  var devDialog = new ContentDialog
                  {
@@ -2862,7 +2838,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var pathsJson = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathsKey);
+            var pathsJson = await _settingsRepository.ReadAsync<string>(MinecraftPathsKey);
             if (!string.IsNullOrEmpty(pathsJson))
             {
                 var paths = System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(pathsJson);
@@ -2885,7 +2861,7 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             
             // 如果没有保存的列表，使用当前路径创建默认项
-            var currentPath = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathKey);
+            var currentPath = await _settingsRepository.ReadAsync<string>(MinecraftPathKey);
             if (string.IsNullOrEmpty(currentPath))
             {
                 currentPath = _fileService.GetMinecraftDataPath();
@@ -2916,7 +2892,7 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             var pathsJson = System.Text.Json.JsonSerializer.Serialize(MinecraftPaths.ToList());
-            await _localSettingsService.SaveSettingAsync(MinecraftPathsKey, pathsJson);
+            await _settingsRepository.SaveAsync(MinecraftPathsKey, pathsJson);
         }
         catch (Exception ex)
         {
@@ -2930,17 +2906,11 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddMinecraftPathAsync()
     {
-        var folderPicker = new FolderPicker();
-        folderPicker.FileTypeFilter.Add("*");
-        
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-        
-        var folder = await folderPicker.PickSingleFolderAsync();
-        if (folder != null)
+        var selectedPath = await _filePickerService.PickSingleFolderPathAsync(PickerLocationId.ComputerFolder);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             // 检查是否已存在
-            if (MinecraftPaths.Any(p => p.Path.Equals(folder.Path, StringComparison.OrdinalIgnoreCase)))
+            if (MinecraftPaths.Any(p => p.Path.Equals(selectedPath, StringComparison.OrdinalIgnoreCase)))
             {
                 var dialog = new ContentDialog
                 {
@@ -2962,7 +2932,7 @@ public partial class SettingsViewModel : ObservableRecipient
             MinecraftPaths.Add(new MinecraftPathItem
             {
                 Name = name,
-                Path = folder.Path,
+                Path = selectedPath,
                 IsActive = false
             });
             
@@ -3055,7 +3025,7 @@ public partial class SettingsViewModel : ObservableRecipient
             Log.Information($"[Settings] Preparing to open log directory... IsMSIX={XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
             Log.Information($"[Settings] Target log path: {logPath}");
 
-            await Windows.System.Launcher.LaunchFolderAsync(await StorageFolder.GetFolderFromPathAsync(logPath));
+            await _applicationLifecycleService.OpenFolderAsync(logPath);
         }
         catch (Exception ex)
         {
@@ -3551,7 +3521,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadSelectedSourcesAsync()
     {
         // 读取保存的游戏资源源
-        var savedGameSource = await _localSettingsService.ReadSettingAsync<string>(GameDownloadSourceKey);
+        var savedGameSource = await _settingsRepository.ReadAsync<string>(GameDownloadSourceKey);
         if (string.IsNullOrEmpty(savedGameSource))
         {
             // 首次启动，根据地区设置默认值
@@ -3561,7 +3531,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的游戏资源源: {savedGameSource}");
 
         // 读取保存的社区资源源
-        var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>(ModrinthResourceSourceKey);
+        var savedModrinthSource = await _settingsRepository.ReadAsync<string>(ModrinthResourceSourceKey);
         if (string.IsNullOrEmpty(savedModrinthSource))
         {
             // 首次启动，根据地区设置默认值
@@ -3571,7 +3541,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 Modrinth 资源源: {savedModrinthSource}");
 
         // 读取保存的 CurseForge 资源源
-        var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>(CurseForgeResourceSourceKey);
+        var savedCurseForgeSource = await _settingsRepository.ReadAsync<string>(CurseForgeResourceSourceKey);
         if (string.IsNullOrEmpty(savedCurseForgeSource))
         {
             // 首次启动，根据地区设置默认值
@@ -3581,7 +3551,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 CurseForge 资源源: {savedCurseForgeSource}");
 
         // 读取保存的核心游戏资源源
-        var savedCoreGameSource = await _localSettingsService.ReadSettingAsync<string>(CoreGameDownloadSourceKey);
+        var savedCoreGameSource = await _settingsRepository.ReadAsync<string>(CoreGameDownloadSourceKey);
         if (string.IsNullOrEmpty(savedCoreGameSource))
         {
             savedCoreGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3589,7 +3559,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的核心游戏资源源: {savedCoreGameSource}");
 
         // 读取保存的 Forge 源
-        var savedForgeSource = await _localSettingsService.ReadSettingAsync<string>(ForgeSourceKey);
+        var savedForgeSource = await _settingsRepository.ReadAsync<string>(ForgeSourceKey);
         if (string.IsNullOrEmpty(savedForgeSource))
         {
             savedForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3597,7 +3567,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 Forge 源: {savedForgeSource}");
 
         // 读取保存的 Fabric 源
-        var savedFabricSource = await _localSettingsService.ReadSettingAsync<string>(FabricSourceKey);
+        var savedFabricSource = await _settingsRepository.ReadAsync<string>(FabricSourceKey);
         if (string.IsNullOrEmpty(savedFabricSource))
         {
             savedFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3605,7 +3575,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 Fabric 源: {savedFabricSource}");
 
         // 读取保存的 NeoForge 源
-        var savedNeoForgeSource = await _localSettingsService.ReadSettingAsync<string>(NeoForgeSourceKey);
+        var savedNeoForgeSource = await _settingsRepository.ReadAsync<string>(NeoForgeSourceKey);
         if (string.IsNullOrEmpty(savedNeoForgeSource))
         {
             savedNeoForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3613,7 +3583,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 NeoForge 源: {savedNeoForgeSource}");
 
         // 读取保存的 Quilt 源
-        var savedQuiltSource = await _localSettingsService.ReadSettingAsync<string>(QuiltSourceKey);
+        var savedQuiltSource = await _settingsRepository.ReadAsync<string>(QuiltSourceKey);
         if (string.IsNullOrEmpty(savedQuiltSource))
         {
             savedQuiltSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3621,7 +3591,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 Quilt 源: {savedQuiltSource}");
 
         // 读取保存的 OptiFine 源
-        var savedOptifineSource = await _localSettingsService.ReadSettingAsync<string>(OptifineSourceKey);
+        var savedOptifineSource = await _settingsRepository.ReadAsync<string>(OptifineSourceKey);
         if (string.IsNullOrEmpty(savedOptifineSource))
         {
             savedOptifineSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3629,7 +3599,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
 
         // 读取保存的版本清单源
-        var savedVersionManifestSource = await _localSettingsService.ReadSettingAsync<string>(VersionManifestSourceKey);
+        var savedVersionManifestSource = await _settingsRepository.ReadAsync<string>(VersionManifestSourceKey);
         if (string.IsNullOrEmpty(savedVersionManifestSource))
         {
             savedVersionManifestSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3637,7 +3607,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的版本清单源: {savedVersionManifestSource}");
 
         // 读取保存的文件下载源
-        var savedFileDownloadSource = await _localSettingsService.ReadSettingAsync<string>(FileDownloadSourceKey);
+        var savedFileDownloadSource = await _settingsRepository.ReadAsync<string>(FileDownloadSourceKey);
         if (string.IsNullOrEmpty(savedFileDownloadSource))
         {
             savedFileDownloadSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3645,7 +3615,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的文件下载源: {savedFileDownloadSource}");
 
         // 读取保存的 LiteLoader 源
-        var savedLiteLoaderSource = await _localSettingsService.ReadSettingAsync<string>(LiteLoaderSourceKey);
+        var savedLiteLoaderSource = await _settingsRepository.ReadAsync<string>(LiteLoaderSourceKey);
         if (string.IsNullOrEmpty(savedLiteLoaderSource))
         {
             savedLiteLoaderSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3653,7 +3623,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 LiteLoader 源: {savedLiteLoaderSource}");
 
         // 读取保存的 LegacyFabric 源
-        var savedLegacyFabricSource = await _localSettingsService.ReadSettingAsync<string>(LegacyFabricSourceKey);
+        var savedLegacyFabricSource = await _settingsRepository.ReadAsync<string>(LegacyFabricSourceKey);
         if (string.IsNullOrEmpty(savedLegacyFabricSource))
         {
             savedLegacyFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3661,7 +3631,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 LegacyFabric 源: {savedLegacyFabricSource}");
 
         // 读取保存的 Cleanroom 源
-        var savedCleanroomSource = await _localSettingsService.ReadSettingAsync<string>(CleanroomSourceKey);
+        var savedCleanroomSource = await _settingsRepository.ReadAsync<string>(CleanroomSourceKey);
         if (string.IsNullOrEmpty(savedCleanroomSource))
         {
             savedCleanroomSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
@@ -3670,11 +3640,11 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
 
         // 读取自动选择最优下载源设置
-        var savedAutoSelectSetting = await _localSettingsService.ReadSettingAsync<bool?>(AutoSelectFastestSourceKey);
+        var savedAutoSelectSetting = await _settingsRepository.ReadAsync<bool?>(AutoSelectFastestSourceKey);
         var savedAutoSelect = savedAutoSelectSetting ?? true;
         if (!savedAutoSelectSetting.HasValue)
         {
-            await _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, savedAutoSelect);
+            await _settingsRepository.SaveAsync(AutoSelectFastestSourceKey, savedAutoSelect);
             Log.Information("[Settings] 首次运行未检测到自动选择最优下载源配置，已默认开启并写回设置");
         }
         Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
@@ -3843,7 +3813,7 @@ public partial class SettingsViewModel : ObservableRecipient
 
         Log.Information($"[Settings] 游戏资源源选择变化: {value.DisplayName} ({value.Key})");
 
-        _localSettingsService.SaveSettingAsync(GameDownloadSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(GameDownloadSourceKey, value.Key).ConfigureAwait(false);
 
         try
         {
@@ -3871,7 +3841,7 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value == null) return;
         
         // 保存选择
-        _localSettingsService.SaveSettingAsync(ModrinthResourceSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(ModrinthResourceSourceKey, value.Key).ConfigureAwait(false);
         
         // 同步到 DownloadSourceFactory
         _downloadSourceFactory.SetModrinthSource(value.Key);
@@ -3917,7 +3887,7 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value == null) return;
 
         // 保存选择
-        _localSettingsService.SaveSettingAsync(CurseForgeResourceSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(CurseForgeResourceSourceKey, value.Key).ConfigureAwait(false);
 
         // 同步到 DownloadSourceFactory
         _downloadSourceFactory.SetCurseForgeSource(value.Key);
@@ -3937,7 +3907,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(CoreGameDownloadSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(CoreGameDownloadSourceKey, value.Key).ConfigureAwait(false);
         Log.Information($"[Settings] 核心游戏资源源已切换为: {value.DisplayName} ({value.Key})");
 
         if (!_isApplyingGameSourceFromMaster)
@@ -3953,7 +3923,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(ForgeSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(ForgeSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Forge 源失败"); }
         Log.Information($"[Settings] Forge 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -3970,7 +3940,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(FabricSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(FabricSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Fabric 源失败"); }
         Log.Information($"[Settings] Fabric 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -3987,7 +3957,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(NeoForgeSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(NeoForgeSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetNeoForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 NeoForge 源失败"); }
         Log.Information($"[Settings] NeoForge 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4004,7 +3974,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(QuiltSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(QuiltSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetQuiltSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Quilt 源失败"); }
         Log.Information($"[Settings] Quilt 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4021,7 +3991,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (value == null) return;
 
-        _localSettingsService.SaveSettingAsync(OptifineSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(OptifineSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetOptifineSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 OptiFine 源失败"); }
         Log.Information($"[Settings] OptiFine 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4037,7 +4007,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnSelectedVersionManifestSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
-        _localSettingsService.SaveSettingAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetVersionManifestSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置版本清单源失败"); }
         Log.Information($"[Settings] 版本清单源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4053,7 +4023,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnSelectedFileDownloadSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
-        _localSettingsService.SaveSettingAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetFileDownloadSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置文件下载源失败"); }
         Log.Information($"[Settings] 文件下载源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4069,7 +4039,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnSelectedLiteLoaderSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
-        _localSettingsService.SaveSettingAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetLiteLoaderSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LiteLoader 源失败"); }
         Log.Information($"[Settings] LiteLoader 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4085,7 +4055,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnSelectedLegacyFabricSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
-        _localSettingsService.SaveSettingAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetLegacyFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LegacyFabric 源失败"); }
         Log.Information($"[Settings] LegacyFabric 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4101,7 +4071,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnSelectedCleanroomSourceChanged(DownloadSourceItem? value)
     {
         if (value == null) return;
-        _localSettingsService.SaveSettingAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
         try { _downloadSourceFactory.SetCleanroomSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Cleanroom 源失败"); }
         Log.Information($"[Settings] Cleanroom 源已切换为: {value.DisplayName} ({value.Key})");
 
@@ -4119,7 +4089,7 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information($"[Settings] 自动选择最优下载源设置变化: {value}");
 
         // 保存设置
-        _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
+        _settingsRepository.SaveAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
 
         // 根据开关状态更新显示
         if (value)
@@ -5189,7 +5159,7 @@ public partial class SettingsViewModel : ObservableRecipient
             
             if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
             {
-                Process.Start("explorer.exe", folderPath);
+                _applicationLifecycleService.OpenFolderInExplorer(folderPath);
                 Log.Information($"[Settings] 打开配置文件夹: {folderPath}");
             }
         }
@@ -5217,7 +5187,7 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             
             // 打开文件夹
-            Process.Start("explorer.exe", configFolder);
+            _applicationLifecycleService.OpenFolderInExplorer(configFolder);
             Log.Information($"[Settings] 打开自定义源配置文件夹: {configFolder}");
         }
         catch (Exception ex)
@@ -5234,25 +5204,20 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var openPicker = new FileOpenPicker();
-            openPicker.FileTypeFilter.Add(".json");
-            openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-            
-            var file = await openPicker.PickSingleFileAsync();
-            if (file != null)
+            var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+                new[] { ".json" },
+                PickerLocationId.DocumentsLibrary);
+
+            if (!string.IsNullOrWhiteSpace(selectedPath))
             {
-                var importResult = await _customSourceManager.ImportSourceAsync(file.Path);
+                var importResult = await _customSourceManager.ImportSourceAsync(selectedPath);
                 
                 if (importResult.Success)
                 {
                     // 刷新列表
                     await LoadDownloadSourcesAsync();
                     await _dialogService.ShowMessageDialogAsync("导入成功", $"已成功导入自定义源: {importResult.Data?.Name}");
-                    Log.Information($"[Settings] 成功导入配置: {file.Path}");
+                    Log.Information($"[Settings] 成功导入配置: {selectedPath}");
                 }
                 else
                 {
@@ -5281,24 +5246,22 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
             
-            var savePicker = new FileSavePicker();
-            savePicker.FileTypeChoices.Add("JSON 文件", new List<string> { ".json" });
-            savePicker.SuggestedFileName = $"{source.Key}.json";
-            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-            
-            var file = await savePicker.PickSaveFileAsync();
-            if (file != null)
+            var savePath = await _filePickerService.PickSaveFilePathAsync(
+                $"{source.Key}.json",
+                new Dictionary<string, IReadOnlyList<string>>
+                {
+                    ["JSON 文件"] = new[] { ".json" }
+                },
+                PickerLocationId.DocumentsLibrary);
+
+            if (!string.IsNullOrWhiteSpace(savePath))
             {
-                var exportResult = await _customSourceManager.ExportSourceAsync(source.Key, file.Path);
+                var exportResult = await _customSourceManager.ExportSourceAsync(source.Key, savePath);
                 
                 if (exportResult.Success)
                 {
-                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {file.Path}");
-                    Log.Information($"[Settings] 成功导出配置: {file.Path}");
+                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {savePath}");
+                    Log.Information($"[Settings] 成功导出配置: {savePath}");
                 }
                 else
                 {
@@ -5315,4 +5278,5 @@ public partial class SettingsViewModel : ObservableRecipient
     
     #endregion
 }
+
 
