@@ -117,8 +117,10 @@ public partial class App : Application
             services.AddSingleton<IGameSettingsDomainService, GameSettingsDomainService>();
             services.AddSingleton<IPersonalizationSettingsDomainService, PersonalizationSettingsDomainService>();
             services.AddSingleton<INetworkSettingsDomainService, NetworkSettingsDomainService>();
+            services.AddSingleton<INetworkSettingsApplicationService, NetworkSettingsApplicationService>();
             services.AddSingleton<IAiSettingsDomainService, AiSettingsDomainService>();
             services.AddSingleton<IAboutSettingsDomainService, AboutSettingsDomainService>();
+            services.AddSingleton<IDownloadSourceSettingsService, DownloadSourceSettingsService>();
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();
