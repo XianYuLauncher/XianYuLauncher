@@ -1161,6 +1161,9 @@ public partial class SettingsViewModel : ObservableRecipient
         Log.Information("[Settings] 开始加载下载源设置");
         await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
         Log.Information("[Settings] 下载源设置加载完成");
+
+        // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
+        await LoadSpeedTestCacheAsync();
     }
 
     private void QueueSettingWrite(string key, Func<Task> writeAction, int debounceMilliseconds = 250)
