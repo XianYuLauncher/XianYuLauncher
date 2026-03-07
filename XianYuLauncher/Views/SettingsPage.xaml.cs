@@ -75,6 +75,7 @@ public sealed partial class SettingsPage : Page
     private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
+        ViewModel?.Dispose();
         System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
     }
 

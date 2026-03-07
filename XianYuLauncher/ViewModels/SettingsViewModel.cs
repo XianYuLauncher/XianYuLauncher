@@ -84,7 +84,7 @@ public partial class MinecraftPathItem : ObservableObject
     private bool _isActive;
 }
 
-public partial class SettingsViewModel : ObservableRecipient
+public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         private readonly IFileService _fileService;
         private readonly INavigationService _navigationService;
@@ -106,10 +106,12 @@ public partial class SettingsViewModel : ObservableRecipient
         private readonly IDownloadSourceSettingsService _downloadSourceSettingsService;
         private readonly ISpeedTestService? _speedTestService;
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _saveDebounceTokens = new();
+        private readonly SemaphoreSlim _downloadSourceSelectionSemaphore = new(1, 1);
         private CancellationTokenSource _speedTestCts = new();
         private CancellationTokenSource _javaScanCts = new();
         private CancellationTokenSource _downloadSourcesLoadCts = new();
         private bool _isApplyingDownloadSourceState;
+        private bool _disposed;
 
     [ObservableProperty]
     private bool _isAIAnalysisEnabled;
@@ -1168,6 +1170,8 @@ public partial class SettingsViewModel : ObservableRecipient
 
     private void QueueSettingWrite(string key, Func<Task> writeAction, int debounceMilliseconds = 250)
     {
+        if (_disposed) return;
+
         if (_saveDebounceTokens.TryRemove(key, out var previousCts))
         {
             previousCts.Cancel();
@@ -1187,9 +1191,9 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            await Task.Delay(debounceMilliseconds, cancellationToken);
+            await Task.Delay(debounceMilliseconds, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            await writeAction();
+            await Task.Run(writeAction, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -1213,6 +1217,32 @@ public partial class SettingsViewModel : ObservableRecipient
                 Log.Error(t.Exception.GetBaseException(), "[Settings] 异步任务失败: {Operation}", operationName);
             }
         }, TaskScheduler.Default);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        CancelAndDispose(ref _speedTestCts);
+        CancelAndDispose(ref _javaScanCts);
+        CancelAndDispose(ref _downloadSourcesLoadCts);
+
+        _downloadSourceSelectionSemaphore.Dispose();
+
+        var tokens = _saveDebounceTokens.Values.ToList();
+        _saveDebounceTokens.Clear();
+        foreach (var cts in tokens)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+    }
+
+    private static void CancelAndDispose(ref CancellationTokenSource cts)
+    {
+        try { cts.Cancel(); } catch (ObjectDisposedException) { }
+        try { cts.Dispose(); } catch (ObjectDisposedException) { }
     }
     
     /// <summary>
@@ -2724,8 +2754,16 @@ public partial class SettingsViewModel : ObservableRecipient
         Func<CancellationToken, Task<DownloadSourceSettingsState>> operation,
         CancellationToken cancellationToken = default)
     {
-        var state = await operation(cancellationToken);
-        ApplyDownloadSourceState(state);
+        await _downloadSourceSelectionSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await operation(cancellationToken);
+            ApplyDownloadSourceState(state);
+        }
+        finally
+        {
+            _downloadSourceSelectionSemaphore.Release();
+        }
     }
     
     /// <summary>
