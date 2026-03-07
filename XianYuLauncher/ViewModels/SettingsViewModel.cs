@@ -1131,6 +1131,9 @@ public partial class SettingsViewModel : ObservableRecipient
         // 初始化Java版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
 
+        // Phase4 之前字体加载是独立异步任务，不阻塞初始化主链路。
+        RunFireAndForget(LoadFontFamilyAsync(), "加载字体设置");
+
         RunFireAndForget(InitializeAsync(), "SettingsViewModel 初始化");
     }
 
@@ -1150,7 +1153,6 @@ public partial class SettingsViewModel : ObservableRecipient
         await LoadHideSnapshotVersionsAsync();
         await LoadDownloadThreadCountAsync();
         await LoadEnableRealTimeLogsAsync();
-        await LoadFontFamilyAsync();
         await LoadNavigationStyleAsync();
         RefreshCacheSizeInfo();
         await LoadAutoUpdateCheckModeAsync();
@@ -1732,8 +1734,8 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 保存字体设置
-            QueueSettingWrite("FontFamily", () => _personalizationSettingsDomainService.SaveFontFamilyAsync(value));
+            // Phase4 之前字体设置是立即写入，避免去抖延迟影响下次初始化显示。
+            RunFireAndForget(_personalizationSettingsDomainService.SaveFontFamilyAsync(value), "保存字体设置");
             
             // 应用字体到应用程序
             ApplyFontToApplication(value);
