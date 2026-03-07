@@ -1,20 +1,20 @@
-using System.Reflection;
 using System.Windows.Input;
 using Windows.Storage.Pickers;
 using Windows.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using Serilog;
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-using Microsoft.UI.Xaml.Markup;
-using Windows.ApplicationModel;
 using Microsoft.Win32;
 using System.IO;
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
+using System.Threading;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -23,9 +23,9 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
+using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Views;
 using XianYuLauncher.Models;
-using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -84,41 +84,34 @@ public partial class MinecraftPathItem : ObservableObject
     private bool _isActive;
 }
 
-public partial class SettingsViewModel : ObservableRecipient
+public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
-        private readonly IThemeSelectorService _themeSelectorService;
-        private readonly ILocalSettingsService _localSettingsService;
         private readonly IFileService _fileService;
         private readonly INavigationService _navigationService;
-        private readonly ILanguageSelectorService _languageSelectorService;
         private readonly ModInfoService _modInfoService;
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IDialogService _dialogService;
-        private readonly DownloadSourceFactory _downloadSourceFactory;
+        private readonly ISettingsRepository _settingsRepository;
+        private readonly IFilePickerService _filePickerService;
+        private readonly IApplicationLifecycleService _applicationLifecycleService;
+        private readonly IUiDispatcher _uiDispatcher;
+        private readonly IUpdateFlowService _updateFlowService;
+        private readonly UpdateService _updateService;
+        private readonly IGameSettingsDomainService _gameSettingsDomainService;
+        private readonly IPersonalizationSettingsDomainService _personalizationSettingsDomainService;
+        private readonly IAiSettingsDomainService _aiSettingsDomainService;
+        private readonly IAboutSettingsDomainService _aboutSettingsDomainService;
+        private readonly INetworkSettingsApplicationService _networkSettingsApplicationService;
+        private readonly IDownloadSourceSettingsService _downloadSourceSettingsService;
         private readonly ISpeedTestService? _speedTestService;
-        private const string JavaPathKey = "JavaPath";
-        private const string SelectedJavaVersionKey = "SelectedJavaVersion";
-        private const string JavaVersionsKey = "JavaVersions";
-        private const string EnableVersionIsolationKey = "EnableVersionIsolation";
-        private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
-        private const string JavaSelectionModeKey = "JavaSelectionMode";
-        private const string LanguageKey = "Language";
-    private const string MinecraftPathKey = "MinecraftPath";
-    
-    // 全局启动设置 Key
-    private const string GlobalAutoMemoryKey = "GlobalAutoMemoryAllocation";
-    private const string GlobalInitialHeapKey = "GlobalInitialHeapMemory";
-    private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
-    private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
-    private const string GlobalWindowWidthKey = "GlobalWindowWidth";
-    private const string GlobalWindowHeightKey = "GlobalWindowHeight";
-    
-    // AI Analysis Settings keys
-    private const string EnableAIAnalysisKey = "EnableAIAnalysis";
-    private const string AIApiEndpointKey = "AIApiEndpoint";
-    private const string AIApiKeyKey = "AIApiKey";
-    private const string AIModelKey = "AIModel";
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> _saveDebounceTokens = new();
+        private readonly SemaphoreSlim _downloadSourceSelectionSemaphore = new(1, 1);
+        private CancellationTokenSource _speedTestCts = new();
+        private CancellationTokenSource _javaScanCts = new();
+        private CancellationTokenSource _downloadSourcesLoadCts = new();
+        private bool _isApplyingDownloadSourceState;
+        private bool _disposed;
 
     [ObservableProperty]
     private bool _isAIAnalysisEnabled;
@@ -333,12 +326,6 @@ public partial class SettingsViewModel : ObservableRecipient
     [NotifyPropertyChangedFor(nameof(CanSelectDownloadSource))]
     private bool _autoSelectFastestSource = false;
 
-    private const string AggregateCustomSourceKey = "__custom__";
-    private bool _isApplyingGameSourceFromMaster;
-    private bool _isReconcilingGameMasterSelection;
-    private bool _isApplyingCommunitySourceFromMaster;
-    private bool _isReconcilingCommunityMasterSelection;
-
     /// <summary>
     /// 是否可以手动选择下载源（当自动选择关闭时为true）
     /// </summary>
@@ -512,11 +499,6 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private string _nextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
 
-    /// <summary>
-    /// 缓存过期时间（小时）
-    /// </summary>
-    private const int CacheExpirationHours = 12;
-
     [ObservableProperty]
     private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
     
@@ -569,10 +551,8 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private Windows.UI.Color _motionColor5 = Windows.UI.Color.FromArgb(255, 20, 20, 80);
 
-    private async void SaveMotionSettings()
+    private Task SaveMotionSettingsAsync()
     {
-        if (_materialService == null) return;
-        await _materialService.SaveMotionSpeedAsync(MotionSpeed);
         var colors = new[] 
         { 
              ColorToHex(MotionColor1),
@@ -581,7 +561,7 @@ public partial class SettingsViewModel : ObservableRecipient
              ColorToHex(MotionColor4),
              ColorToHex(MotionColor5)
         };
-        await _materialService.SaveMotionColorsAsync(colors);
+        return _personalizationSettingsDomainService.SaveMotionSettingsAsync(MotionSpeed, colors);
     }
 
     private string ColorToHex(Windows.UI.Color color)
@@ -607,19 +587,14 @@ public partial class SettingsViewModel : ObservableRecipient
         return Windows.UI.Color.FromArgb(0, 0, 0, 0); 
     }
 
-    partial void OnMotionSpeedChanged(double value) => SaveMotionSettings();
-    partial void OnMotionColor1Changed(Windows.UI.Color value) => SaveMotionSettings();
-    partial void OnMotionColor2Changed(Windows.UI.Color value) => SaveMotionSettings();
-    partial void OnMotionColor3Changed(Windows.UI.Color value) => SaveMotionSettings();
-    partial void OnMotionColor4Changed(Windows.UI.Color value) => SaveMotionSettings();
-    partial void OnMotionColor5Changed(Windows.UI.Color value) => SaveMotionSettings();
+    partial void OnMotionSpeedChanged(double value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionColor1Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionColor2Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionColor3Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionColor4Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionColor5Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
 
     /* Removed SaveMotionSetting(string key, object value) */
-    
-    /// <summary>
-    /// 导航栏风格设置键
-    /// </summary>
-    private const string NavigationStyleKey = "NavigationStyle";
     
     /// <summary>
     /// 导航栏风格：Left（侧边）或 Top（顶部）
@@ -639,7 +614,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         if (!_isInitializingNavigationStyle)
         {
-            _localSettingsService.SaveSettingAsync(NavigationStyleKey, value).ConfigureAwait(false);
+            QueueSettingWrite("NavigationStyle", () => _personalizationSettingsDomainService.SaveNavigationStyleAsync(value));
             NavigationStyleChanged?.Invoke(this, value);
         }
         else
@@ -661,14 +636,9 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadNavigationStyleAsync()
     {
-        var saved = await _localSettingsService.ReadSettingAsync<string>(NavigationStyleKey);
+        var saved = await _personalizationSettingsDomainService.LoadNavigationStyleAsync();
         NavigationStyle = saved ?? "Left";
     }
-    
-    /// <summary>
-    /// 字体设置键
-    /// </summary>
-    private const string FontFamilyKey = "FontFamily";
     
     /// <summary>
     /// 字体列表
@@ -691,7 +661,7 @@ public partial class SettingsViewModel : ObservableRecipient
         LoadFontFamilies();
         
         // 再加载已保存的字体设置
-        var fontFamily = await _localSettingsService.ReadSettingAsync<string>(FontFamilyKey);
+        var fontFamily = await _personalizationSettingsDomainService.LoadFontFamilyAsync();
         SelectedFontFamily = fontFamily ?? "默认";
     }
     
@@ -731,8 +701,6 @@ public partial class SettingsViewModel : ObservableRecipient
             Console.WriteLine($"加载系统字体失败: {ex.Message}");
         }
     }
-    
-    private readonly MaterialService _materialService;
     
     // 标志位：是否是初始化加载材质设置
     private bool _isInitializingMaterial = true;
@@ -794,8 +762,6 @@ public partial class SettingsViewModel : ObservableRecipient
     /// <summary>
     /// Minecraft路径列表存储键
     /// </summary>
-    private const string MinecraftPathsKey = "MinecraftPaths";
-    
     /// <summary>
     /// 所有检测到的Java版本列表
     /// </summary>
@@ -936,11 +902,6 @@ public partial class SettingsViewModel : ObservableRecipient
     
     #endregion
 
-    /// <summary>
-    /// 允许发送匿名遥测数据设置键
-    /// </summary>
-    private const string EnableTelemetryKey = "EnableTelemetry";
-    
     private readonly ModrinthCacheService _modrinthCacheService;
     private readonly CurseForgeCacheService _curseForgeCacheService;
     
@@ -955,21 +916,6 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     [ObservableProperty]
     private bool _isClearingCache = false;
-    
-    /// <summary>
-    /// 自动检查更新模式枚举
-    /// </summary>
-    public enum AutoUpdateCheckModeType
-    {
-        /// <summary>
-        /// 每次启动检查
-        /// </summary>
-        Always,
-        /// <summary>
-        /// 除重要更新外均不检查
-        /// </summary>
-        ImportantOnly
-    }
     
     /// <summary>
     /// 自动检查更新模式设置键
@@ -1016,38 +962,22 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadAfdianSponsorsAsync()
     {
-        if (_afdianService == null)
-        {
-            Log.Debug("[SettingsViewModel] 爱发电服务未注册，跳过加载赞助者");
-            return;
-        }
-        
         try
         {
             IsLoadingSponsors = true;
-            
-            // 使用带缓存的方法获取赞助者列表（24小时自动刷新）
-            var sponsors = await _afdianService.GetSponsorsAsync();
-            
+
+            var sponsors = await _aboutSettingsDomainService.GetAfdianAcknowledgmentsAsync();
             if (sponsors.Count > 0)
             {
                 // 在 UI 线程上添加赞助者
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     foreach (var sponsor in sponsors)
                     {
-                        // 格式化赞助金额显示
-                        var supportInfo = $"累计赞助 ¥{sponsor.AllSumAmount}";
-                        
-                        // 使用网络头像URL，如果为空则使用默认头像
-                        var avatar = string.IsNullOrEmpty(sponsor.Avatar) 
-                            ? "ms-appx:///Assets/Icons/Avatars/Steve.png" 
-                            : sponsor.Avatar;
-                        
                         AcknowledgmentPersons.Add(new AcknowledgmentPerson(
                             sponsor.Name,
-                            supportInfo,
-                            avatar
+                            sponsor.SupportInfo,
+                            sponsor.Avatar
                         ));
                     }
                     
@@ -1071,8 +1001,6 @@ public partial class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    private readonly IAfdianService? _afdianService;
-    
     /// <summary>
     /// 是否正在加载赞助者列表
     /// </summary>
@@ -1088,52 +1016,63 @@ public partial class SettingsViewModel : ObservableRecipient
     private ObservableCollection<CustomSourceViewModel> _customSources = new ObservableCollection<CustomSourceViewModel>();
 
     public SettingsViewModel(
-        IThemeSelectorService themeSelectorService, 
-        ILocalSettingsService localSettingsService, 
         IFileService fileService, 
-        MaterialService materialService, 
         INavigationService navigationService, 
-        ILanguageSelectorService languageSelectorService, 
         ModrinthCacheService modrinthCacheService, 
         CurseForgeCacheService curseForgeCacheService, 
         ModInfoService modInfoService,
         IJavaRuntimeService javaRuntimeService,
         IJavaDownloadService javaDownloadService,
         IDialogService dialogService,
-        DownloadSourceFactory downloadSourceFactory,
+        ISettingsRepository settingsRepository,
+        IFilePickerService filePickerService,
+        IApplicationLifecycleService applicationLifecycleService,
+        IUiDispatcher uiDispatcher,
+        IUpdateFlowService updateFlowService,
+        UpdateService updateService,
+        IGameSettingsDomainService gameSettingsDomainService,
+        IPersonalizationSettingsDomainService personalizationSettingsDomainService,
+        IAiSettingsDomainService aiSettingsDomainService,
+        IAboutSettingsDomainService aboutSettingsDomainService,
+        INetworkSettingsApplicationService networkSettingsApplicationService,
+        IDownloadSourceSettingsService downloadSourceSettingsService,
         CustomSourceManager customSourceManager,
-        ISpeedTestService? speedTestService,
-        IAfdianService? afdianService = null)
+        ISpeedTestService? speedTestService)
     {
-        _themeSelectorService = themeSelectorService;
-        _localSettingsService = localSettingsService;
         _fileService = fileService;
-        _materialService = materialService;
         _navigationService = navigationService;
-        _languageSelectorService = languageSelectorService;
         _modrinthCacheService = modrinthCacheService;
         _curseForgeCacheService = curseForgeCacheService;
         _modInfoService = modInfoService;
         _javaRuntimeService = javaRuntimeService;
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
-        _downloadSourceFactory = downloadSourceFactory;
+        _settingsRepository = settingsRepository;
+        _filePickerService = filePickerService;
+        _applicationLifecycleService = applicationLifecycleService;
+        _uiDispatcher = uiDispatcher;
+        _updateFlowService = updateFlowService;
+        _updateService = updateService;
+        _gameSettingsDomainService = gameSettingsDomainService;
+        _personalizationSettingsDomainService = personalizationSettingsDomainService;
+        _aiSettingsDomainService = aiSettingsDomainService;
+        _aboutSettingsDomainService = aboutSettingsDomainService;
+        _networkSettingsApplicationService = networkSettingsApplicationService;
+        _downloadSourceSettingsService = downloadSourceSettingsService;
         _customSourceManager = customSourceManager;
         _speedTestService = speedTestService;
-        _afdianService = afdianService;
-        _elementTheme = _themeSelectorService.Theme;
-        _versionDescription = GetVersionDescription();
+        _elementTheme = _personalizationSettingsDomainService.GetCurrentTheme();
+        _versionDescription = _aboutSettingsDomainService.GetVersionDescription();
         
         // 初始化 Dev 通道状态
         try
         {
-            var updateService = App.GetService<UpdateService>();
-            IsDevChannel = updateService.IsDevChannel();
+            IsDevChannel = _updateService.IsDevChannel();
         }
         catch { }
 
         // 初始化语言设置
-        _language = _languageSelectorService.Language;
+        _language = _personalizationSettingsDomainService.GetCurrentLanguage();
         
         SwitchThemeCommand = new RelayCommand<ElementTheme>(
             async (param) =>
@@ -1141,7 +1080,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 if (ElementTheme != param)
                 {
                     ElementTheme = param;
-                    await _themeSelectorService.SetThemeAsync(param);
+                    await _personalizationSettingsDomainService.SetThemeAsync(param);
                 }
             });
         
@@ -1160,32 +1099,19 @@ public partial class SettingsViewModel : ObservableRecipient
                 if (Language != param)
                 {
                     Language = param;
-                    await _languageSelectorService.SetLanguageAsync(param);
+                    await _personalizationSettingsDomainService.SetLanguageAsync(param);
                     
                     // WinUI 3 限制：运行时无法刷新 x:Uid 资源绑定，必须重启应用
                     var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
-                    
-                    var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                    var shouldRestart = await _dialogService.ShowConfirmationDialogAsync(
+                        resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                        resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                        resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                        resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
+
+                    if (shouldRestart)
                     {
-                        Title = resourceLoader.GetString("Settings_LanguageChanged_Title"),
-                        Content = resourceLoader.GetString("Settings_LanguageChanged_Content"),
-                        PrimaryButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
-                        CloseButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartLater"),
-                        DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary
-                    };
-                    
-                    dialog.XamlRoot = App.MainWindow.Content.XamlRoot;
-                    var result = await dialog.ShowAsync();
-                    
-                    if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
-                    {
-                        // 重启应用
-                        var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-                        if (!string.IsNullOrEmpty(exePath))
-                        {
-                            System.Diagnostics.Process.Start(exePath);
-                            App.MainWindow.Close();
-                        }
+                        await _applicationLifecycleService.RestartApplicationAsync();
                     }
                 }
             });
@@ -1200,69 +1126,123 @@ public partial class SettingsViewModel : ObservableRecipient
             });
 
         // 初始化鸣谢人员列表
-        AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>
-        {
-            new AcknowledgmentPerson("XianYu", "Settings_XianYuSupportText".GetLocalized(), "ms-appx:///Assets/WindowIcon.ico"),
-            new AcknowledgmentPerson("bangbang93", "Settings_BmclapiSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg"),
-            new AcknowledgmentPerson("Settings_McModName".GetLocalized(), "Settings_McModSupportText".GetLocalized(), "ms-appx:///Assets/Icons/Contributors/mcmod.ico")
-        };
-        
-        // 加载爱发电赞助者列表
-        LoadAfdianSponsorsAsync().ConfigureAwait(false);
+        AcknowledgmentPersons = new ObservableCollection<AcknowledgmentPerson>(
+            _aboutSettingsDomainService.GetDefaultAcknowledgments()
+                .Select(item => new AcknowledgmentPerson(item.Name, item.SupportInfo, item.Avatar)));
         
         // 初始化Java版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
-        
-        // 加载保存的Java路径
-        LoadJavaPathAsync().ConfigureAwait(false);
-        // 加载Java版本列表
-        LoadJavaVersionsAsync().ConfigureAwait(false);
-        // 加载版本隔离设置
-        LoadEnableVersionIsolationAsync().ConfigureAwait(false);
-        // 加载Java选择方式
-        LoadJavaSelectionModeAsync().ConfigureAwait(false);
-        // 加载Minecraft路径
-        LoadMinecraftPathsAsync().ConfigureAwait(false);
-        // Load AI Settings
-        LoadAISettingsAsync().ConfigureAwait(false);
-        // 加载材质类型设置
-        LoadMaterialTypeAsync().ConfigureAwait(false);
-        // 加载背景图片路径
-        LoadBackgroundImagePathAsync().ConfigureAwait(false);
-        // 加载下载前置Mod设置
-        LoadDownloadDependenciesAsync().ConfigureAwait(false);
-        // 加载遥测设置
-        LoadEnableTelemetryAsync().ConfigureAwait(false);
-        // 加载隐藏快照版本设置
-        LoadHideSnapshotVersionsAsync().ConfigureAwait(false);
-        // 加载下载线程数设置
-        LoadDownloadThreadCountAsync().ConfigureAwait(false);
-        // 加载实时日志设置
-        LoadEnableRealTimeLogsAsync().ConfigureAwait(false);
-        // 加载字体设置
-        LoadFontFamilyAsync().ConfigureAwait(false);
-        // 加载导航栏风格设置
-        LoadNavigationStyleAsync().ConfigureAwait(false);
-        // 加载缓存大小信息
+
+        // Phase4 之前字体加载是独立异步任务，不阻塞初始化主链路。
+        RunFireAndForget(LoadFontFamilyAsync(), "加载字体设置");
+
+        RunFireAndForget(InitializeAsync(), "SettingsViewModel 初始化");
+    }
+
+    private async Task InitializeAsync()
+    {
+        await LoadAfdianSponsorsAsync();
+        await LoadJavaPathAsync();
+        await LoadJavaVersionsAsync();
+        await LoadEnableVersionIsolationAsync();
+        await LoadJavaSelectionModeAsync();
+        await LoadMinecraftPathsAsync();
+        await LoadAISettingsAsync();
+        await LoadMaterialTypeAsync();
+        await LoadBackgroundImagePathAsync();
+        await LoadDownloadDependenciesAsync();
+        await LoadEnableTelemetryAsync();
+        await LoadHideSnapshotVersionsAsync();
+        await LoadDownloadThreadCountAsync();
+        await LoadEnableRealTimeLogsAsync();
+        await LoadNavigationStyleAsync();
         RefreshCacheSizeInfo();
-        // 加载自动检查更新设置
-        LoadAutoUpdateCheckModeAsync().ConfigureAwait(false);
-        // 加载全局启动设置
-        LoadGlobalLaunchSettingsAsync().ConfigureAwait(false);
-        // 加载下载源设置（新版）
-        Task.Run(async () =>
+        await LoadAutoUpdateCheckModeAsync();
+        await LoadGlobalLaunchSettingsAsync();
+
+        Log.Information("[Settings] 开始加载下载源设置");
+        await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
+        Log.Information("[Settings] 下载源设置加载完成");
+
+        // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
+        await LoadSpeedTestCacheAsync();
+    }
+
+    private void QueueSettingWrite(string key, Func<Task> writeAction, int debounceMilliseconds = 250)
+    {
+        if (_disposed) return;
+
+        if (_saveDebounceTokens.TryRemove(key, out var previousCts))
         {
-            try
+            previousCts.Cancel();
+            previousCts.Dispose();
+        }
+
+        var cts = new CancellationTokenSource();
+        _saveDebounceTokens[key] = cts;
+        RunFireAndForget(ExecuteDebouncedWriteAsync(key, writeAction, debounceMilliseconds, cts.Token), $"保存设置:{key}");
+    }
+
+    private async Task ExecuteDebouncedWriteAsync(
+        string key,
+        Func<Task> writeAction,
+        int debounceMilliseconds,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(debounceMilliseconds, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(writeAction, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (_saveDebounceTokens.TryGetValue(key, out var current) && current.Token == cancellationToken)
             {
-                Log.Information("[Settings] 开始加载下载源设置");
-                await LoadDownloadSourcesAsync();
-                Log.Information("[Settings] 下载源设置加载完成");
+                _saveDebounceTokens.TryRemove(key, out _);
+                current.Dispose();
             }
-            catch (Exception ex)
+        }
+    }
+
+    private void RunFireAndForget(Task task, string operationName)
+    {
+        _ = task.ContinueWith(t =>
+        {
+            if (t.Exception != null)
             {
-                Log.Error(ex, "[Settings] 加载下载源设置失败");
+                Log.Error(t.Exception.GetBaseException(), "[Settings] 异步任务失败: {Operation}", operationName);
             }
-        });
+        }, TaskScheduler.Default);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        CancelAndDispose(ref _speedTestCts);
+        CancelAndDispose(ref _javaScanCts);
+        CancelAndDispose(ref _downloadSourcesLoadCts);
+
+        _downloadSourceSelectionSemaphore.Dispose();
+
+        var tokens = _saveDebounceTokens.Values.ToList();
+        _saveDebounceTokens.Clear();
+        foreach (var cts in tokens)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+    }
+
+    private static void CancelAndDispose(ref CancellationTokenSource cts)
+    {
+        try { cts.Cancel(); } catch (ObjectDisposedException) { }
+        try { cts.Dispose(); } catch (ObjectDisposedException) { }
     }
     
     /// <summary>
@@ -1271,7 +1251,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadDownloadDependenciesAsync()
     {
         // 读取下载前置Mod设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(DownloadDependenciesKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(DownloadDependenciesKey);
         DownloadDependencies = value ?? true;
     }
     
@@ -1280,7 +1260,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnDownloadDependenciesChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(DownloadDependenciesKey, value).ConfigureAwait(false);
+        QueueSettingWrite(DownloadDependenciesKey, () => _settingsRepository.SaveAsync(DownloadDependenciesKey, value));
     }
     
     /// <summary>
@@ -1289,7 +1269,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadHideSnapshotVersionsAsync()
     {
         // 读取隐藏快照版本设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(HideSnapshotVersionsKey);
+        var value = await _settingsRepository.ReadAsync<bool?>(HideSnapshotVersionsKey);
         HideSnapshotVersions = value ?? true;
     }
     
@@ -1298,7 +1278,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnHideSnapshotVersionsChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(HideSnapshotVersionsKey, value).ConfigureAwait(false);
+        QueueSettingWrite(HideSnapshotVersionsKey, () => _settingsRepository.SaveAsync(HideSnapshotVersionsKey, value));
     }
     
     /// <summary>
@@ -1307,11 +1287,11 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadDownloadThreadCountAsync()
     {
         // 读取下载线程数设置，如果不存在则使用默认值32
-        var value = await _localSettingsService.ReadSettingAsync<int?>(DownloadThreadCountKey);
+        var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
 
          // 读取下载分片数设置，如果不存在则使用默认值4
-        var shardValue = await _localSettingsService.ReadSettingAsync<int?>(DownloadShardCountKey);
+        var shardValue = await _settingsRepository.ReadAsync<int?>(DownloadShardCountKey);
         DownloadShardCount = shardValue ?? 4;
     }
     
@@ -1323,7 +1303,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 限制范围在 1-128 之间
         if (value < 1) value = 1;
         if (value > 128) value = 128;
-        _localSettingsService.SaveSettingAsync(DownloadThreadCountKey, value).ConfigureAwait(false);
+        QueueSettingWrite(DownloadThreadCountKey, () => _settingsRepository.SaveAsync(DownloadThreadCountKey, value));
     }
 
     /// <summary>
@@ -1334,7 +1314,7 @@ public partial class SettingsViewModel : ObservableRecipient
         // 限制范围在 1-32 之间
         if (value < 1) value = 1;
         if (value > 32) value = 32;
-        _localSettingsService.SaveSettingAsync(DownloadShardCountKey, value).ConfigureAwait(false);
+        QueueSettingWrite(DownloadShardCountKey, () => _settingsRepository.SaveAsync(DownloadShardCountKey, value));
     }
 
     /// <summary>
@@ -1342,23 +1322,22 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnIsAIAnalysisEnabledChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableAIAnalysisKey, value).ConfigureAwait(false);
+        QueueSettingWrite("AI_Enable", () => _aiSettingsDomainService.SaveEnabledAsync(value));
     }
 
     partial void OnAiApiEndpointChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(AIApiEndpointKey, value).ConfigureAwait(false);
+        QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
     }
 
     partial void OnAiApiKeyChanged(string value)
     {
-        var encrypted = TokenEncryption.Encrypt(value);
-        _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted).ConfigureAwait(false);
+        QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
     }
 
     partial void OnAiModelChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(AIModelKey, value).ConfigureAwait(false);
+        QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
     }
     
     /// <summary>
@@ -1536,9 +1515,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadEnableRealTimeLogsAsync()
     {
-        // 读取实时日志设置，如果不存在则使用默认值false
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableRealTimeLogsKey);
-        EnableRealTimeLogs = value ?? false;
+        EnableRealTimeLogs = await _gameSettingsDomainService.LoadEnableRealTimeLogsAsync();
         System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 加载实时日志设置，值为: {EnableRealTimeLogs}");
     }
     
@@ -1548,7 +1525,7 @@ public partial class SettingsViewModel : ObservableRecipient
     partial void OnEnableRealTimeLogsChanged(bool value)
     {
         System.Diagnostics.Debug.WriteLine($"SettingsViewModel: 保存实时日志设置，值为: {value}");
-        _localSettingsService.SaveSettingAsync(EnableRealTimeLogsKey, value).ConfigureAwait(false);
+        QueueSettingWrite("EnableRealTimeLogs", () => _gameSettingsDomainService.SaveEnableRealTimeLogsAsync(value));
     }
 
     /// <summary>
@@ -1557,8 +1534,7 @@ public partial class SettingsViewModel : ObservableRecipient
     private async Task LoadEnableTelemetryAsync()
     {
         // 读取遥测设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey);
-        EnableTelemetry = value ?? true;
+        EnableTelemetry = await _aboutSettingsDomainService.LoadTelemetryEnabledAsync();
     }
 
     /// <summary>
@@ -1566,7 +1542,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnEnableTelemetryChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableTelemetryKey, value).ConfigureAwait(false);
+        QueueSettingWrite("EnableTelemetry", () => _aboutSettingsDomainService.SaveTelemetryEnabledAsync(value));
     }
     
     #region 全局启动设置加载/保存
@@ -1576,42 +1552,43 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadGlobalLaunchSettingsAsync()
     {
-        GlobalAutoMemoryAllocation = await _localSettingsService.ReadSettingAsync<bool?>(GlobalAutoMemoryKey) ?? true;
-        GlobalInitialHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
-        GlobalMaximumHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
-        GlobalCustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
-        GlobalWindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
-        GlobalWindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
+        var state = await _gameSettingsDomainService.LoadGlobalLaunchSettingsAsync();
+        GlobalAutoMemoryAllocation = state.AutoMemoryAllocation;
+        GlobalInitialHeapMemory = state.InitialHeapMemory;
+        GlobalMaximumHeapMemory = state.MaximumHeapMemory;
+        GlobalCustomJvmArguments = state.CustomJvmArguments;
+        GlobalWindowWidth = state.WindowWidth;
+        GlobalWindowHeight = state.WindowHeight;
     }
     
     partial void OnGlobalAutoMemoryAllocationChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalAutoMemoryKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalAutoMemoryAllocation", () => _gameSettingsDomainService.SaveGlobalAutoMemoryAllocationAsync(value));
     }
     
     partial void OnGlobalInitialHeapMemoryChanged(double value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalInitialHeapKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalInitialHeapMemory", () => _gameSettingsDomainService.SaveGlobalInitialHeapMemoryAsync(value));
     }
     
     partial void OnGlobalMaximumHeapMemoryChanged(double value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalMaxHeapKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalMaximumHeapMemory", () => _gameSettingsDomainService.SaveGlobalMaximumHeapMemoryAsync(value));
     }
     
     partial void OnGlobalCustomJvmArgumentsChanged(string value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalCustomJvmArgumentsKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalCustomJvmArguments", () => _gameSettingsDomainService.SaveGlobalCustomJvmArgumentsAsync(value));
     }
     
     partial void OnGlobalWindowWidthChanged(int value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalWindowWidthKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalWindowWidth", () => _gameSettingsDomainService.SaveGlobalWindowWidthAsync(value));
     }
     
     partial void OnGlobalWindowHeightChanged(int value)
     {
-        _localSettingsService.SaveSettingAsync(GlobalWindowHeightKey, value).ConfigureAwait(false);
+        QueueSettingWrite("GlobalWindowHeight", () => _gameSettingsDomainService.SaveGlobalWindowHeightAsync(value));
     }
     
     #endregion
@@ -1621,12 +1598,10 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadMaterialTypeAsync()
     {
-        // 使用MaterialService加载材质设置
-        MaterialType = await _materialService.LoadMaterialTypeAsync();
-        
-        // Load motion settings
-        MotionSpeed = await _materialService.LoadMotionSpeedAsync();
-        var colors = await _materialService.LoadMotionColorsAsync();
+        var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
+        MaterialType = state.MaterialType;
+        MotionSpeed = state.MotionSpeed;
+        var colors = state.MotionColors;
         if (colors.Length == 5)
         {
             MotionColor1 = ParseColor(colors[0]);
@@ -1645,12 +1620,9 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadBackgroundImagePathAsync()
     {
-        var path = await _materialService.LoadBackgroundImagePathAsync();
-        BackgroundImagePath = path ?? string.Empty;
-        
-        // 同时加载背景模糊强度
-        var blurAmount = await _materialService.LoadBackgroundBlurAmountAsync();
-        BackgroundBlurAmount = blurAmount;
+        var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
+        BackgroundImagePath = state.BackgroundImagePath;
+        BackgroundBlurAmount = state.BackgroundBlurAmount;
     }
     
     /// <summary>
@@ -1661,7 +1633,7 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             // 保存设置（异步调用，不等待完成，避免阻塞UI）
-            _materialService.SaveMaterialTypeAsync(value).ConfigureAwait(false);
+            QueueSettingWrite("MaterialType", () => _personalizationSettingsDomainService.SaveMaterialTypeAsync(value));
             
             // 通知 IsCustomBackground 属性变化
             OnPropertyChanged(nameof(IsCustomBackground));
@@ -1675,16 +1647,16 @@ public partial class SettingsViewModel : ObservableRecipient
                 var window = App.MainWindow;
                 if (window != null)
                 {
-                    _materialService.ApplyMaterialToWindow(window, value);
+                    _personalizationSettingsDomainService.ApplyMaterialToWindow(window, value);
                     
                     // 触发背景变更事件
                     if (value == XianYuLauncher.Core.Services.MaterialType.CustomBackground)
                     {
-                        _materialService.OnBackgroundChanged(value, BackgroundImagePath);
+                        _personalizationSettingsDomainService.NotifyBackgroundChanged(value, BackgroundImagePath);
                     }
                     else
                     {
-                        _materialService.OnBackgroundChanged(value, null);
+                        _personalizationSettingsDomainService.NotifyBackgroundChanged(value, null);
                     }
                 }
             }
@@ -1708,7 +1680,7 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             // 保存背景图片路径
-            _materialService.SaveBackgroundImagePathAsync(value).ConfigureAwait(false);
+            QueueSettingWrite("BackgroundImagePath", () => _personalizationSettingsDomainService.SaveBackgroundImagePathAsync(value));
             
             // 只有当不是初始化加载时，才触发背景变更事件
             // 避免设置页打开时闪烁
@@ -1717,7 +1689,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 // 如果当前是自定义背景模式，触发背景变更事件
                 if (MaterialType == XianYuLauncher.Core.Services.MaterialType.CustomBackground)
                 {
-                    _materialService.OnBackgroundChanged(MaterialType, value);
+                    _personalizationSettingsDomainService.NotifyBackgroundChanged(MaterialType, value);
                 }
             }
             else
@@ -1742,7 +1714,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 只有当不是初始化加载时，才保存并触发背景变更
             if (!_isInitializingBlurAmount)
             {
-                _materialService.SaveBackgroundBlurAmountAsync(value).ConfigureAwait(false);
+                QueueSettingWrite("BackgroundBlurAmount", () => _personalizationSettingsDomainService.SaveBackgroundBlurAmountAsync(value));
             }
             else
             {
@@ -1764,23 +1736,13 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var picker = new FileOpenPicker();
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".bmp");
-            picker.FileTypeFilter.Add(".gif");
-            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            
-            // 获取当前窗口句柄
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-            
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
+            var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+                new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" },
+                PickerLocationId.PicturesLibrary);
+
+            if (!string.IsNullOrWhiteSpace(selectedPath))
             {
-                BackgroundImagePath = file.Path;
+                BackgroundImagePath = selectedPath;
             }
         }
         catch (Exception ex)
@@ -1805,8 +1767,8 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 保存字体设置
-            _localSettingsService.SaveSettingAsync(FontFamilyKey, value).ConfigureAwait(false);
+            // Phase4 之前字体设置是立即写入，避免去抖延迟影响下次初始化显示。
+            RunFireAndForget(_personalizationSettingsDomainService.SaveFontFamilyAsync(value), "保存字体设置");
             
             // 应用字体到应用程序
             ApplyFontToApplication(value);
@@ -1958,9 +1920,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadEnableVersionIsolationAsync()
     {
-        // 读取版本隔离设置，如果不存在则使用默认值true
-        var value = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
-        EnableVersionIsolation = value ?? true;
+        EnableVersionIsolation = await _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
     }
     
     /// <summary>
@@ -1968,7 +1928,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnEnableVersionIsolationChanged(bool value)
     {
-        _localSettingsService.SaveSettingAsync(EnableVersionIsolationKey, value).ConfigureAwait(false);
+        QueueSettingWrite("EnableVersionIsolation", () => _gameSettingsDomainService.SaveEnableVersionIsolationAsync(value));
     }
     
     /// <summary>
@@ -1976,7 +1936,12 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     private async Task LoadJavaSelectionModeAsync()
     {
-        JavaSelectionMode = await _localSettingsService.ReadSettingAsync<JavaSelectionModeType>(JavaSelectionModeKey);
+        var rawValue = await _gameSettingsDomainService.LoadJavaSelectionModeAsync();
+        if (!string.IsNullOrWhiteSpace(rawValue)
+            && Enum.TryParse<JavaSelectionModeType>(rawValue, out var mode))
+        {
+            JavaSelectionMode = mode;
+        }
     }
     
     /// <summary>
@@ -1984,7 +1949,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnJavaSelectionModeChanged(JavaSelectionModeType value)
     {
-        _localSettingsService.SaveSettingAsync(JavaSelectionModeKey, value).ConfigureAwait(false);
+        QueueSettingWrite("JavaSelectionMode", () => _gameSettingsDomainService.SaveJavaSelectionModeAsync(value.ToString()));
     }
     
     /// <summary>
@@ -1993,6 +1958,11 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task RefreshJavaVersionsAsync()
     {
+        _javaScanCts.Cancel();
+        _javaScanCts.Dispose();
+        _javaScanCts = new CancellationTokenSource();
+        var cancellationToken = _javaScanCts.Token;
+
         IsLoadingJavaVersions = true;
         try
         {
@@ -2001,10 +1971,12 @@ public partial class SettingsViewModel : ObservableRecipient
             // 保存当前列表（包含用户手动添加的）
             var existingVersions = JavaVersions.ToList();
             Console.WriteLine($"当前列表中有 {existingVersions.Count} 个Java版本");
+            cancellationToken.ThrowIfCancellationRequested();
             
             // 使用JavaRuntimeService扫描系统中的Java版本
             var scannedJavaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(forceRefresh: true);
             Console.WriteLine($"系统扫描到 {scannedJavaVersions.Count} 个Java版本");
+            cancellationToken.ThrowIfCancellationRequested();
             
             // 清空当前列表
             JavaVersions.Clear();
@@ -2012,6 +1984,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 智能合并：先添加扫描到的系统Java
             foreach (var jv in scannedJavaVersions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 添加 Java: Version='{jv.FullVersion}'");
                 JavaVersions.Add(new JavaVersionInfo
                 {
@@ -2025,6 +1998,7 @@ public partial class SettingsViewModel : ObservableRecipient
             // 再添加用户手动添加的Java（路径不重复的）
             foreach (var existing in existingVersions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // 检查路径是否已存在于扫描结果中
                 if (!scannedJavaVersions.Any(s => string.Equals(s.Path, existing.Path, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -2037,6 +2011,10 @@ public partial class SettingsViewModel : ObservableRecipient
             
             // 保存更新后的列表
             await SaveJavaVersionsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("刷新Java版本列表已取消");
         }
         catch (Exception ex)
         {
@@ -2089,62 +2067,19 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
 
-            // 2. 构建选择对话框
-            var dialog = new ContentDialog
+            // 2. 显示选择对话框并处理结果
+            var selectedOption = await _dialogService.ShowListSelectionDialogAsync(
+                title: "下载 Java 运行时",
+                instruction: "请选择要安装的 Java 版本:",
+                items: availableVersions,
+                displayMemberFunc: option => option.DisplayName,
+                tip: "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
+                primaryButtonText: "下载",
+                closeButtonText: "取消");
+
+            if (selectedOption != null)
             {
-                Title = "下载 Java 运行时",
-                PrimaryButtonText = "下载",
-                CloseButtonText = "取消",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                DefaultButton = ContentDialogButton.Primary,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
-            stackPanel.Children.Add(new TextBlock { Text = "请选择要安装的 Java 版本:", TextWrapping = TextWrapping.Wrap });
-
-            var listView = new ListView
-            {
-                ItemsSource = availableVersions,
-                SelectionMode = ListViewSelectionMode.Single,
-                MaxHeight = 300,
-                SelectedIndex = 0,
-                BorderThickness = new Thickness(1),
-                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                CornerRadius = new CornerRadius(4)
-            };
-
-            // 创建 DataTemplate
-            var templateXaml = @"
-                <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-                    <Grid Padding='12,8'>
-                        <TextBlock Text='{Binding DisplayName}' VerticalAlignment='Center' Style='{ThemeResource BodyTextBlockStyle}' />
-                    </Grid>
-                </DataTemplate>";
-            
-            listView.ItemTemplate = (DataTemplate)XamlReader.Load(templateXaml);
-
-            stackPanel.Children.Add(listView);
-            
-            stackPanel.Children.Add(new TextBlock 
-            { 
-               Text = "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
-               FontSize = 12, 
-               Opacity = 0.7,
-               TextWrapping = TextWrapping.Wrap
-            });
-
-            dialog.Content = stackPanel;
-
-            // 3. 显示并处理结果
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                 var selectedOption = listView.SelectedItem as JavaVersionDownloadOption;
-                 if (selectedOption != null)
-                 {
-                      await InstallJavaFromSettingsAsync(selectedOption);
-                 }
+                await InstallJavaFromSettingsAsync(selectedOption);
             }
         }
         catch (Exception ex)
@@ -2174,10 +2109,10 @@ public partial class SettingsViewModel : ObservableRecipient
                     await _javaRuntimeService.DetectJavaVersionsAsync(true);
                     
                     // 重新加载 ViewModel 的列表
-                    App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                    await _uiDispatcher.EnqueueAsync(async () =>
                     {
-                         JavaVersions.Clear();
-                         await LoadJavaVersionsAsync();
+                        JavaVersions.Clear();
+                        await LoadJavaVersionsAsync();
                     });
                     
                     await Task.Delay(1000);
@@ -2216,7 +2151,7 @@ public partial class SettingsViewModel : ObservableRecipient
                 // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
                 // 修复方案：先读取为 JavaVersion，再映射到 JavaVersionInfo。
 
-                var savedCoreVersions = await _localSettingsService.ReadSettingAsync<List<XianYuLauncher.Core.Models.JavaVersion>>(JavaVersionsKey);
+                var savedCoreVersions = await _gameSettingsDomainService.LoadJavaVersionsAsync();
 
                 if (savedCoreVersions != null && savedCoreVersions.Count > 0)
                 {
@@ -2299,7 +2234,7 @@ public partial class SettingsViewModel : ObservableRecipient
                  IsJDK = info.IsJDK
             }).ToList();
             
-            await _localSettingsService.SaveSettingAsync(JavaVersionsKey, coreVersions);
+            await _gameSettingsDomainService.SaveJavaVersionsAsync(coreVersions);
             Console.WriteLine("Java版本列表保存成功");
         }
         catch (Exception ex)
@@ -2309,26 +2244,12 @@ public partial class SettingsViewModel : ObservableRecipient
         }
     }
     
-    private CancellationTokenSource? _saveDebounceCts;
-    private const int _saveDebounceDelay = 500; // 500ms防抖延迟
-
     /// <summary>
     /// Java版本列表变化事件处理
     /// </summary>
     private void JavaVersions_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        // 使用防抖机制避免频繁保存
-        _saveDebounceCts?.Cancel();
-        _saveDebounceCts = new CancellationTokenSource();
-        
-        Task.Delay(_saveDebounceDelay, _saveDebounceCts.Token)
-            .ContinueWith(async (t) =>
-            {
-                if (!t.IsCanceled)
-                {
-                    await SaveJavaVersionsAsync();
-                }
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+        QueueSettingWrite("JavaVersions", SaveJavaVersionsAsync, 500);
     }
     
 
@@ -2347,28 +2268,21 @@ public partial class SettingsViewModel : ObservableRecipient
         if (value != null)
         {
             JavaPath = value.Path;
-            _localSettingsService.SaveSettingAsync(SelectedJavaVersionKey, value.Path).ConfigureAwait(false);
-            _localSettingsService.SaveSettingAsync(JavaPathKey, value.Path).ConfigureAwait(false);
+            QueueSettingWrite("SelectedJavaVersion", () => _gameSettingsDomainService.SaveSelectedJavaVersionAsync(value.Path));
         }
     }
 
     [RelayCommand]
     private async Task BrowseJavaPathAsync()
     {
-        var openPicker = new FileOpenPicker();
-        openPicker.FileTypeFilter.Add(".exe");
-        openPicker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
+        var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+            new[] { ".exe" },
+            PickerLocationId.ComputerFolder);
 
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-
-        var file = await openPicker.PickSingleFileAsync();
-        if (file != null)
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
-            JavaPath = file.Path;
-            await _localSettingsService.SaveSettingAsync(JavaPathKey, JavaPath);
+            JavaPath = selectedPath;
+            await _gameSettingsDomainService.SaveJavaPathAsync(JavaPath);
 
         }
     }
@@ -2379,27 +2293,21 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddJavaVersionAsync()
     {
-        var openPicker = new FileOpenPicker();
-        openPicker.FileTypeFilter.Add(".exe");
-        openPicker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
-        openPicker.ViewMode = PickerViewMode.List;
-        openPicker.SettingsIdentifier = "JavaExePicker";
-        openPicker.CommitButtonText = "添加到列表";
+        var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+            new[] { ".exe" },
+            PickerLocationId.ComputerFolder,
+            PickerViewMode.List,
+            "JavaExePicker",
+            "添加到列表");
 
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-
-        var file = await openPicker.PickSingleFileAsync();
-        if (file != null)
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             IsLoadingJavaVersions = true;
             try
             {
-                Console.WriteLine($"正在解析Java可执行文件: {file.Path}");
+                Console.WriteLine($"正在解析Java可执行文件: {selectedPath}");
                 // 使用JavaRuntimeService解析Java版本信息
-                var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(file.Path);
+                var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(selectedPath);
                 if (javaVersion != null)
                 {
                     Console.WriteLine($"解析成功: Java {javaVersion.MajorVersion} ({javaVersion.FullVersion})");
@@ -2446,41 +2354,22 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         JavaPath = string.Empty;
         SelectedJavaVersion = null;
-        await _localSettingsService.SaveSettingAsync(JavaPathKey, string.Empty);
-        await _localSettingsService.SaveSettingAsync(SelectedJavaVersionKey, string.Empty);
+        await _gameSettingsDomainService.ClearJavaSelectionAsync();
 
     }
 
     private async Task LoadAISettingsAsync()
     {
-        IsAIAnalysisEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableAIAnalysisKey) ?? false;
-        // 这里只是个默认值嗷，实际上会优先读取用户保存的设置。
-        // 如果用户没设置，才用这个。国内用户会自己填兼容的国内大模型API地址的。
-        AiApiEndpoint = await _localSettingsService.ReadSettingAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
-        var storedKey = await _localSettingsService.ReadSettingAsync<string>(AIApiKeyKey) ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(storedKey))
-        {
-            if (!TokenEncryption.IsEncrypted(storedKey))
-            {
-                var encrypted = TokenEncryption.Encrypt(storedKey);
-                await _localSettingsService.SaveSettingAsync(AIApiKeyKey, encrypted);
-                AiApiKey = storedKey;
-            }
-            else
-            {
-                AiApiKey = TokenEncryption.Decrypt(storedKey);
-            }
-        }
-        else
-        {
-            AiApiKey = string.Empty;
-        }
-        AiModel = await _localSettingsService.ReadSettingAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
+        var state = await _aiSettingsDomainService.LoadAsync();
+        IsAIAnalysisEnabled = state.IsEnabled;
+        AiApiEndpoint = state.ApiEndpoint;
+        AiApiKey = state.ApiKey;
+        AiModel = state.Model;
     }
 
     private async Task LoadJavaPathAsync()
     {
-        var path = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
+        var path = await _gameSettingsDomainService.LoadJavaPathAsync();
         if (!string.IsNullOrEmpty(path))
         {
             JavaPath = path;
@@ -2497,26 +2386,17 @@ public partial class SettingsViewModel : ObservableRecipient
             _previousMinecraftPath = value;
             
             // 保存设置并更新文件服务
-            _localSettingsService.SaveSettingAsync(MinecraftPathKey, value).ConfigureAwait(false);
-            _fileService.SetMinecraftDataPath(value);
+            QueueSettingWrite("MinecraftPath", () => _gameSettingsDomainService.SaveMinecraftPathAsync(value));
         }
     }
     
     [RelayCommand]
     private async Task BrowseMinecraftPathAsync()
     {
-        var folderPicker = new Windows.Storage.Pickers.FolderPicker();
-        folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
-
-        // 获取当前窗口句柄
-        var window = App.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-
-        var folder = await folderPicker.PickSingleFolderAsync();
-        if (folder != null)
+        var selectedPath = await _filePickerService.PickSingleFolderPathAsync(PickerLocationId.ComputerFolder);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
-            MinecraftPath = folder.Path;
+            MinecraftPath = selectedPath;
         }
     }
 
@@ -2530,32 +2410,12 @@ public partial class SettingsViewModel : ObservableRecipient
     }
 
     
-    // GetJavaVersionFromExecutableAsync方法已被JavaRuntimeService.GetJavaVersionInfoAsync替代
-    
-    private static string GetVersionDescription()
-    {
-        Version version;
-
-        if (RuntimeHelper.IsMSIX)
-        {
-            var packageVersion = Package.Current.Id.Version;
-
-            version = new(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-        }
-        else
-        {
-            version = Assembly.GetExecutingAssembly().GetName().Version!;
-        }
-
-        return $"XianYu Launcher - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-    }
-    
     /// <summary>
     /// 加载自动检查更新设置
     /// </summary>
     private async Task LoadAutoUpdateCheckModeAsync()
     {
-        var savedValue = await _localSettingsService.ReadSettingAsync<string>(AutoUpdateCheckModeKey);
+        var savedValue = await _settingsRepository.ReadAsync<string>(AutoUpdateCheckModeKey);
         if (!string.IsNullOrEmpty(savedValue) && Enum.TryParse<AutoUpdateCheckModeType>(savedValue, out var mode))
         {
             AutoUpdateCheckMode = mode;
@@ -2568,7 +2428,7 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnAutoUpdateCheckModeChanged(AutoUpdateCheckModeType value)
     {
-        _localSettingsService.SaveSettingAsync(AutoUpdateCheckModeKey, value.ToString()).ConfigureAwait(false);
+        QueueSettingWrite(AutoUpdateCheckModeKey, () => _settingsRepository.SaveAsync(AutoUpdateCheckModeKey, value.ToString()));
         System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 自动检查更新模式已保存: {value}");
     }
     
@@ -2597,127 +2457,7 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 检查是否从微软商店安装
-            if (IsInstalledFromMicrosoftStore())
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 应用从微软商店安装，不支持手动更新");
-                
-                var storeDialog = new ContentDialog
-                {
-                    Title = "检查更新",
-                    Content = "您使用的是微软商店版本，应用将通过商店自动更新。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await storeDialog.ShowAsync();
-                return;
-            }
-            
-            var updateService = App.GetService<UpdateService>();
-            
-            // 设置当前应用版本（从 MSIX 包获取）
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            updateService.SetCurrentVersion(currentVersion);
-            
-            UpdateInfo? updateInfo;
-            if (IsDevChannel)
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] Dev 通道：仅检查 Dev 更新...");
-                updateInfo = await updateService.CheckForDevUpdateAsync();
-            }
-            else
-            {
-                updateInfo = await updateService.CheckForUpdatesAsync();
-            }
-            
-            if (updateInfo != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现新版本: {updateInfo.version}");
-                
-                // 创建更新弹窗ViewModel
-                var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
-                var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
-                
-                // 创建并显示更新弹窗
-                var updateDialog = new ContentDialog
-                {
-                    Title = string.Format("Version {0} 更新", updateInfo.version),
-                    Content = new Views.UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "更新",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-                
-                var result = await updateDialog.ShowAsync();
-                
-                if (result == ContentDialogResult.Primary)
-                {
-                    // 用户点击更新，显示下载进度弹窗
-                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意更新");
-                    
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = string.Format("Version {0} 更新", updateInfo.version),
-                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    bool dialogResult = false;
-                    updateDialogViewModel.CloseDialog += (sender, res) =>
-                    {
-                        dialogResult = res;
-                        downloadDialog.Hide();
-                    };
-                    
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    await downloadDialog.ShowAsync();
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 当前已是最新版本");
-                
-                // 显示已是最新版本的提示
-                var dialog = new ContentDialog
-                {
-                    Title = "检查更新",
-                    Content = "当前已是最新版本！",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查更新失败: {ex.Message}");
-            
-            var dialog = new ContentDialog
-            {
-                Title = "检查更新失败",
-                Content = $"无法检查更新：{ex.Message}",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            await dialog.ShowAsync();
+            await _updateFlowService.CheckForUpdatesAsync(IsDevChannel);
         }
         finally
         {
@@ -2738,118 +2478,11 @@ public partial class SettingsViewModel : ObservableRecipient
 
         try
         {
-            var updateService = App.GetService<UpdateService>();
-            var updateInfo = await updateService.CheckForDevUpdateAsync();
-
-            if (updateInfo != null)
-            {
-                 System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 发现 Dev 版本: {updateInfo.version}");
-
-                 var logger = App.GetService<Microsoft.Extensions.Logging.ILogger<UpdateDialogViewModel>>();
-                 var updateDialogViewModel = new UpdateDialogViewModel(logger, updateService, updateInfo);
-                 
-                 var devDialog = new ContentDialog
-                 {
-                    Title = $"安装 Dev 通道版本 ({updateInfo.version})",
-                    Content = new Views.UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "安装",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                 };
-                 
-                 var result = await devDialog.ShowAsync();
-                 
-                 if (result == ContentDialogResult.Primary)
-                 {
-                    // 用户点击安装，显示下载进度弹窗
-                    System.Diagnostics.Debug.WriteLine("[SettingsViewModel] 用户同意安装 Dev 版本");
-                    
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = $"安装 Dev 通道版本 ({updateInfo.version})",
-                        Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    updateDialogViewModel.CloseDialog += (sender, res) =>
-                    {
-                        downloadDialog.Hide();
-                    };
-                    
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    await downloadDialog.ShowAsync();
-                 }
-            }
-            else
-            {
-                var noDevDialog = new ContentDialog
-                {
-                    Title = "Dev 通道",
-                    Content = "当前没有可用的 Dev 版本。",
-                    CloseButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await noDevDialog.ShowAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查 Dev 更新失败: {ex.Message}");
-            var errorDialog = new ContentDialog
-            {
-                Title = "Dev 通道检查失败",
-                Content = $"无法获取 Dev 版本: {ex.Message}",
-                CloseButtonText = "确定",
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            await errorDialog.ShowAsync();
+            await _updateFlowService.InstallDevChannelAsync();
         }
         finally
         {
             IsCheckingForUpdates = false;
-        }
-    }
-    
-    /// <summary>
-    /// 检查应用是否从微软商店安装
-    /// </summary>
-    /// <returns>如果从商店安装返回true，否则返回false</returns>
-    private bool IsInstalledFromMicrosoftStore()
-    {
-        try
-        {
-            // 检查应用的签名证书发布者
-            var package = Windows.ApplicationModel.Package.Current;
-            var publisherId = package.Id.Publisher;
-            
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 应用发布者: {publisherId}");
-            
-            // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
-            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
-            
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 是否为商店版本: {isStoreVersion}");
-            
-            return isStoreVersion;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 检查应用安装来源失败: {ex.Message}");
-            return false;
         }
     }
     
@@ -2862,7 +2495,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var pathsJson = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathsKey);
+            var pathsJson = await _gameSettingsDomainService.LoadMinecraftPathsJsonAsync();
             if (!string.IsNullOrEmpty(pathsJson))
             {
                 var paths = System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(pathsJson);
@@ -2885,11 +2518,7 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             
             // 如果没有保存的列表，使用当前路径创建默认项
-            var currentPath = await _localSettingsService.ReadSettingAsync<string>(MinecraftPathKey);
-            if (string.IsNullOrEmpty(currentPath))
-            {
-                currentPath = _fileService.GetMinecraftDataPath();
-            }
+            var currentPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
             
             MinecraftPaths.Clear();
             MinecraftPaths.Add(new MinecraftPathItem
@@ -2916,7 +2545,7 @@ public partial class SettingsViewModel : ObservableRecipient
         try
         {
             var pathsJson = System.Text.Json.JsonSerializer.Serialize(MinecraftPaths.ToList());
-            await _localSettingsService.SaveSettingAsync(MinecraftPathsKey, pathsJson);
+            await _gameSettingsDomainService.SaveMinecraftPathsJsonAsync(pathsJson);
         }
         catch (Exception ex)
         {
@@ -2930,28 +2559,16 @@ public partial class SettingsViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddMinecraftPathAsync()
     {
-        var folderPicker = new FolderPicker();
-        folderPicker.FileTypeFilter.Add("*");
-        
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-        
-        var folder = await folderPicker.PickSingleFolderAsync();
-        if (folder != null)
+        var selectedPath = await _filePickerService.PickSingleFolderPathAsync(PickerLocationId.ComputerFolder);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             // 检查是否已存在
-            if (MinecraftPaths.Any(p => p.Path.Equals(folder.Path, StringComparison.OrdinalIgnoreCase)))
+            if (MinecraftPaths.Any(p => p.Path.Equals(selectedPath, StringComparison.OrdinalIgnoreCase)))
             {
-                var dialog = new ContentDialog
-                {
-                    Title = "Settings_Hint".GetLocalized(),
-                    Content = "Settings_DirectoryAlreadyExists".GetLocalized(),
-                    CloseButtonText = "Settings_OK".GetLocalized(),
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync(
+                    "Settings_Hint".GetLocalized(),
+                    "Settings_DirectoryAlreadyExists".GetLocalized(),
+                    "Settings_OK".GetLocalized());
                 return;
             }
             
@@ -2962,7 +2579,7 @@ public partial class SettingsViewModel : ObservableRecipient
             MinecraftPaths.Add(new MinecraftPathItem
             {
                 Name = name,
-                Path = folder.Path,
+                Path = selectedPath,
                 IsActive = false
             });
             
@@ -2983,20 +2600,13 @@ public partial class SettingsViewModel : ObservableRecipient
         
         var itemToRemove = SelectedMinecraftPathItem;
         
-        // 确认删除
-        var confirmDialog = new ContentDialog
-        {
-            Title = "确认删除",
-            Content = $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
-            PrimaryButtonText = "删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-        
-        var result = await confirmDialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        var confirmed = await _dialogService.ShowConfirmationDialogAsync(
+            "确认删除",
+            $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
+            "删除",
+            "取消");
+
+        if (confirmed)
         {
             // 如果删除的是当前激活的目录，需要先切换到其他目录
             if (itemToRemove.IsActive && MinecraftPaths.Count > 1)
@@ -3050,12 +2660,7 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 使用统一的安全日志路径
-            string logPath = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
-            Log.Information($"[Settings] Preparing to open log directory... IsMSIX={XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
-            Log.Information($"[Settings] Target log path: {logPath}");
-
-            await Windows.System.Launcher.LaunchFolderAsync(await StorageFolder.GetFolderFromPathAsync(logPath));
+            await _aboutSettingsDomainService.OpenLogDirectoryAsync();
         }
         catch (Exception ex)
         {
@@ -3068,757 +2673,97 @@ public partial class SettingsViewModel : ObservableRecipient
     
     #region 下载源管理（新版统一管理）
 
-    private const string GameDownloadSourceKey = "GameDownloadSource";
-    private const string ModrinthResourceSourceKey = "ModrinthResourceSource";
-    private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
-    private const string VersionManifestSourceKey = "VersionManifestSource";
-    private const string FileDownloadSourceKey = "FileDownloadSource";
-    private const string CoreGameDownloadSourceKey = "CoreGameDownloadSource";
-    private const string ForgeSourceKey = "ForgeSource";
-    private const string FabricSourceKey = "FabricSource";
-    private const string NeoForgeSourceKey = "NeoForgeSource";
-    private const string QuiltSourceKey = "QuiltSource";
-    private const string LiteLoaderSourceKey = "LiteLoaderSource";
-    private const string LegacyFabricSourceKey = "LegacyFabricSource";
-    private const string CleanroomSourceKey = "CleanroomSource";
-    private const string OptifineSourceKey = "OptifineSource";
-    private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
-
     /// <summary>
     /// 加载下载源设置（新版）
     /// </summary>
-    private async Task LoadDownloadSourcesAsync()
+    private async Task LoadDownloadSourcesAsync(CancellationToken cancellationToken = default)
     {
-        // 1. 加载自定义源配置
-        await _customSourceManager.LoadConfigurationAsync();
-
-        // 2. 构建游戏资源源列表（BMCLAPI 类型：MC本体、ModLoader、版本列表）
-        await BuildGameDownloadSourcesAsync();
-
-        // 3. 构建社区资源源列表（Modrinth）
-        await BuildModrinthResourceSourcesAsync();
-
-        // 4. 构建 CurseForge 资源源列表
-        await BuildCurseForgeResourceSourcesAsync();
-
-        // 5. 构建版本清单和文件下载源列表
-        await BuildVersionManifestAndFileDownloadSourcesAsync();
-
-        // 6. 构建核心游戏资源源列表
-        await BuildCoreGameDownloadSourcesAsync();
-
-        // 7. 构建 ModLoader 资源源列表
-        await BuildModLoaderSourcesAsync();
-
-        // 8. 加载用户选择的源
-        await LoadSelectedSourcesAsync();
-    }
-    
-    /// <summary>
-    /// 对下载源列表排序：内置源在前，自定义源按 Priority 倒序排列
-    /// </summary>
-    private static IEnumerable<Core.Services.DownloadSource.IDownloadSource> SortSourcesByPriority(
-        IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources)
-    {
-        return sources
-            .OrderBy(s => s is Core.Services.DownloadSource.CustomDownloadSource ? 1 : 0)
-            .ThenByDescending(s => (s as Core.Services.DownloadSource.CustomDownloadSource)?.Priority ?? 0);
+        var state = await _downloadSourceSettingsService.LoadAsync(cancellationToken);
+        ApplyDownloadSourceState(state);
     }
 
-    private static DownloadSourceItem CreateAggregateCustomSourceItem()
+    private void ApplyDownloadSourceState(DownloadSourceSettingsState state)
     {
-        return new DownloadSourceItem
-        {
-            Key = AggregateCustomSourceKey,
-            DisplayName = "DownloadSource_DisplayName_Custom".GetLocalized(),
-            IsCustom = true
-        };
-    }
-
-    private static void EnsureAggregateCustomSourceItem(ObservableCollection<DownloadSourceItem> sources)
-    {
-        if (!sources.Any(s => s.Key == AggregateCustomSourceKey))
-        {
-            sources.Insert(0, CreateAggregateCustomSourceItem());
-        }
-    }
-
-    private static bool TryApplySelectedSourceToTarget(
-        string sourceKey,
-        ObservableCollection<DownloadSourceItem> sourcePool,
-        Action<DownloadSourceItem?> setSelectedAction)
-    {
-        var target = sourcePool.FirstOrDefault(s => s.Key == sourceKey);
-        if (target == null)
-        {
-            return false;
-        }
-
-        setSelectedAction(target);
-        return true;
-    }
-
-    private void RefreshGameDownloadMasterSelection()
-    {
-        if (_isApplyingGameSourceFromMaster)
-        {
-            return;
-        }
-
-        var selectedKeys = new[]
-        {
-            SelectedVersionManifestSource?.Key,
-            SelectedFileDownloadSource?.Key,
-            SelectedCoreGameDownloadSource?.Key,
-            SelectedForgeSource?.Key,
-            SelectedFabricSource?.Key,
-            SelectedNeoForgeSource?.Key,
-            SelectedQuiltSource?.Key,
-            SelectedLiteLoaderSource?.Key,
-            SelectedLegacyFabricSource?.Key,
-            SelectedCleanroomSource?.Key,
-            SelectedOptifineSource?.Key
-        }
-        .Where(k => !string.IsNullOrWhiteSpace(k))
-        .Cast<string>()
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToList();
-
-        if (selectedKeys.Count == 0)
-        {
-            return;
-        }
-
-        _isReconcilingGameMasterSelection = true;
+        _isApplyingDownloadSourceState = true;
         try
         {
-            DownloadSourceItem? target;
-            if (selectedKeys.Count == 1)
-            {
-                target = GameDownloadSources.FirstOrDefault(s => string.Equals(s.Key, selectedKeys[0], StringComparison.OrdinalIgnoreCase))
-                    ?? GameDownloadSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
-            }
-            else
-            {
-                target = GameDownloadSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
-            }
+            ApplySourceList(GameDownloadSources, state.GameDownloadSources);
+            ApplySourceList(ModrinthResourceSources, state.ModrinthResourceSources);
+            ApplySourceList(CurseforgeResourceSources, state.CurseforgeResourceSources);
+            ApplySourceList(CoreGameDownloadSources, state.CoreGameDownloadSources);
+            ApplySourceList(ForgeSources, state.ForgeSources);
+            ApplySourceList(FabricSources, state.FabricSources);
+            ApplySourceList(NeoForgeSources, state.NeoForgeSources);
+            ApplySourceList(QuiltSources, state.QuiltSources);
+            ApplySourceList(OptifineSources, state.OptifineSources);
+            ApplySourceList(VersionManifestSources, state.VersionManifestSources);
+            ApplySourceList(FileDownloadSources, state.FileDownloadSources);
+            ApplySourceList(LiteLoaderSources, state.LiteLoaderSources);
+            ApplySourceList(LegacyFabricSources, state.LegacyFabricSources);
+            ApplySourceList(CleanroomSources, state.CleanroomSources);
 
-            if (target != null && !ReferenceEquals(SelectedGameDownloadSource, target))
-            {
-                SelectedGameDownloadSource = target;
-            }
+            SelectedGameDownloadSource = FindByKey(GameDownloadSources, state.SelectedGameDownloadSourceKey);
+            SelectedModrinthResourceSource = FindByKey(ModrinthResourceSources, state.SelectedModrinthResourceSourceKey);
+            SelectedCommunityResourceMasterSource = FindByKey(ModrinthResourceSources, state.SelectedCommunityResourceMasterSourceKey);
+            SelectedCurseforgeResourceSource = FindByKey(CurseforgeResourceSources, state.SelectedCurseforgeResourceSourceKey);
+            SelectedCoreGameDownloadSource = FindByKey(CoreGameDownloadSources, state.SelectedCoreGameDownloadSourceKey);
+            SelectedForgeSource = FindByKey(ForgeSources, state.SelectedForgeSourceKey);
+            SelectedFabricSource = FindByKey(FabricSources, state.SelectedFabricSourceKey);
+            SelectedNeoForgeSource = FindByKey(NeoForgeSources, state.SelectedNeoForgeSourceKey);
+            SelectedQuiltSource = FindByKey(QuiltSources, state.SelectedQuiltSourceKey);
+            SelectedOptifineSource = FindByKey(OptifineSources, state.SelectedOptifineSourceKey);
+            SelectedVersionManifestSource = FindByKey(VersionManifestSources, state.SelectedVersionManifestSourceKey);
+            SelectedFileDownloadSource = FindByKey(FileDownloadSources, state.SelectedFileDownloadSourceKey);
+            SelectedLiteLoaderSource = FindByKey(LiteLoaderSources, state.SelectedLiteLoaderSourceKey);
+            SelectedLegacyFabricSource = FindByKey(LegacyFabricSources, state.SelectedLegacyFabricSourceKey);
+            SelectedCleanroomSource = FindByKey(CleanroomSources, state.SelectedCleanroomSourceKey);
+            AutoSelectFastestSource = state.AutoSelectFastestSource;
         }
         finally
         {
-            _isReconcilingGameMasterSelection = false;
+            _isApplyingDownloadSourceState = false;
         }
     }
 
-    private void ApplyGameDownloadMasterSelection(string sourceKey)
+    private static void ApplySourceList(ObservableCollection<DownloadSourceItem> target, IReadOnlyList<DownloadSourceOption> source)
     {
-        _isApplyingGameSourceFromMaster = true;
+        target.Clear();
+        foreach (var item in source)
+        {
+            target.Add(new DownloadSourceItem
+            {
+                Key = item.Key,
+                DisplayName = item.DisplayName,
+                IsCustom = item.IsCustom
+            });
+        }
+    }
+
+    private static DownloadSourceItem? FindByKey(ObservableCollection<DownloadSourceItem> source, string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return source.FirstOrDefault();
+        }
+
+        return source.FirstOrDefault(s => string.Equals(s.Key, key, StringComparison.OrdinalIgnoreCase))
+            ?? source.FirstOrDefault();
+    }
+
+    private async Task ApplyDownloadSourceSelectionAsync(
+        Func<CancellationToken, Task<DownloadSourceSettingsState>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        await _downloadSourceSelectionSemaphore.WaitAsync(cancellationToken);
         try
         {
-            TryApplySelectedSourceToTarget(sourceKey, VersionManifestSources, item => SelectedVersionManifestSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, FileDownloadSources, item => SelectedFileDownloadSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, CoreGameDownloadSources, item => SelectedCoreGameDownloadSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, ForgeSources, item => SelectedForgeSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, FabricSources, item => SelectedFabricSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, NeoForgeSources, item => SelectedNeoForgeSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, QuiltSources, item => SelectedQuiltSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, LiteLoaderSources, item => SelectedLiteLoaderSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, LegacyFabricSources, item => SelectedLegacyFabricSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, CleanroomSources, item => SelectedCleanroomSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, OptifineSources, item => SelectedOptifineSource = item);
+            var state = await operation(cancellationToken);
+            ApplyDownloadSourceState(state);
         }
         finally
         {
-            _isApplyingGameSourceFromMaster = false;
+            _downloadSourceSelectionSemaphore.Release();
         }
-
-        RefreshGameDownloadMasterSelection();
-    }
-
-    private void RefreshCommunityResourceMasterSelection()
-    {
-        if (_isApplyingCommunitySourceFromMaster)
-        {
-            return;
-        }
-
-        var modrinthKey = SelectedModrinthResourceSource?.Key;
-        var curseForgeKey = SelectedCurseforgeResourceSource?.Key;
-        if (string.IsNullOrWhiteSpace(modrinthKey) && string.IsNullOrWhiteSpace(curseForgeKey))
-        {
-            return;
-        }
-
-        _isReconcilingCommunityMasterSelection = true;
-        try
-        {
-            DownloadSourceItem? target;
-            if (!string.IsNullOrWhiteSpace(modrinthKey)
-                && !string.IsNullOrWhiteSpace(curseForgeKey)
-                && string.Equals(modrinthKey, curseForgeKey, StringComparison.OrdinalIgnoreCase))
-            {
-                target = ModrinthResourceSources.FirstOrDefault(s => string.Equals(s.Key, modrinthKey, StringComparison.OrdinalIgnoreCase))
-                    ?? ModrinthResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
-            }
-            else
-            {
-                target = ModrinthResourceSources.FirstOrDefault(s => s.Key == AggregateCustomSourceKey);
-            }
-
-            if (target != null && !ReferenceEquals(SelectedCommunityResourceMasterSource, target))
-            {
-                SelectedCommunityResourceMasterSource = target;
-            }
-        }
-        finally
-        {
-            _isReconcilingCommunityMasterSelection = false;
-        }
-    }
-
-    private void ApplyCommunityResourceMasterSelection(string sourceKey)
-    {
-        _isApplyingCommunitySourceFromMaster = true;
-        try
-        {
-            TryApplySelectedSourceToTarget(sourceKey, ModrinthResourceSources, item => SelectedModrinthResourceSource = item);
-            TryApplySelectedSourceToTarget(sourceKey, CurseforgeResourceSources, item => SelectedCurseforgeResourceSource = item);
-        }
-        finally
-        {
-            _isApplyingCommunitySourceFromMaster = false;
-        }
-
-        RefreshCommunityResourceMasterSelection();
-    }
-
-    /// <summary>
-    /// 构建游戏资源源列表
-    /// </summary>
-    private async Task BuildGameDownloadSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var sources = new List<DownloadSourceItem>();
-
-            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
-            var gameSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForGameResources());
-
-            foreach (var source in gameSources)
-            {
-                sources.Add(new DownloadSourceItem
-                {
-                    Key = source.Key,
-                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                });
-            }
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                GameDownloadSources.Clear();
-                foreach (var source in sources)
-                {
-                    GameDownloadSources.Add(source);
-                }
-                EnsureAggregateCustomSourceItem(GameDownloadSources);
-                Log.Information($"[Settings] 已加载 {GameDownloadSources.Count} 个游戏资源源");
-            });
-        });
-    }
-    
-    /// <summary>
-    /// 构建社区资源源列表（Modrinth）
-    /// </summary>
-    private async Task BuildModrinthResourceSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var sources = new List<DownloadSourceItem>();
-
-            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
-            var modrinthSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForModrinth());
-
-            foreach (var source in modrinthSources)
-            {
-                sources.Add(new DownloadSourceItem
-                {
-                    Key = source.Key,
-                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                });
-            }
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                ModrinthResourceSources.Clear();
-                foreach (var source in sources)
-                {
-                    ModrinthResourceSources.Add(source);
-                }
-                EnsureAggregateCustomSourceItem(ModrinthResourceSources);
-                Log.Information($"[Settings] 已加载 {ModrinthResourceSources.Count} 个 Modrinth 资源源");
-            });
-        });
-    }
-
-    /// <summary>
-    /// 构建 CurseForge 资源源列表
-    /// </summary>
-    private async Task BuildCurseForgeResourceSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var sources = new List<DownloadSourceItem>();
-
-            // 使用统一的获取方法，内置源在前，自定义源按 Priority 倒序排列
-            var curseforgeSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForCurseForge());
-
-            foreach (var source in curseforgeSources)
-            {
-                sources.Add(new DownloadSourceItem
-                {
-                    Key = source.Key,
-                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                });
-            }
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                CurseforgeResourceSources.Clear();
-                foreach (var source in sources)
-                {
-                    CurseforgeResourceSources.Add(source);
-                }
-                Log.Information($"[Settings] 已加载 {CurseforgeResourceSources.Count} 个 CurseForge 资源源");
-            });
-        });
-    }
-
-    /// <summary>
-    /// 构建核心游戏资源源列表
-    /// </summary>
-    private async Task BuildCoreGameDownloadSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var sources = new List<DownloadSourceItem>();
-
-            // 使用统一的获取方法
-            var coreSources = SortSourcesByPriority(_downloadSourceFactory.GetSourcesForGameResources());
-
-            foreach (var source in coreSources)
-            {
-                sources.Add(new DownloadSourceItem
-                {
-                    Key = source.Key,
-                    DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                    IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                });
-            }
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                CoreGameDownloadSources.Clear();
-                foreach (var source in sources)
-                {
-                    CoreGameDownloadSources.Add(source);
-                }
-                Log.Information($"[Settings] 已加载 {CoreGameDownloadSources.Count} 个核心游戏资源源");
-            });
-        });
-    }
-
-    /// <summary>
-    /// 构建版本清单和文件下载源列表
-    /// </summary>
-    private async Task BuildVersionManifestAndFileDownloadSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var buildSourceList = (IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources) =>
-            {
-                var result = new List<DownloadSourceItem>();
-                foreach (var source in sources)
-                {
-                    result.Add(new DownloadSourceItem
-                    {
-                        Key = source.Key,
-                        DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                        IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                    });
-                }
-                return result;
-            };
-
-            var versionManifestSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForVersionManifest()));
-            var fileDownloadSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForFileDownload()));
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                VersionManifestSources.Clear();
-                foreach (var source in versionManifestSources) VersionManifestSources.Add(source);
-
-                FileDownloadSources.Clear();
-                foreach (var source in fileDownloadSources) FileDownloadSources.Add(source);
-
-                Log.Information($"[Settings] 已加载版本清单源: {VersionManifestSources.Count}, 文件下载源: {FileDownloadSources.Count}");
-            });
-        });
-    }
-
-    /// <summary>
-    /// 构建 ModLoader 资源源列表
-    /// </summary>
-    private async Task BuildModLoaderSourcesAsync()
-    {
-        await Task.Run(() =>
-        {
-            var buildSourceList = (IEnumerable<Core.Services.DownloadSource.IDownloadSource> sources) =>
-            {
-                var result = new List<DownloadSourceItem>();
-                foreach (var source in sources)
-                {
-                    result.Add(new DownloadSourceItem
-                    {
-                        Key = source.Key,
-                        DisplayName = GetLocalizedDownloadSourceDisplayName(source),
-                        IsCustom = source is Core.Services.DownloadSource.CustomDownloadSource
-                    });
-                }
-                return result;
-            };
-
-            var forgeSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForForge()));
-            var fabricSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForFabric()));
-            var neoforgeSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForNeoForge()));
-            var quiltSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForQuilt()));
-            var liteLoaderSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForLiteLoader()));
-            var legacyFabricSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForLegacyFabric()));
-            var cleanroomSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForCleanroom()));
-            var optifineSources = buildSourceList(SortSourcesByPriority(_downloadSourceFactory.GetSourcesForOptifine()));
-
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                ForgeSources.Clear();
-                foreach (var source in forgeSources) ForgeSources.Add(source);
-
-                FabricSources.Clear();
-                foreach (var source in fabricSources) FabricSources.Add(source);
-
-                NeoForgeSources.Clear();
-                foreach (var source in neoforgeSources) NeoForgeSources.Add(source);
-
-                QuiltSources.Clear();
-                foreach (var source in quiltSources) QuiltSources.Add(source);
-
-                LiteLoaderSources.Clear();
-                foreach (var source in liteLoaderSources) LiteLoaderSources.Add(source);
-
-                LegacyFabricSources.Clear();
-                foreach (var source in legacyFabricSources) LegacyFabricSources.Add(source);
-
-                CleanroomSources.Clear();
-                foreach (var source in cleanroomSources) CleanroomSources.Add(source);
-
-                OptifineSources.Clear();
-                foreach (var source in optifineSources) OptifineSources.Add(source);
-
-                Log.Information($"[Settings] 已加载 ModLoader 源: Forge={ForgeSources.Count}, Fabric={FabricSources.Count}, NeoForge={NeoForgeSources.Count}, Quilt={QuiltSources.Count}, LiteLoader={LiteLoaderSources.Count}, LegacyFabric={LegacyFabricSources.Count}, Cleanroom={CleanroomSources.Count}, Optifine={OptifineSources.Count}");
-            });
-        });
-    }
-
-    private string GetLocalizedDownloadSourceDisplayName(Core.Services.DownloadSource.IDownloadSource source)
-    {
-        return source.Key switch
-        {
-            "official" => "DownloadSource_DisplayName_Official".GetLocalized(),
-            "bmclapi" => "DownloadSource_DisplayName_Bmclapi".GetLocalized(),
-            "mcim" => "DownloadSource_DisplayName_Mcim".GetLocalized(),
-            _ => _downloadSourceFactory.GetDisplayName(source.Key)
-        };
-    }
-
-    /// <summary>
-    /// 加载用户选择的源
-    /// </summary>
-    private async Task LoadSelectedSourcesAsync()
-    {
-        // 读取保存的游戏资源源
-        var savedGameSource = await _localSettingsService.ReadSettingAsync<string>(GameDownloadSourceKey);
-        if (string.IsNullOrEmpty(savedGameSource))
-        {
-            // 首次启动，根据地区设置默认值
-            savedGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-
-        Log.Information($"[Settings] 读取到保存的游戏资源源: {savedGameSource}");
-
-        // 读取保存的社区资源源
-        var savedModrinthSource = await _localSettingsService.ReadSettingAsync<string>(ModrinthResourceSourceKey);
-        if (string.IsNullOrEmpty(savedModrinthSource))
-        {
-            // 首次启动，根据地区设置默认值
-            savedModrinthSource = GetDefaultSourceKeyByRegion("mcim", "official");
-        }
-
-        Log.Information($"[Settings] 读取到保存的 Modrinth 资源源: {savedModrinthSource}");
-
-        // 读取保存的 CurseForge 资源源
-        var savedCurseForgeSource = await _localSettingsService.ReadSettingAsync<string>(CurseForgeResourceSourceKey);
-        if (string.IsNullOrEmpty(savedCurseForgeSource))
-        {
-            // 首次启动，根据地区设置默认值
-            savedCurseForgeSource = GetDefaultSourceKeyByRegion("mcim", "official");
-        }
-
-        Log.Information($"[Settings] 读取到保存的 CurseForge 资源源: {savedCurseForgeSource}");
-
-        // 读取保存的核心游戏资源源
-        var savedCoreGameSource = await _localSettingsService.ReadSettingAsync<string>(CoreGameDownloadSourceKey);
-        if (string.IsNullOrEmpty(savedCoreGameSource))
-        {
-            savedCoreGameSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的核心游戏资源源: {savedCoreGameSource}");
-
-        // 读取保存的 Forge 源
-        var savedForgeSource = await _localSettingsService.ReadSettingAsync<string>(ForgeSourceKey);
-        if (string.IsNullOrEmpty(savedForgeSource))
-        {
-            savedForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 Forge 源: {savedForgeSource}");
-
-        // 读取保存的 Fabric 源
-        var savedFabricSource = await _localSettingsService.ReadSettingAsync<string>(FabricSourceKey);
-        if (string.IsNullOrEmpty(savedFabricSource))
-        {
-            savedFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 Fabric 源: {savedFabricSource}");
-
-        // 读取保存的 NeoForge 源
-        var savedNeoForgeSource = await _localSettingsService.ReadSettingAsync<string>(NeoForgeSourceKey);
-        if (string.IsNullOrEmpty(savedNeoForgeSource))
-        {
-            savedNeoForgeSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 NeoForge 源: {savedNeoForgeSource}");
-
-        // 读取保存的 Quilt 源
-        var savedQuiltSource = await _localSettingsService.ReadSettingAsync<string>(QuiltSourceKey);
-        if (string.IsNullOrEmpty(savedQuiltSource))
-        {
-            savedQuiltSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 Quilt 源: {savedQuiltSource}");
-
-        // 读取保存的 OptiFine 源
-        var savedOptifineSource = await _localSettingsService.ReadSettingAsync<string>(OptifineSourceKey);
-        if (string.IsNullOrEmpty(savedOptifineSource))
-        {
-            savedOptifineSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
-
-        // 读取保存的版本清单源
-        var savedVersionManifestSource = await _localSettingsService.ReadSettingAsync<string>(VersionManifestSourceKey);
-        if (string.IsNullOrEmpty(savedVersionManifestSource))
-        {
-            savedVersionManifestSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的版本清单源: {savedVersionManifestSource}");
-
-        // 读取保存的文件下载源
-        var savedFileDownloadSource = await _localSettingsService.ReadSettingAsync<string>(FileDownloadSourceKey);
-        if (string.IsNullOrEmpty(savedFileDownloadSource))
-        {
-            savedFileDownloadSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的文件下载源: {savedFileDownloadSource}");
-
-        // 读取保存的 LiteLoader 源
-        var savedLiteLoaderSource = await _localSettingsService.ReadSettingAsync<string>(LiteLoaderSourceKey);
-        if (string.IsNullOrEmpty(savedLiteLoaderSource))
-        {
-            savedLiteLoaderSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 LiteLoader 源: {savedLiteLoaderSource}");
-
-        // 读取保存的 LegacyFabric 源
-        var savedLegacyFabricSource = await _localSettingsService.ReadSettingAsync<string>(LegacyFabricSourceKey);
-        if (string.IsNullOrEmpty(savedLegacyFabricSource))
-        {
-            savedLegacyFabricSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 LegacyFabric 源: {savedLegacyFabricSource}");
-
-        // 读取保存的 Cleanroom 源
-        var savedCleanroomSource = await _localSettingsService.ReadSettingAsync<string>(CleanroomSourceKey);
-        if (string.IsNullOrEmpty(savedCleanroomSource))
-        {
-            savedCleanroomSource = GetDefaultSourceKeyByRegion("bmclapi", "official");
-        }
-        Log.Information($"[Settings] 读取到保存的 Cleanroom 源: {savedCleanroomSource}");
-        Log.Information($"[Settings] 读取到保存的 OptiFine 源: {savedOptifineSource}");
-
-        // 读取自动选择最优下载源设置
-        var savedAutoSelectSetting = await _localSettingsService.ReadSettingAsync<bool?>(AutoSelectFastestSourceKey);
-        var savedAutoSelect = savedAutoSelectSetting ?? true;
-        if (!savedAutoSelectSetting.HasValue)
-        {
-            await _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, savedAutoSelect);
-            Log.Information("[Settings] 首次运行未检测到自动选择最优下载源配置，已默认开启并写回设置");
-        }
-        Log.Information($"[Settings] 读取到自动选择最优下载源设置: {savedAutoSelect}");
-
-        // 在 UI 线程上设置选中项
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-        {
-            SelectedGameDownloadSource = GameDownloadSources.FirstOrDefault(s => s.Key == savedGameSource)
-                ?? GameDownloadSources.FirstOrDefault();
-            SelectedModrinthResourceSource = ModrinthResourceSources.FirstOrDefault(s => s.Key == savedModrinthSource)
-                ?? ModrinthResourceSources.FirstOrDefault();
-            SelectedCurseforgeResourceSource = CurseforgeResourceSources.FirstOrDefault(s => s.Key == savedCurseForgeSource)
-                ?? CurseforgeResourceSources.FirstOrDefault();
-            SelectedVersionManifestSource = VersionManifestSources.FirstOrDefault(s => s.Key == savedVersionManifestSource)
-                ?? VersionManifestSources.FirstOrDefault();
-            SelectedFileDownloadSource = FileDownloadSources.FirstOrDefault(s => s.Key == savedFileDownloadSource)
-                ?? FileDownloadSources.FirstOrDefault();
-            SelectedCoreGameDownloadSource = CoreGameDownloadSources.FirstOrDefault(s => s.Key == savedCoreGameSource)
-                ?? CoreGameDownloadSources.FirstOrDefault();
-            SelectedForgeSource = ForgeSources.FirstOrDefault(s => s.Key == savedForgeSource)
-                ?? ForgeSources.FirstOrDefault();
-            SelectedFabricSource = FabricSources.FirstOrDefault(s => s.Key == savedFabricSource)
-                ?? FabricSources.FirstOrDefault();
-            SelectedNeoForgeSource = NeoForgeSources.FirstOrDefault(s => s.Key == savedNeoForgeSource)
-                ?? NeoForgeSources.FirstOrDefault();
-            SelectedQuiltSource = QuiltSources.FirstOrDefault(s => s.Key == savedQuiltSource)
-                ?? QuiltSources.FirstOrDefault();
-            SelectedLiteLoaderSource = LiteLoaderSources.FirstOrDefault(s => s.Key == savedLiteLoaderSource)
-                ?? LiteLoaderSources.FirstOrDefault();
-            SelectedLegacyFabricSource = LegacyFabricSources.FirstOrDefault(s => s.Key == savedLegacyFabricSource)
-                ?? LegacyFabricSources.FirstOrDefault();
-            SelectedCleanroomSource = CleanroomSources.FirstOrDefault(s => s.Key == savedCleanroomSource)
-                ?? CleanroomSources.FirstOrDefault();
-            SelectedOptifineSource = OptifineSources.FirstOrDefault(s => s.Key == savedOptifineSource)
-                ?? OptifineSources.FirstOrDefault();
-            RefreshGameDownloadMasterSelection();
-            RefreshCommunityResourceMasterSelection();
-            AutoSelectFastestSource = savedAutoSelect;
-
-            Log.Information($"[Settings] 游戏资源源: {SelectedGameDownloadSource?.DisplayName}, Modrinth源: {SelectedModrinthResourceSource?.DisplayName}, " +
-                $"CurseForge源: {SelectedCurseforgeResourceSource?.DisplayName}, 版本清单: {SelectedVersionManifestSource?.DisplayName}, " +
-                $"文件下载: {SelectedFileDownloadSource?.DisplayName}, 核心游戏: {SelectedCoreGameDownloadSource?.DisplayName}, " +
-                $"Forge: {SelectedForgeSource?.DisplayName}, Fabric: {SelectedFabricSource?.DisplayName}, " +
-                $"NeoForge: {SelectedNeoForgeSource?.DisplayName}, Quilt: {SelectedQuiltSource?.DisplayName}, " +
-                $"LiteLoader: {SelectedLiteLoaderSource?.DisplayName}, LegacyFabric: {SelectedLegacyFabricSource?.DisplayName}, " +
-                $"Cleanroom: {SelectedCleanroomSource?.DisplayName}, OptiFine: {SelectedOptifineSource?.DisplayName}, " +
-                $"自动选择: {AutoSelectFastestSource}");
-
-            // 同步到 DownloadSourceFactory
-            if (SelectedGameDownloadSource != null)
-            {
-                try
-                {
-                    _downloadSourceFactory.SetDefaultSource(SelectedGameDownloadSource.Key);
-                    Log.Information($"[Settings] 已同步游戏资源源到 DownloadSourceFactory: {SelectedGameDownloadSource.Key}");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"[Settings] 同步游戏资源源到 DownloadSourceFactory 失败: {SelectedGameDownloadSource.Key}");
-                }
-            }
-            if (SelectedModrinthResourceSource != null)
-            {
-                try
-                {
-                    _downloadSourceFactory.SetModrinthSource(SelectedModrinthResourceSource.Key);
-                    Log.Information($"[Settings] 已同步 Modrinth 资源源到 DownloadSourceFactory: {SelectedModrinthResourceSource.Key}");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"[Settings] 同步 Modrinth 资源源到 DownloadSourceFactory 失败: {SelectedModrinthResourceSource.Key}");
-                }
-            }
-            if (SelectedCurseforgeResourceSource != null)
-            {
-                try
-                {
-                    _downloadSourceFactory.SetCurseForgeSource(SelectedCurseforgeResourceSource.Key);
-                    Log.Information($"[Settings] 已同步 CurseForge 资源源到 DownloadSourceFactory: {SelectedCurseforgeResourceSource.Key}");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"[Settings] 同步 CurseForge 资源源到 DownloadSourceFactory 失败: {SelectedCurseforgeResourceSource.Key}");
-                }
-            }
-            // 同步 ModLoader 源到 DownloadSourceFactory
-            if (SelectedForgeSource != null)
-            {
-                try { _downloadSourceFactory.SetForgeSource(SelectedForgeSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Forge 源失败"); }
-            }
-            if (SelectedFabricSource != null)
-            {
-                try { _downloadSourceFactory.SetFabricSource(SelectedFabricSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Fabric 源失败"); }
-            }
-            if (SelectedNeoForgeSource != null)
-            {
-                try { _downloadSourceFactory.SetNeoForgeSource(SelectedNeoForgeSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 NeoForge 源失败"); }
-            }
-            if (SelectedQuiltSource != null)
-            {
-                try { _downloadSourceFactory.SetQuiltSource(SelectedQuiltSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Quilt 源失败"); }
-            }
-            if (SelectedOptifineSource != null)
-            {
-                try { _downloadSourceFactory.SetOptifineSource(SelectedOptifineSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 OptiFine 源失败"); }
-            }
-            // 同步版本清单和文件下载源到 DownloadSourceFactory
-            if (SelectedVersionManifestSource != null)
-            {
-                try { _downloadSourceFactory.SetVersionManifestSource(SelectedVersionManifestSource.Key); } catch (Exception ex) { Log.Error(ex, "同步版本清单源失败"); }
-            }
-            if (SelectedFileDownloadSource != null)
-            {
-                try { _downloadSourceFactory.SetFileDownloadSource(SelectedFileDownloadSource.Key); } catch (Exception ex) { Log.Error(ex, "同步文件下载源失败"); }
-            }
-            if (SelectedLiteLoaderSource != null)
-            {
-                try { _downloadSourceFactory.SetLiteLoaderSource(SelectedLiteLoaderSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LiteLoader 源失败"); }
-            }
-            if (SelectedLegacyFabricSource != null)
-            {
-                try { _downloadSourceFactory.SetLegacyFabricSource(SelectedLegacyFabricSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 LegacyFabric 源失败"); }
-            }
-            if (SelectedCleanroomSource != null)
-            {
-                try { _downloadSourceFactory.SetCleanroomSource(SelectedCleanroomSource.Key); } catch (Exception ex) { Log.Error(ex, "同步 Cleanroom 源失败"); }
-            }
-        });
-    }
-    
-    /// <summary>
-    /// 根据地区获取默认源 Key
-    /// </summary>
-    private string GetDefaultSourceKeyByRegion(string cnDefault, string otherDefault)
-    {
-        var region = System.Globalization.RegionInfo.CurrentRegion;
-        var culture = System.Globalization.CultureInfo.CurrentCulture;
-        
-        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
-        {
-            return cnDefault;
-        }
-        
-        return otherDefault;
     }
     
     /// <summary>
@@ -3826,41 +2771,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedGameDownloadSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null)
+        if (_isApplyingDownloadSourceState || value == null)
         {
             return;
         }
 
-        if (string.Equals(value.Key, AggregateCustomSourceKey, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!_isReconcilingGameMasterSelection)
-            {
-                RefreshGameDownloadMasterSelection();
-            }
-
-            return;
-        }
-
-        Log.Information($"[Settings] 游戏资源源选择变化: {value.DisplayName} ({value.Key})");
-
-        _localSettingsService.SaveSettingAsync(GameDownloadSourceKey, value.Key).ConfigureAwait(false);
-
-        try
-        {
-            _downloadSourceFactory.SetDefaultSource(value.Key);
-            Log.Information($"[Settings] 游戏资源源已切换为: {value.DisplayName} ({value.Key})");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, $"[Settings] 设置默认下载源失败: {value.Key}");
-        }
-
-        if (_isReconcilingGameMasterSelection)
-        {
-            return;
-        }
-
-        ApplyGameDownloadMasterSelection(value.Key);
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectGameMasterSourceAsync(value.Key, ct)),
+            "切换游戏资源下载源");
     }
     
     /// <summary>
@@ -3868,45 +2786,26 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedModrinthResourceSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        
-        // 保存选择
-        _localSettingsService.SaveSettingAsync(ModrinthResourceSourceKey, value.Key).ConfigureAwait(false);
-        
-        // 同步到 DownloadSourceFactory
-        _downloadSourceFactory.SetModrinthSource(value.Key);
-        
-        Log.Information($"[Settings] 社区资源源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingCommunitySourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshCommunityResourceMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectModrinthResourceSourceAsync(value.Key, ct)),
+            "切换 Modrinth 下载源");
     }
 
     partial void OnSelectedCommunityResourceMasterSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null)
+        if (_isApplyingDownloadSourceState || value == null)
         {
             return;
         }
 
-        if (string.Equals(value.Key, AggregateCustomSourceKey, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!_isReconcilingCommunityMasterSelection)
-            {
-                RefreshCommunityResourceMasterSelection();
-            }
-
-            return;
-        }
-
-        if (_isReconcilingCommunityMasterSelection)
-        {
-            return;
-        }
-
-        ApplyCommunityResourceMasterSelection(value.Key);
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectCommunityMasterSourceAsync(value.Key, ct)),
+            "切换社区主下载源");
     }
 
     /// <summary>
@@ -3914,20 +2813,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedCurseforgeResourceSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        // 保存选择
-        _localSettingsService.SaveSettingAsync(CurseForgeResourceSourceKey, value.Key).ConfigureAwait(false);
-
-        // 同步到 DownloadSourceFactory
-        _downloadSourceFactory.SetCurseForgeSource(value.Key);
-
-        Log.Information($"[Settings] CurseForge 资源源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingCommunitySourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshCommunityResourceMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectCurseforgeResourceSourceAsync(value.Key, ct)),
+            "切换 CurseForge 下载源");
     }
 
     /// <summary>
@@ -3935,15 +2828,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedCoreGameDownloadSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(CoreGameDownloadSourceKey, value.Key).ConfigureAwait(false);
-        Log.Information($"[Settings] 核心游戏资源源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectCoreGameDownloadSourceAsync(value.Key, ct)),
+            "切换核心游戏下载源");
     }
 
     /// <summary>
@@ -3951,16 +2843,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedForgeSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(ForgeSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Forge 源失败"); }
-        Log.Information($"[Settings] Forge 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectForgeSourceAsync(value.Key, ct)),
+            "切换 Forge 下载源");
     }
 
     /// <summary>
@@ -3968,16 +2858,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedFabricSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(FabricSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Fabric 源失败"); }
-        Log.Information($"[Settings] Fabric 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectFabricSourceAsync(value.Key, ct)),
+            "切换 Fabric 下载源");
     }
 
     /// <summary>
@@ -3985,16 +2873,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedNeoForgeSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(NeoForgeSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetNeoForgeSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 NeoForge 源失败"); }
-        Log.Information($"[Settings] NeoForge 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectNeoForgeSourceAsync(value.Key, ct)),
+            "切换 NeoForge 下载源");
     }
 
     /// <summary>
@@ -4002,16 +2888,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedQuiltSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(QuiltSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetQuiltSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Quilt 源失败"); }
-        Log.Information($"[Settings] Quilt 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectQuiltSourceAsync(value.Key, ct)),
+            "切换 Quilt 下载源");
     }
 
     /// <summary>
@@ -4019,16 +2903,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedOptifineSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-
-        _localSettingsService.SaveSettingAsync(OptifineSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetOptifineSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 OptiFine 源失败"); }
-        Log.Information($"[Settings] OptiFine 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectOptifineSourceAsync(value.Key, ct)),
+            "切换 OptiFine 下载源");
     }
 
     /// <summary>
@@ -4036,15 +2918,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedVersionManifestSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        _localSettingsService.SaveSettingAsync(VersionManifestSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetVersionManifestSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置版本清单源失败"); }
-        Log.Information($"[Settings] 版本清单源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectVersionManifestSourceAsync(value.Key, ct)),
+            "切换版本清单下载源");
     }
 
     /// <summary>
@@ -4052,15 +2933,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedFileDownloadSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        _localSettingsService.SaveSettingAsync(FileDownloadSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetFileDownloadSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置文件下载源失败"); }
-        Log.Information($"[Settings] 文件下载源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectFileDownloadSourceAsync(value.Key, ct)),
+            "切换文件下载源");
     }
 
     /// <summary>
@@ -4068,15 +2948,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedLiteLoaderSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        _localSettingsService.SaveSettingAsync(LiteLoaderSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetLiteLoaderSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LiteLoader 源失败"); }
-        Log.Information($"[Settings] LiteLoader 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectLiteLoaderSourceAsync(value.Key, ct)),
+            "切换 LiteLoader 下载源");
     }
 
     /// <summary>
@@ -4084,15 +2963,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedLegacyFabricSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        _localSettingsService.SaveSettingAsync(LegacyFabricSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetLegacyFabricSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 LegacyFabric 源失败"); }
-        Log.Information($"[Settings] LegacyFabric 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectLegacyFabricSourceAsync(value.Key, ct)),
+            "切换 LegacyFabric 下载源");
     }
 
     /// <summary>
@@ -4100,15 +2978,14 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnSelectedCleanroomSourceChanged(DownloadSourceItem? value)
     {
-        if (value == null) return;
-        _localSettingsService.SaveSettingAsync(CleanroomSourceKey, value.Key).ConfigureAwait(false);
-        try { _downloadSourceFactory.SetCleanroomSource(value.Key); } catch (Exception ex) { Log.Error(ex, "设置 Cleanroom 源失败"); }
-        Log.Information($"[Settings] Cleanroom 源已切换为: {value.DisplayName} ({value.Key})");
-
-        if (!_isApplyingGameSourceFromMaster)
+        if (_isApplyingDownloadSourceState || value == null)
         {
-            RefreshGameDownloadMasterSelection();
+            return;
         }
+
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SelectCleanroomSourceAsync(value.Key, ct)),
+            "切换 Cleanroom 下载源");
     }
 
     /// <summary>
@@ -4116,10 +2993,16 @@ public partial class SettingsViewModel : ObservableRecipient
     /// </summary>
     partial void OnAutoSelectFastestSourceChanged(bool value)
     {
+        if (_isApplyingDownloadSourceState)
+        {
+            return;
+        }
+
         Log.Information($"[Settings] 自动选择最优下载源设置变化: {value}");
 
-        // 保存设置
-        _localSettingsService.SaveSettingAsync(AutoSelectFastestSourceKey, value).ConfigureAwait(false);
+        RunFireAndForget(
+            ApplyDownloadSourceSelectionAsync(ct => _downloadSourceSettingsService.SetAutoSelectFastestSourceAsync(value, ct)),
+            "切换自动选择最优下载源");
 
         // 根据开关状态更新显示
         if (value)
@@ -4129,21 +3012,23 @@ public partial class SettingsViewModel : ObservableRecipient
         }
         else
         {
-            // 关闭时显示 "-"
-            LastSpeedTestTime = "-";
-            NextSpeedTestTime = "-";
-            FastestVersionManifestSourceInfo = "-";
-            FastestFileDownloadSourceInfo = "-";
-            FastestCommunitySourceInfo = "-";
-            FastestCurseForgeSourceInfo = "-";
-            FastestForgeSourceInfo = "-";
-            FastestFabricSourceInfo = "-";
-            FastestNeoForgeSourceInfo = "-";
-            FastestLiteLoaderSourceInfo = "-";
-            FastestQuiltSourceInfo = "-";
-            FastestLegacyFabricSourceInfo = "-";
-            FastestCleanroomSourceInfo = "-";
-            FastestOptifineSourceInfo = "-";
+            ApplyNetworkSpeedTestDisplayState(new NetworkSpeedTestDisplayState
+            {
+                LastSpeedTestTime = "-",
+                NextSpeedTestTime = "-",
+                FastestVersionManifestSourceInfo = "-",
+                FastestFileDownloadSourceInfo = "-",
+                FastestCommunitySourceInfo = "-",
+                FastestCurseForgeSourceInfo = "-",
+                FastestForgeSourceInfo = "-",
+                FastestFabricSourceInfo = "-",
+                FastestNeoForgeSourceInfo = "-",
+                FastestLiteLoaderSourceInfo = "-",
+                FastestQuiltSourceInfo = "-",
+                FastestLegacyFabricSourceInfo = "-",
+                FastestCleanroomSourceInfo = "-",
+                FastestOptifineSourceInfo = "-"
+            });
         }
     }
 
@@ -4178,78 +3063,22 @@ public partial class SettingsViewModel : ObservableRecipient
         {
             IsSpeedTestRunning = true;
 
-            // 强制执行新测速（忽略缓存）
-            var versionManifestResults = await _speedTestService.TestVersionManifestSourcesAsync();
-            VersionManifestSourceSpeedResults = versionManifestResults;
+            _speedTestCts.Cancel();
+            _speedTestCts.Dispose();
+            _speedTestCts = new CancellationTokenSource();
+            var cancellationToken = _speedTestCts.Token;
 
-            var fileDownloadResults = await _speedTestService.TestFileDownloadSourcesAsync();
-            FileDownloadSourceSpeedResults = fileDownloadResults;
+            var result = await _networkSettingsApplicationService.RunSpeedTestAsync(AutoSelectFastestSource, cancellationToken);
+            ApplyNetworkSpeedTestState(result.State);
 
-            var communityResults = await _speedTestService.TestCommunitySourcesAsync();
-            CommunitySourceSpeedResults = communityResults;
-
-            var curseforgeResults = await _speedTestService.TestCurseForgeSourcesAsync();
-            CurseforgeSourceSpeedResults = curseforgeResults;
-
-            // ModLoader 测速
-            var forgeResults = await _speedTestService.TestForgeSourcesAsync();
-            ForgeSourceSpeedResults = forgeResults;
-
-            var fabricResults = await _speedTestService.TestFabricSourcesAsync();
-            FabricSourceSpeedResults = fabricResults;
-
-            var neoforgeResults = await _speedTestService.TestNeoForgeSourcesAsync();
-            NeoforgeSourceSpeedResults = neoforgeResults;
-
-            // 其他 ModLoader 测速
-            var liteLoaderResults = await _speedTestService.TestModLoaderSourcesAsync("liteloader");
-            LiteLoaderSourceSpeedResults = liteLoaderResults;
-
-            var quiltResults = await _speedTestService.TestModLoaderSourcesAsync("quilt");
-            QuiltSourceSpeedResults = quiltResults;
-
-            var legacyFabricResults = await _speedTestService.TestModLoaderSourcesAsync("legacyfabric");
-            LegacyFabricSourceSpeedResults = legacyFabricResults;
-
-            var cleanroomResults = await _speedTestService.TestModLoaderSourcesAsync("cleanroom");
-            CleanroomSourceSpeedResults = cleanroomResults;
-
-            var optifineResults = await _speedTestService.TestModLoaderSourcesAsync("optifine");
-            OptifineSourceSpeedResults = optifineResults;
-
-            // 保存到缓存
-            var cache = new Core.Models.SpeedTestCache
+            if (result.FastestSelection != null)
             {
-                VersionManifestSources = VersionManifestSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                FileDownloadSources = FileDownloadSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                CommunitySources = CommunitySourceSpeedResults.ToDictionary(r => r.SourceKey),
-                CurseForgeSources = CurseforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                ForgeSources = ForgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                FabricSources = FabricSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                NeoForgeSources = NeoforgeSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                LiteLoaderSources = LiteLoaderSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                QuiltSources = QuiltSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                LegacyFabricSources = LegacyFabricSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                CleanroomSources = CleanroomSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                OptifineSources = OptifineSourceSpeedResults.ToDictionary(r => r.SourceKey),
-                LastUpdated = DateTime.UtcNow
-            };
-            await _speedTestService.SaveCacheAsync(cache);
-
-            // 更新显示信息
-            UpdateSpeedTestDisplayInfo();
-
-            // 如果开启了自动选择，执行自动选源
-            if (AutoSelectFastestSource)
-            {
-                await ApplyFastestSourcesAsync();
+                ApplyFastestSourceSelection(result.FastestSelection);
             }
-
-            // 更新最后测速时间（使用本地时间）
-            LastSpeedTestTime = DateTime.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-
-            // 更新下次测速时间
-            UpdateNextSpeedTestTime(DateTime.UtcNow);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Information("[Settings] 测速任务已取消");
         }
         catch (Exception ex)
         {
@@ -4366,56 +3195,8 @@ public partial class SettingsViewModel : ObservableRecipient
 
         try
         {
-            var cache = await _speedTestService.LoadCacheAsync();
-
-            // 加载缓存数据到内存（无论 ToggleSwitch 是否开启）
-            VersionManifestSourceSpeedResults = cache.VersionManifestSources.Values.ToList();
-            FileDownloadSourceSpeedResults = cache.FileDownloadSources.Values.ToList();
-            CommunitySourceSpeedResults = cache.CommunitySources.Values.ToList();
-            CurseforgeSourceSpeedResults = cache.CurseForgeSources.Values.ToList();
-            ForgeSourceSpeedResults = cache.ForgeSources.Values.ToList();
-            FabricSourceSpeedResults = cache.FabricSources.Values.ToList();
-            NeoforgeSourceSpeedResults = cache.NeoForgeSources.Values.ToList();
-            LiteLoaderSourceSpeedResults = cache.LiteLoaderSources.Values.ToList();
-            QuiltSourceSpeedResults = cache.QuiltSources.Values.ToList();
-            LegacyFabricSourceSpeedResults = cache.LegacyFabricSources.Values.ToList();
-            CleanroomSourceSpeedResults = cache.CleanroomSources.Values.ToList();
-            OptifineSourceSpeedResults = cache.OptifineSources.Values.ToList();
-
-            // 根据 ToggleSwitch 决定显示内容
-            if (!AutoSelectFastestSource)
-            {
-                // 关闭时显示 "-"
-                LastSpeedTestTime = "-";
-                NextSpeedTestTime = "-";
-                FastestVersionManifestSourceInfo = "-";
-                FastestFileDownloadSourceInfo = "-";
-                FastestCommunitySourceInfo = "-";
-                FastestCurseForgeSourceInfo = "-";
-                FastestForgeSourceInfo = "-";
-                FastestFabricSourceInfo = "-";
-                FastestNeoForgeSourceInfo = "-";
-                FastestLiteLoaderSourceInfo = "-";
-                FastestQuiltSourceInfo = "-";
-                FastestLegacyFabricSourceInfo = "-";
-                FastestCleanroomSourceInfo = "-";
-                FastestOptifineSourceInfo = "-";
-            }
-            else
-            {
-                // 开启时显示缓存数据
-                if (cache.LastUpdated != default)
-                {
-                    LastSpeedTestTime = cache.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-                    UpdateNextSpeedTestTime(cache.LastUpdated);
-                }
-                else
-                {
-                    LastSpeedTestTime = "Settings_SpeedTest_NeverTested".GetLocalized();
-                    NextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
-                }
-                UpdateSpeedTestDisplayInfoFromCache(cache);
-            }
+            var speedTestState = await _networkSettingsApplicationService.LoadSpeedTestCacheStateAsync(AutoSelectFastestSource);
+            ApplyNetworkSpeedTestState(speedTestState);
         }
         catch (Exception ex)
         {
@@ -4423,26 +3204,40 @@ public partial class SettingsViewModel : ObservableRecipient
         }
     }
 
-    /// <summary>
-    /// 更新下次测速时间显示
-    /// </summary>
-    private void UpdateNextSpeedTestTime(DateTime lastUpdatedUtc)
+    private void ApplyNetworkSpeedTestState(NetworkSpeedTestState state)
     {
-        var expirationTime = lastUpdatedUtc.AddHours(CacheExpirationHours);
-        var remaining = expirationTime - DateTime.UtcNow;
+        VersionManifestSourceSpeedResults = state.Snapshot.VersionManifestSourceResults;
+        FileDownloadSourceSpeedResults = state.Snapshot.FileDownloadSourceResults;
+        CommunitySourceSpeedResults = state.Snapshot.CommunitySourceResults;
+        CurseforgeSourceSpeedResults = state.Snapshot.CurseforgeSourceResults;
+        ForgeSourceSpeedResults = state.Snapshot.ForgeSourceResults;
+        FabricSourceSpeedResults = state.Snapshot.FabricSourceResults;
+        NeoforgeSourceSpeedResults = state.Snapshot.NeoforgeSourceResults;
+        LiteLoaderSourceSpeedResults = state.Snapshot.LiteLoaderSourceResults;
+        QuiltSourceSpeedResults = state.Snapshot.QuiltSourceResults;
+        LegacyFabricSourceSpeedResults = state.Snapshot.LegacyFabricSourceResults;
+        CleanroomSourceSpeedResults = state.Snapshot.CleanroomSourceResults;
+        OptifineSourceSpeedResults = state.Snapshot.OptifineSourceResults;
 
-        if (remaining.TotalSeconds <= 0)
-        {
-            NextSpeedTestTime = "Settings_SpeedTest_AboutToTest".GetLocalized();
-        }
-        else if (remaining.TotalHours >= 1)
-        {
-            NextSpeedTestTime = "Settings_SpeedTest_HoursLater".GetLocalized(Math.Ceiling(remaining.TotalHours));
-        }
-        else
-        {
-            NextSpeedTestTime = "Settings_SpeedTest_MinutesLater".GetLocalized(Math.Ceiling(remaining.TotalMinutes));
-        }
+        ApplyNetworkSpeedTestDisplayState(state.Display);
+    }
+
+    private void ApplyNetworkSpeedTestDisplayState(NetworkSpeedTestDisplayState display)
+    {
+        LastSpeedTestTime = display.LastSpeedTestTime;
+        NextSpeedTestTime = display.NextSpeedTestTime;
+        FastestVersionManifestSourceInfo = display.FastestVersionManifestSourceInfo;
+        FastestFileDownloadSourceInfo = display.FastestFileDownloadSourceInfo;
+        FastestCommunitySourceInfo = display.FastestCommunitySourceInfo;
+        FastestCurseForgeSourceInfo = display.FastestCurseForgeSourceInfo;
+        FastestForgeSourceInfo = display.FastestForgeSourceInfo;
+        FastestFabricSourceInfo = display.FastestFabricSourceInfo;
+        FastestNeoForgeSourceInfo = display.FastestNeoForgeSourceInfo;
+        FastestLiteLoaderSourceInfo = display.FastestLiteLoaderSourceInfo;
+        FastestQuiltSourceInfo = display.FastestQuiltSourceInfo;
+        FastestLegacyFabricSourceInfo = display.FastestLegacyFabricSourceInfo;
+        FastestCleanroomSourceInfo = display.FastestCleanroomSourceInfo;
+        FastestOptifineSourceInfo = display.FastestOptifineSourceInfo;
     }
 
     /// <summary>
@@ -4464,253 +3259,36 @@ public partial class SettingsViewModel : ObservableRecipient
             : "Settings_SpeedTest_TestFailed".GetLocalized());
     }
 
-    /// <summary>
-    /// 从缓存更新测速显示信息
-    /// </summary>
-    private void UpdateSpeedTestDisplayInfoFromCache(Core.Models.SpeedTestCache cache)
+    private void ApplyFastestSourceSelection(NetworkFastestSourceSelection selection)
     {
-        // 版本清单源
-        FastestVersionManifestSourceInfo = BuildFastestSourceInfo(cache.VersionManifestSources.Values);
-
-        // 文件下载源
-        FastestFileDownloadSourceInfo = BuildFastestSourceInfo(cache.FileDownloadSources.Values);
-
-        // 社区资源源（Modrinth）
-        FastestCommunitySourceInfo = BuildFastestSourceInfo(cache.CommunitySources.Values);
-
-        // CurseForge资源源
-        FastestCurseForgeSourceInfo = BuildFastestSourceInfo(cache.CurseForgeSources.Values);
-
-        // Forge 源
-        FastestForgeSourceInfo = BuildFastestSourceInfo(cache.ForgeSources.Values);
-
-        // Fabric 源
-        FastestFabricSourceInfo = BuildFastestSourceInfo(cache.FabricSources.Values);
-
-        // NeoForge 源
-        FastestNeoForgeSourceInfo = BuildFastestSourceInfo(cache.NeoForgeSources.Values);
-
-        // LiteLoader 源
-        FastestLiteLoaderSourceInfo = BuildFastestSourceInfo(cache.LiteLoaderSources.Values);
-
-        // Quilt 源
-        FastestQuiltSourceInfo = BuildFastestSourceInfo(cache.QuiltSources.Values);
-
-        // LegacyFabric 源
-        FastestLegacyFabricSourceInfo = BuildFastestSourceInfo(cache.LegacyFabricSources.Values);
-
-        // Cleanroom 源
-        FastestCleanroomSourceInfo = BuildFastestSourceInfo(cache.CleanroomSources.Values);
-
-        // Optifine 源
-        FastestOptifineSourceInfo = BuildFastestSourceInfo(cache.OptifineSources.Values);
+        ApplySelection(selection.VersionManifestSourceKey, VersionManifestSources, item => SelectedVersionManifestSource = item);
+        ApplySelection(selection.FileDownloadSourceKey, FileDownloadSources, item => SelectedFileDownloadSource = item);
+        ApplySelection(selection.CommunitySourceKey, ModrinthResourceSources, item => SelectedModrinthResourceSource = item);
+        ApplySelection(selection.CurseForgeSourceKey, CurseforgeResourceSources, item => SelectedCurseforgeResourceSource = item);
+        ApplySelection(selection.ForgeSourceKey, ForgeSources, item => SelectedForgeSource = item);
+        ApplySelection(selection.FabricSourceKey, FabricSources, item => SelectedFabricSource = item);
+        ApplySelection(selection.NeoForgeSourceKey, NeoForgeSources, item => SelectedNeoForgeSource = item);
+        ApplySelection(selection.LiteLoaderSourceKey, LiteLoaderSources, item => SelectedLiteLoaderSource = item);
+        ApplySelection(selection.QuiltSourceKey, QuiltSources, item => SelectedQuiltSource = item);
+        ApplySelection(selection.LegacyFabricSourceKey, LegacyFabricSources, item => SelectedLegacyFabricSource = item);
+        ApplySelection(selection.CleanroomSourceKey, CleanroomSources, item => SelectedCleanroomSource = item);
+        ApplySelection(selection.OptifineSourceKey, OptifineSources, item => SelectedOptifineSource = item);
     }
 
-    /// <summary>
-    /// 更新测速显示信息
-    /// </summary>
-    private void UpdateSpeedTestDisplayInfo()
+    private static void ApplySelection(
+        string? sourceKey,
+        ObservableCollection<DownloadSourceItem> sourcePool,
+        Action<DownloadSourceItem> setSelectedAction)
     {
-        FastestVersionManifestSourceInfo = BuildFastestSourceInfo(VersionManifestSourceSpeedResults);
-        FastestFileDownloadSourceInfo = BuildFastestSourceInfo(FileDownloadSourceSpeedResults);
-        FastestCommunitySourceInfo = BuildFastestSourceInfo(CommunitySourceSpeedResults);
-        FastestCurseForgeSourceInfo = BuildFastestSourceInfo(CurseforgeSourceSpeedResults);
-        FastestForgeSourceInfo = BuildFastestSourceInfo(ForgeSourceSpeedResults);
-        FastestFabricSourceInfo = BuildFastestSourceInfo(FabricSourceSpeedResults);
-        FastestNeoForgeSourceInfo = BuildFastestSourceInfo(NeoforgeSourceSpeedResults);
-        FastestLiteLoaderSourceInfo = BuildFastestSourceInfo(LiteLoaderSourceSpeedResults);
-        FastestQuiltSourceInfo = BuildFastestSourceInfo(QuiltSourceSpeedResults);
-        FastestLegacyFabricSourceInfo = BuildFastestSourceInfo(LegacyFabricSourceSpeedResults);
-        FastestCleanroomSourceInfo = BuildFastestSourceInfo(CleanroomSourceSpeedResults);
-        FastestOptifineSourceInfo = BuildFastestSourceInfo(OptifineSourceSpeedResults);
-    }
-
-    private static string BuildFastestSourceInfo(IEnumerable<Core.Models.SpeedTestResult> sourceResults)
-    {
-        var results = sourceResults.ToList();
-        if (results.Count == 0)
+        if (string.IsNullOrWhiteSpace(sourceKey))
         {
-            return "Settings_SpeedTest_NeverTested".GetLocalized();
+            return;
         }
 
-        var fastest = results
-            .Where(r => r.IsSuccess)
-            .OrderBy(r => r.LatencyMs)
-            .FirstOrDefault();
-
-        return fastest != null
-            ? $"{fastest.SourceName} ({fastest.LatencyMs}ms)"
-            : "Settings_SpeedTest_TestFailed".GetLocalized();
-    }
-
-    /// <summary>
-    /// 自动应用最快源
-    /// </summary>
-    private async Task ApplyFastestSourcesAsync()
-    {
-        try
+        var target = sourcePool.FirstOrDefault(s => s.Key == sourceKey);
+        if (target != null)
         {
-            var cache = await _speedTestService.LoadCacheAsync();
-
-            // 应用最快的版本清单源
-            var fastestVersionManifestKey = cache.GetFastestVersionManifestSourceKey();
-            if (!string.IsNullOrEmpty(fastestVersionManifestKey))
-            {
-                var versionManifestItem = VersionManifestSources.FirstOrDefault(s => s.Key == fastestVersionManifestKey);
-                if (versionManifestItem != null)
-                {
-                    SelectedVersionManifestSource = versionManifestItem;
-                    _downloadSourceFactory.SetVersionManifestSource(fastestVersionManifestKey);
-                    Log.Information("[Settings] 自动选择最快版本清单源: {Source}", fastestVersionManifestKey);
-                }
-            }
-
-            // 应用最快的文件下载源
-            var fastestFileDownloadKey = cache.GetFastestFileDownloadSourceKey();
-            if (!string.IsNullOrEmpty(fastestFileDownloadKey))
-            {
-                var fileDownloadItem = FileDownloadSources.FirstOrDefault(s => s.Key == fastestFileDownloadKey);
-                if (fileDownloadItem != null)
-                {
-                    SelectedFileDownloadSource = fileDownloadItem;
-                    _downloadSourceFactory.SetFileDownloadSource(fastestFileDownloadKey);
-                    Log.Information("[Settings] 自动选择最快文件下载源: {Source}", fastestFileDownloadKey);
-                }
-            }
-
-            // 应用最快的社区资源源（Modrinth）
-            var fastestCommunityKey = cache.GetFastestCommunitySourceKey();
-            if (!string.IsNullOrEmpty(fastestCommunityKey))
-            {
-                var modrinthSourceItem = ModrinthResourceSources.FirstOrDefault(s => s.Key == fastestCommunityKey);
-                if (modrinthSourceItem != null)
-                {
-                    SelectedModrinthResourceSource = modrinthSourceItem;
-                    _downloadSourceFactory.SetModrinthSource(fastestCommunityKey);
-                    Log.Information("[Settings] 自动选择最快Modrinth源: {Source}", fastestCommunityKey);
-                }
-            }
-
-            // 应用最快的CurseForge资源源
-            var fastestCurseForgeKey = cache.GetFastestCurseForgeSourceKey();
-            if (!string.IsNullOrEmpty(fastestCurseForgeKey))
-            {
-                var curseforgeSourceItem = CurseforgeResourceSources.FirstOrDefault(s => s.Key == fastestCurseForgeKey);
-                if (curseforgeSourceItem != null)
-                {
-                    SelectedCurseforgeResourceSource = curseforgeSourceItem;
-                    _downloadSourceFactory.SetCurseForgeSource(fastestCurseForgeKey);
-                    Log.Information("[Settings] 自动选择最快CurseForge源: {Source}", fastestCurseForgeKey);
-                }
-            }
-
-            // 应用最快的 Forge 源
-            var fastestForgeKey = cache.GetFastestForgeSourceKey();
-            if (!string.IsNullOrEmpty(fastestForgeKey))
-            {
-                var forgeSourceItem = ForgeSources.FirstOrDefault(s => s.Key == fastestForgeKey);
-                if (forgeSourceItem != null)
-                {
-                    SelectedForgeSource = forgeSourceItem;
-                    _downloadSourceFactory.SetForgeSource(fastestForgeKey);
-                    Log.Information("[Settings] 自动选择最快Forge源: {Source}", fastestForgeKey);
-                }
-            }
-
-            // 应用最快的 Fabric 源
-            var fastestFabricKey = cache.GetFastestFabricSourceKey();
-            if (!string.IsNullOrEmpty(fastestFabricKey))
-            {
-                var fabricSourceItem = FabricSources.FirstOrDefault(s => s.Key == fastestFabricKey);
-                if (fabricSourceItem != null)
-                {
-                    SelectedFabricSource = fabricSourceItem;
-                    _downloadSourceFactory.SetFabricSource(fastestFabricKey);
-                    Log.Information("[Settings] 自动选择最快Fabric源: {Source}", fastestFabricKey);
-                }
-            }
-
-            // 应用最快的 NeoForge 源
-            var fastestNeoForgeKey = cache.GetFastestNeoForgeSourceKey();
-            if (!string.IsNullOrEmpty(fastestNeoForgeKey))
-            {
-                var neoForgeSourceItem = NeoForgeSources.FirstOrDefault(s => s.Key == fastestNeoForgeKey);
-                if (neoForgeSourceItem != null)
-                {
-                    SelectedNeoForgeSource = neoForgeSourceItem;
-                    _downloadSourceFactory.SetNeoForgeSource(fastestNeoForgeKey);
-                    Log.Information("[Settings] 自动选择最快NeoForge源: {Source}", fastestNeoForgeKey);
-                }
-            }
-
-            // 应用最快的 LiteLoader 源
-            var fastestLiteLoaderKey = cache.GetFastestLiteLoaderSourceKey();
-            if (!string.IsNullOrEmpty(fastestLiteLoaderKey))
-            {
-                var liteLoaderSourceItem = LiteLoaderSources.FirstOrDefault(s => s.Key == fastestLiteLoaderKey);
-                if (liteLoaderSourceItem != null)
-                {
-                    SelectedLiteLoaderSource = liteLoaderSourceItem;
-                    _downloadSourceFactory.SetLiteLoaderSource(fastestLiteLoaderKey);
-                    Log.Information("[Settings] 自动选择最快LiteLoader源: {Source}", fastestLiteLoaderKey);
-                }
-            }
-
-            // 应用最快的 Quilt 源
-            var fastestQuiltKey = cache.GetFastestQuiltSourceKey();
-            if (!string.IsNullOrEmpty(fastestQuiltKey))
-            {
-                var quiltSourceItem = QuiltSources.FirstOrDefault(s => s.Key == fastestQuiltKey);
-                if (quiltSourceItem != null)
-                {
-                    SelectedQuiltSource = quiltSourceItem;
-                    _downloadSourceFactory.SetQuiltSource(fastestQuiltKey);
-                    Log.Information("[Settings] 自动选择最快Quilt源: {Source}", fastestQuiltKey);
-                }
-            }
-
-            // 应用最快的 LegacyFabric 源
-            var fastestLegacyFabricKey = cache.GetFastestLegacyFabricSourceKey();
-            if (!string.IsNullOrEmpty(fastestLegacyFabricKey))
-            {
-                var legacyFabricSourceItem = LegacyFabricSources.FirstOrDefault(s => s.Key == fastestLegacyFabricKey);
-                if (legacyFabricSourceItem != null)
-                {
-                    SelectedLegacyFabricSource = legacyFabricSourceItem;
-                    _downloadSourceFactory.SetLegacyFabricSource(fastestLegacyFabricKey);
-                    Log.Information("[Settings] 自动选择最快LegacyFabric源: {Source}", fastestLegacyFabricKey);
-                }
-            }
-
-            // 应用最快的 Cleanroom 源
-            var fastestCleanroomKey = cache.GetFastestCleanroomSourceKey();
-            if (!string.IsNullOrEmpty(fastestCleanroomKey))
-            {
-                var cleanroomSourceItem = CleanroomSources.FirstOrDefault(s => s.Key == fastestCleanroomKey);
-                if (cleanroomSourceItem != null)
-                {
-                    SelectedCleanroomSource = cleanroomSourceItem;
-                    _downloadSourceFactory.SetCleanroomSource(fastestCleanroomKey);
-                    Log.Information("[Settings] 自动选择最快Cleanroom源: {Source}", fastestCleanroomKey);
-                }
-            }
-
-            // 应用最快的 Optifine 源
-            var fastestOptifineKey = cache.GetFastestOptifineSourceKey();
-            if (!string.IsNullOrEmpty(fastestOptifineKey))
-            {
-                var optifineSourceItem = OptifineSources.FirstOrDefault(s => s.Key == fastestOptifineKey);
-                if (optifineSourceItem != null)
-                {
-                    SelectedOptifineSource = optifineSourceItem;
-                    _downloadSourceFactory.SetOptifineSource(fastestOptifineKey);
-                    Log.Information("[Settings] 自动选择最快Optifine源: {Source}", fastestOptifineKey);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[Settings] 自动应用最快源失败");
+            setSelectedAction(target);
         }
     }
 
@@ -4721,76 +3299,34 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 首先显示免责声明
-            var disclaimerDialog = new ContentDialog
-            {
-                Title = "重要提示",
-                Content = new TextBlock
-                {
-                    Text = "请仅添加您信任的下载源。\n\n" +
-                           "使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
-                    TextWrapping = TextWrapping.Wrap
-                },
-                PrimaryButtonText = "我已了解，继续添加",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            var disclaimerResult = await disclaimerDialog.ShowAsync();
-            if (disclaimerResult != ContentDialogResult.Primary)
+            var acknowledged = await _dialogService.ShowConfirmationDialogAsync(
+                "重要提示",
+                "请仅添加您信任的下载源。\n\n使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
+                "我已了解，继续添加",
+                "取消");
+
+            if (!acknowledged)
             {
                 return; // 用户取消
             }
-            
-            var templateName = template == DownloadSourceTemplateType.Official ? "官方资源" : "社区资源";
-            
-            // 创建添加对话框
-            var dialog = new ContentDialog
+
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = $"添加自定义{(template == DownloadSourceTemplateType.Official ? "游戏资源" : "社区资源")}源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
-            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
-            var templateText = new TextBlock 
-            { 
-                Text = $"模板类型: {templateName}",
-                Opacity = 0.7,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级（数值越大优先级越高）",
-                Value = 100,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateText);
-            stackPanel.Children.Add(priorityBox);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Template = template,
+                Priority = 100,
+                Enabled = true,
+                ShowEnabledSwitch = false,
+                ShowTemplateSelection = false
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var priority = (int)priorityBox.Value;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var priority = dialogResult.Priority;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -4839,25 +3375,20 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
             
-            await Task.Run(() =>
+            Log.Information("[Settings] 开始调用 GetAllSources()");
+            var sources = _customSourceManager.GetAllSources();
+            Log.Information($"[Settings] 从 CustomSourceManager 获取到 {sources.Count} 个源");
+
+            Log.Information("[Settings] 开始清空并填充 CustomSources 集合");
+            CustomSources.Clear();
+            foreach (var source in sources)
             {
-                Log.Information("[Settings] 开始调用 GetAllSources()");
-                var sources = _customSourceManager.GetAllSources();
-                Log.Information($"[Settings] 从 CustomSourceManager 获取到 {sources.Count} 个源");
-                
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                {
-                    Log.Information("[Settings] 开始清空并填充 CustomSources 集合");
-                    CustomSources.Clear();
-                    foreach (var source in sources)
-                    {
-                        var vm = CustomSourceViewModel.FromCoreModel(source);
-                        Log.Information($"[Settings] 添加源到列表: {vm.Name}, Enabled={vm.Enabled}, Key={vm.Key}");
-                        CustomSources.Add(vm);
-                    }
-                    Log.Information($"[Settings] 已加载 {CustomSources.Count} 个自定义下载源到 UI");
-                });
-            });
+                var vm = CustomSourceViewModel.FromCoreModel(source);
+                Log.Information($"[Settings] 添加源到列表: {vm.Name}, Enabled={vm.Enabled}, Key={vm.Key}");
+                CustomSources.Add(vm);
+            }
+
+            Log.Information($"[Settings] 已加载 {CustomSources.Count} 个自定义下载源到 UI");
         }
         catch (Exception ex)
         {
@@ -4873,57 +3404,25 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            // 创建添加对话框
-            var dialog = new ContentDialog
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "添加自定义下载源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { PlaceholderText = "例如：我的镜像站", Header = "源名称" };
-            var urlBox = new TextBox { PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
-            var templateCombo = new ComboBox 
-            { 
-                Header = "模板类型",
-                ItemsSource = new[] { "BMCLAPI (官方资源)", "MCIM (社区资源)" },
-                SelectedIndex = 0
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级",
-                Value = 100,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = true };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateCombo);
-            stackPanel.Children.Add(priorityBox);
-            stackPanel.Children.Add(enabledSwitch);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Template = DownloadSourceTemplateType.Official,
+                Priority = 100,
+                Enabled = true,
+                ShowEnabledSwitch = true,
+                ShowTemplateSelection = true
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Official 
-                    : DownloadSourceTemplateType.Community;
-                var priority = (int)priorityBox.Value;
-                var enabled = enabledSwitch.IsOn;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var template = dialogResult.Template;
+                var priority = dialogResult.Priority;
+                var enabled = dialogResult.Enabled;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -4962,57 +3461,27 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 创建编辑对话框
-            var dialog = new ContentDialog
+            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "编辑自定义下载源",
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 创建输入表单（预填充当前值）
-            var stackPanel = new StackPanel { Spacing = 12 };
-            
-            var nameBox = new TextBox { Text = source.Name, Header = "源名称" };
-            var urlBox = new TextBox { Text = source.BaseUrl, Header = "Base URL" };
-            var templateCombo = new ComboBox 
-            { 
-                Header = "模板类型",
-                ItemsSource = new[] { "官方资源", "社区资源" },
-                SelectedIndex = source.Template == DownloadSourceTemplateType.Official ? 0 : 1
-            };
-            var priorityBox = new NumberBox 
-            { 
-                Header = "优先级",
-                Value = source.Priority,
-                Minimum = 1,
-                Maximum = 1000,
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact
-            };
-            var enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = source.Enabled };
-            
-            stackPanel.Children.Add(nameBox);
-            stackPanel.Children.Add(urlBox);
-            stackPanel.Children.Add(templateCombo);
-            stackPanel.Children.Add(priorityBox);
-            stackPanel.Children.Add(enabledSwitch);
-            
-            dialog.Content = stackPanel;
-            
-            var result = await dialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+                Name = source.Name,
+                BaseUrl = source.BaseUrl,
+                Template = source.Template,
+                Priority = source.Priority,
+                Enabled = source.Enabled,
+                ShowEnabledSwitch = true,
+                ShowTemplateSelection = true
+            });
+
+            if (dialogResult != null)
             {
-                var name = nameBox.Text?.Trim();
-                var baseUrl = urlBox.Text?.Trim();
-                var template = templateCombo.SelectedIndex == 0 
-                    ? DownloadSourceTemplateType.Official 
-                    : DownloadSourceTemplateType.Community;
-                var priority = (int)priorityBox.Value;
-                var enabled = enabledSwitch.IsOn;
+                var name = dialogResult.Name;
+                var baseUrl = dialogResult.BaseUrl;
+                var template = dialogResult.Template;
+                var priority = dialogResult.Priority;
+                var enabled = dialogResult.Enabled;
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
@@ -5052,21 +3521,13 @@ public partial class SettingsViewModel : ObservableRecipient
         
         try
         {
-            // 显示确认对话框
-            var confirmDialog = new ContentDialog
-            {
-                Title = "确认删除",
-                Content = $"确定要删除下载源 \"{source.Name}\" 吗？",
-                PrimaryButtonText = "删除",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            var result = await confirmDialog.ShowAsync();
-            
-            if (result == ContentDialogResult.Primary)
+            var confirmed = await _dialogService.ShowConfirmationDialogAsync(
+                "确认删除",
+                $"确定要删除下载源 \"{source.Name}\" 吗？",
+                "删除",
+                "取消");
+
+            if (confirmed)
             {
                 var deleteResult = await _customSourceManager.DeleteSourceAsync(source.Key);
                 
@@ -5189,7 +3650,7 @@ public partial class SettingsViewModel : ObservableRecipient
             
             if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
             {
-                Process.Start("explorer.exe", folderPath);
+                _applicationLifecycleService.OpenFolderInExplorer(folderPath);
                 Log.Information($"[Settings] 打开配置文件夹: {folderPath}");
             }
         }
@@ -5217,7 +3678,7 @@ public partial class SettingsViewModel : ObservableRecipient
             }
             
             // 打开文件夹
-            Process.Start("explorer.exe", configFolder);
+            _applicationLifecycleService.OpenFolderInExplorer(configFolder);
             Log.Information($"[Settings] 打开自定义源配置文件夹: {configFolder}");
         }
         catch (Exception ex)
@@ -5234,25 +3695,20 @@ public partial class SettingsViewModel : ObservableRecipient
     {
         try
         {
-            var openPicker = new FileOpenPicker();
-            openPicker.FileTypeFilter.Add(".json");
-            openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
-            
-            var file = await openPicker.PickSingleFileAsync();
-            if (file != null)
+            var selectedPath = await _filePickerService.PickSingleFilePathAsync(
+                new[] { ".json" },
+                PickerLocationId.DocumentsLibrary);
+
+            if (!string.IsNullOrWhiteSpace(selectedPath))
             {
-                var importResult = await _customSourceManager.ImportSourceAsync(file.Path);
+                var importResult = await _customSourceManager.ImportSourceAsync(selectedPath);
                 
                 if (importResult.Success)
                 {
                     // 刷新列表
                     await LoadDownloadSourcesAsync();
                     await _dialogService.ShowMessageDialogAsync("导入成功", $"已成功导入自定义源: {importResult.Data?.Name}");
-                    Log.Information($"[Settings] 成功导入配置: {file.Path}");
+                    Log.Information($"[Settings] 成功导入配置: {selectedPath}");
                 }
                 else
                 {
@@ -5281,24 +3737,22 @@ public partial class SettingsViewModel : ObservableRecipient
                 return;
             }
             
-            var savePicker = new FileSavePicker();
-            savePicker.FileTypeChoices.Add("JSON 文件", new List<string> { ".json" });
-            savePicker.SuggestedFileName = $"{source.Key}.json";
-            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            
-            var window = App.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-            
-            var file = await savePicker.PickSaveFileAsync();
-            if (file != null)
+            var savePath = await _filePickerService.PickSaveFilePathAsync(
+                $"{source.Key}.json",
+                new Dictionary<string, IReadOnlyList<string>>
+                {
+                    ["JSON 文件"] = new[] { ".json" }
+                },
+                PickerLocationId.DocumentsLibrary);
+
+            if (!string.IsNullOrWhiteSpace(savePath))
             {
-                var exportResult = await _customSourceManager.ExportSourceAsync(source.Key, file.Path);
+                var exportResult = await _customSourceManager.ExportSourceAsync(source.Key, savePath);
                 
                 if (exportResult.Success)
                 {
-                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {file.Path}");
-                    Log.Information($"[Settings] 成功导出配置: {file.Path}");
+                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {savePath}");
+                    Log.Information($"[Settings] 成功导出配置: {savePath}");
                 }
                 else
                 {
@@ -5315,4 +3769,5 @@ public partial class SettingsViewModel : ObservableRecipient
     
     #endregion
 }
+
 

@@ -18,8 +18,10 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Features.VersionManagement.Services;
 using XianYuLauncher.Services;
+using XianYuLauncher.Services.Settings;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
+using XianYuLauncher.Contracts.Services.Settings;
 
 namespace XianYuLauncher;
 
@@ -107,6 +109,18 @@ public partial class App : Application
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<ISettingsRepository, LocalSettingsRepository>();
+            services.AddSingleton<IFilePickerService, FilePickerService>();
+            services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
+            services.AddSingleton<IUiDispatcher, UiDispatcher>();
+            services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
+            services.AddSingleton<IGameSettingsDomainService, GameSettingsDomainService>();
+            services.AddSingleton<IPersonalizationSettingsDomainService, PersonalizationSettingsDomainService>();
+            services.AddSingleton<INetworkSettingsDomainService, NetworkSettingsDomainService>();
+            services.AddSingleton<INetworkSettingsApplicationService, NetworkSettingsApplicationService>();
+            services.AddSingleton<IAiSettingsDomainService, AiSettingsDomainService>();
+            services.AddSingleton<IAboutSettingsDomainService, AboutSettingsDomainService>();
+            services.AddSingleton<IDownloadSourceSettingsService, DownloadSourceSettingsService>();
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();
