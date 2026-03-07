@@ -45,11 +45,11 @@ public sealed class DownloadSourceSettingsState
 
     public List<DownloadSourceOption> CleanroomSources { get; init; } = [];
 
-    public string? SelectedGameDownloadSourceKey { get; init; }
+    public string? SelectedGameDownloadSourceKey { get; set; }
 
     public string? SelectedModrinthResourceSourceKey { get; init; }
 
-    public string? SelectedCommunityResourceMasterSourceKey { get; init; }
+    public string? SelectedCommunityResourceMasterSourceKey { get; set; }
 
     public string? SelectedCurseforgeResourceSourceKey { get; init; }
 

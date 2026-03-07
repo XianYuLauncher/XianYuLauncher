@@ -118,39 +118,8 @@ public sealed class DownloadSourceSettingsService : IDownloadSourceSettingsServi
             AutoSelectFastestSource = autoSelectFastestSource
         };
 
-        state = new DownloadSourceSettingsState
-        {
-            GameDownloadSources = state.GameDownloadSources,
-            ModrinthResourceSources = state.ModrinthResourceSources,
-            CurseforgeResourceSources = state.CurseforgeResourceSources,
-            CoreGameDownloadSources = state.CoreGameDownloadSources,
-            ForgeSources = state.ForgeSources,
-            FabricSources = state.FabricSources,
-            NeoForgeSources = state.NeoForgeSources,
-            QuiltSources = state.QuiltSources,
-            OptifineSources = state.OptifineSources,
-            VersionManifestSources = state.VersionManifestSources,
-            FileDownloadSources = state.FileDownloadSources,
-            LiteLoaderSources = state.LiteLoaderSources,
-            LegacyFabricSources = state.LegacyFabricSources,
-            CleanroomSources = state.CleanroomSources,
-            SelectedGameDownloadSourceKey = ResolveGameMasterKey(state),
-            SelectedModrinthResourceSourceKey = state.SelectedModrinthResourceSourceKey,
-            SelectedCommunityResourceMasterSourceKey = ResolveCommunityMasterKey(state),
-            SelectedCurseforgeResourceSourceKey = state.SelectedCurseforgeResourceSourceKey,
-            SelectedCoreGameDownloadSourceKey = state.SelectedCoreGameDownloadSourceKey,
-            SelectedForgeSourceKey = state.SelectedForgeSourceKey,
-            SelectedFabricSourceKey = state.SelectedFabricSourceKey,
-            SelectedNeoForgeSourceKey = state.SelectedNeoForgeSourceKey,
-            SelectedQuiltSourceKey = state.SelectedQuiltSourceKey,
-            SelectedOptifineSourceKey = state.SelectedOptifineSourceKey,
-            SelectedVersionManifestSourceKey = state.SelectedVersionManifestSourceKey,
-            SelectedFileDownloadSourceKey = state.SelectedFileDownloadSourceKey,
-            SelectedLiteLoaderSourceKey = state.SelectedLiteLoaderSourceKey,
-            SelectedLegacyFabricSourceKey = state.SelectedLegacyFabricSourceKey,
-            SelectedCleanroomSourceKey = state.SelectedCleanroomSourceKey,
-            AutoSelectFastestSource = state.AutoSelectFastestSource
-        };
+        state.SelectedGameDownloadSourceKey = ResolveGameMasterKey(state);
+        state.SelectedCommunityResourceMasterSourceKey = ResolveCommunityMasterKey(state);
 
         SyncFactoryWithState(state);
         return state;
