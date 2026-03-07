@@ -99,13 +99,20 @@ public sealed class NetworkFastestSourceSelection
 	public string? OptifineSourceKey { get; init; }
 }
 
+public sealed class NetworkSpeedTestRunResult
+{
+	public NetworkSpeedTestState State { get; init; } = new();
+
+	public NetworkFastestSourceSelection? Selection { get; init; }
+}
+
 public interface INetworkSettingsDomainService
 {
 	Task<bool> LoadAutoSelectFastestSourceAsync();
 
 	Task SaveAutoSelectFastestSourceAsync(bool value);
 
-	Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default);
+	Task<NetworkSpeedTestRunResult> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default);
 
 	Task<NetworkSpeedTestState> LoadSpeedTestCacheStateAsync(bool autoSelectFastestSourceEnabled);
 
