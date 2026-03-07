@@ -49,7 +49,7 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 		return _settingsRepository.SaveAsync(AutoSelectFastestSourceKey, value);
 	}
 
-	public async Task<NetworkSpeedTestState> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default)
+	public async Task<NetworkSpeedTestRunResult> RunSpeedTestAsync(bool applyFastestSources, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		// 强制执行新测速（忽略缓存）
@@ -85,12 +85,18 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 
 		await _speedTestService.SaveCacheAsync(cache);
 
+		NetworkFastestSourceSelection? selection = null;
 		if (applyFastestSources)
 		{
 			await ApplyFastestSourcesFromCacheAsync(cache);
+			selection = GetFastestSourceSelection(cache);
 		}
 
-		return BuildStateFromCache(cache, forceShowDisplay: true);
+		return new NetworkSpeedTestRunResult
+		{
+			State = BuildStateFromCache(cache, forceShowDisplay: true),
+			Selection = selection
+		};
 	}
 
 	public async Task<NetworkSpeedTestState> LoadSpeedTestCacheStateAsync(bool autoSelectFastestSourceEnabled)

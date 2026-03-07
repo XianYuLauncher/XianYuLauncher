@@ -15,18 +15,12 @@ public sealed class NetworkSettingsApplicationService : INetworkSettingsApplicat
 
     public async Task<NetworkSpeedTestExecutionResult> RunSpeedTestAsync(bool autoSelectFastestSource, CancellationToken cancellationToken = default)
     {
-        var state = await _networkSettingsDomainService.RunSpeedTestAsync(autoSelectFastestSource, cancellationToken);
-
-        NetworkFastestSourceSelection? selection = null;
-        if (autoSelectFastestSource)
-        {
-            selection = await _networkSettingsDomainService.ApplyFastestSourcesAsync();
-        }
+        var result = await _networkSettingsDomainService.RunSpeedTestAsync(autoSelectFastestSource, cancellationToken);
 
         return new NetworkSpeedTestExecutionResult
         {
-            State = state,
-            FastestSelection = selection
+            State = result.State,
+            FastestSelection = result.Selection
         };
     }
 
