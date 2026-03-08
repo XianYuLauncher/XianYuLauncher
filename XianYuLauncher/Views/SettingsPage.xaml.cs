@@ -87,7 +87,7 @@ public sealed partial class SettingsPage : Page
             {
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
-                    _ = ViewModel.LoadSpeedTestCacheAsync();
+                    _ = RefreshAutoSpeedTestStateAsync();
                 });
             }
         }
@@ -95,6 +95,17 @@ public sealed partial class SettingsPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] 处理自动测速完成事件失败: {ex.Message}");
         }
+    }
+
+    private async Task RefreshAutoSpeedTestStateAsync()
+    {
+        if (ViewModel == null)
+        {
+            return;
+        }
+
+        await ViewModel.LoadSpeedTestCacheAsync();
+        await ViewModel.ReloadDownloadSourceSettingsAsync();
     }
 
     private async void VersionTextBlock_PointerPressed(object sender, PointerRoutedEventArgs e)

@@ -3204,6 +3204,15 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         }
     }
 
+    public async Task ReloadDownloadSourceSettingsAsync()
+    {
+        _downloadSourcesLoadCts.Cancel();
+        _downloadSourcesLoadCts.Dispose();
+        _downloadSourcesLoadCts = new CancellationTokenSource();
+
+        await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
+    }
+
     private void ApplyNetworkSpeedTestState(NetworkSpeedTestState state)
     {
         VersionManifestSourceSpeedResults = state.Snapshot.VersionManifestSourceResults;

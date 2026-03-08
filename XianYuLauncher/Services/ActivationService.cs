@@ -7,6 +7,7 @@ using Serilog;
 
 using XianYuLauncher.Activation;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models;
@@ -24,6 +25,7 @@ public class ActivationService : IActivationService
     private readonly ILocalSettingsService _localSettingsService;
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
     private readonly XianYuLauncher.Core.Services.IAutoSpeedTestService? _autoSpeedTestService;
+    private readonly INetworkSettingsDomainService? _networkSettingsDomainService;
     private UIElement? _shell = null;
 
     public ActivationService(
@@ -33,7 +35,8 @@ public class ActivationService : IActivationService
         ILanguageSelectorService languageSelectorService,
         ILocalSettingsService localSettingsService,
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
-        XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null)
+        XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null,
+        INetworkSettingsDomainService? networkSettingsDomainService = null)
     {
         _defaultHandler = defaultHandler;
         _activationHandlers = activationHandlers;
@@ -42,6 +45,7 @@ public class ActivationService : IActivationService
         _localSettingsService = localSettingsService;
         _downloadSourceFactory = downloadSourceFactory;
         _autoSpeedTestService = autoSpeedTestService;
+        _networkSettingsDomainService = networkSettingsDomainService;
     }
 
     public async Task ActivateAsync(object activationArgs)
@@ -301,6 +305,12 @@ public class ActivationService : IActivationService
             if (autoSpeedTestEnabled)
             {
                 await _autoSpeedTestService.CheckAndRunAsync();
+
+                if (_networkSettingsDomainService != null)
+                {
+                    await _networkSettingsDomainService.ApplyFastestSourcesAsync();
+                    Serilog.Log.Information("[AutoSpeedTest] 已从测速缓存同步最快下载源到设置与运行时工厂");
+                }
             }
             else
             {
