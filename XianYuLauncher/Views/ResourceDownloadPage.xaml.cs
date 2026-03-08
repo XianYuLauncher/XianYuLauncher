@@ -337,9 +337,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 3 || ResourcePackListScrollViewer == null) return;
-            if (ResourcePackListScrollViewer.ViewportHeight <= 0) return;
-            CheckResourcePackLoadMore(ResourcePackListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 3 || ResourcePackListScrollViewer == null) return;
+                if (ResourcePackListScrollViewer.ViewportHeight <= 0) return;
+                CheckResourcePackLoadMore(ResourcePackListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
@@ -431,9 +439,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 1 || ModListScrollViewer == null) return;
-            if (ModListScrollViewer.ViewportHeight <= 0) return;
-            CheckModLoadMore(ModListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 1 || ModListScrollViewer == null) return;
+                if (ModListScrollViewer.ViewportHeight <= 0) return;
+                CheckModLoadMore(ModListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
@@ -1235,9 +1251,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 2 || ShaderPackListScrollViewer == null) return;
-            if (ShaderPackListScrollViewer.ViewportHeight <= 0) return;
-            CheckShaderPackLoadMore(ShaderPackListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 2 || ShaderPackListScrollViewer == null) return;
+                if (ShaderPackListScrollViewer.ViewportHeight <= 0) return;
+                CheckShaderPackLoadMore(ShaderPackListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
@@ -1312,9 +1336,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 5 || ModpackListScrollViewer == null) return;
-            if (ModpackListScrollViewer.ViewportHeight <= 0) return;
-            CheckModpackLoadMore(ModpackListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 5 || ModpackListScrollViewer == null) return;
+                if (ModpackListScrollViewer.ViewportHeight <= 0) return;
+                CheckModpackLoadMore(ModpackListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
@@ -1389,9 +1421,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 4 || DatapackListScrollViewer == null) return;
-            if (DatapackListScrollViewer.ViewportHeight <= 0) return;
-            CheckDatapackLoadMore(DatapackListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 4 || DatapackListScrollViewer == null) return;
+                if (DatapackListScrollViewer.ViewportHeight <= 0) return;
+                CheckDatapackLoadMore(DatapackListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
@@ -1549,9 +1589,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (ResourceTabView.SelectedIndex != 6 || WorldListScrollViewer == null) return;
-            if (WorldListScrollViewer.ViewportHeight <= 0) return;
-            CheckWorldLoadMore(WorldListScrollViewer);
+            try
+            {
+                if (ResourceTabView == null || XamlRoot == null) return;
+                if (ResourceTabView.SelectedIndex != 6 || WorldListScrollViewer == null) return;
+                if (WorldListScrollViewer.ViewportHeight <= 0) return;
+                CheckWorldLoadMore(WorldListScrollViewer);
+            }
+            catch (COMException)
+            {
+                // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
         });
     }
 
