@@ -1,5 +1,7 @@
 namespace XianYuLauncher.Core.Services.DownloadSource;
 
+using XianYuLauncher.Core.Helpers;
+
 /// <summary>
 /// BMCLAPI下载源实现
 /// </summary>
@@ -408,9 +410,9 @@ public class BmclapiDownloadSource : IDownloadSource
     public string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion)
     {
         // 格式示例: 正式版 1.19.2-HD_U_H9, 1.19.2_HD_U_H9；预发布 pre1.19.2-rc2（走兜底）
-        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
+        if (OptifineVersionHelper.TryParse(optifineVersion, minecraftVersion, out var parts))
         {
-            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersion}/{type}/{patch}";
+            return $"https://bmclapi2.bangbang93.com/optifine/{minecraftVersion}/{parts.Type}/{parts.Patch}";
         }
 
         // 兜底：直接拼接（兼容无法解析为 HD_U_* 的版本）

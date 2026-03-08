@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Core.Services.DownloadSource;
 
@@ -285,13 +286,13 @@ public class CustomDownloadSource : IDownloadSource
     {
         // 解析 OptiFine 版本后缀（如 1.19.2-HD_U_H9 → type=HD_U, patch=H9）
         Dictionary<string, string> context;
-        if (OptifineVersionParser.TryParse(optifineVersion, minecraftVersion, out var type, out var patch))
+        if (OptifineVersionHelper.TryParse(optifineVersion, minecraftVersion, out var parts))
         {
             context = new Dictionary<string, string>
             {
                 { "mcVersion", minecraftVersion },
-                { "type", type! },
-                { "patch", patch! }
+                { "type", parts.Type },
+                { "patch", parts.Patch }
             };
         }
         else
