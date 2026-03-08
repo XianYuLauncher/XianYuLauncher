@@ -61,33 +61,6 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 收藏夹导入 - 游戏版本选择弹窗 -->
-        <ContentDialog
-            x:Name="FavoritesVersionDialog"
-            Title="选择游戏版本"
-            PrimaryButtonText="确认"
-            CloseButtonText="取消"
-            DefaultButton="Primary"
-            PrimaryButtonClick="FavoritesVersionDialog_PrimaryButtonClick"
-            CloseButtonClick="FavoritesVersionDialog_CloseButtonClick">
-            <StackPanel Spacing="12">
-                <TextBlock Text="请选择要导入的游戏版本：" FontSize="14" />
-                <ListView
-                    ItemsSource="{x:Bind ViewModel.FavoritesInstallVersions, Mode=OneWay}"
-                    SelectedItem="{x:Bind ViewModel.SelectedFavoritesInstallVersion, Mode=TwoWay}"
-                    SelectionMode="Single"
-                    MaxHeight="300">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="viewModels:InstalledGameVersionViewModel">
-                            <Grid Padding="8">
-                                <TextBlock Text="{x:Bind DisplayName}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
-        </ContentDialog>
-
         <!-- 收藏夹导入 - 下载进度弹窗 -->
         <ContentDialog
             x:Name="FavoritesDownloadProgressDialog"
@@ -240,8 +213,8 @@
                                     <TextBlock x:Uid="ResourceDownloadPage_FavoritesDragHint" Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 
-                                <!-- Function Bar -->
-                                <Grid Grid.Row="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="12,8">
+                                <!-- Function Bar（背景透明，避免 Card 样式被遮挡） -->
+                                <Grid Grid.Row="2" Background="Transparent" Padding="12,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -588,7 +561,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ModListScrollViewer_ScrollChanged">
+                                ViewChanged="ModListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ModListScrollViewer_LayoutUpdated"
+                                SizeChanged="ModListScrollViewer_SizeChanged">
                                     <!-- Mod列表 -->
                                     <ListView 
                                         x:Name="ModListView"
@@ -786,7 +761,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ShaderPackListScrollViewer_ScrollChanged">
+                                ViewChanged="ShaderPackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ShaderPackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ShaderPackListScrollViewer_SizeChanged">
                                     <!-- 光影列表 -->
                                     <controls:AdaptiveGridView 
                                         x:Name="ShaderPackListView"
@@ -1006,7 +983,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ResourcePackListScrollViewer_ScrollChanged">
+                                ViewChanged="ResourcePackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ResourcePackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ResourcePackListScrollViewer_SizeChanged">
                                     <!-- 资源包列表 -->
                                     <controls:AdaptiveGridView 
                                         x:Name="ResourcePackListView"
@@ -1227,7 +1206,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="DatapackListScrollViewer_ScrollChanged">
+                                ViewChanged="DatapackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="DatapackListScrollViewer_LayoutUpdated"
+                                SizeChanged="DatapackListScrollViewer_SizeChanged">
                                     <!-- 数据包列表 -->
                                     <ListView 
                                         x:Name="DatapackListView"
@@ -1426,7 +1407,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ModpackListScrollViewer_ScrollChanged">
+                                ViewChanged="ModpackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ModpackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ModpackListScrollViewer_SizeChanged">
                                     <!-- 整合包列表 -->
                                     <ListView 
                                         x:Name="ModpackListView"
@@ -1627,7 +1610,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="WorldListScrollViewer_ScrollChanged">
+                                ViewChanged="WorldListScrollViewer_ScrollChanged"
+                                LayoutUpdated="WorldListScrollViewer_LayoutUpdated"
+                                SizeChanged="WorldListScrollViewer_SizeChanged">
                                     <!-- 世界列表 -->
                                     <ListView 
                                         x:Name="WorldListView"

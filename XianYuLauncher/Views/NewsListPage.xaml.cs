@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -74,6 +75,16 @@ public sealed partial class NewsListPage : Page
         {
             navigationService.GoBack();
         }
+    }
+
+    private void BackButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        AnimatedIcon.SetState(BackAnimatedIcon, "PointerOver");
+    }
+
+    private void BackButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        AnimatedIcon.SetState(BackAnimatedIcon, "Normal");
     }
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)

@@ -428,4 +428,23 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         return "https://bmclapi2.bangbang93.com/maven/" + relativePath;
     }
+
+    #region Cleanroom (BMCLAPI 不支持，抛异常)
+
+    /// <inheritdoc />
+    public string GetCleanroomMetadataUrl() => throw new NotSupportedException("BMCLAPI 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetCleanroomInstallerUrl(string cleanroomVersion) => throw new NotSupportedException("BMCLAPI 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetCleanroomMavenBaseUrl() => throw new NotSupportedException("BMCLAPI 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetForgeMavenBaseUrl() => "https://bmclapi2.bangbang93.com/maven/";
+
+    /// <inheritdoc />
+    public string GetDefaultLibraryBaseUrl() => "https://bmclapi2.bangbang93.com/maven/";
+
+    #endregion
 }
