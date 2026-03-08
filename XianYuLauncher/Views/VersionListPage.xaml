@@ -237,7 +237,7 @@
                 Height="48"
                 Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
 
-            <!-- Version List Section - ListView 全宽使滚动条贴页面右侧；宽度约束放在 DataTemplate 内，虚拟化不受影响 -->
+            <!-- Version List Section - ListView 宽度受限于三列居中布局的中间列（约 1064px），滚动条出现在中间列右侧而非页面右侧 -->
             <ListView
                 x:Name="VersionsListView"
                 SelectionMode="Single"
