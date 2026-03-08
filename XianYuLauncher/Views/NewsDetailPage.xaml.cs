@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
@@ -89,6 +90,16 @@ public sealed partial class NewsDetailPage : Page
         {
             navigationService.GoBack();
         }
+    }
+
+    private void BackButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        AnimatedIcon.SetState(BackAnimatedIcon, "PointerOver");
+    }
+
+    private void BackButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        AnimatedIcon.SetState(BackAnimatedIcon, "Normal");
     }
 
     /// <summary>
