@@ -51,10 +51,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
                 }
                 else
                 {
-                    var isOptifineVsLiteLoader =
-                        (currentLoaderType == "optifine" && otherLoaderType == "liteloader")
-                        || (currentLoaderType == "liteloader" && otherLoaderType == "optifine");
-                    shouldClear = isOptifineVsLiteLoader;
+                    shouldClear = false;
                 }
             }
             else
