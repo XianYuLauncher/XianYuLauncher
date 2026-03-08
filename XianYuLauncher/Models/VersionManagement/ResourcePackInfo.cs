@@ -7,7 +7,7 @@ namespace XianYuLauncher.Models.VersionManagement;
 /// <summary>
 /// 资源包信息类
 /// </summary>
-public partial class ResourcePackInfo : ObservableObject
+public partial class ResourcePackInfo : ObservableObject, IVersionManagementResourceInfo
 {
     /// <summary>
     /// 资源包文件名

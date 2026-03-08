@@ -6,7 +6,7 @@ namespace XianYuLauncher.Models.VersionManagement;
 /// <summary>
 /// 光影信息类
 /// </summary>
-public partial class ShaderInfo : ObservableObject
+public partial class ShaderInfo : ObservableObject, IVersionManagementResourceInfo
 {
     /// <summary>
     /// 光影文件名
