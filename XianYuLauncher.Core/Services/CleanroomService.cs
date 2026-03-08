@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -14,19 +15,17 @@ namespace XianYuLauncher.Core.Services;
 public class CleanroomService
 {
     private readonly HttpClient _httpClient;
-    
-    // TODO(cleanroom-downloadsource-pr): 将 Cleanroom 元数据 URL 从服务硬编码迁移到 DownloadSourceFactory / IDownloadSource。
-    // TODO(cleanroom-downloadsource-pr): 迁移后应支持按下载源切换（official/bmclapi/custom）并复用 FallbackDownloadManager。
-    // Cleanroom版本列表URL（Maven仓库）
-    private const string CleanroomMavenMetadataUrl = "https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/maven-metadata.xml";
-    
-    // TODO(cleanroom-downloadsource-pr): 将 GitHub 备用源改为下载源系统内的可配置回退源，而不是服务内常量。
-    // GitHub Releases备用URL
-    private const string CleanroomGitHubReleasesUrl = "https://api.github.com/repos/CleanroomMC/Cleanroom/releases";
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
+    private readonly DownloadSourceFactory? _sourceFactory;
 
-    public CleanroomService(HttpClient httpClient)
+    public CleanroomService(
+        HttpClient httpClient,
+        FallbackDownloadManager? fallbackDownloadManager = null,
+        DownloadSourceFactory? sourceFactory = null)
     {
         _httpClient = httpClient;
+        _fallbackDownloadManager = fallbackDownloadManager;
+        _sourceFactory = sourceFactory;
     }
 
     /// <summary>
@@ -46,28 +45,56 @@ public class CleanroomService
 
         try
         {
-            // TODO(cleanroom-downloadsource-pr): 此处请求地址应来自下载源接口（例如 GetCleanroomMetadataUrl），
-            // TODO(cleanroom-downloadsource-pr): 并通过统一回退策略生成多源 URL。
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Cleanroom版本列表，请求URL: {CleanroomMavenMetadataUrl}");
-            
-            // 创建请求消息
-            using var request = new HttpRequestMessage(HttpMethod.Get, CleanroomMavenMetadataUrl);
-            
-            // 发送HTTP请求
+            // 若有 FallbackDownloadManager，使用它来请求（支持自动回退）
+            if (_fallbackDownloadManager != null)
+            {
+                System.Diagnostics.Debug.WriteLine("[DEBUG] 使用 FallbackDownloadManager 获取 Cleanroom 版本列表");
+
+                using var result = await _fallbackDownloadManager.SendGetWithFallbackAsync(
+                    source => source.SupportsCleanroom ? source.GetCleanroomMetadataUrl() : null,
+                    "cleanroom_metadata",
+                    (request, source) =>
+                    {
+                        if (source.RequiresBmclapiUserAgent())
+                        {
+                            request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
+                        }
+                    });
+
+                if (result.Success && result.Response != null)
+                {
+                    result.Response.EnsureSuccessStatusCode();
+                    string xml = await result.Response.Content.ReadAsStringAsync();
+                    var versions = ParseCleanroomVersionsFromXml(xml);
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个Cleanroom版本 (使用源: {result.UsedSourceKey})");
+                    return versions;
+                }
+
+                throw new Exception($"获取Cleanroom版本列表失败: {result.ErrorMessage}");
+            }
+
+            // 无 FallbackDownloadManager 时，使用下载源接口获取 URL
+            var source = _sourceFactory?.GetCleanroomSource();
+            if (source == null || !source.SupportsCleanroom)
+            {
+                throw new Exception("当前下载源不支持 Cleanroom");
+            }
+
+            var url = source.GetCleanroomMetadataUrl();
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Cleanroom版本列表，请求URL: {url}");
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (source.RequiresBmclapiUserAgent())
+            {
+                request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
+            }
+
             HttpResponseMessage response = await _httpClient.SendAsync(request);
-            
-            // 确保响应成功
             response.EnsureSuccessStatusCode();
-            
-            // 读取响应内容
-            string xml = await response.Content.ReadAsStringAsync();
-            
-            // 解析XML数据
-            List<string> versions = ParseCleanroomVersionsFromXml(xml);
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个Cleanroom版本");
-            
-            return versions;
+            string xmlContent = await response.Content.ReadAsStringAsync();
+            var versionList = ParseCleanroomVersionsFromXml(xmlContent);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versionList.Count} 个Cleanroom版本");
+            return versionList;
         }
         catch (HttpRequestException ex)
         {

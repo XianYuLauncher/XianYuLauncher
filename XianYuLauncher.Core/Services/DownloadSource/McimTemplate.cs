@@ -117,6 +117,13 @@ public class McimTemplate : DownloadSourceTemplate
         return "https://repo.mumfrey.com/content/repositories/snapshots/" + relativePath;
     }
 
+    // Cleanroom（MCIM 不支持）
+    public override string GetCleanroomMetadataUrl() => throw new NotSupportedException("MCIM 模板不支持 Cleanroom");
+    public override string GetCleanroomInstallerUrl(string cleanroomVersion) => throw new NotSupportedException("MCIM 模板不支持 Cleanroom");
+    public override string GetCleanroomMavenBaseUrl() => throw new NotSupportedException("MCIM 模板不支持 Cleanroom");
+    public override string GetForgeMavenBaseUrl() => throw new NotSupportedException("MCIM 模板不支持 Cleanroom");
+    public override string GetDefaultLibraryBaseUrl() => throw new NotSupportedException("MCIM 模板不支持 Cleanroom");
+
     // Modrinth API（MCIM 支持）
     public override string GetModrinthApiBaseUrl()
     {
