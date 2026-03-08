@@ -564,9 +564,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private InstalledGameVersionViewModel _selectedFavoritesInstallVersion;
 
     [ObservableProperty]
-    private bool _isFavoritesVersionDialogOpen;
-
-    [ObservableProperty]
     private bool _isFavoritesDownloadProgressDialogOpen;
 
     [ObservableProperty]
@@ -647,7 +644,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             await ShowMessageAsync("当前有下载任务正在进行，请等待完成后再试。");
             return;
         }
-        
+
         await LoadFavoritesInstallVersionsAsync();
         if (FavoritesInstallVersions.Count == 0)
         {
@@ -655,7 +652,18 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        IsFavoritesVersionDialogOpen = true;
+        var selected = await _dialogService.ShowListSelectionDialogAsync(
+            "选择游戏版本",
+            "请选择要导入的游戏版本：",
+            FavoritesInstallVersions,
+            v => v.DisplayName,
+            primaryButtonText: "确认",
+            closeButtonText: "取消");
+        if (selected == null)
+            return;
+
+        SelectedFavoritesInstallVersion = selected;
+        await ImportFavoritesToSelectedVersionAsync();
     }
 
     [RelayCommand]
@@ -763,12 +771,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        IsFavoritesVersionDialogOpen = false;
         IsFavoritesDownloadProgressDialogOpen = true;
         IsFavoritesDownloading = true;
         FavoritesDownloadProgress = 0;
         FavoritesDownloadProgressText = "0.0%";
-        FavoritesDownloadStatus = "正在准备下载...";
+        FavoritesDownloadStatus = $"正在下载 (0/{targets.Count})...";
 
         int completed = 0;
         int total = targets.Count;
@@ -913,7 +920,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         UpdateFavoritesOverallProgress();
         App.MainWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            FavoritesDownloadStatus = $"已完成 {completed}/{total}";
+            FavoritesDownloadStatus = completed >= total
+                ? $"已完成 {completed}/{total}"
+                : $"正在下载 ({completed}/{total})...";
         });
     }
 
@@ -1053,21 +1062,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
             if (requiredDependencies.Count > 0)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                {
-                    FavoritesDownloadStatus = $"正在下载前置Mod: {project.Title}";
-                });
-
                 await _modrinthService.ProcessDependenciesAsync(
                     requiredDependencies,
                     targetDir,
                     latest,
                     (fileName, progress) =>
                     {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            FavoritesDownloadStatus = $"前置: {fileName}";
-                        });
                         UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                     },
                     resolveDestinationPathAsync: projectId => ResolveModrinthDependencyTargetDirAsync(projectId, gameVersion));
@@ -1080,10 +1080,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             savePath,
             (fileName, progress) =>
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                {
-                    FavoritesDownloadStatus = $"正在下载: {fileName}";
-                });
                 UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
             });
 
@@ -1146,21 +1142,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
             if (requiredDependencies.Count > 0)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                {
-                    FavoritesDownloadStatus = $"正在下载前置Mod: {project.Title}";
-                });
-
                 await _curseForgeService.ProcessDependenciesAsync(
                     requiredDependencies,
                     targetDir,
                     latest,
                     (fileName, progress) =>
                     {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            FavoritesDownloadStatus = $"前置: {fileName}";
-                        });
                         UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                     },
                     resolveDestinationPathAsync: mod => ResolveCurseForgeDependencyTargetDirAsync(mod, gameVersion));
@@ -1179,10 +1166,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             savePath,
             (fileName, progress) =>
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                {
-                    FavoritesDownloadStatus = $"正在下载: {fileName}";
-                });
                 UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
             });
 
@@ -1244,10 +1227,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             latest,
                             (depFile, progress) =>
                             {
-                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                                {
-                                    FavoritesDownloadStatus = $"前置: {depFile}";
-                                });
                                 UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                             },
                             resolveDestinationPathAsync: mod => ResolveCurseForgeDependencyTargetDirAsync(mod, gameVersion));
@@ -1293,10 +1272,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                             latest,
                             (depFile, progress) =>
                             {
-                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                                {
-                                    FavoritesDownloadStatus = $"前置: {depFile}";
-                                });
                                 UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                             },
                             resolveDestinationPathAsync: projectId => ResolveModrinthDependencyTargetDirAsync(projectId, gameVersion));
@@ -1324,10 +1299,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     zipPath,
                     (file, progress) =>
                     {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            FavoritesDownloadStatus = $"正在下载: {file}";
-                        });
                         UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                     });
 
@@ -1341,10 +1312,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     zipPath,
                     (file, progress) =>
                     {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            FavoritesDownloadStatus = $"正在下载: {file}";
-                        });
                         UpdateFavoritesTaskProgress(GetFavoritesProgressKey(project), progress);
                     });
 
