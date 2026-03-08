@@ -2,6 +2,7 @@ using System.IO;
 using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
 using System.Net.Http;
+using Microsoft.UI.Dispatching;
 using Windows.Storage;
 using Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml;
@@ -26,11 +27,31 @@ public class DialogService : IDialogService
     private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
     private readonly HttpClient _httpClient = new HttpClient();
     private readonly IThemeSelectorService _themeSelectorService;
+    private readonly UISettings _uiSettings = new();
+    private ContentDialog? _activeDialog;
 
     public DialogService(IThemeSelectorService themeSelectorService)
     {
         _themeSelectorService = themeSelectorService ?? throw new ArgumentNullException(nameof(themeSelectorService));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
+        _uiSettings.ColorValuesChanged += OnSystemColorValuesChanged;
+    }
+
+    /// <summary>
+    /// 系统主题变化时（弹窗打开期间用户去系统设置改主题），动态更新弹窗主题。
+    /// 仅当启动器主题为「跟随系统」时生效。
+    /// </summary>
+    private void OnSystemColorValuesChanged(UISettings sender, object args)
+    {
+        var dispatcher = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcher == null) return;
+        dispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        {
+            if (_activeDialog != null && _themeSelectorService.Theme == ElementTheme.Default)
+            {
+                _activeDialog.RequestedTheme = GetEffectiveDialogTheme();
+            }
+        });
     }
 
     public void SetXamlRoot(XamlRoot xamlRoot)
@@ -55,6 +76,7 @@ public class DialogService : IDialogService
 
             // ContentDialog 被 reparent 到 popup 层，不继承根元素主题，需显式设置以跟随启动器主题
             dialog.RequestedTheme = GetEffectiveDialogTheme();
+            _activeDialog = dialog;
 
             return await dialog.ShowAsync();
         }
@@ -65,6 +87,7 @@ public class DialogService : IDialogService
         }
         finally
         {
+            _activeDialog = null;
             _dialogSemaphore.Release();
         }
     }
@@ -93,16 +116,12 @@ public class DialogService : IDialogService
     {
         var theme = _themeSelectorService.Theme;
         if (theme != ElementTheme.Default)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DialogService] GetEffectiveDialogTheme: 启动器主题={theme} -> 弹窗主题={theme}");
             return theme;
-        }
 
         var uiSettings = new UISettings();
         var background = uiSettings.GetColorValue(UIColorType.Background);
-        var resolved = background.R == 255 && background.G == 255 && background.B == 255 ? ElementTheme.Light : ElementTheme.Dark;
-        System.Diagnostics.Debug.WriteLine($"[DialogService] GetEffectiveDialogTheme: 跟随系统, UISettings.Background A={background.A} R={background.R} G={background.G} B={background.B} -> 弹窗主题={resolved}");
-        return resolved;
+        // 浅色背景 (R=255,G=255,B=255) 表示系统为浅色主题
+        return background.R == 255 && background.G == 255 && background.B == 255 ? ElementTheme.Light : ElementTheme.Dark;
     }
 
     public async Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定")
