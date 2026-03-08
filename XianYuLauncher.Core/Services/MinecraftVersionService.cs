@@ -731,8 +731,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             string actualModLoaderVersion = modLoaderVersion;
             if (modLoaderType.Equals("Optifine", StringComparison.OrdinalIgnoreCase))
             {
-                // Optifine 版本格式为 "type:patch"，需要转换
-                actualModLoaderVersion = modLoaderVersion.Replace(":", "_");
+                if (OptifineVersionHelper.TryParse(modLoaderVersion, out var parts))
+                {
+                    actualModLoaderVersion = parts.ToUnderscoreFormat();
+                }
+                else
+                {
+                    actualModLoaderVersion = modLoaderVersion.Replace(":", "_");
+                }
             }
             
             var installedVersionId = await installer.InstallAsync(

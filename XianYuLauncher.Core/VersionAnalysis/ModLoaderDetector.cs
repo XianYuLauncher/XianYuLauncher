@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.VersionAnalysis.Models;
 
 namespace XianYuLauncher.Core.VersionAnalysis
@@ -125,26 +126,9 @@ namespace XianYuLauncher.Core.VersionAnalysis
 
         private string CleanOptifineVersion(string rawVersion)
         {
-             // 输入: 1.21.1_HD_U_J7_pre10 => 输出: HD_U_J7_pre10
-             // 输入: HD_U_G8 => 输出: HD_U_G8
-             
-             if (string.IsNullOrEmpty(rawVersion)) return string.Empty;
-
-             // 找到第一个下划线
-             int index = rawVersion.IndexOf('_');
-             if (index > 0 && index < rawVersion.Length - 1)
-             {
-                 // 检查下划线前面是否像版本号 (包含点)
-                 string prefix = rawVersion.Substring(0, index);
-                 
-                 // 简单的验证：前缀应该是数字开头，并且包含点（例如 1.8.9, 1.12.2）
-                 // 避免误判诸如 "My_Version_1.0" 这样的字符串
-                 if (char.IsDigit(prefix[0]) && (prefix.Contains(".") || prefix.All(c => char.IsDigit(c) || c == '.')))
-                 {
-                     return rawVersion.Substring(index + 1);
-                 }
-             }
-             return rawVersion;
+            return OptifineVersionHelper.TryNormalize(rawVersion, out var normalizedVersion)
+                ? normalizedVersion
+                : rawVersion;
         }
 
         /// <summary>
