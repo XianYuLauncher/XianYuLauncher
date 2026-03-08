@@ -276,7 +276,7 @@ public partial class MinecraftVersionService
     }
 
     /// <summary>
-    /// 将 OptiFine 作为 LiteLoader 的 Tweak Mod 安装到 mods/{mcMajor.minor} 目录。
+    /// 将 OptiFine 作为 LiteLoader 的 Tweak Mod 安装到 mods/{Minecraft 完整版本号} 目录。
     /// </summary>
     private async Task InstallOptifineAsLiteLoaderTweakModAsync(
         string minecraftVersionId,
@@ -293,7 +293,7 @@ public partial class MinecraftVersionService
         var versionScopedModsDirectory = Path.Combine(
             versionDirectory,
             MinecraftPathConsts.Mods,
-            GetLiteLoaderVersionScopedModsFolder(minecraftVersionId));
+            GetLiteLoaderVersionScopedModsDirectoryName(minecraftVersionId));
 
         Directory.CreateDirectory(versionScopedModsDirectory);
 
@@ -331,7 +331,7 @@ public partial class MinecraftVersionService
         _logger.LogInformation("OptiFine JAR 下载完成: {Path}", optifineJarPath);
     }
 
-    private static string GetLiteLoaderVersionScopedModsFolder(string minecraftVersionId)
+    private static string GetLiteLoaderVersionScopedModsDirectoryName(string minecraftVersionId)
     {
         if (string.IsNullOrWhiteSpace(minecraftVersionId))
         {
