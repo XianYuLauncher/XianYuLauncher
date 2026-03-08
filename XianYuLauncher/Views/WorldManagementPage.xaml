@@ -22,159 +22,173 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部导航栏 - 卡片样式 -->
-        <Grid Grid.Row="0" Padding="24,16,24,0">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        <!-- 顶部导航栏 - 居中块(最大1064) + 块内居左 -->
+        <Grid Grid.Row="0" Padding="24,16,24,0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="20,16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Button Command="{x:Bind ViewModel.GoBackCommand}" 
-                            Style="{StaticResource SubtleButtonStyle}"
-                            Margin="0,0,16,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE72B;" FontSize="16"/>
-                            <TextBlock Text="返回" x:Uid="WorldManagement_Back" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                        <Button Command="{x:Bind ViewModel.GoBackCommand}" 
+                                Style="{StaticResource SubtleButtonStyle}"
+                                Margin="0,0,16,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE72B;" FontSize="16"/>
+                                <TextBlock Text="返回" x:Uid="WorldManagement_Back" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
-                    <TextBlock Grid.Column="1" 
-                               Text="{x:Bind ViewModel.WorldName, Mode=OneWay}" 
-                               Style="{StaticResource TitleTextBlockStyle}"
-                               VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
+                        <TextBlock Grid.Column="1" 
+                                   Text="{x:Bind ViewModel.WorldName, Mode=OneWay}" 
+                                   Style="{StaticResource TitleTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
 
-        <!-- 主内容区 -->
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Padding="24" Spacing="24" MaxWidth="1200">
-                
-                <!-- Hero Section - 世界概览卡片 -->
-                <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                      BorderThickness="1"
-                      CornerRadius="8"
-                      Padding="32">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+        <!-- 主内容区 - ScrollViewer 全宽，滚动条贴页面右侧 -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1" Padding="0,24,0,24" Spacing="24" HorizontalAlignment="Stretch">
 
-                    <!-- 世界图标 -->
-                    <Border Width="128" Height="128" 
-                            CornerRadius="8"
-                            Background="{ThemeResource LayerFillColorDefaultBrush}"
-                            Margin="0,0,32,0">
-                        <Image Source="{x:Bind ViewModel.WorldIcon, Mode=OneWay, FallbackValue={x:Null}}" 
-                               Stretch="UniformToFill"/>
-                    </Border>
+                    <!-- Hero Section - 世界概览卡片 -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="8"
+                          Padding="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                    <!-- 世界信息 -->
-                    <StackPanel Grid.Column="1" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Text="{x:Bind ViewModel.WorldName, Mode=OneWay}" 
-                                   Style="{StaticResource SubtitleTextBlockStyle}"
-                                   FontWeight="SemiBold"/>
-                        
-                        <StackPanel Orientation="Horizontal" Spacing="24">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="游戏模式" 
-                                           x:Uid="WorldManagement_GameMode"
-                                           FontSize="12" 
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="{x:Bind ViewModel.GameMode, Mode=OneWay}" 
-                                           FontSize="16" 
-                                           FontWeight="SemiBold"/>
+                        <!-- 世界图标 -->
+                        <Border Width="128" Height="128" 
+                                CornerRadius="8"
+                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                Margin="0,0,32,0">
+                            <Image Source="{x:Bind ViewModel.WorldIcon, Mode=OneWay, FallbackValue={x:Null}}" 
+                                   Stretch="UniformToFill"/>
+                        </Border>
+
+                        <!-- 世界信息 -->
+                        <StackPanel Grid.Column="1" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.WorldName, Mode=OneWay}" 
+                                       Style="{StaticResource SubtitleTextBlockStyle}"
+                                       FontWeight="SemiBold"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="24">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="游戏模式" 
+                                               x:Uid="WorldManagement_GameMode"
+                                               FontSize="12" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Text="{x:Bind ViewModel.GameMode, Mode=OneWay}" 
+                                               FontSize="16" 
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="难度" 
+                                               x:Uid="WorldManagement_Difficulty"
+                                               FontSize="12" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Text="{x:Bind ViewModel.Difficulty, Mode=OneWay}" 
+                                               FontSize="16" 
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="世界大小" 
+                                               x:Uid="WorldManagement_WorldSize"
+                                               FontSize="12" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Text="{x:Bind ViewModel.WorldSize, Mode=OneWay}" 
+                                               FontSize="16" 
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
                             </StackPanel>
 
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="难度" 
-                                           x:Uid="WorldManagement_Difficulty"
-                                           FontSize="12" 
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="{x:Bind ViewModel.Difficulty, Mode=OneWay}" 
-                                           FontSize="16" 
-                                           FontWeight="SemiBold"/>
-                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                <!-- 启动按钮 -->
+                                <Button Command="{x:Bind ViewModel.LaunchWorldCommand}" 
+                                        Style="{StaticResource AccentButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE768;" FontSize="16"/>
+                                        <TextBlock Text="启动游戏"/>
+                                    </StackPanel>
+                                </Button>
 
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="世界大小" 
-                                           x:Uid="WorldManagement_WorldSize"
-                                           FontSize="12" 
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="{x:Bind ViewModel.WorldSize, Mode=OneWay}" 
-                                           FontSize="16" 
-                                           FontWeight="SemiBold"/>
+                                <!-- 打开文件夹按钮 -->
+                                <Button Command="{x:Bind ViewModel.OpenWorldFolderCommand}" 
+                                        Style="{StaticResource DefaultButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
+                                        <TextBlock Text="打开文件夹" x:Uid="WorldManagement_OpenFolder"/>
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
+                    </Grid>
 
-                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
-                            <!-- 启动按钮 -->
-                            <Button Command="{x:Bind ViewModel.LaunchWorldCommand}" 
-                                    Style="{StaticResource AccentButtonStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE768;" FontSize="16"/>
-                                    <TextBlock Text="启动游戏"/>
-                                </StackPanel>
-                            </Button>
-                            
-                            <!-- 打开文件夹按钮 -->
-                            <Button Command="{x:Bind ViewModel.OpenWorldFolderCommand}" 
-                                    Style="{StaticResource DefaultButtonStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
-                                    <TextBlock Text="打开文件夹" x:Uid="WorldManagement_OpenFolder"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
+                    <!-- Tab 导航 -->
+                    <NavigationView PaneDisplayMode="Top" 
+                                    IsBackButtonVisible="Collapsed"
+                                    IsSettingsVisible="False"
+                                    SelectionChanged="NavigationView_SelectionChanged"
+                                    Background="Transparent">
+                        <NavigationView.Resources>
+                            <!-- 移除内容区域的背景色，但保留分割线 -->
+                            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+                            <!-- 不要覆盖边框颜色，让系统使用默认的分割线颜色 -->
+                        </NavigationView.Resources>
+                        <NavigationView.MenuItems>
+                            <NavigationViewItem Content="概览" x:Uid="WorldManagement_Tab_Overview" Tag="overview" IsSelected="True">
+                                <NavigationViewItem.Icon>
+                                    <FontIcon Glyph="&#xE80F;"/>
+                                </NavigationViewItem.Icon>
+                            </NavigationViewItem>
+                            <NavigationViewItem Content="数据包" x:Uid="WorldManagement_Tab_DataPacks" Tag="datapacks">
+                                <NavigationViewItem.Icon>
+                                    <FontIcon Glyph="&#xE8B7;"/>
+                                </NavigationViewItem.Icon>
+                            </NavigationViewItem>
+                        </NavigationView.MenuItems>
 
-                <!-- Tab 导航 -->
-                <NavigationView PaneDisplayMode="Top" 
-                                IsBackButtonVisible="Collapsed"
-                                IsSettingsVisible="False"
-                                SelectionChanged="NavigationView_SelectionChanged"
-                                Background="Transparent">
-                    <NavigationView.Resources>
-                        <!-- 移除内容区域的背景色，但保留分割线 -->
-                        <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
-                        <!-- 不要覆盖边框颜色，让系统使用默认的分割线颜色 -->
-                    </NavigationView.Resources>
-                    <NavigationView.MenuItems>
-                        <NavigationViewItem Content="概览" x:Uid="WorldManagement_Tab_Overview" Tag="overview" IsSelected="True">
-                            <NavigationViewItem.Icon>
-                                <FontIcon Glyph="&#xE80F;"/>
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                        <NavigationViewItem Content="数据包" x:Uid="WorldManagement_Tab_DataPacks" Tag="datapacks">
-                            <NavigationViewItem.Icon>
-                                <FontIcon Glyph="&#xE8B7;"/>
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                    </NavigationView.MenuItems>
+                        <!-- 内容区域 - 使用 Frame 实现滑动动画 -->
+                        <Frame x:Name="ContentFrame" Background="Transparent" Padding="0,20,0,0">
+                            <Frame.ContentTransitions>
+                                <TransitionCollection>
+                                    <NavigationThemeTransition>
+                                        <NavigationThemeTransition.DefaultNavigationTransitionInfo>
+                                            <SlideNavigationTransitionInfo/>
+                                        </NavigationThemeTransition.DefaultNavigationTransitionInfo>
+                                    </NavigationThemeTransition>
+                                </TransitionCollection>
+                            </Frame.ContentTransitions>
+                        </Frame>
+                    </NavigationView>
 
-                    <!-- 内容区域 - 使用 Frame 实现滑动动画 -->
-                    <Frame x:Name="ContentFrame" Background="Transparent" Padding="0,20,0,0">
-                        <Frame.ContentTransitions>
-                            <TransitionCollection>
-                                <NavigationThemeTransition>
-                                    <NavigationThemeTransition.DefaultNavigationTransitionInfo>
-                                        <SlideNavigationTransitionInfo/>
-                                    </NavigationThemeTransition.DefaultNavigationTransitionInfo>
-                                </NavigationThemeTransition>
-                            </TransitionCollection>
-                        </Frame.ContentTransitions>
-                    </Frame>
-                </NavigationView>
-
-            </StackPanel>
+                </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

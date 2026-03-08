@@ -46,14 +46,20 @@
     </Page.Resources>
 
     <Grid x:Name="ContentArea" Padding="24,48,24,24" DataContext="{x:Bind ViewModel}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- 标题区域 -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,32">
+        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,32">
                 <TextBlock 
                     x:Uid="ProfilePage_Title" 
                     Text="角色管理" 
@@ -65,10 +71,18 @@
                     Margin="0,8,0,0"
                     Opacity="0.7" />
             </StackPanel>
+        </Grid>
 
-            <!-- 登录状态显示 -->
+        <!-- 登录状态显示 - 居中块 + 块内居左 -->
+        <Grid Grid.Row="1" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel 
-                Grid.Row="1" 
+                Grid.Column="1"
+                HorizontalAlignment="Stretch"
                 Visibility="{x:Bind ViewModel.IsLoggingIn, Mode=OneWay}" 
                 Margin="0,0,0,24" 
                 Orientation="Horizontal" 
@@ -85,13 +99,20 @@
                     Foreground="{ThemeResource SystemControlHighlightAccentBrush}" 
                     TextWrapping="WrapWholeWords" />
             </StackPanel>
+        </Grid>
 
-            <!-- 主要内容区域 -->
+        <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
         <ScrollViewer 
             Grid.Row="2" 
             VerticalScrollBarVisibility="Auto" 
             HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="32" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Spacing="32" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <!-- 角色列表 -->
                 <StackPanel Spacing="16" HorizontalAlignment="Stretch">
                     <Grid>
@@ -328,6 +349,7 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>
