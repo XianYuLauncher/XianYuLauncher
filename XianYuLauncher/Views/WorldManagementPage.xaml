@@ -22,8 +22,14 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部导航栏 - 卡片样式 -->
-        <Grid Grid.Row="0" Padding="24,16,24,0">
+        <!-- 顶部导航栏 - 居中块(最大1064) + 块内居左 -->
+        <Grid Grid.Row="0" Padding="24,16,24,0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
@@ -50,11 +56,18 @@
                                VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            </Grid>
         </Grid>
 
-        <!-- 主内容区 -->
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Padding="24" Spacing="24" MaxWidth="1200">
+        <!-- 主内容区 - ScrollViewer 全宽，滚动条贴页面右侧 -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Padding="0,24,0,24" Spacing="24" HorizontalAlignment="Stretch">
                 
                 <!-- Hero Section - 世界概览卡片 -->
                 <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -175,6 +188,7 @@
                 </NavigationView>
 
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

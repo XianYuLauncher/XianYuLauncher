@@ -1,5 +1,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -24,6 +27,9 @@ public sealed partial class VersionListPage : Page
     private bool _isExportCancelled = false;
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
     private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
+    private const double HoverOpacityNormal = 0.5;
+    private const double HoverOpacityPressed = 0.7;
+    private static readonly TimeSpan HoverAnimationDuration = TimeSpan.FromMilliseconds(100);
     
     // 动态创建的弹窗引用
     private ContentDialog? _loadingDialog;
@@ -49,6 +55,7 @@ public sealed partial class VersionListPage : Page
         
         // 添加ItemClick事件处理
         VersionsListView.ItemClick += VersionsListView_ItemClick;
+        VersionsListView.ContainerContentChanging += VersionsListView_ContainerContentChanging;
         
         // 订阅导出整合包事件
         if (this.DataContext is VersionListViewModel viewModel)
@@ -64,6 +71,108 @@ public sealed partial class VersionListPage : Page
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
         
+    }
+
+    private void VersionsListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.ItemContainer is not ListViewItem item)
+        {
+            return;
+        }
+
+        // 兜底：无论 VSM 是否命中，都通过指针事件确保 HoverOverlay 生效。
+        item.PointerEntered -= VersionListItem_PointerEntered;
+        item.PointerExited -= VersionListItem_PointerExited;
+        item.PointerPressed -= VersionListItem_PointerPressed;
+        item.PointerReleased -= VersionListItem_PointerReleased;
+        item.PointerCanceled -= VersionListItem_PointerCanceled;
+
+        item.PointerEntered += VersionListItem_PointerEntered;
+        item.PointerExited += VersionListItem_PointerExited;
+        item.PointerPressed += VersionListItem_PointerPressed;
+        item.PointerReleased += VersionListItem_PointerReleased;
+        item.PointerCanceled += VersionListItem_PointerCanceled;
+    }
+
+    private void VersionListItem_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ListViewItem item)
+        {
+            AnimateHoverOverlayOpacity(item, HoverOpacityNormal);
+        }
+    }
+
+    private void VersionListItem_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ListViewItem item)
+        {
+            AnimateHoverOverlayOpacity(item, HoverOpacityPressed);
+        }
+    }
+
+    private void VersionListItem_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ListViewItem item)
+        {
+            AnimateHoverOverlayOpacity(item, HoverOpacityNormal);
+        }
+    }
+
+    private void VersionListItem_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ListViewItem item)
+        {
+            AnimateHoverOverlayOpacity(item, 0);
+        }
+    }
+
+    private void VersionListItem_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is ListViewItem item)
+        {
+            AnimateHoverOverlayOpacity(item, 0);
+        }
+    }
+
+    private static void AnimateHoverOverlayOpacity(ListViewItem item, double opacity)
+    {
+        var overlay = FindNamedElement<FrameworkElement>(item, "HoverOverlay");
+        if (overlay != null)
+        {
+            var storyboard = new Storyboard();
+            var animation = new DoubleAnimation
+            {
+                To = opacity,
+                Duration = HoverAnimationDuration,
+                EnableDependentAnimation = true
+            };
+
+            Storyboard.SetTarget(animation, overlay);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+    }
+
+    private static T? FindNamedElement<T>(DependencyObject root, string targetName) where T : FrameworkElement
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T typed && string.Equals(typed.Name, targetName, StringComparison.Ordinal))
+            {
+                return typed;
+            }
+
+            var found = FindNamedElement<T>(child, targetName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private async Task WarmupVersionIconsAsync(VersionListViewModel viewModel, int requestId)

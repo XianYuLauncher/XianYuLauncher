@@ -54,11 +54,13 @@
         
 
     </Grid.Resources>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <!-- 限制最大宽度，避免最大化时内容被拉得过宽。Stretch 使窄窗口时填满，宽窗口时 MaxWidth 限制后左侧对齐 -->
+        <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
         
         <!-- 拖放状态视觉反馈覆盖层 -->
         <Grid x:Name="DragDropOverlay" Background="{ThemeResource SystemControlAcrylicElementBrush}" BorderThickness="0" CornerRadius="12" Visibility="Collapsed" Canvas.ZIndex="1000" Grid.RowSpan="3">
@@ -1787,5 +1789,6 @@
             </TabViewItem>
         </TabView>
 
+        </Grid>
     </Grid>
 </Page>

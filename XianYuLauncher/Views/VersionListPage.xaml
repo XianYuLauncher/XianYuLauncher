@@ -111,14 +111,27 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
             <TextBlock x:Uid="VersionListPage_Title" Style="{ThemeResource TitleTextBlockStyle}" />
             <TextBlock x:Uid="VersionListPage_Subtitle" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
-        </StackPanel>
+            </StackPanel>
+        </Grid>
 
-        <!-- 控制区域 -->
-        <Grid Grid.Row="1" Margin="0,0,0,24">
+        <!-- 控制区域 - 居中块(最大1064) + 块内居左 -->
+        <Grid Grid.Row="1" Margin="0,0,0,24" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -174,10 +187,11 @@
                 IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
                 Style="{StaticResource DefaultButtonStyle}"
                 HorizontalAlignment="Right" />
+            </Grid>
         </Grid>
 
-        <!-- 版本列表 -->
-        <Grid Grid.Row="2">
+        <!-- 版本列表 - ScrollViewer 全宽，滚动条贴页面右侧 -->
+        <Grid Grid.Row="2" HorizontalAlignment="Stretch">
             <!-- Error Message -->
             <Grid
                 Margin="0,10,0,10"
@@ -217,28 +231,18 @@
                 Height="48"
                 Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
 
-            <!-- Version List Section -->
-            <ScrollViewer
-                x:Name="ModListScrollViewer"
-                Margin="0"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Disabled">
-                <ListView
-                    x:Name="VersionsListView"
-                    SelectionMode="Single"
-                    ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
-                    IsItemClickEnabled="True"
-                    CanReorderItems="False"
-                    AllowDrop="False"
-                    Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
-                    Background="Transparent"
-                    BorderThickness="0">
-                    <ListView.Resources>
-                        <Style TargetType="ScrollViewer">
-                            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                        </Style>
-                    </ListView.Resources>
+            <!-- Version List Section - ListView 全宽使滚动条贴页面右侧；宽度约束放在 DataTemplate 内，虚拟化不受影响 -->
+            <ListView
+                x:Name="VersionsListView"
+                SelectionMode="Single"
+                ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
+                IsItemClickEnabled="True"
+                CanReorderItems="False"
+                AllowDrop="False"
+                Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                Background="Transparent"
+                BorderThickness="0"
+                HorizontalContentAlignment="Stretch">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -249,33 +253,55 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListViewItem">
-                                        <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup x:Name="CommonStates">
-                                                    <VisualState x:Name="Normal" />
-                                                    <VisualState x:Name="PointerOver">
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                    <VisualState x:Name="Pressed">
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                    <VisualState x:Name="Selected">
-                                                        <Storyboard>
-                                                            <!-- Removed selection border style -->
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                            <ContentPresenter x:Name="ContentPresenter"
-                                                              Content="{TemplateBinding Content}"
-                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                              Padding="{TemplateBinding Padding}"/>
+                                        <!-- 三列布局在容器层，hover 仅作用于中间列 -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Grid.Column="1" x:Name="RootGrid" CornerRadius="12">
+                                                <VisualStateManager.VisualStateGroups>
+                                                    <VisualStateGroup x:Name="CommonStates">
+                                                        <VisualState x:Name="Normal" />
+                                                        <VisualState x:Name="PointerOver">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0"/>
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                        <VisualState x:Name="Pressed">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0"/>
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                    </VisualStateGroup>
+                                                    <VisualStateGroup x:Name="SelectionStates">
+                                                        <VisualState x:Name="Unselected">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0"/>
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                        <VisualState x:Name="Selected" />
+                                                        <VisualState x:Name="SelectedPointerOver">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0"/>
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                        <VisualState x:Name="SelectedPressed">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0"/>
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                    </VisualStateGroup>
+                                                </VisualStateManager.VisualStateGroups>
+                                                <ContentPresenter x:Name="ContentPresenter"
+                                                                  Content="{TemplateBinding Content}"
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                  Padding="{TemplateBinding Padding}"/>
+                                                <Border x:Name="HoverOverlay" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Opacity="0" CornerRadius="12" IsHitTestVisible="False"/>
+                                            </Grid>
                                         </Grid>
                                     </ControlTemplate>
                                 </Setter.Value>
@@ -283,7 +309,7 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     
-                    <!-- 列表项模板 -->
+                    <!-- 列表项模板 - 三列布局在 ItemContainerStyle 内，DataTemplate 仅内容 -->
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <Grid HorizontalAlignment="Stretch"
@@ -466,7 +492,6 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-            </ScrollViewer>
             
             <!-- 空列表提示 -->
             <StackPanel 
