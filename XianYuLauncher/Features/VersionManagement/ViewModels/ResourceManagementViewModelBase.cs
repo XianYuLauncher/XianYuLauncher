@@ -167,79 +167,79 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         var logPrefix = GetUpdateDetectLogPrefix();
         try
         {
-        var updatableByFile = items
-            .Where(x => !string.IsNullOrWhiteSpace(x.FilePath))
-            .ToDictionary(x => x.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
-        var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
-        var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var updatableByFile = items
+                .Where(x => !string.IsNullOrWhiteSpace(x.FilePath))
+                .ToDictionary(x => x.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
+            var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
+            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        if (updatableByFile.Count == 0)
-        {
+            if (updatableByFile.Count == 0)
+            {
+                ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+                return;
+            }
+
+            var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
+                items,
+                x => x.FilePath,
+                _context.CalculateSHA1,
+                shouldSkip: ShouldSkipForHash,
+                onHashFailed: (item, ex) =>
+                    System.Diagnostics.Debug.WriteLine($"{logPrefix} SHA1计算失败: {item.Name}, {ex.Message}")), cancellationToken);
+
+            var hashes = hashIndex.Hashes;
+            var filePathMap = hashIndex.FilePathMap;
+
+            if (hashes.Count == 0)
+            {
+                ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+                return;
+            }
+
+            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+            var (loaders, gameVersions) = await GetModrinthParamsAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(hashes, loaders, gameVersions)
+                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+            var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var hash in hashes)
+            {
+                if (!filePathMap.TryGetValue(hash, out var filePath)) continue;
+
+                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
+                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
+
+                if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
+                    continue;
+
+                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
+
+                var primaryFile = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files[0];
+                var hasUpdate = true;
+                if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
+                    hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
+
+                updatableByFile[filePath] = hasUpdate;
+                processedFilePaths.Add(filePath);
+                if (!string.IsNullOrWhiteSpace(version.ProjectId))
+                    projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
+            }
+
+            var unresolved = items.Where(x => IsUnresolvedForCurseForge(x, processedFilePaths)).ToList();
+            if (unresolved.Count > 0)
+            {
+                var (curseForgeLoader, gameVersion) = await GetCurseForgeParamsAsync(cancellationToken);
+                await DetectUpdatesViaCurseForgeAsync(unresolved, gameVersion, curseForgeLoader,
+                    updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, cancellationToken);
+            }
+
             ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
-            return;
-        }
-
-        var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
-            items,
-            x => x.FilePath,
-            _context.CalculateSHA1,
-            shouldSkip: ShouldSkipForHash,
-            onHashFailed: (item, ex) =>
-                System.Diagnostics.Debug.WriteLine($"{logPrefix} SHA1计算失败: {item.Name}, {ex.Message}")), cancellationToken);
-
-        var hashes = hashIndex.Hashes;
-        var filePathMap = hashIndex.FilePathMap;
-
-        if (hashes.Count == 0)
-        {
-            ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
-            return;
-        }
-
-        var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
-            ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
-
-        var (loaders, gameVersions) = await GetModrinthParamsAsync(cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var updateInfo = await _modrinthService.UpdateVersionFilesAsync(hashes, loaders, gameVersions)
-            ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
-
-        var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var hash in hashes)
-        {
-            if (!filePathMap.TryGetValue(hash, out var filePath)) continue;
-
-            if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
-                currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
-
-            if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
-                continue;
-
-            latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
-
-            var primaryFile = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files[0];
-            var hasUpdate = true;
-            if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
-                hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
-
-            updatableByFile[filePath] = hasUpdate;
-            processedFilePaths.Add(filePath);
-            if (!string.IsNullOrWhiteSpace(version.ProjectId))
-                projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
-        }
-
-        var unresolved = items.Where(x => IsUnresolvedForCurseForge(x, processedFilePaths)).ToList();
-        if (unresolved.Count > 0)
-        {
-            var (curseForgeLoader, gameVersion) = await GetCurseForgeParamsAsync(cancellationToken);
-            await DetectUpdatesViaCurseForgeAsync(unresolved, gameVersion, curseForgeLoader,
-                updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, cancellationToken);
-        }
-
-        ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -415,18 +415,8 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     {
         if (item == null) return;
 
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = message,
-            PrimaryButtonText = "删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (!await _dialogService.ShowConfirmationDialogAsync(title, message, "删除", "取消"))
+            return;
 
         try
         {

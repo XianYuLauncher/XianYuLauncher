@@ -118,8 +118,7 @@ public class DialogService : IDialogService
         if (theme != ElementTheme.Default)
             return theme;
 
-        var uiSettings = new UISettings();
-        var background = uiSettings.GetColorValue(UIColorType.Background);
+        var background = _uiSettings.GetColorValue(UIColorType.Background);
         // 浅色背景 (R=255,G=255,B=255) 表示系统为浅色主题
         return background.R == 255 && background.G == 255 && background.B == 255 ? ElementTheme.Light : ElementTheme.Dark;
     }
