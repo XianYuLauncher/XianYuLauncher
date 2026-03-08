@@ -142,6 +142,13 @@ public class BmclapiTemplate : DownloadSourceTemplate
         return "{baseUrl}/maven/{path}";
     }
 
+    // Cleanroom（BMCLAPI 不支持元数据/安装器，Forge/Minecraft 库走 Maven 镜像）
+    public override string GetCleanroomMetadataUrl() => throw new NotSupportedException("BMCLAPI 模板不支持 Cleanroom 元数据");
+    public override string GetCleanroomInstallerUrl(string cleanroomVersion) => throw new NotSupportedException("BMCLAPI 模板不支持 Cleanroom 安装器");
+    public override string GetCleanroomMavenBaseUrl() => throw new NotSupportedException("BMCLAPI 模板不支持 Cleanroom Maven");
+    public override string GetForgeMavenBaseUrl() => "{baseUrl}/maven/";
+    public override string GetDefaultLibraryBaseUrl() => "{baseUrl}/maven/";
+
     // Modrinth API（BMCLAPI 不支持，返回官方源）
     public override string GetModrinthApiBaseUrl() => "https://api.modrinth.com";
     public override string GetModrinthCdnBaseUrl() => "https://cdn.modrinth.com";

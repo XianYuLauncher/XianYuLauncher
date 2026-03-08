@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
+    xmlns:animatedvisuals="using:Microsoft.UI.Xaml.Controls.AnimatedVisuals"
     mc:Ignorable="d">
 
     <Grid>
@@ -22,13 +23,23 @@
             
             <Button 
                 Grid.Column="0"
+                x:Name="BackButton"
                 Click="BackButton_Click"
+                PointerEntered="BackButton_PointerEntered"
+                PointerExited="BackButton_PointerExited"
                 Style="{StaticResource SubtleButtonStyle}"
-                Padding="8"
+                Padding="4"
                 CornerRadius="4"
                 Margin="0,0,12,0"
-                VerticalAlignment="Top">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE72B;" FontSize="16" />
+                VerticalAlignment="Center">
+                <AnimatedIcon x:Name="BackAnimatedIcon" Width="24" Height="24">
+                    <AnimatedIcon.Source>
+                        <animatedvisuals:AnimatedBackVisualSource/>
+                    </AnimatedIcon.Source>
+                    <AnimatedIcon.FallbackIconSource>
+                        <SymbolIconSource Symbol="Back"/>
+                    </AnimatedIcon.FallbackIconSource>
+                </AnimatedIcon>
             </Button>
             
             <TextBlock 

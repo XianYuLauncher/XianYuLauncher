@@ -6,7 +6,7 @@ namespace XianYuLauncher.Models.VersionManagement;
 /// <summary>
 /// Mod信息类
 /// </summary>
-public partial class ModInfo : ObservableObject
+public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
 {
     /// <summary>
     /// Mod文件名

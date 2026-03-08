@@ -124,6 +124,7 @@ public partial class App : Application
 
             // Core Services
             services.AddSingleton<IFileService, FileService>();
+            services.AddSingleton<IFavoritesService, FavoritesService>();
             services.AddSingleton<ILogSanitizerService, LogSanitizerService>();
             services.AddSingleton<IGameHistoryService, GameHistoryService>();
             services.AddSingleton<DownloadSourceFactory>();
@@ -358,7 +359,14 @@ public partial class App : Application
             
             // Cleanroom Service
             services.AddHttpClient<CleanroomService>();
-            services.AddSingleton<CleanroomService>();
+            services.AddSingleton<CleanroomService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(CleanroomService));
+                var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
+                var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+                return new CleanroomService(httpClient, fallbackDownloadManager, downloadSourceFactory);
+            });
             
             // Optifine Service
             services.AddSingleton<OptifineService>(sp =>

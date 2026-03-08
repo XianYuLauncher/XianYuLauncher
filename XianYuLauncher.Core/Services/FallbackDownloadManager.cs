@@ -655,6 +655,8 @@ public class FallbackDownloadManager
                 => _sourceFactory.GetLiteLoaderSource(),
             var t when t.StartsWith("optifine")
                 => _sourceFactory.GetOptifineSource(),
+            var t when t.StartsWith("cleanroom")
+                => _sourceFactory.GetCleanroomSource(),
 
             // Quilt/Fabric Meta URL
             "quilt_meta" => _sourceFactory.GetQuiltSource(),

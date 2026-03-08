@@ -242,6 +242,25 @@ public class McimDownloadSource : IDownloadSource
     public string GetClientJarUrl(string versionId, string originalUrl) => originalUrl;
     
     public string GetClientJsonUrl(string versionId, string originalUrl) => originalUrl;
+
+    #region Cleanroom (MCIM 不支持，抛异常)
+
+    /// <inheritdoc />
+    public string GetCleanroomMetadataUrl() => throw new NotSupportedException("MCIM 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetCleanroomInstallerUrl(string cleanroomVersion) => throw new NotSupportedException("MCIM 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetCleanroomMavenBaseUrl() => throw new NotSupportedException("MCIM 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetForgeMavenBaseUrl() => throw new NotSupportedException("MCIM 不支持 Cleanroom");
+
+    /// <inheritdoc />
+    public string GetDefaultLibraryBaseUrl() => throw new NotSupportedException("MCIM 不支持 Cleanroom");
+
+    #endregion
     
     #endregion
 }

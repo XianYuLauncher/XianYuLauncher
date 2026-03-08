@@ -381,4 +381,25 @@ public class OfficialDownloadSource : IDownloadSource
         }
         return "https://repo.mumfrey.com/content/repositories/snapshots/" + relativePath;
     }
+
+    #region Cleanroom
+
+    /// <inheritdoc />
+    public string GetCleanroomMetadataUrl() =>
+        "https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/maven-metadata.xml";
+
+    /// <inheritdoc />
+    public string GetCleanroomInstallerUrl(string cleanroomVersion) =>
+        $"https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/{cleanroomVersion}/cleanroom-{cleanroomVersion}-installer.jar";
+
+    /// <inheritdoc />
+    public string GetCleanroomMavenBaseUrl() => "https://repo.cleanroommc.com/releases/";
+
+    /// <inheritdoc />
+    public string GetForgeMavenBaseUrl() => "https://maven.minecraftforge.net/";
+
+    /// <inheritdoc />
+    public string GetDefaultLibraryBaseUrl() => "https://libraries.minecraft.net/";
+
+    #endregion
 }

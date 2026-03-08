@@ -11,6 +11,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -21,14 +22,8 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 public class CleanroomInstaller : ModLoaderInstallerBase
 {
     private readonly IProcessorExecutor _processorExecutor;
-    
-    // TODO(cleanroom-downloadsource-pr): 将 Cleanroom Maven 基础地址迁移到下载源系统（IDownloadSource Cleanroom 专用接口）。
-    // TODO(cleanroom-downloadsource-pr): 安装器下载、库下载、版本解析统一走 DownloadSourceFactory + FallbackDownloadManager。
-    /// <summary>
-    /// Cleanroom Maven仓库URL
-    /// </summary>
-    private const string CleanroomMavenUrl = "https://repo.cleanroommc.com/releases";
-    
+    private readonly DownloadSourceFactory _sourceFactory;
+
     /// <inheritdoc/>
     public override string ModLoaderType => "Cleanroom";
 
@@ -38,10 +33,12 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         IVersionInfoManager versionInfoManager,
         IProcessorExecutor processorExecutor,
         IJavaRuntimeService javaRuntimeService,
+        DownloadSourceFactory sourceFactory,
         ILogger<CleanroomInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
+        _sourceFactory = sourceFactory ?? throw new ArgumentNullException(nameof(sourceFactory));
     }
 
     /// <inheritdoc/>
@@ -322,9 +319,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     /// </summary>
     private string GetCleanroomInstallerUrl(string cleanroomVersion)
     {
-        // TODO(cleanroom-downloadsource-pr): 使用下载源接口提供 Cleanroom Installer URL，不在安装器内拼接 URL。
-        // URL格式: https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/{version}/cleanroom-{version}-installer.jar
-        return $"{CleanroomMavenUrl}/com/cleanroommc/cleanroom/{cleanroomVersion}/cleanroom-{cleanroomVersion}-installer.jar";
+        return _sourceFactory.GetCleanroomSource().GetCleanroomInstallerUrl(cleanroomVersion);
     }
 
     /// <summary>
@@ -428,29 +423,27 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 downloadUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
                 Logger.LogDebug("使用 library.Url 构建下载地址: {Url}", downloadUrl);
             }
-            // 最后根据库名判断使用哪个 Maven 仓库
+            // 最后根据库名判断使用哪个 Maven 仓库（从下载源接口获取）
             else
             {
+                var source = _sourceFactory.GetCleanroomSource();
                 string baseUrl;
                 if (library.Name.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase))
                 {
-                    // TODO(cleanroom-downloadsource-pr): 这里的仓库选择应由下载源系统统一提供，避免安装器内硬编码。
-                    baseUrl = "https://repo.cleanroommc.com/releases/";
+                    baseUrl = source.GetCleanroomMavenBaseUrl();
                     Logger.LogDebug("检测到 Cleanroom 库，使用 Cleanroom Maven 仓库");
                 }
                 else if (library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
                 {
-                    // TODO(cleanroom-downloadsource-pr): Forge Maven 地址同样迁移到下载源系统，统一镜像与回退。
-                    baseUrl = "https://maven.minecraftforge.net/";
+                    baseUrl = source.GetForgeMavenBaseUrl();
                     Logger.LogDebug("检测到 Forge 库，使用 Forge Maven 仓库");
                 }
                 else
                 {
-                    // TODO(cleanroom-downloadsource-pr): 默认库仓库地址迁移到下载源系统，避免与全局源配置脱节。
-                    baseUrl = "https://libraries.minecraft.net/";
+                    baseUrl = source.GetDefaultLibraryBaseUrl();
                     Logger.LogDebug("使用默认 Maven 仓库");
                 }
-                
+
                 downloadUrl = BuildLibraryDownloadUrl(library.Name, baseUrl);
                 Logger.LogDebug("构建的下载地址: {Url}", downloadUrl);
             }
@@ -646,34 +639,33 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom.Libraries.Count);
         }
 
-        // 为所有库处理downloads字段
+        // 为所有库处理downloads字段（从下载源接口获取 baseUrl）
+        var source = _sourceFactory.GetCleanroomSource();
         foreach (var library in merged.Libraries)
         {
             if (library.Downloads == null)
             {
                 library.Downloads = new LibraryDownloads();
-                
+
                 var parts = library.Name?.Split(':');
                 if (parts != null && parts.Length >= 3)
                 {
                     string groupId = parts[0];
                     string artifactId = parts[1];
                     string version = parts[2];
-                    
-                    string baseUrl = "https://libraries.minecraft.net/";
+
+                    string baseUrl = source.GetDefaultLibraryBaseUrl();
                     if (library.Name?.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase) == true)
                     {
-                        // TODO(cleanroom-downloadsource-pr): 库 URL 生成规则应集中到下载源接口，避免多处重复硬编码。
-                        baseUrl = $"{CleanroomMavenUrl}/";
+                        baseUrl = source.GetCleanroomMavenBaseUrl();
                     }
                     else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
                     {
-                        // TODO(cleanroom-downloadsource-pr): Forge 库 URL 生成同上，统一接入下载源系统。
-                        baseUrl = "https://maven.minecraftforge.net/";
+                        baseUrl = source.GetForgeMavenBaseUrl();
                     }
-                    
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
+
+                    string downloadUrl = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
+
                     library.Downloads.Artifact = new DownloadFile
                     {
                         Url = downloadUrl,

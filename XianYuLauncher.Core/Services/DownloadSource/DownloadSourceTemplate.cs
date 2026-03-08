@@ -34,6 +34,13 @@ public abstract class DownloadSourceTemplate
     public abstract string GetLiteLoaderVersionsUrl();
     public abstract string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl);
 
+    // Cleanroom
+    public abstract string GetCleanroomMetadataUrl();
+    public abstract string GetCleanroomInstallerUrl(string cleanroomVersion);
+    public abstract string GetCleanroomMavenBaseUrl();
+    public abstract string GetForgeMavenBaseUrl();
+    public abstract string GetDefaultLibraryBaseUrl();
+
     // Modrinth API
     public abstract string GetModrinthApiBaseUrl();
     public abstract string GetModrinthCdnBaseUrl();
