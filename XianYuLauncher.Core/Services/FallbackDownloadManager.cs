@@ -168,7 +168,7 @@ public class FallbackDownloadManager
                 var bytes = await _innerManager.DownloadBytesAsync(transformedUrl, cancellationToken);
                 return FallbackBytesResult.Succeeded(bytes, sourceKey, attemptedSources);
             }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            catch (Exception ex) when (ShouldFallbackOnException(ex, cancellationToken))
             {
                 errors.Add($"[{sourceKey}] {ex.Message}");
                 if (!AutoFallbackEnabled) break;
@@ -211,7 +211,7 @@ public class FallbackDownloadManager
                 var content = await _innerManager.DownloadStringAsync(transformedUrl, cancellationToken);
                 return FallbackStringResult.Succeeded(content, sourceKey, attemptedSources);
             }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            catch (Exception ex) when (ShouldFallbackOnException(ex, cancellationToken))
             {
                 errors.Add($"[{sourceKey}] {ex.Message}");
                 if (!AutoFallbackEnabled) break;
@@ -354,7 +354,7 @@ public class FallbackDownloadManager
 
                 if (!AutoFallbackEnabled) break;
             }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            catch (Exception ex) when (ShouldFallbackOnException(ex, cancellationToken))
             {
                 errors.Add($"[{sourceKey}] {ex.Message}");
                 _logger?.LogWarning("源 {Source} 失败: {Error}，尝试下一个", sourceKey, ex.Message);
@@ -425,7 +425,7 @@ public class FallbackDownloadManager
 
                 if (!AutoFallbackEnabled) break;
             }
-            catch (Exception ex) when (ShouldFallbackOnException(ex))
+            catch (Exception ex) when (ShouldFallbackOnException(ex, cancellationToken))
             {
                 errors.Add($"[{sourceKey}] {ex.Message}");
                 _logger?.LogWarning("POST 源 {Source} 失败: {Error}，尝试下一个", sourceKey, ex.Message);
@@ -894,16 +894,49 @@ public class FallbackDownloadManager
     /// <summary>
     /// 判断异常是否应该触发回退
     /// </summary>
-    private bool ShouldFallbackOnException(Exception ex)
+    private bool ShouldFallbackOnException(Exception ex, CancellationToken cancellationToken)
     {
+        // 调用方主动取消时应立即终止，而不是继续回退。
+        if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         // 网络错误 - 应该回退
         if (ex is HttpRequestException) return true;
 
-        // 超时 - 应该回退
-        if (ex is TaskCanceledException tce && !tce.CancellationToken.IsCancellationRequested)
+        // HttpClient.Timeout 常以 TaskCanceledException/OperationCanceledException 形式抛出，
+        // 只要不是外部主动取消，都应视为可回退的瞬时错误。
+        if (ex is TaskCanceledException)
+            return true;
+
+        // 某些平台会直接抛出 TimeoutException 或将其包装为内部异常。
+        if (IsTimeoutException(ex))
             return true;
 
         // 其他异常 - 不回退
+        return false;
+    }
+
+    private static bool IsTimeoutException(Exception ex)
+    {
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            if (current is TimeoutException)
+            {
+                return true;
+            }
+
+            var message = current.Message;
+            if (!string.IsNullOrWhiteSpace(message)
+                && (message.Contains("timeout", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("timed out", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("HttpClient.Timeout", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 

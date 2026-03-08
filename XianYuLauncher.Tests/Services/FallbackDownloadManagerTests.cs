@@ -468,6 +468,48 @@ public class FallbackDownloadManagerTests : IDisposable
         result.AttemptedSources.Should().HaveCount(3);
     }
 
+    [Fact]
+    public async Task SendGetWithFallbackAsync_RequestTimeout_FallsBackToNextSource()
+    {
+        // Arrange
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            var url = request.RequestUri?.ToString() ?? string.Empty;
+
+            if (url.Contains("bangbang93.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[]")
+                });
+            }
+
+            throw new TaskCanceledException(
+                "The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.",
+                new TimeoutException("A task was canceled."));
+        });
+
+        using var httpClient = new HttpClient(handler);
+        var fallbackManager = new FallbackDownloadManager(
+            _innerManagerMock.Object,
+            _sourceFactory,
+            httpClient,
+            _loggerMock.Object);
+
+        // Act
+        var result = await fallbackManager.SendGetWithFallbackAsync(
+            source => source.GetNeoForgeVersionsUrl("1.20.1"),
+            "neoforge");
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.UsedSourceKey.Should().Be("bmclapi");
+        result.AttemptedSources.Should().ContainInOrder("official", "bmclapi");
+        handler.RequestedUrls.Should().HaveCount(2);
+        handler.RequestedUrls[0].Should().Contain("maven.neoforged.net");
+        handler.RequestedUrls[1].Should().Contain("bangbang93.com");
+    }
+
     #endregion
 
     #region 取消测试
@@ -516,4 +558,22 @@ public class FallbackDownloadManagerTests : IDisposable
     }
 
     #endregion
+}
+
+internal sealed class StubHttpMessageHandler : HttpMessageHandler
+{
+    private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;
+
+    public StubHttpMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
+    {
+        _handler = handler;
+    }
+
+    public List<string> RequestedUrls { get; } = new();
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        RequestedUrls.Add(request.RequestUri?.ToString() ?? string.Empty);
+        return _handler(request);
+    }
 }
