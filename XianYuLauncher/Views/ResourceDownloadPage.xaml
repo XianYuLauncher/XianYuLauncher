@@ -588,7 +588,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ModListScrollViewer_ScrollChanged">
+                                ViewChanged="ModListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ModListScrollViewer_LayoutUpdated"
+                                SizeChanged="ModListScrollViewer_SizeChanged">
                                     <!-- Mod列表 -->
                                     <ListView 
                                         x:Name="ModListView"
@@ -786,7 +788,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ShaderPackListScrollViewer_ScrollChanged">
+                                ViewChanged="ShaderPackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ShaderPackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ShaderPackListScrollViewer_SizeChanged">
                                     <!-- 光影列表 -->
                                     <controls:AdaptiveGridView 
                                         x:Name="ShaderPackListView"
@@ -1006,7 +1010,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ResourcePackListScrollViewer_ScrollChanged">
+                                ViewChanged="ResourcePackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ResourcePackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ResourcePackListScrollViewer_SizeChanged">
                                     <!-- 资源包列表 -->
                                     <controls:AdaptiveGridView 
                                         x:Name="ResourcePackListView"
@@ -1227,7 +1233,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="DatapackListScrollViewer_ScrollChanged">
+                                ViewChanged="DatapackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="DatapackListScrollViewer_LayoutUpdated"
+                                SizeChanged="DatapackListScrollViewer_SizeChanged">
                                     <!-- 数据包列表 -->
                                     <ListView 
                                         x:Name="DatapackListView"
@@ -1426,7 +1434,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="ModpackListScrollViewer_ScrollChanged">
+                                ViewChanged="ModpackListScrollViewer_ScrollChanged"
+                                LayoutUpdated="ModpackListScrollViewer_LayoutUpdated"
+                                SizeChanged="ModpackListScrollViewer_SizeChanged">
                                     <!-- 整合包列表 -->
                                     <ListView 
                                         x:Name="ModpackListView"
@@ -1627,7 +1637,9 @@
                                 Margin="20"
                                 Padding="0,0,12,0"
                                 VerticalScrollBarVisibility="Auto"
-                                ViewChanged="WorldListScrollViewer_ScrollChanged">
+                                ViewChanged="WorldListScrollViewer_ScrollChanged"
+                                LayoutUpdated="WorldListScrollViewer_LayoutUpdated"
+                                SizeChanged="WorldListScrollViewer_SizeChanged">
                                     <!-- 世界列表 -->
                                     <ListView 
                                         x:Name="WorldListView"

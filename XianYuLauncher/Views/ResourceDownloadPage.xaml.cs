@@ -1,4 +1,19 @@
-using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Input;using XianYuLauncher.Contracts.ViewModels;using XianYuLauncher.ViewModels;using XianYuLauncher.Core.Contracts.Services;using XianYuLauncher.Core.Models;using XianYuLauncher.Models;using XianYuLauncher.Contracts.Services;using XianYuLauncher.Controls;using System.Collections.Generic;using System.Collections.ObjectModel;using System.ComponentModel;using System.Runtime.InteropServices;using CommunityToolkit.Labs.WinUI;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.ViewModels;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Models;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Controls;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Views;
 
@@ -231,56 +246,56 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             case 1: // Mod下载标签页
                 if (!_modsLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("mod");
                     await ViewModel.SearchModsCommand.ExecuteAsync(null);
-                    _modsLoaded = true; // 在搜索完成后才设置标记
+                    _modsLoaded = true;
                 }
+                ScheduleModLoadMoreCheck();
                 break;
             case 2: // 光影下载标签页
                 if (!_shaderPacksLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("shader");
                     await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-                    _shaderPacksLoaded = true; // 在搜索完成后才设置标记
+                    _shaderPacksLoaded = true;
                 }
+                ScheduleShaderPackLoadMoreCheck();
                 break;
             case 3: // 资源包下载标签页
                 if (!_resourcePacksLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("resourcepack");
                     await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-                    _resourcePacksLoaded = true; // 在搜索完成后才设置标记
+                    _resourcePacksLoaded = true;
                 }
+                ScheduleResourcePackLoadMoreCheck();
                 break;
             case 4: // 数据包下载标签页
                 if (!_datapacksLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("datapack");
                     await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-                    _datapacksLoaded = true; // 在搜索完成后才设置标记
+                    _datapacksLoaded = true;
                 }
+                ScheduleDatapackLoadMoreCheck();
                 break;
             case 5: // 整合包下载标签页
                 if (!_modpacksLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("modpack");
                     await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-                    _modpacksLoaded = true; // 在搜索完成后才设置标记
+                    _modpacksLoaded = true;
                 }
+                ScheduleModpackLoadMoreCheck();
                 break;
             case 6: // 世界下载标签页
                 if (!_worldsLoaded)
                 {
-                    // 先加载类别，再执行搜索，避免类别加载触发重复搜索
                     await ViewModel.LoadCategoriesAsync("world");
                     await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-                    _worldsLoaded = true; // 在搜索完成后才设置标记
+                    _worldsLoaded = true;
                 }
+                ScheduleWorldLoadMoreCheck();
                 break;
         }
     }
@@ -309,24 +324,35 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
     
-    /// <summary>
-    /// 资源包列表滚动事件处理程序，实现滚动加载更多
-    /// </summary>
     private void ResourcePackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
-        {
-            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
-            var verticalOffset = scrollViewer.VerticalOffset;
-            var scrollableHeight = scrollViewer.ScrollableHeight;
-            var viewportHeight = scrollViewer.ViewportHeight;
-            var shouldLoadMore = !ViewModel.IsResourcePackLoadingMore && ViewModel.ResourcePackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (sender is ScrollViewer sv) CheckResourcePackLoadMore(sv);
+    }
 
-            if (shouldLoadMore)
-            {
-                ViewModel.LoadMoreResourcePacksCommand.Execute(null);
-            }
-        }
+    private void ResourcePackListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleResourcePackLoadMoreCheck();
+    private void ResourcePackListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleResourcePackLoadMoreCheck();
+
+    private void ScheduleResourcePackLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (ResourceTabView.SelectedIndex != 3 || ResourcePackListScrollViewer == null) return;
+            if (ResourcePackListScrollViewer.ViewportHeight <= 0) return;
+            CheckResourcePackLoadMore(ResourcePackListScrollViewer);
+        });
+    }
+
+    private void CheckResourcePackLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var viewportHeight = scrollViewer.ViewportHeight;
+        var shouldLoadMore = !ViewModel.IsResourcePackLoadingMore && ViewModel.ResourcePackHasMoreResults &&
+            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreResourcePacksCommand.Execute(null);
     }
     
     /// <summary>
@@ -394,21 +420,33 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     
     private void ModListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
+        if (sender is ScrollViewer sv) CheckModLoadMore(sv);
+    }
+
+    private void ModListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleModLoadMoreCheck();
+    private void ModListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleModLoadMoreCheck();
+
+    private void ScheduleModLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
-            var verticalOffset = scrollViewer.VerticalOffset;
-            var scrollableHeight = scrollViewer.ScrollableHeight;
-            var viewportHeight = scrollViewer.ViewportHeight;
-            var shouldLoadMore = !ViewModel.IsModLoadingMore && ViewModel.ModHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+            if (ResourceTabView.SelectedIndex != 1 || ModListScrollViewer == null) return;
+            if (ModListScrollViewer.ViewportHeight <= 0) return;
+            CheckModLoadMore(ModListScrollViewer);
+        });
+    }
 
-            //System.Diagnostics.Debug.WriteLine($"[Scroll] offset={verticalOffset:F0}, scrollable={scrollableHeight:F0}, viewport={viewportHeight:F0}, IsLoadingMore={ViewModel.IsModLoadingMore}, HasMore={ViewModel.ModHasMoreResults}, shouldLoad={shouldLoadMore}");
-
-            if (shouldLoadMore)
-            {
-                ViewModel.LoadMoreModsCommand.Execute(null);
-            }
-        }
+    private void CheckModLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var viewportHeight = scrollViewer.ViewportHeight;
+        var shouldLoadMore = !ViewModel.IsModLoadingMore && ViewModel.ModHasMoreResults &&
+            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreModsCommand.Execute(null);
     }
 
     private async void ModItem_Tapped(object sender, TappedRoutedEventArgs e)
@@ -1184,24 +1222,35 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
     
-    /// <summary>
-    /// 光影列表滚动事件处理程序，实现滚动加载更多
-    /// </summary>
     private void ShaderPackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
-        {
-            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
-            var verticalOffset = scrollViewer.VerticalOffset;
-            var scrollableHeight = scrollViewer.ScrollableHeight;
-            var viewportHeight = scrollViewer.ViewportHeight;
-            var shouldLoadMore = !ViewModel.IsShaderPackLoadingMore && ViewModel.ShaderPackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (sender is ScrollViewer sv) CheckShaderPackLoadMore(sv);
+    }
 
-            if (shouldLoadMore)
-            {
-                ViewModel.LoadMoreShaderPacksCommand.Execute(null);
-            }
-        }
+    private void ShaderPackListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleShaderPackLoadMoreCheck();
+    private void ShaderPackListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleShaderPackLoadMoreCheck();
+
+    private void ScheduleShaderPackLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (ResourceTabView.SelectedIndex != 2 || ShaderPackListScrollViewer == null) return;
+            if (ShaderPackListScrollViewer.ViewportHeight <= 0) return;
+            CheckShaderPackLoadMore(ShaderPackListScrollViewer);
+        });
+    }
+
+    private void CheckShaderPackLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var viewportHeight = scrollViewer.ViewportHeight;
+        var shouldLoadMore = !ViewModel.IsShaderPackLoadingMore && ViewModel.ShaderPackHasMoreResults &&
+            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreShaderPacksCommand.Execute(null);
     }
     
     /// <summary>
@@ -1250,24 +1299,35 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
     
-    /// <summary>
-    /// 整合包列表滚动事件处理程序，实现滚动加载更多
-    /// </summary>
     private void ModpackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
-        {
-            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
-            var verticalOffset = scrollViewer.VerticalOffset;
-            var scrollableHeight = scrollViewer.ScrollableHeight;
-            var viewportHeight = scrollViewer.ViewportHeight;
-            var shouldLoadMore = !ViewModel.IsModpackLoadingMore && ViewModel.ModpackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (sender is ScrollViewer sv) CheckModpackLoadMore(sv);
+    }
 
-            if (shouldLoadMore)
-            {
-                ViewModel.LoadMoreModpacksCommand.Execute(null);
-            }
-        }
+    private void ModpackListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleModpackLoadMoreCheck();
+    private void ModpackListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleModpackLoadMoreCheck();
+
+    private void ScheduleModpackLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (ResourceTabView.SelectedIndex != 5 || ModpackListScrollViewer == null) return;
+            if (ModpackListScrollViewer.ViewportHeight <= 0) return;
+            CheckModpackLoadMore(ModpackListScrollViewer);
+        });
+    }
+
+    private void CheckModpackLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var viewportHeight = scrollViewer.ViewportHeight;
+        var shouldLoadMore = !ViewModel.IsModpackLoadingMore && ViewModel.ModpackHasMoreResults &&
+            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreModpacksCommand.Execute(null);
     }
     
     /// <summary>
@@ -1316,24 +1376,35 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
     
-    /// <summary>
-    /// 数据包列表滚动事件处理程序，实现滚动加载更多
-    /// </summary>
     private void DatapackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
-        {
-            // 计算当前滚动位置是否接近底部（距离底部100像素以内）
-            var verticalOffset = scrollViewer.VerticalOffset;
-            var scrollableHeight = scrollViewer.ScrollableHeight;
-            var viewportHeight = scrollViewer.ViewportHeight;
-            var shouldLoadMore = !ViewModel.IsDatapackLoadingMore && ViewModel.DatapackHasMoreResults && (verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (sender is ScrollViewer sv) CheckDatapackLoadMore(sv);
+    }
 
-            if (shouldLoadMore)
-            {
-                ViewModel.LoadMoreDatapacksCommand.Execute(null);
-            }
-        }
+    private void DatapackListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleDatapackLoadMoreCheck();
+    private void DatapackListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleDatapackLoadMoreCheck();
+
+    private void ScheduleDatapackLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (ResourceTabView.SelectedIndex != 4 || DatapackListScrollViewer == null) return;
+            if (DatapackListScrollViewer.ViewportHeight <= 0) return;
+            CheckDatapackLoadMore(DatapackListScrollViewer);
+        });
+    }
+
+    private void CheckDatapackLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var viewportHeight = scrollViewer.ViewportHeight;
+        var shouldLoadMore = !ViewModel.IsDatapackLoadingMore && ViewModel.DatapackHasMoreResults &&
+            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreDatapacksCommand.Execute(null);
     }
     
     /// <summary>
@@ -1465,23 +1536,34 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
     
-    /// <summary>
-    /// 世界列表滚动事件处理程序，实现滚动加载更多
-    /// </summary>
     private void WorldListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (sender is ScrollViewer scrollViewer)
+        if (sender is ScrollViewer sv) CheckWorldLoadMore(sv);
+    }
+
+    private void WorldListScrollViewer_LayoutUpdated(object sender, object e) => ScheduleWorldLoadMoreCheck();
+    private void WorldListScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleWorldLoadMoreCheck();
+
+    private void ScheduleWorldLoadMoreCheck()
+    {
+        var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            // 检查是否滚动到底部
-            if (scrollViewer.VerticalOffset >= scrollViewer.ScrollableHeight - 100)
-            {
-                // 触发加载更多命令
-                if (ViewModel.LoadMoreWorldsCommand.CanExecute(null))
-                {
-                    ViewModel.LoadMoreWorldsCommand.Execute(null);
-                }
-            }
-        }
+            if (ResourceTabView.SelectedIndex != 6 || WorldListScrollViewer == null) return;
+            if (WorldListScrollViewer.ViewportHeight <= 0) return;
+            CheckWorldLoadMore(WorldListScrollViewer);
+        });
+    }
+
+    private void CheckWorldLoadMore(ScrollViewer scrollViewer)
+    {
+        if (scrollViewer == null || scrollViewer.ViewportHeight <= 0) return;
+        var scrollableHeight = scrollViewer.ScrollableHeight;
+        var verticalOffset = scrollViewer.VerticalOffset;
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreWorldsCommand.CanExecute(null);
+        if (shouldLoadMore)
+            ViewModel.LoadMoreWorldsCommand.Execute(null);
     }
     
     /// <summary>
