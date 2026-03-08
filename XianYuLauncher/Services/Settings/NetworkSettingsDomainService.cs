@@ -15,6 +15,18 @@ namespace XianYuLauncher.Services.Settings;
 public class NetworkSettingsDomainService : INetworkSettingsDomainService
 {
 	private const string AutoSelectFastestSourceKey = "AutoSelectFastestSource";
+	private const string ModrinthResourceSourceKey = "ModrinthResourceSource";
+	private const string CurseForgeResourceSourceKey = "CurseForgeResourceSource";
+	private const string VersionManifestSourceKey = "VersionManifestSource";
+	private const string FileDownloadSourceKey = "FileDownloadSource";
+	private const string ForgeSourceKey = "ForgeSource";
+	private const string FabricSourceKey = "FabricSource";
+	private const string NeoForgeSourceKey = "NeoForgeSource";
+	private const string QuiltSourceKey = "QuiltSource";
+	private const string LiteLoaderSourceKey = "LiteLoaderSource";
+	private const string LegacyFabricSourceKey = "LegacyFabricSource";
+	private const string CleanroomSourceKey = "CleanroomSource";
+	private const string OptifineSourceKey = "OptifineSource";
 	private const int CacheExpirationHours = 12;
 
 	private readonly ISettingsRepository _settingsRepository;
@@ -112,7 +124,7 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 		return GetFastestSourceSelection(cache);
 	}
 
-	private Task ApplyFastestSourcesFromCacheAsync(Core.Models.SpeedTestCache cache)
+	private async Task ApplyFastestSourcesFromCacheAsync(Core.Models.SpeedTestCache cache)
 	{
 		try
 		{
@@ -120,72 +132,84 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 
 			if (!string.IsNullOrWhiteSpace(selection.VersionManifestSourceKey))
 			{
+				await _settingsRepository.SaveAsync(VersionManifestSourceKey, selection.VersionManifestSourceKey);
 				_downloadSourceFactory.SetVersionManifestSource(selection.VersionManifestSourceKey);
 				Log.Information("[Settings] 自动选择最快版本清单源: {Source}", selection.VersionManifestSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.FileDownloadSourceKey))
 			{
+				await _settingsRepository.SaveAsync(FileDownloadSourceKey, selection.FileDownloadSourceKey);
 				_downloadSourceFactory.SetFileDownloadSource(selection.FileDownloadSourceKey);
 				Log.Information("[Settings] 自动选择最快文件下载源: {Source}", selection.FileDownloadSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.CommunitySourceKey))
 			{
+				await _settingsRepository.SaveAsync(ModrinthResourceSourceKey, selection.CommunitySourceKey);
 				_downloadSourceFactory.SetModrinthSource(selection.CommunitySourceKey);
 				Log.Information("[Settings] 自动选择最快Modrinth源: {Source}", selection.CommunitySourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.CurseForgeSourceKey))
 			{
+				await _settingsRepository.SaveAsync(CurseForgeResourceSourceKey, selection.CurseForgeSourceKey);
 				_downloadSourceFactory.SetCurseForgeSource(selection.CurseForgeSourceKey);
 				Log.Information("[Settings] 自动选择最快CurseForge源: {Source}", selection.CurseForgeSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.ForgeSourceKey))
 			{
+				await _settingsRepository.SaveAsync(ForgeSourceKey, selection.ForgeSourceKey);
 				_downloadSourceFactory.SetForgeSource(selection.ForgeSourceKey);
 				Log.Information("[Settings] 自动选择最快Forge源: {Source}", selection.ForgeSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.FabricSourceKey))
 			{
+				await _settingsRepository.SaveAsync(FabricSourceKey, selection.FabricSourceKey);
 				_downloadSourceFactory.SetFabricSource(selection.FabricSourceKey);
 				Log.Information("[Settings] 自动选择最快Fabric源: {Source}", selection.FabricSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.NeoForgeSourceKey))
 			{
+				await _settingsRepository.SaveAsync(NeoForgeSourceKey, selection.NeoForgeSourceKey);
 				_downloadSourceFactory.SetNeoForgeSource(selection.NeoForgeSourceKey);
 				Log.Information("[Settings] 自动选择最快NeoForge源: {Source}", selection.NeoForgeSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.LiteLoaderSourceKey))
 			{
+				await _settingsRepository.SaveAsync(LiteLoaderSourceKey, selection.LiteLoaderSourceKey);
 				_downloadSourceFactory.SetLiteLoaderSource(selection.LiteLoaderSourceKey);
 				Log.Information("[Settings] 自动选择最快LiteLoader源: {Source}", selection.LiteLoaderSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.QuiltSourceKey))
 			{
+				await _settingsRepository.SaveAsync(QuiltSourceKey, selection.QuiltSourceKey);
 				_downloadSourceFactory.SetQuiltSource(selection.QuiltSourceKey);
 				Log.Information("[Settings] 自动选择最快Quilt源: {Source}", selection.QuiltSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.LegacyFabricSourceKey))
 			{
+				await _settingsRepository.SaveAsync(LegacyFabricSourceKey, selection.LegacyFabricSourceKey);
 				_downloadSourceFactory.SetLegacyFabricSource(selection.LegacyFabricSourceKey);
 				Log.Information("[Settings] 自动选择最快LegacyFabric源: {Source}", selection.LegacyFabricSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.CleanroomSourceKey))
 			{
+				await _settingsRepository.SaveAsync(CleanroomSourceKey, selection.CleanroomSourceKey);
 				_downloadSourceFactory.SetCleanroomSource(selection.CleanroomSourceKey);
 				Log.Information("[Settings] 自动选择最快Cleanroom源: {Source}", selection.CleanroomSourceKey);
 			}
 
 			if (!string.IsNullOrWhiteSpace(selection.OptifineSourceKey))
 			{
+				await _settingsRepository.SaveAsync(OptifineSourceKey, selection.OptifineSourceKey);
 				_downloadSourceFactory.SetOptifineSource(selection.OptifineSourceKey);
 				Log.Information("[Settings] 自动选择最快Optifine源: {Source}", selection.OptifineSourceKey);
 			}
@@ -194,8 +218,6 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
 		{
 			Log.Error(ex, "[Settings] 自动应用最快源失败");
 		}
-
-		return Task.CompletedTask;
 	}
 
 	private static NetworkSpeedTestState BuildStateFromCache(Core.Models.SpeedTestCache cache, bool forceShowDisplay)
