@@ -305,6 +305,36 @@ public interface IDownloadSource
     /// <returns>下载URL</returns>
     string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null);
 
+    #region Cleanroom
+
+    /// <summary>
+    /// 获取 Cleanroom Maven 元数据 URL（版本列表 XML）
+    /// </summary>
+    string GetCleanroomMetadataUrl();
+
+    /// <summary>
+    /// 获取 Cleanroom 安装包下载 URL
+    /// </summary>
+    /// <param name="cleanroomVersion">Cleanroom 版本号</param>
+    string GetCleanroomInstallerUrl(string cleanroomVersion);
+
+    /// <summary>
+    /// 获取 Cleanroom Maven 基础 URL（com.cleanroommc:* 库）
+    /// </summary>
+    string GetCleanroomMavenBaseUrl();
+
+    /// <summary>
+    /// 获取 Forge Maven 基础 URL（net.minecraftforge:* 库）
+    /// </summary>
+    string GetForgeMavenBaseUrl();
+
+    /// <summary>
+    /// 获取默认库仓库基础 URL（libraries.minecraft.net）
+    /// </summary>
+    string GetDefaultLibraryBaseUrl();
+
+    #endregion
+
     /// <summary>
     /// 获取依赖库下载URL
     /// </summary>

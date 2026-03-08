@@ -117,8 +117,8 @@ public class CustomDownloadSource : IDownloadSource
 
     /// <inheritdoc />
     public bool SupportsCleanroom => SupportsTemplateResource(
-        "version_manifest",
-        () => _template.GetVersionManifestUrl());
+        "cleanroom_metadata",
+        () => _template.GetCleanroomMetadataUrl());
 
     /// <inheritdoc />
     public bool SupportsOptifine => SupportsTemplateResource(
@@ -319,6 +319,47 @@ public class CustomDownloadSource : IDownloadSource
     {
         var context = new Dictionary<string, string> { { "path", relativePath } };
         return ApplyTemplate("liteloader_jar", _template.GetLiteLoaderJarUrl(relativePath, originalBaseUrl), context);
+    }
+
+    public string GetCleanroomMetadataUrl()
+    {
+        if (_overrides.TryGetValue("cleanroom_metadata", out var overrideUrl))
+            return ReplaceVariables(overrideUrl, null);
+        try { return ReplaceVariables(_template.GetCleanroomMetadataUrl(), null); }
+        catch (NotSupportedException) { throw new NotSupportedException("此下载源不支持 Cleanroom"); }
+    }
+
+    public string GetCleanroomInstallerUrl(string cleanroomVersion)
+    {
+        var context = new Dictionary<string, string> { { "version", cleanroomVersion } };
+        if (_overrides.TryGetValue("cleanroom_installer", out var overrideUrl))
+            return ReplaceVariables(overrideUrl, context);
+        try { return ReplaceVariables(_template.GetCleanroomInstallerUrl(cleanroomVersion), context); }
+        catch (NotSupportedException) { throw new NotSupportedException("此下载源不支持 Cleanroom"); }
+    }
+
+    public string GetCleanroomMavenBaseUrl()
+    {
+        if (_overrides.TryGetValue("cleanroom_maven_base", out var overrideUrl))
+            return ReplaceVariables(overrideUrl, null);
+        try { return ReplaceVariables(_template.GetCleanroomMavenBaseUrl(), null); }
+        catch (NotSupportedException) { throw new NotSupportedException("此下载源不支持 Cleanroom"); }
+    }
+
+    public string GetForgeMavenBaseUrl()
+    {
+        if (_overrides.TryGetValue("forge_maven_base", out var overrideUrl))
+            return ReplaceVariables(overrideUrl, null);
+        try { return ReplaceVariables(_template.GetForgeMavenBaseUrl(), null); }
+        catch (NotSupportedException) { throw new NotSupportedException("此下载源不支持 Cleanroom"); }
+    }
+
+    public string GetDefaultLibraryBaseUrl()
+    {
+        if (_overrides.TryGetValue("default_library_base", out var overrideUrl))
+            return ReplaceVariables(overrideUrl, null);
+        try { return ReplaceVariables(_template.GetDefaultLibraryBaseUrl(), null); }
+        catch (NotSupportedException) { throw new NotSupportedException("此下载源不支持 Cleanroom"); }
     }
 
     #endregion
