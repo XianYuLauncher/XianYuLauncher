@@ -14,8 +14,14 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 顶部栏 -->
-        <Grid Grid.Row="0" Padding="40,36,40,0">
+        <!-- 顶部栏 - 居中块(最大1064) + 块内居左 -->
+        <Grid Grid.Row="0" Padding="40,36,40,0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -49,14 +55,22 @@
                 Style="{StaticResource TitleTextBlockStyle}" 
                 FontWeight="SemiBold"
                 VerticalAlignment="Center" />
+            </Grid>
         </Grid>
 
-        <!-- 内容区域 -->
+        <!-- 内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
         <ScrollViewer 
             Grid.Row="1" 
             Padding="40,24,40,24"
+            HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Center">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Spacing="20" HorizontalAlignment="Stretch">
                 <!-- 头图 -->
                 <Border 
                     x:Name="ImageBorder"
@@ -181,6 +195,7 @@
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

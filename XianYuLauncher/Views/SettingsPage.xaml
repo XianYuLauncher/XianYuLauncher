@@ -27,15 +27,28 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock x:Name="PageTitle" x:Uid="SettingsPage_Title" Text="设置" Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock x:Name="PageSubtitle" x:Uid="SettingsPage_Subtitle" Text="配置启动器设置" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,8,0,0" Opacity="0.7" />
-        </StackPanel>
+        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
+                <TextBlock x:Name="PageTitle" x:Uid="SettingsPage_Title" Text="设置" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="PageSubtitle" x:Uid="SettingsPage_Subtitle" Text="配置启动器设置" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,8,0,0" Opacity="0.7" />
+            </StackPanel>
+        </Grid>
 
-        <!-- 主要内容区域 -->
+        <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="4" Padding="0,0,16,20">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Spacing="4" Padding="0,0,16,20" HorizontalAlignment="Stretch">
                 <StackPanel.ChildrenTransitions>
                     <RepositionThemeTransition IsStaggeringEnabled="False" />
                 </StackPanel.ChildrenTransitions>
@@ -965,6 +978,7 @@
                            Style="{ThemeResource CaptionTextBlockStyle}" Margin="0,16,0,20" Opacity="0.7" TextWrapping="WrapWholeWords" />
 
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

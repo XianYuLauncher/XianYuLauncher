@@ -57,19 +57,33 @@
     </Page.Resources>
 
     <Grid>
-        <!-- 顶部导航栏 -->
-        <Grid Padding="0,16,0,0">
-            <Button x:Uid="ModDownloadDetailPage_BackButton"
-                    Content="&lt; 返回" 
-                    HorizontalAlignment="Left" 
-                    VerticalAlignment="Top" 
-                    Margin="16,0,0,0" 
-                    Click="BackButton_Click" 
-                    Style="{StaticResource TextBlockButtonStyle}" />
+        <!-- 顶部导航栏 - 居中块(最大1064) + 块内居左 -->
+        <Grid Padding="0,16,0,0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                <Button x:Uid="ModDownloadDetailPage_BackButton"
+                        Content="&lt; 返回" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Margin="16,0,0,0" 
+                        Click="BackButton_Click" 
+                        Style="{StaticResource TextBlockButtonStyle}" />
+            </Grid>
         </Grid>
         
-        <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollMode="Enabled" Margin="0,48,0,0">
-            <StackPanel Spacing="16" Padding="16">
+        <!-- 主内容区 - ScrollViewer 全宽，滚动条贴页面右侧 -->
+        <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollMode="Enabled" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="0,48,0,0">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1" Spacing="16" Padding="16" HorizontalAlignment="Stretch">
                 <StackPanel.ChildrenTransitions>
                     <RepositionThemeTransition IsStaggeringEnabled="False" />
                 </StackPanel.ChildrenTransitions>
@@ -521,7 +535,8 @@
                     </ListView>
                 </StackPanel>
 
-            </StackPanel>
+                </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

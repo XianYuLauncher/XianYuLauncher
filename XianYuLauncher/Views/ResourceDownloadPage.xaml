@@ -56,10 +56,12 @@
     </Page.Resources>
 
     <Grid x:Name="ContentArea" Padding="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
+        <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
         <!-- 收藏夹导入 - 下载进度弹窗 -->
         <ContentDialog
@@ -1695,6 +1697,7 @@
                     </TabViewItem>
                 </TabView.TabItems>
             </TabView>
+        </Grid>
         </Grid>
     </Grid>
 </Page>

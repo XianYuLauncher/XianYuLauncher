@@ -10,11 +10,18 @@
 
 
     <Grid x:Name="ContentArea" Padding="40,60,40,20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="100*" MaxWidth="1064" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <!-- 三列居中布局：中间列最大宽度 1064，窄窗口填满，宽窗口内容居中且不被拉得过宽 -->
+        <Grid Grid.Column="1" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,32">
@@ -183,5 +190,6 @@
                     TextAlignment="Center" />
             </StackPanel>
         </StackPanel>
+        </Grid>
     </Grid>
 </Page>
