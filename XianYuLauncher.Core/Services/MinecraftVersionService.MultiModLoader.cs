@@ -242,22 +242,20 @@ public partial class MinecraftVersionService
         var modsDirectory = Path.Combine(versionDirectory, MinecraftPathConsts.Mods);
         Directory.CreateDirectory(modsDirectory);
 
-        // 解析 OptiFine 版本格式（如 "HD_U:I5"）
-        var parts = optifineVersion.Split(':');
-        if (parts.Length != 2)
+        if (!OptifineVersionHelper.TryParse(optifineVersion, out var parts))
         {
-            throw new ArgumentException($"OptiFine 版本格式错误: {optifineVersion}，应为 'Type:Patch' 格式");
+            throw new ArgumentException($"OptiFine 版本格式错误: {optifineVersion}");
         }
 
-        var optifineType = parts[0];
-        var optifinePatch = parts[1];
+        var optifineType = parts.Type;
+        var optifinePatch = parts.Patch;
 
         var optifineJarName = $"OptiFine_{minecraftVersionId}_{optifineType}_{optifinePatch}.jar";
         var optifineJarPath = Path.Combine(modsDirectory, optifineJarName);
 
         // 使用 OptiFine 专用下载源
         var optifineSource = _downloadSourceFactory.GetOptifineSource();
-        string optifineVersionForUrl = $"{optifineType}_{optifinePatch}";
+        var optifineVersionForUrl = parts.ToUnderscoreFormat();
         var optifineDownloadUrl = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
 
         _logger.LogInformation("使用 OptiFine 源: {Source}, 下载 OptiFine JAR: {Url}", optifineSource.Name, optifineDownloadUrl);
@@ -299,20 +297,18 @@ public partial class MinecraftVersionService
 
         Directory.CreateDirectory(versionScopedModsDirectory);
 
-        // 解析 OptiFine 版本格式（如 "HD_U:I5"）
-        var parts = optifineVersion.Split(':');
-        if (parts.Length != 2)
+        if (!OptifineVersionHelper.TryParse(optifineVersion, out var parts))
         {
-            throw new ArgumentException($"OptiFine 版本格式错误: {optifineVersion}，应为 'Type:Patch' 格式");
+            throw new ArgumentException($"OptiFine 版本格式错误: {optifineVersion}");
         }
 
-        var optifineType = parts[0];
-        var optifinePatch = parts[1];
+        var optifineType = parts.Type;
+        var optifinePatch = parts.Patch;
         var optifineJarName = $"OptiFine_{minecraftVersionId}_{optifineType}_{optifinePatch}.jar";
         var optifineJarPath = Path.Combine(versionScopedModsDirectory, optifineJarName);
 
         var optifineSource = _downloadSourceFactory.GetOptifineSource();
-        var optifineVersionForUrl = $"{optifineType}_{optifinePatch}";
+        var optifineVersionForUrl = parts.ToUnderscoreFormat();
         var optifineDownloadUrl = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
 
         _logger.LogInformation(
