@@ -121,20 +121,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         {
             _lastSelectedLoaderName = "LiteLoader";
 
-            // 互斥逻辑：LiteLoader 与 OptiFine 不兼容（除非有 Forge）
-            if (IsOptifineSelected && (SelectedModLoaderItem == null || SelectedModLoaderItem.Name != "Forge"))
-            {
-                IsOptifineSelected = false;
-                SelectedOptifineVersion = null;
-                
-                // 确保 UI 上的 Optifine 状态同步更新
-                var optifineItem = ModLoaderItems.FirstOrDefault(x => x.Name == "Optifine");
-                if (optifineItem != null)
-                {
-                    optifineItem.IsSelected = false;
-                }
-            }
-            
+            // 不在 UI 层预先禁止 LiteLoader 与 OptiFine 的组合，
+            // 具体可安装性由后续安装链路和实际版本能力决定。
             if (LiteLoaderVersions.Count == 0)
             {
                 _ = LoadLiteLoaderVersionsAsync();
@@ -919,6 +907,19 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     modLoaderVersionToDownload = SelectedLiteLoaderVersion ?? string.Empty;
                 }
                 
+                var isLiteLoaderOnlyCombination =
+                    IsLiteLoaderSelected &&
+                    IsOptifineSelected &&
+                    string.IsNullOrEmpty(SelectedModLoader);
+
+                if (isLiteLoaderOnlyCombination && string.IsNullOrEmpty(SelectedLiteLoaderVersion))
+                {
+                    IsDownloadDialogOpen = false;
+                    await Task.Delay(100);
+                    await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
+                    return;
+                }
+
                 // 检查版本是否已选择
                 if (string.IsNullOrEmpty(modLoaderVersionToDownload))
                 {
@@ -948,6 +949,18 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     });
                 }
                 
+                // 只有 LiteLoader + OptiFine 时，应以 LiteLoader 为基础加载器，OptiFine 作为 Tweak Mod。
+                if (isLiteLoaderOnlyCombination && !string.IsNullOrEmpty(SelectedLiteLoaderVersion))
+                {
+                    modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
+                    {
+                        Type = "LiteLoader",
+                        Version = SelectedLiteLoaderVersion,
+                        InstallOrder = 1,
+                        IsAddon = false
+                    });
+                }
+
                 // 添加 OptiFine（如果选中）
                 if (IsOptifineSelected)
                 {
@@ -958,8 +971,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         {
                             // 判断 OptiFine 是否作为 Addon：
                             // 1. 如果有主加载器（Forge 等），则作为 Addon
-                            // 2. 如果只有 LiteLoader，则 OptiFine 独立安装，LiteLoader 作为 Addon
-                            bool isOptifineAddon = !string.IsNullOrEmpty(SelectedModLoader);
+                            // 2. 如果只有 LiteLoader，则 OptiFine 也作为 Addon（放入 LiteLoader 的版本专属 mods 目录）
+                            bool isOptifineAddon = !string.IsNullOrEmpty(SelectedModLoader) || isLiteLoaderOnlyCombination;
                             int optifineOrder = isOptifineAddon ? 2 : 1;
                             
                             modLoaderSelections.Add(new XianYuLauncher.Core.Models.ModLoaderSelection
@@ -976,9 +989,15 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 // 添加 LiteLoader (如果选中)
                 if (IsLiteLoaderSelected && !string.IsNullOrEmpty(SelectedLiteLoaderVersion))
                 {
+                    if (isLiteLoaderOnlyCombination)
+                    {
+                        // 已作为基础加载器添加，避免重复。
+                        goto LiteLoaderSelectionCompleted;
+                    }
+
                     // 判断是否作为 Addon 安装：
                     // 1. 如果有主加载器（Forge 等），则作为 Addon
-                    // 2. 如果只有 OptiFine，则 LiteLoader 作为 Addon（OptiFine 先安装）
+                    // 2. LiteLoader + OptiFine 组合已在上方处理为 LiteLoader 基底
                     bool isLiteLoaderAddon = !string.IsNullOrEmpty(SelectedModLoader) || IsOptifineSelected;
                     int liteLoaderOrder = isLiteLoaderAddon ? 3 : 1;
                     
@@ -990,6 +1009,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         IsAddon = isLiteLoaderAddon
                     });
                 }
+
+            LiteLoaderSelectionCompleted:
                 
                 // 使用新的多加载器下载方法
                 if (modLoaderSelections.Count > 0)

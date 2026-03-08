@@ -11,6 +11,7 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
     private const string SettingsFileName = "XianYuL.cfg";
 
     private readonly IFileService _fileService;
+    private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoService _versionInfoService;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IModLoaderInstallerFactory _modLoaderInstallerFactory;
@@ -25,6 +26,7 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 
     public VersionSettingsOrchestrator(
         IFileService fileService,
+        IMinecraftVersionService minecraftVersionService,
         IVersionInfoService versionInfoService,
         IVersionInfoManager versionInfoManager,
         IModLoaderInstallerFactory modLoaderInstallerFactory,
@@ -38,6 +40,7 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         LiteLoaderService liteLoaderService)
     {
         _fileService = fileService;
+        _minecraftVersionService = minecraftVersionService;
         _versionInfoService = versionInfoService;
         _versionInfoManager = versionInfoManager;
         _modLoaderInstallerFactory = modLoaderInstallerFactory;
@@ -199,13 +202,10 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         var versionDirectory = selectedVersion.Path;
         var versionId = selectedVersion.Name;
 
-        var primaryLoader = selectedLoaders.FirstOrDefault(loader =>
-            !loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase)
-            && !loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
-        var optifineLoader = selectedLoaders.FirstOrDefault(loader =>
-            loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase));
-        var liteLoaderLoader = selectedLoaders.FirstOrDefault(loader =>
-            loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+        var installPlan = BuildLoaderInstallPlan(selectedLoaders);
+        var primaryLoader = installPlan.PrimaryLoader;
+        var optifineLoader = installPlan.OptifineLoader;
+        var liteLoaderLoader = installPlan.LiteLoaderLoader;
 
         var needsReinstall = await CheckNeedsReinstallAsync(
             versionId,
@@ -222,57 +222,71 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 
         if (needsReinstall)
         {
-            onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
-
-            var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
-                minecraftVersion,
-                minecraftDirectory,
-                allowNetwork: true);
-
-            var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
-            await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
-            currentStep++;
-            onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
-
-            if (primaryLoader != null)
+            if (installPlan.UseMultiModLoaderInstall)
             {
-                await InstallLoaderAsync(
-                    primaryLoader,
+                onProgress?.Invoke("正在安装加载器组合...", 0);
+                await _minecraftVersionService.DownloadMultiModLoaderVersionAsync(
                     minecraftVersion,
+                    installPlan.MultiModLoaderSelections,
                     minecraftDirectory,
-                    versionId,
-                    totalSteps,
-                    currentStep,
-                    onProgress);
-                currentStep++;
+                    status => onProgress?.Invoke("正在安装加载器组合...", status.Percent),
+                    customVersionName: versionId);
+                currentStep = totalSteps - 1;
             }
-
-            if (optifineLoader != null)
+            else
             {
-                await InstallLoaderAsync(
-                    optifineLoader,
+                onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
+
+                var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
                     minecraftVersion,
                     minecraftDirectory,
-                    versionId,
-                    totalSteps,
-                    currentStep,
-                    onProgress,
-                    forceLoaderType: "optifine");
-                currentStep++;
-            }
+                    allowNetwork: true);
 
-            if (liteLoaderLoader != null)
-            {
-                await InstallLoaderAsync(
-                    liteLoaderLoader,
-                    minecraftVersion,
-                    minecraftDirectory,
-                    versionId,
-                    totalSteps,
-                    currentStep,
-                    onProgress,
-                    forceLoaderType: "liteloader");
+                var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
+                await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
                 currentStep++;
+                onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
+
+                if (primaryLoader != null)
+                {
+                    await InstallLoaderAsync(
+                        primaryLoader,
+                        minecraftVersion,
+                        minecraftDirectory,
+                        versionId,
+                        totalSteps,
+                        currentStep,
+                        onProgress);
+                    currentStep++;
+                }
+
+                if (optifineLoader != null)
+                {
+                    await InstallLoaderAsync(
+                        optifineLoader,
+                        minecraftVersion,
+                        minecraftDirectory,
+                        versionId,
+                        totalSteps,
+                        currentStep,
+                        onProgress,
+                        forceLoaderType: "optifine");
+                    currentStep++;
+                }
+
+                if (liteLoaderLoader != null)
+                {
+                    await InstallLoaderAsync(
+                        liteLoaderLoader,
+                        minecraftVersion,
+                        minecraftDirectory,
+                        versionId,
+                        totalSteps,
+                        currentStep,
+                        onProgress,
+                        forceLoaderType: "liteloader");
+                    currentStep++;
+                }
             }
         }
 
@@ -302,20 +316,14 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         var versionDirectory = selectedVersion.Path;
         var versionId = selectedVersion.Name;
 
-        var primaryLoader = selectedLoaders.FirstOrDefault(loader =>
-            !loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase)
-            && !loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
-        var optifineLoader = selectedLoaders.FirstOrDefault(loader =>
-            loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase));
-        var liteLoaderLoader = selectedLoaders.FirstOrDefault(loader =>
-            loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+        var installPlan = BuildLoaderInstallPlan(selectedLoaders);
 
         return await CheckNeedsReinstallAsync(
             versionId,
             versionDirectory,
-            primaryLoader,
-            optifineLoader,
-            liteLoaderLoader);
+            installPlan.PrimaryLoader,
+            installPlan.OptifineLoader,
+            installPlan.LiteLoaderLoader);
     }
 
     public void ParseVersionNameToSettings(VersionSettings settings, string versionName)
@@ -472,8 +480,14 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 
             var targetType = primaryLoader?.LoaderType.ToLowerInvariant() ?? "vanilla";
             var targetVersion = primaryLoader?.SelectedVersion ?? string.Empty;
-            var targetOptifine = optifineLoader?.SelectedVersion;
-            var targetLiteLoader = liteLoaderLoader?.SelectedVersion;
+            var targetOptifine = optifineLoader?.SelectedVersion
+                ?? (primaryLoader?.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase) == true
+                    ? primaryLoader.SelectedVersion
+                    : null);
+            var targetLiteLoader = liteLoaderLoader?.SelectedVersion
+                ?? (primaryLoader?.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase) == true
+                    ? primaryLoader.SelectedVersion
+                    : null);
 
             var currentType = string.IsNullOrEmpty(currentConfig.ModLoaderType)
                 ? "vanilla"
@@ -531,6 +545,66 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
             });
     }
 
+    private static LoaderInstallPlan BuildLoaderInstallPlan(IReadOnlyList<LoaderSelection> selectedLoaders)
+    {
+        var explicitPrimaryLoader = selectedLoaders.FirstOrDefault(loader =>
+            !loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase)
+            && !loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+        var optifineLoader = selectedLoaders.FirstOrDefault(loader =>
+            loader.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase));
+        var liteLoaderLoader = selectedLoaders.FirstOrDefault(loader =>
+            loader.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase));
+
+        var primaryLoader = explicitPrimaryLoader;
+        var addonOptifineLoader = optifineLoader;
+        var addonLiteLoader = liteLoaderLoader;
+
+        var isLiteLoaderOptifineOnlyCombination = explicitPrimaryLoader == null
+            && liteLoaderLoader != null
+            && optifineLoader != null;
+
+        if (primaryLoader == null)
+        {
+            if (liteLoaderLoader != null)
+            {
+                primaryLoader = liteLoaderLoader;
+                addonLiteLoader = null;
+            }
+            else if (optifineLoader != null)
+            {
+                primaryLoader = optifineLoader;
+                addonOptifineLoader = null;
+            }
+        }
+
+        var multiModLoaderSelections = new List<ModLoaderSelection>();
+        if (isLiteLoaderOptifineOnlyCombination && liteLoaderLoader != null && optifineLoader != null)
+        {
+            multiModLoaderSelections.Add(new ModLoaderSelection
+            {
+                Type = "LiteLoader",
+                Version = liteLoaderLoader.SelectedVersion,
+                InstallOrder = 1,
+                IsAddon = false
+            });
+
+            multiModLoaderSelections.Add(new ModLoaderSelection
+            {
+                Type = "OptiFine",
+                Version = optifineLoader.SelectedVersion,
+                InstallOrder = 2,
+                IsAddon = true
+            });
+        }
+
+        return new LoaderInstallPlan(
+            primaryLoader,
+            addonOptifineLoader,
+            addonLiteLoader,
+            isLiteLoaderOptifineOnlyCombination,
+            multiModLoaderSelections);
+    }
+
     private static async Task<VersionConfig> SaveExtensionConfigAsync(
         VersionListViewModel.VersionInfoItem selectedVersion,
         string minecraftVersion,
@@ -558,8 +632,14 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         config.MinecraftVersion = minecraftVersion;
         config.ModLoaderType = primaryLoader?.LoaderType?.ToLowerInvariant() ?? "vanilla";
         config.ModLoaderVersion = primaryLoader?.SelectedVersion ?? string.Empty;
-        config.OptifineVersion = optifineLoader?.SelectedVersion;
-        config.LiteLoaderVersion = liteLoaderLoader?.SelectedVersion;
+        config.OptifineVersion = optifineLoader?.SelectedVersion
+            ?? (primaryLoader?.LoaderType.Equals("optifine", StringComparison.OrdinalIgnoreCase) == true
+                ? primaryLoader.SelectedVersion
+                : null);
+        config.LiteLoaderVersion = liteLoaderLoader?.SelectedVersion
+            ?? (primaryLoader?.LoaderType.Equals("liteloader", StringComparison.OrdinalIgnoreCase) == true
+                ? primaryLoader.SelectedVersion
+                : null);
         config.OverrideMemory = options.OverrideMemory;
         config.AutoMemoryAllocation = options.AutoMemoryAllocation;
         config.InitialHeapMemory = options.InitialHeapMemory;
@@ -575,4 +655,11 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 
         return config;
     }
+
+    private sealed record LoaderInstallPlan(
+        LoaderSelection? PrimaryLoader,
+        LoaderSelection? OptifineLoader,
+        LoaderSelection? LiteLoaderLoader,
+        bool UseMultiModLoaderInstall,
+        IReadOnlyList<ModLoaderSelection> MultiModLoaderSelections);
 }
