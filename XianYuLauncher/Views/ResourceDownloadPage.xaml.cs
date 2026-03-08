@@ -68,6 +68,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     // 标记是否已经加载过世界数据
     private bool _worldsLoaded = false;
 
+    // LayoutUpdated 防抖：避免高频触发时重复入队
+    private bool _resourcePackLoadMoreCheckPending;
+    private bool _modLoadMoreCheckPending;
+    private bool _shaderPackLoadMoreCheckPending;
+    private bool _datapackLoadMoreCheckPending;
+    private bool _modpackLoadMoreCheckPending;
+    private bool _worldLoadMoreCheckPending;
+
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
@@ -301,6 +309,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleResourcePackLoadMoreCheck()
     {
+        if (_resourcePackLoadMoreCheckPending) return;
+        _resourcePackLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -314,6 +324,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _resourcePackLoadMoreCheckPending = false;
             }
         });
     }
@@ -403,6 +417,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleModLoadMoreCheck()
     {
+        if (_modLoadMoreCheckPending) return;
+        _modLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -416,6 +432,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _modLoadMoreCheckPending = false;
             }
         });
     }
@@ -1215,6 +1235,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleShaderPackLoadMoreCheck()
     {
+        if (_shaderPackLoadMoreCheckPending) return;
+        _shaderPackLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -1228,6 +1250,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _shaderPackLoadMoreCheckPending = false;
             }
         });
     }
@@ -1300,6 +1326,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleModpackLoadMoreCheck()
     {
+        if (_modpackLoadMoreCheckPending) return;
+        _modpackLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -1313,6 +1341,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _modpackLoadMoreCheckPending = false;
             }
         });
     }
@@ -1385,6 +1417,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleDatapackLoadMoreCheck()
     {
+        if (_datapackLoadMoreCheckPending) return;
+        _datapackLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -1398,6 +1432,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _datapackLoadMoreCheckPending = false;
             }
         });
     }
@@ -1553,6 +1591,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ScheduleWorldLoadMoreCheck()
     {
+        if (_worldLoadMoreCheckPending) return;
+        _worldLoadMoreCheckPending = true;
         var dq = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         dq?.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
@@ -1566,6 +1606,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             catch (COMException)
             {
                 // 页面已卸载或控件不可用时忽略（灾难性故障 0x8000FFFF 等）
+            }
+            finally
+            {
+                _worldLoadMoreCheckPending = false;
             }
         });
     }
