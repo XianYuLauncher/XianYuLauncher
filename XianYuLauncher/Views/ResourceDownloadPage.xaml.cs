@@ -1348,30 +1348,28 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     }
     
     /// <summary>
-    /// Modrinth平台切换事件处理程序
+    /// 平台切换（Modrinth/CurseForge）统一处理：当标签页已加载时重新搜索。
+    /// TwoWay 绑定会自动更新 ViewModel 的平台开关状态。
     /// </summary>
-    private async void ModrinthToggleButton_Click(object sender, RoutedEventArgs e)
+    private async Task HandlePlatformToggleAsync(int tabIndex, bool tabLoaded, Func<Task> executeSearch)
     {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded)
+        if (ResourceTabView.SelectedIndex == tabIndex && tabLoaded)
         {
-            await ViewModel.SearchModsCommand.ExecuteAsync(null);
+            await executeSearch();
         }
     }
-    
+
+    /// <summary>
+    /// Modrinth平台切换事件处理程序
+    /// </summary>
+    private async void ModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(1, _modsLoaded, () => ViewModel.SearchModsCommand.ExecuteAsync(null));
+
     /// <summary>
     /// CurseForge平台切换事件处理程序
     /// </summary>
-    private async void CurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当Mod下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1 && _modsLoaded)
-        {
-            await ViewModel.SearchModsCommand.ExecuteAsync(null);
-        }
-    }
+    private async void CurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(1, _modsLoaded, () => ViewModel.SearchModsCommand.ExecuteAsync(null));
     
     /// <summary>
     /// 数据包项点击事件处理程序（触摸设备）
@@ -1387,106 +1385,50 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// <summary>
     /// 光影包 Modrinth 平台切换事件处理程序
     /// </summary>
-    private async void ShaderPackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
-        {
-            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-        }
-    }
-    
+    private async void ShaderPackModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(2, _shaderPacksLoaded, () => ViewModel.SearchShaderPacksCommand.ExecuteAsync(null));
+
     /// <summary>
     /// 光影包 CurseForge 平台切换事件处理程序
     /// </summary>
-    private async void ShaderPackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当光影下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 2 && _shaderPacksLoaded)
-        {
-            await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-        }
-    }
+    private async void ShaderPackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(2, _shaderPacksLoaded, () => ViewModel.SearchShaderPacksCommand.ExecuteAsync(null));
     
     /// <summary>
     /// 资源包 Modrinth 平台切换事件处理程序
     /// </summary>
-    private async void ResourcePackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
-        {
-            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-        }
-    }
-    
+    private async void ResourcePackModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(3, _resourcePacksLoaded, () => ViewModel.SearchResourcePacksCommand.ExecuteAsync(null));
+
     /// <summary>
     /// 资源包 CurseForge 平台切换事件处理程序
     /// </summary>
-    private async void ResourcePackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当资源包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 3 && _resourcePacksLoaded)
-        {
-            await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-        }
-    }
+    private async void ResourcePackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(3, _resourcePacksLoaded, () => ViewModel.SearchResourcePacksCommand.ExecuteAsync(null));
     
     /// <summary>
     /// 数据包 Modrinth 平台切换事件处理程序
     /// </summary>
-    private async void DatapackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded)
-        {
-            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-        }
-    }
-    
+    private async void DatapackModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(4, _datapacksLoaded, () => ViewModel.SearchDatapacksCommand.ExecuteAsync(null));
+
     /// <summary>
     /// 数据包 CurseForge 平台切换事件处理程序
     /// </summary>
-    private async void DatapackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当数据包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 4 && _datapacksLoaded)
-        {
-            await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-        }
-    }
+    private async void DatapackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(4, _datapacksLoaded, () => ViewModel.SearchDatapacksCommand.ExecuteAsync(null));
     
     /// <summary>
     /// 整合包 Modrinth 平台切换事件处理程序
     /// </summary>
-    private async void ModpackModrinthToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded)
-        {
-            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-        }
-    }
-    
+    private async void ModpackModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(5, _modpacksLoaded, () => ViewModel.SearchModpacksCommand.ExecuteAsync(null));
+
     /// <summary>
     /// 整合包 CurseForge 平台切换事件处理程序
     /// </summary>
-    private async void ModpackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当整合包下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 5 && _modpacksLoaded)
-        {
-            await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-        }
-    }
+    private async void ModpackCurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(5, _modpacksLoaded, () => ViewModel.SearchModpacksCommand.ExecuteAsync(null));
     
     // ==================== 世界相关事件处理程序 ====================
     
@@ -1569,28 +1511,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// <summary>
     /// 世界 Modrinth 平台切换事件处理程序
     /// </summary>
-    private async void WorldModrinthToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsModrinthEnabled
-        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
-        {
-            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-        }
-    }
-    
+    private async void WorldModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(6, _worldsLoaded, () => ViewModel.SearchWorldsCommand.ExecuteAsync(null));
+
     /// <summary>
     /// 世界 CurseForge 平台切换事件处理程序
     /// </summary>
-    private async void WorldCurseForgeToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        // TwoWay 绑定会自动更新 ViewModel.IsCurseForgeEnabled
-        // 只有当世界下载标签页被选中且已经加载过数据时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 6 && _worldsLoaded)
-        {
-            await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-        }
-    }
+    private async void WorldCurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
+        await HandlePlatformToggleAsync(6, _worldsLoaded, () => ViewModel.SearchWorldsCommand.ExecuteAsync(null));
 
     // ==================== 收藏夹拖放相关 ====================
 
