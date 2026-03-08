@@ -54,8 +54,8 @@
         
 
     </Grid.Resources>
-        <!-- 限制最大宽度，避免最大化时内容被拉得过宽。Stretch 使窄窗口时填满，宽窗口时 MaxWidth 限制后左侧对齐 -->
-        <Grid MaxWidth="1064" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
+        <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
