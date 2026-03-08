@@ -27,6 +27,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly FabricService _fabricService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IFileService _fileService;
+    private readonly IFavoritesService _favoritesService;
     private readonly ModrinthCacheService _modrinthCacheService;
     private readonly CurseForgeCacheService _curseForgeCacheService;
     private readonly ITranslationService _translationService;
@@ -66,39 +67,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
     }
 
-    private void LoadFavorites()
-    {
-        try
-        {
-            var folder = _fileService.GetAppDataPath();
-            var data = _fileService.Read<ObservableCollection<ModrinthProject>>(folder, FavoritesFileName);
-            if (data != null)
-            {
-                FavoriteItems.Clear();
-                foreach (var item in data)
-                {
-                    FavoriteItems.Add(item);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error loading favorites: {ex.Message}");
-        }
-    }
-
-    private void SaveFavorites()
-    {
-        try
-        {
-            var folder = _fileService.GetAppDataPath();
-            _fileService.Save(folder, FavoritesFileName, FavoriteItems);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error saving favorites: {ex.Message}");
-        }
-    }
 
     public bool IsFavorite(ModrinthProject project)
     {
@@ -112,7 +80,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         if (TryAddFavoriteInternal(project))
         {
             UpdateFavoritesState();
-            SaveFavorites();
+            _favoritesService.Save(FavoriteItems);
         }
     }
 
@@ -126,7 +94,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             FavoriteItems.Remove(itemToRemove);
             UpdateFavoritesState();
-            SaveFavorites();
+            _favoritesService.Save(FavoriteItems);
         }
     }
 
@@ -146,7 +114,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         
         SelectedFavorites.Clear();
         UpdateFavoritesState();
-        SaveFavorites();
+        _favoritesService.Save(FavoriteItems);
     }
 
     private const string VersionTypeFilterKey = "VersionTypeFilter";
@@ -583,9 +551,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private const string VersionCacheTimeKey = "VersionListCacheTime";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
     
-    // 收藏夹缓存文件
-    private const string FavoritesFileName = "favorites.json";
-
     [ObservableProperty]
     private bool _isFavoritesSelectionMode = false;
 
@@ -765,7 +730,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         if (added > 0)
         {
             UpdateFavoritesState();
-            SaveFavorites();
+            _favoritesService.Save(FavoriteItems);
         }
 
         if (failed > 0)
@@ -1722,6 +1687,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         FabricService fabricService,
         ILocalSettingsService localSettingsService,
         IFileService fileService,
+        IFavoritesService favoritesService,
         ModrinthCacheService modrinthCacheService,
         CurseForgeCacheService curseForgeCacheService,
         ITranslationService translationService,
@@ -1735,6 +1701,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _fabricService = fabricService;
         _localSettingsService = localSettingsService;
         _fileService = fileService;
+        _favoritesService = favoritesService;
         _modrinthCacheService = modrinthCacheService;
         _curseForgeCacheService = curseForgeCacheService;
         _translationService = translationService;
@@ -1742,12 +1709,15 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _downloadTaskManager = downloadTaskManager;
 
         // Load saved favorites
-        LoadFavorites();
+        foreach (var item in _favoritesService.Load())
+        {
+            FavoriteItems.Add(item);
+        }
 
-        FavoriteItems.CollectionChanged += (s, e) => 
+        FavoriteItems.CollectionChanged += (s, e) =>
         {
             UpdateFavoritesState();
-            SaveFavorites();
+            _favoritesService.Save(FavoriteItems);
         };
         UpdateFavoritesState();
         
