@@ -33,34 +33,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             }
 
             var otherLoaderType = otherLoader.LoaderType.ToLowerInvariant();
-            bool shouldClear;
-
-            if (forgeGroup.Contains(currentLoaderType) && forgeGroup.Contains(otherLoaderType))
-            {
-                var hasForge = currentLoaderType == "forge"
-                    || otherLoaderType == "forge"
-                    || allLoaders.Any(loader =>
-                        loader != selectedLoader
-                        && loader != otherLoader
-                        && loader.LoaderType.Equals("forge", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrEmpty(loader.SelectedVersion));
-
-                if (hasForge)
-                {
-                    shouldClear = false;
-                }
-                else
-                {
-                    var isOptifineVsLiteLoader =
-                        (currentLoaderType == "optifine" && otherLoaderType == "liteloader")
-                        || (currentLoaderType == "liteloader" && otherLoaderType == "optifine");
-                    shouldClear = isOptifineVsLiteLoader;
-                }
-            }
-            else
-            {
-                shouldClear = true;
-            }
+            var shouldClear = !(forgeGroup.Contains(currentLoaderType) && forgeGroup.Contains(otherLoaderType));
 
             if (shouldClear)
             {

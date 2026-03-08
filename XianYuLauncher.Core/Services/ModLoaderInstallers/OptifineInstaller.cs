@@ -332,7 +332,9 @@ public class OptifineInstaller : ModLoaderInstallerBase
     {
         // 使用 OptiFine 专用下载源
         var optifineSource = _downloadSourceFactory.GetOptifineSource();
-        string optifineVersionForUrl = $"{minecraftVersionId}-{optifineVersion.Replace(":", "_")}";
+        string optifineVersionForUrl = OptifineVersionHelper.TryParse(optifineVersion, out var parts)
+            ? parts.ToDownloadSourceFormat(minecraftVersionId)
+            : $"{minecraftVersionId}-{optifineVersion.Replace(":", "_")}";
         var url = optifineSource.GetOptifineDownloadUrl(minecraftVersionId, optifineVersionForUrl);
 
         Logger.LogDebug("使用 OptiFine 源: {Source}, 下载 URL: {Url}", optifineSource.Name, url);
