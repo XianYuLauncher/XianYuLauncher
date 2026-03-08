@@ -12,7 +12,9 @@
     
 
     <Grid Background="Transparent">
-        <Grid.RowDefinitions>
+        <!-- 限制最大宽度，避免最大化时内容被拉得过宽。Stretch 使窄窗口时填满，宽窗口时 MaxWidth 限制后左侧对齐 -->
+        <Grid MaxWidth="1064" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
             <RowDefinition Height="60" />
             <RowDefinition Height="50" />
             <RowDefinition Height="*" />
@@ -245,6 +247,7 @@
                     </Grid>
                 </Grid>
             </Border>
+        </Grid>
         </Grid>
     </Grid>
 </Page>
