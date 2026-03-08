@@ -61,6 +61,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- TODO: 收藏夹「导入至版本」弹窗当前为 XAML 硬编码，后续迁移至 DialogService -->
         <!-- 收藏夹导入 - 游戏版本选择弹窗 -->
         <ContentDialog
             x:Name="FavoritesVersionDialog"
@@ -240,8 +241,8 @@
                                     <TextBlock x:Uid="ResourceDownloadPage_FavoritesDragHint" Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 
-                                <!-- Function Bar -->
-                                <Grid Grid.Row="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="12,8">
+                                <!-- Function Bar（背景透明，避免 Card 样式被遮挡） -->
+                                <Grid Grid.Row="2" Background="Transparent" Padding="12,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
