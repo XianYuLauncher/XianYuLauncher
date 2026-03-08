@@ -100,40 +100,44 @@
             </StackPanel>
         </Grid>
 
-        <!-- 加载中 -->
-        <StackPanel 
-            x:Name="LoadingPanel"
-            Grid.Row="2" 
-            HorizontalAlignment="Center" 
-            VerticalAlignment="Center"
-            Visibility="Visible">
-            <ProgressRing IsActive="True" Width="32" Height="32" />
-            <TextBlock x:Uid="NewsListPage_Loading" Text="加载中..." Margin="0,12,0,0" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-        </StackPanel>
+        <!-- 内容区 - 居中块(最大1064)，ListView 宽度受限，焦点框与卡片一致 -->
+        <Grid Grid.Row="2" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                <!-- 加载中 -->
+                <StackPanel 
+                    x:Name="LoadingPanel"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"
+                    Visibility="Visible">
+                    <ProgressRing IsActive="True" Width="32" Height="32" />
+                    <TextBlock x:Uid="NewsListPage_Loading" Text="加载中..." Margin="0,12,0,0" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
 
-        <!-- 错误信息 -->
-        <TextBlock 
-            x:Name="ErrorTextBlock"
-            Grid.Row="2"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            Visibility="Collapsed" />
+                <!-- 错误信息 -->
+                <TextBlock 
+                    x:Name="ErrorTextBlock"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Visibility="Collapsed" />
 
-        <!-- 新闻列表 - ListView 全宽使滚动条贴页面右侧；宽度约束放在 DataTemplate 内，虚拟化不受影响 -->
-        <ListView 
-            x:Name="NewsListView"
-            Grid.Row="2"
-            SelectionMode="None"
-            IsItemClickEnabled="True"
-            ItemClick="NewsItem_Click"
-            Visibility="Collapsed"
-            HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Stretch">
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="services:MinecraftNewsEntry">
-                    <!-- 内容区：ItemContainerStyle 负责三列布局和 hover 区域约束 -->
-                    <Grid Padding="0,12" ColumnSpacing="16" HorizontalAlignment="Stretch">
+                <!-- 新闻列表 -->
+                <ListView 
+                    x:Name="NewsListView"
+                    SelectionMode="None"
+                    IsItemClickEnabled="True"
+                    ItemClick="NewsItem_Click"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="services:MinecraftNewsEntry">
+                            <Grid Padding="0,12" ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -182,57 +186,17 @@
                                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                 VerticalAlignment="Center" />
                         </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-            <ListView.ItemContainerStyle>
-                <!-- 自定义模板：三列布局在容器层，hover 仅作用于中间列 -->
-                <Style TargetType="ListViewItem">
-                    <Setter Property="Padding" Value="12,0" />
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ListViewItem">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="100*" MaxWidth="1064" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <VisualStateManager.VisualStateGroups>
-                                        <VisualStateGroup x:Name="CommonStates">
-                                            <VisualState x:Name="Normal" />
-                                            <VisualState x:Name="PointerOver">
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0"/>
-                                                </Storyboard>
-                                            </VisualState>
-                                            <VisualState x:Name="Pressed">
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HoverOverlay" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0"/>
-                                                </Storyboard>
-                                            </VisualState>
-                                        </VisualStateGroup>
-                                    </VisualStateManager.VisualStateGroups>
-                                    <Grid Grid.Column="1">
-                                        <Rectangle x:Name="HoverOverlay" Fill="{ThemeResource SubtleFillColorSecondaryBrush}" Opacity="0"/>
-                                        <ContentPresenter
-                                            Content="{TemplateBinding Content}"
-                                            ContentTemplate="{TemplateBinding ContentTemplate}"
-                                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                            Padding="{TemplateBinding Padding}"/>
-                                    </Grid>
-                                </Grid>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ListView.ItemContainerStyle>
-        </ListView>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                            <Setter Property="Padding" Value="12,0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
 
-        <TeachingTip
+                <TeachingTip
             x:Name="ActivityNewsTeachingTip"
             Grid.Row="2"
             Target="{Binding ElementName=NewsListView}"
@@ -276,6 +240,8 @@
                     </HyperlinkButton>
                 </StackPanel>
             </TeachingTip.Content>
-        </TeachingTip>
+                </TeachingTip>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>
