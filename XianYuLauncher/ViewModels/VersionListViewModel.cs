@@ -7,8 +7,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
@@ -25,6 +23,7 @@ public partial class VersionListViewModel : ObservableRecipient
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
+    private readonly IDialogService _dialogService;
 
     /// <summary>
     /// 版本信息模型
@@ -170,12 +169,18 @@ public partial class VersionListViewModel : ObservableRecipient
 
     private readonly IVersionInfoService _versionInfoService;
     
-    public VersionListViewModel(IMinecraftVersionService minecraftVersionService, IFileService fileService, Core.Services.ModrinthService modrinthService, IVersionInfoService versionInfoService)
+    public VersionListViewModel(
+        IMinecraftVersionService minecraftVersionService,
+        IFileService fileService,
+        Core.Services.ModrinthService modrinthService,
+        IVersionInfoService versionInfoService,
+        IDialogService dialogService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _modrinthService = modrinthService;
         _versionInfoService = versionInfoService;
+        _dialogService = dialogService;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -766,28 +771,14 @@ public partial class VersionListViewModel : ObservableRecipient
                 return;
             }
 
-            // 创建确认对话框
-            var dialog = new ContentDialog
-            {
-                Title = "VersionListPage_ConfirmDeleteText".GetLocalized(),
-                Content = $"{"VersionListPage_ConfirmDeleteContentText".GetLocalized()} {version.Name} {"VersionListPage_ConfirmDeleteWarningText".GetLocalized()}",
-                PrimaryButtonText = "VersionListPage_DeleteText".GetLocalized(),
-                CloseButtonText = "VersionListPage_CancelText".GetLocalized(),
-                DefaultButton = ContentDialogButton.Close
-            };
-
-            // 设置XamlRoot和Style
-            if (App.MainWindow.Content is FrameworkElement rootElement)
-            {
-                dialog.XamlRoot = rootElement.XamlRoot;
-                dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-            }
-
-            // 显示对话框
-            var result = await dialog.ShowAsync();
+            var result = await _dialogService.ShowConfirmationDialogAsync(
+                "VersionListPage_ConfirmDeleteText".GetLocalized(),
+                $"{"VersionListPage_ConfirmDeleteContentText".GetLocalized()} {version.Name} {"VersionListPage_ConfirmDeleteWarningText".GetLocalized()}",
+                "VersionListPage_DeleteText".GetLocalized(),
+                "VersionListPage_CancelText".GetLocalized());
 
             // 如果用户确认删除
-            if (result == ContentDialogResult.Primary)
+            if (result)
             {
                 // 删除版本文件夹
                 Directory.Delete(version.Path, true);
@@ -1387,23 +1378,10 @@ public partial class VersionListViewModel : ObservableRecipient
             
             if (!isMicrosoftLogin)
             {
-                // 显示地区限制弹窗
-                var dialog = new ContentDialog
-                {
-                    Title = "地区限制",
-                    Content = "当前地区仅允许微软账户登录用户导出启动参数。\n请先使用微软账户登录后再尝试导出。",
-                    CloseButtonText = "确定",
-                    DefaultButton = ContentDialogButton.Close
-                };
-                
-                // 设置XamlRoot和Style
-                if (App.MainWindow.Content is FrameworkElement rootElement)
-                {
-                    dialog.XamlRoot = rootElement.XamlRoot;
-                    dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-                }
-                
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync(
+                    "地区限制",
+                    "当前地区仅允许微软账户登录用户导出启动参数。\n请先使用微软账户登录后再尝试导出。",
+                    "确定");
                 StatusMessage = "导出已取消：地区限制";
                 return;
             }

@@ -2,8 +2,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models;
@@ -258,27 +256,8 @@ public partial class MapsViewModel : ObservableObject
         if (map == null) return;
         try
         {
-            var renameTextBox = new TextBox
-            {
-                Header = "重命名地图",
-                Text = map.Name,
-                PlaceholderText = "输入新名称"
-            };
-
-            var renameDialog = new ContentDialog
-            {
-                Title = "重命名地图",
-                Content = renameTextBox,
-                PrimaryButtonText = "确定",
-                CloseButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            var dialogResult = await _dialogService.ShowDialogAsync(renameDialog);
-            if (dialogResult != ContentDialogResult.Primary) return;
-
-            var newName = renameTextBox.Text?.Trim() ?? string.Empty;
+            var newName = await _dialogService.ShowRenameDialogAsync("重命名地图", map.Name, "输入新名称");
+            if (newName == null) return;
             if (string.IsNullOrWhiteSpace(newName)) return;
 
             var renameResult = VersionManagementMapOps.RenameMap(map, newName);

@@ -26,6 +26,7 @@ public class ActivationService : IActivationService
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
     private readonly XianYuLauncher.Core.Services.IAutoSpeedTestService? _autoSpeedTestService;
     private readonly INetworkSettingsDomainService? _networkSettingsDomainService;
+    private readonly IDialogService _dialogService;
     private UIElement? _shell = null;
 
     public ActivationService(
@@ -34,6 +35,7 @@ public class ActivationService : IActivationService
         IThemeSelectorService themeSelectorService,
         ILanguageSelectorService languageSelectorService,
         ILocalSettingsService localSettingsService,
+        IDialogService dialogService,
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
         XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null,
         INetworkSettingsDomainService? networkSettingsDomainService = null)
@@ -43,6 +45,7 @@ public class ActivationService : IActivationService
         _themeSelectorService = themeSelectorService;
         _languageSelectorService = languageSelectorService;
         _localSettingsService = localSettingsService;
+        _dialogService = dialogService;
         _downloadSourceFactory = downloadSourceFactory;
         _autoSpeedTestService = autoSpeedTestService;
         _networkSettingsDomainService = networkSettingsDomainService;
@@ -388,70 +391,17 @@ public class ActivationService : IActivationService
                 
                 // 直接实例化ViewModel，传入所需参数
                 var updateDialogViewModel = new UpdateDialogViewModel(logger, localUpdateService, updateInfo);
-                
-                // 创建并显示更新弹窗
-                var updateDialog = new ContentDialog
-                {
-                    Title = string.Format("Version {0} 更新", updateInfo.version),
-                    Content = new UpdateDialog(updateDialogViewModel),
-                    PrimaryButtonText = "更新",
-                    CloseButtonText = !updateInfo.important_update ? "取消" : null,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                
-                // 显示更新弹窗并获取结果
-                var updateResult = await updateDialog.ShowAsync();
-                
-                if (updateResult == ContentDialogResult.Primary)
+
+                var installStarted = await _dialogService.ShowUpdateInstallFlowDialogAsync(
+                    updateDialogViewModel,
+                    string.Format("Version {0} 更新", updateInfo.version),
+                    "更新",
+                    !updateInfo.important_update ? "取消" : null);
+
+                if (installStarted)
                 {
                     Serilog.Log.Information("用户同意更新");
                     Debug.WriteLine("[DEBUG] 用户同意更新");
-                    
-                    // 创建并显示下载进度弹窗
-                    var downloadDialog = new ContentDialog
-                    {
-                        Title = $"Version {updateInfo.version} 更新",
-                        Content = new DownloadProgressDialog(updateDialogViewModel),
-                        IsPrimaryButtonEnabled = false,
-                        CloseButtonText = "取消",
-                        XamlRoot = App.MainWindow.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    
-                    // 处理取消按钮点击事件
-                    downloadDialog.CloseButtonClick += (sender, args) =>
-                    {
-                        updateDialogViewModel.CancelCommand.Execute(null);
-                    };
-                    
-                    // 订阅CloseDialog事件，用于在ViewModel中关闭对话框
-                    bool dialogResult = false;
-                    updateDialogViewModel.CloseDialog += (sender, result) =>
-                    {
-                        dialogResult = result;
-                        downloadDialog.Hide();
-                    };
-                    
-                    // 开始下载
-                    _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-                    
-                    // 显示下载进度弹窗
-                    await downloadDialog.ShowAsync();
-                    
-                    if (dialogResult)
-                    {
-                        Serilog.Log.Information("更新下载完成");
-                        Debug.WriteLine("[DEBUG] 更新下载完成");
-                        // 暂时预留安装逻辑
-                    }
-                    else
-                    {
-                        Serilog.Log.Information("更新下载取消或失败");
-                        Debug.WriteLine("[DEBUG] 更新下载取消或失败");
-                    }
                 }
                 else
                 {
@@ -505,36 +455,11 @@ public class ActivationService : IActivationService
                 var logger = App.GetService<ILogger<AnnouncementDialogViewModel>>();
                 var viewModel = new AnnouncementDialogViewModel(logger, announcementService, announcement);
                 
-                // 创建对话框
-                var dialog = new ContentDialog
-                {
-                    Title = announcement.title,
-                    Content = new AnnouncementDialog(viewModel),
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                
-                // 根据按钮配置设置对话框按钮
-                if (announcement.buttons != null && announcement.buttons.Count > 0)
-                {
-                    // 如果有自定义按钮，不显示默认按钮
-                    // 按钮将在 AnnouncementDialog 中渲染
-                }
-                else
-                {
-                    // 没有自定义按钮，显示默认关闭按钮
-                    dialog.CloseButtonText = "知道了";
-                }
-                
-                // 订阅关闭事件
-                viewModel.CloseDialog += (sender, args) =>
-                {
-                    dialog.Hide();
-                };
-                
-                // 显示对话框
-                await dialog.ShowAsync();
+                await _dialogService.ShowAnnouncementDialogAsync(
+                    announcement.title,
+                    viewModel,
+                    announcement.buttons != null && announcement.buttons.Count > 0,
+                    "知道了");
                 
                 // 标记为已读交由按钮处理（例如“同意/关闭”）
                 Serilog.Log.Information("公告已显示，等待用户操作");
@@ -574,53 +499,24 @@ public class ActivationService : IActivationService
                 // 构建用户协议内容
                 string agreementContent = "在正式开始使用XianYu Launcher前,您需阅读并同意相关协议后方可使用。";
 
-                // 创建用户协议弹窗
-                var dialog = new ContentDialog
-                {
-                    Title = "XianYu Launcher用户协议",
-                    Content = new ScrollViewer
-                    {
-                        Content = new TextBlock
-                        {
-                            Text = agreementContent,
-                            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                            Margin = new Microsoft.UI.Xaml.Thickness(12),
-                            FontSize = 14
-                        },
-                        MaxHeight = 400,
-                        VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
-                        HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Disabled
-                    },
-                    PrimaryButtonText = "同意",
-                    SecondaryButtonText = "用户协议",
-                    CloseButtonText = "拒绝",
-                    DefaultButton = Microsoft.UI.Xaml.Controls.ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-
-                // 处理导航按钮点击事件
-                dialog.SecondaryButtonClick += async (sender, args) =>
-                {
-                    try
-                    {
-                        // 取消弹窗关闭
-                        args.Cancel = true;
-                        
-                        // 导航到指定链接
-                        var uri = new Uri("https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV");
-                        await Windows.System.Launcher.LaunchUriAsync(uri);
-                        Serilog.Log.Information("用户点击用户协议按钮，已打开用户协议链接");
-                    }
-                    catch (Exception ex)
-                    {
-                        Serilog.Log.Error(ex, "打开用户协议链接失败: {ErrorMessage}", ex.Message);
-                    }
-                };
-
                 // 显示弹窗并处理结果
                 Serilog.Log.Information("开始显示用户协议弹窗");
-                var result = await dialog.ShowAsync();
+                var result = await _dialogService.ShowPrivacyAgreementDialogAsync(
+                    "XianYu Launcher用户协议",
+                    agreementContent,
+                    onOpenAgreementLink: async () =>
+                    {
+                        try
+                        {
+                            var uri = new Uri("https://docs.qq.com/doc/DVnZxWHNMUEtxRGVV");
+                            await Windows.System.Launcher.LaunchUriAsync(uri);
+                            Serilog.Log.Information("用户点击用户协议按钮，已打开用户协议链接");
+                        }
+                        catch (Exception ex)
+                        {
+                            Serilog.Log.Error(ex, "打开用户协议链接失败: {ErrorMessage}", ex.Message);
+                        }
+                    });
                 Serilog.Log.Information($"用户协议弹窗结果: {result}");
                 
                 if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)

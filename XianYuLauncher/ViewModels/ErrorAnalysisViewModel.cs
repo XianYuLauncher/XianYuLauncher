@@ -26,6 +26,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ILogSanitizerService _logSanitizerService;
         private readonly IAIAnalysisService _aiAnalysisService; // New Service
         private readonly ILocalSettingsService _localSettingsService; // To read settings
+        private readonly IDialogService _dialogService;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
@@ -58,12 +59,14 @@ namespace XianYuLauncher.ViewModels
             ILanguageSelectorService languageSelectorService, 
             ILogSanitizerService logSanitizerService,
             IAIAnalysisService aiAnalysisService,
-            ILocalSettingsService localSettingsService)
+            ILocalSettingsService localSettingsService,
+            IDialogService dialogService)
         {
             _languageSelectorService = languageSelectorService;
             _logSanitizerService = logSanitizerService;
             _aiAnalysisService = aiAnalysisService;
             _localSettingsService = localSettingsService;
+            _dialogService = dialogService;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
             
@@ -485,19 +488,11 @@ namespace XianYuLauncher.ViewModels
             bool shouldDelete = false;
             await EnqueueOnUiAsync(async () =>
             {
-                var dialog = new ContentDialog
-                {
-                    Title = "删除 Mod",
-                    Content = $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
-                    PrimaryButtonText = "删除",
-                    CloseButtonText = "取消",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.Close
-                };
-
-                var result = await dialog.ShowAsync();
-                shouldDelete = result == ContentDialogResult.Primary;
+                shouldDelete = await _dialogService.ShowConfirmationDialogAsync(
+                    "删除 Mod",
+                    $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
+                    "删除",
+                    "取消");
             });
 
             if (!shouldDelete)
@@ -648,16 +643,10 @@ namespace XianYuLauncher.ViewModels
         {
             await EnqueueOnUiAsync(async () =>
             {
-                var dialog = new ContentDialog
-                {
-                    Title = "未找到",
-                    Content = $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
-                    PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync(
+                    "未找到",
+                    $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
+                    "确定");
             });
         }
 
@@ -2215,33 +2204,14 @@ namespace XianYuLauncher.ViewModels
                 // 清理临时目录
                 Directory.Delete(tempDir, true);
 
-                // 显示成功提示
-                var successDialog = new ContentDialog
-                {
-                    Title = "成功",
-                    Content = string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
-                    PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-
-                await successDialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync(
+                    "成功",
+                    string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
+                    "确定");
             }
             catch (Exception ex)
             {
-                // 显示错误提示
-                var errorDialog = new ContentDialog
-                {
-                    Title = "错误",
-                    Content = string.Format("导出崩溃日志失败：{0}", ex.Message),
-                    PrimaryButtonText = "确定",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-
-                await errorDialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync("错误", string.Format("导出崩溃日志失败：{0}", ex.Message), "确定");
             }
         }
 
