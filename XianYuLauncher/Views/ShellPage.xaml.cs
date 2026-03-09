@@ -153,7 +153,7 @@ public sealed partial class ShellPage : Page
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
-                    _ = _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
@@ -167,7 +167,7 @@ public sealed partial class ShellPage : Page
                         {
                             System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
                         }
-                    });
+                    }).Observe("ShellPage.DragDrop.ImportModpack");
 
                     e.Handled = true;
                     return;
@@ -185,7 +185,7 @@ public sealed partial class ShellPage : Page
                         var navigationService = App.GetService<Contracts.Services.INavigationService>();
                         navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName);
 
-                        _ = _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                        _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                         {
                             try
                             {
@@ -200,7 +200,7 @@ public sealed partial class ShellPage : Page
                             {
                                 System.Diagnostics.Debug.WriteLine($"Forward external-login drop failed: {ex}");
                             }
-                        });
+                        }).Observe("ShellPage.DragDrop.ExternalLogin");
 
                         e.Handled = true;
                         return;

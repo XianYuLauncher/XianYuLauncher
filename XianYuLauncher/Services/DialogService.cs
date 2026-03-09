@@ -481,7 +481,7 @@ public class DialogService : IDialogService
                             // 下载并在 UI 线程使用 Win2D 处理
                             var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
                             
-                            _ = _uiDispatcher.EnqueueAsync(async () => 
+                            _uiDispatcher.EnqueueAsync(async () =>
                             {
                                 try 
                                 {
@@ -492,7 +492,7 @@ public class DialogService : IDialogService
                                     }
                                 }
                                 catch {}
-                            });
+                            }).Observe("DialogService.LoadProfileAvatar");
                         }
                     }
                 }

@@ -77,7 +77,7 @@ public partial class ServersViewModel : ObservableObject
             // 异步加载图标和状态
             foreach (var item in _allServers)
             {
-                await item.DecodeIconAsync();
+                await item.DecodeIconAsync(_uiDispatcher);
 
                 _ = Task.Run(async () =>
                 {
@@ -97,7 +97,7 @@ public partial class ServersViewModel : ObservableObject
                         _uiDispatcher.TryEnqueue(() =>
                         {
                             if (ping >= 0)
-                                item.UpdateStatus(motd, online, max, ping, icon);
+                                item.UpdateStatus(motd, online, max, ping, icon, _uiDispatcher);
                             else
                             {
                                 item.Motd = "无法连接";

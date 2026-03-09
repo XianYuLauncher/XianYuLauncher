@@ -70,7 +70,7 @@ public sealed partial class MainWindow : WindowEx
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
                     // Call import on the viewmodel (run on UI dispatcher)
-                    _ = _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
@@ -84,7 +84,7 @@ public sealed partial class MainWindow : WindowEx
                         {
                             System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
                         }
-                    });
+                    }).Observe("MainWindow.DragDrop.ImportModpack");
 
                     break;
                 }

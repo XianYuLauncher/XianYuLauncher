@@ -34,7 +34,7 @@ public partial class ServerItem : ObservableObject
     [ObservableProperty]
     private long _ping = -1;
 
-    public void UpdateStatus(string motd, int online, int max, long ping, string? iconBase64)
+    public void UpdateStatus(string motd, int online, int max, long ping, string? iconBase64, IUiDispatcher uiDispatcher)
     {
         Motd = motd;
         PlayerCount = $"{online}/{max}";
@@ -42,11 +42,11 @@ public partial class ServerItem : ObservableObject
         if (!string.IsNullOrEmpty(iconBase64))
         {
             IconBase64 = iconBase64;
-            _ = DecodeIconAsync();
+            _ = DecodeIconAsync(uiDispatcher);
         }
     }
 
-    public async Task DecodeIconAsync()
+    public async Task DecodeIconAsync(IUiDispatcher uiDispatcher)
     {
         if (string.IsNullOrEmpty(IconBase64)) return;
 
@@ -66,8 +66,7 @@ public partial class ServerItem : ObservableObject
             var bytes = Convert.FromBase64String(base64Data);
             
             // 在UI线程创建BitmapImage
-            var uiDispatcher = App.GetService<IUiDispatcher>();
-            _ = uiDispatcher.EnqueueAsync(async () =>
+            await uiDispatcher.RunOnUiThreadAsync(async () =>
             {
                 using var stream = new InMemoryRandomAccessStream();
                 await stream.WriteAsync(bytes.AsBuffer());

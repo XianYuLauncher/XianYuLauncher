@@ -63,14 +63,19 @@ public class UiDispatcher : IUiDispatcher
     public Task RunOnUiThreadAsync(Action action)
     {
         var queue = GetQueue();
-        if (queue == null || queue.HasThreadAccess)
+        if (queue == null)
+        {
+            throw new InvalidOperationException("UI dispatcher is not available.");
+        }
+
+        if (queue.HasThreadAccess)
         {
             action();
             return Task.CompletedTask;
         }
 
         var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        queue.TryEnqueue(() =>
+        var queued = queue.TryEnqueue(() =>
         {
             try
             {
@@ -82,6 +87,12 @@ public class UiDispatcher : IUiDispatcher
                 tcs.TrySetException(ex);
             }
         });
+
+        if (!queued)
+        {
+            tcs.TrySetException(new InvalidOperationException("Failed to enqueue work on UI dispatcher."));
+        }
+
         return tcs.Task;
     }
 

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Views;
 
@@ -90,10 +91,10 @@ public sealed partial class SettingsPage : Page
         {
             if (ViewModel?.AutoSelectFastestSource == true)
             {
-                _ = _uiDispatcher.EnqueueAsync(async () =>
+                _uiDispatcher.EnqueueAsync(async () =>
                 {
                     await RefreshAutoSpeedTestStateAsync();
-                });
+                }).Observe("SettingsPage.AutoSpeedTestCompleted");
             }
         }
         catch (Exception ex)
