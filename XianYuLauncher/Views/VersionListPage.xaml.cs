@@ -18,33 +18,83 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
+    private readonly IDialogService _dialogService;
     private readonly Dictionary<string, BitmapImage?> _versionIconImageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Task<BitmapImage?>> _versionIconProcessingTasks = new(StringComparer.OrdinalIgnoreCase);
     private int _iconWarmupRequestId;
     private bool _isExportCancelled = false;
     private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
     private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
-    
-    // 动态创建的弹窗引用
-    private ContentDialog? _loadingDialog;
-    private ContentDialog? _completeVersionDialog;
-    
-    // 弹窗内的控件引用
-    private ProgressRing? _loadingProgressRing;
-    private TextBlock? _loadingStatusText;
-    private ProgressBar? _loadingProgressBar;
-    private TextBlock? _loadingProgressText;
-    
-    private TextBlock? _completeVersionNameText;
-    private TextBlock? _completeVersionStageText;
-    private TextBlock? _completeVersionCurrentFileText;
-    private ProgressBar? _completeVersionProgressBar;
-    private TextBlock? _completeVersionProgressText;
+    private readonly DialogProgressState _loadingDialogState = new();
+    private TaskCompletionSource<bool>? _loadingDialogCloseSignal;
+
+    private readonly DialogProgressState _completeVersionDialogState = new();
+
+    private sealed class DialogProgressState : System.ComponentModel.INotifyPropertyChanged
+    {
+        private string _status = string.Empty;
+        private double _progress;
+        private string _progressText = "0.0%";
+
+        public string Status
+        {
+            get => _status;
+            private set
+            {
+                if (_status != value)
+                {
+                    _status = value;
+                    OnPropertyChanged(nameof(Status));
+                }
+            }
+        }
+
+        public double Progress
+        {
+            get => _progress;
+            private set
+            {
+                if (Math.Abs(_progress - value) > 0.001)
+                {
+                    _progress = value;
+                    OnPropertyChanged(nameof(Progress));
+                }
+            }
+        }
+
+        public string ProgressText
+        {
+            get => _progressText;
+            private set
+            {
+                if (_progressText != value)
+                {
+                    _progressText = value;
+                    OnPropertyChanged(nameof(ProgressText));
+                }
+            }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        public void Set(string status, double progress, string progressText)
+        {
+            Status = status;
+            Progress = progress;
+            ProgressText = progressText;
+        }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+    }
 
     public VersionListPage()
     {
         this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
+        _dialogService = App.GetService<IDialogService>();
         InitializeComponent();
         
         // 添加ItemClick事件处理
@@ -212,65 +262,22 @@ public sealed partial class VersionListPage : Page
                 try
                 {
                     _isRenameDialogOpen = true;
-                    
-                    // 动态创建ContentDialog（参考官方示例）
-                    var dialog = new ContentDialog
+
+                    var newName = await _dialogService.ShowRenameDialogAsync(
+                        "重命名版本",
+                        viewModel.NewVersionName,
+                        "新版本名称",
+                        "请输入新的版本名称：");
+                    if (!string.IsNullOrWhiteSpace(newName))
                     {
-                        XamlRoot = this.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        Title = "重命名版本",
-                        PrimaryButtonText = "确定",
-                        CloseButtonText = "取消",
-                        DefaultButton = ContentDialogButton.Primary,
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
-                    
-                    // 创建内容
-                    var contentStack = new StackPanel { Spacing = 12, Width = 400 };
-                    
-                    // 说明文字
-                    var instructionText = new TextBlock
-                    {
-                        Text = "请输入新的版本名称：",
-                        FontSize = 14
-                    };
-                    contentStack.Children.Add(instructionText);
-                    
-                    // 输入框
-                    var nameTextBox = new TextBox
-                    {
-                        PlaceholderText = "新版本名称",
-                        Text = viewModel.NewVersionName,
-                        MaxLength = 100
-                    };
-                    // 双向绑定
-                    nameTextBox.TextChanged += (s, args) => viewModel.NewVersionName = nameTextBox.Text;
-                    contentStack.Children.Add(nameTextBox);
-                    
-                    dialog.Content = contentStack;
-                    
-                    // 显示弹窗
-                    var result = await dialog.ShowAsync();
-                    
-                    if (result == ContentDialogResult.Primary)
-                    {
+                        viewModel.NewVersionName = newName;
+
                         // 执行重命名
                         var (success, message) = await viewModel.ExecuteRenameVersionAsync();
-                        
+
                         if (!success)
                         {
-                            // 显示错误消息
-                            var errorDialog = new ContentDialog
-                            {
-                                XamlRoot = this.XamlRoot,
-                                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                                Title = "重命名失败",
-                                Content = message,
-                                CloseButtonText = "确定",
-                                VerticalAlignment = VerticalAlignment.Center
-                            };
-                            
-                            await errorDialog.ShowAsync();
+                            await _dialogService.ShowMessageDialogAsync("重命名失败", message, "确定");
                         }
                     }
                     
@@ -291,133 +298,24 @@ public sealed partial class VersionListPage : Page
     /// <summary>
     /// 处理版本补全请求事件，动态创建并打开版本补全弹窗
     /// </summary>
-    private async void OnCompleteVersionRequested(object? sender, VersionListViewModel.VersionInfoItem e)
+    private void OnCompleteVersionRequested(object? sender, VersionListViewModel.VersionInfoItem e)
     {
         if (_isCompleteVersionDialogOpen) return;
         
         _isCompleteVersionDialogOpen = true;
-        
-        // 动态创建ContentDialog
-        _completeVersionDialog = new ContentDialog
-        {
-            XamlRoot = this.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            Title = "版本补全",
-            CloseButtonText = "关闭",
-            IsPrimaryButtonEnabled = false,
-            IsSecondaryButtonEnabled = false,
-            DefaultButton = ContentDialogButton.None
-        };
-        
-        var mainStack = new StackPanel { Spacing = 16, Width = 400 };
-        
-        // 版本信息卡片
-        var versionCard = new Border
-        {
-            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12)
-        };
-        
-        var cardGrid = new Grid();
-        cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        
-        var versionIcon = new FontIcon
-        {
-            Glyph = "\uE74C",
-            FontSize = 24,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 12, 0)
-        };
-        Grid.SetColumn(versionIcon, 0);
-        
-        _completeVersionNameText = new TextBlock
-        {
-            FontSize = 16,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Text = e.Name,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-        Grid.SetColumn(_completeVersionNameText, 1);
-        
-        cardGrid.Children.Add(versionIcon);
-        cardGrid.Children.Add(_completeVersionNameText);
-        versionCard.Child = cardGrid;
-        mainStack.Children.Add(versionCard);
-        
-        // 状态区域
-        var statusStack = new StackPanel { Spacing = 8 };
-        
-        var stageGrid = new Grid();
-        stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        
-        var stageIcon = new FontIcon
-        {
-            Glyph = "\uE896",
-            FontSize = 14,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 2, 8, 0)
-        };
-        Grid.SetColumn(stageIcon, 0);
-        
-        _completeVersionStageText = new TextBlock
-        {
-            FontSize = 14,
-            Text = "正在检查依赖...",
-            TextWrapping = TextWrapping.WrapWholeWords
-        };
-        Grid.SetColumn(_completeVersionStageText, 1);
-        
-        stageGrid.Children.Add(stageIcon);
-        stageGrid.Children.Add(_completeVersionStageText);
-        statusStack.Children.Add(stageGrid);
-        
-        _completeVersionCurrentFileText = new TextBlock
-        {
-            FontSize = 12,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
-            Text = "",
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(22, 0, 0, 0)
-        };
-        statusStack.Children.Add(_completeVersionCurrentFileText);
-        mainStack.Children.Add(statusStack);
-        
-        // 进度区域
-        var progressStack = new StackPanel { Spacing = 8 };
-        
-        _completeVersionProgressBar = new ProgressBar
-        {
-            Value = 0,
-            Minimum = 0,
-            Maximum = 100,
-            Height = 6,
-            CornerRadius = new CornerRadius(3)
-        };
-        progressStack.Children.Add(_completeVersionProgressBar);
-        
-        _completeVersionProgressText = new TextBlock
-        {
-            FontSize = 13,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            Text = "0%",
-            HorizontalTextAlignment = TextAlignment.Center
-        };
-        progressStack.Children.Add(_completeVersionProgressText);
-        mainStack.Children.Add(progressStack);
-        
-        _completeVersionDialog.Content = mainStack;
-        
-        // 显示弹窗（非阻塞）
-        _ = _completeVersionDialog.ShowAsync();
+
+        _completeVersionDialogState.Set($"版本 {e.Name}\n正在检查依赖...", 0, "0.0%");
+
+        var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+            "版本补全",
+            () => _completeVersionDialogState.Status,
+            () => _completeVersionDialogState.Progress,
+            () => _completeVersionDialogState.ProgressText,
+            _completeVersionDialogState,
+            primaryButtonText: null,
+            closeButtonText: "关闭");
+
+        _ = dialogTask.ContinueWith(_ => _isCompleteVersionDialogOpen = false, TaskScheduler.Default);
     }
     
     /// <summary>
@@ -426,27 +324,18 @@ public sealed partial class VersionListPage : Page
     private void OnCompleteVersionProgressUpdated(object? sender, (double Progress, string Stage, string CurrentFile) e)
     {
         if (!_isCompleteVersionDialogOpen) return;
-        
-        // 在 UI 线程更新
+
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (e.Progress >= 0 && _completeVersionProgressBar != null && _completeVersionProgressText != null)
+            var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
+            if (!string.IsNullOrEmpty(e.CurrentFile))
             {
-                _completeVersionProgressBar.Value = e.Progress;
-                _completeVersionProgressText.Text = $"{e.Progress:F1}%";
+                var displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
+                status = $"{status}\n当前: {displayFile}";
             }
-            
-            if (!string.IsNullOrEmpty(e.Stage) && _completeVersionStageText != null)
-            {
-                _completeVersionStageText.Text = e.Stage;
-            }
-            
-            if (!string.IsNullOrEmpty(e.CurrentFile) && _completeVersionCurrentFileText != null)
-            {
-                // 只显示文件名的前 8 位（hash）
-                string displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
-                _completeVersionCurrentFileText.Text = $"当前: {displayFile}";
-            }
+
+            var progress = e.Progress >= 0 ? e.Progress : _completeVersionDialogState.Progress;
+            _completeVersionDialogState.Set(status, progress, $"{progress:F1}%");
         });
     }
     
@@ -459,22 +348,12 @@ public sealed partial class VersionListPage : Page
         {
             if (e.Success)
             {
-                if (_completeVersionStageText != null)
-                    _completeVersionStageText.Text = "补全完成！";
-                if (_completeVersionProgressBar != null)
-                    _completeVersionProgressBar.Value = 100;
-                if (_completeVersionProgressText != null)
-                    _completeVersionProgressText.Text = "100%";
-                if (_completeVersionCurrentFileText != null)
-                    _completeVersionCurrentFileText.Text = "";
+                _completeVersionDialogState.Set("补全完成！", 100, "100%");
             }
             else
             {
-                if (_completeVersionStageText != null)
-                    _completeVersionStageText.Text = e.Message;
+                _completeVersionDialogState.Set(e.Message, _completeVersionDialogState.Progress, _completeVersionDialogState.ProgressText);
             }
-            
-            _isCompleteVersionDialogOpen = false;
         });
     }
     
@@ -489,18 +368,6 @@ public sealed partial class VersionListPage : Page
         // 设置整合包名称和版本的默认值
         viewModel.ModpackName = e.Name;
         viewModel.ModpackVersion = "1.0.0";
-        
-        // 动态创建ContentDialog
-        var dialog = new ContentDialog
-        {
-            XamlRoot = this.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            Title = "导出整合包",
-            PrimaryButtonText = "确认",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            VerticalAlignment = VerticalAlignment.Center
-        };
         
         // 创建ScrollViewer包裹内容
         var scrollViewer = new ScrollViewer
@@ -744,10 +611,13 @@ public sealed partial class VersionListPage : Page
         mainStack.Children.Add(warningInfoBar);
         
         scrollViewer.Content = mainStack;
-        dialog.Content = scrollViewer;
-        
-        // 显示弹窗
-        var result = await dialog.ShowAsync();
+
+        var result = await _dialogService.ShowCustomDialogAsync(
+            "导出整合包",
+            scrollViewer,
+            primaryButtonText: "确认",
+            closeButtonText: "取消",
+            defaultButton: ContentDialogButton.Primary);
         
         if (result == ContentDialogResult.Primary)
         {
@@ -1370,74 +1240,32 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void ShowLoadingDialog()
     {
-        if (_loadingDialog != null) return;
-        
-        _loadingDialog = new ContentDialog
+        if (_loadingDialogCloseSignal != null) return;
+
+        _loadingDialogState.Set("正在获取Modrinth资源...", 0.0, "0.0%");
+        _loadingDialogCloseSignal = new TaskCompletionSource<bool>();
+
+        var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+            "正在导出整合包",
+            () => _loadingDialogState.Status,
+            () => _loadingDialogState.Progress,
+            () => _loadingDialogState.ProgressText,
+            _loadingDialogState,
+            primaryButtonText: null,
+            closeButtonText: "取消",
+            autoCloseWhen: _loadingDialogCloseSignal.Task);
+
+        _ = dialogTask.ContinueWith(task =>
         {
-            XamlRoot = this.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            Title = "正在导出整合包",
-            IsPrimaryButtonEnabled = false,
-            IsSecondaryButtonEnabled = true,
-            SecondaryButtonText = "取消"
-        };
-        
-        _loadingDialog.SecondaryButtonClick += (s, args) =>
-        {
-            _isExportCancelled = true;
-            UpdateLoadingDialog("正在取消导出...", 0.0);
-            if (_loadingProgressRing != null)
-                _loadingProgressRing.IsActive = false;
-        };
-        
-        var mainStack = new StackPanel
-        {
-            Width = double.NaN,
-            Spacing = 16,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        
-        _loadingProgressRing = new ProgressRing
-        {
-            IsActive = true,
-            Width = 64,
-            Height = 64,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemControlHighlightAccentBrush"],
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        mainStack.Children.Add(_loadingProgressRing);
-        
-        _loadingStatusText = new TextBlock
-        {
-            Text = "正在获取Modrinth资源...",
-            FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            TextAlignment = TextAlignment.Center
-        };
-        mainStack.Children.Add(_loadingStatusText);
-        
-        _loadingProgressBar = new ProgressBar
-        {
-            Value = 0,
-            Maximum = 100,
-            Width = 300,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        mainStack.Children.Add(_loadingProgressBar);
-        
-        _loadingProgressText = new TextBlock
-        {
-            Text = "0.0%",
-            FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        };
-        mainStack.Children.Add(_loadingProgressText);
-        
-        _loadingDialog.Content = mainStack;
-        
-        _ = _loadingDialog.ShowAsync();
+            // 用户点取消关闭弹窗时，同步标记导出取消。
+            if (!_isExportCancelled && task.Status == TaskStatus.RanToCompletion && task.Result == ContentDialogResult.None)
+            {
+                _isExportCancelled = true;
+                _loadingDialogState.Set("正在取消导出...", _loadingDialogState.Progress, _loadingDialogState.ProgressText);
+            }
+
+            _loadingDialogCloseSignal = null;
+        }, TaskScheduler.Default);
     }
     
     /// <summary>
@@ -1445,12 +1273,12 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void HideLoadingDialog()
     {
-        _loadingDialog?.Hide();
-        _loadingDialog = null;
-        _loadingProgressRing = null;
-        _loadingStatusText = null;
-        _loadingProgressBar = null;
-        _loadingProgressText = null;
+        if (_loadingDialogCloseSignal == null)
+        {
+            return;
+        }
+
+        _loadingDialogCloseSignal.TrySetResult(true);
     }
     
     /// <summary>
@@ -1458,12 +1286,7 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void UpdateLoadingDialog(string status, double progress)
     {
-        if (_loadingStatusText != null)
-            _loadingStatusText.Text = status;
-        if (_loadingProgressBar != null)
-            _loadingProgressBar.Value = progress;
-        if (_loadingProgressText != null)
-            _loadingProgressText.Text = $"{progress:0.0}%";
+        _loadingDialogState.Set(status, progress, $"{progress:0.0}%");
     }
     
     /// <summary>

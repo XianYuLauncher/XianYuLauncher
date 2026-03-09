@@ -8,8 +8,6 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.Win32;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -86,19 +84,13 @@ namespace XianYuLauncher.ViewModels
 
                 // WinUI 3 限制：运行时无法刷新 x:Uid，必须重启
                 var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
-                var dialog = new ContentDialog
-                {
-                    Title = resourceLoader.GetString("Settings_LanguageChanged_Title"),
-                    Content = resourceLoader.GetString("Settings_LanguageChanged_Content"),
-                    PrimaryButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
-                    CloseButtonText = resourceLoader.GetString("Settings_LanguageChanged_RestartLater"),
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
+                var shouldRestartNow = await _dialogService.ShowConfirmationDialogAsync(
+                    resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                    resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                    resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                    resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
 
-                var result = await dialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
+                if (shouldRestartNow)
                 {
                     var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
                     if (!string.IsNullOrEmpty(exePath))
@@ -452,17 +444,10 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowLoginRequiredDialogAsync()
         {
-            var dialog = new ContentDialog
-            {
-                Title = "TutorialPage_LoginRequiredDialog_Title".GetLocalized(),
-                Content = "TutorialPage_LoginRequiredDialog_Content".GetLocalized(),
-                CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            
-            await dialog.ShowAsync();
+            await _dialogService.ShowMessageDialogAsync(
+                "TutorialPage_LoginRequiredDialog_Title".GetLocalized(),
+                "TutorialPage_LoginRequiredDialog_Content".GetLocalized(),
+                "TutorialPage_OKButtonText".GetLocalized());
         }
 
         [RelayCommand]
@@ -606,62 +591,19 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
 
-                // 2. 构建选择对话框
-                var dialog = new ContentDialog
+                // 2. 显示并处理结果
+                var selectedOption = await _dialogService.ShowListSelectionDialogAsync(
+                    title: "下载 Java 运行时",
+                    instruction: "请选择要安装的 Java 版本:",
+                    items: availableVersions,
+                    displayMemberFunc: option => option.DisplayName,
+                    tip: "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
+                    primaryButtonText: "下载",
+                    closeButtonText: "取消");
+
+                if (selectedOption != null)
                 {
-                    Title = "下载 Java 运行时",
-                    PrimaryButtonText = "下载",
-                    CloseButtonText = "取消",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    DefaultButton = ContentDialogButton.Primary,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-
-                var stackPanel = new StackPanel { Spacing = 12, Padding = new Thickness(0, 8, 0, 0) };
-                stackPanel.Children.Add(new TextBlock { Text = "请选择要安装的 Java 版本:", TextWrapping = TextWrapping.Wrap });
-
-                var listView = new ListView
-                {
-                    ItemsSource = availableVersions,
-                    SelectionMode = ListViewSelectionMode.Single,
-                    MaxHeight = 300,
-                    SelectedIndex = 0,
-                    BorderThickness = new Thickness(1),
-                    BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                    CornerRadius = new CornerRadius(4)
-                };
-
-                // 创建 DataTemplate
-                var templateXaml = @"
-                    <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-                        <Grid Padding='12,8'>
-                            <TextBlock Text='{Binding DisplayName}' VerticalAlignment='Center' Style='{ThemeResource BodyTextBlockStyle}' />
-                        </Grid>
-                    </DataTemplate>";
-                
-                listView.ItemTemplate = (DataTemplate)XamlReader.Load(templateXaml);
-
-                stackPanel.Children.Add(listView);
-                
-                stackPanel.Children.Add(new TextBlock 
-                { 
-                   Text = "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
-                   FontSize = 12, 
-                   Opacity = 0.7,
-                   TextWrapping = TextWrapping.Wrap
-                });
-
-                dialog.Content = stackPanel;
-
-                // 3. 显示并处理结果
-                var result = await dialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
-                {
-                     var selectedOption = listView.SelectedItem as JavaVersionDownloadOption;
-                     if (selectedOption != null)
-                     {
-                          await InstallJavaAsync(selectedOption);
-                     }
+                    await InstallJavaAsync(selectedOption);
                 }
             }
             catch (Exception ex)
@@ -884,35 +826,15 @@ namespace XianYuLauncher.ViewModels
                 IsLoggingIn = true;
                 
                 // 1. 询问用户选择登录方式
-                var selectionDialog = new ContentDialog
-                {
-                    Title = "选择登录方式",
-                    Content = new StackPanel
-                    {
-                        Children =
-                        {
-                            new TextBlock { Text = "请选择您喜欢的登录方式：", Margin = new Thickness(0,0,0,10) },
-                            new TextBlock { Text = "• 浏览器登录：打开系统默认浏览器进行登录 (推荐)", Opacity = 0.8, FontSize = 12 },
-                            new TextBlock { Text = "• 设备代码登录：获取代码后手动访问网页输入", Opacity = 0.8, FontSize = 12 }
-                        }
-                    },
-                    PrimaryButtonText = "浏览器登录",
-                    SecondaryButtonText = "设备代码登录",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
+                var selectionResult = await _dialogService.ShowLoginMethodSelectionDialogAsync();
 
-                var selectionResult = await selectionDialog.ShowAsync();
-
-                if (selectionResult == ContentDialogResult.None)
+                if (selectionResult == LoginMethodSelectionResult.Cancel)
                 {
                     IsLoggingIn = false;
                     return;
                 }
 
-                if (selectionResult == ContentDialogResult.Primary)
+                if (selectionResult == LoginMethodSelectionResult.Browser)
                 {
                     // === 浏览器登录流程 ===
                     LoginStatus = "正在等待浏览器登录...";
@@ -1014,48 +936,10 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            try
-            {
-                var errorDialog = new ContentDialog
-                {
-                    Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
-                    Content = errorMessage,
-                    CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await errorDialog.ShowAsync();
-            }
-            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
-            {
-                // 已经有对话框打开，记录日志但不崩溃
-                System.Diagnostics.Debug.WriteLine($"[TutorialPage] 无法显示错误对话框，已有对话框打开: {errorMessage}");
-                
-                // 使用 DispatcherQueue 延迟显示
-                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
-                {
-                    await Task.Delay(500); // 等待当前对话框关闭
-                    try
-                    {
-                        var retryDialog = new ContentDialog
-                        {
-                            Title = "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
-                            Content = errorMessage,
-                            CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                            XamlRoot = App.MainWindow.Content.XamlRoot,
-                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                            DefaultButton = ContentDialogButton.None
-                        };
-                        await retryDialog.ShowAsync();
-                    }
-                    catch
-                    {
-                        // 仍然失败，放弃显示对话框
-                        System.Diagnostics.Debug.WriteLine($"[TutorialPage] 延迟显示错误对话框仍然失败: {errorMessage}");
-                    }
-                });
-            }
+            await _dialogService.ShowMessageDialogAsync(
+                "TutorialPage_LoginFailedDialog_Title".GetLocalized(),
+                errorMessage,
+                "TutorialPage_OKButtonText".GetLocalized());
         }
 
         /// <summary>
@@ -1063,83 +947,27 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowMinecraftPurchaseDialogAsync()
         {
-            try
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
-                    Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
-                    PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
-                    CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
+            var shouldOpenPurchaseLink = await _dialogService.ShowConfirmationDialogAsync(
+                "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
+                "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
+                "TutorialPage_PurchaseButtonText".GetLocalized(),
+                "TutorialPage_CancelButtonText".GetLocalized(),
+                defaultButton: Microsoft.UI.Xaml.Controls.ContentDialogButton.Close);
 
-                // 处理前往按钮点击事件
-                dialog.PrimaryButtonClick += async (sender, args) =>
-                {
-                    try
-                    {
-                        // 打开Minecraft购买链接
-                        var purchaseUri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
-                        await Windows.System.Launcher.LaunchUriAsync(purchaseUri);
-                    }
-                    catch (Exception)
-                    {
-                        // 无法打开链接时显示提示
-                        try
-                        {
-                            var errorDialog = new ContentDialog
-                            {
-                                Title = "TutorialPage_CannotOpenLinkDialog_Title".GetLocalized(),
-                                Content = "TutorialPage_CannotOpenLinkDialog_Content".GetLocalized(),
-                                CloseButtonText = "TutorialPage_OKButtonText".GetLocalized(),
-                                XamlRoot = App.MainWindow.Content.XamlRoot,
-                                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                                DefaultButton = ContentDialogButton.None
-                            };
-                            await errorDialog.ShowAsync();
-                        }
-                        catch (System.Runtime.InteropServices.COMException)
-                        {
-                            // 对话框冲突，忽略
-                            System.Diagnostics.Debug.WriteLine("[TutorialPage] 无法显示错误对话框（链接打开失败）");
-                        }
-                    }
-                };
-
-                await dialog.ShowAsync();
-            }
-            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x80000019))
+            if (shouldOpenPurchaseLink)
             {
-                // 已经有对话框打开，记录日志但不崩溃
-                System.Diagnostics.Debug.WriteLine("[TutorialPage] 无法显示购买提示对话框，已有对话框打开");
-                
-                // 使用 DispatcherQueue 延迟显示
-                App.MainWindow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+                try
                 {
-                    await Task.Delay(500); // 等待当前对话框关闭
-                    try
-                    {
-                        var retryDialog = new ContentDialog
-                        {
-                            Title = "TutorialPage_PurchaseMinecraftDialog_Title".GetLocalized(),
-                            Content = "TutorialPage_PurchaseMinecraftDialog_Content".GetLocalized(),
-                            PrimaryButtonText = "TutorialPage_PurchaseButtonText".GetLocalized(),
-                            CloseButtonText = "TutorialPage_CancelButtonText".GetLocalized(),
-                            XamlRoot = App.MainWindow.Content.XamlRoot,
-                            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                            DefaultButton = ContentDialogButton.None
-                        };
-                        await retryDialog.ShowAsync();
-                    }
-                    catch
-                    {
-                        // 仍然失败，放弃显示对话框
-                        System.Diagnostics.Debug.WriteLine("[TutorialPage] 延迟显示购买提示对话框仍然失败");
-                    }
-                });
+                    var purchaseUri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
+                    await Windows.System.Launcher.LaunchUriAsync(purchaseUri);
+                }
+                catch
+                {
+                    await _dialogService.ShowMessageDialogAsync(
+                        "TutorialPage_CannotOpenLinkDialog_Title".GetLocalized(),
+                        "TutorialPage_CannotOpenLinkDialog_Content".GetLocalized(),
+                        "TutorialPage_OKButtonText".GetLocalized());
+                }
             }
         }
 

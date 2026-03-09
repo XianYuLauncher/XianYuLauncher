@@ -78,7 +78,16 @@ public class DialogService : IDialogService
             dialog.RequestedTheme = GetEffectiveDialogTheme();
             _activeDialog = dialog;
 
-            return await dialog.ShowAsync();
+            try
+            {
+                return await dialog.ShowAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.HResult == 0x80000019)
+            {
+                // WinUI 偶发弹窗冲突，短暂等待后重试一次以降低“误取消”概率。
+                await Task.Delay(300);
+                return await dialog.ShowAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -123,6 +132,22 @@ public class DialogService : IDialogService
         return background.R == 255 && background.G == 255 && background.B == 255 ? ElementTheme.Light : ElementTheme.Dark;
     }
 
+    private Microsoft.UI.Xaml.Media.Brush GetDialogSecondaryTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF)
+                : Windows.UI.Color.FromArgb(0x9E, 0x00, 0x00, 0x00));
+    }
+
+    private Microsoft.UI.Xaml.Media.Brush GetDialogTertiaryTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(0x8B, 0xFF, 0xFF, 0xFF)
+                : Windows.UI.Color.FromArgb(0x72, 0x00, 0x00, 0x00));
+    }
+
     public async Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定")
     {
         var dialog = new ContentDialog
@@ -137,7 +162,12 @@ public class DialogService : IDialogService
         await ShowSafeAsync(dialog);
     }
 
-    public async Task<bool> ShowConfirmationDialogAsync(string title, string message, string primaryButtonText = "是", string closeButtonText = "否")
+    public async Task<bool> ShowConfirmationDialogAsync(
+        string title,
+        string message,
+        string primaryButtonText = "是",
+        string closeButtonText = "否",
+        ContentDialogButton defaultButton = ContentDialogButton.Primary)
     {
         var dialog = new ContentDialog
         {
@@ -145,7 +175,7 @@ public class DialogService : IDialogService
             Content = message,
             PrimaryButtonText = primaryButtonText,
             CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = defaultButton,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
@@ -247,6 +277,56 @@ public class DialogService : IDialogService
 
     public async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
+        return await ShowSafeAsync(dialog);
+    }
+
+    public async Task<ContentDialogResult> ShowCustomDialogAsync(
+        string title,
+        object content,
+        string? primaryButtonText = null,
+        string? secondaryButtonText = null,
+        string? closeButtonText = null,
+        ContentDialogButton defaultButton = ContentDialogButton.None,
+        bool isPrimaryButtonEnabled = true,
+        bool isSecondaryButtonEnabled = true,
+        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onPrimaryButtonClick = null,
+        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            DefaultButton = defaultButton,
+            IsPrimaryButtonEnabled = isPrimaryButtonEnabled,
+            IsSecondaryButtonEnabled = isSecondaryButtonEnabled,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        if (!string.IsNullOrEmpty(primaryButtonText))
+        {
+            dialog.PrimaryButtonText = primaryButtonText;
+        }
+
+        if (!string.IsNullOrEmpty(secondaryButtonText))
+        {
+            dialog.SecondaryButtonText = secondaryButtonText;
+        }
+
+        if (!string.IsNullOrEmpty(closeButtonText))
+        {
+            dialog.CloseButtonText = closeButtonText;
+        }
+
+        if (onPrimaryButtonClick != null)
+        {
+            dialog.PrimaryButtonClick += onPrimaryButtonClick;
+        }
+
+        if (onSecondaryButtonClick != null)
+        {
+            dialog.SecondaryButtonClick += onSecondaryButtonClick;
+        }
+
         return await ShowSafeAsync(dialog);
     }
 
@@ -555,6 +635,7 @@ public class DialogService : IDialogService
         bool isLoadingDependencies,
         Action<string>? onDependencyClick)
     {
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
         var panel = new StackPanel { Spacing = 16 };
         panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
 
@@ -599,7 +680,7 @@ public class DialogService : IDialogService
 
                     var textPanel = new StackPanel { Orientation = Orientation.Vertical, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Width = 300 };
                     textPanel.Children.Add(new TextBlock { Text = depTitle, FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-                    textPanel.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.WrapWholeWords });
+                    textPanel.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = secondaryTextBrush, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.WrapWholeWords });
                     cardContent.Children.Add(textPanel);
 
                     var btn = new Button
@@ -645,6 +726,7 @@ public class DialogService : IDialogService
         string primaryButtonText = "确认",
         string closeButtonText = "取消") where T : class
     {
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
         var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
 
@@ -667,6 +749,11 @@ public class DialogService : IDialogService
             listView.Items.Add(lvi);
         }
 
+        if (listView.Items.Count > 0)
+        {
+            listView.SelectedIndex = 0;
+        }
+
         panel.Children.Add(listView);
 
         if (!string.IsNullOrEmpty(tip))
@@ -675,7 +762,7 @@ public class DialogService : IDialogService
             {
                 Text = tip,
                 FontSize = 12,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                Foreground = secondaryTextBrush
             });
         }
 
@@ -709,6 +796,8 @@ public class DialogService : IDialogService
         string primaryButtonText = "安装",
         string closeButtonText = "取消") where T : class
     {
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
+        var tertiaryTextBrush = GetDialogTertiaryTextBrush();
         var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, TextWrapping = TextWrapping.WrapWholeWords });
 
@@ -747,7 +836,7 @@ public class DialogService : IDialogService
             {
                 Text = string.IsNullOrEmpty(vt) ? vt : char.ToUpper(vt[0]) + vt[1..],
                 FontSize = 11,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                Foreground = secondaryTextBrush
             };
             headerRow.Children.Add(typeBadge);
 
@@ -781,7 +870,7 @@ public class DialogService : IDialogService
             {
                 Text = $"发布日期: {releaseDateFunc(item)}",
                 FontSize = 12,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                Foreground = secondaryTextBrush
             });
 
             // 文件名
@@ -789,7 +878,7 @@ public class DialogService : IDialogService
             {
                 Text = fileNameFunc(item),
                 FontSize = 11,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+                Foreground = tertiaryTextBrush,
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
 
@@ -830,6 +919,7 @@ public class DialogService : IDialogService
         Task? autoCloseWhen = null,
         Func<string>? getSpeed = null)
     {
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
         var statusText = new TextBlock { Text = getStatus(), FontSize = 16, TextWrapping = TextWrapping.WrapWholeWords };
         var progressBar = new ProgressBar { Value = getProgress(), Minimum = 0, Maximum = 100, Height = 8, CornerRadius = new CornerRadius(4) };
         
@@ -839,7 +929,7 @@ public class DialogService : IDialogService
         {
             Text = getProgressText(),
             FontSize = 14,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            Foreground = secondaryTextBrush
         };
         progressInfoPanel.Children.Add(progressText);
         
@@ -1068,5 +1158,624 @@ public class DialogService : IDialogService
             Priority = (int)priorityBox.Value,
             Enabled = enabledSwitch?.IsOn ?? request.Enabled
         };
+    }
+
+    public async Task<string?> ShowRenameDialogAsync(
+        string title,
+        string currentName,
+        string placeholder = "输入新名称",
+        string instruction = "请输入新的名称：")
+    {
+        var inputBox = new TextBox
+        {
+            Text = currentName ?? string.Empty,
+            PlaceholderText = placeholder
+        };
+
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+        content.Children.Add(inputBox);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            PrimaryButtonText = "确定",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        return inputBox.Text?.Trim();
+    }
+
+    public async Task<AddServerDialogResult?> ShowAddServerDialogAsync(string defaultName = "Minecraft Server")
+    {
+        var stackPanel = new StackPanel { Spacing = 12 };
+
+        var nameInput = new TextBox
+        {
+            Header = "服务器名称",
+            PlaceholderText = "Minecraft Server",
+            Text = defaultName
+        };
+
+        var addrInput = new TextBox
+        {
+            Header = "服务器地址",
+            PlaceholderText = "例如: 127.0.0.1"
+        };
+
+        stackPanel.Children.Add(nameInput);
+        stackPanel.Children.Add(addrInput);
+
+        var dialog = new ContentDialog
+        {
+            Title = "添加服务器",
+            PrimaryButtonText = "添加",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            Content = stackPanel,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        return new AddServerDialogResult
+        {
+            Name = nameInput.Text?.Trim() ?? string.Empty,
+            Address = addrInput.Text?.Trim() ?? string.Empty
+        };
+    }
+
+    public async Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
+        string title = "选择登录方式",
+        string instruction = "请选择您喜欢的登录方式：",
+        string browserDescription = "• 浏览器登录：打开系统默认浏览器进行登录 (推荐)",
+        string deviceCodeDescription = "• 设备代码登录：获取代码后手动访问网页输入",
+        string browserButtonText = "浏览器登录",
+        string deviceCodeButtonText = "设备代码登录",
+        string cancelButtonText = "取消")
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new StackPanel
+            {
+                Children =
+                {
+                    new TextBlock { Text = instruction, Margin = new Thickness(0, 0, 0, 10) },
+                    new TextBlock { Text = browserDescription, Opacity = 0.8, FontSize = 12 },
+                    new TextBlock { Text = deviceCodeDescription, Opacity = 0.8, FontSize = 12 }
+                }
+            },
+            PrimaryButtonText = browserButtonText,
+            SecondaryButtonText = deviceCodeButtonText,
+            CloseButtonText = cancelButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        return result switch
+        {
+            ContentDialogResult.Primary => LoginMethodSelectionResult.Browser,
+            ContentDialogResult.Secondary => LoginMethodSelectionResult.DeviceCode,
+            _ => LoginMethodSelectionResult.Cancel
+        };
+    }
+
+    public async Task ShowPublishersListDialogAsync(
+        IEnumerable<PublisherDialogItem> publishers,
+        bool isLoading,
+        string title = "所有发布者",
+        string closeButtonText = "关闭")
+    {
+        var stackPanel = new StackPanel { Spacing = 12, Width = 420, MaxHeight = 500 };
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
+
+        if (isLoading)
+        {
+            stackPanel.Children.Add(new ProgressRing
+            {
+                IsActive = true,
+                HorizontalAlignment = HorizontalAlignment.Center
+            });
+        }
+        else
+        {
+            var listView = new ListView
+            {
+                SelectionMode = ListViewSelectionMode.None,
+                MaxHeight = 420,
+                IsItemClickEnabled = false
+            };
+
+            foreach (var publisher in publishers)
+            {
+                var rowGrid = new Grid { Padding = new Thickness(8) };
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                var avatarContainer = new Grid { Margin = new Thickness(0, 0, 12, 0) };
+                Grid.SetColumn(avatarContainer, 0);
+
+                var hasAvatar = !string.IsNullOrWhiteSpace(publisher.AvatarUrl) &&
+                                !publisher.AvatarUrl.Contains("Placeholder", StringComparison.OrdinalIgnoreCase);
+
+                if (hasAvatar)
+                {
+                    var avatarBorder = new Border
+                    {
+                        Width = 40,
+                        Height = 40,
+                        CornerRadius = new CornerRadius(20)
+                    };
+
+                    try
+                    {
+                        avatarBorder.Background = new Microsoft.UI.Xaml.Media.ImageBrush
+                        {
+                            ImageSource = new BitmapImage(new Uri(publisher.AvatarUrl, UriKind.RelativeOrAbsolute)),
+                            Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill
+                        };
+                    }
+                    catch
+                    {
+                        hasAvatar = false;
+                    }
+
+                    if (hasAvatar)
+                    {
+                        avatarContainer.Children.Add(avatarBorder);
+                    }
+                }
+
+                if (!hasAvatar)
+                {
+                    var placeholder = new Border
+                    {
+                        Width = 40,
+                        Height = 40,
+                        CornerRadius = new CornerRadius(20),
+                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"]
+                    };
+                    placeholder.Child = new FontIcon
+                    {
+                        Glyph = "\uE77B",
+                        FontSize = 20,
+                        FontFamily = (Microsoft.UI.Xaml.Media.FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                        Foreground = secondaryTextBrush
+                    };
+                    avatarContainer.Children.Add(placeholder);
+                }
+
+                var textPanel = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(textPanel, 1);
+                textPanel.Children.Add(new TextBlock { Text = publisher.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                textPanel.Children.Add(new TextBlock
+                {
+                    Text = publisher.Role,
+                    FontSize = 12,
+                    Foreground = secondaryTextBrush
+                });
+
+                rowGrid.Children.Add(avatarContainer);
+                rowGrid.Children.Add(textPanel);
+                listView.Items.Add(rowGrid);
+            }
+
+            stackPanel.Children.Add(listView);
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = stackPanel,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        await ShowSafeAsync(dialog);
+    }
+
+    public async Task<CrashReportDialogAction> ShowCrashReportDialogAsync(
+        string crashTitle,
+        string crashAnalysis,
+        string fullLog,
+        bool isEasterEggMode)
+    {
+        var errorRedColor = Windows.UI.Color.FromArgb(255, 196, 43, 28);
+        var errorBgColor = Windows.UI.Color.FromArgb(30, 232, 17, 35);
+
+        var warningPanel = new StackPanel
+        {
+            Spacing = 20,
+            Margin = new Thickness(0)
+        };
+
+        var warningCard = new Border
+        {
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(errorBgColor),
+            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(errorRedColor),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(20, 16, 20, 16)
+        };
+
+        var warningCardContent = new StackPanel { Spacing = 12 };
+        var headerStack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12
+        };
+
+        var warningIcon = new FontIcon
+        {
+            Glyph = "\uE7BA",
+            FontSize = 24,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(errorRedColor)
+        };
+
+        var titleText = string.IsNullOrWhiteSpace(crashTitle)
+            ? "游戏意外退出"
+            : $"游戏意外退出：{crashTitle}";
+
+        var warningTitle = new TextBlock
+        {
+            Text = titleText,
+            FontSize = 18,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(errorRedColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        headerStack.Children.Add(warningIcon);
+        headerStack.Children.Add(warningTitle);
+        warningCardContent.Children.Add(headerStack);
+
+        var hintText = new TextBlock
+        {
+            Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
+            FontSize = 14,
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        if (isEasterEggMode)
+        {
+            var scaleAnimation = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            var scaleXAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 5.15,
+                Duration = new Duration(TimeSpan.FromMilliseconds(500)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase
+                {
+                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut
+                }
+            };
+
+            hintText.RenderTransform = new Microsoft.UI.Xaml.Media.ScaleTransform();
+            hintText.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleXAnimation, hintText);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleXAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
+
+            var scaleYAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 5.15,
+                Duration = new Duration(TimeSpan.FromMilliseconds(500)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase
+                {
+                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut
+                }
+            };
+
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleYAnimation, hintText);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleYAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
+
+            scaleAnimation.Children.Add(scaleXAnimation);
+            scaleAnimation.Children.Add(scaleYAnimation);
+            hintText.Loaded += (s, e) => scaleAnimation.Begin();
+        }
+
+        warningCardContent.Children.Add(hintText);
+        warningCard.Child = warningCardContent;
+        warningPanel.Children.Add(warningCard);
+
+        var instructionCard = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(20, 16, 20, 16)
+        };
+
+        instructionCard.SetValue(Border.BackgroundProperty, Application.Current.Resources["CardBackgroundFillColorDefaultBrush"]);
+        instructionCard.SetValue(Border.BorderBrushProperty, Application.Current.Resources["CardStrokeColorDefaultBrush"]);
+        instructionCard.BorderThickness = new Thickness(1);
+
+        var instructionStack = new StackPanel { Spacing = 10 };
+        instructionStack.Children.Add(new TextBlock
+        {
+            Text = "正确的求助步骤",
+            FontSize = 16,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+
+        instructionStack.Children.Add(new TextBlock { Text = "1. 点击下方「导出崩溃日志」按钮", FontSize = 14, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 });
+        instructionStack.Children.Add(new TextBlock { Text = "2. 将导出的 ZIP 文件发送给技术支持", FontSize = 14, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 });
+        instructionStack.Children.Add(new TextBlock
+        {
+            Text = "日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.7,
+            Margin = new Thickness(0, 4, 0, 0)
+        });
+
+        instructionCard.Child = instructionStack;
+        warningPanel.Children.Add(instructionCard);
+
+        var logExpander = new Expander
+        {
+            Header = "查看日志预览",
+            IsExpanded = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+
+        var logPreviewText = new TextBlock
+        {
+            Text = fullLog,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.7
+        };
+
+        var logScroller = new ScrollViewer
+        {
+            Content = logPreviewText,
+            MaxHeight = 200,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        logExpander.Content = logScroller;
+        warningPanel.Children.Add(logExpander);
+
+        var dialog = new ContentDialog
+        {
+            Title = "游戏崩溃",
+            Content = warningPanel,
+            PrimaryButtonText = "导出崩溃日志",
+            SecondaryButtonText = "查看详细日志",
+            CloseButtonText = "关闭",
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        CancellationTokenSource? shakeTokenSource = null;
+        if (isEasterEggMode)
+        {
+            shakeTokenSource = new CancellationTokenSource();
+            var shakeToken = shakeTokenSource.Token;
+
+            _ = Task.Run(async () =>
+            {
+                var random = new Random();
+                var originalPosition = new Windows.Graphics.PointInt32();
+                var gotOriginalPosition = false;
+
+                while (!shakeToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            try
+                            {
+                                var appWindow = App.MainWindow.AppWindow;
+                                if (!gotOriginalPosition)
+                                {
+                                    originalPosition = appWindow.Position;
+                                    gotOriginalPosition = true;
+                                }
+
+                                var offsetX = random.Next(-15, 6);
+                                var offsetY = random.Next(-15, 6);
+                                appWindow.Move(new Windows.Graphics.PointInt32(originalPosition.X + offsetX, originalPosition.Y + offsetY));
+                            }
+                            catch { }
+                        });
+
+                        await Task.Delay(50, shakeToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+
+                if (gotOriginalPosition)
+                {
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try { App.MainWindow.AppWindow.Move(originalPosition); } catch { }
+                    });
+                }
+            }, shakeToken);
+        }
+
+        dialog.Closed += (s, e) => shakeTokenSource?.Cancel();
+
+        var result = await ShowSafeAsync(dialog);
+        return result switch
+        {
+            ContentDialogResult.Primary => CrashReportDialogAction.ExportLogs,
+            ContentDialogResult.Secondary => CrashReportDialogAction.ViewDetails,
+            _ => CrashReportDialogAction.Close
+        };
+    }
+
+    public async Task<SkinModelSelectionResult> ShowSkinModelSelectionDialogAsync(
+        string title = "选择皮肤模型",
+        string content = "请选择此皮肤适用的人物模型",
+        string steveButtonText = "Steve",
+        string alexButtonText = "Alex",
+        string cancelButtonText = "取消")
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            PrimaryButtonText = steveButtonText,
+            SecondaryButtonText = alexButtonText,
+            CloseButtonText = cancelButtonText,
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(dialog);
+        return result switch
+        {
+            ContentDialogResult.Primary => SkinModelSelectionResult.Steve,
+            ContentDialogResult.Secondary => SkinModelSelectionResult.Alex,
+            _ => SkinModelSelectionResult.Cancel
+        };
+    }
+
+    public async Task<bool> ShowUpdateInstallFlowDialogAsync(
+        object updateDialogViewModel,
+        string title,
+        string primaryButtonText,
+        string? closeButtonText = "取消")
+    {
+        if (updateDialogViewModel is not XianYuLauncher.ViewModels.UpdateDialogViewModel typedViewModel)
+        {
+            throw new ArgumentException("updateDialogViewModel must be UpdateDialogViewModel", nameof(updateDialogViewModel));
+        }
+
+        var updateDialog = new ContentDialog
+        {
+            Title = title,
+            Content = new Views.UpdateDialog(typedViewModel),
+            PrimaryButtonText = primaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var result = await ShowSafeAsync(updateDialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return false;
+        }
+
+        var downloadDialog = new ContentDialog
+        {
+            Title = title,
+            Content = new Views.DownloadProgressDialog(typedViewModel),
+            IsPrimaryButtonEnabled = false,
+            CloseButtonText = closeButtonText ?? "取消",
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        downloadDialog.CloseButtonClick += (_, _) => typedViewModel.CancelCommand.Execute(null);
+        typedViewModel.CloseDialog += (_, _) => downloadDialog.Hide();
+
+        _ = typedViewModel.UpdateCommand.ExecuteAsync(null);
+        await ShowSafeAsync(downloadDialog);
+        return true;
+    }
+
+    public async Task ShowAnnouncementDialogAsync(
+        string title,
+        object viewModel,
+        bool hasCustomButtons,
+        string closeButtonText = "知道了")
+    {
+        if (viewModel is not XianYuLauncher.ViewModels.AnnouncementDialogViewModel typedViewModel)
+        {
+            throw new ArgumentException("viewModel must be AnnouncementDialogViewModel", nameof(viewModel));
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new Views.AnnouncementDialog(typedViewModel),
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        if (!hasCustomButtons)
+        {
+            dialog.CloseButtonText = closeButtonText;
+        }
+
+        typedViewModel.CloseDialog += (sender, args) => dialog.Hide();
+        await ShowSafeAsync(dialog);
+    }
+
+    public async Task<ContentDialogResult> ShowPrivacyAgreementDialogAsync(
+        string title,
+        string agreementContent,
+        Func<Task>? onOpenAgreementLink = null,
+        string primaryButtonText = "同意",
+        string secondaryButtonText = "用户协议",
+        string closeButtonText = "拒绝")
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new ScrollViewer
+            {
+                Content = new TextBlock
+                {
+                    Text = agreementContent,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(12),
+                    FontSize = 14
+                },
+                MaxHeight = 400,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+            },
+            PrimaryButtonText = primaryButtonText,
+            SecondaryButtonText = secondaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        dialog.SecondaryButtonClick += async (sender, args) =>
+        {
+            if (onOpenAgreementLink != null)
+            {
+                args.Cancel = true;
+                await onOpenAgreementLink();
+            }
+        };
+
+        return await ShowSafeAsync(dialog);
     }
 }

@@ -2,8 +2,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
@@ -150,44 +148,16 @@ public partial class ServersViewModel : ObservableObject
     [RelayCommand]
     private async Task AddServerAsync()
     {
-        var stackPanel = new StackPanel { Spacing = 12 };
+        var input = await _dialogService.ShowAddServerDialogAsync();
+        if (input == null) return;
 
-        var nameInput = new TextBox
-        {
-            Header = "服务器名称",
-            PlaceholderText = "Minecraft Server",
-            Text = "Minecraft Server"
-        };
-        var addrInput = new TextBox
-        {
-            Header = "服务器地址",
-            PlaceholderText = "例如: 127.0.0.1"
-        };
+        var name = input.Name;
+        var addr = input.Address;
 
-        stackPanel.Children.Add(nameInput);
-        stackPanel.Children.Add(addrInput);
+        if (string.IsNullOrEmpty(name)) name = "Minecraft Server";
+        if (string.IsNullOrEmpty(addr)) return;
 
-        var dialog = new ContentDialog
-        {
-            Title = "添加服务器",
-            PrimaryButtonText = "添加",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            Content = stackPanel,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var result = await _dialogService.ShowDialogAsync(dialog);
-        if (result == ContentDialogResult.Primary)
-        {
-            string name = nameInput.Text.Trim();
-            string addr = addrInput.Text.Trim();
-
-            if (string.IsNullOrEmpty(name)) name = "Minecraft Server";
-            if (string.IsNullOrEmpty(addr)) return;
-
-            await AddServerToNbtAsync(name, addr);
-        }
+        await AddServerToNbtAsync(name, addr);
     }
 
     private async Task AddServerToNbtAsync(string name, string address)
