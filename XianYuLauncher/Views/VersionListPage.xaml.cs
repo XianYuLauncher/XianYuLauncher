@@ -861,10 +861,10 @@ public sealed partial class VersionListPage : Page
                     // 打开文件保存对话框需要在UI线程执行
                     StorageFile file = null;
                     var filePickerTask = new TaskCompletionSource<StorageFile>();
-                    
-                    _uiDispatcher.EnqueueAsync(async () =>
+
+                    try
                     {
-                        try
+                        await _uiDispatcher.RunOnUiThreadAsync(async () =>
                         {
                             // 打开文件保存对话框
                             var savePicker = new FileSavePicker();
@@ -886,12 +886,12 @@ public sealed partial class VersionListPage : Page
                             // 显示文件保存对话框
                             var pickedFile = await savePicker.PickSaveFileAsync();
                             filePickerTask.SetResult(pickedFile);
-                        }
-                        catch (Exception ex)
-                        {
-                            filePickerTask.SetException(ex);
-                        }
-                    }).Observe("VersionListPage.ExportModpack.FileSavePicker");
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        filePickerTask.TrySetException(ex);
+                    }
                     
                     file = await filePickerTask.Task;
                     

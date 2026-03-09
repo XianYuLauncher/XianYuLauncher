@@ -164,7 +164,7 @@ public partial class MapsViewModel : ObservableObject
             if (!string.IsNullOrEmpty(iconPath))
             {
                 var tcs = new TaskCompletionSource<bool>();
-                _uiDispatcher.TryEnqueue(() =>
+                var enqueued = _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {
@@ -174,6 +174,12 @@ public partial class MapsViewModel : ObservableObject
                     }
                     catch (Exception ex) { tcs.TrySetException(ex); }
                 });
+
+                if (!enqueued)
+                {
+                    tcs.TrySetException(new InvalidOperationException("无法将地图图标更新调度到 UI 线程。"));
+                }
+
                 await tcs.Task;
             }
         }

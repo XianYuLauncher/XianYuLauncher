@@ -12,7 +12,6 @@ namespace XianYuLauncher;
 public sealed partial class MainWindow : WindowEx
 {
     private Microsoft.UI.Dispatching.DispatcherQueue dispatcherQueue;
-    private readonly IUiDispatcher _uiDispatcher;
 
     private UISettings settings;
 
@@ -26,7 +25,6 @@ public sealed partial class MainWindow : WindowEx
 
         // Theme change code picked from https://github.com/microsoft/WinUI-Gallery/pull/1239
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-        _uiDispatcher = App.GetService<IUiDispatcher>();
         settings = new UISettings();
         settings.ColorValuesChanged += Settings_ColorValuesChanged; // cannot use FrameworkElement.ActualThemeChanged event
 
@@ -69,8 +67,8 @@ public sealed partial class MainWindow : WindowEx
                     // Navigate to VersionListPage
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
-                    // Call import on the viewmodel (run on UI dispatcher)
-                    _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    // Call import on UI dispatcher. Avoid DI lookup in MainWindow constructor path.
+                    var enqueued = dispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
@@ -84,7 +82,12 @@ public sealed partial class MainWindow : WindowEx
                         {
                             System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
                         }
-                    }).Observe("MainWindow.DragDrop.ImportModpack");
+                    });
+
+                    if (!enqueued)
+                    {
+                        System.Diagnostics.Debug.WriteLine("MainWindow.DragDrop.ImportModpack: enqueue failed.");
+                    }
 
                     break;
                 }
