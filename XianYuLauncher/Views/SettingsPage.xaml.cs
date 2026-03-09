@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Services;
 
@@ -22,11 +23,13 @@ public sealed partial class SettingsPage : Page
 
     // 自动测速服务（用于事件驱动刷新缓存）
     private readonly IAutoSpeedTestService _autoSpeedTestService;
+    private readonly IDialogService _dialogService;
 
     public SettingsPage()
     {
         ViewModel = App.GetService<SettingsViewModel>();
         _autoSpeedTestService = App.GetService<IAutoSpeedTestService>();
+        _dialogService = App.GetService<IDialogService>();
         InitializeComponent();
         
         // 页面加载时刷新自定义源列表
@@ -121,18 +124,12 @@ public sealed partial class SettingsPage : Page
                 var newMode = !currentMode;
                 await localSettingsService.SaveSettingAsync(EasterEggModeKey, newMode);
                 
-                var dialog = new ContentDialog
-                {
-                    Title = newMode ? "🎉 彩蛋模式已开启" : "彩蛋模式已关闭",
-                    Content = newMode 
-                        ? "恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()" 
+                await _dialogService.ShowMessageDialogAsync(
+                    newMode ? "🎉 彩蛋模式已开启" : "彩蛋模式已关闭",
+                    newMode
+                        ? "恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()"
                         : "彩蛋模式已关闭，一切恢复正常。",
-                    CloseButtonText = "好的",
-                    XamlRoot = App.MainWindow.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                    DefaultButton = ContentDialogButton.None
-                };
-                await dialog.ShowAsync();
+                    "好的");
             }
             catch (Exception ex)
             {

@@ -1,8 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Contracts.Services;
@@ -115,38 +113,6 @@ public class UpdateFlowService : IUpdateFlowService
     private async Task<bool> ShowUpdateInstallFlowAsync(UpdateInfo updateInfo, string primaryButtonText, string title)
     {
         var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, _updateService, updateInfo);
-
-        var updateDialog = new ContentDialog
-        {
-            Title = title,
-            Content = new Views.UpdateDialog(updateDialogViewModel),
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var result = await _dialogService.ShowDialogAsync(updateDialog);
-        if (result != ContentDialogResult.Primary)
-        {
-            return false;
-        }
-
-        var downloadDialog = new ContentDialog
-        {
-            Title = title,
-            Content = new Views.DownloadProgressDialog(updateDialogViewModel),
-            IsPrimaryButtonEnabled = false,
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        downloadDialog.CloseButtonClick += (_, _) => updateDialogViewModel.CancelCommand.Execute(null);
-        updateDialogViewModel.CloseDialog += (_, _) => downloadDialog.Hide();
-
-        _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
-        await _dialogService.ShowDialogAsync(downloadDialog);
-        return true;
+        return await _dialogService.ShowUpdateInstallFlowDialogAsync(updateDialogViewModel, title, primaryButtonText, "取消");
     }
 }

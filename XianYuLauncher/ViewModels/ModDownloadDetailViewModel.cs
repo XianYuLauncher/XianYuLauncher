@@ -100,61 +100,14 @@ namespace XianYuLauncher.ViewModels
                 }
             }
 
-            // 构造并显示弹窗内容 - 使用代码创建 ContentDialog
-            var listView = new ListView
+            var publishers = PublisherList.Select(p => new PublisherDialogItem
             {
-                ItemsSource = PublisherList,
-                SelectionMode = ListViewSelectionMode.None,
-                ItemTemplate = (Microsoft.UI.Xaml.DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(@"
-                    <DataTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation"">
-                        <Grid Padding=""8"">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width=""Auto"" />
-                                <ColumnDefinition Width=""*"" />
-                            </Grid.ColumnDefinitions>
-                            
-                            <Grid Grid.Column=""0"" Margin=""0,0,12,0"">
-                                <Border Width=""40"" Height=""40"" CornerRadius=""20"" Visibility=""{Binding AvatarVisibility}"">
-                                    <Border.Background>
-                                        <ImageBrush ImageSource=""{Binding AvatarUrl}"" Stretch=""UniformToFill"" />
-                                    </Border.Background>
-                                </Border>
-                                <Border Width=""40"" Height=""40"" CornerRadius=""20"" Background=""{ThemeResource LayerFillColorDefaultBrush}"" Visibility=""{Binding PlaceholderVisibility}"">
-                                    <FontIcon Glyph=""&#xE77B;"" FontSize=""20"" FontFamily=""{ThemeResource SymbolThemeFontFamily}"" Foreground=""{ThemeResource TextFillColorSecondary}"" />
-                                </Border>
-                            </Grid>
-                            
-                            <StackPanel Grid.Column=""1"" VerticalAlignment=""Center"">
-                                <TextBlock Text=""{Binding Name}"" FontWeight=""SemiBold"" />
-                                <TextBlock Text=""{Binding Role}"" FontSize=""12"" Foreground=""{ThemeResource TextFillColorSecondary}"" />
-                            </StackPanel>
-                        </Grid>
-                    </DataTemplate>")
-            };
+                Name = p.Name,
+                Role = p.Role,
+                AvatarUrl = p.AvatarUrl
+            });
 
-            var stackPanel = new StackPanel { Spacing = 16, Width = 400, MaxHeight = 500 };
-            
-            // 如果正在加载（虽然上面是同步等待，但防一手异步并发），可以显示 Loading
-            if (IsLoading)
-            {
-                stackPanel.Children.Add(new ProgressRing { IsActive = true, HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Center });
-            }
-            else
-            {
-                stackPanel.Children.Add(listView);
-            }
-
-            var dialog = new ContentDialog
-            {
-                Title = "所有发布者",
-                Content = stackPanel,
-                CloseButtonText = "关闭",
-                DefaultButton = ContentDialogButton.None,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-            };
-
-            await dialog.ShowAsync();
+            await _dialogService.ShowPublishersListDialogAsync(publishers, IsLoading, "所有发布者", "关闭");
         }
 
         [RelayCommand]

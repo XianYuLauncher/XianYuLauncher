@@ -14,6 +14,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
@@ -38,6 +39,7 @@ namespace XianYuLauncher.Views
         }
         
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly IDialogService _dialogService;
         private const string AvatarCacheFolder = "AvatarCache";
 
         /// <summary>
@@ -46,6 +48,7 @@ namespace XianYuLauncher.Views
         public CharacterManagementPage()
         {
             ViewModel = App.GetService<CharacterManagementViewModel>();
+            _dialogService = App.GetService<IDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
@@ -966,17 +969,7 @@ namespace XianYuLauncher.Views
         /// <param name="content">对话框内容</param>
         private async Task ShowMessageAsync(string title, string content)
         {
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = content,
-                PrimaryButtonText = "确定",
-                DefaultButton = ContentDialogButton.None,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            await dialog.ShowAsync();
+            await _dialogService.ShowMessageDialogAsync(title, content, "确定");
         }
 
         /// <summary>
@@ -1028,23 +1021,11 @@ namespace XianYuLauncher.Views
                 }
 
                 // 3. 让用户选择皮肤模型
-                var modelDialog = new ContentDialog
-                {
-                    Title = "选择皮肤模型",
-                    Content = "请选择此皮肤适用的人物模型",
-                    PrimaryButtonText = "Steve",
-                    SecondaryButtonText = "Alex",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.None,
-                    XamlRoot = this.Content.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-
-                var result = await modelDialog.ShowAsync();
+                var result = await _dialogService.ShowSkinModelSelectionDialogAsync();
                 string model = result switch
                 {
-                    ContentDialogResult.Primary => "",
-                    ContentDialogResult.Secondary => "slim",
+                    SkinModelSelectionResult.Steve => "",
+                    SkinModelSelectionResult.Alex => "slim",
                     _ => null
                 };
 
