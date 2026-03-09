@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -15,6 +14,7 @@ namespace XianYuLauncher.Services;
 public class NavigationService : INavigationService
 {
     private readonly IPageService _pageService;
+    private readonly IDialogService _dialogService;
     private object? _lastParameterUsed;
     private Frame? _frame;
 
@@ -44,9 +44,10 @@ public class NavigationService : INavigationService
     [MemberNotNullWhen(true, nameof(Frame), nameof(_frame))]
     public bool CanGoBack => Frame != null && Frame.CanGoBack;
 
-    public NavigationService(IPageService pageService)
+    public NavigationService(IPageService pageService, IDialogService dialogService)
     {
         _pageService = pageService;
+        _dialogService = dialogService;
     }
 
     private void RegisterFrameEvents()
@@ -109,17 +110,10 @@ public class NavigationService : INavigationService
         }
         catch (Exception ex)
         {
-            // 显示错误信息
-            var dialog = new ContentDialog
-            {
-                Title = "导航错误",
-                Content = $"无法导航到页面: {pageKey}\n\n错误信息: {ex.Message}\n\n堆栈跟踪: {ex.StackTrace}",
-                CloseButtonText = "确定",
-                XamlRoot = _frame?.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            _ = dialog.ShowAsync();
+            _ = _dialogService.ShowMessageDialogAsync(
+                "导航错误",
+                $"无法导航到页面: {pageKey}\n\n错误信息: {ex.Message}\n\n堆栈跟踪: {ex.StackTrace}",
+                "确定");
             return false;
         }
     }

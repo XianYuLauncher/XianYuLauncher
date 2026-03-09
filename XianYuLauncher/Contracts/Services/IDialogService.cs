@@ -19,7 +19,12 @@ public interface IDialogService
     /// 显示确认弹窗
     /// </summary>
     /// <returns>如果是主要按钮（确认）返回 true，否则返回 false</returns>
-    Task<bool> ShowConfirmationDialogAsync(string title, string message, string primaryButtonText = "是", string closeButtonText = "否");
+    Task<bool> ShowConfirmationDialogAsync(
+        string title,
+        string message,
+        string primaryButtonText = "是",
+        string closeButtonText = "否",
+        ContentDialogButton defaultButton = ContentDialogButton.Primary);
 
     /// <summary>
     /// 显示 Java 未找到的弹窗，并提供下载选项
@@ -175,6 +180,88 @@ public interface IDialogService
     /// </summary>
     /// <returns>返回填写结果；取消返回 null。</returns>
     Task<SettingsCustomSourceDialogResult?> ShowSettingsCustomSourceDialogAsync(SettingsCustomSourceDialogRequest request);
+
+    /// <summary>
+    /// 显示通用重命名弹窗。
+    /// </summary>
+    /// <returns>用户输入的新名称；取消返回 null。</returns>
+    Task<string?> ShowRenameDialogAsync(string title, string currentName, string placeholder = "输入新名称");
+
+    /// <summary>
+    /// 显示添加服务器弹窗。
+    /// </summary>
+    /// <returns>返回服务器名称和地址；取消返回 null。</returns>
+    Task<AddServerDialogResult?> ShowAddServerDialogAsync(string defaultName = "Minecraft Server");
+
+    /// <summary>
+    /// 显示微软登录方式选择弹窗（浏览器登录 / 设备代码登录）。
+    /// </summary>
+    /// <returns>用户选择的登录方式，取消返回 Cancel。</returns>
+    Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
+        string title = "选择登录方式",
+        string instruction = "请选择您喜欢的登录方式：",
+        string browserDescription = "• 浏览器登录：打开系统默认浏览器进行登录 (推荐)",
+        string deviceCodeDescription = "• 设备代码登录：获取代码后手动访问网页输入",
+        string browserButtonText = "浏览器登录",
+        string deviceCodeButtonText = "设备代码登录",
+        string cancelButtonText = "取消");
+
+    /// <summary>
+    /// 显示发布者列表弹窗。
+    /// </summary>
+    Task ShowPublishersListDialogAsync(
+        IEnumerable<PublisherDialogItem> publishers,
+        bool isLoading,
+        string title = "所有发布者",
+        string closeButtonText = "关闭");
+
+    /// <summary>
+    /// 显示游戏崩溃报告弹窗。
+    /// </summary>
+    Task<CrashReportDialogAction> ShowCrashReportDialogAsync(
+        string crashTitle,
+        string crashAnalysis,
+        string fullLog,
+        bool isEasterEggMode);
+
+    /// <summary>
+    /// 显示更新安装流程弹窗（更新说明 + 下载进度）。
+    /// </summary>
+    Task<bool> ShowUpdateInstallFlowDialogAsync(
+        XianYuLauncher.ViewModels.UpdateDialogViewModel updateDialogViewModel,
+        string title,
+        string primaryButtonText,
+        string? closeButtonText = "取消");
+
+    /// <summary>
+    /// 显示皮肤模型选择弹窗。
+    /// </summary>
+    Task<SkinModelSelectionResult> ShowSkinModelSelectionDialogAsync(
+        string title = "选择皮肤模型",
+        string content = "请选择此皮肤适用的人物模型",
+        string steveButtonText = "Steve",
+        string alexButtonText = "Alex",
+        string cancelButtonText = "取消");
+
+    /// <summary>
+    /// 显示云控公告弹窗。
+    /// </summary>
+    Task ShowAnnouncementDialogAsync(
+        string title,
+        XianYuLauncher.ViewModels.AnnouncementDialogViewModel viewModel,
+        bool hasCustomButtons,
+        string closeButtonText = "知道了");
+
+    /// <summary>
+    /// 显示用户协议弹窗。
+    /// </summary>
+    Task<ContentDialogResult> ShowPrivacyAgreementDialogAsync(
+        string title,
+        string agreementContent,
+        Func<Task>? onOpenAgreementLink = null,
+        string primaryButtonText = "同意",
+        string secondaryButtonText = "用户协议",
+        string closeButtonText = "拒绝");
 }
 
 public sealed class SettingsCustomSourceDialogRequest
@@ -211,4 +298,41 @@ public sealed class SettingsCustomSourceDialogResult
     public int Priority { get; init; }
 
     public bool Enabled { get; init; }
+}
+
+public sealed class AddServerDialogResult
+{
+    public string Name { get; init; } = string.Empty;
+
+    public string Address { get; init; } = string.Empty;
+}
+
+public enum LoginMethodSelectionResult
+{
+    Cancel = 0,
+    Browser = 1,
+    DeviceCode = 2
+}
+
+public sealed class PublisherDialogItem
+{
+    public string Name { get; init; } = string.Empty;
+
+    public string Role { get; init; } = string.Empty;
+
+    public string AvatarUrl { get; init; } = string.Empty;
+}
+
+public enum CrashReportDialogAction
+{
+    Close = 0,
+    ExportLogs = 1,
+    ViewDetails = 2
+}
+
+public enum SkinModelSelectionResult
+{
+    Cancel = 0,
+    Steve = 1,
+    Alex = 2
 }

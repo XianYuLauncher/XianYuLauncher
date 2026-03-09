@@ -140,341 +140,43 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="gameError">游戏错误日志副本</param>
     private async Task ShowErrorAnalysisDialog(int exitCode, string launchCommand, List<string> gameOutput, List<string> gameError)
     {
-        // DialogService 管理弹窗生命周期
+        var crashResult = await AnalyzeCrash(gameOutput, gameError);
+        var errorTitle = crashResult.Title;
+        var errorAnalysis = crashResult.Analysis;
+
+        var allLogs = new List<string>
         {
-            
-            // 分析崩溃原因（异步执行，不阻塞）
-            var crashResult = await AnalyzeCrash(gameOutput, gameError);
-            string errorTitle = crashResult.Title;
-            string errorAnalysis = crashResult.Analysis;
-        
-        // 合并日志，移除输出日志字段
-        List<string> allLogs = new List<string>();
-        allLogs.Add("=== 游戏崩溃报告 ===");
-        allLogs.Add($"崩溃时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        allLogs.Add($"退出代码: {exitCode}");
-        allLogs.Add($"崩溃分析: {errorAnalysis}");
-        allLogs.Add("");
-        allLogs.Add("=== 游戏错误日志 ===");
+            "=== 游戏崩溃报告 ===",
+            $"崩溃时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+            $"退出代码: {exitCode}",
+            $"崩溃分析: {errorAnalysis}",
+            string.Empty,
+            "=== 游戏错误日志 ==="
+        };
         allLogs.AddRange(gameError);
-        allLogs.Add("");
-        
-        // 创建完整的日志文本
-        string fullLog = string.Join(Environment.NewLine, allLogs);
-        
-        // 使用系统错误色（自动适配主题）
-        var errorRedColor = Windows.UI.Color.FromArgb(255, 196, 43, 28);
-        var errorBgColor = Windows.UI.Color.FromArgb(30, 232, 17, 35);
-        
-        // 创建 Fluent Design 风格的崩溃提示内容
-        var warningPanel = new StackPanel
-        {
-            Spacing = 20,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 0)
-        };
-        
-        // 顶部警告卡片（Fluent Design 风格）
-        var warningCard = new Border
-        {
-            Background = new SolidColorBrush(errorBgColor),
-            BorderBrush = new SolidColorBrush(errorRedColor),
-            BorderThickness = new Microsoft.UI.Xaml.Thickness(1),
-            CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
-            Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
-        };
-        
-        var warningCardContent = new StackPanel { Spacing = 12 };
-        
-        // 标题行（图标 + 文字）
-        var headerStack = new StackPanel
-        {
-            Orientation = Microsoft.UI.Xaml.Controls.Orientation.Horizontal,
-            Spacing = 12
-        };
-        
-        var warningIcon = new FontIcon
-        {
-            Glyph = "\uE7BA", // 警告图标
-            FontSize = 24,
-            Foreground = new SolidColorBrush(errorRedColor)
-        };
-        
-        // 标题显示分析结果（如果有的话）
-        string titleText = string.IsNullOrWhiteSpace(errorTitle)
-            ? "游戏意外退出"
-            : $"游戏意外退出：{errorTitle}";
-        
-        var warningTitle = new TextBlock
-        {
-            Text = titleText,
-            FontSize = 18,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(errorRedColor),
-            VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
-        };
-        
-        headerStack.Children.Add(warningIcon);
-        headerStack.Children.Add(warningTitle);
-        warningCardContent.Children.Add(headerStack);
-        
-        // 提示文字（不设置 Foreground，使用系统默认文字色）
-        var hintText = new TextBlock
-        {
-            Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
-            FontSize = 14,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
-        };
-        
-        // 检查彩蛋模式
-        var localSettingsService = App.GetService<ILocalSettingsService>();
-        var isEasterEggMode = await localSettingsService.ReadSettingAsync<bool?>("EasterEggMode") ?? false;
-        
-        if (isEasterEggMode)
-        {
-            // 彩蛋模式：添加文字缩放动画
-            var scaleAnimation = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
-            var scaleXAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
-            {
-                From = 1.0,
-                To = 5.15,
-                Duration = new Microsoft.UI.Xaml.Duration(TimeSpan.FromMilliseconds(500)),
-                AutoReverse = true,
-                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
-                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut }
-            };
-            
-            // 设置 RenderTransform
-            hintText.RenderTransform = new Microsoft.UI.Xaml.Media.ScaleTransform();
-            hintText.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
-            
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleXAnimation, hintText);
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleXAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
-            
-            var scaleYAnimation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
-            {
-                From = 1.0,
-                To = 5.15,
-                Duration = new Microsoft.UI.Xaml.Duration(TimeSpan.FromMilliseconds(500)),
-                AutoReverse = true,
-                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever,
-                EasingFunction = new Microsoft.UI.Xaml.Media.Animation.SineEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseInOut }
-            };
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(scaleYAnimation, hintText);
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(scaleYAnimation, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
-            
-            scaleAnimation.Children.Add(scaleXAnimation);
-            scaleAnimation.Children.Add(scaleYAnimation);
-            
-            // 在 hintText 加载后启动动画
-            hintText.Loaded += (s, e) => scaleAnimation.Begin();
-        }
-        
-        warningCardContent.Children.Add(hintText);
-        
-        warningCard.Child = warningCardContent;
-        warningPanel.Children.Add(warningCard);
-        
-        // 操作指引卡片（使用 CardBackgroundFillColorDefaultBrush 自动适配主题）
-        var instructionCard = new Border
-        {
-            CornerRadius = new Microsoft.UI.Xaml.CornerRadius(8),
-            Padding = new Microsoft.UI.Xaml.Thickness(20, 16, 20, 16)
-        };
-        instructionCard.SetValue(Border.BackgroundProperty, 
-            Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"]);
-        instructionCard.SetValue(Border.BorderBrushProperty,
-            Microsoft.UI.Xaml.Application.Current.Resources["CardStrokeColorDefaultBrush"]);
-        instructionCard.BorderThickness = new Microsoft.UI.Xaml.Thickness(1);
-        
-        var instructionStack = new StackPanel { Spacing = 10 };
-        
-        var instructionTitle = new TextBlock
-        {
-            Text = "正确的求助步骤",
-            FontSize = 16,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 4)
-        };
-        instructionStack.Children.Add(instructionTitle);
-        
-        var step1 = new TextBlock
-        {
-            Text = "1. 点击下方「导出崩溃日志」按钮",
-            FontSize = 14,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Opacity = 0.9
-        };
-        instructionStack.Children.Add(step1);
-        
-        var step2 = new TextBlock
-        {
-            Text = "2. 将导出的 ZIP 文件发送给技术支持",
-            FontSize = 14,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Opacity = 0.9
-        };
-        instructionStack.Children.Add(step2);
-        
-        var step3 = new TextBlock
-        {
-            Text = "日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
-            FontSize = 13,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Opacity = 0.7,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 4, 0, 0)
-        };
-        instructionStack.Children.Add(step3);
-        
-        instructionCard.Child = instructionStack;
-        warningPanel.Children.Add(instructionCard);
-        
-        // 日志预览（可折叠）
-        var logExpander = new Microsoft.UI.Xaml.Controls.Expander
-        {
-            Header = "查看日志预览",
-            IsExpanded = false,
-            HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch
-        };
-        
-        var logPreviewText = new TextBlock
-        {
-            Text = fullLog,
-            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
-            FontSize = 11,
-            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-            Opacity = 0.7
-        };
-        
-        var logScroller = new ScrollViewer
-        {
-            Content = logPreviewText,
-            MaxHeight = 200,
-            VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 8, 0, 0)
-        };
-        
-        logExpander.Content = logScroller;
-        warningPanel.Children.Add(logExpander);
-        
-        // 创建错误分析弹窗
-        var dialog = new ContentDialog
-        {
-            Title = "游戏崩溃",
-            Content = warningPanel,
-            PrimaryButtonText = "导出崩溃日志",
-            SecondaryButtonText = "查看详细日志",
-            CloseButtonText = "关闭",
-            DefaultButton = ContentDialogButton.Primary,
-            Style = Microsoft.UI.Xaml.Application.Current.Resources["DefaultContentDialogStyle"] as Microsoft.UI.Xaml.Style
-        };
-        
-        // 处理按钮点击事件
-        dialog.PrimaryButtonClick += async (sender, args) =>
-        {
-            // 设置版本信息
-            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-            var minecraftPath = _fileService.GetMinecraftDataPath();
-            errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+        allLogs.Add(string.Empty);
 
-            // 导出崩溃日志按钮
-            var navigationService = App.GetService<INavigationService>();
-            navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
-            
-            // 延迟一下，确保页面加载完成
+        var fullLog = string.Join(Environment.NewLine, allLogs);
+        var isEasterEggMode = await _localSettingsService.ReadSettingAsync<bool?>("EasterEggMode") ?? false;
+
+        var action = await _dialogService.ShowCrashReportDialogAsync(errorTitle, errorAnalysis, fullLog, isEasterEggMode);
+        if (action == CrashReportDialogAction.Close)
+        {
+            return;
+        }
+
+        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
+        var minecraftPath = _fileService.GetMinecraftDataPath();
+        errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+
+        _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
+
+        if (action == CrashReportDialogAction.ExportLogs)
+        {
             await Task.Delay(500);
-            
-            // 自动触发导出
             await errorAnalysisViewModel.ExportErrorLogsCommand.ExecuteAsync(null);
-        };
-        
-        dialog.SecondaryButtonClick += (sender, args) =>
-        {
-            // 设置版本信息
-            var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-            var minecraftPath = _fileService.GetMinecraftDataPath();
-            errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
-
-            // 查看详细日志按钮
-            var navigationService = App.GetService<INavigationService>();
-            navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
-        };
-        
-        // 彩蛋模式：窗口摇晃效果
-        CancellationTokenSource? shakeTokenSource = null;
-        if (isEasterEggMode)
-        {
-            shakeTokenSource = new CancellationTokenSource();
-            var shakeToken = shakeTokenSource.Token;
-            
-            // 启动窗口摇晃
-            _ = Task.Run(async () =>
-            {
-                var random = new Random();
-                var originalPosition = new Windows.Graphics.PointInt32();
-                bool gotOriginalPosition = false;
-                
-                while (!shakeToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            try
-                            {
-                                var appWindow = App.MainWindow.AppWindow;
-                                if (!gotOriginalPosition)
-                                {
-                                    originalPosition = appWindow.Position;
-                                    gotOriginalPosition = true;
-                                }
-                                
-                                // 随机偏移
-                                int offsetX = random.Next(-15, 6);
-                                int offsetY = random.Next(-15, 6);
-                                
-                                appWindow.Move(new Windows.Graphics.PointInt32(
-                                    originalPosition.X + offsetX,
-                                    originalPosition.Y + offsetY
-                                ));
-                            }
-                            catch { }
-                        });
-                        
-                        await Task.Delay(50, shakeToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                }
-                
-                // 恢复原始位置
-                if (gotOriginalPosition)
-                {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        try
-                        {
-                            App.MainWindow.AppWindow.Move(originalPosition);
-                        }
-                        catch { }
-                    });
-                }
-            }, shakeToken);
         }
-        
-        dialog.Closed += (s, e) =>
-        {
-            // 停止摇晃
-            shakeTokenSource?.Cancel();
-        };
-        
-        await _dialogService.ShowDialogAsync(dialog);
     }
-}
 
     /// <summary>
     /// 分析崩溃原因

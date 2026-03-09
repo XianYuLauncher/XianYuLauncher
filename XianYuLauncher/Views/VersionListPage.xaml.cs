@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.UI.ViewManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,6 +41,36 @@ public sealed partial class VersionListPage : Page
     private TextBlock? _completeVersionCurrentFileText;
     private ProgressBar? _completeVersionProgressBar;
     private TextBlock? _completeVersionProgressText;
+
+    private ElementTheme GetEffectiveLauncherTheme()
+    {
+        var themeSelector = App.GetService<IThemeSelectorService>();
+        if (themeSelector.Theme != ElementTheme.Default)
+        {
+            return themeSelector.Theme;
+        }
+
+        var background = new UISettings().GetColorValue(UIColorType.Background);
+        return background.R == 255 && background.G == 255 && background.B == 255
+            ? ElementTheme.Light
+            : ElementTheme.Dark;
+    }
+
+    private Microsoft.UI.Xaml.Media.Brush GetSecondaryTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveLauncherTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF)
+                : Windows.UI.Color.FromArgb(0x9E, 0x00, 0x00, 0x00));
+    }
+
+    private Microsoft.UI.Xaml.Media.Brush GetTertiaryTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveLauncherTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(0x8B, 0xFF, 0xFF, 0xFF)
+                : Windows.UI.Color.FromArgb(0x72, 0x00, 0x00, 0x00));
+    }
 
     public VersionListPage()
     {
@@ -356,12 +387,14 @@ public sealed partial class VersionListPage : Page
         var stageGrid = new Grid();
         stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         stageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var secondaryTextBrush = GetSecondaryTextBrush();
+        var tertiaryTextBrush = GetTertiaryTextBrush();
         
         var stageIcon = new FontIcon
         {
             Glyph = "\uE896",
             FontSize = 14,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = secondaryTextBrush,
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 2, 8, 0)
         };
@@ -382,7 +415,7 @@ public sealed partial class VersionListPage : Page
         _completeVersionCurrentFileText = new TextBlock
         {
             FontSize = 12,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+            Foreground = tertiaryTextBrush,
             Text = "",
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -407,7 +440,7 @@ public sealed partial class VersionListPage : Page
         _completeVersionProgressText = new TextBlock
         {
             FontSize = 13,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = secondaryTextBrush,
             Text = "0%",
             HorizontalTextAlignment = TextAlignment.Center
         };
