@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -24,6 +25,32 @@ public partial class VersionListViewModel : ObservableRecipient
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
     private readonly IDialogService _dialogService;
+
+    private static Task RunOnUiThreadAsync(Action action)
+    {
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue;
+        if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        var tcs = new TaskCompletionSource<object?>();
+        dispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                action();
+                tcs.TrySetResult(null);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        });
+
+        return tcs.Task;
+    }
 
     /// <summary>
     /// 版本信息模型
@@ -229,6 +256,7 @@ public partial class VersionListViewModel : ObservableRecipient
     /// </summary>
     private async void OnMinecraftPathChanged(object? sender, string newPath)
     {
+        Debug.WriteLine($"[VersionListViewModel] MinecraftPathChanged: '{newPath}', Thread={Environment.CurrentManagedThreadId}");
         await LoadVersionsAsync();
     }
 
@@ -240,8 +268,13 @@ public partial class VersionListViewModel : ObservableRecipient
     [RelayCommand]
     private async Task LoadVersionsAsync()
     {
-        IsLoading = true;
-        StatusMessage = "VersionListPage_LoadingVersionsText".GetLocalized();
+        Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync start, Thread={Environment.CurrentManagedThreadId}");
+        await RunOnUiThreadAsync(() =>
+        {
+            IsLoading = true;
+            StatusMessage = "VersionListPage_LoadingVersionsText".GetLocalized();
+            Versions.Clear();
+        });
 
         try
         {
@@ -249,8 +282,6 @@ public partial class VersionListViewModel : ObservableRecipient
             var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
             var minecraftPath = _fileService.GetMinecraftDataPath();
             var versionsPath = Path.Combine(minecraftPath, "versions");
-
-            Versions.Clear();
 
             // 并行处理版本信息，提高加载速度
             var versionItems = new List<VersionInfoItem>();
@@ -373,28 +404,33 @@ public partial class VersionListViewModel : ObservableRecipient
 
                 versionItems.Add(versionItem);
             }
-            
-            // 将版本项添加到ObservableCollection
-            foreach (var item in versionItems)
+
+            await RunOnUiThreadAsync(() =>
             {
-                Versions.Add(item);
-            }
+                Versions = new ObservableCollection<VersionInfoItem>(versionItems.OrderByDescending(v => v.InstallDate));
+                ApplyFilter();
+                StatusMessage = Versions.Count > 0
+                    ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}"
+                    : "VersionListPage_NoVersionsFoundText".GetLocalized();
+            });
 
-            // 按安装日期降序排序
-            Versions = new ObservableCollection<VersionInfoItem>(Versions.OrderByDescending(v => v.InstallDate));
-
-            // 应用筛选
-            ApplyFilter();
-
-            StatusMessage = Versions.Count > 0 ? $"{"VersionListPage_FoundVersionsText".GetLocalized()} {Versions.Count} {"VersionListPage_InstalledVersionsText".GetLocalized()}" : "VersionListPage_NoVersionsFoundText".GetLocalized();
+            Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync success, Count={versionItems.Count}, Thread={Environment.CurrentManagedThreadId}");
     }
     catch (Exception ex)
     {
-        StatusMessage = $"{"VersionListPage_LoadFailedText".GetLocalized()}: {ex.Message}";
+        Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync failed: {ex}");
+        await RunOnUiThreadAsync(() =>
+        {
+            StatusMessage = $"{"VersionListPage_LoadFailedText".GetLocalized()}: {ex.Message}";
+        });
     }
     finally
     {
-        IsLoading = false;
+        await RunOnUiThreadAsync(() =>
+        {
+            IsLoading = false;
+        });
+        Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync end, Thread={Environment.CurrentManagedThreadId}");
     }
     }
 
