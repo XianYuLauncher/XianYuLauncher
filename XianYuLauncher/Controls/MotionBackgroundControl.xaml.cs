@@ -15,7 +15,7 @@ public sealed partial class MotionBackgroundControl : UserControl
     private readonly Random _random = new Random();
     private readonly List<Visual> _orbs = new List<Visual>();
     private DispatcherTimer _resizeTimer;
-    private IUiDispatcher _uiDispatcher = null!;
+    private readonly IUiDispatcher _uiDispatcher;
 
     #region Dependency Properties
 
@@ -80,6 +80,7 @@ public sealed partial class MotionBackgroundControl : UserControl
     public MotionBackgroundControl()
     {
         this.InitializeComponent();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         
         // 使用 Timer 防抖动，避免调整大小时光球疯狂重置
         _resizeTimer = new DispatcherTimer();
@@ -98,7 +99,7 @@ public sealed partial class MotionBackgroundControl : UserControl
         
         // 尝试首次启动动画 (如果窗口已有尺寸)
         // 使用 DispatcherQueue 确保在布局更新后执行
-        _uiDispatcher.TryEnqueue(() => 
+        _uiDispatcher.TryEnqueue(() =>
         {
             if (ActualWidth > 0 && ActualHeight > 0)
             {

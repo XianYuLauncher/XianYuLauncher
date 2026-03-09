@@ -862,7 +862,7 @@ public sealed partial class VersionListPage : Page
                     StorageFile file = null;
                     var filePickerTask = new TaskCompletionSource<StorageFile>();
                     
-                    _ = _uiDispatcher.EnqueueAsync(async () =>
+                    _uiDispatcher.EnqueueAsync(async () =>
                     {
                         try
                         {
@@ -891,7 +891,7 @@ public sealed partial class VersionListPage : Page
                         {
                             filePickerTask.SetException(ex);
                         }
-                    });
+                    }).Observe("VersionListPage.ExportModpack.FileSavePicker");
                     
                     file = await filePickerTask.Task;
                     
@@ -1181,7 +1181,7 @@ public sealed partial class VersionListPage : Page
                             
                             if (!_isExportCancelled)
                             {
-                                _ = _uiDispatcher.EnqueueAsync(async () =>
+                                _uiDispatcher.EnqueueAsync(async () =>
                                 {
                                     UpdateLoadingDialog("导出完成！", 100.0);
                                     System.Diagnostics.Debug.WriteLine($"整合包导出成功：{file.Path}");
@@ -1189,7 +1189,7 @@ public sealed partial class VersionListPage : Page
                                     // 延迟关闭加载弹窗，让用户看到完成状态
                                     await Task.Delay(1000);
                                     HideLoadingDialog();
-                                });
+                                }).Observe("VersionListPage.ExportModpack.SuccessFinalize");
                             }
                             else
                             {
@@ -1225,13 +1225,13 @@ public sealed partial class VersionListPage : Page
                 }
                 catch (Exception ex)
                 {
-                    _ = _uiDispatcher.EnqueueAsync(async () =>
+                    _uiDispatcher.EnqueueAsync(async () =>
                     {
                         System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
                         UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);
                         await Task.Delay(2000);
                         HideLoadingDialog();
-                    });
+                    }).Observe("VersionListPage.ExportModpack.ErrorFinalize");
                 }
             });
         }

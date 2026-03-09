@@ -759,10 +759,10 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             Console.WriteLine($"游戏异常退出，退出代码: {e.ExitCode}");
             
-            _ = _uiDispatcher.EnqueueAsync(async () =>
+            _uiDispatcher.EnqueueAsync(async () =>
             {
                 await ShowErrorAnalysisDialog(e.ExitCode, e.LaunchCommand, e.OutputLogs, e.ErrorLogs);
-            });
+            }).Observe("LaunchViewModel.GameExited.ShowErrorAnalysis");
         }
         else if (e.IsUserTerminated)
         {
@@ -1707,7 +1707,7 @@ public partial class LaunchViewModel : ObservableRecipient
                     
                     if (offlineLaunchCount % 10 == 0)
                     {
-                        _ = _uiDispatcher.EnqueueAsync(async () =>
+                        _uiDispatcher.EnqueueAsync(async () =>
                         {
                             // 等待其他 ContentDialog 关闭
                             await _dialogService.ShowOfflineLaunchTipDialogAsync(offlineLaunchCount, async () => 
@@ -1715,7 +1715,7 @@ public partial class LaunchViewModel : ObservableRecipient
                                 var uri = new Uri("https://www.minecraft.net/zh-hans/store/minecraft-java-bedrock-edition-pc");
                                 await Windows.System.Launcher.LaunchUriAsync(uri);
                             });
-                        });
+                        }).Observe("LaunchViewModel.OfflineLaunchTip");
                     }
                 }
             }
@@ -1734,14 +1734,14 @@ public partial class LaunchViewModel : ObservableRecipient
             _isPreparingGame = false;
             
             // 显示重新登录提示
-            _ = _uiDispatcher.EnqueueAsync(async () =>
+            _uiDispatcher.EnqueueAsync(async () =>
             {
                 var shouldLogin = await _dialogService.ShowTokenExpiredDialogAsync();
                 if (shouldLogin)
                 {
                     _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
                 }
-            });
+            }).Observe("LaunchViewModel.TokenExpired.NavigateLogin");
         }
         catch (Exception ex)
         {
@@ -1902,10 +1902,10 @@ public partial class LaunchViewModel : ObservableRecipient
             LaunchStatus = $"启动参数已导出到桌面: {fileName}";
             
             // 显示成功消息
-            _ = _uiDispatcher.EnqueueAsync(async () =>
+            _uiDispatcher.EnqueueAsync(async () =>
             {
                 await _dialogService.ShowExportSuccessDialogAsync(filePath);
-            });
+            }).Observe("LaunchViewModel.ExportLaunchArgs.SuccessDialog");
         }
         catch (Exception ex)
         {

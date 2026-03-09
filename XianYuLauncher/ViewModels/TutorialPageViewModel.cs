@@ -633,10 +633,10 @@ namespace XianYuLauncher.ViewModels
                     await _javaRuntimeService.DetectJavaVersionsAsync(true);
                     
                     // 重新加载 ViewModel 的列表
-                    _ = _uiDispatcher.EnqueueAsync(async () =>
+                    _uiDispatcher.EnqueueAsync(async () =>
                     {
                          await RefreshJavaVersionsCommand.ExecuteAsync(null);
-                    });
+                    }).Observe("TutorialPageViewModel.JavaInstall.RefreshJavaVersions");
                     
                     await Task.Delay(1000);
                 }
