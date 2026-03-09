@@ -1160,19 +1160,26 @@ public class DialogService : IDialogService
         };
     }
 
-    public async Task<string?> ShowRenameDialogAsync(string title, string currentName, string placeholder = "输入新名称")
+    public async Task<string?> ShowRenameDialogAsync(
+        string title,
+        string currentName,
+        string placeholder = "输入新名称",
+        string instruction = "请输入新的名称：")
     {
         var inputBox = new TextBox
         {
-            Header = title,
             Text = currentName ?? string.Empty,
             PlaceholderText = placeholder
         };
 
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+        content.Children.Add(inputBox);
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = inputBox,
+            Content = content,
             PrimaryButtonText = "确定",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
@@ -1657,15 +1664,20 @@ public class DialogService : IDialogService
     }
 
     public async Task<bool> ShowUpdateInstallFlowDialogAsync(
-        XianYuLauncher.ViewModels.UpdateDialogViewModel updateDialogViewModel,
+        object updateDialogViewModel,
         string title,
         string primaryButtonText,
         string? closeButtonText = "取消")
     {
+        if (updateDialogViewModel is not XianYuLauncher.ViewModels.UpdateDialogViewModel typedViewModel)
+        {
+            throw new ArgumentException("updateDialogViewModel must be UpdateDialogViewModel", nameof(updateDialogViewModel));
+        }
+
         var updateDialog = new ContentDialog
         {
             Title = title,
-            Content = new Views.UpdateDialog(updateDialogViewModel),
+            Content = new Views.UpdateDialog(typedViewModel),
             PrimaryButtonText = primaryButtonText,
             CloseButtonText = closeButtonText,
             DefaultButton = ContentDialogButton.Primary,
@@ -1681,31 +1693,36 @@ public class DialogService : IDialogService
         var downloadDialog = new ContentDialog
         {
             Title = title,
-            Content = new Views.DownloadProgressDialog(updateDialogViewModel),
+            Content = new Views.DownloadProgressDialog(typedViewModel),
             IsPrimaryButtonEnabled = false,
             CloseButtonText = closeButtonText ?? "取消",
             DefaultButton = ContentDialogButton.None,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
-        downloadDialog.CloseButtonClick += (_, _) => updateDialogViewModel.CancelCommand.Execute(null);
-        updateDialogViewModel.CloseDialog += (_, _) => downloadDialog.Hide();
+        downloadDialog.CloseButtonClick += (_, _) => typedViewModel.CancelCommand.Execute(null);
+        typedViewModel.CloseDialog += (_, _) => downloadDialog.Hide();
 
-        _ = updateDialogViewModel.UpdateCommand.ExecuteAsync(null);
+        _ = typedViewModel.UpdateCommand.ExecuteAsync(null);
         await ShowSafeAsync(downloadDialog);
         return true;
     }
 
     public async Task ShowAnnouncementDialogAsync(
         string title,
-        XianYuLauncher.ViewModels.AnnouncementDialogViewModel viewModel,
+        object viewModel,
         bool hasCustomButtons,
         string closeButtonText = "知道了")
     {
+        if (viewModel is not XianYuLauncher.ViewModels.AnnouncementDialogViewModel typedViewModel)
+        {
+            throw new ArgumentException("viewModel must be AnnouncementDialogViewModel", nameof(viewModel));
+        }
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = new Views.AnnouncementDialog(viewModel),
+            Content = new Views.AnnouncementDialog(typedViewModel),
             DefaultButton = ContentDialogButton.None,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
@@ -1715,7 +1732,7 @@ public class DialogService : IDialogService
             dialog.CloseButtonText = closeButtonText;
         }
 
-        viewModel.CloseDialog += (sender, args) => dialog.Hide();
+        typedViewModel.CloseDialog += (sender, args) => dialog.Hide();
         await ShowSafeAsync(dialog);
     }
 

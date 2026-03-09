@@ -263,7 +263,11 @@ public sealed partial class VersionListPage : Page
                 {
                     _isRenameDialogOpen = true;
 
-                    var newName = await _dialogService.ShowRenameDialogAsync("重命名版本", viewModel.NewVersionName, "新版本名称");
+                    var newName = await _dialogService.ShowRenameDialogAsync(
+                        "重命名版本",
+                        viewModel.NewVersionName,
+                        "新版本名称",
+                        "请输入新的版本名称：");
                     if (!string.IsNullOrWhiteSpace(newName))
                     {
                         viewModel.NewVersionName = newName;
@@ -321,15 +325,18 @@ public sealed partial class VersionListPage : Page
     {
         if (!_isCompleteVersionDialogOpen) return;
 
-        var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
-        if (!string.IsNullOrEmpty(e.CurrentFile))
+        DispatcherQueue.TryEnqueue(() =>
         {
-            var displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
-            status = $"{status}\n当前: {displayFile}";
-        }
+            var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
+            if (!string.IsNullOrEmpty(e.CurrentFile))
+            {
+                var displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
+                status = $"{status}\n当前: {displayFile}";
+            }
 
-        var progress = e.Progress >= 0 ? e.Progress : _completeVersionDialogState.Progress;
-        _completeVersionDialogState.Set(status, progress, $"{progress:F1}%");
+            var progress = e.Progress >= 0 ? e.Progress : _completeVersionDialogState.Progress;
+            _completeVersionDialogState.Set(status, progress, $"{progress:F1}%");
+        });
     }
     
     /// <summary>
@@ -337,14 +344,17 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void OnCompleteVersionCompleted(object? sender, (bool Success, string Message) e)
     {
-        if (e.Success)
+        DispatcherQueue.TryEnqueue(() =>
         {
-            _completeVersionDialogState.Set("补全完成！", 100, "100%");
-        }
-        else
-        {
-            _completeVersionDialogState.Set(e.Message, _completeVersionDialogState.Progress, _completeVersionDialogState.ProgressText);
-        }
+            if (e.Success)
+            {
+                _completeVersionDialogState.Set("补全完成！", 100, "100%");
+            }
+            else
+            {
+                _completeVersionDialogState.Set(e.Message, _completeVersionDialogState.Progress, _completeVersionDialogState.ProgressText);
+            }
+        });
     }
     
     /// <summary>

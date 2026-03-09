@@ -1066,9 +1066,7 @@ namespace XianYuLauncher.Views
                                 ViewModel.Profiles[profileIndex] = result.UpdatedProfile;
                             }
 
-                            showFinalMessage = true;
-                            finalMessage = $"续签完成！\n过期时间: {expiryText}";
-                            status.Report(finalMessage);
+                            status.Report($"续签完成！\n过期时间: {expiryText}");
                             await Task.Delay(1000);
                             return;
                         }
@@ -1083,9 +1081,7 @@ namespace XianYuLauncher.Views
                                     ? $"{timeUntilExpiry.TotalHours:F0} 小时"
                                     : $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
 
-                            showFinalMessage = true;
-                            finalMessage = $"令牌仍然有效！\n剩余时间: {expiryText}";
-                            status.Report(finalMessage);
+                            status.Report($"令牌仍然有效！\n剩余时间: {expiryText}");
                             await Task.Delay(1000);
                             return;
                         }
