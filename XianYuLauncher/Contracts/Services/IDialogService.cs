@@ -201,7 +201,11 @@ public interface IDialogService
     /// 显示通用重命名弹窗。
     /// </summary>
     /// <returns>用户输入的新名称；取消返回 null。</returns>
-    Task<string?> ShowRenameDialogAsync(string title, string currentName, string placeholder = "输入新名称");
+    Task<string?> ShowRenameDialogAsync(
+        string title,
+        string currentName,
+        string placeholder = "输入新名称",
+        string instruction = "请输入新的名称：");
 
     /// <summary>
     /// 显示添加服务器弹窗。
@@ -244,7 +248,7 @@ public interface IDialogService
     /// 显示更新安装流程弹窗（更新说明 + 下载进度）。
     /// </summary>
     Task<bool> ShowUpdateInstallFlowDialogAsync(
-        XianYuLauncher.ViewModels.UpdateDialogViewModel updateDialogViewModel,
+        object updateDialogViewModel,
         string title,
         string primaryButtonText,
         string? closeButtonText = "取消");
@@ -264,7 +268,7 @@ public interface IDialogService
     /// </summary>
     Task ShowAnnouncementDialogAsync(
         string title,
-        XianYuLauncher.ViewModels.AnnouncementDialogViewModel viewModel,
+        object viewModel,
         bool hasCustomButtons,
         string closeButtonText = "知道了");
 
