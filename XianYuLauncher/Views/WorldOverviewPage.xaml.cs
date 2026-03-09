@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -8,9 +9,11 @@ namespace XianYuLauncher.Views;
 public sealed partial class WorldOverviewPage : Page
 {
     public WorldManagementViewModel? ViewModel { get; private set; }
+    private readonly IUiDispatcher _uiDispatcher;
 
     public WorldOverviewPage()
     {
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
     }
 
@@ -43,7 +46,7 @@ public sealed partial class WorldOverviewPage : Page
                 // 2秒后恢复原始提示
                 var timer = new System.Threading.Timer(_ =>
                 {
-                    DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         ToolTipService.SetToolTip(button, originalToolTip);
                     });

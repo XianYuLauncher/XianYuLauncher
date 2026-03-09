@@ -30,8 +30,9 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
         IDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService)
+        ModInfoService modInfoService,
+        IUiDispatcher uiDispatcher)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
     {
     }
 
@@ -187,13 +188,13 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
     {
         try
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() => resourcePack.IsLoadingDescription = true);
+            _uiDispatcher.TryEnqueue(() => resourcePack.IsLoadingDescription = true);
 
             var metadata = await _context.GetResourceMetadataAsync(resourcePack.FilePath, cancellationToken);
 
             if (metadata != null)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     resourcePack.Description = metadata.Description;
                     resourcePack.Source = metadata.Source;
@@ -208,7 +209,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
                 var localDescription = await ExtractPackMetaDescriptionAsync(resourcePack.FilePath);
                 if (!string.IsNullOrEmpty(localDescription))
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         resourcePack.Description = localDescription;
                         resourcePack.Source = "本地";
@@ -225,7 +226,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
                 var localDescription = await ExtractPackMetaDescriptionAsync(resourcePack.FilePath);
                 if (!string.IsNullOrEmpty(localDescription))
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         resourcePack.Description = localDescription;
                         resourcePack.Source = "本地";
@@ -236,7 +237,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
         }
         finally
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() => resourcePack.IsLoadingDescription = false);
+            _uiDispatcher.TryEnqueue(() => resourcePack.IsLoadingDescription = false);
         }
     }
 

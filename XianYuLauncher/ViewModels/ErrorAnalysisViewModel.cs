@@ -27,6 +27,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IAIAnalysisService _aiAnalysisService; // New Service
         private readonly ILocalSettingsService _localSettingsService; // To read settings
         private readonly IDialogService _dialogService;
+        private readonly IUiDispatcher _uiDispatcher;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
@@ -60,13 +61,15 @@ namespace XianYuLauncher.ViewModels
             ILogSanitizerService logSanitizerService,
             IAIAnalysisService aiAnalysisService,
             ILocalSettingsService localSettingsService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IUiDispatcher uiDispatcher)
         {
             _languageSelectorService = languageSelectorService;
             _logSanitizerService = logSanitizerService;
             _aiAnalysisService = aiAnalysisService;
             _localSettingsService = localSettingsService;
             _dialogService = dialogService;
+            _uiDispatcher = uiDispatcher;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
             
@@ -142,7 +145,7 @@ namespace XianYuLauncher.ViewModels
                 _aiAnalysisCts.Cancel();
             }
 
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 ChatMessages.Clear();
                 ChatInput = string.Empty;
@@ -186,66 +189,6 @@ namespace XianYuLauncher.ViewModels
         private CrashFixAction? _currentFixAction;
         private CrashFixAction? _secondaryFixAction;
 
-        private Microsoft.UI.Dispatching.DispatcherQueue? GetUiDispatcherQueue()
-        {
-            var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-            if (dispatcherQueue == null && App.MainWindow != null)
-            {
-                dispatcherQueue = App.MainWindow.DispatcherQueue;
-            }
-
-            return dispatcherQueue;
-        }
-
-        private Task EnqueueOnUiAsync(Action action)
-        {
-            var dispatcherQueue = GetUiDispatcherQueue();
-            if (dispatcherQueue == null)
-            {
-                action();
-                return Task.CompletedTask;
-            }
-
-            var tcs = new TaskCompletionSource();
-            dispatcherQueue.TryEnqueue(() =>
-            {
-                try
-                {
-                    action();
-                    tcs.SetResult();
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
-            return tcs.Task;
-        }
-
-        private Task EnqueueOnUiAsync(Func<Task> action)
-        {
-            var dispatcherQueue = GetUiDispatcherQueue();
-            if (dispatcherQueue == null)
-            {
-                return action();
-            }
-
-            var tcs = new TaskCompletionSource();
-            dispatcherQueue.TryEnqueue(async () =>
-            {
-                try
-                {
-                    await action();
-                    tcs.SetResult();
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
-            return tcs.Task;
-        }
-
         // 占位命令，后续实现逻辑
         [RelayCommand]
         private async Task FixError()
@@ -288,7 +231,7 @@ namespace XianYuLauncher.ViewModels
             }
             catch (Exception ex)
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
                 });
@@ -322,7 +265,7 @@ namespace XianYuLauncher.ViewModels
             }
             catch (Exception ex)
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
                 });
@@ -333,7 +276,7 @@ namespace XianYuLauncher.ViewModels
         private async Task RejectFixAction()
         {
             var rejectedText = FixButtonText;
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 ResetFixActionState();
 
@@ -397,7 +340,7 @@ namespace XianYuLauncher.ViewModels
         {
             if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += "\n\n未找到当前版本信息，无法自动切换 Java。";
                 });
@@ -418,7 +361,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                         AiAnalysisResult += $"\n\n读取版本信息失败：{ex.Message}";
                     });
@@ -434,14 +377,14 @@ namespace XianYuLauncher.ViewModels
 
             if (bestJava == null || string.IsNullOrWhiteSpace(bestJava.Path))
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n未找到可用的 Java {requiredMajorVersion} 版本，请先安装对应版本后再重试。";
                 });
                 return;
             }
 
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 var launchViewModel = App.GetService<LaunchViewModel>();
                 if (!string.Equals(launchViewModel.SelectedVersion, _versionId, StringComparison.OrdinalIgnoreCase))
@@ -478,7 +421,7 @@ namespace XianYuLauncher.ViewModels
             var modFilePath = await FindModFileByIdAsync(modId);
             if (string.IsNullOrWhiteSpace(modFilePath))
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n未找到 Mod 文件：{modId}";
                 });
@@ -486,7 +429,7 @@ namespace XianYuLauncher.ViewModels
             }
 
             bool shouldDelete = false;
-            await EnqueueOnUiAsync(async () =>
+            await _uiDispatcher.RunOnUiThreadAsync(async () =>
             {
                 shouldDelete = await _dialogService.ShowConfirmationDialogAsync(
                     "删除 Mod",
@@ -503,14 +446,14 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 File.Delete(modFilePath);
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n已删除 Mod：{Path.GetFileName(modFilePath)}";
                 });
             }
             catch (Exception ex)
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n删除 Mod 失败：{ex.Message}";
                 });
@@ -631,7 +574,7 @@ namespace XianYuLauncher.ViewModels
             }
             catch (Exception ex)
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\nCurseForge 搜索失败: {ex.Message}";
                 });
@@ -641,7 +584,7 @@ namespace XianYuLauncher.ViewModels
 
         private async Task ShowNotFoundDialogAsync(string query)
         {
-            await EnqueueOnUiAsync(async () =>
+            await _uiDispatcher.RunOnUiThreadAsync(async () =>
             {
                 await _dialogService.ShowMessageDialogAsync(
                     "未找到",
@@ -692,24 +635,13 @@ namespace XianYuLauncher.ViewModels
                 {
                     _isAiAnalyzing = value;
                     // 确保在UI线程上触发PropertyChanged事件
-                    var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-                    if (dispatcherQueue == null && App.MainWindow != null)
+                    if (!_uiDispatcher.TryEnqueue(() =>
                     {
-                        dispatcherQueue = App.MainWindow.DispatcherQueue;
-                    }
-                    
-                    if (dispatcherQueue != null)
+                        OnPropertyChanged(nameof(IsAiAnalyzing));
+                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
+                        OnPropertyChanged(nameof(CancelButtonVisibility));
+                    }))
                     {
-                        dispatcherQueue.TryEnqueue(() =>
-                        {
-                            OnPropertyChanged(nameof(IsAiAnalyzing));
-                            OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                            OnPropertyChanged(nameof(CancelButtonVisibility));
-                        });
-                    }
-                    else
-                    {
-                        // 如果无法获取DispatcherQueue，直接触发事件（可能会在非UI线程上执行）
                         OnPropertyChanged(nameof(IsAiAnalyzing));
                         OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
                         OnPropertyChanged(nameof(CancelButtonVisibility));
@@ -728,24 +660,13 @@ namespace XianYuLauncher.ViewModels
                 {
                     _isAiAnalysisAvailable = value;
                     // 确保在UI线程上触发PropertyChanged事件
-                    var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-                    if (dispatcherQueue == null && App.MainWindow != null)
+                    if (!_uiDispatcher.TryEnqueue(() =>
                     {
-                        dispatcherQueue = App.MainWindow.DispatcherQueue;
-                    }
-                    
-                    if (dispatcherQueue != null)
+                        OnPropertyChanged(nameof(IsAiAnalysisAvailable));
+                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
+                        OnPropertyChanged(nameof(AnalyzeButtonVisibility));
+                    }))
                     {
-                        dispatcherQueue.TryEnqueue(() =>
-                        {
-                            OnPropertyChanged(nameof(IsAiAnalysisAvailable));
-                            OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                            OnPropertyChanged(nameof(AnalyzeButtonVisibility));
-                        });
-                    }
-                    else
-                    {
-                        // 如果无法获取DispatcherQueue，直接触发事件（可能会在非UI线程上执行）
                         OnPropertyChanged(nameof(IsAiAnalysisAvailable));
                         OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
                         OnPropertyChanged(nameof(AnalyzeButtonVisibility));
@@ -862,7 +783,7 @@ namespace XianYuLauncher.ViewModels
         IsAiAnalyzing = true;
         IsChatEnabled = false;
 
-        await EnqueueOnUiAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ResetFixActionState();
             ChatMessages.Add(new UiChatMessage("user", userMsg));
@@ -876,7 +797,7 @@ namespace XianYuLauncher.ViewModels
             var isAiEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableAIAnalysis") ?? false;
             if (!isAiEnabled)
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     if (ChatMessages.Any())
                     {
@@ -894,11 +815,11 @@ namespace XianYuLauncher.ViewModels
             if (!string.IsNullOrEmpty(key)) {
                 await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
             } else {
-                 if (ChatMessages.Any()) await EnqueueOnUiAsync(() => ChatMessages.Last().Content = "API Key Missing.");
+                 if (ChatMessages.Any()) await _uiDispatcher.RunOnUiThreadAsync(() => ChatMessages.Last().Content = "API Key Missing.");
             }
         }
         finally {
-             await EnqueueOnUiAsync(() => {
+             await _uiDispatcher.RunOnUiThreadAsync(() => {
                 IsAiAnalyzing = false;
                 IsChatEnabled = true;
              });
@@ -959,7 +880,7 @@ namespace XianYuLauncher.ViewModels
                         updateBuffer.Clear();
                         lastUpdate = now;
 
-                        await EnqueueOnUiAsync(() =>
+                        await _uiDispatcher.RunOnUiThreadAsync(() =>
                         {
                             if (ChatMessages.Any())
                             {
@@ -987,7 +908,7 @@ namespace XianYuLauncher.ViewModels
             if (updateBuffer.Length > 0)
             {
                 var finalText = updateBuffer.ToString();
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     if (ChatMessages.Any())
                     {
@@ -1017,7 +938,7 @@ namespace XianYuLauncher.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[AI FunctionCall] {toolCall.FunctionName}({toolCall.Arguments})");
 
                 // 在 UI 上显示工具调用状态
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     if (ChatMessages.Any())
                     {
@@ -1034,7 +955,7 @@ namespace XianYuLauncher.ViewModels
             }
 
             // 为下一轮 AI 回复添加新的 UI 占位符
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 ChatMessages.Add(new UiChatMessage("assistant", "..."));
             });
@@ -1265,7 +1186,7 @@ namespace XianYuLauncher.ViewModels
             parameters["loader"] = currentLoader;
 
         // 设置修复按钮让用户点击执行导航
-        await EnqueueOnUiAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ResetFixActionState();
             _currentFixAction = new CrashFixAction
@@ -1291,7 +1212,7 @@ namespace XianYuLauncher.ViewModels
         var parameters = new Dictionary<string, string> { ["modId"] = modId };
 
         // 设置修复按钮让用户确认
-        await EnqueueOnUiAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ResetFixActionState();
             _currentFixAction = new CrashFixAction
@@ -1323,7 +1244,7 @@ namespace XianYuLauncher.ViewModels
         };
 
         // 设置修复按钮让用户确认
-        await EnqueueOnUiAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ResetFixActionState();
             _currentFixAction = new CrashFixAction
@@ -1359,7 +1280,7 @@ namespace XianYuLauncher.ViewModels
 
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n失败: 未找到 Mod 文件 {fileName}";
                 });
@@ -1390,7 +1311,7 @@ namespace XianYuLauncher.ViewModels
                 var newPath = Path.Combine(dir, newName);
                 File.Move(filePath, newPath);
                 
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n成功: 已{(enabled ? "启用" : "禁用")} Mod {currentName} → {newName}";
                     HasFixAction = false; // 操作完成后隐藏按钮
@@ -1398,7 +1319,7 @@ namespace XianYuLauncher.ViewModels
             }
             else
             {
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     AiAnalysisResult += $"\n\n提示: Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
                     HasFixAction = false;
@@ -1407,7 +1328,7 @@ namespace XianYuLauncher.ViewModels
         }
         catch (Exception ex)
         {
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                  AiAnalysisResult += $"\n\n操作失败: {ex.Message}";
             });
@@ -1417,7 +1338,7 @@ namespace XianYuLauncher.ViewModels
     private async Task<string> ExecuteToolSwitchJavaAsync()
     {
         // 设置修复按钮让用户点击执行
-        await EnqueueOnUiAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ResetFixActionState();
             _currentFixAction = new CrashFixAction
@@ -1448,7 +1369,7 @@ namespace XianYuLauncher.ViewModels
         try
         {
             // 重置分析结果和状态
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 IsAiAnalyzing = true;
                 IsChatEnabled = false;
@@ -1476,7 +1397,7 @@ namespace XianYuLauncher.ViewModels
 
                 if (!string.IsNullOrWhiteSpace(key))
                 {
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                         AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
                         ResetFixActionState();
@@ -1514,7 +1435,7 @@ namespace XianYuLauncher.ViewModels
                         }
                     }
 
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                          ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
                          ChatMessages.Add(new UiChatMessage("assistant", "..."));
@@ -1524,14 +1445,14 @@ namespace XianYuLauncher.ViewModels
 
                     await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
                     
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                         IsChatEnabled = true;
                     });
                 }
                 else
                 {
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                         var msg = "未配置 API Key，无法进行 AI 分析。";
                         ChatMessages.Add(new UiChatMessage("assistant", msg));
@@ -1544,7 +1465,7 @@ namespace XianYuLauncher.ViewModels
             // 使用知识库服务进行分析
             var crashAnalyzer = App.GetService<XianYuLauncher.Core.Contracts.Services.ICrashAnalyzer>();
             
-             await EnqueueOnUiAsync(() => {
+             await _uiDispatcher.RunOnUiThreadAsync(() => {
                  ChatMessages.Add(new UiChatMessage("assistant", "..."));
              });
 
@@ -1571,7 +1492,7 @@ namespace XianYuLauncher.ViewModels
                     buffered.Clear();
                     lastFlush = now;
 
-                    await EnqueueOnUiAsync(() =>
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
                          if(ChatMessages.Any()) {
                             var lastMsg = ChatMessages.Last();
@@ -1590,7 +1511,7 @@ namespace XianYuLauncher.ViewModels
             {
                 var remaining = buffered.ToString();
                 buffered.Clear();
-                await EnqueueOnUiAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                      if(ChatMessages.Any()) {
                         ChatMessages.Last().Content += remaining;
@@ -1601,7 +1522,7 @@ namespace XianYuLauncher.ViewModels
 
             // 获取结构化结果用于修复按钮
             var analysisResult = await crashAnalyzer.AnalyzeCrashAsync(0, _gameOutput, _gameError);
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 ResetFixActionState();
 
@@ -1635,7 +1556,7 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("===============================================");
             
             // 用户取消了分析
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                if(ChatMessages.Any()) {
                   ChatMessages.Last().Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
@@ -1649,7 +1570,7 @@ namespace XianYuLauncher.ViewModels
             System.Diagnostics.Debug.WriteLine("堆栈跟踪: " + ex.StackTrace);
             System.Diagnostics.Debug.WriteLine("===============================================");
             
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 var msg = string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message);
                 if (ChatMessages.Any()) {
@@ -1665,7 +1586,7 @@ namespace XianYuLauncher.ViewModels
             _aiAnalysisCts = null;
             
             // 更新分析状态
-            await EnqueueOnUiAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 IsAiAnalyzing = false;
                 IsChatEnabled = true;
@@ -1802,20 +1723,10 @@ namespace XianYuLauncher.ViewModels
     /// </summary>
     private void AddLogLineToUI(string line)
     {
-        // 确保在UI线程上执行
-        var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-        if (dispatcherQueue == null && App.MainWindow != null)
+        _uiDispatcher.TryEnqueue(() =>
         {
-            dispatcherQueue = App.MainWindow.DispatcherQueue;
-        }
-        
-        if (dispatcherQueue != null)
-        {
-            dispatcherQueue.TryEnqueue(() =>
-            {
-                LogLines.Add(line);
-            });
-        }
+            LogLines.Add(line);
+        });
     }
     
     /// <summary>
@@ -1889,13 +1800,13 @@ namespace XianYuLauncher.ViewModels
 
             // 设置崩溃原因属性
             // 确保在UI线程上更新属性
-            if (App.MainWindow.DispatcherQueue.HasThreadAccess)
+            if (_uiDispatcher.HasThreadAccess)
             {
                 CrashReason = errorAnalysis;
             }
             else
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     CrashReason = errorAnalysis;
                 });
@@ -1924,13 +1835,13 @@ namespace XianYuLauncher.ViewModels
         _originalLog = finalLog; // 保存原始日志
 
         // 确保在UI线程上更新FullLog属性
-        if (App.MainWindow.DispatcherQueue.HasThreadAccess)
+        if (_uiDispatcher.HasThreadAccess)
         {
             FullLog = finalLog;
         }
         else
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 FullLog = finalLog;
             });

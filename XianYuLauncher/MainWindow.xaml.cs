@@ -1,6 +1,7 @@
 using Windows.UI.ViewManagement;
 
 using System.Linq;
+using XianYuLauncher.Contracts.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using XianYuLauncher.Core.Services;
@@ -66,8 +67,8 @@ public sealed partial class MainWindow : WindowEx
                     // Navigate to VersionListPage
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
-                    // Call import on the viewmodel (run on UI dispatcher)
-                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    // Call import on UI dispatcher. Avoid DI lookup in MainWindow constructor path.
+                    var enqueued = dispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
@@ -82,6 +83,11 @@ public sealed partial class MainWindow : WindowEx
                             System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
                         }
                     });
+
+                    if (!enqueued)
+                    {
+                        System.Diagnostics.Debug.WriteLine("MainWindow.DragDrop.ImportModpack: enqueue failed.");
+                    }
 
                     break;
                 }

@@ -25,32 +25,7 @@ public partial class VersionListViewModel : ObservableRecipient
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
     private readonly IDialogService _dialogService;
-
-    private static Task RunOnUiThreadAsync(Action action)
-    {
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue;
-        if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
-        {
-            action();
-            return Task.CompletedTask;
-        }
-
-        var tcs = new TaskCompletionSource<object?>();
-        dispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                action();
-                tcs.TrySetResult(null);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-
-        return tcs.Task;
-    }
+    private readonly IUiDispatcher _uiDispatcher;
 
     /// <summary>
     /// 版本信息模型
@@ -201,13 +176,15 @@ public partial class VersionListViewModel : ObservableRecipient
         IFileService fileService,
         Core.Services.ModrinthService modrinthService,
         IVersionInfoService versionInfoService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IUiDispatcher uiDispatcher)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _modrinthService = modrinthService;
         _versionInfoService = versionInfoService;
         _dialogService = dialogService;
+        _uiDispatcher = uiDispatcher;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -269,7 +246,7 @@ public partial class VersionListViewModel : ObservableRecipient
     private async Task LoadVersionsAsync()
     {
         Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync start, Thread={Environment.CurrentManagedThreadId}");
-        await RunOnUiThreadAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             IsLoading = true;
             StatusMessage = "VersionListPage_LoadingVersionsText".GetLocalized();
@@ -405,7 +382,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 versionItems.Add(versionItem);
             }
 
-            await RunOnUiThreadAsync(() =>
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
                 Versions = new ObservableCollection<VersionInfoItem>(versionItems.OrderByDescending(v => v.InstallDate));
                 ApplyFilter();
@@ -419,14 +396,14 @@ public partial class VersionListViewModel : ObservableRecipient
     catch (Exception ex)
     {
         Debug.WriteLine($"[VersionListViewModel] LoadVersionsAsync failed: {ex}");
-        await RunOnUiThreadAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             StatusMessage = $"{"VersionListPage_LoadFailedText".GetLocalized()}: {ex.Message}";
         });
     }
     finally
     {
-        await RunOnUiThreadAsync(() =>
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             IsLoading = false;
         });

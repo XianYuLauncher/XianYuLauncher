@@ -27,12 +27,14 @@ public class DialogService : IDialogService
     private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
     private readonly HttpClient _httpClient = new HttpClient();
     private readonly IThemeSelectorService _themeSelectorService;
+    private readonly IUiDispatcher _uiDispatcher;
     private readonly UISettings _uiSettings = new();
     private ContentDialog? _activeDialog;
 
-    public DialogService(IThemeSelectorService themeSelectorService)
+    public DialogService(IThemeSelectorService themeSelectorService, IUiDispatcher uiDispatcher)
     {
         _themeSelectorService = themeSelectorService ?? throw new ArgumentNullException(nameof(themeSelectorService));
+        _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
         _uiSettings.ColorValuesChanged += OnSystemColorValuesChanged;
     }
@@ -43,9 +45,7 @@ public class DialogService : IDialogService
     /// </summary>
     private void OnSystemColorValuesChanged(UISettings sender, object args)
     {
-        var dispatcher = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        if (dispatcher == null) return;
-        dispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        _uiDispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
         {
             if (_activeDialog != null && _themeSelectorService.Theme == ElementTheme.Default)
             {
@@ -481,7 +481,7 @@ public class DialogService : IDialogService
                             // 下载并在 UI 线程使用 Win2D 处理
                             var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
                             
-                            App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                            _uiDispatcher.EnqueueAsync(async () =>
                             {
                                 try 
                                 {
@@ -492,7 +492,7 @@ public class DialogService : IDialogService
                                     }
                                 }
                                 catch {}
-                            });
+                            }).Observe("DialogService.LoadProfileAvatar");
                         }
                     }
                 }
@@ -1589,7 +1589,7 @@ public class DialogService : IDialogService
                 {
                     try
                     {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             try
                             {
@@ -1617,7 +1617,7 @@ public class DialogService : IDialogService
 
                 if (gotOriginalPosition)
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         try { App.MainWindow.AppWindow.Move(originalPosition); } catch { }
                     });

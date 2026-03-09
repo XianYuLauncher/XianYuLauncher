@@ -18,6 +18,7 @@ public partial class MapsViewModel : ObservableObject
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
 
     // 源列表
     private List<MapInfo> _allMaps = new();
@@ -25,11 +26,13 @@ public partial class MapsViewModel : ObservableObject
     public MapsViewModel(
         IVersionManagementContext context,
         INavigationService navigationService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
         _dialogService = dialogService;
+        _uiDispatcher = uiDispatcher;
 
         Maps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsMapListEmpty));
     }
@@ -161,7 +164,7 @@ public partial class MapsViewModel : ObservableObject
             if (!string.IsNullOrEmpty(iconPath))
             {
                 var tcs = new TaskCompletionSource<bool>();
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                var enqueued = _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {
@@ -171,6 +174,12 @@ public partial class MapsViewModel : ObservableObject
                     }
                     catch (Exception ex) { tcs.TrySetException(ex); }
                 });
+
+                if (!enqueued)
+                {
+                    tcs.TrySetException(new InvalidOperationException("无法将地图图标更新调度到 UI 线程。"));
+                }
+
                 await tcs.Task;
             }
         }

@@ -29,8 +29,9 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
         IDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService)
+        ModInfoService modInfoService,
+        IUiDispatcher uiDispatcher)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
     {
     }
 
@@ -164,13 +165,13 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
     {
         try
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() => shader.IsLoadingDescription = true);
+            _uiDispatcher.TryEnqueue(() => shader.IsLoadingDescription = true);
 
             var metadata = await _context.GetResourceMetadataAsync(shader.FilePath, cancellationToken);
 
             if (metadata != null)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     shader.Description = metadata.Description;
                     shader.Source = metadata.Source;
@@ -184,7 +185,7 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
         catch { }
         finally
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() => shader.IsLoadingDescription = false);
+            _uiDispatcher.TryEnqueue(() => shader.IsLoadingDescription = false);
         }
     }
 

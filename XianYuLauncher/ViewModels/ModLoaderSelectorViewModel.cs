@@ -17,6 +17,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 {
     private readonly INavigationService _navigationService;
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IUiDispatcher _uiDispatcher;
     private readonly IModLoaderVersionLoaderService _versionLoaderService;
     private readonly IModLoaderVersionNameService _versionNameService;
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
@@ -226,6 +227,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _versionLoaderService = App.GetService<IModLoaderVersionLoaderService>();
         _versionNameService = App.GetService<IModLoaderVersionNameService>();
         _modLoaderIconPresentationService = App.GetService<IModLoaderIconPresentationService>();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
         
         // 订阅下载事件以更新弹窗进度
@@ -235,7 +237,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     
     private void OnDownloadProgressChanged(object? sender, DownloadTaskInfo taskInfo)
     {
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             // 只有在弹窗打开时才更新
             if (IsDownloadDialogOpen)
@@ -258,7 +260,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     
     private void OnDownloadStateChanged(object? sender, DownloadTaskInfo taskInfo)
     {
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             // 只有在弹窗打开时才处理
             if (IsDownloadDialogOpen && !_isBackgroundDownload)
@@ -271,7 +273,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         // 延迟关闭弹窗
                         _ = Task.Delay(1000).ContinueWith(_ =>
                         {
-                            App.MainWindow.DispatcherQueue.TryEnqueue(() => IsDownloadDialogOpen = false);
+                            _uiDispatcher.TryEnqueue(() => IsDownloadDialogOpen = false);
                         });
                         break;
                     case DownloadTaskState.Failed:
@@ -557,7 +559,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 通过统一的 Loader Service 加载 LiteLoader
             var versions = await _versionLoaderService.LoadVersionsAsync("liteloader", SelectedMinecraftVersion, CancellationToken.None);
             
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 LiteLoaderVersions.Clear();
                 foreach (var v in versions)

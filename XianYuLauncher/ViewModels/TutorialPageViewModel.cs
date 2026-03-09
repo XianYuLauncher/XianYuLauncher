@@ -32,6 +32,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IThemeSelectorService _themeSelectorService;
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly MaterialService _materialService;
+        private readonly IUiDispatcher _uiDispatcher;
 
         // 页面导航相关属性
         [ObservableProperty]
@@ -632,10 +633,10 @@ namespace XianYuLauncher.ViewModels
                     await _javaRuntimeService.DetectJavaVersionsAsync(true);
                     
                     // 重新加载 ViewModel 的列表
-                    App.MainWindow.DispatcherQueue.TryEnqueue(async () => 
+                    _uiDispatcher.EnqueueAsync(async () =>
                     {
                          await RefreshJavaVersionsCommand.ExecuteAsync(null);
-                    });
+                    }).Observe("TutorialPageViewModel.JavaInstall.RefreshJavaVersions");
                     
                     await Task.Delay(1000);
                 }
@@ -1084,7 +1085,8 @@ namespace XianYuLauncher.ViewModels
             IJavaDownloadService javaDownloadService,
             IThemeSelectorService themeSelectorService,
             ILanguageSelectorService languageSelectorService,
-            MaterialService materialService)
+            MaterialService materialService,
+            IUiDispatcher uiDispatcher)
         {
             _localSettingsService = localSettingsService;
             _minecraftVersionService = minecraftVersionService;
@@ -1099,6 +1101,7 @@ namespace XianYuLauncher.ViewModels
             _themeSelectorService = themeSelectorService;
             _languageSelectorService = languageSelectorService;
             _materialService = materialService;
+            _uiDispatcher = uiDispatcher;
 
             // 初始化主题和语言
             _elementTheme = _themeSelectorService.Theme;

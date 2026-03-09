@@ -17,17 +17,20 @@ public partial class ServersViewModel : ObservableObject
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
 
     private List<ServerItem> _allServers = new();
 
     public ServersViewModel(
         IVersionManagementContext context,
         INavigationService navigationService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
         _dialogService = dialogService;
+        _uiDispatcher = uiDispatcher;
     }
 
     #region 状态属性
@@ -74,7 +77,7 @@ public partial class ServersViewModel : ObservableObject
             // 异步加载图标和状态
             foreach (var item in _allServers)
             {
-                await item.DecodeIconAsync();
+                await item.DecodeIconAsync(_uiDispatcher);
 
                 _ = Task.Run(async () =>
                 {
@@ -91,10 +94,10 @@ public partial class ServersViewModel : ObservableObject
 
                         var (icon, motd, online, max, ping) = await XianYuLauncher.Core.Helpers.ServerStatusFetcher.PingerAsync(host, port);
 
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             if (ping >= 0)
-                                item.UpdateStatus(motd, online, max, ping, icon);
+                                item.UpdateStatus(motd, online, max, ping, icon, _uiDispatcher);
                             else
                             {
                                 item.Motd = "无法连接";
@@ -123,7 +126,7 @@ public partial class ServersViewModel : ObservableObject
 
     public void FilterServers()
     {
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             if (string.IsNullOrWhiteSpace(ServerSearchText))
             {

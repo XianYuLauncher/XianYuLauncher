@@ -68,6 +68,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     // 标记是否已经加载过世界数据
     private bool _worldsLoaded = false;
 
+    private IUiDispatcher _uiDispatcher = null!;
+
     // LayoutUpdated 防抖：避免高频触发时重复入队
     private bool _resourcePackLoadMoreCheckPending;
     private bool _modLoadMoreCheckPending;
@@ -82,7 +84,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         InitializeComponent();
-        DispatcherQueue.TryEnqueue(TryRefreshModFilterTokenItems);
+        _uiDispatcher = App.GetService<IUiDispatcher>();
+        _uiDispatcher.TryEnqueue(TryRefreshModFilterTokenItems);
         
         // 在页面加载完成后检查是否需要切换标签页
         Loaded += (sender, e) =>
@@ -104,7 +107,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     public void OnNavigatedTo(object parameter)
     {
         // 直接使用Dispatcher延迟执行，确保TabView已经初始化完成
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             // 导航缓存场景下，恢复上次选中的标签页
             if (ViewModel.SelectedTabIndex >= 0 && ViewModel.SelectedTabIndex < ResourceTabView.TabItems.Count)
@@ -114,7 +117,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         });
 
         // 确保资源筛选版本列表可用
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             if (ResourceTabView.SelectedIndex > 0)
             {
