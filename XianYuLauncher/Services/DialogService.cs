@@ -280,6 +280,56 @@ public class DialogService : IDialogService
         return await ShowSafeAsync(dialog);
     }
 
+    public async Task<ContentDialogResult> ShowCustomDialogAsync(
+        string title,
+        object content,
+        string? primaryButtonText = null,
+        string? secondaryButtonText = null,
+        string? closeButtonText = null,
+        ContentDialogButton defaultButton = ContentDialogButton.None,
+        bool isPrimaryButtonEnabled = true,
+        bool isSecondaryButtonEnabled = true,
+        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onPrimaryButtonClick = null,
+        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            DefaultButton = defaultButton,
+            IsPrimaryButtonEnabled = isPrimaryButtonEnabled,
+            IsSecondaryButtonEnabled = isSecondaryButtonEnabled,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        if (!string.IsNullOrEmpty(primaryButtonText))
+        {
+            dialog.PrimaryButtonText = primaryButtonText;
+        }
+
+        if (!string.IsNullOrEmpty(secondaryButtonText))
+        {
+            dialog.SecondaryButtonText = secondaryButtonText;
+        }
+
+        if (!string.IsNullOrEmpty(closeButtonText))
+        {
+            dialog.CloseButtonText = closeButtonText;
+        }
+
+        if (onPrimaryButtonClick != null)
+        {
+            dialog.PrimaryButtonClick += onPrimaryButtonClick;
+        }
+
+        if (onSecondaryButtonClick != null)
+        {
+            dialog.SecondaryButtonClick += onSecondaryButtonClick;
+        }
+
+        return await ShowSafeAsync(dialog);
+    }
+
     public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
     {
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), IsIndeterminate = true };

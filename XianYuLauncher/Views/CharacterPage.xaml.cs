@@ -15,6 +15,7 @@ namespace XianYuLauncher.Views
         }
 
         private readonly INavigationService _navigationService;
+        private readonly IDialogService _dialogService;
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = "AvatarCache";
         private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
@@ -23,6 +24,7 @@ namespace XianYuLauncher.Views
         {
             ViewModel = App.GetService<CharacterViewModel>();
             _navigationService = App.GetService<INavigationService>();
+            _dialogService = App.GetService<IDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
@@ -966,16 +968,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许离线登录
-                var dialog = new ContentDialog
-                {
-                    Title = "地区限制",
-                    Content = "当前地区无法使用离线登录，请使用微软账户登录。",
-                    CloseButtonText = "确定",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync("地区限制", "当前地区无法使用离线登录，请使用微软账户登录。", "确定");
                 return;
             }
             
@@ -1001,16 +994,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许外置登录
-                var dialog = new ContentDialog
-                {
-                    Title = "地区限制",
-                    Content = "当前地区无法使用外置登录，请使用微软账户登录。",
-                    CloseButtonText = "确定",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.XamlRoot,
-                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                };
-                await dialog.ShowAsync();
+                await _dialogService.ShowMessageDialogAsync("地区限制", "当前地区无法使用外置登录，请使用微软账户登录。", "确定");
                 return;
             }
             
@@ -1037,16 +1021,7 @@ namespace XianYuLauncher.Views
                 if (profile.IsOffline)
                 {
                     // 离线账户无需续签
-                    var offlineDialog = new ContentDialog
-                    {
-                        Title = "提示",
-                        Content = "离线账户无需续签令牌",
-                        CloseButtonText = "确定",
-                        XamlRoot = this.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                        DefaultButton = ContentDialogButton.None
-                    };
-                    await offlineDialog.ShowAsync();
+                    await _dialogService.ShowMessageDialogAsync("提示", "离线账户无需续签令牌", "确定");
                     return;
                 }
                 
@@ -1059,159 +1034,83 @@ namespace XianYuLauncher.Views
         /// </summary>
         private async Task ShowRenewTokenDialogAsync(MinecraftProfile profile)
         {
-            // 创建续签进度对话框
-            var dialog = new ContentDialog
-            {
-                Title = "续签令牌",
-                CloseButtonText = null, // 初始不显示关闭按钮
-                XamlRoot = this.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            
-            // 创建对话框内容
-            var contentStack = new StackPanel
-            {
-                Spacing = 16,
-                MinWidth = 300,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            
-            // 进度环 - 始终显示，只控制旋转状态
-            var progressRing = new ProgressRing
-            {
-                IsActive = true,
-                Width = 40,
-                Height = 40,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Visibility = Visibility.Visible // 始终可见
-            };
-            
-            var statusText = new TextBlock
-            {
-                Text = "正在验证令牌...",
-                TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-            
-            contentStack.Children.Add(progressRing);
-            contentStack.Children.Add(statusText);
-            
-            dialog.Content = contentStack;
-            
-            // 异步显示对话框并执行续签
-            var dialogTask = dialog.ShowAsync();
+            string finalMessage = string.Empty;
+            bool showFinalMessage = false;
             
             try
             {
                 // 获取 TokenRefreshService
                 var tokenRefreshService = App.GetService<XianYuLauncher.Core.Contracts.Services.ITokenRefreshService>();
+
+                await _dialogService.ShowProgressDialogAsync(
+                    "续签令牌",
+                    "正在验证令牌...",
+                    async (_, status, _) =>
+                    {
+                        status.Report("正在验证令牌...");
+                        var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
                 
-                // 使用 ValidateAndRefreshTokenAsync 联网验证并刷新
-                statusText.Text = "正在验证令牌...";
-                var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
-                
-                if (result.Success && result.WasRefreshed && result.UpdatedProfile != null)
-                {
-                    // 续签成功 - 保持旋转
-                    
-                    // 计算过期时间
-                    var expiryTime = result.UpdatedProfile.IssueInstant.AddSeconds(result.UpdatedProfile.ExpiresIn);
-                    var timeUntilExpiry = expiryTime - DateTime.UtcNow;
-                    
-                    string expiryText;
-                    if (timeUntilExpiry.TotalDays >= 1)
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalDays:F0} 天";
-                    }
-                    else if (timeUntilExpiry.TotalHours >= 1)
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalHours:F0} 小时";
-                    }
-                    else
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
-                    }
-                    
-                    statusText.Text = $"续签完成！\n过期时间: {expiryText}";
-                    
-                    // 更新 ViewModel 中的角色信息
-                    var profileIndex = ViewModel.Profiles.IndexOf(profile);
-                    if (profileIndex >= 0)
-                    {
-                        ViewModel.Profiles[profileIndex] = result.UpdatedProfile;
-                    }
-                    
-                    // 1秒后自动关闭
-                    await Task.Delay(1000);
-                    dialog.Hide();
-                }
-                else if (result.Success && !result.WasRefreshed)
-                {
-                    // 令牌仍然有效，无需刷新 - 保持旋转
-                    
-                    // 计算过期时间
-                    var expiryTime = profile.IssueInstant.AddSeconds(profile.ExpiresIn);
-                    var timeUntilExpiry = expiryTime - DateTime.UtcNow;
-                    
-                    string expiryText;
-                    if (timeUntilExpiry.TotalDays >= 1)
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalDays:F0} 天";
-                    }
-                    else if (timeUntilExpiry.TotalHours >= 1)
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalHours:F0} 小时";
-                    }
-                    else
-                    {
-                        expiryText = $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
-                    }
-                    
-                    statusText.Text = $"令牌仍然有效！\n剩余时间: {expiryText}";
-                    
-                    // 1秒后自动关闭
-                    await Task.Delay(1000);
-                    dialog.Hide();
-                }
-                else
-                {
-                    // 续签失败 - 保持旋转
-                    
-                    // 根据账户类型提供不同的错误提示
-                    string errorMessage;
-                    if (profile.TokenType == "external")
-                    {
-                        errorMessage = "令牌已完全过期，无法续签\n请删除此账户并重新登录";
-                    }
-                    else
-                    {
-                        errorMessage = result.ErrorMessage ?? "续签失败，请重新登录";
-                    }
-                    
-                    statusText.Text = errorMessage;
-                    dialog.CloseButtonText = "确定";
-                }
+                        if (result.Success && result.WasRefreshed && result.UpdatedProfile != null)
+                        {
+                            var expiryTime = result.UpdatedProfile.IssueInstant.AddSeconds(result.UpdatedProfile.ExpiresIn);
+                            var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                            var expiryText = timeUntilExpiry.TotalDays >= 1
+                                ? $"{timeUntilExpiry.TotalDays:F0} 天"
+                                : timeUntilExpiry.TotalHours >= 1
+                                    ? $"{timeUntilExpiry.TotalHours:F0} 小时"
+                                    : $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+
+                            var profileIndex = ViewModel.Profiles.IndexOf(profile);
+                            if (profileIndex >= 0)
+                            {
+                                ViewModel.Profiles[profileIndex] = result.UpdatedProfile;
+                            }
+
+                            showFinalMessage = true;
+                            finalMessage = $"续签完成！\n过期时间: {expiryText}";
+                            status.Report(finalMessage);
+                            await Task.Delay(1000);
+                            return;
+                        }
+
+                        if (result.Success && !result.WasRefreshed)
+                        {
+                            var expiryTime = profile.IssueInstant.AddSeconds(profile.ExpiresIn);
+                            var timeUntilExpiry = expiryTime - DateTime.UtcNow;
+                            var expiryText = timeUntilExpiry.TotalDays >= 1
+                                ? $"{timeUntilExpiry.TotalDays:F0} 天"
+                                : timeUntilExpiry.TotalHours >= 1
+                                    ? $"{timeUntilExpiry.TotalHours:F0} 小时"
+                                    : $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+
+                            showFinalMessage = true;
+                            finalMessage = $"令牌仍然有效！\n剩余时间: {expiryText}";
+                            status.Report(finalMessage);
+                            await Task.Delay(1000);
+                            return;
+                        }
+
+                        var errorMessage = profile.TokenType == "external"
+                            ? "令牌已完全过期，无法续签\n请删除此账户并重新登录"
+                            : result.ErrorMessage ?? "续签失败，请重新登录";
+
+                        showFinalMessage = true;
+                        finalMessage = errorMessage;
+                        status.Report(errorMessage);
+                        await Task.Delay(500);
+                    });
             }
             catch (Exception ex)
             {
-                // 续签异常 - 保持旋转
-                
-                // 根据账户类型提供不同的错误提示
-                string errorMessage;
-                if (profile.TokenType == "external")
-                {
-                    errorMessage = "令牌已完全过期，无法续签\n请删除此账户并重新登录";
-                }
-                else
-                {
-                    errorMessage = $"续签失败\n{ex.Message}";
-                }
-                
-                statusText.Text = errorMessage;
-                dialog.CloseButtonText = "确定";
+                showFinalMessage = true;
+                finalMessage = profile.TokenType == "external"
+                    ? "令牌已完全过期，无法续签\n请删除此账户并重新登录"
+                    : $"续签失败\n{ex.Message}";
+            }
+
+            if (showFinalMessage)
+            {
+                await _dialogService.ShowMessageDialogAsync("续签令牌", finalMessage, "确定");
             }
         }
         
@@ -1515,20 +1414,12 @@ namespace XianYuLauncher.Views
                 }
             };
 
-            // 创建ContentDialog
-            var dialog = new ContentDialog
-            {
-                Title = "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
-                Content = stackPanel,
-                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
-                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            // 显示对话框并获取结果
-            var result = await dialog.ShowAsync();
+            var result = await _dialogService.ShowCustomDialogAsync(
+                "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
+                stackPanel,
+                primaryButtonText: "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                secondaryButtonText: "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                defaultButton: ContentDialogButton.Primary);
 
             // 根据结果执行操作
             if (result == ContentDialogResult.Primary)
@@ -1801,19 +1692,12 @@ namespace XianYuLauncher.Views
             stackPanel.Children.Add(profileListView);
 
             // 创建对话框
-            var dialog = new ContentDialog
-            {
-                Title = "ProfilePage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
-                Content = stackPanel,
-                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
-                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            // 显示对话框并获取结果
-            var result = await dialog.ShowAsync();
+            var result = await _dialogService.ShowCustomDialogAsync(
+                "ProfilePage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
+                stackPanel,
+                primaryButtonText: "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                secondaryButtonText: "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                defaultButton: ContentDialogButton.Primary);
 
             // 根据结果执行操作
             if (result == ContentDialogResult.Primary && profileListView.SelectedItem is ListViewItem selectedItem && selectedItem.Tag is ExternalProfile selectedProfile)
@@ -1911,17 +1795,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            var dialog = new ContentDialog
-            {
-                Title = "登录失败",
-                Content = errorMessage,
-                CloseButtonText = "确定",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            await dialog.ShowAsync();
+            await _dialogService.ShowMessageDialogAsync("登录失败", errorMessage, "确定");
 
             // 重置登录状态
             ViewModel.IsLoggingIn = false;
@@ -1954,20 +1828,12 @@ namespace XianYuLauncher.Views
             };
             stackPanel.Children.Add(textBox);
 
-            // 创建ContentDialog
-            var dialog = new ContentDialog
-            {
-                Title = "离线登录",
-                Content = stackPanel,
-                PrimaryButtonText = "确定",
-                SecondaryButtonText = "取消",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            // 显示对话框并获取结果
-            var result = await dialog.ShowAsync();
+            var result = await _dialogService.ShowCustomDialogAsync(
+                "离线登录",
+                stackPanel,
+                primaryButtonText: "确定",
+                secondaryButtonText: "取消",
+                defaultButton: ContentDialogButton.Primary);
 
             // 根据结果执行操作
             if (result == ContentDialogResult.Primary)
@@ -2007,19 +1873,12 @@ namespace XianYuLauncher.Views
                     string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
                     Debug.WriteLine($"[角色Page] 解析出API地址: {apiUrl}");
 
-                    // 显示确认对话框
-                    var dialog = new ContentDialog
-                    {
-                        Title = "添加验证服务器",
-                        Content = $"是否要添加以下验证服务器？\n{apiUrl}",
-                        PrimaryButtonText = "确定",
-                        SecondaryButtonText = "取消",
-                        DefaultButton = ContentDialogButton.Primary,
-                        XamlRoot = this.Content.XamlRoot,
-                        Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-                    };
-
-                    var result = await dialog.ShowAsync();
+                    var result = await _dialogService.ShowCustomDialogAsync(
+                        "添加验证服务器",
+                        $"是否要添加以下验证服务器？\n{apiUrl}",
+                        primaryButtonText: "确定",
+                        secondaryButtonText: "取消",
+                        defaultButton: ContentDialogButton.Primary);
                     if (result == ContentDialogResult.Primary)
                     {
                         // 调用外置登录对话框，并预填充认证服务器地址
@@ -2149,20 +2008,12 @@ namespace XianYuLauncher.Views
                 }
             };
 
-            // 创建ContentDialog
-            var dialog = new ContentDialog
-            {
-                Title = "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
-                Content = stackPanel,
-                PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
-                SecondaryButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = this.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            // 显示对话框并获取结果
-            var result = await dialog.ShowAsync();
+            var result = await _dialogService.ShowCustomDialogAsync(
+                "ProfilePage_ExternalLoginDialog_Title".GetLocalized(),
+                stackPanel,
+                primaryButtonText: "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+                secondaryButtonText: "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+                defaultButton: ContentDialogButton.Primary);
 
             // 根据结果执行操作
             if (result == ContentDialogResult.Primary)
