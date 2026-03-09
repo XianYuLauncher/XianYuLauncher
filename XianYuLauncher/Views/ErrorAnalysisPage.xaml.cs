@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views
@@ -19,6 +20,7 @@ namespace XianYuLauncher.Views
     public sealed partial class ErrorAnalysisPage : Page
     {
         public ErrorAnalysisViewModel ViewModel { get; }
+        private readonly IUiDispatcher _uiDispatcher;
         private bool _isScrollPending = false;
         private bool _isChatScrollPending = false;
         private UiChatMessage? _lastChatMessage;
@@ -68,7 +70,7 @@ namespace XianYuLauncher.Views
                         // ScrollViewer 已经有了，直接刷新
                         System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
                         {
-                            this.DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 _chatScrollViewer.UpdateLayout();
                                 _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, false);
@@ -203,7 +205,7 @@ namespace XianYuLauncher.Views
                     System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
                     {
                         // 确保在UI线程上执行滚动操作
-                        this.DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             try
                             {
@@ -291,7 +293,7 @@ namespace XianYuLauncher.Views
         {
             System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
             {
-                this.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {

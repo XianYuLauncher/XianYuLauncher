@@ -73,6 +73,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
+    private readonly IUiDispatcher _uiDispatcher;
     
     // 计时器用于轮询玩家列表
     private readonly DispatcherTimer _playerListTimer;
@@ -85,10 +86,11 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     [ObservableProperty]
     private bool _isPlayerListEmpty = true;
     
-    public MultiplayerLobbyViewModel(INavigationService navigationService, IFileService fileService)
+    public MultiplayerLobbyViewModel(INavigationService navigationService, IFileService fileService, IUiDispatcher uiDispatcher)
     {
         _navigationService = navigationService;
         _fileService = fileService;
+        _uiDispatcher = uiDispatcher;
         
         // 初始化计时计时器
         _timer = new DispatcherTimer
@@ -239,7 +241,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                         }
                         
                         // 更新UI线程上的玩家列表
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             // 清空现有列表
                             PlayerList.Clear();

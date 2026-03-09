@@ -51,14 +51,14 @@ public partial class WorldManagementViewModel
                 System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包文件夹不存在: {dataPacksPath}");
                 
                 // 在 UI 线程更新
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     DataPacks.Clear();
                     IsDataPackListEmpty = true;
                 });
 
                 await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     IsLoadingDataPacks = false;
                 });
@@ -121,7 +121,7 @@ public partial class WorldManagementViewModel
             cancellationToken.ThrowIfCancellationRequested();
             
             // 在 UI 线程更新列表（此时所有数据都已加载完成）
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 DataPacks.Clear();
                 foreach (var dataPack in dataPackList)
@@ -136,7 +136,7 @@ public partial class WorldManagementViewModel
             await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
 
             // 关闭加载指示器
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
             });
@@ -144,7 +144,7 @@ public partial class WorldManagementViewModel
         catch (OperationCanceledException)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 已取消");
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
             });
@@ -153,7 +153,7 @@ public partial class WorldManagementViewModel
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 异常: {ex.Message}");
             await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
             });
@@ -264,7 +264,7 @@ public partial class WorldManagementViewModel
                 var iconPath = details.IconPath;
                 var tcs = new TaskCompletionSource<bool>();
                 
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {
@@ -403,7 +403,7 @@ public partial class WorldManagementViewModel
             cancellationToken.ThrowIfCancellationRequested();
             
             // 在 UI 线程更新
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 // 加载图标
                 if (!string.IsNullOrEmpty(details.IconPath))
@@ -451,7 +451,7 @@ public partial class WorldManagementViewModel
         try
         {
             // 设置加载状态
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 dataPack.IsLoadingDescription = true;
             });
@@ -462,7 +462,7 @@ public partial class WorldManagementViewModel
             if (metadata != null && !string.IsNullOrEmpty(metadata.Description))
             {
                 // 成功获取翻译，更新数据包信息
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     dataPack.Description = metadata.Description;
                     dataPack.Source = metadata.Source;
@@ -472,7 +472,7 @@ public partial class WorldManagementViewModel
             else
             {
                 // 翻译获取失败，使用原始描述
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     // 从 Tag 中获取原始描述
                     if (dataPack.Tag is string originalDescription && !string.IsNullOrEmpty(originalDescription))
@@ -486,7 +486,7 @@ public partial class WorldManagementViewModel
         catch (OperationCanceledException)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包元数据加载已取消: {dataPack.Name}");
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 // 使用原始描述
                 if (dataPack.Tag is string originalDescription && !string.IsNullOrEmpty(originalDescription))
@@ -499,7 +499,7 @@ public partial class WorldManagementViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] 获取数据包元数据失败: {ex.Message}");
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 // 使用原始描述
                 if (dataPack.Tag is string originalDescription && !string.IsNullOrEmpty(originalDescription))

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -739,6 +739,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IModpackUpdateService _modpackUpdateService;
     private readonly IModpackInstallationService _modpackInstallationService;
     private readonly IOperationQueueService _operationQueueService;
+    private readonly IUiDispatcher _uiDispatcher;
     private ObservableCollection<ModInfo>? _observedMods;
     private ObservableCollection<ShaderInfo>? _observedShaders;
     private ObservableCollection<ResourcePackInfo>? _observedResourcePacks;
@@ -816,7 +817,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionConfigService versionConfigService,
         IModpackUpdateService modpackUpdateService,
         IModpackInstallationService modpackInstallationService,
-        IOperationQueueService operationQueueService)
+        IOperationQueueService operationQueueService,
+        IUiDispatcher uiDispatcher)
     {
         _fileService = fileService;
         _minecraftVersionService = minecraftVersionService;
@@ -842,6 +844,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _modpackUpdateService = modpackUpdateService;
         _modpackInstallationService = modpackInstallationService;
         _operationQueueService = operationQueueService;
+        _uiDispatcher = uiDispatcher;
         ExtensionInstallDialogTitle = "VersionManagerPage_SaveConfigDialog_Title".GetLocalized();
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
@@ -850,11 +853,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         // 初始化子 ViewModels
-        MapsModule = new MapsViewModel(this, navigationService, dialogService);
-        ServersModule = new ServersViewModel(this, navigationService, dialogService);
-        ShadersModule = new ShadersViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
-        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
-        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService);
+        MapsModule = new MapsViewModel(this, navigationService, dialogService, uiDispatcher);
+        ServersModule = new ServersViewModel(this, navigationService, dialogService, uiDispatcher);
+        ShadersModule = new ShadersViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
 
         InitializeVersionIcons();
 
@@ -1241,14 +1244,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (versionConfig != null && versionConfig.MinecraftVersion != "Unknown")
             {
-                await RunOnUiThreadAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     ApplyVersionConfigToViewModel(versionConfig, includeCustomJvmArguments: false);
                     return Task.CompletedTask;
                 });
             }
 
-            await RunOnUiThreadAsync(InitializeAvailableLoadersAsync);
+            await _uiDispatcher.RunOnUiThreadAsync(InitializeAvailableLoadersAsync);
         }
         catch (Exception ex)
         {
@@ -1275,7 +1278,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             if (versionConfig != null)
             {
-                await RunOnUiThreadAsync(() =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     ApplyVersionConfigToViewModel(versionConfig, includeCustomJvmArguments: true);
                     return Task.CompletedTask;
@@ -1296,7 +1299,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (shouldRefreshLoaders)
             {
-                await RunOnUiThreadAsync(InitializeAvailableLoadersAsync);
+                await _uiDispatcher.RunOnUiThreadAsync(InitializeAvailableLoadersAsync);
             }
         }
         catch (Exception ex)
@@ -2155,7 +2158,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        _ = RunOnUiThreadAsync(async () =>
+        _ = _uiDispatcher.RunOnUiThreadAsync(async () =>
         {
             switch (e.State)
             {
@@ -2191,7 +2194,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        _ = RunOnUiThreadAsync(() =>
+        _ = _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             ExtensionInstallProgress = e.Progress;
             if (!string.IsNullOrWhiteSpace(e.StatusMessage))
@@ -2371,7 +2374,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             try
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     if (!_isPageReady) return;
 
@@ -2459,7 +2462,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, cancellationToken);
                 
                 // 更新UI
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {
@@ -2837,7 +2840,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     try
                     {
@@ -2922,7 +2925,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         public async Task RunUiRefreshAsync(Action refreshAction)
         {
             var refreshTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            bool enqueued = _uiDispatcher.TryEnqueue(() =>
             {
                 try
                 {
@@ -2943,36 +2946,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             refreshAction();
         }
-
-    private async Task RunOnUiThreadAsync(Func<Task> asyncAction)
-    {
-        if (App.MainWindow.DispatcherQueue.HasThreadAccess)
-        {
-            await asyncAction();
-            return;
-        }
-
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        bool enqueued = App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                await asyncAction();
-                tcs.TrySetResult(true);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-
-        if (!enqueued)
-        {
-            throw new InvalidOperationException("无法将操作调度到 UI 线程。");
-        }
-
-        await tcs.Task;
-    }
 
         /// <summary>获取 Minecraft 数据路径</summary>
         public string GetMinecraftDataPath() => _fileService.GetMinecraftDataPath();

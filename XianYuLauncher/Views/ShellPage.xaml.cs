@@ -26,6 +26,7 @@ public sealed partial class ShellPage : Page
     }
     
     private readonly MaterialService _materialService;
+    private readonly IUiDispatcher _uiDispatcher;
 
     public ShellPage(ShellViewModel viewModel)
     {
@@ -34,6 +35,7 @@ public sealed partial class ShellPage : Page
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
+        _uiDispatcher = App.GetService<IUiDispatcher>();
 
         // 监听导航事件，教程页隐藏侧边栏
         NavigationFrame.Navigated += OnFrameNavigated;
@@ -151,7 +153,7 @@ public sealed partial class ShellPage : Page
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
-                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
@@ -165,7 +167,7 @@ public sealed partial class ShellPage : Page
                         {
                             System.Diagnostics.Debug.WriteLine($"Import via drag-drop failed: {ex}");
                         }
-                    });
+                    }).Observe("ShellPage.DragDrop.ImportModpack");
 
                     e.Handled = true;
                     return;
@@ -183,7 +185,7 @@ public sealed partial class ShellPage : Page
                         var navigationService = App.GetService<Contracts.Services.INavigationService>();
                         navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName);
 
-                        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                        _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                         {
                             try
                             {
@@ -198,7 +200,7 @@ public sealed partial class ShellPage : Page
                             {
                                 System.Diagnostics.Debug.WriteLine($"Forward external-login drop failed: {ex}");
                             }
-                        });
+                        }).Observe("ShellPage.DragDrop.ExternalLogin");
 
                         e.Handled = true;
                         return;
@@ -306,7 +308,7 @@ public sealed partial class ShellPage : Page
 
     private void OnMotionSettingsChanged(object sender, EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() => LoadMotionSettingsAsync());
+        _uiDispatcher.TryEnqueue(() => LoadMotionSettingsAsync());
     }
 
     private Windows.UI.Color ParseMotionColor(string hex)
@@ -333,7 +335,7 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void OnBackgroundChanged(object? sender, BackgroundChangedEventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             ApplyBackground(e.MaterialType, e.BackgroundImagePath);
         });
@@ -530,6 +532,6 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void OnNavigationStyleChanged(object? sender, string style)
     {
-        DispatcherQueue.TryEnqueue(() => ApplyNavigationStyle(style));
+        _uiDispatcher.TryEnqueue(() => ApplyNavigationStyle(style));
     }
 }

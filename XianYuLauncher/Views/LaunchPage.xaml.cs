@@ -29,6 +29,7 @@ public sealed partial class LaunchPage : Page
     }
 
     private readonly HttpClient _httpClient = new HttpClient();
+    private readonly IUiDispatcher _uiDispatcher;
     private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
     private const string AvatarCacheFolder = "AvatarCache";
     private readonly INavigationService _navigationService;
@@ -38,6 +39,7 @@ public sealed partial class LaunchPage : Page
     {
         ViewModel = App.GetService<LaunchViewModel>();
         _navigationService = App.GetService<INavigationService>();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
         
@@ -520,7 +522,7 @@ public sealed partial class LaunchPage : Page
             if (bitmap != null)
             {
                 // 刷新成功，更新UI
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     if (ProfileAvatar != null)
                     {

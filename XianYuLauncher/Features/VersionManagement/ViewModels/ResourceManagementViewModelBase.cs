@@ -36,6 +36,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     protected readonly IVersionManagementResourceContext _context;
     protected readonly INavigationService _navigationService;
     protected readonly IDialogService _dialogService;
+    protected readonly IUiDispatcher _uiDispatcher;
     protected readonly ModrinthService _modrinthService;
     protected readonly CurseForgeService _curseForgeService;
     protected readonly ModInfoService _modInfoService;
@@ -55,7 +56,8 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         IDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService)
+        ModInfoService modInfoService,
+        IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
@@ -63,6 +65,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _modInfoService = modInfoService;
+        _uiDispatcher = uiDispatcher;
     }
 
     partial void OnItemsChanged(ObservableCollection<T> value)
@@ -448,7 +451,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         Dictionary<string, string> latestVersionByFile,
         int generation)
     {
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             if (generation != _updateDetectGeneration) return;
 

@@ -16,6 +16,7 @@ namespace XianYuLauncher.Views
 
         private readonly INavigationService _navigationService;
         private readonly IDialogService _dialogService;
+        private readonly IUiDispatcher _uiDispatcher;
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = "AvatarCache";
         private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
@@ -25,6 +26,7 @@ namespace XianYuLauncher.Views
             ViewModel = App.GetService<CharacterViewModel>();
             _navigationService = App.GetService<INavigationService>();
             _dialogService = App.GetService<IDialogService>();
+            _uiDispatcher = App.GetService<IUiDispatcher>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
@@ -58,7 +60,7 @@ namespace XianYuLauncher.Views
                 // 延迟执行，确保列表已更新
                 _ = Task.Delay(100).ContinueWith(_ =>
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         LoadAllAvatars();
                     });
@@ -78,7 +80,7 @@ namespace XianYuLauncher.Views
                 // 延迟执行，确保列表已更新
                 _ = Task.Delay(100).ContinueWith(_ =>
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         LoadAllAvatars();
                     });
@@ -91,7 +93,7 @@ namespace XianYuLauncher.Views
                 // 延迟执行，确保列表已更新
                 _ = Task.Delay(100).ContinueWith(_ =>
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         LoadAllAvatars();
                     });
@@ -363,7 +365,7 @@ namespace XianYuLauncher.Views
                 if (bitmap != null)
                 {
                     // 刷新成功，更新UI
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         UpdateAvatarInList(profile, bitmap, profileIndex);
                     });

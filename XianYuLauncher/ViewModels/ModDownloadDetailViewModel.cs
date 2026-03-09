@@ -30,6 +30,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IDownloadManager _downloadManager;
         private readonly IDialogService _dialogService;
         private readonly IModpackInstallationService _modpackInstallationService;
+        private readonly IUiDispatcher _uiDispatcher;
 
         [ObservableProperty]
         private string _modId;
@@ -494,7 +495,8 @@ namespace XianYuLauncher.ViewModels
             IDownloadTaskManager downloadTaskManager,
             IDownloadManager downloadManager,
             IDialogService dialogService,
-            IModpackInstallationService modpackInstallationService)
+            IModpackInstallationService modpackInstallationService,
+            IUiDispatcher uiDispatcher)
         {
             _modrinthService = modrinthService;
             _curseForgeService = curseForgeService;
@@ -506,6 +508,7 @@ namespace XianYuLauncher.ViewModels
             _downloadManager = downloadManager;
             _dialogService = dialogService;
             _modpackInstallationService = modpackInstallationService;
+            _uiDispatcher = uiDispatcher;
         }
         
         private readonly ILocalSettingsService _localSettingsService;
@@ -602,7 +605,7 @@ namespace XianYuLauncher.ViewModels
                 try
                 {
                     var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() => AddPublishers(members));
+                    _uiDispatcher.TryEnqueue(() => AddPublishers(members));
                 }
                 catch (Exception ex)
                 {
@@ -1148,7 +1151,7 @@ namespace XianYuLauncher.ViewModels
                             // 每加载一页就更新显示
                             if (!cancellationToken.IsCancellationRequested)
                             {
-                                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     if (!cancellationToken.IsCancellationRequested)
                                     {
@@ -1895,7 +1898,7 @@ namespace XianYuLauncher.ViewModels
                         {
                             // 用户点击了"后台下载"
                             isBackgroundDownload = true;
-                            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 StartBackgroundDownload();
                             });
@@ -2765,7 +2768,7 @@ namespace XianYuLauncher.ViewModels
 
                 var progress = new Progress<ModpackInstallProgress>(p =>
                 {
-                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         InstallProgress = p.Progress;
                         InstallProgressText = p.ProgressText;

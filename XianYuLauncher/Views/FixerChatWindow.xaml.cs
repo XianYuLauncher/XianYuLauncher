@@ -16,6 +16,7 @@ public sealed partial class FixerChatWindow : WindowEx
     private readonly ErrorAnalysisViewModel _viewModel;
     private readonly MaterialService _materialService;
     private readonly IThemeSelectorService _themeSelectorService;
+    private readonly IUiDispatcher _uiDispatcher;
 
     public FixerChatWindow()
     {
@@ -33,6 +34,7 @@ public sealed partial class FixerChatWindow : WindowEx
         _viewModel.IsFixerWindowOpen = true;
         this.Closed += OnWindowClosed;
 
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         // 订阅材质变更事件，实时响应
         _materialService = App.GetService<MaterialService>();
         _materialService.BackgroundChanged += OnBackgroundChanged;
@@ -183,7 +185,7 @@ public sealed partial class FixerChatWindow : WindowEx
 
     private void OnBackgroundChanged(object? sender, BackgroundChangedEventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             ApplySystemBackdrop(e.MaterialType);
             ApplyBackground(e.MaterialType, e.BackgroundImagePath);
@@ -197,7 +199,7 @@ public sealed partial class FixerChatWindow : WindowEx
 
     private void OnMotionSettingsChanged(object? sender, System.EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() => _ = LoadMotionSettingsAsync());
+        _uiDispatcher.TryEnqueue(() => _ = LoadMotionSettingsAsync());
     }
 
     // ---- 工具方法 ----

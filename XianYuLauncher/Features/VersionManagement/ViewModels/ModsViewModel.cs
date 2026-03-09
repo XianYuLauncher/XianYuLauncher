@@ -31,8 +31,9 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         IDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService)
+        ModInfoService modInfoService,
+        IUiDispatcher uiDispatcher)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
     {
     }
 
@@ -957,7 +958,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     {
         try
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 mod.IsLoadingDescription = true;
             });
@@ -966,7 +967,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
 
             if (metadata != null)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _uiDispatcher.TryEnqueue(() =>
                 {
                     mod.Description = metadata.Description;
                     mod.Source = metadata.Source;
@@ -988,7 +989,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         finally
         {
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 mod.IsLoadingDescription = false;
             });
