@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using Windows.Foundation;
 using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Contracts.Services;
@@ -55,6 +56,21 @@ public interface IDialogService
     /// 显示自定义内容的弹窗
     /// </summary>
     Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog);
+
+    /// <summary>
+    /// 显示由服务内部创建的自定义弹窗。
+    /// </summary>
+    Task<ContentDialogResult> ShowCustomDialogAsync(
+        string title,
+        object content,
+        string? primaryButtonText = null,
+        string? secondaryButtonText = null,
+        string? closeButtonText = null,
+        ContentDialogButton defaultButton = ContentDialogButton.None,
+        bool isPrimaryButtonEnabled = true,
+        bool isSecondaryButtonEnabled = true,
+        TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onPrimaryButtonClick = null,
+        TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null);
 
     /// <summary>
     /// 显示带进度的操作弹窗
