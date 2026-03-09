@@ -1,6 +1,7 @@
 using Windows.UI.ViewManagement;
 
 using System.Linq;
+using XianYuLauncher.Contracts.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using XianYuLauncher.Core.Services;
@@ -11,6 +12,7 @@ namespace XianYuLauncher;
 public sealed partial class MainWindow : WindowEx
 {
     private Microsoft.UI.Dispatching.DispatcherQueue dispatcherQueue;
+    private readonly IUiDispatcher _uiDispatcher;
 
     private UISettings settings;
 
@@ -24,6 +26,7 @@ public sealed partial class MainWindow : WindowEx
 
         // Theme change code picked from https://github.com/microsoft/WinUI-Gallery/pull/1239
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         settings = new UISettings();
         settings.ColorValuesChanged += Settings_ColorValuesChanged; // cannot use FrameworkElement.ActualThemeChanged event
 
@@ -67,7 +70,7 @@ public sealed partial class MainWindow : WindowEx
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
 
                     // Call import on the viewmodel (run on UI dispatcher)
-                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
+                    _ = _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {

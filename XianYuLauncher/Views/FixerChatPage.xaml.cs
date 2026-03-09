@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Input;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Windows.System;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
@@ -13,6 +14,7 @@ namespace XianYuLauncher.Views;
 public sealed partial class FixerChatPage : Page
 {
     public ErrorAnalysisViewModel ViewModel { get; }
+    private readonly IUiDispatcher _uiDispatcher;
 
     private bool _isChatScrollPending;
     private bool _userIsScrollingChat;
@@ -22,6 +24,7 @@ public sealed partial class FixerChatPage : Page
     public FixerChatPage()
     {
         ViewModel = App.GetService<ErrorAnalysisViewModel>();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         this.InitializeComponent();
 
         ViewModel.ChatMessages.CollectionChanged += ChatMessages_CollectionChanged;
@@ -109,7 +112,7 @@ public sealed partial class FixerChatPage : Page
     {
         Task.Delay(50).ContinueWith(_ =>
         {
-            this.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 try
                 {

@@ -19,6 +19,7 @@ public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
     private readonly Dictionary<string, BitmapImage?> _versionIconImageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Task<BitmapImage?>> _versionIconProcessingTasks = new(StringComparer.OrdinalIgnoreCase);
     private int _iconWarmupRequestId;
@@ -95,6 +96,7 @@ public sealed partial class VersionListPage : Page
         this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
         _dialogService = App.GetService<IDialogService>();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         
         // 添加ItemClick事件处理
@@ -325,7 +327,7 @@ public sealed partial class VersionListPage : Page
     {
         if (!_isCompleteVersionDialogOpen) return;
 
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
             if (!string.IsNullOrEmpty(e.CurrentFile))
@@ -344,7 +346,7 @@ public sealed partial class VersionListPage : Page
     /// </summary>
     private void OnCompleteVersionCompleted(object? sender, (bool Success, string Message) e)
     {
-        DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             if (e.Success)
             {
@@ -678,7 +680,7 @@ public sealed partial class VersionListPage : Page
                     bool isOfflineMode = viewModel.IsOfflineMode;
                     bool isServerOnly = viewModel.IsServerOnly;
                     
-                    DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         System.Diagnostics.Debug.WriteLine($"导出模式: {(isOfflineMode ? "非联网模式" : "联网模式")}{(isServerOnly ? " + 仅导出服务端" : "")}");
                     });
@@ -705,7 +707,7 @@ public sealed partial class VersionListPage : Page
                             return !clientOnlyItems.Contains(itemName) && !option.StartsWith("screenshots", StringComparison.OrdinalIgnoreCase) && !option.StartsWith("journeymap", StringComparison.OrdinalIgnoreCase);
                         }).ToList();
                         
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine($"仅导出服务端模式，过滤前选项数量: {selectedOptions.Count}，过滤后选项数量: {filteredOptions.Count}");
                             System.Diagnostics.Debug.WriteLine("过滤掉的客户端特定项:");
@@ -721,7 +723,7 @@ public sealed partial class VersionListPage : Page
                     bool shouldCheckModrinth = (!isOfflineMode || isServerOnly);
                     if (shouldCheckModrinth && viewModel.SelectedVersion != null && !_isExportCancelled)
                     {
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取文件信息...");
                             UpdateLoadingDialog("正在获取Modrinth资源...", 10.0);
@@ -729,7 +731,7 @@ public sealed partial class VersionListPage : Page
                         
                         fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, filteredOptions);
                         
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {fileResults.Count} 个匹配结果");
                         });
@@ -742,7 +744,7 @@ public sealed partial class VersionListPage : Page
                             var filesToRemove = new List<string>();
                             var serverUnsupportedFiles = new HashSet<string>(); // 服务端不支持的文件列表
                             
-                            DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 System.Diagnostics.Debug.WriteLine("开始过滤服务端不支持的文件...");
                                 UpdateLoadingDialog("正在过滤服务端不支持的文件...", 30.0);
@@ -769,7 +771,7 @@ public sealed partial class VersionListPage : Page
                                         {
                                             string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
                                             
-                                            DispatcherQueue.TryEnqueue(() =>
+                                            _uiDispatcher.TryEnqueue(() =>
                                             {
                                                 System.Diagnostics.Debug.WriteLine($"文件: {filePath}");
                                                 System.Diagnostics.Debug.WriteLine($"  ProjectId: {modrinthVersion.ProjectId}");
@@ -781,7 +783,7 @@ public sealed partial class VersionListPage : Page
                                             {
                                                 filesToRemove.Add(filePath);
                                                 serverUnsupportedFiles.Add(filePath); // 添加到服务端不支持的文件列表
-                                                DispatcherQueue.TryEnqueue(() =>
+                                                _uiDispatcher.TryEnqueue(() =>
                                                 {
                                                     System.Diagnostics.Debug.WriteLine($"  标记为移除：服务端不支持");
                                                 });
@@ -790,7 +792,7 @@ public sealed partial class VersionListPage : Page
                                     }
                                     catch (Exception ex)
                                     {
-                                        DispatcherQueue.TryEnqueue(() =>
+                                        _uiDispatcher.TryEnqueue(() =>
                                         {
                                             System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
                                         });
@@ -801,7 +803,7 @@ public sealed partial class VersionListPage : Page
                             // 移除服务端不支持的文件
                             if (filesToRemove.Count > 0)
                             {
-                                DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine($"移除 {filesToRemove.Count} 个服务端不支持的文件");
                                     foreach (string filePath in filesToRemove)
@@ -815,7 +817,7 @@ public sealed partial class VersionListPage : Page
                                     fileResults.Remove(filePath);
                                 }
                                 
-                                DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine($"过滤后剩余 {fileResults.Count} 个文件");
                                 });
@@ -824,7 +826,7 @@ public sealed partial class VersionListPage : Page
                             // 仅导出服务端模式下，从过滤选项中移除服务端不支持的文件
                             filteredOptions = filteredOptions.Where(option => !serverUnsupportedFiles.Contains(option)).ToList();
                             
-                            DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 System.Diagnostics.Debug.WriteLine($"过滤后剩余的导出选项数量: {filteredOptions.Count}");
                             });
@@ -834,7 +836,7 @@ public sealed partial class VersionListPage : Page
                     // 非联网模式且不导出服务端时，直接跳转到准备保存整合包
                     if (isOfflineMode && !isServerOnly)
                     {
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过Modrinth搜索");
                             UpdateLoadingDialog("准备保存整合包...", 20.0);
@@ -843,7 +845,7 @@ public sealed partial class VersionListPage : Page
                     
                     if (_isExportCancelled)
                     {
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine("导出已取消");
                             HideLoadingDialog();
@@ -851,7 +853,7 @@ public sealed partial class VersionListPage : Page
                         return;
                     }
                     
-                    DispatcherQueue.TryEnqueue(() =>
+                    _uiDispatcher.TryEnqueue(() =>
                     {
                         UpdateLoadingDialog("准备保存整合包...", 20.0);
                     });
@@ -860,7 +862,7 @@ public sealed partial class VersionListPage : Page
                     StorageFile file = null;
                     var filePickerTask = new TaskCompletionSource<StorageFile>();
                     
-                    DispatcherQueue.TryEnqueue(async () =>
+                    _ = _uiDispatcher.EnqueueAsync(async () =>
                     {
                         try
                         {
@@ -895,7 +897,7 @@ public sealed partial class VersionListPage : Page
                     
                     if (file != null && !_isExportCancelled)
                     {
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             UpdateLoadingDialog("正在创建整合包...", 30.0);
                         });
@@ -1011,7 +1013,7 @@ public sealed partial class VersionListPage : Page
                             string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(indexJson, Newtonsoft.Json.Formatting.Indented);
                             File.WriteAllText(indexJsonPath, jsonContent);
                             
-                            DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 UpdateLoadingDialog("正在处理文件...", 40.0);
                             });
@@ -1050,7 +1052,7 @@ public sealed partial class VersionListPage : Page
                                     }
                                     catch (Exception ex)
                                     {
-                                        DispatcherQueue.TryEnqueue(() =>
+                                        _uiDispatcher.TryEnqueue(() =>
                                         {
                                             System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
                                         });
@@ -1070,7 +1072,7 @@ public sealed partial class VersionListPage : Page
                                 // 检查是否为服务端不支持的文件，如果是则跳过
                                 if (isServerOnly && serverUnsupportedFiles.Contains(option))
                                 {
-                                    DispatcherQueue.TryEnqueue(() =>
+                                    _uiDispatcher.TryEnqueue(() =>
                                     {
                                         System.Diagnostics.Debug.WriteLine($"跳过服务端不支持的文件: {option}");
                                     });
@@ -1122,7 +1124,7 @@ public sealed partial class VersionListPage : Page
                             
                             if (_isExportCancelled)
                             {
-                                DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine("导出已取消");
                                     HideLoadingDialog();
@@ -1144,7 +1146,7 @@ public sealed partial class VersionListPage : Page
                             
                             if (_isExportCancelled)
                             {
-                                DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine("导出已取消");
                                     HideLoadingDialog();
@@ -1152,7 +1154,7 @@ public sealed partial class VersionListPage : Page
                                 return;
                             }
                             
-                            DispatcherQueue.TryEnqueue(() =>
+                            _uiDispatcher.TryEnqueue(() =>
                             {
                                 UpdateLoadingDialog("正在压缩整合包...", 70.0);
                             });
@@ -1163,7 +1165,7 @@ public sealed partial class VersionListPage : Page
                             {
                                 if (_isExportCancelled)
                                 {
-                                    DispatcherQueue.TryEnqueue(() =>
+                                    _uiDispatcher.TryEnqueue(() =>
                                     {
                                         HideLoadingDialog();
                                     });
@@ -1179,7 +1181,7 @@ public sealed partial class VersionListPage : Page
                             
                             if (!_isExportCancelled)
                             {
-                                DispatcherQueue.TryEnqueue(async () =>
+                                _ = _uiDispatcher.EnqueueAsync(async () =>
                                 {
                                     UpdateLoadingDialog("导出完成！", 100.0);
                                     System.Diagnostics.Debug.WriteLine($"整合包导出成功：{file.Path}");
@@ -1191,7 +1193,7 @@ public sealed partial class VersionListPage : Page
                             }
                             else
                             {
-                                DispatcherQueue.TryEnqueue(() =>
+                                _uiDispatcher.TryEnqueue(() =>
                                 {
                                     System.Diagnostics.Debug.WriteLine("导出已取消");
                                     // 如果已取消，删除不完整的文件
@@ -1215,7 +1217,7 @@ public sealed partial class VersionListPage : Page
                     else
                     {
                         // 用户取消了文件保存对话框
-                        DispatcherQueue.TryEnqueue(() =>
+                        _uiDispatcher.TryEnqueue(() =>
                         {
                             HideLoadingDialog();
                         });
@@ -1223,7 +1225,7 @@ public sealed partial class VersionListPage : Page
                 }
                 catch (Exception ex)
                 {
-                    DispatcherQueue.TryEnqueue(async () =>
+                    _ = _uiDispatcher.EnqueueAsync(async () =>
                     {
                         System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
                         UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);

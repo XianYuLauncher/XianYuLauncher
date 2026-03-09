@@ -24,12 +24,14 @@ public sealed partial class SettingsPage : Page
     // 自动测速服务（用于事件驱动刷新缓存）
     private readonly IAutoSpeedTestService _autoSpeedTestService;
     private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
 
     public SettingsPage()
     {
         ViewModel = App.GetService<SettingsViewModel>();
         _autoSpeedTestService = App.GetService<IAutoSpeedTestService>();
         _dialogService = App.GetService<IDialogService>();
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         
         // 页面加载时刷新自定义源列表
@@ -88,9 +90,9 @@ public sealed partial class SettingsPage : Page
         {
             if (ViewModel?.AutoSelectFastestSource == true)
             {
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _ = _uiDispatcher.EnqueueAsync(async () =>
                 {
-                    _ = RefreshAutoSpeedTestStateAsync();
+                    await RefreshAutoSpeedTestStateAsync();
                 });
             }
         }

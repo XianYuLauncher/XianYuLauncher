@@ -33,6 +33,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly ITranslationService _translationService;
     private readonly IDialogService _dialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IUiDispatcher _uiDispatcher;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -918,7 +919,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private void UpdateFavoritesProgress(int completed, int total)
     {
         UpdateFavoritesOverallProgress();
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             FavoritesDownloadStatus = completed >= total
                 ? $"已完成 {completed}/{total}"
@@ -949,7 +950,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         double overall = ((_favoritesCompletedItems * 100.0) + inFlightSum) / total;
         overall = Math.Clamp(overall, 0, 100);
 
-        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+        _uiDispatcher.TryEnqueue(() =>
         {
             FavoritesDownloadProgress = overall;
             FavoritesDownloadProgressText = $"{overall:F1}%";
@@ -1659,7 +1660,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         CurseForgeCacheService curseForgeCacheService,
         ITranslationService translationService,
         IDialogService dialogService,
-        IDownloadTaskManager downloadTaskManager)
+        IDownloadTaskManager downloadTaskManager,
+        IUiDispatcher uiDispatcher)
     {
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
@@ -1674,6 +1676,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _translationService = translationService;
         _dialogService = dialogService;
         _downloadTaskManager = downloadTaskManager;
+        _uiDispatcher = uiDispatcher;
 
         // Load saved favorites
         foreach (var item in _favoritesService.Load())

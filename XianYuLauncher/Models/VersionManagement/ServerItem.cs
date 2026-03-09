@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
+using XianYuLauncher.Contracts.Services;
 using System;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -65,7 +66,8 @@ public partial class ServerItem : ObservableObject
             var bytes = Convert.FromBase64String(base64Data);
             
             // 在UI线程创建BitmapImage
-            App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+            var uiDispatcher = App.GetService<IUiDispatcher>();
+            _ = uiDispatcher.EnqueueAsync(async () =>
             {
                 using var stream = new InMemoryRandomAccessStream();
                 await stream.WriteAsync(bytes.AsBuffer());

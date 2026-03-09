@@ -2,6 +2,7 @@ using System.Numerics;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
+using XianYuLauncher.Contracts.Services;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
 
@@ -14,6 +15,7 @@ public sealed partial class MotionBackgroundControl : UserControl
     private readonly Random _random = new Random();
     private readonly List<Visual> _orbs = new List<Visual>();
     private DispatcherTimer _resizeTimer;
+    private IUiDispatcher _uiDispatcher = null!;
 
     #region Dependency Properties
 
@@ -96,7 +98,7 @@ public sealed partial class MotionBackgroundControl : UserControl
         
         // 尝试首次启动动画 (如果窗口已有尺寸)
         // 使用 DispatcherQueue 确保在布局更新后执行
-        DispatcherQueue.TryEnqueue(() => 
+        _uiDispatcher.TryEnqueue(() => 
         {
             if (ActualWidth > 0 && ActualHeight > 0)
             {

@@ -18,6 +18,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
     private readonly ITranslationService? _translationService;
     private readonly CurseForgeService _curseForgeService;
     private readonly ModInfoService _modInfoService;
+    private readonly IUiDispatcher _uiDispatcher;
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _dataPacksLoaded = false;
     
@@ -136,12 +137,14 @@ public partial class WorldManagementViewModel : ObservableRecipient
         IFileService fileService,
         INavigationService navigationService,
         CurseForgeService curseForgeService,
-        ModInfoService modInfoService)
+        ModInfoService modInfoService,
+        IUiDispatcher uiDispatcher)
     {
         _fileService = fileService;
         _navigationService = navigationService;
         _curseForgeService = curseForgeService;
         _modInfoService = modInfoService;
+        _uiDispatcher = uiDispatcher;
         
         // 尝试获取翻译服务（可选）
         try
@@ -363,7 +366,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程完成，准备更新 UI");
             
             // 在 UI 线程更新所有属性
-            App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+            _uiDispatcher.TryEnqueue(() =>
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 开始更新属性");
                 

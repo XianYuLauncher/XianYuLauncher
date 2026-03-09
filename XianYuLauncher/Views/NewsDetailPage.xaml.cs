@@ -13,9 +13,11 @@ namespace XianYuLauncher.Views;
 public sealed partial class NewsDetailPage : Page
 {
     public NewsDetailViewModel ViewModel { get; } = new NewsDetailViewModel();
+    private readonly IUiDispatcher _uiDispatcher;
 
     public NewsDetailPage()
     {
+        _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
@@ -50,13 +52,13 @@ public sealed partial class NewsDetailPage : Page
             bitmap.ImageOpened += (s, e) => 
             {
                 // 确保在 UI 线程执行
-                if (DispatcherQueue.HasThreadAccess)
+                if (_uiDispatcher.HasThreadAccess)
                 {
                     BlurBorder.Visibility = Visibility.Visible;
                 }
                 else
                 {
-                    DispatcherQueue.TryEnqueue(() => BlurBorder.Visibility = Visibility.Visible);
+                    _uiDispatcher.TryEnqueue(() => BlurBorder.Visibility = Visibility.Visible);
                 }
             };
 
