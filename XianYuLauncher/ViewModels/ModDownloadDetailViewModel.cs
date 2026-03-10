@@ -490,6 +490,10 @@ namespace XianYuLauncher.ViewModels
 
         private void InitializeDownloadTeachingTip()
         {
+            // TODO(mod-download): 后续更稳的做法是把“下载会话 UI 初始化”从主资源下载启动中彻底拆开，
+            // 由依赖下载和主资源下载共用同一个开始入口，避免 TeachingTip 显示时机再次因时序调整而回归。
+            _downloadTaskManager.IsTeachingTipEnabled = true;
+
             var shellViewModel = App.GetService<ShellViewModel>();
             if (shellViewModel == null)
             {
@@ -1804,6 +1808,8 @@ namespace XianYuLauncher.ViewModels
                             });
                         }
                     }, TaskScheduler.Default);
+
+                    InitializeDownloadTeachingTip();
                     
                     // 先下载依赖
                     await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, targetVersion);
@@ -2481,6 +2487,8 @@ namespace XianYuLauncher.ViewModels
                 
                     try
                     {
+                        InitializeDownloadTeachingTip();
+
                         // 先下载依赖
                         if (!string.IsNullOrEmpty(dependenciesTargetDir))
                         {
@@ -3336,6 +3344,8 @@ namespace XianYuLauncher.ViewModels
                 
                 try
                 {
+                    InitializeDownloadTeachingTip();
+
                     // 先下载依赖
                     // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
                     // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
