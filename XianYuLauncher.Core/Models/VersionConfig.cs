@@ -66,6 +66,11 @@ public class VersionConfig
     /// 自定义 JVM 参数
     /// </summary>
     public string? CustomJvmArguments { get; set; }
+
+    /// <summary>
+    /// 垃圾回收器模式（Auto/G1GC/ZGC/ParallelGC/SerialGC）
+    /// </summary>
+    public string GarbageCollectorMode { get; set; } = Helpers.GarbageCollectorModeHelper.Auto;
     
     /// <summary>
     /// 是否使用全局Java设置（兼容旧版，等同于 !OverrideJava）

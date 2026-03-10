@@ -2925,6 +2925,21 @@
   <data name="Settings_GlobalCustomJvmArguments.Description" xml:space="preserve">
     <value>高级选项，每行一个参数或空格分隔。注意：重复的 JVM 参数会自动去除</value>
   </data>
+  <data name="Settings_GlobalGarbageCollectorMode.Header" xml:space="preserve">
+    <value>全局垃圾回收器</value>
+  </data>
+  <data name="Settings_GlobalGarbageCollectorMode.Description" xml:space="preserve">
+    <value>设置所有版本默认使用的垃圾回收器模式</value>
+  </data>
+  <data name="Settings_VersionGarbageCollectorMode.Header" xml:space="preserve">
+    <value>垃圾回收器</value>
+  </data>
+  <data name="Settings_VersionGarbageCollectorMode.Description" xml:space="preserve">
+    <value>设置此版本使用的垃圾回收器模式</value>
+  </data>
+  <data name="GarbageCollectorMode_Auto" xml:space="preserve">
+    <value>自动</value>
+  </data>
   <data name="VersionManagement_Vanilla" xml:space="preserve">
     <value>原版</value>
   </data>

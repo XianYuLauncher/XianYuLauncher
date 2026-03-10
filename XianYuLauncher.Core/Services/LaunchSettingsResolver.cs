@@ -1,4 +1,5 @@
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -18,6 +19,7 @@ public class LaunchSettingsResolver : ILaunchSettingsResolver
     private const string GlobalWindowWidthKey = "GlobalWindowWidth";
     private const string GlobalWindowHeightKey = "GlobalWindowHeight";
     private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
+    private const string GlobalGarbageCollectorModeKey = "GlobalGarbageCollectorMode";
 
     public LaunchSettingsResolver(
         ILocalSettingsService localSettingsService,
@@ -81,11 +83,14 @@ public class LaunchSettingsResolver : ILaunchSettingsResolver
         {
             // 完全跟随全局
             result.CustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
+            result.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(
+                await _localSettingsService.ReadSettingAsync<string>(GlobalGarbageCollectorModeKey));
         }
         else
         {
             // 版本自定义
             result.CustomJvmArguments = versionConfig.CustomJvmArguments ?? string.Empty;
+            result.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(versionConfig.GarbageCollectorMode);
         }
 
         return result;
