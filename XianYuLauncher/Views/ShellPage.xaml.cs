@@ -9,6 +9,7 @@ using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using System.Linq;
+using Serilog;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
@@ -68,6 +69,28 @@ public sealed partial class ShellPage : Page
         
         // 加载导航栏风格设置
         LoadNavigationStyleAsync();
+    }
+
+    public void FocusContentAfterProtocolNavigation()
+    {
+        try
+        {
+            if (NavigationFrame.Content is FrameworkElement contentElement
+                && contentElement.Focus(FocusState.Programmatic))
+            {
+                Log.Information("[Protocol.Navigate] Focus moved to content element.");
+                return;
+            }
+
+            if (NavigationFrame.Focus(FocusState.Programmatic))
+            {
+                Log.Information("[Protocol.Navigate] Focus moved to navigation frame.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Protocol.Navigate] Focus move failed.");
+        }
     }
 
     private void Shell_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)

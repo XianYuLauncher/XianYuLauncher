@@ -2,6 +2,8 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Navigation;
+using Serilog;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
@@ -106,6 +108,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// <param name="parameter">导航参数</param>
     public void OnNavigatedTo(object parameter)
     {
+        ApplyProtocolNavigationParameter(parameter);
+
         // 直接使用Dispatcher延迟执行，确保TabView已经初始化完成
         _uiDispatcher.TryEnqueue(() =>
         {
@@ -125,6 +129,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             }
         });
     }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        OnNavigatedTo(e.Parameter);
+    }
     
     /// <summary>
     /// 从页面导航离开时调用
@@ -132,6 +142,64 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     public void OnNavigatedFrom()
     {
         // 清理资源
+    }
+
+    private void ApplyProtocolNavigationParameter(object parameter)
+    {
+        if (!TryGetStringParameter(parameter, "tab", out var tab)
+            || !TryMapTabToIndex(tab, out var tabIndex))
+        {
+            if (parameter is not null)
+            {
+                Log.Warning("[Protocol.ResourceDownload] parameter found but tab is missing/invalid.");
+            }
+
+            return;
+        }
+
+        Log.Information("[Protocol.ResourceDownload] Apply tab='{Tab}', index={Index}.", tab, tabIndex);
+        ViewModel.SelectedTabIndex = tabIndex;
+        TargetTabIndex = tabIndex;
+    }
+
+    private static bool TryGetStringParameter(object parameter, string key, out string value)
+    {
+        value = string.Empty;
+
+        if (parameter is IReadOnlyDictionary<string, string> readOnlyMap
+            && readOnlyMap.TryGetValue(key, out var readOnlyValue)
+            && !string.IsNullOrWhiteSpace(readOnlyValue))
+        {
+            value = readOnlyValue;
+            return true;
+        }
+
+        if (parameter is IDictionary<string, string> map
+            && map.TryGetValue(key, out var mapValue)
+            && !string.IsNullOrWhiteSpace(mapValue))
+        {
+            value = mapValue;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryMapTabToIndex(string tab, out int index)
+    {
+        index = tab.Trim().ToLowerInvariant() switch
+        {
+            "version" or "versions" => 0,
+            "mod" or "mods" => 1,
+            "resourcepack" or "resourcepacks" or "resource-pack" => 2,
+            "shader" or "shaders" or "shaderpack" or "shaderpacks" => 3,
+            "modpack" or "modpacks" => 4,
+            "datapack" or "datapacks" => 5,
+            "world" or "worlds" => 6,
+            _ => -1,
+        };
+
+        return index >= 0;
     }
 
     private async void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
