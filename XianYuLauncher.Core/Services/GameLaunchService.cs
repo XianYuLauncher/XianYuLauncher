@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -476,6 +478,16 @@ public class GameLaunchService : IGameLaunchService
         {
             args.Add(gcArgument);
         }
+        else if (string.Equals(effectiveSettings.GarbageCollectorMode, GarbageCollectorModeHelper.Auto, StringComparison.OrdinalIgnoreCase))
+        {
+            // TODO: 后续重构时将 Auto GC 解析迁移到独立服务（例如 IDefaultUserJvmResolver），减少 GameLaunchService 职责。
+            // 26.1+ 会把推荐 GC 放在 default-user-jvm（带 rules）里，Auto 模式应沿用该推荐值
+            var autoGcArgument = ResolveAutoGcArgument(versionInfo.Arguments?.DefaultUserJvm);
+            if (!string.IsNullOrEmpty(autoGcArgument))
+            {
+                args.Add(autoGcArgument);
+            }
+        }
 
         // 基础 JVM 参数
         args.Add("-XX:-UseAdaptiveSizePolicy");
@@ -558,6 +570,221 @@ public class GameLaunchService : IGameLaunchService
         args.Add(_windowHeight.ToString());
         
         return args;
+    }
+
+    // TODO: 后续将 default-user-jvm 规则解析与环境匹配（os/arch/versionRange）整体抽离为可复用组件，并补充独立单元测试。
+    private static string? ResolveAutoGcArgument(List<object>? defaultUserJvm)
+    {
+        if (defaultUserJvm == null || defaultUserJvm.Count == 0)
+        {
+            return null;
+        }
+
+        foreach (var jvmArg in ExpandJvmArgumentEntries(defaultUserJvm))
+        {
+            if (IsGcArgument(jvmArg))
+            {
+                return jvmArg;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> ExpandJvmArgumentEntries(IEnumerable<object> entries)
+    {
+        foreach (var entry in entries)
+        {
+            if (entry is string str)
+            {
+                yield return str;
+                continue;
+            }
+
+            if (entry is not JObject obj)
+            {
+                continue;
+            }
+
+            if (!ShouldApplyRuleObject(obj["rules"] as JArray))
+            {
+                continue;
+            }
+
+            var valueToken = obj["value"];
+            if (valueToken == null)
+            {
+                continue;
+            }
+
+            if (valueToken.Type == JTokenType.String)
+            {
+                var value = valueToken.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    yield return value;
+                }
+                continue;
+            }
+
+            if (valueToken is JArray valueArray)
+            {
+                foreach (var token in valueArray)
+                {
+                    if (token.Type != JTokenType.String)
+                    {
+                        continue;
+                    }
+
+                    var value = token.ToString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        yield return value;
+                    }
+                }
+            }
+        }
+    }
+
+    private static bool IsGcArgument(string arg)
+    {
+        return arg.Contains("UseG1GC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseZGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseParallelGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseSerialGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseConcMarkSweepGC", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldApplyRuleObject(JArray? rules)
+    {
+        if (rules == null || rules.Count == 0)
+        {
+            return true;
+        }
+
+        bool allowed = false;
+        foreach (var ruleToken in rules)
+        {
+            if (ruleToken is not JObject rule)
+            {
+                continue;
+            }
+
+            if (!DoesRuleMatchCurrentEnvironment(rule))
+            {
+                continue;
+            }
+
+            var action = rule["action"]?.ToString();
+            if (string.Equals(action, "allow", StringComparison.OrdinalIgnoreCase))
+            {
+                allowed = true;
+            }
+            else if (string.Equals(action, "disallow", StringComparison.OrdinalIgnoreCase))
+            {
+                allowed = false;
+            }
+        }
+
+        return allowed;
+    }
+
+    private static bool DoesRuleMatchCurrentEnvironment(JObject rule)
+    {
+        if (rule["features"] is JObject)
+        {
+            // 启动器尚未建立 feature 上下文，这类规则不用于 default-user-jvm GC 决策
+            return false;
+        }
+
+        if (rule["os"] is not JObject os)
+        {
+            return true;
+        }
+
+        if (os["name"] is JValue nameValue)
+        {
+            var osName = nameValue.ToString();
+            if (!IsOsNameMatch(osName))
+            {
+                return false;
+            }
+        }
+
+        if (os["arch"] is JValue archValue)
+        {
+            var arch = archValue.ToString();
+            if (!IsArchMatch(arch))
+            {
+                return false;
+            }
+        }
+
+        if (os["versionRange"] is JObject versionRange && !IsVersionRangeMatch(versionRange))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsOsNameMatch(string? osName)
+    {
+        if (string.IsNullOrWhiteSpace(osName))
+        {
+            return true;
+        }
+
+        return osName.ToLowerInvariant() switch
+        {
+            "windows" => OperatingSystem.IsWindows(),
+            "osx" => OperatingSystem.IsMacOS(),
+            "linux" => OperatingSystem.IsLinux(),
+            _ => false
+        };
+    }
+
+    private static bool IsArchMatch(string? arch)
+    {
+        if (string.IsNullOrWhiteSpace(arch))
+        {
+            return true;
+        }
+
+        return arch.ToLowerInvariant() switch
+        {
+            "x86" => RuntimeInformation.OSArchitecture == Architecture.X86,
+            "x86_64" => RuntimeInformation.OSArchitecture == Architecture.X64,
+            "arm64" => RuntimeInformation.OSArchitecture == Architecture.Arm64,
+            _ => false
+        };
+    }
+
+    private static bool IsVersionRangeMatch(JObject versionRange)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return true;
+        }
+
+        var current = Environment.OSVersion.Version;
+        if (versionRange["min"] is JValue minValue && Version.TryParse(minValue.ToString(), out var minVersion))
+        {
+            if (current < minVersion)
+            {
+                return false;
+            }
+        }
+
+        if (versionRange["max"] is JValue maxValue && Version.TryParse(maxValue.ToString(), out var maxVersion))
+        {
+            if (current > maxVersion)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

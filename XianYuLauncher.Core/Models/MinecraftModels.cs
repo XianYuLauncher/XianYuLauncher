@@ -221,6 +221,9 @@ public class Arguments
     
     [JsonProperty("jvm")]
     public List<object>? Jvm { get; set; }
+
+    [JsonProperty("default-user-jvm")]
+    public List<object>? DefaultUserJvm { get; set; }
 }
 
 /// <summary>
