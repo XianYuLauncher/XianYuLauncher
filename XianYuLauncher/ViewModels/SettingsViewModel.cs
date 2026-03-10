@@ -887,6 +887,17 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     [ObservableProperty]
     private string _globalCustomJvmArguments = string.Empty;
+
+    /// <summary>
+    /// 全局：垃圾回收器模式
+    /// </summary>
+    [ObservableProperty]
+    private string _globalGarbageCollectorMode = GarbageCollectorModeHelper.Auto;
+
+    /// <summary>
+    /// 垃圾回收器模式选项
+    /// </summary>
+    public List<string> GarbageCollectorModes => GarbageCollectorModeHelper.AllModes.ToList();
     
     /// <summary>
     /// 全局：窗口宽度
@@ -1557,6 +1568,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         GlobalInitialHeapMemory = state.InitialHeapMemory;
         GlobalMaximumHeapMemory = state.MaximumHeapMemory;
         GlobalCustomJvmArguments = state.CustomJvmArguments;
+        GlobalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(state.GarbageCollectorMode);
         GlobalWindowWidth = state.WindowWidth;
         GlobalWindowHeight = state.WindowHeight;
     }
@@ -1579,6 +1591,18 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     partial void OnGlobalCustomJvmArgumentsChanged(string value)
     {
         QueueSettingWrite("GlobalCustomJvmArguments", () => _gameSettingsDomainService.SaveGlobalCustomJvmArgumentsAsync(value));
+    }
+
+    partial void OnGlobalGarbageCollectorModeChanged(string value)
+    {
+        var normalized = GarbageCollectorModeHelper.Normalize(value);
+        if (!string.Equals(normalized, value, StringComparison.Ordinal))
+        {
+            GlobalGarbageCollectorMode = normalized;
+            return;
+        }
+
+        QueueSettingWrite("GlobalGarbageCollectorMode", () => _gameSettingsDomainService.SaveGlobalGarbageCollectorModeAsync(normalized));
     }
     
     partial void OnGlobalWindowWidthChanged(int value)

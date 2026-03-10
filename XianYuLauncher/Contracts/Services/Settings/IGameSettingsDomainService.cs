@@ -16,6 +16,8 @@ public sealed class GameGlobalLaunchSettingsState
 
 	public string CustomJvmArguments { get; init; } = string.Empty;
 
+	public string GarbageCollectorMode { get; init; } = XianYuLauncher.Core.Helpers.GarbageCollectorModeHelper.Auto;
+
 	public int WindowWidth { get; init; } = 1280;
 
 	public int WindowHeight { get; init; } = 720;
@@ -56,6 +58,8 @@ public interface IGameSettingsDomainService
 	Task SaveGlobalMaximumHeapMemoryAsync(double value);
 
 	Task SaveGlobalCustomJvmArgumentsAsync(string value);
+
+	Task SaveGlobalGarbageCollectorModeAsync(string value);
 
 	Task SaveGlobalWindowWidthAsync(int value);
 

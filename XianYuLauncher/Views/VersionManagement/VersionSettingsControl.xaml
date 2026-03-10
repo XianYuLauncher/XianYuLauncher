@@ -250,6 +250,13 @@
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
                 </controls:SettingsExpander>
+
+                <controls:SettingsCard x:Uid="Settings_VersionGarbageCollectorMode" Header="垃圾回收器" Description="设置此版本使用的垃圾回收器模式"
+                                       IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <ComboBox ItemsSource="{Binding GarbageCollectorModes, Mode=OneWay}"
+                              SelectedItem="{Binding GarbageCollectorMode, Mode=TwoWay}"
+                              MinWidth="200" />
+                </controls:SettingsCard>
                 
                 <!-- 启动分辨率 -->
                 <controls:SettingsExpander x:Uid="Settings_Resolution" Header="启动分辨率" Description="设置游戏启动时的窗口大小"

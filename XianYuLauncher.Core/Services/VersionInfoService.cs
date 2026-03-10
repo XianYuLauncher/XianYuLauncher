@@ -508,6 +508,7 @@ public class VersionInfoService : IVersionInfoService
                     InitialHeapMemory = config.InitialHeapMemory,
                     MaximumHeapMemory = config.MaximumHeapMemory,
                     JavaPath = config.JavaPath,
+                    GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(config.GarbageCollectorMode ?? existingConfig?.GarbageCollectorMode),
                     UseGlobalJavaSetting = config.UseGlobalJavaSetting,
                     WindowWidth = config.WindowWidth,
                     WindowHeight = config.WindowHeight,

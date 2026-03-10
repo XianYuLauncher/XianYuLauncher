@@ -470,8 +470,14 @@ public class GameLaunchService : IGameLaunchService
             args.Add("-Dstdout.encoding=UTF-8");
         }
         
+        // 垃圾回收器模式（Auto 模式不额外注入，遵循版本参数/用户自定义）
+        var gcArgument = GarbageCollectorModeHelper.ToJvmArgument(effectiveSettings.GarbageCollectorMode);
+        if (!string.IsNullOrEmpty(gcArgument))
+        {
+            args.Add(gcArgument);
+        }
+
         // 基础 JVM 参数
-        args.Add("-XX:+UseG1GC");
         args.Add("-XX:-UseAdaptiveSizePolicy");
         args.Add("-XX:-OmitStackTraceInFastThrow");
         args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
