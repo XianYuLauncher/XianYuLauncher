@@ -472,21 +472,11 @@ public class GameLaunchService : IGameLaunchService
             args.Add("-Dstdout.encoding=UTF-8");
         }
         
-        // 垃圾回收器模式（Auto 模式不额外注入，遵循版本参数/用户自定义）
-        var gcArgument = GarbageCollectorModeHelper.ToJvmArgument(effectiveSettings.GarbageCollectorMode);
-        if (!string.IsNullOrEmpty(gcArgument))
+        // 26.1+ 会在 default-user-jvm（带 rules）下给出默认 JVM 参数，先完整并入，最后统一去重。
+        var defaultUserJvmArgs = ResolveDefaultUserJvmArguments(versionInfo.Arguments?.DefaultUserJvm);
+        if (defaultUserJvmArgs.Count > 0)
         {
-            args.Add(gcArgument);
-        }
-        else if (string.Equals(effectiveSettings.GarbageCollectorMode, GarbageCollectorModeHelper.Auto, StringComparison.OrdinalIgnoreCase))
-        {
-            // TODO: 后续重构时将 Auto GC 解析迁移到独立服务（例如 IDefaultUserJvmResolver），减少 GameLaunchService 职责。
-            // 26.1+ 会把推荐 GC 放在 default-user-jvm（带 rules）里，Auto 模式应沿用该推荐值
-            var autoGcArgument = ResolveAutoGcArgument(versionInfo.Arguments?.DefaultUserJvm);
-            if (!string.IsNullOrEmpty(autoGcArgument))
-            {
-                args.Add(autoGcArgument);
-            }
+            args.AddRange(defaultUserJvmArgs);
         }
 
         // 基础 JVM 参数
@@ -526,6 +516,13 @@ public class GameLaunchService : IGameLaunchService
                 }
             }
         }
+
+        // 垃圾回收器模式显式指定时，作为用户选择追加在后，交由统一去重逻辑覆盖默认项
+        var gcArgument = GarbageCollectorModeHelper.ToJvmArgument(effectiveSettings.GarbageCollectorMode);
+        if (!string.IsNullOrEmpty(gcArgument))
+        {
+            args.Add(gcArgument);
+        }
         
         // 确保添加 classpath
         if (!hasClasspath)
@@ -545,14 +542,10 @@ public class GameLaunchService : IGameLaunchService
             args.InsertRange(0, externalJvmArgs);
         }
         
-        // === 合并自定义 JVM 参数并去重 ===
-        // 在添加主类之前，先处理自定义 JVM 参数
-        if (!string.IsNullOrWhiteSpace(effectiveSettings.CustomJvmArguments))
-        {
-            _logger.LogInformation("检测到自定义 JVM 参数，开始合并去重");
-            args = JvmArgumentsHelper.MergeAndDeduplicateArguments(args, effectiveSettings.CustomJvmArguments);
-            _logger.LogInformation("JVM 参数合并完成，最终参数数量: {Count}", args.Count);
-        }
+        // === 合并并统一去重 JVM 参数 ===
+        // 在添加主类之前，统一对“默认参数 + 版本参数 + 用户自定义参数”做最终去重。
+        args = JvmArgumentsHelper.MergeAndDeduplicateArguments(args, effectiveSettings.CustomJvmArguments);
+        _logger.LogInformation("JVM 参数合并去重完成，最终参数数量: {Count}", args.Count);
         
         // 确定 userType
         string userType = isExternalLogin ? "mojang" : (profile.IsOffline ? "offline" : "msa");
@@ -573,22 +566,16 @@ public class GameLaunchService : IGameLaunchService
     }
 
     // TODO: 后续将 default-user-jvm 规则解析与环境匹配（os/arch/versionRange）整体抽离为可复用组件，并补充独立单元测试。
-    private static string? ResolveAutoGcArgument(List<object>? defaultUserJvm)
+    private static List<string> ResolveDefaultUserJvmArguments(List<object>? defaultUserJvm)
     {
         if (defaultUserJvm == null || defaultUserJvm.Count == 0)
         {
-            return null;
+            return [];
         }
 
-        foreach (var jvmArg in ExpandJvmArgumentEntries(defaultUserJvm))
-        {
-            if (IsGcArgument(jvmArg))
-            {
-                return jvmArg;
-            }
-        }
-
-        return null;
+        return ExpandJvmArgumentEntries(defaultUserJvm)
+            .Where(arg => !string.IsNullOrWhiteSpace(arg))
+            .ToList();
     }
 
     private static IEnumerable<string> ExpandJvmArgumentEntries(IEnumerable<object> entries)
