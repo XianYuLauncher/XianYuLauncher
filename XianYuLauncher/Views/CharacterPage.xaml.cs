@@ -58,13 +58,7 @@ namespace XianYuLauncher.Views
             {
                 Debug.WriteLine($"[角色Page] 角色列表替换，当前角色数量: {ViewModel.Profiles.Count}");
                 // 延迟执行，确保列表已更新
-                _ = Task.Delay(100).ContinueWith(_ =>
-                {
-                    _uiDispatcher.TryEnqueue(() =>
-                    {
-                        LoadAllAvatars();
-                    });
-                });
+                _ = DelayedLoadAllAvatarsAsync();
             }
         }
         
@@ -78,26 +72,27 @@ namespace XianYuLauncher.Views
             {
                 Debug.WriteLine($"[角色Page] 角色列表添加了新角色，当前角色数量: {ViewModel.Profiles.Count}");
                 // 延迟执行，确保列表已更新
-                _ = Task.Delay(100).ContinueWith(_ =>
-                {
-                    _uiDispatcher.TryEnqueue(() =>
-                    {
-                        LoadAllAvatars();
-                    });
-                });
+                _ = DelayedLoadAllAvatarsAsync();
             }
             // 当删除角色时，也重新加载所有头像，确保UI一致性
             else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
             {
                 Debug.WriteLine($"[角色Page] 角色列表删除了角色，当前角色数量: {ViewModel.Profiles.Count}");
                 // 延迟执行，确保列表已更新
-                _ = Task.Delay(100).ContinueWith(_ =>
-                {
-                    _uiDispatcher.TryEnqueue(() =>
-                    {
-                        LoadAllAvatars();
-                    });
-                });
+                _ = DelayedLoadAllAvatarsAsync();
+            }
+        }
+
+        private async Task DelayedLoadAllAvatarsAsync()
+        {
+            try
+            {
+                await Task.Delay(100);
+                await _uiDispatcher.RunOnUiThreadAsync(LoadAllAvatars);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 延迟刷新头像失败: {ex.Message}");
             }
         }
 

@@ -40,7 +40,7 @@ public sealed partial class FixerChatPage : Page
             // 如果已有消息，滚到底部
             if (ChatListView.Items.Count > 0)
             {
-                ScrollChatToBottom();
+                _ = ScrollChatToBottomAsync();
             }
         };
     }
@@ -87,7 +87,7 @@ public sealed partial class FixerChatPage : Page
                 }
             }
             _userIsScrollingChat = false;
-            ScrollChatToBottom();
+            _ = ScrollChatToBottomAsync();
         }
         else if (e.Action == NotifyCollectionChangedAction.Reset)
         {
@@ -105,26 +105,34 @@ public sealed partial class FixerChatPage : Page
         if (e.PropertyName != nameof(UiChatMessage.Content)) return;
         if (_userIsScrollingChat || _isChatScrollPending) return;
         _isChatScrollPending = true;
-        ScrollChatToBottom();
+        _ = ScrollChatToBottomAsync();
     }
 
-    private void ScrollChatToBottom()
+    private async Task ScrollChatToBottomAsync()
     {
-        Task.Delay(50).ContinueWith(_ =>
+        try
         {
-            _uiDispatcher.TryEnqueue(() =>
+            await Task.Delay(50);
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                try
+                if (_chatScrollViewer != null)
                 {
-                    if (_chatScrollViewer != null)
-                        _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, true);
-                    else if (ChatListView.Items.Count > 0)
-                        ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                    _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, true);
                 }
-                catch { }
-                finally { _isChatScrollPending = false; }
+                else if (ChatListView.Items.Count > 0)
+                {
+                    ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                }
             });
-        });
+        }
+        catch
+        {
+            // 页面关闭过程中调度失败时忽略，避免崩溃
+        }
+        finally
+        {
+            _isChatScrollPending = false;
+        }
     }
 
     // ---- 输入处理 ----
