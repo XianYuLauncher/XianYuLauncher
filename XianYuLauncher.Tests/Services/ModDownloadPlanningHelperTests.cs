@@ -7,6 +7,24 @@ namespace XianYuLauncher.Tests.Services;
 public class ModDownloadPlanningHelperTests
 {
     [Fact]
+    public void ShouldForceDirectDownload_ShouldReturnTrue_ForEdgeForgeCdnUrl()
+    {
+        bool shouldForceDirect = ModDownloadPlanningHelper.ShouldForceDirectDownload(
+            "https://edge.forgecdn.net/files/7416/393/Oneblock%20Original%20-%20Crimson%20Creations%20Originals%20v3.4.2.zip");
+
+        shouldForceDirect.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldForceDirectDownload_ShouldReturnFalse_ForNonEdgeForgeCdnUrl()
+    {
+        bool shouldForceDirect = ModDownloadPlanningHelper.ShouldForceDirectDownload(
+            "https://modrinth.com/data/example/file.jar");
+
+        shouldForceDirect.Should().BeFalse();
+    }
+
+    [Fact]
     public void ResolveDownloadUrl_ShouldReturnExistingUrl_WhenAlreadyProvided()
     {
         string resolved = ModDownloadPlanningHelper.ResolveDownloadUrl(
