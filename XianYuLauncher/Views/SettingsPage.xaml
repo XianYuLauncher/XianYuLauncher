@@ -20,6 +20,7 @@
         <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
         <helpers:ColorToBrushConverter x:Key="ColorToBrushConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
+        <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -330,9 +331,18 @@
                 </controls:SettingsExpander>
 
                 <controls:SettingsCard x:Uid="Settings_GlobalGarbageCollectorMode" Header="全局垃圾回收器" Description="设置所有版本默认使用的垃圾回收器模式">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE74D;" />
+                    </controls:SettingsCard.HeaderIcon>
                     <ComboBox ItemsSource="{x:Bind ViewModel.GarbageCollectorModes, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.GlobalGarbageCollectorMode, Mode=TwoWay}"
-                              MinWidth="200" />
+                              MinWidth="200">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource GarbageCollectorModeDisplayConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </controls:SettingsCard>
 
                 <!-- 版本隔离 -->

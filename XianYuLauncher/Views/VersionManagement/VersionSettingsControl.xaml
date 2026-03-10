@@ -15,6 +15,7 @@
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
+        <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
         
         <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}" />
         <SolidColorBrush x:Key="OverviewCardBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
@@ -253,9 +254,18 @@
 
                 <controls:SettingsCard x:Uid="Settings_VersionGarbageCollectorMode" Header="垃圾回收器" Description="设置此版本使用的垃圾回收器模式"
                                        IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE74D;" />
+                    </controls:SettingsCard.HeaderIcon>
                     <ComboBox ItemsSource="{Binding GarbageCollectorModes, Mode=OneWay}"
                               SelectedItem="{Binding GarbageCollectorMode, Mode=TwoWay}"
-                              MinWidth="200" />
+                              MinWidth="200">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource GarbageCollectorModeDisplayConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </controls:SettingsCard>
                 
                 <!-- 启动分辨率 -->
