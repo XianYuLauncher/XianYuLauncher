@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
@@ -146,7 +147,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ApplyProtocolNavigationParameter(object parameter)
     {
-        if (!TryGetStringParameter(parameter, "tab", out var tab)
+        if (!ProtocolNavigationParameterHelper.TryGetStringParameter(parameter, "tab", out var tab)
             || !TryMapTabToIndex(tab, out var tabIndex))
         {
             if (parameter is not null)
@@ -162,39 +163,16 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         TargetTabIndex = tabIndex;
     }
 
-    private static bool TryGetStringParameter(object parameter, string key, out string value)
-    {
-        value = string.Empty;
-
-        if (parameter is IReadOnlyDictionary<string, string> readOnlyMap
-            && readOnlyMap.TryGetValue(key, out var readOnlyValue)
-            && !string.IsNullOrWhiteSpace(readOnlyValue))
-        {
-            value = readOnlyValue;
-            return true;
-        }
-
-        if (parameter is IDictionary<string, string> map
-            && map.TryGetValue(key, out var mapValue)
-            && !string.IsNullOrWhiteSpace(mapValue))
-        {
-            value = mapValue;
-            return true;
-        }
-
-        return false;
-    }
-
     private static bool TryMapTabToIndex(string tab, out int index)
     {
         index = tab.Trim().ToLowerInvariant() switch
         {
             "version" => 0,
             "mod" => 1,
-            "resourcepack" => 2,
-            "shaderpack" => 3,
-            "modpack" => 4,
-            "datapack" => 5,
+            "shaderpack" => 2,
+            "resourcepack" => 3,
+            "datapack" => 4,
+            "modpack" => 5,
             "world" => 6,
             _ => -1,
         };

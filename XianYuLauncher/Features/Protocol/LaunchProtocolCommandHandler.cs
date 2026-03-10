@@ -55,7 +55,7 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
         }
 
         var logger = Serilog.Log.Logger;
-        logger.Information($"Silent Launch requested for: {versionName}, Path: {targetPath}");
+        logger.Information("Silent Launch requested for: {VersionName}, Path: {TargetPath}", versionName, targetPath);
 
         try
         {
