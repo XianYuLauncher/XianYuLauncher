@@ -701,6 +701,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private string _customJvmArguments = string.Empty;
+
+    /// <summary>
+    /// 垃圾回收器模式（Auto/G1GC/ZGC/ParallelGC/SerialGC）
+    /// </summary>
+    [ObservableProperty]
+    private string _garbageCollectorMode = GarbageCollectorModeHelper.Auto;
+
+    /// <summary>
+    /// 垃圾回收器模式选项
+    /// </summary>
+    public List<string> GarbageCollectorModes => GarbageCollectorModeHelper.AllModes.ToList();
     
     /// <summary>
     /// 是否覆盖全局分辨率设置（已废弃，由 UseGlobalSettings 统一控制）
@@ -1069,6 +1080,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         SaveSettingsAsync().ConfigureAwait(false);
     }
+
+    partial void OnGarbageCollectorModeChanged(string value)
+    {
+        var normalized = GarbageCollectorModeHelper.Normalize(value);
+        if (!string.Equals(normalized, value, StringComparison.Ordinal))
+        {
+            GarbageCollectorMode = normalized;
+            return;
+        }
+
+        SaveSettingsAsync().ConfigureAwait(false);
+    }
     
     partial void OnOverrideResolutionChanged(bool value)
     {
@@ -1357,6 +1380,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             CustomJvmArguments = versionConfig.CustomJvmArguments ?? string.Empty;
         }
+        GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(versionConfig.GarbageCollectorMode);
 
         OverrideResolution = versionConfig.OverrideResolution;
         WindowWidth = versionConfig.WindowWidth;
@@ -2262,6 +2286,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 MaximumHeapMemory = MaximumHeapMemory,
                 JavaPath = JavaPath,
                 CustomJvmArguments = CustomJvmArguments,
+                GarbageCollectorMode = GarbageCollectorMode,
                 OverrideResolution = OverrideResolution,
                 WindowWidth = WindowWidth,
                 WindowHeight = WindowHeight,

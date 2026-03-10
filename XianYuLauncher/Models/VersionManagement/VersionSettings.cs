@@ -101,6 +101,11 @@ public class VersionSettings
     public string CustomJvmArguments { get; set; } = string.Empty;
 
     /// <summary>
+    /// 垃圾回收器模式（Auto/G1GC/ZGC/ParallelGC/SerialGC）
+    /// </summary>
+    public string GarbageCollectorMode { get; set; } = XianYuLauncher.Core.Helpers.GarbageCollectorModeHelper.Auto;
+
+    /// <summary>
     /// 版本图标路径（支持 ms-appx:/// 与本地绝对路径）
     /// </summary>
     public string? Icon { get; set; }

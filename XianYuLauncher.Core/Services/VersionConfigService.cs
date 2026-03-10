@@ -129,6 +129,9 @@ public class VersionConfigService : IVersionConfigService
                 
                 if (jObject["JavaPath"] != null)
                     config.JavaPath = jObject["JavaPath"]?.ToString() ?? string.Empty;
+
+                if (jObject["GarbageCollectorMode"] != null)
+                    config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(jObject["GarbageCollectorMode"]?.ToString());
                 
                 if (jObject["UseGlobalJavaSetting"] != null && jObject["UseGlobalJavaSetting"].Type == JTokenType.Boolean)
                     config.UseGlobalJavaSetting = jObject["UseGlobalJavaSetting"].Value<bool>();
@@ -208,6 +211,8 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["ModpackVersionId"] != null)
                     config.ModpackVersionId = jObject["ModpackVersionId"]?.ToString();
 
+                config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(config.GarbageCollectorMode);
+
                 var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
                 var shouldWriteBackIcon = !string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase);
                 config.Icon = normalizedIconPath;
@@ -229,6 +234,8 @@ public class VersionConfigService : IVersionConfigService
                 var config = JsonConvert.DeserializeObject<VersionConfig>(json, settings);
                 if (config != null)
                 {
+                    config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(config.GarbageCollectorMode);
+
                     var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
                     var shouldWriteBackIcon = !string.Equals(config.Icon, normalizedIconPath, StringComparison.OrdinalIgnoreCase);
                     config.Icon = normalizedIconPath;

@@ -39,4 +39,9 @@ public class EffectiveLaunchSettings
     /// 自定义 JVM 参数
     /// </summary>
     public string CustomJvmArguments { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 垃圾回收器模式（Auto/G1GC/ZGC/ParallelGC/SerialGC）
+    /// </summary>
+    public string GarbageCollectorMode { get; set; } = Helpers.GarbageCollectorModeHelper.Auto;
 }
