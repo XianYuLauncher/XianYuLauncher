@@ -1,5 +1,6 @@
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
 using System.Text.Json;
@@ -176,6 +177,7 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         settings.MaximumHeapMemory = inputSettings.MaximumHeapMemory;
         settings.JavaPath = inputSettings.JavaPath;
         settings.CustomJvmArguments = inputSettings.CustomJvmArguments;
+        settings.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(inputSettings.GarbageCollectorMode);
         settings.OverrideResolution = inputSettings.OverrideResolution;
         settings.WindowWidth = inputSettings.WindowWidth;
         settings.WindowHeight = inputSettings.WindowHeight;

@@ -26,42 +26,74 @@ public static class JvmArgumentsHelper
     /// <returns>合并后的参数列表</returns>
     public static List<string> MergeAndDeduplicateArguments(List<string> launcherArgs, string? customArgs)
     {
-        var customArgArray = ParseCustomArguments(customArgs).Distinct().ToArray();
-        if (customArgArray.Length == 0)
-            return launcherArgs;
+        var customArgArray = ParseCustomArguments(customArgs);
+        var combined = new List<string>(launcherArgs.Count + customArgArray.Length);
+        combined.AddRange(launcherArgs);
+        combined.AddRange(customArgArray);
 
-        var result = new List<string>(launcherArgs.Count + customArgArray.Length);
-
-        // 检测自定义参数中是否包含特定类型的参数
-        bool hasCustomXms = customArgArray.Any(a => a.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase));
-        bool hasCustomXmx = customArgArray.Any(a => a.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase));
-        bool hasCustomGC = customArgArray.Any(a => a.Contains("UseG1GC") || a.Contains("UseZGC") || 
-                                                 a.Contains("UseParallelGC") || a.Contains("UseSerialGC") ||
-                                                 a.Contains("UseConcMarkSweepGC"));
-
-        // 遍历启动器参数，过滤掉被自定义参数覆盖的项
-        foreach (var arg in launcherArgs)
+        if (combined.Count == 0)
         {
-            bool shouldSkip = false;
-
-            // 跳过被自定义参数覆盖的内存参数
-            if (hasCustomXms && arg.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase))
-                shouldSkip = true;
-            else if (hasCustomXmx && arg.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase))
-                shouldSkip = true;
-            // 跳过被自定义参数覆盖的 GC 参数
-            else if (hasCustomGC && (arg.Contains("UseG1GC") || arg.Contains("UseZGC") || 
-                                     arg.Contains("UseParallelGC") || arg.Contains("UseSerialGC") ||
-                                     arg.Contains("UseConcMarkSweepGC")))
-                shouldSkip = true;
-
-            if (!shouldSkip)
-                result.Add(arg);
+            return combined;
         }
 
-        // 追加自定义参数（优先级最高）
-        result.AddRange(customArgArray);
+        // 统一按“最终参数集”做去重：同 key 仅保留最后一项（后者覆盖前者）
+        var lastIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < combined.Count; i++)
+        {
+            var key = GetArgumentKey(combined[i]);
+            lastIndexByKey[key] = i;
+        }
+
+        var result = new List<string>(combined.Count);
+        for (int i = 0; i < combined.Count; i++)
+        {
+            var arg = combined[i];
+            var key = GetArgumentKey(arg);
+            if (lastIndexByKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            {
+                result.Add(arg);
+            }
+        }
 
         return result;
+    }
+
+    private static string GetArgumentKey(string arg)
+    {
+        if (arg.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase))
+        {
+            return "mem:xms";
+        }
+
+        if (arg.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase))
+        {
+            return "mem:xmx";
+        }
+
+        if (IsGcArgument(arg))
+        {
+            return "gc";
+        }
+
+        if (arg.StartsWith("-D", StringComparison.OrdinalIgnoreCase))
+        {
+            int equalsIndex = arg.IndexOf('=');
+            if (equalsIndex > 2)
+            {
+                return "prop:" + arg.Substring(2, equalsIndex - 2);
+            }
+        }
+
+        // 其它参数按文本完全相同去重
+        return "arg:" + arg;
+    }
+
+    private static bool IsGcArgument(string arg)
+    {
+        return arg.Contains("UseG1GC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseZGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseParallelGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseSerialGC", StringComparison.OrdinalIgnoreCase)
+            || arg.Contains("UseConcMarkSweepGC", StringComparison.OrdinalIgnoreCase);
     }
 }

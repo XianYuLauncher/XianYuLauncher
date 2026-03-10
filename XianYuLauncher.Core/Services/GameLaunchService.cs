@@ -470,8 +470,14 @@ public class GameLaunchService : IGameLaunchService
             args.Add("-Dstdout.encoding=UTF-8");
         }
         
+        // 26.1+ 会在 default-user-jvm（带 rules）下给出默认 JVM 参数，先完整并入，最后统一去重。
+        var defaultUserJvmArgs = DefaultUserJvmArgumentsHelper.ResolveEffectiveArguments(versionInfo.Arguments?.DefaultUserJvm);
+        if (defaultUserJvmArgs.Count > 0)
+        {
+            args.AddRange(defaultUserJvmArgs);
+        }
+
         // 基础 JVM 参数
-        args.Add("-XX:+UseG1GC");
         args.Add("-XX:-UseAdaptiveSizePolicy");
         args.Add("-XX:-OmitStackTraceInFastThrow");
         args.Add("-Djdk.lang.Process.allowAmbiguousCommands=true");
@@ -508,6 +514,13 @@ public class GameLaunchService : IGameLaunchService
                 }
             }
         }
+
+        // 垃圾回收器模式显式指定时，作为用户选择追加在后，交由统一去重逻辑覆盖默认项
+        var gcArgument = GarbageCollectorModeHelper.ToJvmArgument(effectiveSettings.GarbageCollectorMode);
+        if (!string.IsNullOrEmpty(gcArgument))
+        {
+            args.Add(gcArgument);
+        }
         
         // 确保添加 classpath
         if (!hasClasspath)
@@ -527,14 +540,10 @@ public class GameLaunchService : IGameLaunchService
             args.InsertRange(0, externalJvmArgs);
         }
         
-        // === 合并自定义 JVM 参数并去重 ===
-        // 在添加主类之前，先处理自定义 JVM 参数
-        if (!string.IsNullOrWhiteSpace(effectiveSettings.CustomJvmArguments))
-        {
-            _logger.LogInformation("检测到自定义 JVM 参数，开始合并去重");
-            args = JvmArgumentsHelper.MergeAndDeduplicateArguments(args, effectiveSettings.CustomJvmArguments);
-            _logger.LogInformation("JVM 参数合并完成，最终参数数量: {Count}", args.Count);
-        }
+        // === 合并并统一去重 JVM 参数 ===
+        // 在添加主类之前，统一对“默认参数 + 版本参数 + 用户自定义参数”做最终去重。
+        args = JvmArgumentsHelper.MergeAndDeduplicateArguments(args, effectiveSettings.CustomJvmArguments);
+        _logger.LogInformation("JVM 参数合并去重完成，最终参数数量: {Count}", args.Count);
         
         // 确定 userType
         string userType = isExternalLogin ? "mojang" : (profile.IsOffline ? "offline" : "msa");

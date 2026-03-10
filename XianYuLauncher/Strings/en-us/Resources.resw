@@ -2910,6 +2910,21 @@ Continue downloading?</value>
   <data name="Settings_GlobalCustomJvmArguments.Description" xml:space="preserve">
     <value>Advanced option, one parameter per line or space-separated. Note: Duplicate JVM arguments will be automatically removed</value>
   </data>
+  <data name="Settings_GlobalGarbageCollectorMode.Header" xml:space="preserve">
+    <value>Global Garbage Collector</value>
+  </data>
+  <data name="Settings_GlobalGarbageCollectorMode.Description" xml:space="preserve">
+    <value>Set the default garbage collector mode for all versions</value>
+  </data>
+  <data name="Settings_VersionGarbageCollectorMode.Header" xml:space="preserve">
+    <value>Garbage Collector</value>
+  </data>
+  <data name="Settings_VersionGarbageCollectorMode.Description" xml:space="preserve">
+    <value>Set the garbage collector mode for this version</value>
+  </data>
+  <data name="GarbageCollectorMode_Auto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
   <data name="VersionManagement_Vanilla" xml:space="preserve">
     <value>Vanilla</value>
   </data>

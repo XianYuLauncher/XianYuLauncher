@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Services.Settings;
 
@@ -21,6 +22,7 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 	private const string GlobalInitialHeapKey = "GlobalInitialHeapMemory";
 	private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
 	private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
+	private const string GlobalGarbageCollectorModeKey = "GlobalGarbageCollectorMode";
 	private const string GlobalWindowWidthKey = "GlobalWindowWidth";
 	private const string GlobalWindowHeightKey = "GlobalWindowHeight";
 
@@ -103,6 +105,7 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 			InitialHeapMemory = await _settingsRepository.ReadAsync<double?>(GlobalInitialHeapKey) ?? 6.0,
 			MaximumHeapMemory = await _settingsRepository.ReadAsync<double?>(GlobalMaxHeapKey) ?? 12.0,
 			CustomJvmArguments = await _settingsRepository.ReadAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty,
+			GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(await _settingsRepository.ReadAsync<string>(GlobalGarbageCollectorModeKey)),
 			WindowWidth = await _settingsRepository.ReadAsync<int?>(GlobalWindowWidthKey) ?? 1280,
 			WindowHeight = await _settingsRepository.ReadAsync<int?>(GlobalWindowHeightKey) ?? 720
 		};
@@ -126,6 +129,11 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 	public Task SaveGlobalCustomJvmArgumentsAsync(string value)
 	{
 		return _settingsRepository.SaveAsync(GlobalCustomJvmArgumentsKey, value);
+	}
+
+	public Task SaveGlobalGarbageCollectorModeAsync(string value)
+	{
+		return _settingsRepository.SaveAsync(GlobalGarbageCollectorModeKey, GarbageCollectorModeHelper.Normalize(value));
 	}
 
 	public Task SaveGlobalWindowWidthAsync(int value)
