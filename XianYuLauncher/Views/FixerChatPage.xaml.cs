@@ -40,7 +40,7 @@ public sealed partial class FixerChatPage : Page
             // 如果已有消息，滚到底部
             if (ChatListView.Items.Count > 0)
             {
-                ScrollChatToBottom();
+                _ = ScrollChatToBottomAsync();
             }
         };
     }
@@ -87,7 +87,7 @@ public sealed partial class FixerChatPage : Page
                 }
             }
             _userIsScrollingChat = false;
-            ScrollChatToBottom();
+            _ = ScrollChatToBottomAsync();
         }
         else if (e.Action == NotifyCollectionChangedAction.Reset)
         {
@@ -105,10 +105,10 @@ public sealed partial class FixerChatPage : Page
         if (e.PropertyName != nameof(UiChatMessage.Content)) return;
         if (_userIsScrollingChat || _isChatScrollPending) return;
         _isChatScrollPending = true;
-        ScrollChatToBottom();
+        _ = ScrollChatToBottomAsync();
     }
 
-    private async void ScrollChatToBottom()
+    private async Task ScrollChatToBottomAsync()
     {
         try
         {

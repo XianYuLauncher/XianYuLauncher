@@ -227,7 +227,7 @@ namespace XianYuLauncher.Views
 
                 // 新消息添加时，重置用户滚动状态并滚到底部
                 _userIsScrollingChat = false;
-                ScrollChatToBottomAsync();
+                _ = ScrollChatToBottomAsync();
             }
             else if (e.Action == NotifyCollectionChangedAction.Reset)
             {
@@ -255,7 +255,7 @@ namespace XianYuLauncher.Views
             if (_isChatScrollPending) return;
 
             _isChatScrollPending = true;
-            ScrollChatToBottomAsync();
+            _ = ScrollChatToBottomAsync();
         }
 
         /// <summary>
