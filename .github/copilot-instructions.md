@@ -46,5 +46,23 @@
 
 3. **无其他补充约束。**
 
+### 提交信息
+*   **规范**：符合约定式提交（Conventional Commits）规范。
+*   **type**：始终使用英文，如 `feat`、`fix`、`refactor`、`chore` 等。
+*   **scope**：可选，可用括号描述变更范围或文件，如 `(protocol)`、`(ModDownloadDetailViewModel)`。
+*   **描述**：始终使用中文，简明扼要说明本次变更。
+*   **正文**：影响较大的变更需附带正文（同样使用中文），补充背景、动机或注意事项。
+
+示例：
+```
+feat(protocol): 将 xianyulauncher:// URI 协议激活抽离为可扩展 Protocol 模块
+
+- 新增 Features/Protocol 模块：Parser、Dispatcher、Handler 分层架构
+- 抽取 ProtocolPathSecurityHelper、ProtocolQueryStringHelper 至 Core
+```
+
 ### Build
-msbuild XianYuLauncher/XianYuLauncher.csproj -p:Configuration=Debug -p:Platform=x64 -p:WarningLevel=0 -clp:ErrorsOnly
+*   **主项目构建**：由于主项目是 WinUI 3 项目，必须使用 `msbuild` 进行编译，否则 `dotnet build` 会导致 XAML 编译器错误。示例：
+    msbuild XianYuLauncher/XianYuLauncher.csproj -p:Configuration=Debug -p:Platform=x64 -p:WarningLevel=0 -clp:ErrorsOnly
+    (此命令不返回任何内容等于构建成功，因为 `-clp:ErrorsOnly` 只输出错误)
+*   **测试项目运行**：不要使用 `runTest` 工具。请使用 `dotnet test` 直接指定测试项目（例如 `dotnet test tests/MyTestProject/MyTestProject.csproj`），并且**严禁携带 `--no-build`**，以确保测试在最新代码上执行。
