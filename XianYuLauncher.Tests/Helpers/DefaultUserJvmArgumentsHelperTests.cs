@@ -46,15 +46,15 @@ public class DefaultUserJvmArgumentsHelperTests
         var currentOs = GetCurrentOsName();
         var entries = new List<object>
         {
-            JObject.Parse($"""
-            {{
-              "rules": [
-                {{"action":"allow", "os":{{"name":"{currentOs}"}}}},
-                {{"action":"disallow", "os":{{"name":"{currentOs}"}}}}
-              ],
-              "value": ["-XX:+UseZGC"]
-            }}
-            """)
+            JObject.FromObject(new
+            {
+                rules = new object[]
+                {
+                    new { action = "allow", os = new { name = currentOs } },
+                    new { action = "disallow", os = new { name = currentOs } }
+                },
+                value = new[] { "-XX:+UseZGC" }
+            })
         };
 
         var result = DefaultUserJvmArgumentsHelper.ResolveEffectiveArguments(entries);
