@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
+using XianYuLauncher.Core.Helpers;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
@@ -47,7 +48,7 @@ public sealed partial class SettingsPage : Page
     {
         base.OnNavigatedTo(e);
 
-        if (!TryGetStringParameter(e.Parameter, "section", out var section))
+        if (!ProtocolNavigationParameterHelper.TryGetStringParameter(e.Parameter, "section", out var section))
         {
             Log.Information("[Protocol.Settings] OnNavigatedTo: no section parameter.");
             return;
@@ -185,29 +186,6 @@ public sealed partial class SettingsPage : Page
             // 再补一次重试，覆盖首次布局尚未稳定的场景。
             _uiDispatcher.TryEnqueue(() => ScrollToSection(section!));
         });
-    }
-
-    private static bool TryGetStringParameter(object? parameter, string key, out string value)
-    {
-        value = string.Empty;
-
-        if (parameter is IReadOnlyDictionary<string, string> readOnlyMap
-            && readOnlyMap.TryGetValue(key, out var readOnlyValue)
-            && !string.IsNullOrWhiteSpace(readOnlyValue))
-        {
-            value = readOnlyValue;
-            return true;
-        }
-
-        if (parameter is IDictionary<string, string> map
-            && map.TryGetValue(key, out var mapValue)
-            && !string.IsNullOrWhiteSpace(mapValue))
-        {
-            value = mapValue;
-            return true;
-        }
-
-        return false;
     }
 
     private async void VersionTextBlock_PointerPressed(object sender, PointerRoutedEventArgs e)

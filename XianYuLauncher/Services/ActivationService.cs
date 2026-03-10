@@ -58,13 +58,23 @@ public class ActivationService : IActivationService
     public async Task ActivateAsync(object activationArgs)
     {
         var appArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        var protocolUiNavigationActivation = IsProtocolUiNavigationActivation(appArgs);
+
+        if (protocolUiNavigationActivation)
+        {
+            await InitializeAsync();
+        }
+
         if (await _protocolActivationService.TryHandleAsync(appArgs))
         {
             return;
         }
 
         // Initialize theme and language services for normal activation
-        await InitializeAsync();
+        if (!protocolUiNavigationActivation)
+        {
+            await InitializeAsync();
+        }
 
         // Set the MainWindow Content.
         if (App.MainWindow.Content == null)
@@ -104,6 +114,23 @@ public class ActivationService : IActivationService
         await _languageSelectorService.InitializeAsync().ConfigureAwait(false);
         await InitializeDownloadSourceAsync().ConfigureAwait(false);
         await Task.CompletedTask;
+    }
+
+    private static bool IsProtocolUiNavigationActivation(Microsoft.Windows.AppLifecycle.AppActivationArguments appArgs)
+    {
+        if (appArgs.Kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol)
+        {
+            return false;
+        }
+
+        if (appArgs.Data is not Windows.ApplicationModel.Activation.ProtocolActivatedEventArgs protocolArgs)
+        {
+            return false;
+        }
+
+        return string.Equals(protocolArgs.Uri.Scheme, "xianyulauncher", StringComparison.OrdinalIgnoreCase)
+               && (string.Equals(protocolArgs.Uri.Host, "open", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(protocolArgs.Uri.Host, "navigate", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task InitializeDownloadSourceAsync()
