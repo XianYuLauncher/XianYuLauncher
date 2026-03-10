@@ -76,8 +76,16 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             ModDownloadPlanningHelper.ApplyNonModDependencyContext(modVersion.OriginalVersion, loaderType!, gameVersionId!);
         }
 
+        // 当用户选择「自定义安装位置」时，targetDir 不在 minecraftPath 下，依赖应下载到同一目录
+        bool useTargetDirForAllDependencies = !ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
         Func<string, Task<string>> resolveModrinthDependencyTargetAsync = async projectId =>
         {
+            if (useTargetDirForAllDependencies)
+            {
+                return targetDir;
+            }
+
             try
             {
                 var detail = await _modrinthService.GetProjectDetailAsync(projectId);
@@ -92,6 +100,11 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
 
         Func<CurseForgeModDetail, Task<string>> resolveCurseForgeDependencyTargetAsync = depMod =>
         {
+            if (useTargetDirForAllDependencies)
+            {
+                return Task.FromResult(targetDir);
+            }
+
             string dependencyProjectType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(depMod?.ClassId);
             return Task.FromResult(ModResourcePathHelper.GetDependencyTargetDir(minecraftPath, gameVersion?.OriginalVersionName, dependencyProjectType));
         };

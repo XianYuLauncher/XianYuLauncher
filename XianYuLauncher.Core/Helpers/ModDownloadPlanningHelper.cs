@@ -75,4 +75,30 @@ public static class ModDownloadPlanningHelper
         version.Loaders = new List<string> { loaderType };
         version.GameVersions = new List<string> { gameVersionId };
     }
+
+    /// <summary>
+    /// 判断 targetDir 是否在 minecraftPath 的标准版本目录下（versions/xxx/mods 等）。
+    /// 若否，说明用户选择了自定义安装位置，依赖应下载到 targetDir。
+    /// </summary>
+    public static bool IsTargetUnderMinecraftVersions(string targetDir, string minecraftPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetDir) || string.IsNullOrWhiteSpace(minecraftPath))
+        {
+            return false;
+        }
+
+        string normalizedTarget = Path.GetFullPath(targetDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        string normalizedMinecraft = Path.GetFullPath(minecraftPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+        if (!normalizedTarget.StartsWith(normalizedMinecraft, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        string relativePath = normalizedTarget.Length > normalizedMinecraft.Length
+            ? normalizedTarget.Substring(normalizedMinecraft.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            : string.Empty;
+
+        return relativePath.StartsWith("versions", StringComparison.OrdinalIgnoreCase);
+    }
 }

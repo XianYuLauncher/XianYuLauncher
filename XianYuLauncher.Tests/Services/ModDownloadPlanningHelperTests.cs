@@ -85,4 +85,37 @@ public class ModDownloadPlanningHelperTests
         version.Loaders.Should().BeEquivalentTo(["fabric"]);
         version.GameVersions.Should().BeEquivalentTo(["1.20.1"]);
     }
+
+    [Fact]
+    public void IsTargetUnderMinecraftVersions_ShouldReturnTrue_WhenTargetIsUnderVersions()
+    {
+        string minecraftPath = Path.GetFullPath(@"C:\.minecraft");
+        string targetDir = Path.Combine(minecraftPath, "versions", "1.21.1-Fabric", "mods");
+
+        bool result = ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsTargetUnderMinecraftVersions_ShouldReturnFalse_WhenTargetIsCustomPath()
+    {
+        string minecraftPath = Path.GetFullPath(@"C:\.minecraft");
+        string targetDir = Path.GetFullPath(@"D:\Downloads\debug");
+
+        bool result = ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsTargetUnderMinecraftVersions_ShouldReturnFalse_WhenTargetIsUnderMinecraftButNotVersions()
+    {
+        string minecraftPath = Path.GetFullPath(@"C:\.minecraft");
+        string targetDir = Path.Combine(minecraftPath, "mods");
+
+        bool result = ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
+        result.Should().BeFalse();
+    }
 }
