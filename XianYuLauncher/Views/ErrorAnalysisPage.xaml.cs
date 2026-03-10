@@ -34,6 +34,7 @@ namespace XianYuLauncher.Views
         public ErrorAnalysisPage()
         {
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
+            _uiDispatcher = App.GetService<IUiDispatcher>();
             this.InitializeComponent();
             
             // 订阅LogLines集合变化事件，实现自动滚动到底部
@@ -68,14 +69,7 @@ namespace XianYuLauncher.Views
                     else
                     {
                         // ScrollViewer 已经有了，直接刷新
-                        System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
-                        {
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                _chatScrollViewer.UpdateLayout();
-                                _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, false);
-                            });
-                        });
+                        _ = RefreshChatScrollViewerAsync();
                     }
                 }
             };
@@ -200,31 +194,9 @@ namespace XianYuLauncher.Views
                 if (!_isScrollPending)
                 {
                     _isScrollPending = true;
-                    
+
                     // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
-                    System.Threading.Tasks.Task.Delay(100).ContinueWith(_ =>
-                    {
-                        // 确保在UI线程上执行滚动操作
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            try
-                            {
-                                // 滚动到最后一项
-                                if (LogListView.Items.Count > 0)
-                                {
-                                    LogListView.ScrollIntoView(LogListView.Items[LogListView.Items.Count - 1]);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"滚动到底部失败: {ex.Message}");
-                            }
-                            finally
-                            {
-                                _isScrollPending = false;
-                            }
-                        });
-                    });
+                    _ = ScrollLogToBottomAsync();
                 }
             }
         }
@@ -289,43 +261,86 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 将聊天 ScrollViewer 滚动到真正的底部
         /// </summary>
-        private void ScrollChatToBottomAsync()
+        private async System.Threading.Tasks.Task ScrollChatToBottomAsync()
         {
-            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            try
             {
-                _uiDispatcher.TryEnqueue(() =>
+                await System.Threading.Tasks.Task.Delay(50);
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    try
+                    if (_chatScrollViewer != null)
                     {
-                        if (_chatScrollViewer != null)
-                        {
-                            var scrollableHeight = _chatScrollViewer.ScrollableHeight;
-                            var currentOffset = _chatScrollViewer.VerticalOffset;
-                            System.Diagnostics.Debug.WriteLine($"[滚动调试] 自动滚动：当前位置={currentOffset:F1}, 可滚动高度={scrollableHeight:F1}, 距离底部={scrollableHeight - currentOffset:F1}px");
-                            
-                            // 使用 ChangeView 滚动到 ScrollableHeight（真正的底部）
-                            _chatScrollViewer.ChangeView(null, scrollableHeight, null, true);
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("[滚动调试] ScrollViewer 为 null，使用 ScrollIntoView 降级");
-                            if (ChatListView.Items.Count > 0)
-                            {
-                                // 降级：ScrollViewer 还没拿到时用 ScrollIntoView
-                                ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
-                            }
-                        }
+                        var scrollableHeight = _chatScrollViewer.ScrollableHeight;
+                        var currentOffset = _chatScrollViewer.VerticalOffset;
+                        System.Diagnostics.Debug.WriteLine($"[滚动调试] 自动滚动：当前位置={currentOffset:F1}, 可滚动高度={scrollableHeight:F1}, 距离底部={scrollableHeight - currentOffset:F1}px");
+
+                        // 使用 ChangeView 滚动到 ScrollableHeight（真正的底部）
+                        _chatScrollViewer.ChangeView(null, scrollableHeight, null, true);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[滚动调试] 滚动失败：{ex.Message}");
-                    }
-                    finally
-                    {
-                        _isChatScrollPending = false;
+                        System.Diagnostics.Debug.WriteLine("[滚动调试] ScrollViewer 为 null，使用 ScrollIntoView 降级");
+                        if (ChatListView.Items.Count > 0)
+                        {
+                            // 降级：ScrollViewer 还没拿到时用 ScrollIntoView
+                            ChatListView.ScrollIntoView(ChatListView.Items[ChatListView.Items.Count - 1]);
+                        }
                     }
                 });
-            });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[滚动调试] 滚动失败：{ex.Message}");
+            }
+            finally
+            {
+                _isChatScrollPending = false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task ScrollLogToBottomAsync()
+        {
+            try
+            {
+                await System.Threading.Tasks.Task.Delay(100);
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (LogListView.Items.Count > 0)
+                    {
+                        LogListView.ScrollIntoView(LogListView.Items[LogListView.Items.Count - 1]);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"滚动到底部失败: {ex.Message}");
+            }
+            finally
+            {
+                _isScrollPending = false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task RefreshChatScrollViewerAsync()
+        {
+            try
+            {
+                await System.Threading.Tasks.Task.Delay(50);
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (_chatScrollViewer == null)
+                    {
+                        return;
+                    }
+
+                    _chatScrollViewer.UpdateLayout();
+                    _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, false);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[滚动调试] 刷新聊天滚动位置失败：{ex.Message}");
+            }
         }
 
         private void ChatInput_KeyDown(object sender, KeyRoutedEventArgs e)
