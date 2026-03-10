@@ -832,7 +832,15 @@ public partial class LaunchViewModel : ObservableRecipient
     /// </summary>
     private async void OnMinecraftPathChanged(object? sender, string newPath)
     {
-        await LoadInstalledVersionsAsync();
+        try
+        {
+            await _uiDispatcher.RunOnUiThreadAsync(() => LoadInstalledVersionsAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[LaunchViewModel] Minecraft 路径变化后刷新版本失败。Path={Path}", newPath);
+            SetLaunchStatusThreadSafe($"刷新版本列表失败: {ex.Message}");
+        }
     }
 
     private async Task InitializeAsync()
@@ -1287,7 +1295,7 @@ public partial class LaunchViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            LaunchStatus = "加载版本列表失败：" + ex.Message;
+            SetLaunchStatusThreadSafe("加载版本列表失败：" + ex.Message);
         }
         finally
         {
@@ -1304,11 +1312,26 @@ public partial class LaunchViewModel : ObservableRecipient
             var versionsPath = Path.Combine(minecraftPath, "versions");
             
             // 更新启动状态显示路径信息
-            LaunchStatus = $"当前Minecraft版本路径: {versionsPath}";
+            SetLaunchStatusThreadSafe($"当前Minecraft版本路径: {versionsPath}");
         }
         catch (Exception ex)
         {
-            LaunchStatus = "获取路径信息失败：" + ex.Message;
+            SetLaunchStatusThreadSafe("获取路径信息失败：" + ex.Message);
+        }
+    }
+
+    private void SetLaunchStatusThreadSafe(string status)
+    {
+        if (_uiDispatcher.HasThreadAccess)
+        {
+            LaunchStatus = status;
+            return;
+        }
+
+        var queued = _uiDispatcher.TryEnqueue(() => LaunchStatus = status);
+        if (!queued)
+        {
+            _logger.LogWarning("[LaunchViewModel] 无法将 LaunchStatus 更新投递到 UI 线程。Status={Status}", status);
         }
     }
 
