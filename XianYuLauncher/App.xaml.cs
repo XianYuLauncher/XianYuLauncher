@@ -14,6 +14,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
+using XianYuLauncher.Features.Protocol;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Features.VersionManagement.Services;
@@ -106,6 +107,10 @@ public partial class App : Application
             services.AddTransient<INavigationViewService, NavigationViewService>();
 
             services.AddSingleton<IActivationService, ActivationService>();
+            services.AddSingleton<IProtocolCommandParser, ProtocolCommandParser>();
+            services.AddSingleton<IProtocolCommandDispatcher, ProtocolCommandDispatcher>();
+            services.AddSingleton<IProtocolActivationService, ProtocolActivationService>();
+            services.AddSingleton<IProtocolCommandHandler, LaunchProtocolCommandHandler>();
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IDialogService, DialogService>();
