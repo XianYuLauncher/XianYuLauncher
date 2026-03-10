@@ -111,6 +111,7 @@ public partial class App : Application
             services.AddSingleton<IProtocolCommandDispatcher, ProtocolCommandDispatcher>();
             services.AddSingleton<IProtocolActivationService, ProtocolActivationService>();
             services.AddSingleton<IProtocolCommandHandler, LaunchProtocolCommandHandler>();
+            services.AddSingleton<IProtocolCommandHandler, NavigateProtocolCommandHandler>();
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IDialogService, DialogService>();
