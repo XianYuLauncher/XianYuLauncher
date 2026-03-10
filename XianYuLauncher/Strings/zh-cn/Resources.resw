@@ -2937,6 +2937,9 @@
   <data name="Settings_VersionGarbageCollectorMode.Description" xml:space="preserve">
     <value>设置此版本使用的垃圾回收器模式</value>
   </data>
+  <data name="GarbageCollectorMode_Auto" xml:space="preserve">
+    <value>自动</value>
+  </data>
   <data name="VersionManagement_Vanilla" xml:space="preserve">
     <value>原版</value>
   </data>

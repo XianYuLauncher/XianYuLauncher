@@ -2922,6 +2922,9 @@ Continue downloading?</value>
   <data name="Settings_VersionGarbageCollectorMode.Description" xml:space="preserve">
     <value>Set the garbage collector mode for this version</value>
   </data>
+  <data name="GarbageCollectorMode_Auto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
   <data name="VersionManagement_Vanilla" xml:space="preserve">
     <value>Vanilla</value>
   </data>
