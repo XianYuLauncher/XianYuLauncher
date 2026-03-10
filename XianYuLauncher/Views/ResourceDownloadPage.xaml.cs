@@ -189,13 +189,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         index = tab.Trim().ToLowerInvariant() switch
         {
-            "version" or "versions" => 0,
-            "mod" or "mods" => 1,
-            "resourcepack" or "resourcepacks" or "resource-pack" => 2,
-            "shader" or "shaders" or "shaderpack" or "shaderpacks" => 3,
-            "modpack" or "modpacks" => 4,
-            "datapack" or "datapacks" => 5,
-            "world" or "worlds" => 6,
+            "version" => 0,
+            "mod" => 1,
+            "resourcepack" => 2,
+            "shaderpack" => 3,
+            "modpack" => 4,
+            "datapack" => 5,
+            "world" => 6,
             _ => -1,
         };
 
