@@ -7,6 +7,24 @@ namespace XianYuLauncher.Tests.Services;
 public class ModDownloadPlanningHelperTests
 {
     [Fact]
+    public void ShouldForceDirectDownload_ShouldReturnTrue_ForEdgeForgeCdnUrl()
+    {
+        bool shouldForceDirect = ModDownloadPlanningHelper.ShouldForceDirectDownload(
+            "REDACTED_URL");
+
+        shouldForceDirect.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldForceDirectDownload_ShouldReturnFalse_ForNonEdgeForgeCdnUrl()
+    {
+        bool shouldForceDirect = ModDownloadPlanningHelper.ShouldForceDirectDownload(
+            "https://modrinth.com/data/example/file.jar");
+
+        shouldForceDirect.Should().BeFalse();
+    }
+
+    [Fact]
     public void ResolveDownloadUrl_ShouldReturnExistingUrl_WhenAlreadyProvided()
     {
         string resolved = ModDownloadPlanningHelper.ResolveDownloadUrl(

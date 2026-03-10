@@ -97,6 +97,11 @@ public class DownloadManager : IDownloadManager
                 }
 
                 var (contentLength, supportsRange) = await GetContentInfoAsync(url, cancellationToken);
+                if (ModDownloadPlanningHelper.ShouldForceDirectDownload(url))
+                {
+                    supportsRange = false;
+                    _logger.LogInformation("检测到不兼容 Range 的下载地址，回退为直连下载: {Url}", url);
+                }
                 
                 if (supportsRange && contentLength.HasValue && contentLength.Value > ShardingThreshold && threadCount > 1)
                 {
@@ -162,6 +167,8 @@ public class DownloadManager : IDownloadManager
 
     private static bool IsNonRetriableHttpStatus(HttpStatusCode? statusCode)
     {
+        // TODO(refactor-phase3-after): 将这里升级为“按请求形态 + 下载源能力”决策矩阵。
+        // 当前策略保持 4xx(除 408/429) 直接判定为不可重试，避免偏离本轮 ModDownloadDetail 重构范围。
         if (!statusCode.HasValue)
         {
             return false;
