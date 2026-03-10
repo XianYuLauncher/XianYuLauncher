@@ -24,33 +24,31 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
         var serverIp = launchCommand.ServerIp;
         var serverPortStr = launchCommand.ServerPort;
 
-        var versionName = string.Empty;
-
         if (string.IsNullOrEmpty(targetPath))
         {
-            versionName = System.Net.WebUtility.UrlDecode(launchCommand.Uri.AbsolutePath.TrimStart('/'));
+            ShowToast("启动错误", "缺少 path 参数，请使用 xianyulauncher://launch/?path=实例路径 格式。");
+            EnsureMainWindowInitialized();
+            App.MainWindow.Activate();
+            return;
         }
-        else
+
+        if (ProtocolPathSecurityHelper.IsUncPath(targetPath))
         {
-            if (ProtocolPathSecurityHelper.IsUncPath(targetPath))
-            {
-                ShowToast("拦截提示", "为了您的系统安全，已禁止从网络路径(UNC)加载游戏，请使用本地磁盘路径。");
-                EnsureMainWindowInitialized();
-                App.MainWindow.Activate();
-                return;
-            }
-
-            if (!System.IO.Directory.Exists(targetPath))
-            {
-                ShowToast("启动错误", "找不到目标实例路径");
-                EnsureMainWindowInitialized();
-                App.MainWindow.Activate();
-                return;
-            }
-
-            versionName = new System.IO.DirectoryInfo(targetPath).Name;
+            ShowToast("拦截提示", "为了您的系统安全，已禁止从网络路径(UNC)加载游戏，请使用本地磁盘路径。");
+            EnsureMainWindowInitialized();
+            App.MainWindow.Activate();
+            return;
         }
 
+        if (!System.IO.Directory.Exists(targetPath))
+        {
+            ShowToast("启动错误", "找不到目标实例路径");
+            EnsureMainWindowInitialized();
+            App.MainWindow.Activate();
+            return;
+        }
+
+        var versionName = new System.IO.DirectoryInfo(targetPath).Name;
         if (string.IsNullOrEmpty(versionName))
         {
             return;
