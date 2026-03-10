@@ -42,7 +42,7 @@
         </Grid>
 
         <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -59,7 +59,7 @@
                 </animations:Implicit.ShowAnimations>
 
                 <!-- ==================== 游戏设置 ==================== -->
-                <TextBlock x:Uid="Settings_GameSection" Text="游戏" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
+                <TextBlock x:Name="GameSectionHeader" x:Uid="Settings_GameSection" Text="游戏" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
 
                 <!-- Minecraft 游戏目录 -->
                 <controls:SettingsExpander x:Uid="Settings_MinecraftPath" Header="Minecraft 游戏目录" Description="管理游戏目录，双击列表项可快速切换">
@@ -397,7 +397,7 @@
                 </controls:SettingsCard>
 
                 <!-- ==================== 个性化 ==================== -->
-                <TextBlock x:Uid="Settings_PersonalizationSection" Text="个性化" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <TextBlock x:Name="PersonalizationSectionHeader" x:Uid="Settings_PersonalizationSection" Text="个性化" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- 主题 -->
                 <controls:SettingsCard x:Uid="Settings_Theme" Header="主题" Description="选择应用的外观主题">
@@ -527,7 +527,7 @@
 
 
                 <!-- ==================== 网络 ==================== -->
-                <TextBlock x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <TextBlock x:Name="NetworkSectionHeader" x:Uid="Settings_NetworkSection" Text="网络" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- 测速与自动选源 -->
                 <controls:SettingsExpander x:Uid="Settings_SpeedTest" IsExpanded="False">
@@ -838,7 +838,7 @@
                 </controls:SettingsExpander>
 
                 <!-- ==================== AI 分析 ==================== -->
-                <TextBlock x:Uid="Settings_AISection" Text="AI 分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <TextBlock x:Name="AiSectionHeader" x:Uid="Settings_AISection" Text="AI 分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- AI 分析设置 -->
                 <controls:SettingsExpander x:Uid="Settings_AI_CrashAnalysis" Header="AI 崩溃分析" Description="启用后可使用第三方 AI 服务分析崩溃日志" IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}">
@@ -870,7 +870,7 @@
 
 
                 <!-- ==================== 关于 ==================== -->
-                <TextBlock x:Uid="Settings_AboutSection" Text="关于" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <TextBlock x:Name="AboutSectionHeader" x:Uid="Settings_AboutSection" Text="关于" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- 开发者信息 -->
                 <controls:SettingsCard x:Uid="Settings_ContributorsHeader" Header="SpiritStudio" Description="感谢所有作出贡献的成员" IsClickEnabled="False">

@@ -1,6 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Navigation;
+using Serilog;
+using XianYuLauncher.Core.Helpers;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
@@ -26,6 +29,7 @@ public sealed partial class SettingsPage : Page
     private readonly IAutoSpeedTestService _autoSpeedTestService;
     private readonly IDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
+    private string? _pendingProtocolSection;
 
     public SettingsPage()
     {
@@ -40,9 +44,27 @@ public sealed partial class SettingsPage : Page
         Unloaded += SettingsPage_Unloaded;
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+
+        if (!ProtocolNavigationParameterHelper.TryGetStringParameter(e.Parameter, "section", out var section))
+        {
+            Log.Information("[Protocol.Settings] OnNavigatedTo: no section parameter.");
+            return;
+        }
+
+        _pendingProtocolSection = section;
+        Log.Information("[Protocol.Settings] OnNavigatedTo: section='{Section}'.", section);
+
+        TryApplyPendingSectionNavigation();
+    }
+
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面加载，开始刷新自定义源列表");
+        TryApplyPendingSectionNavigation();
+
         try
         {
             // 加载测速缓存，显示上次的测速结果（启动时已自动测速）
@@ -112,6 +134,58 @@ public sealed partial class SettingsPage : Page
 
         await ViewModel.LoadSpeedTestCacheAsync();
         await ViewModel.ReloadDownloadSourceSettingsAsync();
+    }
+
+    private void ScrollToSection(string section)
+    {
+        var sectionKey = section.Trim().ToLowerInvariant();
+        FrameworkElement? target = sectionKey switch
+        {
+            "game" => GameSectionHeader,
+            "personalization" or "appearance" => PersonalizationSectionHeader,
+            "network" => NetworkSectionHeader,
+            "ai" or "ai-analysis" => AiSectionHeader,
+            "about" => AboutSectionHeader,
+            _ => null,
+        };
+
+        if (target == null)
+        {
+            Log.Warning("[Protocol.Settings] Unknown section='{Section}'.", section);
+            return;
+        }
+
+        Log.Information("[Protocol.Settings] Scrolling to section='{Section}'.", sectionKey);
+        target.StartBringIntoView(new BringIntoViewOptions
+        {
+            AnimationDesired = true,
+            VerticalAlignmentRatio = 0.05,
+        });
+    }
+
+    private void TryApplyPendingSectionNavigation()
+    {
+        if (string.IsNullOrWhiteSpace(_pendingProtocolSection))
+        {
+            return;
+        }
+
+        if (!IsLoaded)
+        {
+            Log.Information("[Protocol.Settings] Delay section scroll: page is not loaded.");
+            return;
+        }
+
+        var section = _pendingProtocolSection;
+        _pendingProtocolSection = null;
+
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            ScrollToSection(section!);
+
+            // 再补一次重试，覆盖首次布局尚未稳定的场景。
+            _uiDispatcher.TryEnqueue(() => ScrollToSection(section!));
+        });
     }
 
     private async void VersionTextBlock_PointerPressed(object sender, PointerRoutedEventArgs e)
