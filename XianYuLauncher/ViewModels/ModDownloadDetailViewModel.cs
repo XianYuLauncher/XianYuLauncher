@@ -15,6 +15,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Helpers;
 
@@ -22,15 +23,14 @@ namespace XianYuLauncher.ViewModels
 {
     public partial class ModDownloadDetailViewModel : ObservableObject
     {
-        private readonly ModrinthService _modrinthService;
         private readonly CurseForgeService _curseForgeService;
         private readonly IMinecraftVersionService _minecraftVersionService;
         private readonly IFileService _fileService;
-        private readonly ITranslationService _translationService;
         private readonly IDownloadTaskManager _downloadTaskManager;
         private readonly IDialogService _dialogService;
         private readonly IModpackInstallationService _modpackInstallationService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
+        private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IUiDispatcher _uiDispatcher;
 
         [ObservableProperty]
@@ -89,8 +89,8 @@ namespace XianYuLauncher.ViewModels
                 IsLoading = true; 
                 try 
                 {
-                    var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
-                    AddPublishers(members);
+                    var publishers = await _modDetailLoadOrchestrator.LoadPublishersAsync(_modTeamId);
+                    AddPublishers(publishers);
                 } 
                 catch (Exception ex)
                 {
@@ -102,14 +102,14 @@ namespace XianYuLauncher.ViewModels
                 }
             }
 
-            var publishers = PublisherList.Select(p => new PublisherDialogItem
+            var publisherItems = PublisherList.Select(p => new PublisherDialogItem
             {
                 Name = p.Name,
                 Role = p.Role,
                 AvatarUrl = p.AvatarUrl
             });
 
-            await _dialogService.ShowPublishersListDialogAsync(publishers, IsLoading, "所有发布者", "关闭");
+            await _dialogService.ShowPublishersListDialogAsync(publisherItems, IsLoading, "所有发布者", "关闭");
         }
 
         [RelayCommand]
@@ -203,81 +203,15 @@ namespace XianYuLauncher.ViewModels
         public async Task LoadDependencyDetailsAsync(ModrinthVersion modrinthVersion)
         {
             DependencyProjects.Clear();
-            
-            if (modrinthVersion?.Dependencies == null || modrinthVersion.Dependencies.Count == 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 该Mod版本没有依赖项");
-                return;
-            }
-            
-            // 筛选出必填的依赖项
-            var requiredDependencies = modrinthVersion.Dependencies
-                .Where(d => !string.IsNullOrEmpty(d.ProjectId) && d.DependencyType == "required")
-                .ToList();
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {requiredDependencies.Count} 个必填前置mod");
-            
+
             IsLoadingDependencies = true;
-            
+
             try
             {
-                for (int i = 0; i < requiredDependencies.Count; i++)
+                var dependencyProjects = await _modDetailLoadOrchestrator.LoadModrinthDependencyProjectsAsync(modrinthVersion);
+                foreach (var dependencyProject in dependencyProjects)
                 {
-                    var dependency = requiredDependencies[i];
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载第 {i + 1} 个前置mod，项目ID: {dependency.ProjectId}");
-                    
-                    try
-                    {
-                        // 调用Modrinth API获取依赖项目详情
-                        string apiUrl = $"https://api.modrinth.com/v2/project/{dependency.ProjectId}";
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在访问API: {apiUrl}");
-                        
-                        var projectDetail = await _modrinthService.GetProjectDetailAsync(dependency.ProjectId);
-                        if (projectDetail == null)
-                        {
-                            continue;
-                        }
-                        
-                        // 创建依赖项目对象
-                        var dependencyProject = new DependencyProject
-                        {
-                            ProjectId = dependency.ProjectId,
-                            IconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
-                            Title = projectDetail.Title,
-                            Description = projectDetail.Description
-                        };
-                        
-                        DependencyProjects.Add(dependencyProject);
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功加载前置mod: {projectDetail.Title} (ID: {dependency.ProjectId})");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取依赖项目详情失败: {ex.Message}");
-                        // 跳过失败的依赖，继续处理其他依赖
-                    }
-                }
-                
-                // 翻译所有依赖项的描述（如果当前语言是中文）
-                if (_translationService.ShouldUseTranslation() && DependencyProjects.Count > 0)
-                {
-                    var translationTasks = DependencyProjects.Select(async dep =>
-                    {
-                        try
-                        {
-                            var translation = await _translationService.GetModrinthTranslationAsync(dep.ProjectId);
-                            if (translation != null && !string.IsNullOrEmpty(translation.Translated))
-                            {
-                                dep.TranslatedDescription = translation.Translated;
-                                System.Diagnostics.Debug.WriteLine($"[翻译] 依赖项 {dep.ProjectId} 翻译成功");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[翻译] 翻译依赖项 {dep.ProjectId} 失败: {ex.Message}");
-                        }
-                    });
-                    
-                    await Task.WhenAll(translationTasks);
+                    DependencyProjects.Add(dependencyProject);
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 前置mod加载完成，共成功加载 {DependencyProjects.Count} 个");
@@ -294,72 +228,15 @@ namespace XianYuLauncher.ViewModels
         public async Task LoadCurseForgeDependencyDetailsAsync(CurseForgeFile curseForgeFile)
         {
             DependencyProjects.Clear();
-            
-            if (curseForgeFile?.Dependencies == null || curseForgeFile.Dependencies.Count == 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 该CurseForge文件没有依赖项");
-                return;
-            }
-            
-            // 筛选出必填的依赖项 (relationType: 3 = RequiredDependency)
-            var requiredDependencies = curseForgeFile.Dependencies
-                .Where(d => d.RelationType == 3)
-                .ToList();
-            
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到 {requiredDependencies.Count} 个CurseForge必填前置mod");
-            
-            if (requiredDependencies.Count == 0)
-            {
-                return;
-            }
-            
+
             IsLoadingDependencies = true;
-            
+
             try
             {
-                // 批量获取依赖Mod详情
-                var modIds = requiredDependencies.Select(d => d.ModId).ToList();
-                var dependencyMods = await _curseForgeService.GetModsByIdsAsync(modIds);
-                
-                foreach (var mod in dependencyMods)
+                var dependencyProjects = await _modDetailLoadOrchestrator.LoadCurseForgeDependencyProjectsAsync(curseForgeFile);
+                foreach (var dependencyProject in dependencyProjects)
                 {
-                    var dependencyProject = new DependencyProject
-                    {
-                        ProjectId = $"curseforge-{mod.Id}",
-                        IconUrl = mod.Logo?.Url ?? "ms-appx:///Assets/Placeholder.png",
-                        Title = mod.Name,
-                        Description = mod.Summary
-                    };
-                    
                     DependencyProjects.Add(dependencyProject);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功加载CurseForge前置mod: {mod.Name} (ID: {mod.Id})");
-                }
-                
-                // 翻译所有依赖项的描述（如果当前语言是中文）
-                if (_translationService.ShouldUseTranslation() && DependencyProjects.Count > 0)
-                {
-                    var translationTasks = DependencyProjects.Select(async dep =>
-                    {
-                        try
-                        {
-                            // 提取CurseForge Mod ID
-                            if (int.TryParse(dep.ProjectId.Replace("curseforge-", ""), out int modId))
-                            {
-                                var translation = await _translationService.GetCurseForgeTranslationAsync(modId);
-                                if (translation != null && !string.IsNullOrEmpty(translation.Translated))
-                                {
-                                    dep.TranslatedDescription = translation.Translated;
-                                    System.Diagnostics.Debug.WriteLine($"[翻译] CurseForge依赖项 {modId} 翻译成功");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[翻译] 翻译CurseForge依赖项 {dep.ProjectId} 失败: {ex.Message}");
-                        }
-                    });
-                    
-                    await Task.WhenAll(translationTasks);
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] CurseForge前置mod加载完成，共成功加载 {DependencyProjects.Count} 个");
@@ -507,30 +384,25 @@ namespace XianYuLauncher.ViewModels
         }
 
         public ModDownloadDetailViewModel(
-            ModrinthService modrinthService, 
             CurseForgeService curseForgeService,
             IMinecraftVersionService minecraftVersionService,
-            ITranslationService translationService,
             IDownloadTaskManager downloadTaskManager,
             IDialogService dialogService,
             IModpackInstallationService modpackInstallationService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
+            IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IUiDispatcher uiDispatcher)
         {
-            _modrinthService = modrinthService;
             _curseForgeService = curseForgeService;
             _minecraftVersionService = minecraftVersionService;
             _fileService = App.GetService<IFileService>();
-            _localSettingsService = App.GetService<ILocalSettingsService>();
-            _translationService = translationService;
             _downloadTaskManager = downloadTaskManager;
             _dialogService = dialogService;
             _modpackInstallationService = modpackInstallationService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
+            _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _uiDispatcher = uiDispatcher;
         }
-        
-        private readonly ILocalSettingsService _localSettingsService;
         
         // 保存从列表页传递过来的Mod信息，用于优先显示作者
         private ModrinthProject _passedModInfo;
@@ -596,8 +468,8 @@ namespace XianYuLauncher.ViewModels
             {
                 try
                 {
-                    var members = await _modrinthService.GetProjectTeamMembersAsync(_modTeamId);
-                    _uiDispatcher.TryEnqueue(() => AddPublishers(members));
+                    var publishers = await _modDetailLoadOrchestrator.LoadPublishersAsync(_modTeamId);
+                    _uiDispatcher.TryEnqueue(() => AddPublishers(publishers));
                 }
                 catch (Exception ex)
                 {
@@ -610,9 +482,9 @@ namespace XianYuLauncher.ViewModels
             });
         }
 
-        private void AddPublishers(IEnumerable<ModrinthTeamMember> members)
+        private void AddPublishers(IEnumerable<ModDetailPublisherData> publishers)
         {
-            if (members == null)
+            if (publishers == null)
             {
                 return;
             }
@@ -621,337 +493,35 @@ namespace XianYuLauncher.ViewModels
                 .Select(p => p.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var member in members)
+            foreach (var publisher in publishers)
             {
-                var userName = member?.User?.Username;
-                if (string.IsNullOrWhiteSpace(userName) || existingNames.Contains(userName))
+                if (string.IsNullOrWhiteSpace(publisher.Name) || existingNames.Contains(publisher.Name))
                 {
                     continue;
                 }
 
                 PublisherList.Add(new PublisherInfo
                 {
-                    Name = userName,
-                    Role = member.Role,
-                    AvatarUrl = member.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
-                    Url = $"https://modrinth.com/user/{userName}"
+                    Name = publisher.Name,
+                    Role = publisher.Role,
+                    AvatarUrl = publisher.AvatarUrl,
+                    Url = publisher.Url
                 });
 
-                existingNames.Add(userName);
+                existingNames.Add(publisher.Name);
             }
         }
         
-        /// <summary>
-        /// 加载Modrinth Mod详情
-        /// </summary>
         private async Task LoadModrinthModDetailsAsync(string modId)
         {
             try
             {
-                // 调用Modrinth API获取项目详情
-                var projectDetail = await _modrinthService.GetProjectDetailAsync(modId);
-                if (projectDetail == null)
-                {
-                    throw new Exception("未能获取 Modrinth 项目详情");
-                }
-
-                var passedDescription = _passedModInfo?.DisplayDescription;
-                if (string.IsNullOrWhiteSpace(passedDescription))
-                {
-                    passedDescription = _passedModInfo?.Description;
-                }
-                
-                // 更新ViewModel属性
-                ModName = _translationService.GetTranslatedName(projectDetail.Slug, projectDetail.Title);
-                ModDescriptionOriginal = !string.IsNullOrWhiteSpace(passedDescription)
-                    ? passedDescription
-                    : projectDetail.Description;
-                ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(projectDetail.Body);
-                IsFullDescriptionVisible = false; // 默认折叠
-                ModDescriptionTranslated = string.Empty; // 先清空翻译
-
-                // 非资源下载页入口（没有传入描述）时，回退到详情页翻译API
-                if (string.IsNullOrWhiteSpace(passedDescription) && _translationService.ShouldUseTranslation())
-                {
-                    try
-                    {
-                        var translation = await _translationService.GetModrinthTranslationAsync(modId);
-                        if (translation != null && !string.IsNullOrEmpty(translation.Translated))
-                        {
-                            ModDescriptionTranslated = translation.Translated;
-                            System.Diagnostics.Debug.WriteLine($"[翻译] Modrinth项目 {modId} 描述已翻译（回退路径）");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[翻译] 翻译Modrinth项目 {modId} 失败（回退路径）: {ex.Message}");
-                    }
-                }
-                
-                // 通知DisplayModDescription属性更新
-                OnPropertyChanged(nameof(DisplayModDescription));
-                
-                ModDownloads = projectDetail.Downloads;
-                ModIconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png";
-                ModLicense = projectDetail.License?.Name ?? "未知许可证";
-                // 优先使用从列表页传递过来的作者信息，如果没有则使用API返回的
-                ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (_passedModInfo?.Author ?? projectDetail.Author);
-                
-                // 处理发布者列表
+                var result = await _modDetailLoadOrchestrator.LoadModrinthModDetailsAsync(modId, _passedModInfo, _sourceType);
+                ApplyModDetailResult(result);
                 PublisherList.Clear();
-                _modTeamId = projectDetail.Team;
-
-                // 团队成员改为后台加载，不阻塞页面主内容
+                _modTeamId = result.TeamId;
                 StartLoadPublishersInBackground();
-                
-                // 设置平台信息
-                ModSlug = projectDetail.Slug;
-                PlatformName = "Modrinth";
-                
-                // 设置项目类型，根据来源类型进行覆盖
-                if (_sourceType == "mod")
-                {
-                    ProjectType = "mod";
-                }
-                else if (_sourceType == "datapack")
-                {
-                    ProjectType = "datapack";
-                }
-                else
-                {
-                    ProjectType = projectDetail.ProjectType;
-                }
-                
-                // 生成平台 URL
-                PlatformUrl = ModResourcePathHelper.GenerateModrinthUrl(ProjectType, projectDetail.Slug);
-                
-                // 更新支持的加载器/标签
-                SupportedLoaders.Clear();
-                if (projectDetail.Loaders != null)
-                {
-                    foreach (var loader in projectDetail.Loaders)
-                    {
-                        // 首字母大写处理
-                        SupportedLoaders.Add(loader.Substring(0, 1).ToUpper() + loader.Substring(1).ToLower());
-                    }
-                }
-                
-                // 检查是否为资源包、数据包或光影，显示标签而不是加载器
-                // 根据来源类型决定显示内容
-                if (_sourceType == "mod")
-                {
-                    // 如果来源是mod页，始终显示加载器
-                    // 确保SupportedLoaders包含的是加载器而不是标签
-                    SupportedLoaders.Clear();
-                    if (projectDetail.Loaders != null)
-                    {
-                        foreach (var loader in projectDetail.Loaders)
-                        {
-                            // 过滤掉datapack加载器
-                            if (!loader.Equals("datapack", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // 首字母大写处理
-                                SupportedLoaders.Add(loader.Substring(0, 1).ToUpper() + loader.Substring(1).ToLower());
-                            }
-                        }
-                    }
-                }
-                else if (_sourceType == "datapack")
-                {
-                    // 如果来源是数据包页，始终显示标签
-                    // 清空加载器列表
-                    SupportedLoaders.Clear();
-                    
-                    // 添加标签
-                    if (projectDetail.Categories != null)
-                    {
-                        foreach (var category in projectDetail.Categories)
-                        {
-                            // 首字母大写处理
-                            SupportedLoaders.Add(category.Substring(0, 1).ToUpper() + category.Substring(1).ToLower());
-                        }
-                    }
-                }
-                else if (ProjectType == "resourcepack" || ProjectType == "datapack" || ProjectType == "shader" || ProjectType == "world")
-                {
-                    // 清空加载器列表
-                    SupportedLoaders.Clear();
-                    
-                    // 添加标签
-                    if (projectDetail.Categories != null)
-                    {
-                        foreach (var category in projectDetail.Categories)
-                        {
-                            // 首字母大写处理
-                            SupportedLoaders.Add(category.Substring(0, 1).ToUpper() + category.Substring(1).ToLower());
-                        }
-                    }
-                }
-                
-                // 首先获取所有版本信息，使用当前Mod的游戏版本和加载器进行筛选
-                // 对于ModDownloadDetailPage，我们需要获取所有兼容版本，所以不传递特定的筛选条件
-                var allVersions = await _modrinthService.GetProjectVersionsAsync(modId);
-                var unfilteredVersions = allVersions;
-                
-                // 根据来源类型过滤版本
-                if (_sourceType == "mod")
-                {
-                    // 如果来源是mod页，过滤掉datapack类型的版本
-                    allVersions = allVersions.Where(v => v.Loaders != null && !v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
-                }
-                else if (_sourceType == "datapack")
-                {
-                    // 如果来源是数据包页，只保留datapack类型的版本
-                    allVersions = allVersions.Where(v => v.Loaders != null && v.Loaders.Any(l => l.Equals("datapack", StringComparison.OrdinalIgnoreCase))).ToList();
-                }
-
-                // 兼容兜底：若来源过滤导致空版本，则回退到未过滤结果，避免详情页空白。
-                if (allVersions.Count == 0 && unfilteredVersions.Count > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ModDownloadDetail] 来源过滤后无版本，回退到未过滤版本。SourceType={_sourceType}, Total={unfilteredVersions.Count}");
-                    allVersions = unfilteredVersions;
-                }
-                
-                // 预构建加载器名称格式化缓存，避免重复计算
-                var loaderNameCache = new Dictionary<string, string>();
-                
-                // 更新支持的游戏版本
-                if (projectDetail.GameVersions != null)
-                {
-                    // 读取隐藏快照版本设置
-                    var hideSnapshots = await _localSettingsService.ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
-                    
-                    // 在后台线程处理数据，避免阻塞 UI
-                    var tempGameVersions = await Task.Run(() =>
-                    {
-                        var result = new List<GameVersionViewModel>();
-                        
-                        // 直接使用 Modrinth 返回的顺序，反转使最新版本在前
-                        var gameVersionsInOrder = projectDetail.GameVersions.AsEnumerable().Reverse();
-                        
-                        // 如果启用了隐藏快照版本，过滤掉快照版本
-                        if (hideSnapshots)
-                        {
-                            gameVersionsInOrder = gameVersionsInOrder.Where(v => !ModVersionClassifierHelper.IsSnapshotVersion(v));
-                        }
-                        
-                        var gameVersionsList = gameVersionsInOrder.ToList();
-                        
-                        // 预格式化所有可能的加载器名称
-                        var allLoaders = allVersions.Where(v => v.Loaders != null).SelectMany(v => v.Loaders).Distinct().ToList();
-                        foreach (var loader in allLoaders)
-                        {
-                            if (!loaderNameCache.ContainsKey(loader))
-                            {
-                                if (loader.Equals("legacyfabric", StringComparison.OrdinalIgnoreCase) || 
-                                    loader.Equals("legacy-fabric", StringComparison.OrdinalIgnoreCase))
-                                {
-                                     loaderNameCache[loader] = "LegacyFabric";
-                                }
-                                else if (loader.Equals("liteloader", StringComparison.OrdinalIgnoreCase))
-                                {
-                                     loaderNameCache[loader] = "LiteLoader";
-                                }
-                                else if (loader.Equals("neoforge", StringComparison.OrdinalIgnoreCase))
-                                {
-                                     loaderNameCache[loader] = "NeoForge";
-                                }
-                                else if (loader.Length > 0)
-                                {
-                                    loaderNameCache[loader] = char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
-                                }
-                                else
-                                {
-                                    loaderNameCache[loader] = loader;
-                                }
-                            }
-                        }
-                        
-                        // 预先按游戏版本分组所有 Mod 版本，避免重复过滤
-                        var versionsByGameVersion = allVersions
-                            .Where(v => v.GameVersions != null)
-                            .SelectMany(v => v.GameVersions.Select(gv => new { GameVersion = gv, ModVersion = v }))
-                            .GroupBy(x => x.GameVersion)
-                            .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().OrderByDescending(v => v.DatePublished).ToList());
-                        
-                        foreach (var gameVersion in gameVersionsList)
-                        {
-                            // 从预分组数据中获取
-                            if (!versionsByGameVersion.TryGetValue(gameVersion, out var gameVersionModVersions) || gameVersionModVersions.Count == 0)
-                                continue;
-                            
-                            var gameVersionViewModel = new GameVersionViewModel(gameVersion);
-                            
-                            // 按加载器分组
-                            var versionsByLoader = gameVersionModVersions
-                                .Where(v => v.Loaders != null)
-                                .SelectMany(v => v.Loaders.Select(l => new { Loader = l, ModVersion = v }))
-                                .GroupBy(x => x.Loader)
-                                .ToDictionary(g => g.Key, g => g.Select(x => x.ModVersion).Distinct().ToList());
-                            
-                            var tempLoaders = new List<LoaderViewModel>();
-                            
-                            foreach (var kvp in versionsByLoader)
-                            {
-                                var loader = kvp.Key;
-                                var loaderVersions = kvp.Value;
-                                
-                                // 从缓存获取格式化后的加载器名称
-                                var formattedLoaderName = loaderNameCache.TryGetValue(loader, out var cached) 
-                                    ? cached 
-                                    : char.ToUpper(loader[0]) + loader.Substring(1).ToLower();
-                                
-                                var loaderViewModel = new LoaderViewModel(formattedLoaderName);
-                                
-                                // 批量创建 ModVersionViewModel
-                                var modVersionViewModels = loaderVersions.Select(version =>
-                                {
-                                    var file = version.Files?.FirstOrDefault();
-                                    if (file == null) return null;
-                                    
-                                    return new ModVersionViewModel
-                                    {
-                                        VersionNumber = version.VersionNumber,
-                                        ReleaseDate = version.DatePublished,
-                                        Changelog = version.Name,
-                                        DownloadUrl = file.Url?.ToString(),
-                                        FileName = file.Filename,
-                                        Loaders = version.Loaders.Select(l => loaderNameCache.TryGetValue(l, out var c) ? c : l).ToList(),
-                                        VersionType = version.VersionType,
-                                        GameVersion = gameVersion,
-                                        IconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
-                                        OriginalVersion = version
-                                    };
-                                }).Where(v => v != null).ToList();
-                                
-                                // 批量添加到 LoaderViewModel
-                                foreach (var mv in modVersionViewModels)
-                                {
-                                    loaderViewModel.ModVersions.Add(mv);
-                                }
-                                
-                                tempLoaders.Add(loaderViewModel);
-                            }
-                            
-                            // 批量添加加载器
-                            foreach (var loader in tempLoaders)
-                            {
-                                gameVersionViewModel.Loaders.Add(loader);
-                            }
-                            
-                            result.Add(gameVersionViewModel);
-                        }
-                        
-                        return result;
-                    });
-                    
-                    // 在 UI 线程批量更新集合
-                    SupportedGameVersions.Clear();
-                    foreach (var gameVersion in tempGameVersions)
-                    {
-                        SupportedGameVersions.Add(gameVersion);
-                    }
-                }
+                ReplaceSupportedGameVersions(result.VersionGroups);
             }
             catch (Exception ex)
             {
@@ -965,203 +535,81 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task LoadCurseForgeModDetailsAsync(string modId)
         {
-            // 提取真实的CurseForge Mod ID（移除"curseforge-"前缀）
-            var curseForgeModId = int.Parse(modId.Replace("curseforge-", ""));
-            
-            // 调用CurseForge API获取Mod详情
-            var modDetail = await _curseForgeService.GetModDetailAsync(curseForgeModId);
+            var result = await _modDetailLoadOrchestrator.LoadCurseForgeModDetailsAsync(modId, _passedModInfo, _sourceType);
+            ApplyModDetailResult(result);
 
-            var passedDescription = _passedModInfo?.DisplayDescription;
-            if (string.IsNullOrWhiteSpace(passedDescription))
-            {
-                passedDescription = _passedModInfo?.Description;
-            }
-            
-            // 更新ViewModel属性
-            ModName = _translationService.GetTranslatedName(modDetail.Slug, modDetail.Name);
-            ModDescriptionOriginal = !string.IsNullOrWhiteSpace(passedDescription)
-                ? passedDescription
-                : modDetail.Summary;
-            ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(modDetail.Description);
-            IsFullDescriptionVisible = false; // 默认折叠
-            ModDescriptionTranslated = string.Empty; // 先清空翻译
-
-            // 非资源下载页入口（没有传入描述）时，回退到详情页翻译API
-            if (string.IsNullOrWhiteSpace(passedDescription) && _translationService.ShouldUseTranslation())
-            {
-                try
-                {
-                    var translation = await _translationService.GetCurseForgeTranslationAsync(curseForgeModId);
-                    if (translation != null && !string.IsNullOrEmpty(translation.Translated))
-                    {
-                        ModDescriptionTranslated = translation.Translated;
-                        System.Diagnostics.Debug.WriteLine($"[翻译] CurseForge项目 {curseForgeModId} 描述已翻译（回退路径）");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[翻译] 翻译CurseForge项目 {curseForgeModId} 失败（回退路径）: {ex.Message}");
-                }
-            }
-            
-            // 通知DisplayModDescription属性更新
-            OnPropertyChanged(nameof(DisplayModDescription));
-            
-            ModDownloads = (int)Math.Min(modDetail.DownloadCount, int.MaxValue);
-            ModIconUrl = modDetail.Logo?.Url ?? "ms-appx:///Assets/Placeholder.png";
-            ModLicense = "CurseForge"; // CurseForge没有直接的许可证字段
-            ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (modDetail.Authors?.FirstOrDefault()?.Name ?? "Unknown");
-            
-            // 处理发布者列表 (CurseForge直接填充)
             PublisherList.Clear();
-            _modTeamId = null; // CurseForge不需要懒加载ID
-            
-            if (modDetail.Authors != null)
-            {
-                foreach (var author in modDetail.Authors)
-                {
-                    PublisherList.Add(new PublisherInfo {
-                        Name = author.Name,
-                        Role = "Author", // CurseForge API通常不返回详细角色，统称Author
-                        AvatarUrl = "ms-appx:///Assets/Placeholder.png", // CurseForge API在此处通常不返回头像URL，使用占位符
-                        Url = author.Url
-                    });
-                }
-            }
+            _modTeamId = null;
+            AddPublishers(result.Publishers);
 
-            // 设置平台信息
-            ModSlug = modDetail.Slug;
-            PlatformName = "CurseForge";
-            PlatformUrl = modDetail.Links?.WebsiteUrl;
-            
-              // 设置项目类型：优先通过ClassId判断，其次使用传递进来的_sourceType，最后默认为mod
-              if (modDetail.ClassId.HasValue)
-              {
-                  ProjectType = modDetail.ClassId.Value switch
-                  {
-                      6 => "mod",
-                      12 => "resourcepack",
-                      17 => "world",
-                      4471 => "modpack",
-                      6552 => "shader",
-                      6945 => "datapack",
-                      _ => "mod"
-                  };
-                  System.Diagnostics.Debug.WriteLine($"[CurseForge] 根据ClassId ({modDetail.ClassId}) 设置项目类型为: {ProjectType}");
-              }
-              else
-              {
-                  ProjectType = _sourceType ?? "mod";
-              }
-            // 更新支持的加载器
-            SupportedLoaders.Clear();
-            if (modDetail.LatestFilesIndexes != null)
+            if (result.FirstPageFiles.Count > 0)
             {
-                var loaders = new HashSet<string>();
-                foreach (var fileIndex in modDetail.LatestFilesIndexes)
+                ProcessAndDisplayCurseForgeFiles(result.FirstPageFiles.ToList(), result.HideSnapshots);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge] 第一页加载完成，显示 {result.FirstPageFiles.Count} 个文件");
+
+                if (result.FirstPageFiles.Count < result.PageSize)
                 {
-                    if (fileIndex.ModLoader.HasValue)
-                    {
-                        var loaderName = fileIndex.ModLoader.Value switch
-                        {
-                            1 => "Forge",
-                            4 => "Fabric",
-                            5 => "Quilt",
-                            6 => "NeoForge",
-                            _ => null
-                        };
-                        
-                        if (!string.IsNullOrEmpty(loaderName))
-                        {
-                            loaders.Add(loaderName);
-                        }
-                    }
-                }
-                
-                foreach (var loader in loaders)
-                {
-                    SupportedLoaders.Add(loader);
-                }
-            }
-            
-            // 读取隐藏快照版本设置
-            var hideSnapshots = await _localSettingsService.ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
-            
-            // 第一次加载：获取前50个文件并立即显示
-            int pageSize = 50;
-            System.Diagnostics.Debug.WriteLine($"[CurseForge] 开始加载Mod文件列表，Mod ID: {curseForgeModId}");
-            
-            var firstPageFiles = await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, 0, pageSize);
-            
-            if (firstPageFiles != null && firstPageFiles.Count > 0)
-            {
-                // 立即处理并显示第一页数据
-                ProcessAndDisplayCurseForgeFiles(firstPageFiles, hideSnapshots);
-                System.Diagnostics.Debug.WriteLine($"[CurseForge] 第一页加载完成，显示 {firstPageFiles.Count} 个文件");
-                
-                // 如果第一页就少于50个，说明没有更多数据了
-                if (firstPageFiles.Count < pageSize)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 文件列表加载完成，共 {firstPageFiles.Count} 个文件");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 文件列表加载完成，共 {result.FirstPageFiles.Count} 个文件");
                     return;
                 }
-                
-                // 取消之前的加载任务
+
                 _curseForgeLoadCancellationTokenSource?.Cancel();
                 _curseForgeLoadCancellationTokenSource?.Dispose();
                 _curseForgeLoadCancellationTokenSource = new CancellationTokenSource();
                 var cancellationToken = _curseForgeLoadCancellationTokenSource.Token;
-                
-                // 后台继续加载剩余页面
+
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var allFiles = new List<CurseForgeFile>(firstPageFiles);
-                        int currentIndex = pageSize;
+                        var allFiles = new List<CurseForgeFile>(result.FirstPageFiles);
+                        int currentIndex = result.PageSize;
                         bool hasMoreFiles = true;
-                        
+
                         while (hasMoreFiles && !cancellationToken.IsCancellationRequested)
                         {
-                            var filesPage = await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, currentIndex, pageSize);
-                            
+                            var filesPage = await _modDetailLoadOrchestrator.LoadCurseForgeFilesPageAsync(
+                                result.CurseForgeModId,
+                                currentIndex,
+                                result.PageSize,
+                                cancellationToken);
+
                             if (cancellationToken.IsCancellationRequested)
                             {
                                 System.Diagnostics.Debug.WriteLine($"[CurseForge] 后台加载已取消");
                                 break;
                             }
-                            
+
                             if (filesPage == null || filesPage.Count == 0)
                             {
                                 hasMoreFiles = false;
                                 break;
                             }
-                            
+
                             allFiles.AddRange(filesPage);
                             System.Diagnostics.Debug.WriteLine($"[CurseForge] 后台加载：已加载 {allFiles.Count} 个文件");
-                            
-                            // 每加载一页就更新显示
+
                             if (!cancellationToken.IsCancellationRequested)
                             {
                                 _uiDispatcher.TryEnqueue(() =>
                                 {
                                     if (!cancellationToken.IsCancellationRequested)
                                     {
-                                        ProcessAndDisplayCurseForgeFiles(allFiles, hideSnapshots);
+                                        ProcessAndDisplayCurseForgeFiles(allFiles, result.HideSnapshots);
                                     }
                                 });
                             }
-                            
-                            if (filesPage.Count < pageSize)
+
+                            if (filesPage.Count < result.PageSize)
                             {
                                 hasMoreFiles = false;
                             }
                             else
                             {
-                                currentIndex += pageSize;
+                                currentIndex += result.PageSize;
                             }
                         }
-                        
+
                         if (!cancellationToken.IsCancellationRequested)
                         {
                             System.Diagnostics.Debug.WriteLine($"[CurseForge] 所有文件加载完成，共 {allFiles.Count} 个文件");
@@ -1178,80 +626,47 @@ namespace XianYuLauncher.ViewModels
                 }, cancellationToken);
             }
         }
+
+        private void ApplyModDetailResult(ModDetailLoadResultBase result)
+        {
+            ModName = result.ModName;
+            ModDescriptionOriginal = result.ModDescriptionOriginal;
+            ModDescriptionTranslated = result.ModDescriptionTranslated;
+            ModDescriptionBody = result.ModDescriptionBody;
+            IsFullDescriptionVisible = false;
+            OnPropertyChanged(nameof(DisplayModDescription));
+
+            ModDownloads = result.ModDownloads;
+            ModIconUrl = result.ModIconUrl;
+            ModLicense = result.ModLicense;
+            ModAuthor = result.ModAuthor;
+            ModSlug = result.ModSlug;
+            PlatformName = result.PlatformName;
+            PlatformUrl = result.PlatformUrl;
+            ProjectType = result.ProjectType;
+
+            SupportedLoaders.Clear();
+            foreach (var loader in result.SupportedLoaders)
+            {
+                SupportedLoaders.Add(loader);
+            }
+        }
+
+        private void ReplaceSupportedGameVersions(IEnumerable<ModDetailGameVersionGroup> versionGroups)
+        {
+            SupportedGameVersions.Clear();
+            foreach (var versionGroup in versionGroups)
+            {
+                SupportedGameVersions.Add(CreateGameVersionViewModel(versionGroup));
+            }
+        }
         
         /// <summary>
         /// 处理并显示CurseForge文件列表（增量更新，避免闪烁）
         /// </summary>
         private void ProcessAndDisplayCurseForgeFiles(List<CurseForgeFile> allFiles, bool hideSnapshots)
         {
-            // Debug: 输出第一个文件的详细信息
-            var fileInfoList = new List<(CurseForgeFile File, string GameVersion, string Loader)>();
-            
-            foreach (var file in allFiles)
-            {
-                // 从gameVersions中分离游戏版本和加载器
-                var gameVersions = new List<string>();
-                var loaders = new List<string>();
-                
-                if (file.GameVersions != null)
-                {
-                    foreach (var gv in file.GameVersions)
-                    {
-                        var lower = gv.ToLower();
-                        // 判断是否为加载器
-                        if (lower == "forge" || lower == "neoforge" || lower == "fabric" || lower == "quilt" || lower == "optifine" || lower == "iris" || lower == "legacyfabric")
-                        {
-                            if (lower == "neoforge")
-                            {
-                                loaders.Add("NeoForge");
-                            }
-                            else if (lower == "legacyfabric")
-                            {
-                                loaders.Add("LegacyFabric");
-                            }
-                            else
-                            {
-                                // 首字母大写
-                                loaders.Add(char.ToUpper(gv[0]) + gv.Substring(1).ToLower());
-                            }
-                        }
-                        else
-                        {
-                            // 是游戏版本
-                            gameVersions.Add(gv);
-                        }
-                    }
-                }
-                
-                // 如果没有找到加载器,添加一个默认的"Generic"加载器
-                if (loaders.Count == 0)
-                {
-                    loaders.Add("Generic");
-                }
-                
-                // 为每个游戏版本和加载器组合创建条目
-                foreach (var gameVersion in gameVersions)
-                {
-                    foreach (var loader in loaders)
-                    {
-                        fileInfoList.Add((file, gameVersion, loader));
-                    }
-                }
-            }
-            
-            // 按游戏版本分组，使用语义化版本排序
-            var filesByGameVersion = fileInfoList
-                .GroupBy(x => x.GameVersion)
-                .OrderByDescending(g => g.Key, new MinecraftVersionComparer()) // 使用自定义比较器
-                .ToList();
-            
-            // 如果启用了隐藏快照版本，过滤掉快照版本
-            if (hideSnapshots)
-            {
-                filesByGameVersion = filesByGameVersion
-                    .Where(g => !ModVersionClassifierHelper.IsSnapshotVersion(g.Key))
-                    .ToList();
-            }
+            var versionGroups = ModDetailLoadHelper.BuildCurseForgeVersionGroups(allFiles, hideSnapshots);
             
             // 增量更新：只在首次加载时清空，后续更新时智能合并
             bool isFirstLoad = SupportedGameVersions.Count == 0;
@@ -1259,7 +674,7 @@ namespace XianYuLauncher.ViewModels
             if (isFirstLoad)
             {
                 // 首次加载：直接添加所有数据
-                foreach (var gameVersionGroup in filesByGameVersion)
+                foreach (var gameVersionGroup in versionGroups)
                 {
                     var gameVersionViewModel = CreateGameVersionViewModel(gameVersionGroup);
                     if (gameVersionViewModel.Loaders.Count > 0)
@@ -1274,9 +689,9 @@ namespace XianYuLauncher.ViewModels
                 var existingVersions = SupportedGameVersions.ToDictionary(gv => gv.GameVersion);
                 var newVersionsToAdd = new List<GameVersionViewModel>();
                 
-                foreach (var gameVersionGroup in filesByGameVersion)
+                foreach (var gameVersionGroup in versionGroups)
                 {
-                    var gameVersion = gameVersionGroup.Key;
+                    var gameVersion = gameVersionGroup.GameVersion;
                     
                     if (existingVersions.TryGetValue(gameVersion, out var existingViewModel))
                     {
@@ -1318,50 +733,20 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 创建GameVersionViewModel
         /// </summary>
-        private GameVersionViewModel CreateGameVersionViewModel(IGrouping<string, (CurseForgeFile File, string GameVersion, string Loader)> gameVersionGroup)
+        private GameVersionViewModel CreateGameVersionViewModel(ModDetailGameVersionGroup gameVersionGroup)
         {
-            var gameVersion = gameVersionGroup.Key;
-            var gameVersionViewModel = new GameVersionViewModel(gameVersion);
-            
-            // 按加载器分组
-            var filesByLoader = gameVersionGroup
-                .GroupBy(x => x.Loader)
-                .ToList();
-            
-            foreach (var loaderGroup in filesByLoader)
+            var gameVersionViewModel = new GameVersionViewModel(gameVersionGroup.GameVersion);
+
+            foreach (var loaderGroup in gameVersionGroup.Loaders)
             {
-                var loaderName = loaderGroup.Key;
-                var loaderViewModel = new LoaderViewModel(loaderName);
-                
-                // 设置父级引用
+                var loaderViewModel = new LoaderViewModel(loaderGroup.LoaderName);
                 loaderViewModel.ParentGameVersion = gameVersionViewModel;
-                
-                // 去重：同一个文件可能支持多个游戏版本
-                var uniqueFiles = loaderGroup
-                    .Select(x => x.File)
-                    .Distinct()
-                    .OrderByDescending(f => f.FileDate)
-                    .ToList();
-                
-                foreach (var file in uniqueFiles)
+
+                foreach (var versionItem in loaderGroup.Versions)
                 {
-                    var modVersionViewModel = new ModVersionViewModel
-                    {
-                        VersionNumber = file.DisplayName,
-                        ReleaseDate = file.FileDate.ToString("yyyy-MM-dd"),
-                        Changelog = file.DisplayName,
-                        DownloadUrl = file.DownloadUrl,
-                        FileName = file.FileName,
-                        Loaders = new List<string> { loaderName },
-                        VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(file.ReleaseType),
-                        GameVersion = gameVersion,
-                        IconUrl = ModIconUrl,
-                        OriginalCurseForgeFile = file // 保存原始CurseForge文件信息用于获取依赖
-                    };
-                    
-                    loaderViewModel.ModVersions.Add(modVersionViewModel);
+                    loaderViewModel.ModVersions.Add(CreateModVersionViewModel(versionItem, gameVersionViewModel.GameVersion));
                 }
-                
+
                 if (loaderViewModel.ModVersions.Count > 0)
                 {
                     gameVersionViewModel.Loaders.Add(loaderViewModel);
@@ -1374,44 +759,22 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 更新已存在的GameVersionViewModel
         /// </summary>
-        private void UpdateGameVersionViewModel(GameVersionViewModel existingViewModel, IGrouping<string, (CurseForgeFile File, string GameVersion, string Loader)> gameVersionGroup)
+        private void UpdateGameVersionViewModel(GameVersionViewModel existingViewModel, ModDetailGameVersionGroup gameVersionGroup)
         {
             var existingLoaders = existingViewModel.Loaders.ToDictionary(l => l.LoaderName);
-            
-            // 按加载器分组
-            var filesByLoader = gameVersionGroup
-                .GroupBy(x => x.Loader)
-                .ToList();
-            
-            foreach (var loaderGroup in filesByLoader)
+
+            foreach (var loaderGroup in gameVersionGroup.Loaders)
             {
-                var loaderName = loaderGroup.Key;
+                var loaderName = loaderGroup.LoaderName;
                 
                 if (existingLoaders.TryGetValue(loaderName, out var existingLoader))
                 {
-                    // 已存在的加载器：增量更新文件列表（避免闪烁）
-                    var uniqueFiles = loaderGroup
-                        .Select(x => x.File)
-                        .Distinct()
-                        .OrderByDescending(f => f.FileDate)
-                        .ToList();
-                    
                     // 创建新版本的字典，用于快速查找
-                    var newVersionsDict = uniqueFiles.ToDictionary(
-                        f => f.Id,
-                        f => new ModVersionViewModel
-                        {
-                            VersionNumber = f.DisplayName,
-                            ReleaseDate = f.FileDate.ToString("yyyy-MM-dd"),
-                            Changelog = f.DisplayName,
-                            DownloadUrl = f.DownloadUrl,
-                            FileName = f.FileName,
-                            Loaders = new List<string> { loaderName },
-                            VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(f.ReleaseType),
-                            GameVersion = existingViewModel.GameVersion,
-                            IconUrl = ModIconUrl,
-                            OriginalCurseForgeFile = f
-                        });
+                    var newVersionsDict = loaderGroup.Versions
+                        .Where(version => version.OriginalCurseForgeFile != null)
+                        .ToDictionary(
+                            version => version.OriginalCurseForgeFile!.Id,
+                            version => CreateModVersionViewModel(version, existingViewModel.GameVersion));
                     
                     // 创建现有版本的字典
                     var existingVersionsDict = existingLoader.ModVersions
@@ -1433,12 +796,12 @@ namespace XianYuLauncher.ViewModels
                     }
                     
                     // 如果数量不匹配，说明有问题，强制重建
-                    if (existingLoader.ModVersions.Count != uniqueFiles.Count)
+                    if (existingLoader.ModVersions.Count != newVersionsDict.Count)
                     {
                         existingLoader.ModVersions.Clear();
-                        foreach (var file in uniqueFiles)
+                        foreach (var version in loaderGroup.Versions.Where(version => version.OriginalCurseForgeFile != null))
                         {
-                            existingLoader.ModVersions.Add(newVersionsDict[file.Id]);
+                            existingLoader.ModVersions.Add(newVersionsDict[version.OriginalCurseForgeFile!.Id]);
                         }
                     }
                 }
@@ -1446,33 +809,11 @@ namespace XianYuLauncher.ViewModels
                 {
                     // 新加载器：创建并添加
                     var loaderViewModel = new LoaderViewModel(loaderName);
-                    
-                    // 设置父级引用
                     loaderViewModel.ParentGameVersion = existingViewModel;
-                    
-                    var uniqueFiles = loaderGroup
-                        .Select(x => x.File)
-                        .Distinct()
-                        .OrderByDescending(f => f.FileDate)
-                        .ToList();
-                    
-                    foreach (var file in uniqueFiles)
+
+                    foreach (var versionItem in loaderGroup.Versions)
                     {
-                        var modVersionViewModel = new ModVersionViewModel
-                        {
-                            VersionNumber = file.DisplayName,
-                            ReleaseDate = file.FileDate.ToString("yyyy-MM-dd"),
-                            Changelog = file.DisplayName,
-                            DownloadUrl = file.DownloadUrl,
-                            FileName = file.FileName,
-                            Loaders = new List<string> { loaderName },
-                            VersionType = ModVersionClassifierHelper.GetCurseForgeVersionType(file.ReleaseType),
-                            GameVersion = existingViewModel.GameVersion,
-                            IconUrl = ModIconUrl,
-                            OriginalCurseForgeFile = file // 保存原始CurseForge文件信息用于获取依赖
-                        };
-                        
-                        loaderViewModel.ModVersions.Add(modVersionViewModel);
+                        loaderViewModel.ModVersions.Add(CreateModVersionViewModel(versionItem, existingViewModel.GameVersion));
                     }
                     
                     if (loaderViewModel.ModVersions.Count > 0)
@@ -1481,6 +822,24 @@ namespace XianYuLauncher.ViewModels
                     }
                 }
             }
+        }
+
+        private ModVersionViewModel CreateModVersionViewModel(ModDetailVersionItem versionItem, string gameVersion)
+        {
+            return new ModVersionViewModel
+            {
+                VersionNumber = versionItem.VersionNumber,
+                ReleaseDate = versionItem.ReleaseDate,
+                Changelog = versionItem.Changelog,
+                DownloadUrl = versionItem.DownloadUrl,
+                FileName = versionItem.FileName,
+                Loaders = versionItem.Loaders.ToList(),
+                VersionType = versionItem.VersionType,
+                GameVersion = gameVersion,
+                IconUrl = ModIconUrl,
+                OriginalVersion = versionItem.OriginalModrinthVersion,
+                OriginalCurseForgeFile = versionItem.OriginalCurseForgeFile
+            };
         }
         
         // 下载弹窗相关属性

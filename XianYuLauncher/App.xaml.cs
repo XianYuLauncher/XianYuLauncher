@@ -403,6 +403,7 @@ public partial class App : Application
             services.AddSingleton<IScreenshotInteractionService, ScreenshotInteractionService>();
             services.AddSingleton<IResourceIconLoadCoordinator, ResourceIconLoadCoordinator>();
             services.AddSingleton<IModResourceDownloadOrchestrator, ModResourceDownloadOrchestrator>();
+            services.AddSingleton<IModDetailLoadOrchestrator, ModDetailLoadOrchestrator>();
             
             // AuthlibInjector Service
             services.AddSingleton<AuthlibInjectorService>();
