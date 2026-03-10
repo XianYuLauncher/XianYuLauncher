@@ -455,6 +455,25 @@ public partial class App : Application
         Build();
 
         UnhandledException += App_UnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+    }
+
+    private void CurrentDomain_UnhandledException(object sender, System.UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex)
+        {
+            Log.Fatal(ex, "AppDomain 未处理异常，应用将终止。IsTerminating={IsTerminating}", e.IsTerminating);
+            return;
+        }
+
+        Log.Fatal("AppDomain 未处理异常（非 Exception 对象），应用将终止。IsTerminating={IsTerminating}", e.IsTerminating);
+    }
+
+    private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        Log.Error(e.Exception, "TaskScheduler 未观察到的任务异常。");
+        e.SetObserved();
     }
 
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
