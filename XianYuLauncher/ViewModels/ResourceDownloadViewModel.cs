@@ -253,6 +253,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private bool _isModLoading = false;
+
+    [ObservableProperty]
+    private bool _isModCategoryLoading = false;
+
+    public bool IsModProcessing => IsModLoading || IsModCategoryLoading;
+
+    partial void OnIsModLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModProcessing));
+    }
+
+    partial void OnIsModCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModProcessing));
+    }
     
     [ObservableProperty]
     private bool _isModLoadingMore = false;
@@ -2035,6 +2050,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// <param name="resourceType">资源类型：mod, shader, resourcepack, datapack, modpack</param>
     public async Task LoadCategoriesAsync(string resourceType)
     {
+        var isModCategoryRequest = string.Equals(resourceType, "mod", StringComparison.OrdinalIgnoreCase);
+
+        if (isModCategoryRequest)
+        {
+            IsModCategoryLoading = true;
+        }
+
         try
         {
             var categories = new List<Models.CategoryItem>();
@@ -2108,6 +2130,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"[类别加载] 加载 {resourceType} 类别失败: {ex.Message}");
         }
+        finally
+        {
+            if (isModCategoryRequest)
+            {
+                IsModCategoryLoading = false;
+            }
+        }
     }
     
     /// <summary>
@@ -2154,7 +2183,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     }
 
     /// <summary>
-    /// 获取CurseForge类别（带内存缓存）
+    /// 获取CurseForge类别（持久化缓存 + 内存缓存）
     /// </summary>
     private async Task<List<Models.CategoryItem>> GetCurseForgeCategoriesAsync(string resourceType)
     {
@@ -2174,20 +2203,34 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 _ => 6
             };
             
-            List<CurseForgeCategory> curseForgeCategories;
-            
-            // 检查内存缓存
-            if (_curseForgeCategoryCache.TryGetValue(classId, out var cachedCategories))
+            List<CurseForgeCategory>? curseForgeCategories = null;
+
+            // 一级：内存缓存
+            if (_curseForgeCategoryCache.TryGetValue(classId, out var memoryCachedCategories))
             {
-                curseForgeCategories = cachedCategories;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
+                curseForgeCategories = memoryCachedCategories;
+                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从内存缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
             }
-            else
+
+            // 二级：磁盘缓存
+            if (curseForgeCategories == null)
             {
-                // 从API获取并缓存
+                var diskCachedCategories = await _curseForgeCacheService.GetCachedCategoriesAsync(classId);
+                if (diskCachedCategories != null && diskCachedCategories.Count > 0)
+                {
+                    curseForgeCategories = diskCachedCategories;
+                    _curseForgeCategoryCache[classId] = diskCachedCategories;
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从磁盘缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
+                }
+            }
+
+            // 三级：API
+            if (curseForgeCategories == null)
+            {
                 curseForgeCategories = await _curseForgeService.GetCategoriesAsync(classId);
                 _curseForgeCategoryCache[classId] = curseForgeCategories;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从API获取 {resourceType} 类别: {curseForgeCategories.Count} 个，已缓存");
+                await _curseForgeCacheService.SaveCategoriesAsync(classId, curseForgeCategories);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从API获取 {resourceType} 类别: {curseForgeCategories.Count} 个，已写入内存+磁盘缓存");
             }
             
             foreach (var category in curseForgeCategories)
@@ -2957,9 +3000,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreMods))]
     public async Task LoadMoreModsAsync()
     {
-        System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 调用，IsModLoading={IsModLoading}，IsModLoadingMore={IsModLoadingMore}，ModHasMoreResults={ModHasMoreResults}");
+        System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 调用，IsModProcessing={IsModProcessing}，IsModLoadingMore={IsModLoadingMore}，ModHasMoreResults={ModHasMoreResults}");
         
-        if (IsModLoading || IsModLoadingMore || !ModHasMoreResults)
+        if (IsModProcessing || IsModLoadingMore || !ModHasMoreResults)
         {
             System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 跳过加载：条件不满足");
             return;
@@ -3255,7 +3298,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreMods()
     {
-        return !IsModLoading && !IsModLoadingMore && ModHasMoreResults;
+        return !IsModProcessing && !IsModLoadingMore && ModHasMoreResults;
     }
     
     /// <summary>
