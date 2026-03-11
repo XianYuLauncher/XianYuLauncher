@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace XianYuLauncher.Core.Models;
 
@@ -19,4 +20,7 @@ public class ModrinthTagItem
 
     [JsonPropertyName("header")]
     public string? Header { get; set; }
+
+    [JsonPropertyName("supported_project_types")]
+    public List<string>? SupportedProjectTypes { get; set; }
 }

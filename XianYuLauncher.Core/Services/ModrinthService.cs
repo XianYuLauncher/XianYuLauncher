@@ -335,7 +335,9 @@ public class ModrinthService
         {
             var normalizedProjectType = projectType.Trim().ToLowerInvariant();
             filteredItems = allItems
-                .Where(item => string.Equals(item.ProjectType, normalizedProjectType, StringComparison.OrdinalIgnoreCase))
+                .Where(item =>
+                    string.Equals(item.ProjectType, normalizedProjectType, StringComparison.OrdinalIgnoreCase)
+                    || (item.SupportedProjectTypes?.Any(t => string.Equals(t, normalizedProjectType, StringComparison.OrdinalIgnoreCase)) ?? false))
                 .ToList();
         }
 
