@@ -22,7 +22,9 @@ public class CurseForgeCacheService
     
     private const string CacheFolder = "curseforge_cache";
     private const string ImageCacheFolder = "images";
+    private const string CategoryCachePrefix = "categories_";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
+    private static readonly TimeSpan CategoryCacheExpiration = TimeSpan.FromDays(3);
     
     public CurseForgeCacheService(IFileService fileService)
     {
@@ -282,6 +284,69 @@ public class CurseForgeCacheService
             System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 清除缓存失败: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// 获取缓存的类别列表（跨重启持久化）
+    /// </summary>
+    public async Task<List<CurseForgeCategory>?> GetCachedCategoriesAsync(int classId)
+    {
+        try
+        {
+            var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{CategoryCachePrefix}{classId}.json");
+            if (!File.Exists(cacheFilePath))
+            {
+                return null;
+            }
+
+            var json = await File.ReadAllTextAsync(cacheFilePath);
+            var cacheData = JsonConvert.DeserializeObject<CurseForgeCategoryCacheData>(json);
+            if (cacheData == null || cacheData.Items == null)
+            {
+                return null;
+            }
+
+            var age = DateTime.Now - cacheData.CacheTime;
+            if (age > CategoryCacheExpiration)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 已过期（{age.TotalHours:F1}h）");
+                return null;
+            }
+
+            var remaining = CategoryCacheExpiration - age;
+            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 命中，剩余 {remaining.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 个");
+            return cacheData.Items;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] 读取失败: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 保存类别列表到缓存（跨重启持久化）
+    /// </summary>
+    public async Task SaveCategoriesAsync(int classId, List<CurseForgeCategory> items)
+    {
+        try
+        {
+            var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{CategoryCachePrefix}{classId}.json");
+            var cacheData = new CurseForgeCategoryCacheData
+            {
+                CacheTime = DateTime.Now,
+                ClassId = classId,
+                Items = items ?? new List<CurseForgeCategory>(),
+            };
+
+            var json = JsonConvert.SerializeObject(cacheData, Formatting.None);
+            await File.WriteAllTextAsync(cacheFilePath, json);
+            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 已保存，共 {cacheData.Items.Count} 个，下次刷新: {DateTime.Now.Add(CategoryCacheExpiration):yyyy-MM-dd HH:mm:ss}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] 保存失败: {ex.Message}");
+        }
+    }
     
     /// <summary>
     /// 缓存图片
@@ -465,4 +530,14 @@ public class CurseForgeCacheData
     public string Category { get; set; }
     public int TotalHits { get; set; }
     public List<ModrinthProject> Items { get; set; } = new();
+}
+
+/// <summary>
+/// CurseForge 类别缓存数据结构
+/// </summary>
+public class CurseForgeCategoryCacheData
+{
+    public DateTime CacheTime { get; set; }
+    public int ClassId { get; set; }
+    public List<CurseForgeCategory> Items { get; set; } = new();
 }

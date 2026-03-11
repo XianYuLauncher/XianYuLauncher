@@ -551,10 +551,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsModLoading, Mode=OneWay}"
+                                IsActive="{Binding IsModProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsModLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsModProcessing, Mode=OneWay}"/>
 
                             <!-- Mod列表 -->
                             <ScrollViewer 
@@ -577,7 +577,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ModListView_ItemClick"
-                                        Visibility="{Binding IsModLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
