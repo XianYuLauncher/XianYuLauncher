@@ -100,6 +100,7 @@ public class LibraryManager : ILibraryManager
             }
 
             // 添加原生库下载任务
+            // TODO: [BUG] 不应下载全平台原生库 #83
             if (library.Natives != null && library.Downloads?.Classifiers != null)
             {
                 var nativeClassifier = GetNativeClassifier(library.Natives);
