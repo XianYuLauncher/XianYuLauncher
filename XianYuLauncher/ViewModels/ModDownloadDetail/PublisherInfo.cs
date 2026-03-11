@@ -7,13 +7,13 @@ namespace XianYuLauncher.ViewModels
     /// </summary>
     public class PublisherInfo
     {
-        public string Name { get; set; }
-        public string Role { get; set; }
-        public string AvatarUrl { get; set; }
-        public string Url { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string AvatarUrl { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
 
         public Visibility AvatarVisibility =>
-            (!string.IsNullOrEmpty(AvatarUrl) && !AvatarUrl.Contains("Placeholder"))
+            (!string.IsNullOrEmpty(AvatarUrl) && !AvatarUrl.Contains("Placeholder", StringComparison.OrdinalIgnoreCase))
             ? Visibility.Visible : Visibility.Collapsed;
 
         public Visibility PlaceholderVisibility =>

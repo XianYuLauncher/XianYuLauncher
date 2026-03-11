@@ -518,8 +518,8 @@ namespace XianYuLauncher.ViewModels
                 {
                     Name = publisher.Name,
                     Role = publisher.Role,
-                    AvatarUrl = publisher.AvatarUrl,
-                    Url = publisher.Url
+                    AvatarUrl = publisher.AvatarUrl ?? string.Empty,
+                    Url = publisher.Url ?? string.Empty
                 });
 
                 existingNames.Add(publisher.Name);
@@ -1139,8 +1139,7 @@ namespace XianYuLauncher.ViewModels
                     ProjectType,
                     ModIconUrl,
                     resolvedDownloadUrl,
-                    savePath,
-                    InitializeDownloadTeachingTip);
+                    savePath);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 
@@ -1624,8 +1623,7 @@ namespace XianYuLauncher.ViewModels
                     ProjectType,
                     ModIconUrl,
                     resolvedDownloadUrl,
-                    savePath,
-                    InitializeDownloadTeachingTip);
+                    savePath);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
             }
@@ -1798,6 +1796,8 @@ namespace XianYuLauncher.ViewModels
 
                 WriteInformationLog($"准备下载世界存档: {ModName}, URL: {resolvedDownloadUrl}");
 
+                InitializeDownloadTeachingTip();
+
                 // 处理依赖
                 var worldDependencyDir = ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), SelectedInstalledVersion?.OriginalVersionName, "world");
                 if (!string.IsNullOrEmpty(worldDependencyDir))
@@ -1805,9 +1805,6 @@ namespace XianYuLauncher.ViewModels
                     _fileService.CreateDirectory(worldDependencyDir);
                     await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, SelectedInstalledVersion);
                 }
-
-                InitializeDownloadTeachingTip();
-                _downloadTaskManager.IsTeachingTipEnabled = true;
 
                 await _downloadTaskManager.StartWorldDownloadAsync(
                     ModName,
@@ -2365,8 +2362,7 @@ namespace XianYuLauncher.ViewModels
                     ProjectType,
                     ModIconUrl,
                     resolvedQuickInstallDownloadUrl,
-                    savePath,
-                    InitializeDownloadTeachingTip);
+                    savePath);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 IsDownloading = false;

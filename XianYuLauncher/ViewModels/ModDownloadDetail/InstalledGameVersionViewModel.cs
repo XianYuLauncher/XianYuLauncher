@@ -7,19 +7,19 @@ namespace XianYuLauncher.ViewModels
     public partial class InstalledGameVersionViewModel : ObservableObject
     {
         [ObservableProperty]
-        private string _gameVersion;
+        private string _gameVersion = string.Empty;
 
         [ObservableProperty]
-        private string _loaderType;
+        private string _loaderType = string.Empty;
 
         [ObservableProperty]
-        private string _loaderVersion;
+        private string _loaderVersion = string.Empty;
 
         [ObservableProperty]
         private bool _isCompatible;
 
         [ObservableProperty]
-        private string _originalVersionName;
+        private string _originalVersionName = string.Empty;
 
         /// <summary>
         /// 所有加载器列表（包括主加载器和附加加载器如 OptiFine、LiteLoader）
