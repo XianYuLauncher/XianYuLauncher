@@ -99,26 +99,26 @@ public class LibraryManager : ILibraryManager
                 }
             }
 
-            // 添加原生库下载任务
-            // TODO: [BUG] 不应下载全平台原生库 #83
+            // 添加原生库下载任务（仅当前 OS，下载该 OS 下全架构 natives，与官启一致）
             if (library.Natives != null && library.Downloads?.Classifiers != null)
             {
-                var nativeClassifier = GetNativeClassifier(library.Natives);
-                if (!string.IsNullOrEmpty(nativeClassifier) && 
-                    library.Downloads.Classifiers.TryGetValue(nativeClassifier, out var nativeDownload) &&
-                    !string.IsNullOrEmpty(nativeDownload.Url))
+                foreach (var nativeClassifier in GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys))
                 {
-                    var nativePath = GetLibraryPath(library.Name, librariesDirectory, nativeClassifier);
-                    if (!File.Exists(nativePath))
+                    if (library.Downloads.Classifiers.TryGetValue(nativeClassifier, out var nativeDownload) &&
+                        !string.IsNullOrEmpty(nativeDownload.Url))
                     {
-                        downloadTasks.Add(new DownloadTask
+                        var nativePath = GetLibraryPath(library.Name, librariesDirectory, nativeClassifier);
+                        if (!File.Exists(nativePath))
                         {
-                            Url = nativeDownload.Url,
-                            TargetPath = nativePath,
-                            ExpectedSha1 = nativeDownload.Sha1,
-                            Description = $"原生库: {library.Name} ({nativeClassifier})",
-                            Priority = 1
-                        });
+                            downloadTasks.Add(new DownloadTask
+                            {
+                                Url = nativeDownload.Url,
+                                TargetPath = nativePath,
+                                ExpectedSha1 = nativeDownload.Sha1,
+                                Description = $"原生库: {library.Name} ({nativeClassifier})",
+                                Priority = 1
+                            });
+                        }
                     }
                 }
             }
@@ -185,25 +185,25 @@ public class LibraryManager : ILibraryManager
             if (libraryNameParts.Length >= 4)
             {
                 var classifier = libraryNameParts[3];
-                if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase))
+                if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase) && IsNativeClassifierMatchingCurrentOs(classifier))
                 {
-                    if (IsNativeClassifierMatchingCurrentArch(classifier))
-                    {
-                        var nativeLibraryPath = GetLibraryPath(library.Name, librariesDirectory);
-                        extractedCount += await ExtractNativeFilesFromJarAsync(nativeLibraryPath, nativesDirectory);
-                        continue;
-                    }
+                    var nativeLibraryPath = GetLibraryPath(library.Name, librariesDirectory);
+                    extractedCount += await ExtractNativeFilesFromJarAsync(nativeLibraryPath, nativesDirectory);
+                    continue;
                 }
             }
 
-            // 第二种原生库格式：通过Natives属性和Classifiers指定
+            // 第二种原生库格式：通过Natives属性和Classifiers指定（提取时仅当前架构，避免覆盖错误二进制）
             if (library.Natives != null && library.Downloads?.Classifiers != null)
             {
-                var nativeClassifier = GetNativeClassifier(library.Natives);
-                if (!string.IsNullOrEmpty(nativeClassifier) && 
-                    library.Downloads.Classifiers.ContainsKey(nativeClassifier))
+                var classifiers = GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys).ToList();
+                // 优先使用架构特定的 classifier（如 natives-windows-x64），否则用通用 natives-windows
+                var toExtract = classifiers.FirstOrDefault(c => IsNativeClassifierMatchingCurrentArchForExtract(c) && c.Contains($"-{_currentArch}"))
+                    ?? classifiers.FirstOrDefault(c => IsNativeClassifierMatchingCurrentArchForExtract(c))
+                    ?? classifiers.FirstOrDefault();
+                if (!string.IsNullOrEmpty(toExtract) && library.Downloads.Classifiers.ContainsKey(toExtract))
                 {
-                    var nativeLibraryPath = GetLibraryPath(library.Name, librariesDirectory, nativeClassifier);
+                    var nativeLibraryPath = GetLibraryPath(library.Name, librariesDirectory, toExtract);
                     extractedCount += await ExtractNativeFilesFromJarAsync(nativeLibraryPath, nativesDirectory);
                 }
             }
@@ -242,20 +242,16 @@ public class LibraryManager : ILibraryManager
             }
         }
 
-        // 检查原生库文件
+        // 检查原生库文件（当前 OS 下全架构均需存在）
         if (library.Natives != null && library.Downloads?.Classifiers != null)
         {
-            var nativeClassifier = GetNativeClassifier(library.Natives);
-            if (!string.IsNullOrEmpty(nativeClassifier) && 
-                library.Downloads.Classifiers.TryGetValue(nativeClassifier, out var nativeDownload))
+            foreach (var nativeClassifier in GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys))
             {
+                if (!library.Downloads.Classifiers.TryGetValue(nativeClassifier, out var nativeDownload))
+                    continue;
                 var nativePath = GetLibraryPath(library.Name, librariesDirectory, nativeClassifier);
                 if (!File.Exists(nativePath))
-                {
                     return false;
-                }
-
-                // 如果有SHA1，验证文件完整性
                 if (!string.IsNullOrEmpty(nativeDownload.Sha1))
                 {
                     var actualSha1 = ComputeFileSha1(nativePath);
@@ -379,24 +375,28 @@ public class LibraryManager : ILibraryManager
             return true;
         }
 
-        // 默认规则为允许
-        bool result = true;
+        // 当规则包含 OS 限制时：若无任何规则匹配当前 OS，应排除该库（Issue #83）
+        // 例如 natives-linux 仅有 allow+os:linux，在 Windows 上不应下载
+        bool result = false;
+        bool anyRuleMatched = false;
 
         foreach (var rule in library.Rules)
         {
             bool appliesToCurrentOs = rule.Os == null ||
                 (rule.Os.Name == _currentOs &&
                  (string.IsNullOrEmpty(rule.Os.Arch) || rule.Os.Arch == _currentArch) &&
-                 (string.IsNullOrEmpty(rule.Os.Version) || 
+                 (string.IsNullOrEmpty(rule.Os.Version) ||
                   Regex.IsMatch(Environment.OSVersion.VersionString, rule.Os.Version)));
 
             if (appliesToCurrentOs)
             {
+                anyRuleMatched = true;
                 result = rule.Action == "allow";
             }
         }
 
-        return result;
+        // 若所有规则均带 Os 限制且无一匹配，保持 false（不适用）
+        return anyRuleMatched ? result : false;
     }
 
 
@@ -432,52 +432,43 @@ public class LibraryManager : ILibraryManager
     }
 
     /// <summary>
-    /// 获取当前操作系统对应的原生库分类器
+    /// 获取当前操作系统下所有原生库分类器（含全架构，与官启一致）
     /// </summary>
-    private string GetNativeClassifier(LibraryNative natives)
+    private IEnumerable<string> GetNativeClassifiersForCurrentOs(IEnumerable<string> classifierKeys)
     {
-        string? classifier = _currentOs switch
+        foreach (var key in classifierKeys)
         {
-            "windows" => natives.Windows,
-            "linux" => natives.Linux,
-            "osx" => natives.Osx,
-            _ => null
-        };
-
-        // 替换占位符，如 ${arch} -> arm64
-        if (!string.IsNullOrEmpty(classifier))
-        {
-            classifier = classifier.Replace("${arch}", _currentArch);
+            if (!key.StartsWith("natives-", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (_currentOs == "windows" && key.Contains("windows", StringComparison.OrdinalIgnoreCase))
+                yield return key;
+            else if (_currentOs == "linux" && key.Contains("linux", StringComparison.OrdinalIgnoreCase))
+                yield return key;
+            else if (_currentOs == "osx" && (key.Contains("osx", StringComparison.OrdinalIgnoreCase) || key.Contains("macos", StringComparison.OrdinalIgnoreCase)))
+                yield return key;
         }
-
-        return classifier ?? string.Empty;
     }
 
     /// <summary>
-    /// 检查原生库分类器是否匹配当前架构
+    /// 检查分类器是否匹配当前 OS（用于格式一：库名含 classifier）
     /// </summary>
-    private bool IsNativeClassifierMatchingCurrentArch(string classifier)
+    private bool IsNativeClassifierMatchingCurrentOs(string classifier)
     {
-        // 检查分类器是否包含架构信息
-        if (classifier.Contains("-x64") && _currentArch != "x64")
-            return false;
-        if (classifier.Contains("-x86") && _currentArch != "x86")
-            return false;
-        if (classifier.Contains("-arm64") && _currentArch != "arm64")
-            return false;
-        if (classifier.Contains("-arm") && !classifier.Contains("-arm64") && _currentArch != "arm")
-            return false;
+        if (classifier.Contains("windows", StringComparison.OrdinalIgnoreCase) && _currentOs != "windows") return false;
+        if (classifier.Contains("linux", StringComparison.OrdinalIgnoreCase) && _currentOs != "linux") return false;
+        if ((classifier.Contains("osx", StringComparison.OrdinalIgnoreCase) || classifier.Contains("macos", StringComparison.OrdinalIgnoreCase)) && _currentOs != "osx") return false;
+        return true;
+    }
 
-        // 检查操作系统
-        if (classifier.Contains("-windows") && _currentOs != "windows")
-            return false;
-        if (classifier.Contains("-linux") && _currentOs != "linux")
-            return false;
-        if (classifier.Contains("-osx") && _currentOs != "osx")
-            return false;
-        if (classifier.Contains("-macos") && _currentOs != "osx")
-            return false;
-
+    /// <summary>
+    /// 提取时仅匹配当前架构，避免不同架构同名 .dll/.so 互相覆盖
+    /// </summary>
+    private bool IsNativeClassifierMatchingCurrentArchForExtract(string classifier)
+    {
+        if (classifier.Contains("-x64") && _currentArch != "x64") return false;
+        if (classifier.Contains("-x86") && _currentArch != "x86") return false;
+        if (classifier.Contains("-arm64") && _currentArch != "arm64") return false;
+        if (classifier.Contains("-arm") && !classifier.Contains("-arm64") && _currentArch != "arm") return false;
         return true;
     }
 

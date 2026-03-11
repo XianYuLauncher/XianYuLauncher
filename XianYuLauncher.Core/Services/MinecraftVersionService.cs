@@ -375,7 +375,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             return null;
         }
 
-        var downloadSource = _downloadSourceFactory.GetDefaultSource();
+        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
         return downloadSource.GetClientJarUrl(versionId, clientUrl);
     }
 
@@ -392,7 +392,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             return null;
         }
 
-        var downloadSource = _downloadSourceFactory.GetDefaultSource();
+        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
         return downloadSource.GetResourceUrl("server", serverUrl);
     }
 
@@ -812,8 +812,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         if (library.Rules == null || library.Rules.Length == 0)
             return true;
 
-        // 默认规则为允许
-        bool result = true;
+        // 当规则包含 OS 限制时：若无任何规则匹配当前 OS，应排除该库（Issue #83）
+        bool result = false;
+        bool anyRuleMatched = false;
 
         foreach (var rule in library.Rules)
         {
@@ -824,11 +825,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
             if (appliesToCurrentOs)
             {
+                anyRuleMatched = true;
                 result = rule.Action == "allow";
             }
         }
 
-        return result;
+        return anyRuleMatched ? result : false;
     }
 
     public async Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<DownloadProgressStatus> progressCallback = null, bool allowNetwork = true)
@@ -849,8 +851,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 Directory.CreateDirectory(librariesDirectory);
 
                 // 当前操作系统名称和架构
-                // 使用Environment.Is64BitProcess检测当前进程的位数，而不仅仅是操作系统
-                string currentOs = "windows";
+                string currentOs = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "windows"
+                    : System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) ? "linux"
+                    : System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) ? "osx"
+                    : "windows";
                 // 正确检测当前架构（包括ARM64）
                 string currentArch;
                 switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
@@ -900,9 +904,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     
                     if (library.Natives != null && library.Downloads?.Classifiers != null)
                     {
-                        string nativeClassifier = GetNativeClassifier(library.Natives, currentOs, currentArch);
-                        if (!string.IsNullOrEmpty(nativeClassifier) && library.Downloads.Classifiers.ContainsKey(nativeClassifier))
+                        foreach (var nativeClassifier in GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys, currentOs))
                         {
+                            if (!library.Downloads.Classifiers.ContainsKey(nativeClassifier))
+                                continue;
                             totalFilesToCheck++;
                             string nativeLibraryPath = GetLibraryFilePath(library.Name, librariesDirectory, nativeClassifier);
                             if (File.Exists(nativeLibraryPath))
@@ -981,31 +986,48 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
 
     /// <summary>
-    /// 获取当前操作系统对应的原生库分类器
+    /// 获取当前操作系统下所有原生库分类器（含全架构，与官启一致）
     /// </summary>
-    private string GetNativeClassifier(LibraryNative natives, string currentOs, string architecture)
+    private static IEnumerable<string> GetNativeClassifiersForCurrentOs(IEnumerable<string> classifierKeys, string currentOs)
     {
-        string classifier = null;
-        switch (currentOs)
+        foreach (var key in classifierKeys)
         {
-            case "windows":
-                classifier = natives.Windows;
-                break;
-            case "linux":
-                classifier = natives.Linux;
-                break;
-            case "osx":
-                classifier = natives.Osx;
-                break;
+            if (!key.StartsWith("natives-", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (currentOs == "windows" && key.Contains("windows", StringComparison.OrdinalIgnoreCase))
+                yield return key;
+            else if (currentOs == "linux" && key.Contains("linux", StringComparison.OrdinalIgnoreCase))
+                yield return key;
+            else if (currentOs == "osx" && (key.Contains("osx", StringComparison.OrdinalIgnoreCase) || key.Contains("macos", StringComparison.OrdinalIgnoreCase)))
+                yield return key;
         }
+    }
 
-        // 替换占位符，如 ${arch} -> arm64
-        if (!string.IsNullOrEmpty(classifier))
-        {
-            classifier = classifier.Replace("${arch}", architecture);
-        }
+    /// <summary>
+    /// 格式一：检查 classifier 是否匹配当前 OS 和架构
+    /// </summary>
+    private static bool IsNativeClassifierMatchingCurrentArch(string classifier, string currentOs, string currentArch)
+    {
+        if (classifier.Contains("windows", StringComparison.OrdinalIgnoreCase) && currentOs != "windows") return false;
+        if (classifier.Contains("linux", StringComparison.OrdinalIgnoreCase) && currentOs != "linux") return false;
+        if ((classifier.Contains("osx", StringComparison.OrdinalIgnoreCase) || classifier.Contains("macos", StringComparison.OrdinalIgnoreCase)) && currentOs != "osx") return false;
+        if (classifier.Contains("-x64") && currentArch != "x64") return false;
+        if (classifier.Contains("-x86") && currentArch != "x86") return false;
+        if (classifier.Contains("-arm64") && currentArch != "arm64") return false;
+        if (classifier.Contains("-arm") && !classifier.Contains("-arm64") && currentArch != "arm") return false;
+        return true;
+    }
 
-        return classifier;
+    /// <summary>
+    /// 提取时仅匹配当前架构
+    /// </summary>
+    private static bool IsNativeClassifierMatchingCurrentArchForExtract(string classifier, string currentArch)
+    {
+        if (classifier.Contains("-x64") && currentArch != "x64") return false;
+        if (classifier.Contains("-x86") && currentArch != "x86") return false;
+        if (classifier.Contains("-arm64") && currentArch != "arm64") return false;
+        if (classifier.Contains("-arm") && !classifier.Contains("-arm64") && currentArch != "arm") return false;
+        return true;
     }
 
     /// <summary>
@@ -1139,7 +1161,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
         }
 
-        var downloadSource = _downloadSourceFactory.GetDefaultSource();
+        var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
         
         // 使用下载源获取正确的库文件URL
         string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? "", downloadFile.Url);
@@ -1219,45 +1241,17 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 if (libraryNameParts.Length >= 4)
                 {
                     string classifier = libraryNameParts[3];
-                    if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase))
+                    if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase) && IsNativeClassifierMatchingCurrentArch(classifier, currentOs, currentArch))
                     {
-                        // 检查分类器是否与当前架构匹配
-                        // 例如：natives-windows-x64 应该只在x64架构上使用
-                        bool archMatches = true;
-                        // 检查架构前缀，确保只匹配当前架构的原生库
-                        if (classifier.Contains("-x64") && currentArch != "x64")
+                        string nativeLibraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
+                        if (File.Exists(nativeLibraryPath))
                         {
-                            archMatches = false;
-                        }
-                        else if (classifier.Contains("-x86") && currentArch != "x86")
-                        {
-                            archMatches = false;
-                        }
-                        else if (classifier.Contains("-arm64") && currentArch != "arm64")
-                        {
-                            archMatches = false;
-                        }
-                        else if (classifier.Contains("-arm") && currentArch != "arm")
-                        {
-                            archMatches = false;
-                        }
-                        
-                        if (archMatches)
-                        {
-                            // 构建原生库文件路径
-                            string nativeLibraryPath = GetLibraryFilePath(library.Name, librariesDirectory);
-                            
-                            // 检查原生库JAR文件是否存在
-                            if (File.Exists(nativeLibraryPath))
-                            {
-                                // 解压原生库文件
                             try
                             {
                                 using (var archive = ZipFile.OpenRead(nativeLibraryPath))
                                 {
                                     foreach (var entry in archive.Entries)
                                     {
-                                        // 提取所有可能的原生库文件类型
                                         var extension = Path.GetExtension(entry.Name).ToLower();
                                         if (entry.Length > 0 && (extension == ".dll" || extension == ".so" || extension == ".dylib"))
                                         {
@@ -1271,39 +1265,32 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             catch (Exception extractEx)
                             {
                                 _logger.LogError(extractEx, "解压原生库文件失败: {NativeLibraryPath}", nativeLibraryPath);
-                                
-                                // 输出错误文件到TEMP文件夹
-                                _logger.LogError(extractEx, "解压原生库文件失败: {NativeLibraryPath}", nativeLibraryPath);
                             }
-                            }
-                            else
-                            {
-                                // 记录缺失的原生库文件
-                                _logger.LogWarning("原生库文件不存在: {NativeLibraryPath}", nativeLibraryPath);
-                            }
-                            continue;
                         }
+                        else
+                        {
+                            _logger.LogWarning("原生库文件不存在: {NativeLibraryPath}", nativeLibraryPath);
+                        }
+                        continue;
                     }
                 }
 
-                // 第二种原生库格式：通过Natives属性和Classifiers指定
+                // 第二种原生库格式：通过Natives属性和Classifiers指定（提取时仅当前架构，避免覆盖错误二进制）
                 if (library.Natives != null && library.Downloads?.Classifiers != null)
                 {
-                    string nativeClassifier = GetNativeClassifier(library.Natives, currentOs, currentArch);
-                    if (!string.IsNullOrEmpty(nativeClassifier) && library.Downloads.Classifiers.ContainsKey(nativeClassifier))
+                    var classifiers = GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys, currentOs).ToList();
+                    var toExtract = classifiers.FirstOrDefault(c => IsNativeClassifierMatchingCurrentArchForExtract(c, currentArch) && c.Contains($"-{currentArch}"))
+                        ?? classifiers.FirstOrDefault(c => IsNativeClassifierMatchingCurrentArchForExtract(c, currentArch))
+                        ?? classifiers.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(toExtract) && library.Downloads.Classifiers.ContainsKey(toExtract))
                     {
-                        // 获取原生库JAR文件路径
-                        string nativeLibraryPath = GetLibraryFilePath(library.Name, librariesDirectory, nativeClassifier);
-                        
-                        // 检查原生库JAR文件是否存在
+                        string nativeLibraryPath = GetLibraryFilePath(library.Name, librariesDirectory, toExtract);
                         if (File.Exists(nativeLibraryPath))
                         {
-                            // 解压原生库文件
                             using (var archive = ZipFile.OpenRead(nativeLibraryPath))
                             {
                                 foreach (var entry in archive.Entries)
                                 {
-                                    // 提取所有可能的原生库文件类型
                                     var extension = Path.GetExtension(entry.Name).ToLower();
                                     if (entry.Length > 0 && (extension == ".dll" || extension == ".so" || extension == ".dylib"))
                                     {
@@ -1316,7 +1303,6 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         }
                         else
                         {
-                            // 记录缺失的原生库文件
                             _logger.LogWarning("原生库文件不存在: {NativeLibraryPath}", nativeLibraryPath);
                         }
                     }
@@ -1975,14 +1961,13 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 _logger.LogInformation("正在下载assets索引: {AssetIndexId}, 官方URL: {AssetIndexUrl}, 转换后URL: {ConvertedAssetIndexUrl}", assetIndexId, assetIndexUrl, convertedAssetIndexUrl);
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前assets索引下载源: {downloadSource.Name}, 资源索引ID: {assetIndexId}, 官方URL: {assetIndexUrl}, 转换后URL: {convertedAssetIndexUrl}");
                 
-                // 获取官方源URL作为备用
-                var officialSource = _downloadSourceFactory.GetSource("official");
-                string officialAssetIndexUrl = officialSource.GetResourceUrl("asset_index", assetIndexUrl);
+                // 备用 URL 使用原始官方地址（asset_index 的官方源即原始 URL，无需再调用 GetResourceUrl 避免多余 Debug 输出）
+                string fallbackAssetIndexUrl = assetIndexUrl;
                 
                 // 使用 DownloadManager 下载，支持自动重试和 SHA1 验证
                 await DownloadFileWithFallbackAsync(
                     convertedAssetIndexUrl,
-                    officialAssetIndexUrl,
+                    fallbackAssetIndexUrl,
                     indexFilePath,
                     assetIndexSha1,
                     progressCallback != null ? (Action<double>)(p => progressCallback(new DownloadProgressStatus(0, 100, p))) : null);

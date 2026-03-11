@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -195,6 +197,36 @@ public class LibraryManagerTests : IDisposable
         var result = _libraryManager.IsLibraryApplicable(library);
 
         // Assert - 在Windows上应该返回false
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.False(result);
+        }
+    }
+
+    /// <summary>
+    /// Issue #83: 当库仅有 allow+os:linux 规则时，在 Windows 上应排除（不下载 natives-linux）
+    /// </summary>
+    [Fact]
+    public void IsLibraryApplicable_AllowLinuxOnly_OnWindows_ReturnsFalse()
+    {
+        // Arrange: 模拟 org.lwjgl:lwjgl:3.4.1:natives-linux 的规则
+        var library = new Library
+        {
+            Name = "org.lwjgl:lwjgl:3.4.1:natives-linux",
+            Rules = new[]
+            {
+                new LibraryRules
+                {
+                    Action = "allow",
+                    Os = new LibraryOs { Name = "linux" }
+                }
+            }
+        };
+
+        // Act
+        var result = _libraryManager.IsLibraryApplicable(library);
+
+        // Assert: 在 Windows 上应返回 false（不适用，不应下载）
         if (OperatingSystem.IsWindows())
         {
             Assert.False(result);
@@ -529,6 +561,139 @@ public class LibraryManagerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             _libraryManager.DownloadLibrariesAsync(versionInfo, _testDirectory, cancellationToken: cts.Token));
+    }
+
+    /// <summary>
+    /// Issue #83: 不应下载其他 OS 的原生库。验证当库包含 Windows/Linux/Osx 三类原生库时，
+    /// 仅下载当前平台对应的原生库，不下载其他平台的。
+    /// </summary>
+    [Fact]
+    public async Task DownloadLibrariesAsync_NativeLibraryWithAllPlatforms_DownloadsOnlyCurrentPlatform()
+    {
+        // Arrange: 库包含全平台 Classifiers
+        const string windowsUrl = "https://example.com/natives-windows.jar";
+        const string linuxUrl = "https://example.com/natives-linux.jar";
+        const string osxUrl = "https://example.com/natives-osx.jar";
+
+        var currentOs = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows"
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "linux"
+            : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "osx"
+            : "windows";
+        var expectedUrl = currentOs switch { "windows" => windowsUrl, "linux" => linuxUrl, _ => osxUrl };
+        var otherOsUrls = new[] { windowsUrl, linuxUrl, osxUrl }.Where(u => u != expectedUrl).ToList();
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library>
+            {
+                new Library
+                {
+                    Name = "org.lwjgl:lwjgl-platform:3.3.1",
+                    Natives = new LibraryNative
+                    {
+                        Windows = "natives-windows",
+                        Linux = "natives-linux",
+                        Osx = "natives-osx"
+                    },
+                    Downloads = new LibraryDownloads
+                    {
+                        Classifiers = new Dictionary<string, DownloadFile>
+                        {
+                            ["natives-windows"] = new DownloadFile { Url = windowsUrl, Sha1 = "a" },
+                            ["natives-linux"] = new DownloadFile { Url = linuxUrl, Sha1 = "b" },
+                            ["natives-osx"] = new DownloadFile { Url = osxUrl, Sha1 = "c" }
+                        }
+                    }
+                }
+            }
+        };
+
+        IEnumerable<DownloadTask>? capturedTasks = null;
+        _mockDownloadManager
+            .Setup(m => m.DownloadFilesAsync(
+                It.IsAny<IEnumerable<DownloadTask>>(),
+                It.IsAny<int>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<DownloadTask>, int, Action<DownloadProgressStatus>, CancellationToken>(
+                (tasks, _, _, _) => capturedTasks = tasks.ToList())
+            .ReturnsAsync(new List<DownloadResult>
+            {
+                DownloadResult.Succeeded(Path.Combine(_testDirectory, "natives.jar"), expectedUrl)
+            });
+
+        // Act
+        await _libraryManager.DownloadLibrariesAsync(versionInfo, _testDirectory);
+
+        // Assert: 仅应下载当前 OS 的原生库，不应包含其他 OS 的 URL
+        Assert.NotNull(capturedTasks);
+        var taskList = capturedTasks.ToList();
+        var urls = taskList.Select(t => t.Url).ToList();
+
+        Assert.Contains(expectedUrl, urls);
+        foreach (var otherUrl in otherOsUrls)
+        {
+            Assert.DoesNotContain(otherUrl, urls);
+        }
+        Assert.Single(taskList);
+    }
+
+    /// <summary>
+    /// 与官启一致：当前 OS 下全架构 natives 均需下载（如 natives-windows, natives-windows-x64, natives-windows-arm64）
+    /// </summary>
+    [Fact]
+    public async Task DownloadLibrariesAsync_NativeLibraryWithAllArchs_DownloadsAllForCurrentOs()
+    {
+        const string nativesWindowsUrl = "https://example.com/natives-windows.jar";
+        const string nativesX64Url = "https://example.com/natives-windows-x64.jar";
+        const string nativesArm64Url = "https://example.com/natives-windows-arm64.jar";
+        const string nativesLinuxUrl = "https://example.com/natives-linux.jar";
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library>
+            {
+                new Library
+                {
+                    Name = "org.lwjgl:lwjgl:3.4.1",
+                    Natives = new LibraryNative { Windows = "natives-windows", Linux = "natives-linux", Osx = "natives-osx" },
+                    Downloads = new LibraryDownloads
+                    {
+                        Classifiers = new Dictionary<string, DownloadFile>
+                        {
+                            ["natives-windows"] = new DownloadFile { Url = nativesWindowsUrl, Sha1 = "a" },
+                            ["natives-windows-x64"] = new DownloadFile { Url = nativesX64Url, Sha1 = "b" },
+                            ["natives-windows-arm64"] = new DownloadFile { Url = nativesArm64Url, Sha1 = "c" },
+                            ["natives-linux"] = new DownloadFile { Url = nativesLinuxUrl, Sha1 = "d" }
+                        }
+                    }
+                }
+            }
+        };
+
+        IEnumerable<DownloadTask>? capturedTasks = null;
+        _mockDownloadManager
+            .Setup(m => m.DownloadFilesAsync(
+                It.IsAny<IEnumerable<DownloadTask>>(),
+                It.IsAny<int>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<DownloadTask>, int, Action<DownloadProgressStatus>, CancellationToken>(
+                (tasks, _, _, _) => capturedTasks = tasks.ToList())
+            .ReturnsAsync(new List<DownloadResult>());
+
+        await _libraryManager.DownloadLibrariesAsync(versionInfo, _testDirectory);
+
+        Assert.NotNull(capturedTasks);
+        var urls = capturedTasks.Select(t => t.Url).ToList();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Assert.Contains(nativesWindowsUrl, urls);
+            Assert.Contains(nativesX64Url, urls);
+            Assert.Contains(nativesArm64Url, urls);
+            Assert.DoesNotContain(nativesLinuxUrl, urls);
+            Assert.Equal(3, urls.Count);
+        }
     }
 
     #endregion
