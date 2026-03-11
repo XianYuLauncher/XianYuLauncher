@@ -168,10 +168,10 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        Action initializeTeachingTip)
+        Action? initializeTeachingTip = null)
     {
         _downloadTaskManager.IsTeachingTipEnabled = true;
-        initializeTeachingTip();
+        initializeTeachingTip?.Invoke();
         await _downloadTaskManager.StartResourceDownloadAsync(modName, projectType, downloadUrl, savePath, modIconUrl);
     }
 }
