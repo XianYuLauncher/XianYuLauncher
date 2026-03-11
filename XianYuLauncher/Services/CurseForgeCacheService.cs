@@ -22,7 +22,7 @@ public class CurseForgeCacheService
     
     private const string CacheFolder = "curseforge_cache";
     private const string ImageCacheFolder = "images";
-    private const string CategoryCachePrefix = "categories_";
+    private const string CategoryCacheFolder = "categories";
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
     private static readonly TimeSpan CategoryCacheExpiration = TimeSpan.FromDays(3);
     
@@ -53,6 +53,19 @@ public class CurseForgeCacheService
     private string GetImageCachePath()
     {
         var cachePath = Path.Combine(GetCacheRootPath(), ImageCacheFolder);
+        if (!Directory.Exists(cachePath))
+        {
+            Directory.CreateDirectory(cachePath);
+        }
+        return cachePath;
+    }
+
+    /// <summary>
+    /// 获取类别缓存目录（与搜索结果缓存分离，避免清理搜索缓存时误删类别缓存）
+    /// </summary>
+    private string GetCategoryCachePath()
+    {
+        var cachePath = Path.Combine(GetCacheRootPath(), CategoryCacheFolder);
         if (!Directory.Exists(cachePath))
         {
             Directory.CreateDirectory(cachePath);
@@ -292,7 +305,23 @@ public class CurseForgeCacheService
     {
         try
         {
-            var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{CategoryCachePrefix}{classId}.json");
+            var cacheFilePath = Path.Combine(GetCategoryCachePath(), $"{classId}.json");
+            var legacyFilePath = Path.Combine(GetCacheRootPath(), $"categories_{classId}.json");
+
+            // 新路径不存在时，尝试从旧路径迁移
+            if (!File.Exists(cacheFilePath) && File.Exists(legacyFilePath))
+            {
+                try
+                {
+                    File.Move(legacyFilePath, cacheFilePath);
+                }
+                catch
+                {
+                    // 迁移失败则从旧路径读取
+                    cacheFilePath = legacyFilePath;
+                }
+            }
+
             if (!File.Exists(cacheFilePath))
             {
                 return null;
@@ -330,7 +359,7 @@ public class CurseForgeCacheService
     {
         try
         {
-            var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{CategoryCachePrefix}{classId}.json");
+            var cacheFilePath = Path.Combine(GetCategoryCachePath(), $"{classId}.json");
             var cacheData = new CurseForgeCategoryCacheData
             {
                 CacheTime = DateTime.Now,
@@ -454,7 +483,7 @@ public class CurseForgeCacheService
         {
             var cacheRoot = GetCacheRootPath();
             
-            // 删除搜索结果缓存
+            // 删除搜索结果缓存（仅根目录 .json，不含子目录）
             foreach (var file in Directory.GetFiles(cacheRoot, "*.json"))
             {
                 File.Delete(file);
@@ -465,6 +494,13 @@ public class CurseForgeCacheService
             if (Directory.Exists(imageCachePath))
             {
                 Directory.Delete(imageCachePath, true);
+            }
+            
+            // 删除类别缓存
+            var categoryCachePath = Path.Combine(cacheRoot, CategoryCacheFolder);
+            if (Directory.Exists(categoryCachePath))
+            {
+                Directory.Delete(categoryCachePath, true);
             }
             
             System.Diagnostics.Debug.WriteLine("[CurseForge缓存清理] 所有缓存已清理");

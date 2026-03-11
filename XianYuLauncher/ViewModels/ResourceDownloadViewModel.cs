@@ -2094,7 +2094,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 if (IsModrinthEnabled)
                 {
-                    // Modrinth 优先走 tag API，失败时回退本地兜底列表
+                    // 仅从 Modrinth tag API 加载类别，当前不做本地兜底
                     var modrinthCategories = await GetModrinthCategoriesAsync(resourceType);
                     categories.AddRange(modrinthCategories);
                 }

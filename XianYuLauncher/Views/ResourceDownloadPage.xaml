@@ -554,7 +554,7 @@
                                 IsActive="{Binding IsModProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsModProcessing, Mode=OneWay}"/>
+                                Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- Mod列表 -->
                             <ScrollViewer 
