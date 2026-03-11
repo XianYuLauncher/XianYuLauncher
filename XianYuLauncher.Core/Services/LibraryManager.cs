@@ -185,7 +185,9 @@ public class LibraryManager : ILibraryManager
             if (libraryNameParts.Length >= 4)
             {
                 var classifier = libraryNameParts[3];
-                if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase) && IsNativeClassifierMatchingCurrentOs(classifier))
+                if (classifier.StartsWith("natives-", StringComparison.OrdinalIgnoreCase)
+                    && IsNativeClassifierMatchingCurrentOs(classifier)
+                    && IsNativeClassifierMatchingCurrentArchForExtract(classifier))
                 {
                     var nativeLibraryPath = GetLibraryPath(library.Name, librariesDirectory);
                     extractedCount += await ExtractNativeFilesFromJarAsync(nativeLibraryPath, nativesDirectory);
