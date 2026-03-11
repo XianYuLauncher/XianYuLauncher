@@ -12,6 +12,7 @@
         <TextBlock Text="加载器" FontWeight="SemiBold" />
         <labs:TokenView
             x:Name="LoaderTokenView"
+            MaxHeight="200"
             IsWrapped="True"
             CanRemoveTokens="False"
             SelectionMode="Multiple"
@@ -31,7 +32,7 @@
         <TextBlock Text="游戏版本" FontWeight="SemiBold" />
         <labs:TokenView
             x:Name="VersionTokenView"
-            MaxHeight="180"
+            MaxHeight="150"
             IsWrapped="True"
             CanRemoveTokens="False"
             SelectionMode="Multiple"

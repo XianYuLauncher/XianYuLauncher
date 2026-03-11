@@ -253,6 +253,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private bool _isModLoading = false;
+
+    [ObservableProperty]
+    private bool _isModCategoryLoading = false;
+
+    public bool IsModProcessing => IsModLoading || IsModCategoryLoading;
+
+    partial void OnIsModLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModProcessing));
+    }
+
+    partial void OnIsModCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModProcessing));
+    }
     
     [ObservableProperty]
     private bool _isModLoadingMore = false;
@@ -378,6 +393,24 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private ObservableCollection<Models.CategoryItem> _worldCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _modAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _shaderPackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _resourcePackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _datapackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _modpackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _worldAvailableLoaders = new();
     
     // CurseForge类别缓存（内存缓存，避免每次都请求API）
     private static Dictionary<int, List<CurseForgeCategory>> _curseForgeCategoryCache = new();
@@ -1803,6 +1836,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var firstLoader = selectedLoaders.FirstOrDefault(l => l != "all");
         return firstLoader?.ToLower() switch
         {
+            "liteloader" => 3,
             "forge" => 1,
             "fabric" => 4,
             "quilt" => 5,
@@ -1836,6 +1870,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         // 映射加载器类型
         int? GetLoaderType(string loader) => loader.ToLower() switch
         {
+            "liteloader" => 3,
             "forge" => 1,
             "fabric" => 4,
             "quilt" => 5,
@@ -1845,7 +1880,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 准备加载器列表（排除不支持的）
         var loaders = selectedLoaders
-            .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+            .Where(l => l != "all" && l != "legacy-fabric")
             .ToList();
         if (loaders.Count == 0) loaders.Add("all");
 
@@ -2035,6 +2070,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// <param name="resourceType">资源类型：mod, shader, resourcepack, datapack, modpack</param>
     public async Task LoadCategoriesAsync(string resourceType)
     {
+        var isModCategoryRequest = string.Equals(resourceType, "mod", StringComparison.OrdinalIgnoreCase);
+
+        if (isModCategoryRequest)
+        {
+            IsModCategoryLoading = true;
+        }
+
         try
         {
             var categories = new List<Models.CategoryItem>();
@@ -2052,8 +2094,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 if (IsModrinthEnabled)
                 {
-                    // 添加Modrinth类别（硬编码，因为Modrinth类别是固定的）
-                    var modrinthCategories = GetModrinthCategories(resourceType);
+                    // 仅从 Modrinth tag API 加载类别，当前不做本地兜底
+                    var modrinthCategories = await GetModrinthCategoriesAsync(resourceType);
                     categories.AddRange(modrinthCategories);
                 }
                 
@@ -2101,6 +2143,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     SelectedWorldCategories.Add("all");
                     break;
             }
+
+                    await LoadAvailableLoadersAsync(resourceType);
             
             System.Diagnostics.Debug.WriteLine($"[类别加载] {resourceType}: 加载了 {uniqueCategories.Count} 个类别");
         }
@@ -2108,106 +2152,157 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"[类别加载] 加载 {resourceType} 类别失败: {ex.Message}");
         }
+        finally
+        {
+            if (isModCategoryRequest)
+            {
+                IsModCategoryLoading = false;
+            }
+        }
     }
     
     /// <summary>
-    /// 获取Modrinth类别（硬编码）
+    /// 获取Modrinth类别（仅API来源）
     /// </summary>
-    private List<Models.CategoryItem> GetModrinthCategories(string resourceType)
+    private async Task<List<Models.CategoryItem>> GetModrinthCategoriesAsync(string resourceType)
     {
-        var categories = new List<Models.CategoryItem>();
-        
+        try
+        {
+            var projectType = resourceType.ToLower() switch
+            {
+                "shader" => "shader",
+                "resourcepack" => "resourcepack",
+                // 数据包类别按 mod 类别体系展示，避免 datapack 维度类别过窄
+                "datapack" => "mod",
+                "modpack" => "modpack",
+                "mod" => "mod",
+                // world 暂无稳定 project_type 归属，当前不返回 Modrinth 类别
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(projectType))
+            {
+                return new List<Models.CategoryItem>();
+            }
+
+            var tagItems = await _modrinthService.GetCategoryTagsAsync(projectType);
+            return tagItems
+                .Where(x => !string.IsNullOrWhiteSpace(x.Name))
+                .Select(x => x.Name.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(tag => new Models.CategoryItem
+                {
+                    Tag = tag,
+                    DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName(tag),
+                    Source = "modrinth"
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Modrinth类别] API获取失败: {ex.Message}");
+            return new List<Models.CategoryItem>();
+        }
+    }
+
+    private async Task LoadAvailableLoadersAsync(string resourceType)
+    {
+        var loaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (IsModrinthEnabled)
+        {
+            var modrinthLoaders = await GetModrinthLoadersAsync(resourceType);
+            foreach (var loader in modrinthLoaders)
+            {
+                loaders.Add(loader);
+            }
+        }
+
+        if (IsCurseForgeEnabled)
+        {
+            foreach (var loader in GetCurseForgeLoaderFallbacks())
+            {
+                loaders.Add(loader);
+            }
+        }
+
+        var ordered = loaders
+            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         switch (resourceType.ToLower())
         {
             case "mod":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "cursed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cursed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "economy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("economy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "food", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("food"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "game-mechanics", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("game-mechanics"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "library", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("library"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "management", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("management"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "minigame", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("minigame"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "optimization", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("optimization"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "social", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("social"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "storage", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("storage"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "transportation", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("transportation"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "worldgen", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("worldgen"), Source = "modrinth" },
-                });
+                ModAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
             case "shader":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "cartoon", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cartoon"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "fantasy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("fantasy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "realistic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("realistic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "vanilla-like", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("vanilla-like"), Source = "modrinth" },
-                });
+                ShaderPackAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
             case "resourcepack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "combat", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("combat"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "core-shaders", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("core-shaders"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "high-performance", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("high-performance"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "potato", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("potato"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "realistic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("realistic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "screenshot", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("screenshot"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "themed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("themed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "tweaks", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("tweaks"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                });
+                ResourcePackAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
             case "datapack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "economy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("economy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "food", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("food"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "game-mechanics", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("game-mechanics"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "library", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("library"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "management", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("management"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "minigame", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("minigame"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "social", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("social"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "storage", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("storage"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "transportation", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("transportation"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "worldgen", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("worldgen"), Source = "modrinth" },
-                });
+                DatapackAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
             case "modpack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "cursed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cursed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "optimization", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("optimization"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                });
+                ModpackAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "world":
+                WorldAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
         }
-        
-        return categories;
     }
-    
+
+    private async Task<List<string>> GetModrinthLoadersAsync(string resourceType)
+    {
+        var projectType = resourceType.ToLower() switch
+        {
+            "shader" => "shader",
+            "resourcepack" => "resourcepack",
+            "datapack" => "datapack",
+            "modpack" => "modpack",
+            "mod" => "mod",
+            // world 使用 mod 的加载器集合作为筛选来源
+            "world" => "mod",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrEmpty(projectType))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            var tags = await _modrinthService.GetLoaderTagsAsync(projectType);
+            return tags
+                .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+                .Where(t => !(t.SupportedProjectTypes?.Any(p => string.Equals(p, "plugin", StringComparison.OrdinalIgnoreCase)) ?? false))
+                .Select(t => t.Name.Trim().ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Modrinth加载器] 获取失败: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    private static List<string> GetCurseForgeLoaderFallbacks()
+    {
+        return new List<string>
+        {
+            "forge",
+            "liteloader",
+            "fabric",
+            "quilt",
+            "neoforge"
+        };
+    }
+
     /// <summary>
-    /// 获取CurseForge类别（带内存缓存）
+    /// 获取CurseForge类别（持久化缓存 + 内存缓存）
     /// </summary>
     private async Task<List<Models.CategoryItem>> GetCurseForgeCategoriesAsync(string resourceType)
     {
@@ -2227,20 +2322,34 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 _ => 6
             };
             
-            List<CurseForgeCategory> curseForgeCategories;
-            
-            // 检查内存缓存
-            if (_curseForgeCategoryCache.TryGetValue(classId, out var cachedCategories))
+            List<CurseForgeCategory>? curseForgeCategories = null;
+
+            // 一级：内存缓存
+            if (_curseForgeCategoryCache.TryGetValue(classId, out var memoryCachedCategories))
             {
-                curseForgeCategories = cachedCategories;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
+                curseForgeCategories = memoryCachedCategories;
+                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从内存缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
             }
-            else
+
+            // 二级：磁盘缓存
+            if (curseForgeCategories == null)
             {
-                // 从API获取并缓存
+                var diskCachedCategories = await _curseForgeCacheService.GetCachedCategoriesAsync(classId);
+                if (diskCachedCategories != null && diskCachedCategories.Count > 0)
+                {
+                    curseForgeCategories = diskCachedCategories;
+                    _curseForgeCategoryCache[classId] = diskCachedCategories;
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从磁盘缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
+                }
+            }
+
+            // 三级：API
+            if (curseForgeCategories == null)
+            {
                 curseForgeCategories = await _curseForgeService.GetCategoriesAsync(classId);
                 _curseForgeCategoryCache[classId] = curseForgeCategories;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从API获取 {resourceType} 类别: {curseForgeCategories.Count} 个，已缓存");
+                await _curseForgeCacheService.SaveCategoriesAsync(classId, curseForgeCategories);
+                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从API获取 {resourceType} 类别: {curseForgeCategories.Count} 个，已写入内存+磁盘缓存");
             }
             
             foreach (var category in curseForgeCategories)
@@ -2976,6 +3085,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var loaderName = fileIndex.ModLoader.Value switch
                     {
                         1 => "forge",
+                        3 => "liteloader",
                         4 => "fabric",
                         5 => "quilt",
                         6 => "neoforge",
@@ -3010,9 +3120,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreMods))]
     public async Task LoadMoreModsAsync()
     {
-        System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 调用，IsModLoading={IsModLoading}，IsModLoadingMore={IsModLoadingMore}，ModHasMoreResults={ModHasMoreResults}");
+        System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 调用，IsModProcessing={IsModProcessing}，IsModLoadingMore={IsModLoadingMore}，ModHasMoreResults={ModHasMoreResults}");
         
-        if (IsModLoading || IsModLoadingMore || !ModHasMoreResults)
+        if (IsModProcessing || IsModLoadingMore || !ModHasMoreResults)
         {
             System.Diagnostics.Debug.WriteLine($"[LoadMoreMods] 跳过加载：条件不满足");
             return;
@@ -3122,7 +3232,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     // 获取多选加载器（排除不支持的加载器和 "all"）
                     var selectedLoaders = SelectedLoaders
-                        .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+                        .Where(l => l != "all" && l != "legacy-fabric")
                         .ToList();
                     if (selectedLoaders.Count == 0)
                     {
@@ -3142,6 +3252,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     // 映射加载器类型
                     int? GetLoaderType(string loader) => loader.ToLower() switch
                     {
+                        "liteloader" => 3,
                         "forge" => 1,
                         "fabric" => 4,
                         "quilt" => 5,
@@ -3308,7 +3419,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreMods()
     {
-        return !IsModLoading && !IsModLoadingMore && ModHasMoreResults;
+        return !IsModProcessing && !IsModLoadingMore && ModHasMoreResults;
     }
     
     /// <summary>

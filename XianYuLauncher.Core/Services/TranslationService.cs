@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -17,12 +20,28 @@ public class TranslationService : ITranslationService
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, McimTranslationResponse> _translationCache;
+    private readonly Dictionary<string, DateTimeOffset> _translationCacheTimestamps;
+    private readonly SemaphoreSlim _translationCacheLock = new(1, 1);
     private readonly Dictionary<string, string> _nameTranslationMap = new(StringComparer.OrdinalIgnoreCase);
     // Reverse Map: Key=ChineseName (LowerCased), Value=EnglishName or Slug
     private readonly Dictionary<string, string> _chineseToEnglishMap = new(StringComparer.OrdinalIgnoreCase);
     private bool _isNameTranslationInitialized = false;
+    private bool _isTranslationCacheLoaded;
     private const string ModrinthTranslationApiUrl = "https://mod.mcimirror.top/translate/modrinth";
     private const string CurseForgeTranslationApiUrl = "https://mod.mcimirror.top/translate/curseforge";
+    private const string TranslationCacheFileName = "translation_cache.json";
+    private static readonly TimeSpan TranslationCacheExpiration = TimeSpan.FromDays(3);
+
+    private sealed class TranslationCacheItem
+    {
+        public DateTimeOffset CachedAt { get; set; }
+        public McimTranslationResponse Value { get; set; } = new();
+    }
+
+    private sealed class TranslationCacheStore
+    {
+        public Dictionary<string, TranslationCacheItem> Entries { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
     
     /// <summary>
     /// 翻译服务单例实例（用于Models中访问）
@@ -52,7 +71,8 @@ public class TranslationService : ITranslationService
     public TranslationService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _translationCache = new Dictionary<string, McimTranslationResponse>();
+        _translationCache = new Dictionary<string, McimTranslationResponse>(StringComparer.OrdinalIgnoreCase);
+        _translationCacheTimestamps = new Dictionary<string, DateTimeOffset>(StringComparer.OrdinalIgnoreCase);
         Instance = this;
     }
     
@@ -86,10 +106,13 @@ public class TranslationService : ITranslationService
         {
             return null;
         }
+
+        await EnsureTranslationCacheLoadedAsync();
         
         // 检查缓存
         var cacheKey = $"modrinth_{projectId}";
-        if (_translationCache.TryGetValue(cacheKey, out var cachedTranslation))
+        var cachedTranslation = await GetValidCachedTranslationAsync(cacheKey);
+        if (cachedTranslation != null)
         {
             return cachedTranslation;
         }
@@ -114,7 +137,7 @@ public class TranslationService : ITranslationService
             if (translation != null && !string.IsNullOrEmpty(translation.Translated))
             {
                 // 缓存翻译结果
-                _translationCache[cacheKey] = translation;
+                await SaveTranslationCacheAsync(cacheKey, translation);
                 System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译成功: {projectId}");
                 return translation;
             }
@@ -138,10 +161,13 @@ public class TranslationService : ITranslationService
         {
             return null;
         }
+
+        await EnsureTranslationCacheLoadedAsync();
         
         // 检查缓存
         var cacheKey = $"curseforge_{modId}";
-        if (_translationCache.TryGetValue(cacheKey, out var cachedTranslation))
+        var cachedTranslation = await GetValidCachedTranslationAsync(cacheKey);
+        if (cachedTranslation != null)
         {
             return cachedTranslation;
         }
@@ -166,7 +192,7 @@ public class TranslationService : ITranslationService
             if (translation != null && !string.IsNullOrEmpty(translation.Translated))
             {
                 // 缓存翻译结果
-                _translationCache[cacheKey] = translation;
+                await SaveTranslationCacheAsync(cacheKey, translation);
                 System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译成功: {modId}");
                 return translation;
             }
@@ -322,5 +348,149 @@ public class TranslationService : ITranslationService
             if (c >= 0x4E00 && c <= 0x9FA5) return true;
         }
         return false;
+    }
+
+    private async Task EnsureTranslationCacheLoadedAsync()
+    {
+        if (_isTranslationCacheLoaded)
+        {
+            return;
+        }
+
+        await _translationCacheLock.WaitAsync();
+        try
+        {
+            if (_isTranslationCacheLoaded)
+            {
+                return;
+            }
+
+            var cacheFilePath = GetTranslationCacheFilePath();
+            if (File.Exists(cacheFilePath))
+            {
+                var json = await File.ReadAllTextAsync(cacheFilePath);
+                var cacheStore = JsonConvert.DeserializeObject<TranslationCacheStore>(json);
+                if (cacheStore?.Entries != null)
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    foreach (var entry in cacheStore.Entries)
+                    {
+                        var age = now - entry.Value.CachedAt;
+                        if (age < TranslationCacheExpiration && entry.Value.Value != null)
+                        {
+                            _translationCache[entry.Key] = entry.Value.Value;
+                            _translationCacheTimestamps[entry.Key] = entry.Value.CachedAt;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[翻译缓存] 已加载磁盘缓存，共 {_translationCache.Count} 条");
+                }
+            }
+
+            _isTranslationCacheLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[翻译缓存] 加载磁盘缓存失败: {ex.Message}");
+            _isTranslationCacheLoaded = true;
+        }
+        finally
+        {
+            _translationCacheLock.Release();
+        }
+    }
+
+    private async Task<McimTranslationResponse?> GetValidCachedTranslationAsync(string cacheKey)
+    {
+        await _translationCacheLock.WaitAsync();
+        try
+        {
+            if (!_translationCache.TryGetValue(cacheKey, out var cachedTranslation))
+            {
+                return null;
+            }
+
+            if (!_translationCacheTimestamps.TryGetValue(cacheKey, out var cachedAt))
+            {
+                return null;
+            }
+
+            var age = DateTimeOffset.UtcNow - cachedAt;
+            if (age >= TranslationCacheExpiration)
+            {
+                return null;
+            }
+
+            return cachedTranslation;
+        }
+        finally
+        {
+            _translationCacheLock.Release();
+        }
+    }
+
+    private async Task SaveTranslationCacheAsync(string cacheKey, McimTranslationResponse translation)
+    {
+        Dictionary<string, TranslationCacheItem>? snapshot = null;
+
+        await _translationCacheLock.WaitAsync();
+        try
+        {
+            _translationCache[cacheKey] = translation;
+            _translationCacheTimestamps[cacheKey] = DateTimeOffset.UtcNow;
+
+            // 在锁内基于当前内存缓存构建快照，避免锁外直接访问共享状态
+            snapshot = new Dictionary<string, TranslationCacheItem>(_translationCache.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in _translationCache)
+            {
+                if (_translationCacheTimestamps.TryGetValue(kvp.Key, out var cachedAt))
+                {
+                    snapshot[kvp.Key] = new TranslationCacheItem
+                    {
+                        CachedAt = cachedAt,
+                        Value = kvp.Value,
+                    };
+                }
+            }
+        }
+        finally
+        {
+            _translationCacheLock.Release();
+        }
+
+        if (snapshot != null)
+        {
+            await PersistTranslationCacheSnapshotAsync(snapshot);
+        }
+    }
+
+    private async Task PersistTranslationCacheSnapshotAsync(IDictionary<string, TranslationCacheItem> entries)
+    {
+        try
+        {
+            var cacheStore = new TranslationCacheStore
+            {
+                Entries = new Dictionary<string, TranslationCacheItem>(entries, StringComparer.OrdinalIgnoreCase),
+            };
+
+            var json = JsonConvert.SerializeObject(cacheStore, Formatting.None);
+            var cacheFilePath = GetTranslationCacheFilePath();
+            var directory = Path.GetDirectoryName(cacheFilePath);
+            if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await File.WriteAllTextAsync(cacheFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[翻译缓存] 持久化失败: {ex.Message}");
+        }
+    }
+
+    private static string GetTranslationCacheFilePath()
+    {
+        return Path.Combine(AppEnvironment.SafeCachePath, TranslationCacheFileName);
     }
 }

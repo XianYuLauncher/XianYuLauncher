@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -23,6 +24,28 @@ public class ModrinthService
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FallbackDownloadManager? _fallbackDownloadManager;
     private readonly IHashLookupCenter? _hashLookupCenter;
+    private readonly SemaphoreSlim _tagCacheLock = new(1, 1);
+    private static readonly TimeSpan TagCacheDuration = TimeSpan.FromDays(3);
+    private readonly Dictionary<string, ModrinthTagCacheEntry> _tagCache = new(StringComparer.OrdinalIgnoreCase);
+    private bool _tagCacheLoaded;
+
+    private static readonly JsonSerializerOptions TagCacheJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = false,
+    };
+
+    private sealed class ModrinthTagCacheEntry
+    {
+        public DateTimeOffset ExpiresAt { get; set; }
+        public List<ModrinthTagItem> Items { get; set; } = new();
+    }
+
+    private sealed class ModrinthTagCacheStore
+    {
+        public Dictionary<string, ModrinthTagCacheEntry> Entries { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
     
     /// <summary>
     /// Modrinth官方API基础URL
@@ -249,6 +272,162 @@ public class ModrinthService
             // 处理其他异常
             throw new Exception($"搜索Mod时发生错误: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 获取 Modrinth 分类标签（/v2/tag/category）
+    /// </summary>
+    public Task<List<ModrinthTagItem>> GetCategoryTagsAsync(string? projectType = null)
+    {
+        return GetTagsAsync("category", projectType);
+    }
+
+    /// <summary>
+    /// 获取 Modrinth 加载器标签（/v2/tag/loader）
+    /// </summary>
+    public Task<List<ModrinthTagItem>> GetLoaderTagsAsync(string? projectType = null)
+    {
+        return GetTagsAsync("loader", projectType);
+    }
+
+    /// <summary>
+    /// 获取 Modrinth 游戏版本标签（/v2/tag/game_version）
+    /// </summary>
+    public Task<List<ModrinthTagItem>> GetGameVersionTagsAsync(string? projectType = null)
+    {
+        return GetTagsAsync("game_version", projectType);
+    }
+
+    private async Task<List<ModrinthTagItem>> GetTagsAsync(string tagType, string? projectType)
+    {
+        var cacheKey = string.IsNullOrWhiteSpace(projectType)
+            ? tagType
+            : $"{tagType}:{projectType.Trim().ToLowerInvariant()}";
+
+        var now = DateTimeOffset.UtcNow;
+        await _tagCacheLock.WaitAsync();
+        try
+        {
+            await EnsureTagCacheLoadedAsync();
+            if (_tagCache.TryGetValue(cacheKey, out var cacheEntry) && cacheEntry.ExpiresAt > now)
+            {
+                var remaining = cacheEntry.ExpiresAt - now;
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 命中 {cacheKey}，剩余 {remaining.TotalHours:F1} 小时刷新");
+                return cacheEntry.Items.ToList();
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 未命中 {cacheKey}，将请求远端");
+        }
+        finally
+        {
+            _tagCacheLock.Release();
+        }
+
+        var url = $"{OfficialApiBaseUrl}/v2/tag/{Uri.EscapeDataString(tagType)}";
+        var response = await SendWithFallbackAsync(url);
+        var json = await response.Content.ReadAsStringAsync();
+        response.EnsureSuccessStatusCode();
+
+        var allItems = JsonSerializer.Deserialize<List<ModrinthTagItem>>(json) ?? new List<ModrinthTagItem>();
+        List<ModrinthTagItem> filteredItems = allItems;
+
+        if (!string.IsNullOrWhiteSpace(projectType))
+        {
+            var normalizedProjectType = projectType.Trim().ToLowerInvariant();
+            filteredItems = allItems
+                .Where(item =>
+                    string.Equals(item.ProjectType, normalizedProjectType, StringComparison.OrdinalIgnoreCase)
+                    || (item.SupportedProjectTypes?.Any(t => string.Equals(t, normalizedProjectType, StringComparison.OrdinalIgnoreCase)) ?? false))
+                .ToList();
+        }
+
+        await _tagCacheLock.WaitAsync();
+        try
+        {
+            _tagCache[cacheKey] = new ModrinthTagCacheEntry
+            {
+                ExpiresAt = DateTimeOffset.UtcNow.Add(TagCacheDuration),
+                Items = filteredItems,
+            };
+
+            await PersistTagCacheAsync();
+        }
+        finally
+        {
+            _tagCacheLock.Release();
+        }
+
+        return filteredItems;
+    }
+
+    private async Task EnsureTagCacheLoadedAsync()
+    {
+        if (_tagCacheLoaded)
+        {
+            return;
+        }
+
+        var cacheFilePath = GetTagCacheFilePath();
+        if (!File.Exists(cacheFilePath))
+        {
+            _tagCacheLoaded = true;
+            return;
+        }
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(cacheFilePath);
+            var cacheStore = JsonSerializer.Deserialize<ModrinthTagCacheStore>(json, TagCacheJsonOptions);
+            if (cacheStore?.Entries != null)
+            {
+                var now = DateTimeOffset.UtcNow;
+                foreach (var (key, entry) in cacheStore.Entries)
+                {
+                    if (entry.ExpiresAt > now)
+                    {
+                        _tagCache[key] = entry;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 已加载磁盘缓存，共 {_tagCache.Count} 项");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 加载磁盘缓存失败: {ex.Message}");
+        }
+
+        _tagCacheLoaded = true;
+    }
+
+    private async Task PersistTagCacheAsync()
+    {
+        try
+        {
+            var cacheFilePath = GetTagCacheFilePath();
+            var cacheDir = Path.GetDirectoryName(cacheFilePath);
+            if (!string.IsNullOrWhiteSpace(cacheDir) && !Directory.Exists(cacheDir))
+            {
+                Directory.CreateDirectory(cacheDir);
+            }
+
+            var cacheStore = new ModrinthTagCacheStore
+            {
+                Entries = new Dictionary<string, ModrinthTagCacheEntry>(_tagCache, StringComparer.OrdinalIgnoreCase),
+            };
+
+            var json = JsonSerializer.Serialize(cacheStore, TagCacheJsonOptions);
+            await File.WriteAllTextAsync(cacheFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 持久化失败: {ex.Message}");
+        }
+    }
+
+    private static string GetTagCacheFilePath()
+    {
+        return Path.Combine(AppEnvironment.SafeCachePath, "modrinth_tags_cache.json");
     }
 
     /// <summary>
