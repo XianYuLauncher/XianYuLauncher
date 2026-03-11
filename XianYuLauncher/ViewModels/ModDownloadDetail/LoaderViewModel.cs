@@ -17,7 +17,7 @@ namespace XianYuLauncher.ViewModels
         private bool _isExpanded = false;
 
         // 父级GameVersionViewModel的引用，用于通知版本数量变化
-        public GameVersionViewModel ParentGameVersion { get; set; }
+        public GameVersionViewModel? ParentGameVersion { get; set; }
 
         public LoaderViewModel(string loaderName)
         {
