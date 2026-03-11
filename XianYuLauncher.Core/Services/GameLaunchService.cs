@@ -867,11 +867,8 @@ public class GameLaunchService : IGameLaunchService
                 }
             }
             
-            // 跳过原生库
             bool hasClassifier = library.Name.Count(c => c == ':') > 2;
-            bool isNativeLibrary = hasClassifier && library.Name.Contains("natives-", StringComparison.OrdinalIgnoreCase);
-            if (isNativeLibrary) continue;
-            
+
             // 跳过 neoforge-universal 和 installertools
             if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
                 (library.Name.Contains("universal", StringComparison.OrdinalIgnoreCase) || 
