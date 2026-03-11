@@ -431,23 +431,49 @@ public class TranslationService : ITranslationService
 
     private async Task SaveTranslationCacheAsync(string cacheKey, McimTranslationResponse translation)
     {
+        Dictionary<string, TranslationCacheItem>? snapshot = null;
+
         await _translationCacheLock.WaitAsync();
         try
         {
             _translationCache[cacheKey] = translation;
             _translationCacheTimestamps[cacheKey] = DateTimeOffset.UtcNow;
-            await PersistTranslationCacheAsync();
+
+            // 在锁内基于当前内存缓存构建快照，避免锁外直接访问共享状态
+            snapshot = new Dictionary<string, TranslationCacheItem>(_translationCache.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in _translationCache)
+            {
+                if (_translationCacheTimestamps.TryGetValue(kvp.Key, out var cachedAt))
+                {
+                    snapshot[kvp.Key] = new TranslationCacheItem
+                    {
+                        CachedAt = cachedAt,
+                        Value = kvp.Value,
+                    };
+                }
+            }
         }
         finally
         {
             _translationCacheLock.Release();
         }
+
+        if (snapshot != null)
+        {
+            await PersistTranslationCacheSnapshotAsync(snapshot);
+        }
     }
 
-    private async Task PersistTranslationCacheAsync()
+    private async Task PersistTranslationCacheSnapshotAsync(IDictionary<string, TranslationCacheItem> entries)
     {
         try
         {
+            var cacheStore = new TranslationCacheStore
+            {
+                Entries = new Dictionary<string, TranslationCacheItem>(entries, StringComparer.OrdinalIgnoreCase),
+            };
+
+            var json = JsonConvert.SerializeObject(cacheStore, Formatting.None);
             var cacheFilePath = GetTranslationCacheFilePath();
             var directory = Path.GetDirectoryName(cacheFilePath);
             if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
@@ -455,22 +481,6 @@ public class TranslationService : ITranslationService
                 Directory.CreateDirectory(directory);
             }
 
-            var cacheStore = new TranslationCacheStore();
-            foreach (var kvp in _translationCache)
-            {
-                if (!_translationCacheTimestamps.TryGetValue(kvp.Key, out var cachedAt))
-                {
-                    continue;
-                }
-
-                cacheStore.Entries[kvp.Key] = new TranslationCacheItem
-                {
-                    CachedAt = cachedAt,
-                    Value = kvp.Value,
-                };
-            }
-
-            var json = JsonConvert.SerializeObject(cacheStore, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, json);
         }
         catch (Exception ex)
