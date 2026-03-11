@@ -2052,8 +2052,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 if (IsModrinthEnabled)
                 {
-                    // 添加Modrinth类别（硬编码，因为Modrinth类别是固定的）
-                    var modrinthCategories = GetModrinthCategories(resourceType);
+                    // Modrinth 优先走 tag API，失败时回退本地兜底列表
+                    var modrinthCategories = await GetModrinthCategoriesAsync(resourceType);
                     categories.AddRange(modrinthCategories);
                 }
                 
@@ -2111,101 +2111,48 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 获取Modrinth类别（硬编码）
+    /// 获取Modrinth类别（仅API来源）
     /// </summary>
-    private List<Models.CategoryItem> GetModrinthCategories(string resourceType)
+    private async Task<List<Models.CategoryItem>> GetModrinthCategoriesAsync(string resourceType)
     {
-        var categories = new List<Models.CategoryItem>();
-        
-        switch (resourceType.ToLower())
+        try
         {
-            case "mod":
-                categories.AddRange(new[]
+            var projectType = resourceType.ToLower() switch
+            {
+                "shader" => "shader",
+                "resourcepack" => "resourcepack",
+                "datapack" => "datapack",
+                "modpack" => "modpack",
+                "mod" => "mod",
+                // world 暂无稳定 project_type 归属，当前不返回 Modrinth 类别
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(projectType))
+            {
+                return new List<Models.CategoryItem>();
+            }
+
+            var tagItems = await _modrinthService.GetCategoryTagsAsync(projectType);
+            return tagItems
+                .Where(x => !string.IsNullOrWhiteSpace(x.Name))
+                .Select(x => x.Name.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(tag => new Models.CategoryItem
                 {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "cursed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cursed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "economy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("economy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "food", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("food"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "game-mechanics", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("game-mechanics"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "library", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("library"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "management", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("management"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "minigame", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("minigame"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "optimization", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("optimization"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "social", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("social"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "storage", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("storage"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "transportation", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("transportation"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "worldgen", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("worldgen"), Source = "modrinth" },
-                });
-                break;
-            case "shader":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "cartoon", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cartoon"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "fantasy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("fantasy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "realistic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("realistic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "vanilla-like", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("vanilla-like"), Source = "modrinth" },
-                });
-                break;
-            case "resourcepack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "combat", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("combat"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "core-shaders", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("core-shaders"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "high-performance", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("high-performance"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "potato", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("potato"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "realistic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("realistic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "screenshot", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("screenshot"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "themed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("themed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "tweaks", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("tweaks"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                });
-                break;
-            case "datapack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "decoration", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("decoration"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "economy", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("economy"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "equipment", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("equipment"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "food", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("food"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "game-mechanics", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("game-mechanics"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "library", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("library"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "management", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("management"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "minigame", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("minigame"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "mobs", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("mobs"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "social", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("social"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "storage", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("storage"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "transportation", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("transportation"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "utility", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("utility"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "worldgen", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("worldgen"), Source = "modrinth" },
-                });
-                break;
-            case "modpack":
-                categories.AddRange(new[]
-                {
-                    new Models.CategoryItem { Tag = "adventure", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("adventure"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "cursed", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("cursed"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "magic", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("magic"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "optimization", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("optimization"), Source = "modrinth" },
-                    new Models.CategoryItem { Tag = "technology", DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("technology"), Source = "modrinth" },
-                });
-                break;
+                    Tag = tag,
+                    DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName(tag),
+                    Source = "modrinth"
+                })
+                .ToList();
         }
-        
-        return categories;
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Modrinth类别] API获取失败: {ex.Message}");
+            return new List<Models.CategoryItem>();
+        }
     }
-    
+
     /// <summary>
     /// 获取CurseForge类别（带内存缓存）
     /// </summary>
