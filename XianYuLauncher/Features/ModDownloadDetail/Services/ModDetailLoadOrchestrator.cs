@@ -99,6 +99,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             PlatformUrl = modDetail.Links?.WebsiteUrl ?? string.Empty,
             ProjectType = projectType,
             SupportedLoaders = ModDetailLoadHelper.BuildCurseForgeSupportedLoaders(modDetail.LatestFilesIndexes),
+            // CurseForge API 的 Author 仅含 id/name/url，不提供头像。官方文档无成员头像接口，故统一使用占位图。
             Publishers = (modDetail.Authors ?? [])
                 .Select(author => new ModDetailPublisherData(
                     author.Name,
