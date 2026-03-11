@@ -1124,121 +1124,28 @@ namespace XianYuLauncher.ViewModels
                     }
                 }
 
-                // 设置待后台下载信息
-                SetPendingBackgroundDownload(_currentDownloadingModVersion, savePath);
-                
-                // 提前创建 TCS 用于控制弹窗
-                var tcs = new TaskCompletionSource<bool>();
-                bool isBackgroundDownload = false;
-                
-                // 订阅下载任务管理器的事件
-                void OnProgressChanged(object? sender, DownloadTaskInfo info)
-                {
-                    DownloadProgress = info.Progress;
-                    DownloadProgressText = $"{info.Progress:F1}%";
-                    DownloadStatus = info.StatusMessage;
-                }
-                
-                void OnStateChanged(object? sender, DownloadTaskInfo info)
-                {
-                    if (info.State == DownloadTaskState.Completed)
-                    {
-                        tcs.TrySetResult(true);
-                    }
-                    else if (info.State == DownloadTaskState.Failed)
-                    {
-                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    }
-                    else if (info.State == DownloadTaskState.Cancelled)
-                    {
-                        tcs.TrySetCanceled();
-                    }
-                }
-                
-                try
-                {
-                    // 显示进度弹窗（在依赖下载之前）
-                    var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
-                        "下载中",
-                        () => DownloadStatus,
-                        () => DownloadProgress,
-                        () => DownloadProgressText,
-                        this,
-                        primaryButtonText: "后台下载",
-                        closeButtonText: null,
-                        autoCloseWhen: tcs.Task);
-                    
-                    // 处理后台下载按钮
-                    _ = dialogTask.ContinueWith(t =>
-                    {
-                        if (t.Result == ContentDialogResult.Primary)
-                        {
-                            // 用户点击了"后台下载"
-                            isBackgroundDownload = true;
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                StartBackgroundDownload();
-                            });
-                        }
-                    }, TaskScheduler.Default);
+                InitializeDownloadTeachingTip();
 
-                    InitializeDownloadTeachingTip();
-                    
-                    // 先下载依赖
-                    await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, targetVersion);
+                await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, targetVersion);
 
-                    string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(_currentDownloadingModVersion);
-                    if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                    {
-                        throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                    }
-
-                    await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                        ModName,
-                        ProjectType,
-                        ModIconUrl,
-                        resolvedDownloadUrl,
-                        savePath,
-                        InitializeDownloadTeachingTip,
-                        info =>
-                        {
-                            DownloadProgress = info.Progress;
-                            DownloadProgressText = $"{info.Progress:F1}%";
-                            DownloadStatus = info.StatusMessage;
-                        },
-                        info =>
-                        {
-                            if (info.State == DownloadTaskState.Completed)
-                            {
-                                tcs.TrySetResult(true);
-                            }
-                            else if (info.State == DownloadTaskState.Failed)
-                            {
-                                tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                            }
-                            else if (info.State == DownloadTaskState.Cancelled)
-                            {
-                                tcs.TrySetCanceled();
-                            }
-                        });
-                    
-                    // 等待下载完成
-                    if (!tcs.Task.IsCompleted)
-                    {
-                        await tcs.Task;
-                    }
-                    
-                    // 如果不是后台下载，显示完成状态
-                    if (!isBackgroundDownload)
-                    {
-                        DownloadStatus = "下载完成！";
-                    }
-                }
-                finally
+                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(_currentDownloadingModVersion);
+                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
                 {
+                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                 }
+
+                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
+                    ModName,
+                    ProjectType,
+                    ModIconUrl,
+                    resolvedDownloadUrl,
+                    savePath,
+                    InitializeDownloadTeachingTip);
+
+                DownloadStatus = "下载已开始，请查看下载提示。";
                 
                 _currentDownloadingModVersion = null;
+                _currentDownloadingGameVersion = null;
             }
             catch (Exception ex)
             {
@@ -1253,74 +1160,6 @@ namespace XianYuLauncher.ViewModels
             }
         }
         
-        // 执行实际下载操作
-        private async Task PerformDownload(ModVersionViewModel modVersion, string savePath)
-        {
-            string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-            if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-            {
-                throw new Exception("启动下载失败: 无法获取文件的下载链接");
-            }
-
-            // 设置待后台下载信息（用于用户点击"后台下载"按钮时只关闭弹窗）
-            SetPendingBackgroundDownload(modVersion, savePath);
-            
-            try
-            {
-                // 重置进度
-                DownloadProgress = 0;
-                DownloadProgressText = "0.0%";
-                DownloadStatus = "正在准备下载...";
-                
-                // 订阅下载任务管理器的事件
-                var tcs = new TaskCompletionSource<bool>();
-                
-                void OnProgressChanged(DownloadTaskInfo info)
-                {
-                    DownloadProgress = info.Progress;
-                    DownloadProgressText = $"{info.Progress:F1}%";
-                    DownloadStatus = info.StatusMessage;
-                }
-                
-                void OnStateChanged(DownloadTaskInfo info)
-                {
-                    if (info.State == DownloadTaskState.Completed)
-                    {
-                        tcs.TrySetResult(true);
-                    }
-                    else if (info.State == DownloadTaskState.Failed)
-                    {
-                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    }
-                    else if (info.State == DownloadTaskState.Cancelled)
-                    {
-                        tcs.TrySetCanceled();
-                    }
-                }
-                
-                try
-                {
-                    await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                        ModName,
-                        ProjectType,
-                        ModIconUrl,
-                        resolvedDownloadUrl,
-                        savePath,
-                        InitializeDownloadTeachingTip,
-                        OnProgressChanged,
-                        OnStateChanged);
-                }
-                finally
-                {
-                }
-            }
-            catch (Exception ex)
-            {
-                // 如果启动失败，抛出异常
-                throw new Exception($"启动下载失败: {ex.Message}");
-            }
-        }
-
         private async Task ProcessDependenciesForResourceAsync(
             ModVersionViewModel modVersion,
             string targetDir,
@@ -1339,67 +1178,6 @@ namespace XianYuLauncher.ViewModels
                     DownloadProgressText = $"{progress:F1}%";
                 });
         }
-
-        // 当前正在下载的Mod版本和保存路径（用于后台下载）
-        private ModVersionViewModel _pendingBackgroundDownloadModVersion;
-        private string _pendingBackgroundDownloadSavePath;
-        private List<ResourceDependency> _pendingBackgroundDownloadDependencies;
-        // 世界下载专用字段
-        private string _pendingBackgroundDownloadSavesDirectory;
-        private string _pendingBackgroundDownloadFileName;
-        /// <summary>
-        /// 启动后台下载（关闭弹窗，下载继续在后台进行，通过 TeachingTip 显示进度）
-        /// </summary>
-        public void StartBackgroundDownload()
-        {
-            // 启用 TeachingTip 显示（这样 ShellViewModel 才会打开 TeachingTip）
-            _downloadTaskManager.IsTeachingTipEnabled = true;
-            
-            // 下载已经在后台运行了，弹窗由 DialogService 管理
-            // TeachingTip 会自动显示进度（由 ShellViewModel 订阅 DownloadTaskManager 事件）
-            
-            // 立即打开 TeachingTip（不等待下一次状态变化）
-            _shellViewModel.IsDownloadTeachingTipOpen = true;
-            _shellViewModel.DownloadTaskName = ModName;
-            _shellViewModel.DownloadProgress = DownloadProgress;
-            _shellViewModel.DownloadStatusMessage = DownloadStatus;
-            
-            WriteInformationLog($"后台下载已切换: {ModName}");
-            
-            // 清理待下载信息
-            _pendingBackgroundDownloadModVersion = null;
-            _pendingBackgroundDownloadSavePath = null;
-            _pendingBackgroundDownloadDependencies = null;
-            _pendingBackgroundDownloadSavesDirectory = null;
-            _pendingBackgroundDownloadFileName = null;
-        }
-
-        /// <summary>
-        /// 设置待后台下载的资源信息
-        /// </summary>
-        private void SetPendingBackgroundDownload(ModVersionViewModel modVersion, string savePath, List<ResourceDependency> dependencies = null)
-        {
-            _pendingBackgroundDownloadModVersion = modVersion;
-            _pendingBackgroundDownloadSavePath = savePath;
-            _pendingBackgroundDownloadDependencies = dependencies;
-            // 清空世界下载专用字段
-            _pendingBackgroundDownloadSavesDirectory = null;
-            _pendingBackgroundDownloadFileName = null;
-        }
-
-        /// <summary>
-        /// 设置待后台下载的世界信息
-        /// </summary>
-        private void SetPendingWorldBackgroundDownload(ModVersionViewModel modVersion, string savesDirectory, string fileName)
-        {
-            _pendingBackgroundDownloadModVersion = modVersion;
-            _pendingBackgroundDownloadSavesDirectory = savesDirectory;
-            _pendingBackgroundDownloadFileName = fileName;
-            // 清空普通资源下载字段
-            _pendingBackgroundDownloadSavePath = null;
-            _pendingBackgroundDownloadDependencies = null;
-        }
-
 
         // 加载已安装游戏版本
         private async Task LoadInstalledGameVersions(ModVersionViewModel modVersion)
@@ -1828,82 +1606,28 @@ namespace XianYuLauncher.ViewModels
 
                 var dependenciesTargetDir = Path.GetDirectoryName(savePath);
                 
-                // 提前创建 TCS 用于控制弹窗
-                var tcs = new TaskCompletionSource<bool>();
-                bool isBackgroundDownload = false;
-                
-                // 订阅下载任务管理器的事件（仅用于主 Mod 下载）
-                void OnProgressChanged(object? sender, DownloadTaskInfo info)
+                InitializeDownloadTeachingTip();
+
+                if (!string.IsNullOrEmpty(dependenciesTargetDir))
                 {
-                    DownloadProgress = info.Progress;
-                    DownloadProgressText = $"{info.Progress:F1}%";
-                    DownloadStatus = info.StatusMessage;
+                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
                 }
-                
-                void OnStateChanged(object? sender, DownloadTaskInfo info)
+
+                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
+                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
                 {
-                    if (info.State == DownloadTaskState.Completed)
-                    {
-                        tcs.TrySetResult(true);
-                    }
-                    else if (info.State == DownloadTaskState.Failed)
-                    {
-                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    }
-                    else if (info.State == DownloadTaskState.Cancelled)
-                    {
-                        tcs.TrySetCanceled();
-                    }
+                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                 }
-                
-                    try
-                    {
-                        InitializeDownloadTeachingTip();
 
-                        // 先下载依赖
-                        if (!string.IsNullOrEmpty(dependenciesTargetDir))
-                        {
-                            await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
-                        }
+                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
+                    ModName,
+                    ProjectType,
+                    ModIconUrl,
+                    resolvedDownloadUrl,
+                    savePath,
+                    InitializeDownloadTeachingTip);
 
-                        string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-                        if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                        {
-                            throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                        }
-
-                        await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                            ModName,
-                            ProjectType,
-                            ModIconUrl,
-                            resolvedDownloadUrl,
-                            savePath,
-                            InitializeDownloadTeachingTip,
-                            info =>
-                            {
-                                DownloadProgress = info.Progress;
-                                DownloadProgressText = $"{info.Progress:F1}%";
-                                DownloadStatus = info.StatusMessage;
-                            },
-                            info =>
-                            {
-                                if (info.State == DownloadTaskState.Completed)
-                                {
-                                    tcs.TrySetResult(true);
-                                }
-                                else if (info.State == DownloadTaskState.Failed)
-                                {
-                                    tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                                }
-                                else if (info.State == DownloadTaskState.Cancelled)
-                                {
-                                    tcs.TrySetCanceled();
-                                }
-                            });
-                    }
-                    finally
-                    {
-                    }
+                DownloadStatus = "下载已开始，请查看下载提示。";
             }
             catch (Exception ex)
             {
@@ -2082,74 +1806,17 @@ namespace XianYuLauncher.ViewModels
                     await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, SelectedInstalledVersion);
                 }
 
-                // 设置待后台下载信息（世界下载）
-                SetPendingWorldBackgroundDownload(modVersion, savesDir, modVersion.FileName);
+                InitializeDownloadTeachingTip();
+                _downloadTaskManager.IsTeachingTipEnabled = true;
 
-                // 订阅下载任务管理器的事件
-                var tcs = new TaskCompletionSource<bool>();
-                
-                void OnProgressChanged(object? sender, DownloadTaskInfo info)
-                {
-                    DownloadProgress = info.Progress;
-                    DownloadProgressText = $"{info.Progress:F1}%";
-                    DownloadStatus = info.StatusMessage;
-                }
-                
-                void OnStateChanged(object? sender, DownloadTaskInfo info)
-                {
-                    if (info.State == DownloadTaskState.Completed)
-                        tcs.TrySetResult(true);
-                    else if (info.State == DownloadTaskState.Failed)
-                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    else if (info.State == DownloadTaskState.Cancelled)
-                        tcs.TrySetCanceled();
-                }
-                
-                _downloadTaskManager.TaskProgressChanged += OnProgressChanged;
-                _downloadTaskManager.TaskStateChanged += OnStateChanged;
-                
-                try
-                {
-                    // 启动后台世界下载（包含下载和解压）
-                    await _downloadTaskManager.StartWorldDownloadAsync(
-                        ModName,
-                        resolvedDownloadUrl,
-                        savesDir,
-                        modVersion.FileName,
-                        ModIconUrl);
-                    
-                    // 显示进度弹窗
-                    var dialogResult = await _dialogService.ShowObservableProgressDialogAsync(
-                        "下载中",
-                        () => DownloadStatus,
-                        () => DownloadProgress,
-                        () => DownloadProgressText,
-                        this,
-                        primaryButtonText: "后台下载",
-                        closeButtonText: null,
-                        autoCloseWhen: tcs.Task);
-                    
-                    if (dialogResult == ContentDialogResult.Primary)
-                    {
-                        // 用户点击了"后台下载"
-                        StartBackgroundDownload();
-                        IsDownloading = false;
-                        return;
-                    }
-                    
-                    // 弹窗关闭，等待下载完成
-                    if (!tcs.Task.IsCompleted)
-                    {
-                        await tcs.Task;
-                    }
-                    
-                    DownloadStatus = "世界存档安装完成！";
-                }
-                finally
-                {
-                    _downloadTaskManager.TaskProgressChanged -= OnProgressChanged;
-                    _downloadTaskManager.TaskStateChanged -= OnStateChanged;
-                }
+                await _downloadTaskManager.StartWorldDownloadAsync(
+                    ModName,
+                    resolvedDownloadUrl,
+                    savesDir,
+                    modVersion.FileName,
+                    ModIconUrl);
+
+                DownloadStatus = "世界下载已开始，请查看下载提示。";
             }
             catch (TaskCanceledException)
             {
@@ -2686,70 +2353,24 @@ namespace XianYuLauncher.ViewModels
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
                 
-                // 设置待后台下载信息
-                SetPendingBackgroundDownload(modVersion, savePath);
-                
-                // 提前创建 TCS 用于控制弹窗
-                var tcs = new TaskCompletionSource<bool>();
-                bool isBackgroundDownload = false;
-                
-                // 订阅下载任务管理器的事件
-                void OnProgressChanged(object? sender, DownloadTaskInfo info)
-                {
-                    DownloadProgress = info.Progress;
-                    DownloadProgressText = $"{info.Progress:F1}%";
-                    DownloadStatus = info.StatusMessage;
-                }
-                
-                void OnStateChanged(object? sender, DownloadTaskInfo info)
-                {
-                    if (info.State == DownloadTaskState.Completed)
-                        tcs.TrySetResult(true);
-                    else if (info.State == DownloadTaskState.Failed)
-                        tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                    else if (info.State == DownloadTaskState.Cancelled)
-                        tcs.TrySetCanceled();
-                }
-                
-                try
-                {
-                    InitializeDownloadTeachingTip();
+                InitializeDownloadTeachingTip();
 
-                    // 先下载依赖
-                    // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
-                    // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
-                    await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
+                // 先下载依赖
+                // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
+                // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
+                await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
 
-                    await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                        ModName,
-                        ProjectType,
-                        ModIconUrl,
-                        resolvedQuickInstallDownloadUrl,
-                        savePath,
-                        InitializeDownloadTeachingTip,
-                        info =>
-                        {
-                            DownloadProgress = info.Progress;
-                            DownloadProgressText = $"{info.Progress:F1}%";
-                            DownloadStatus = info.StatusMessage;
-                        },
-                        info =>
-                        {
-                            if (info.State == DownloadTaskState.Completed)
-                                tcs.TrySetResult(true);
-                            else if (info.State == DownloadTaskState.Failed)
-                                tcs.TrySetException(new Exception(info.ErrorMessage ?? "下载失败"));
-                            else if (info.State == DownloadTaskState.Cancelled)
-                                tcs.TrySetCanceled();
-                        });
+                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
+                    ModName,
+                    ProjectType,
+                    ModIconUrl,
+                    resolvedQuickInstallDownloadUrl,
+                    savePath,
+                    InitializeDownloadTeachingTip);
 
-                    
-                    IsDownloading = false;
-                    WriteInformationLog($"QuickInstall 下载任务已启动: {savePath}");
-                }
-                finally
-                {
-                }
+                DownloadStatus = "下载已开始，请查看下载提示。";
+                IsDownloading = false;
+                WriteInformationLog($"QuickInstall 下载任务已启动: {savePath}");
             }
             catch (TaskCanceledException)
             {

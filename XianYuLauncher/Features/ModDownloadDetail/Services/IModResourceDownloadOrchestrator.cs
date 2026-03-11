@@ -21,7 +21,5 @@ public interface IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        Action initializeTeachingTip,
-        Action<DownloadTaskInfo> onProgress,
-        Action<DownloadTaskInfo> onStateChanged);
+        Action initializeTeachingTip);
 }
