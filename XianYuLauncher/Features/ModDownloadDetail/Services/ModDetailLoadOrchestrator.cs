@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -16,17 +17,20 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
     private readonly CurseForgeService _curseForgeService;
     private readonly ITranslationService _translationService;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly ILogger<ModDetailLoadOrchestrator> _logger;
 
     public ModDetailLoadOrchestrator(
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ITranslationService translationService,
-        ILocalSettingsService localSettingsService)
+        ILocalSettingsService localSettingsService,
+        ILogger<ModDetailLoadOrchestrator> logger)
     {
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _translationService = translationService;
         _localSettingsService = localSettingsService;
+        _logger = logger;
     }
 
     public async Task<ModrinthModDetailLoadResult> LoadModrinthModDetailsAsync(string modId, ModrinthProject? passedModInfo, string? sourceType)
@@ -151,9 +155,9 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
                     Description = projectDetail.Description
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略单个依赖失败，保持与旧行为一致。
+                _logger.LogWarning(ex, "加载 Modrinth 依赖项目详情失败，ProjectId: {ProjectId}", dependency.ProjectId);
             }
         }
 

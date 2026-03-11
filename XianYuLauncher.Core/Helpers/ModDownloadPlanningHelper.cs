@@ -99,6 +99,13 @@ public static class ModDownloadPlanningHelper
             ? normalizedTarget.Substring(normalizedMinecraft.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             : string.Empty;
 
-        return relativePath.StartsWith("versions", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(relativePath))
+        {
+            return false;
+        }
+
+        int separatorIndex = relativePath.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+        string firstSegment = separatorIndex >= 0 ? relativePath[..separatorIndex] : relativePath;
+        return string.Equals(firstSegment, "versions", StringComparison.OrdinalIgnoreCase);
     }
 }

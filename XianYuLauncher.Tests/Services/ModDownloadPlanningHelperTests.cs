@@ -118,4 +118,26 @@ public class ModDownloadPlanningHelperTests
 
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public void IsTargetUnderMinecraftVersions_ShouldReturnFalse_WhenTargetIsUnderVersions2()
+    {
+        string minecraftPath = Path.GetFullPath(@"C:\.minecraft");
+        string targetDir = Path.Combine(minecraftPath, "versions2", "1.21.1-Fabric", "mods");
+
+        bool result = ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsTargetUnderMinecraftVersions_ShouldReturnFalse_WhenTargetIsUnderVersionsOld()
+    {
+        string minecraftPath = Path.GetFullPath(@"C:\.minecraft");
+        string targetDir = Path.Combine(minecraftPath, "versions-old", "1.21.1-Fabric", "mods");
+
+        bool result = ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
+
+        result.Should().BeFalse();
+    }
 }
