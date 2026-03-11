@@ -14,6 +14,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
+using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.Protocol;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
@@ -401,6 +402,8 @@ public partial class App : Application
             services.AddSingleton<IVersionPathNavigationService, VersionPathNavigationService>();
             services.AddSingleton<IScreenshotInteractionService, ScreenshotInteractionService>();
             services.AddSingleton<IResourceIconLoadCoordinator, ResourceIconLoadCoordinator>();
+            services.AddSingleton<IModResourceDownloadOrchestrator, ModResourceDownloadOrchestrator>();
+            services.AddSingleton<IModDetailLoadOrchestrator, ModDetailLoadOrchestrator>();
             
             // AuthlibInjector Service
             services.AddSingleton<AuthlibInjectorService>();
