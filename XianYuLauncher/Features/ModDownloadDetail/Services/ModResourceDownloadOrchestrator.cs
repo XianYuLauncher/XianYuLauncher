@@ -168,33 +168,10 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        Action initializeTeachingTip,
-        Action<DownloadTaskInfo> onProgress,
-        Action<DownloadTaskInfo> onStateChanged)
+        Action initializeTeachingTip)
     {
-        _downloadTaskManager.TaskProgressChanged += HandleProgressChanged;
-        _downloadTaskManager.TaskStateChanged += HandleStateChanged;
         _downloadTaskManager.IsTeachingTipEnabled = true;
-
-        try
-        {
-            initializeTeachingTip();
-            await _downloadTaskManager.StartResourceDownloadAsync(modName, projectType, downloadUrl, savePath, modIconUrl);
-        }
-        finally
-        {
-            _downloadTaskManager.TaskProgressChanged -= HandleProgressChanged;
-            _downloadTaskManager.TaskStateChanged -= HandleStateChanged;
-        }
-
-        void HandleProgressChanged(object? sender, DownloadTaskInfo info)
-        {
-            onProgress(info);
-        }
-
-        void HandleStateChanged(object? sender, DownloadTaskInfo info)
-        {
-            onStateChanged(info);
-        }
+        initializeTeachingTip();
+        await _downloadTaskManager.StartResourceDownloadAsync(modName, projectType, downloadUrl, savePath, modIconUrl);
     }
 }
