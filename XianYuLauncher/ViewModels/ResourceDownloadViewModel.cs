@@ -393,6 +393,24 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private ObservableCollection<Models.CategoryItem> _worldCategories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _modAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _shaderPackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _resourcePackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _datapackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _modpackAvailableLoaders = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _worldAvailableLoaders = new();
     
     // CurseForge类别缓存（内存缓存，避免每次都请求API）
     private static Dictionary<int, List<CurseForgeCategory>> _curseForgeCategoryCache = new();
@@ -1818,6 +1836,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var firstLoader = selectedLoaders.FirstOrDefault(l => l != "all");
         return firstLoader?.ToLower() switch
         {
+            "liteloader" => 3,
             "forge" => 1,
             "fabric" => 4,
             "quilt" => 5,
@@ -1851,6 +1870,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         // 映射加载器类型
         int? GetLoaderType(string loader) => loader.ToLower() switch
         {
+            "liteloader" => 3,
             "forge" => 1,
             "fabric" => 4,
             "quilt" => 5,
@@ -1860,7 +1880,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         // 准备加载器列表（排除不支持的）
         var loaders = selectedLoaders
-            .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+            .Where(l => l != "all" && l != "legacy-fabric")
             .ToList();
         if (loaders.Count == 0) loaders.Add("all");
 
@@ -2123,6 +2143,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     SelectedWorldCategories.Add("all");
                     break;
             }
+
+                    await LoadAvailableLoadersAsync(resourceType);
             
             System.Diagnostics.Debug.WriteLine($"[类别加载] {resourceType}: 加载了 {uniqueCategories.Count} 个类别");
         }
@@ -2150,7 +2172,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 "shader" => "shader",
                 "resourcepack" => "resourcepack",
-                "datapack" => "datapack",
+                // 数据包类别按 mod 类别体系展示，避免 datapack 维度类别过窄
+                "datapack" => "mod",
                 "modpack" => "modpack",
                 "mod" => "mod",
                 // world 暂无稳定 project_type 归属，当前不返回 Modrinth 类别
@@ -2180,6 +2203,102 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[Modrinth类别] API获取失败: {ex.Message}");
             return new List<Models.CategoryItem>();
         }
+    }
+
+    private async Task LoadAvailableLoadersAsync(string resourceType)
+    {
+        var loaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (IsModrinthEnabled)
+        {
+            var modrinthLoaders = await GetModrinthLoadersAsync(resourceType);
+            foreach (var loader in modrinthLoaders)
+            {
+                loaders.Add(loader);
+            }
+        }
+
+        if (IsCurseForgeEnabled)
+        {
+            foreach (var loader in GetCurseForgeLoaderFallbacks())
+            {
+                loaders.Add(loader);
+            }
+        }
+
+        var ordered = loaders
+            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        switch (resourceType.ToLower())
+        {
+            case "mod":
+                ModAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "shader":
+                ShaderPackAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "resourcepack":
+                ResourcePackAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "datapack":
+                DatapackAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "modpack":
+                ModpackAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+            case "world":
+                WorldAvailableLoaders = new ObservableCollection<string>(ordered);
+                break;
+        }
+    }
+
+    private async Task<List<string>> GetModrinthLoadersAsync(string resourceType)
+    {
+        var projectType = resourceType.ToLower() switch
+        {
+            "shader" => "shader",
+            "resourcepack" => "resourcepack",
+            "datapack" => "datapack",
+            "modpack" => "modpack",
+            "mod" => "mod",
+            // world 使用 mod 的加载器集合作为筛选来源
+            "world" => "mod",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrEmpty(projectType))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            var tags = await _modrinthService.GetLoaderTagsAsync(projectType);
+            return tags
+                .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+                .Where(t => !(t.SupportedProjectTypes?.Any(p => string.Equals(p, "plugin", StringComparison.OrdinalIgnoreCase)) ?? false))
+                .Select(t => t.Name.Trim().ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Modrinth加载器] 获取失败: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    private static List<string> GetCurseForgeLoaderFallbacks()
+    {
+        return new List<string>
+        {
+            "forge",
+            "liteloader",
+            "fabric",
+            "quilt",
+            "neoforge"
+        };
     }
 
     /// <summary>
@@ -2966,6 +3085,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     var loaderName = fileIndex.ModLoader.Value switch
                     {
                         1 => "forge",
+                        3 => "liteloader",
                         4 => "fabric",
                         5 => "quilt",
                         6 => "neoforge",
@@ -3112,7 +3232,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 {
                     // 获取多选加载器（排除不支持的加载器和 "all"）
                     var selectedLoaders = SelectedLoaders
-                        .Where(l => l != "all" && l != "legacy-fabric" && l != "liteloader")
+                        .Where(l => l != "all" && l != "legacy-fabric")
                         .ToList();
                     if (selectedLoaders.Count == 0)
                     {
@@ -3132,6 +3252,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     // 映射加载器类型
                     int? GetLoaderType(string loader) => loader.ToLower() switch
                     {
+                        "liteloader" => 3,
                         "forge" => 1,
                         "fabric" => 4,
                         "quilt" => 5,

@@ -624,8 +624,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         if (ShaderPackFilterControl == null) return;
 
-        // 设置加载器（为空，因为光影不需要加载器筛选）
-        var loaders = CreateLoaderTokenItems();
+        // 设置加载器（动态来源）
+        var loaders = CreateLoaderTokenItems(ViewModel.ShaderPackAvailableLoaders);
         ShaderPackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         // 设置类别
@@ -692,7 +692,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         if (ResourcePackFilterControl == null) return;
 
-        var loaders = CreateLoaderTokenItems();
+        var loaders = CreateLoaderTokenItems(ViewModel.ResourcePackAvailableLoaders);
         ResourcePackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         var categories = CreateCategoryTokenItems(ViewModel.ResourcePackCategories);
@@ -752,7 +752,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         if (DatapackFilterControl == null) return;
 
-        var loaders = CreateLoaderTokenItems();
+        var loaders = CreateLoaderTokenItems(ViewModel.DatapackAvailableLoaders);
         DatapackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         var categories = CreateCategoryTokenItems(ViewModel.DatapackCategories);
@@ -812,7 +812,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         if (ModpackFilterControl == null) return;
 
-        var loaders = CreateLoaderTokenItems();
+        var loaders = CreateLoaderTokenItems(ViewModel.ModpackAvailableLoaders);
         ModpackFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         var categories = CreateCategoryTokenItems(ViewModel.ModpackCategories);
@@ -872,7 +872,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         if (WorldFilterControl == null) return;
 
-        var loaders = CreateLoaderTokenItems();
+        var loaders = CreateLoaderTokenItems(ViewModel.WorldAvailableLoaders);
         WorldFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         var categories = CreateCategoryTokenItems(ViewModel.WorldCategories);
@@ -1042,26 +1042,71 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     #endregion
 
     #region 辅助方法 - 创建 TokenItems
-    private List<TokenItem> CreateLoaderTokenItems()
+    private List<TokenItem> CreateLoaderTokenItems(IEnumerable<string>? availableLoaders)
     {
-        var loaders = new (string Tag, string DisplayName, string Glyph)[]
+        var items = new List<TokenItem>
         {
-            ("all", "所有加载器", "\uE71D"),
-            ("fabric", "Fabric", "\uE8D2"),
-            ("forge", "Forge", "\uE7FC"),
-            ("quilt", "Quilt", "\uE8FD"),
-            ("legacy-fabric", "Legacy Fabric", "\uE8FD"),
-            ("liteloader", "LiteLoader", "\uE9CE")
+            new()
+            {
+                Content = "所有加载器",
+                Tag = "all",
+                Icon = new FontIcon { Glyph = "\uE71D" },
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(8, 4, 8, 4)
+            }
         };
 
-        return loaders.Select(l => new TokenItem
+        if (availableLoaders == null)
         {
-            Content = l.DisplayName,
-            Tag = l.Tag,
-            Icon = new FontIcon { Glyph = l.Glyph },
-            Margin = new Thickness(0, 0, 6, 6),
-            Padding = new Thickness(8, 4, 8, 4)
-        }).ToList();
+            return items;
+        }
+
+        foreach (var loader in availableLoaders.Where(l => !string.IsNullOrWhiteSpace(l)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(loader, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            items.Add(new TokenItem
+            {
+                Content = GetLoaderDisplayName(loader),
+                Tag = loader,
+                Icon = new FontIcon { Glyph = GetLoaderGlyph(loader) },
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(8, 4, 8, 4)
+            });
+        }
+
+        return items;
+    }
+
+    private static string GetLoaderDisplayName(string loader)
+    {
+        return loader.ToLowerInvariant() switch
+        {
+            "legacy-fabric" => "Legacy Fabric",
+            "liteloader" => "LiteLoader",
+            "neoforge" => "NeoForge",
+            _ => string.IsNullOrWhiteSpace(loader)
+                ? "未知加载器"
+                : char.ToUpperInvariant(loader[0]) + loader[1..]
+        };
+    }
+
+    private static string GetLoaderGlyph(string loader)
+    {
+        return loader.ToLowerInvariant() switch
+        {
+            "all" => "\uE71D",
+            "fabric" => "\uE8D2",
+            "forge" => "\uE7FC",
+            "quilt" => "\uE8FD",
+            "legacy-fabric" => "\uE8FD",
+            "liteloader" => "\uE9CE",
+            "neoforge" => "\uE7FC",
+            _ => "\uE8FD"
+        };
     }
 
     private List<TokenItem> CreateCategoryTokenItems(IEnumerable<CategoryItem> categories)
@@ -1129,7 +1174,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         if (ModFilterControl == null) return;
 
         // 设置加载器
-        var loaders = CreateLoaderTokenItems();
+        var loaders = CreateLoaderTokenItems(ViewModel.ModAvailableLoaders);
         ModFilterControl.LoadersSource = new ObservableCollection<TokenItem>(loaders);
 
         // 设置类别
