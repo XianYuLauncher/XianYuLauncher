@@ -59,6 +59,15 @@ jobs:
         .\.github\scripts\prepare-config.ps1
         Write-Host "Configuration ready"
 
+    # 2.1 生成爱发电赞助者静态清单（构建时注入，客户端不持有凭据）
+    - name: Generate Afdian Sponsors Manifest
+      shell: powershell
+      env:
+        AFDIAN_USER_ID: ${{ secrets.AFDIAN_USER_ID }}
+        AFDIAN_TOKEN: ${{ secrets.AFDIAN_TOKEN }}
+      run: |
+        .\.github\scripts\generate-afdian-sponsors.ps1 -OutputPath "XianYuLauncher/Assets/Data/afdian-sponsors.json"
+
     # 3. 准备证书 (Base64 -> PFX)
     - name: Prepare Certificate
       shell: powershell
