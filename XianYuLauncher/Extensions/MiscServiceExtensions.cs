@@ -28,7 +28,7 @@ internal static class MiscServiceExtensions
 
         services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
 
-        services.AddSingleton<IAfdianService, AfdianService>();
+        services.AddSingleton<IAfdianService, LocalAfdianService>();
 
         return services;
     }
