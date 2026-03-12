@@ -189,9 +189,28 @@ jobs:
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
 
+    # 6.1 仅稳定版额外构建无签名 StoreUpload 包（用于提交微软商店）
+    - name: Build StoreUpload (Unsigned)
+      if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+      shell: powershell
+      run: |
+        msbuild ${{ env.Project_Path }} `
+          /p:Configuration=${{ env.Configuration }} `
+          /p:Platform=${{ env.Platform }} `
+          /p:DefineConstants="${{ env.Build_Constants }}" `
+          /p:GenerateAppxPackageOnBuild=true `
+          /p:UapAppxPackageBuildMode=StoreUpload `
+          /p:AppxBundle=Never `
+          /p:AppxPackageSigningEnabled=false `
+          /p:PackageCertificateThumbprint= `
+          /p:PackageCertificateKeyFile= `
+          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:GenerateAppInstallerFile=false
+
     # === NEW: SignPath Integration Logic ===
     
-    # 6.1. 查找生成的 MSIX 文件
+    # 6.2. 查找生成的 MSIX 文件
     - name: Locate MSIX for Signing
       id: locate_msix
       shell: powershell
@@ -228,7 +247,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path $signedDir | Out-Null
         echo "SIGNED_DIR=$signedDir" >> $env:GITHUB_ENV
 
-    # 6.2. 提交给 SignPath 进行签名 (仅 Release 通道或非 Dev/Beta)
+    # 6.3. 提交给 SignPath 进行签名 (仅 Release 通道或非 Dev/Beta)
     # 暂时禁用 SignPath 签名，因为额度不足
     - name: Sign with SignPath
       if: false # ${{ !contains(github.ref, 'dev') && !contains(github.ref, 'beta') }}
@@ -304,7 +323,7 @@ jobs:
             
         Write-Host "Signed artifact downloaded successfully."
 
-    # 6.3. 用签名后的文件替换掉本地文件 (仅当使用了 SignPath 时)
+    # 6.4. 用签名后的文件替换掉本地文件 (仅当使用了 SignPath 时)
     # 暂时禁用 SignPath 签名，因为额度不足
     - name: Replace with Signed Artifact
       if: false # ${{ !contains(github.ref, 'dev') && !contains(github.ref, 'beta') }}
@@ -350,6 +369,15 @@ jobs:
       with:
         name: Package-${{ matrix.platform }}
         path: ${{ github.workspace }}\AppPackages\*.zip
+
+    # 9. 上传无签名 StoreUpload 包（仅稳定版，且不参与 GitHub Release）
+    - name: Upload Store Unsigned Artifacts
+      if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreUpload-${{ matrix.platform }}
+        path: ${{ github.workspace }}\AppPackagesStore\*.msixupload
+        if-no-files-found: error
 
   release:
     needs: build
