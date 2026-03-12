@@ -13,7 +13,7 @@ internal static class ModLoaderApiServiceExtensions
 {
     public static IServiceCollection AddModLoaderApiServices(this IServiceCollection services)
     {
-        services.AddHttpClient<FabricService>();
+        services.AddHttpClient(nameof(FabricService));
         services.AddSingleton<FabricService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -24,7 +24,7 @@ internal static class ModLoaderApiServiceExtensions
             return new FabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<LegacyFabricService>();
+        services.AddHttpClient(nameof(LegacyFabricService));
         services.AddSingleton<LegacyFabricService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -35,7 +35,7 @@ internal static class ModLoaderApiServiceExtensions
             return new LegacyFabricService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<LiteLoaderService>();
+        services.AddHttpClient(nameof(LiteLoaderService));
         services.AddSingleton<LiteLoaderService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -45,7 +45,7 @@ internal static class ModLoaderApiServiceExtensions
             return new LiteLoaderService(httpClient, downloadSourceFactory, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<QuiltService>();
+        services.AddHttpClient(nameof(QuiltService));
         services.AddSingleton<QuiltService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -56,7 +56,7 @@ internal static class ModLoaderApiServiceExtensions
             return new QuiltService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<NeoForgeService>();
+        services.AddHttpClient(nameof(NeoForgeService));
         services.AddSingleton<NeoForgeService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -67,7 +67,7 @@ internal static class ModLoaderApiServiceExtensions
             return new NeoForgeService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<ForgeService>();
+        services.AddHttpClient(nameof(ForgeService));
         services.AddSingleton<ForgeService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -78,7 +78,7 @@ internal static class ModLoaderApiServiceExtensions
             return new ForgeService(httpClient, downloadSourceFactory, localSettingsService, fallbackDownloadManager);
         });
 
-        services.AddHttpClient<CleanroomService>();
+        services.AddHttpClient(nameof(CleanroomService));
         services.AddSingleton<CleanroomService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();

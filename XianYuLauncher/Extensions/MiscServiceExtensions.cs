@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
@@ -13,15 +14,20 @@ internal static class MiscServiceExtensions
 {
     public static IServiceCollection AddMiscServices(this IServiceCollection services)
     {
-        services.AddHttpClient<TelemetryService>();
-        services.AddSingleton<TelemetryService>();
+        services.AddHttpClient(nameof(TelemetryService));
+        services.AddSingleton<TelemetryService>(sp =>
+        {
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(TelemetryService));
+            var logger = sp.GetRequiredService<ILogger<TelemetryService>>();
+            var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+            return new TelemetryService(httpClient, logger, localSettingsService);
+        });
 
         services.AddSingleton<IAnnouncementService, AnnouncementService>();
         services.AddSingleton<LaunchNewsCardService>();
 
         services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
 
-        services.AddHttpClient<IAfdianService, AfdianService>();
         services.AddSingleton<IAfdianService, AfdianService>();
 
         return services;
