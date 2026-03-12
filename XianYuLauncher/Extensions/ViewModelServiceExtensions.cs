@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
 

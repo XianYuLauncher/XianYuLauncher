@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
@@ -15,7 +14,7 @@ internal static class ResourceCenterServiceExtensions
 {
     public static IServiceCollection AddResourceCenterServices(this IServiceCollection services)
     {
-        services.AddHttpClient<ModrinthService>();
+        services.AddHttpClient(nameof(ModrinthService));
         services.AddSingleton<ModrinthService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -28,7 +27,7 @@ internal static class ResourceCenterServiceExtensions
 
         services.AddSingleton<ModrinthCacheService>();
 
-        services.AddHttpClient<CurseForgeService>();
+        services.AddHttpClient(nameof(CurseForgeService));
         services.AddSingleton<CurseForgeService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -55,7 +54,7 @@ internal static class ResourceCenterServiceExtensions
                 minecraftVersionService, versionInfoManager, curseForgeService, localSettingsService);
         });
 
-        services.AddHttpClient<TranslationService>();
+        services.AddHttpClient(nameof(TranslationService));
         services.AddSingleton<ITranslationService, TranslationService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
