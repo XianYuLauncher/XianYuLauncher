@@ -709,6 +709,12 @@ public class CurseForgeService
         }
     }
 
+    private sealed class CurseForgeDependencyProcessContext
+    {
+        public HashSet<int> ProcessedDependencies { get; } = new();
+        public Dictionary<string, Dictionary<int, string>?> ExistingModIdsByPath { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// 处理CurseForge依赖下载（递归）
     /// </summary>
@@ -727,6 +733,27 @@ public class CurseForgeService
         CancellationToken cancellationToken = default,
         bool checkModId = true,
         Func<CurseForgeModDetail, Task<string>>? resolveDestinationPathAsync = null)
+    {
+        return await ProcessDependenciesInternalAsync(
+            dependencies,
+            destinationPath,
+            currentFile,
+            progressCallback,
+            cancellationToken,
+            checkModId,
+            resolveDestinationPathAsync,
+            new CurseForgeDependencyProcessContext());
+    }
+
+    private async Task<int> ProcessDependenciesInternalAsync(
+        List<CurseForgeDependency> dependencies,
+        string destinationPath,
+        CurseForgeFile currentFile,
+        Action<string, double> progressCallback,
+        CancellationToken cancellationToken,
+        bool checkModId,
+        Func<CurseForgeModDetail, Task<string>>? resolveDestinationPathAsync,
+        CurseForgeDependencyProcessContext context)
     {
         int processedCount = 0;
         
@@ -751,16 +778,6 @@ public class CurseForgeService
         
         System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 开始处理{dependencies.Count}个依赖");
         
-        // 跟踪已处理的依赖，避免循环依赖
-        var processedDependencies = new HashSet<int>();
-        
-        // 获取现有mod的Mod ID映射（按目标路径缓存）
-        Dictionary<string, Dictionary<int, string>>? existingModIdsByPath = null;
-        if (checkModId)
-        {
-            existingModIdsByPath = new Dictionary<string, Dictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
-        }
-        
         for (int i = 0; i < dependencies.Count; i++)
         {
             var dependency = dependencies[i];
@@ -777,7 +794,7 @@ public class CurseForgeService
                 continue;
             }
             
-            if (!processedDependencies.Add(dependency.ModId))
+            if (!context.ProcessedDependencies.Add(dependency.ModId))
             {
                 System.Diagnostics.Debug.WriteLine($"  - 跳过：依赖{dependency.ModId}已处理");
                 continue;
@@ -808,10 +825,10 @@ public class CurseForgeService
                 Dictionary<int, string>? existingModIds = null;
                 if (checkModId)
                 {
-                    if (existingModIdsByPath != null && !existingModIdsByPath.TryGetValue(dependencyDestinationPath, out existingModIds))
+                    if (!context.ExistingModIdsByPath.TryGetValue(dependencyDestinationPath, out existingModIds))
                     {
                         existingModIds = await GetExistingModIdsAsync(dependencyDestinationPath, cancellationToken);
-                        existingModIdsByPath[dependencyDestinationPath] = existingModIds;
+                        context.ExistingModIdsByPath[dependencyDestinationPath] = existingModIds;
                     }
                 }
 
@@ -947,14 +964,15 @@ public class CurseForgeService
                     if (depFile.Dependencies != null && depFile.Dependencies.Count > 0)
                     {
                         System.Diagnostics.Debug.WriteLine($"  - 开始处理子依赖（{depFile.Dependencies.Count}个）");
-                        int subDependenciesCount = await ProcessDependenciesAsync(
+                        int subDependenciesCount = await ProcessDependenciesInternalAsync(
                             depFile.Dependencies,
                             dependencyDestinationPath,
                             depFile, // 传递当前依赖的文件信息作为子依赖的参考
                             progressCallback,
                             cancellationToken,
                             checkModId,
-                            resolveDestinationPathAsync);
+                            resolveDestinationPathAsync,
+                            context);
                         System.Diagnostics.Debug.WriteLine($"  - 子依赖处理完成，成功{subDependenciesCount}个");
                     }
                     
