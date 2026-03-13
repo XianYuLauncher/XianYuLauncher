@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
@@ -522,8 +524,14 @@ public class DialogService : IDialogService
                 {
                     dialog.DispatcherQueue?.TryEnqueue(() =>
                     {
-                        try { dialog.Hide(); }
-                        catch { }
+                        try
+                        {
+                            dialog.Hide();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to hide dialog in ShowProgressCallbackDialogAsync: {ex}");
+                        }
                     });
                 }
             });
