@@ -128,7 +128,7 @@
         <TabView
             x:Name="MainTabView"
             Grid.Row="2"
-            Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+            Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
             Background="Transparent"
             BorderThickness="0"
             SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
@@ -640,7 +640,7 @@
                                                     <!-- 选择模式控制 -->
                                                     <MenuFlyoutItem Text="选择" 
                                                                     Command="{Binding DataContext.ModsModule.ToggleModSelectionModeCommand, ElementName=ModListView}"
-                                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Visibility="{Binding DataContext.ModsModule.IsModSelectionModeEnabled, ElementName=ModListView, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
@@ -930,7 +930,7 @@
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="选择" 
                                                                     Command="{Binding DataContext.ShadersModule.ToggleShaderSelectionModeCommand, ElementName=ShaderListView}"
-                                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Visibility="{Binding DataContext.ShadersModule.IsShaderSelectionModeEnabled, ElementName=ShaderListView, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>
@@ -1205,7 +1205,7 @@
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="选择" 
                                                                     Command="{Binding DataContext.ResourcePacksModule.ToggleResourcePackSelectionModeCommand, ElementName=ResourcePackListView}"
-                                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                                    Visibility="{Binding DataContext.ResourcePacksModule.IsResourcePackSelectionModeEnabled, ElementName=ResourcePackListView, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                                         <MenuFlyoutItem.Icon>
                                                             <SymbolIcon Symbol="Bullets" />
                                                         </MenuFlyoutItem.Icon>

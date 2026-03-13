@@ -21,8 +21,8 @@
         
         <!-- 将IsDirectory属性转换为对应的FontIcon Glyph的转换器 -->
         <helpers:IsDirectoryToGlyphConverter x:Key="IsDirectoryToGlyphConverter" />
-        <!-- 将布尔值转换为对应的展开/折叠图标的转换器 -->
-        <local:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
+        <!-- 将布尔值转换为对应的展开/折叠图标的转换器（使用 Helpers 版本，无 ConverterParameter 避免 InvalidProgramException） -->
+        <helpers:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
         <!-- 布尔值到可见性的转换器 -->
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <!-- 布尔值取反转换器 -->
@@ -42,7 +42,7 @@
                     <!-- 展开/折叠按钮 -->
                     <Button 
                         Grid.Column="0" 
-                        Content="{Binding IsExpanded, Converter={StaticResource BoolToGlyphConverter}, ConverterParameter='▼,▶'}" 
+                        Content="{Binding IsExpanded, Converter={StaticResource BoolToGlyphConverter}}" 
                         Width="24" 
                         Height="24" 
                         Padding="0" 
@@ -245,7 +245,7 @@
                 IsItemClickEnabled="True"
                 CanReorderItems="False"
                 AllowDrop="False"
-                Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                 Background="Transparent"
                 BorderThickness="0"
                 HorizontalContentAlignment="Stretch">
