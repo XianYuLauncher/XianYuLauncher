@@ -36,6 +36,7 @@
 
         <!-- 布尔值到可见性转换器 -->
         <helpers:BoolToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
 
         <!-- 字符串空值到可见性转换器 -->
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
@@ -102,7 +103,7 @@
                                     Spacing="12"
                                     VerticalAlignment="Top"
                                     Margin="0,4,0,0"
-                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                             <Border CornerRadius="8" Clip="{Binding ElementName=ImageBorder, Path=CornerRadius}">
                                 <Image x:Name="ImageBorder" Source="{x:Bind ViewModel.ModIconUrl, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
                             </Border>
@@ -137,7 +138,7 @@
                               VerticalAlignment="Center"
                               HorizontalAlignment="Right"
                               Margin="0,0,16,0"
-                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                             <Button Command="{x:Bind ViewModel.QuickInstallCommand}"
                                     Visibility="{x:Bind ViewModel.IsQuickInstallButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     CornerRadius="8"
@@ -190,7 +191,7 @@
                 <!-- Mod描述 -->
                 <Grid>
                     <StackPanel Spacing="8"
-                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
                           
                         <!-- 简短描述 (始终显示) -->
@@ -257,7 +258,7 @@
                   
                 <Grid>
                     <StackPanel Spacing="8"
-                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
                         <!-- 使用ScrollViewer + StackPanel替代WrapGrid，确保所有标签完整显示 -->
                         <ScrollViewer HorizontalScrollMode="Auto" VerticalScrollMode="Disabled" HorizontalScrollBarVisibility="Auto">
@@ -346,7 +347,7 @@
                         <TextBlock Text="{x:Bind ViewModel.DownloadSectionText, Mode=OneWay}"
                                    FontSize="18"
                                    FontWeight="Bold"
-                                   Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                   Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                         <Grid Width="120"
                               Height="28"
                               HorizontalAlignment="Left"
