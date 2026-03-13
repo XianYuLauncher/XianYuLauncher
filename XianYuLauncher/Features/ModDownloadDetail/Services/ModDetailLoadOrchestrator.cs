@@ -39,7 +39,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             ?? throw new Exception("未能获取 Modrinth 项目详情");
 
         string? passedDescription = GetPassedDescription(passedModInfo);
-        string translatedDescription = await GetModrinthTranslatedDescriptionAsync(modId);
+        string translatedDescription = await GetModrinthTranslatedDescriptionAsync(modId, passedModInfo);
         string projectType = ModDetailLoadHelper.ResolveModrinthProjectType(sourceType, projectDetail.ProjectType);
         var allVersions = await _modrinthService.GetProjectVersionsAsync(modId);
         var filteredVersions = ModDetailLoadHelper.FilterModrinthVersionsBySourceType(allVersions, sourceType);
@@ -76,7 +76,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         var modDetail = await _curseForgeService.GetModDetailAsync(curseForgeModId);
 
         string? passedDescription = GetPassedDescription(passedModInfo);
-        string translatedDescription = await GetCurseForgeTranslatedDescriptionAsync(curseForgeModId);
+        string translatedDescription = await GetCurseForgeTranslatedDescriptionAsync(curseForgeModId, passedModInfo);
         string projectType = ModDetailLoadHelper.ResolveCurseForgeProjectType(modDetail.ClassId, sourceType);
         bool hideSnapshots = await _localSettingsService.ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
         var firstPageFiles = await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, 0, CurseForgePageSize) ?? [];
@@ -168,15 +168,11 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             {
                 try
                 {
-                    var task = _translationService.GetModrinthTranslationAsync(dependencyProject.ProjectId);
-                    var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
+                    var translation = await _translationService.GetModrinthTranslationAsync(dependencyProject.ProjectId);
                     if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                     {
                         dependencyProject.TranslatedDescription = translation.Translated;
                     }
-                }
-                catch (TimeoutException)
-                {
                 }
                 catch
                 {
@@ -224,16 +220,12 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
                 {
                     if (int.TryParse(dependencyProject.ProjectId.Replace("curseforge-", string.Empty, StringComparison.OrdinalIgnoreCase), out int modId))
                     {
-                        var task = _translationService.GetCurseForgeTranslationAsync(modId);
-                        var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
+                        var translation = await _translationService.GetCurseForgeTranslationAsync(modId);
                         if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                         {
                             dependencyProject.TranslatedDescription = translation.Translated;
                         }
                     }
-                }
-                catch (TimeoutException)
-                {
                 }
                 catch
                 {
@@ -252,11 +244,23 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         return await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, index, pageSize) ?? [];
     }
 
-    private async Task<string> GetModrinthTranslatedDescriptionAsync(string modId)
+    /// <summary>
+    /// 获取 Modrinth 简介翻译。若列表页已传入 TranslatedDescription 则直接复用，避免重复请求；否则请求翻译 API（3 秒超时）。
+    /// </summary>
+    /// <remarks>
+    /// 原逻辑用 passedDescription 判断跳过：资源列表有 DisplayDescription（含翻译）会跳过，收藏夹有 Description（原文）也会跳过，
+    /// 导致收藏夹进入时无翻译。正确做法是仅当 passedModInfo.TranslatedDescription 非空时复用。
+    /// </remarks>
+    private async Task<string> GetModrinthTranslatedDescriptionAsync(string modId, ModrinthProject? passedModInfo)
     {
         if (!_translationService.ShouldUseTranslation())
         {
             return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(passedModInfo?.TranslatedDescription))
+        {
+            return passedModInfo.TranslatedDescription;
         }
 
         try
@@ -275,11 +279,19 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         }
     }
 
-    private async Task<string> GetCurseForgeTranslatedDescriptionAsync(int modId)
+    /// <summary>
+    /// 获取 CurseForge 简介翻译。逻辑同 GetModrinthTranslatedDescriptionAsync。
+    /// </summary>
+    private async Task<string> GetCurseForgeTranslatedDescriptionAsync(int modId, ModrinthProject? passedModInfo)
     {
         if (!_translationService.ShouldUseTranslation())
         {
             return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(passedModInfo?.TranslatedDescription))
+        {
+            return passedModInfo.TranslatedDescription;
         }
 
         try
