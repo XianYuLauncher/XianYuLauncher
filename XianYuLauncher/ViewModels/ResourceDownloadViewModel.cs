@@ -698,7 +698,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             "导入分享码",
             "请粘贴分享码（支持JSON数组或换行分隔）：",
             "导入",
-            "取消");
+            "取消",
+            acceptsReturn: true);
         if (string.IsNullOrWhiteSpace(input))
             return;
         ShareCodeInput = input;

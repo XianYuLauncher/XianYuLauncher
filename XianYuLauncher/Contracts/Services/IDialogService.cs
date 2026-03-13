@@ -80,12 +80,14 @@ public interface IDialogService
     /// <summary>
     /// 显示文本输入弹窗。
     /// </summary>
+    /// <param name="acceptsReturn">是否支持多行输入（Enter 换行）</param>
     /// <returns>用户点击主按钮时返回输入的文本，取消返回 null。</returns>
     Task<string?> ShowTextInputDialogAsync(
         string title,
         string placeholder = "",
         string primaryButtonText = "确认",
-        string closeButtonText = "取消");
+        string closeButtonText = "取消",
+        bool acceptsReturn = false);
 
     /// <summary>
     /// 显示带进度的操作弹窗

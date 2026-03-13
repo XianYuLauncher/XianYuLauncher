@@ -39,7 +39,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             ?? throw new Exception("未能获取 Modrinth 项目详情");
 
         string? passedDescription = GetPassedDescription(passedModInfo);
-        string translatedDescription = await GetModrinthTranslatedDescriptionAsync(modId, passedDescription);
+        string translatedDescription = await GetModrinthTranslatedDescriptionAsync(modId);
         string projectType = ModDetailLoadHelper.ResolveModrinthProjectType(sourceType, projectDetail.ProjectType);
         var allVersions = await _modrinthService.GetProjectVersionsAsync(modId);
         var filteredVersions = ModDetailLoadHelper.FilterModrinthVersionsBySourceType(allVersions, sourceType);
@@ -76,7 +76,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         var modDetail = await _curseForgeService.GetModDetailAsync(curseForgeModId);
 
         string? passedDescription = GetPassedDescription(passedModInfo);
-        string translatedDescription = await GetCurseForgeTranslatedDescriptionAsync(curseForgeModId, passedDescription);
+        string translatedDescription = await GetCurseForgeTranslatedDescriptionAsync(curseForgeModId);
         string projectType = ModDetailLoadHelper.ResolveCurseForgeProjectType(modDetail.ClassId, sourceType);
         bool hideSnapshots = await _localSettingsService.ReadSettingAsync<bool?>("HideSnapshotVersions") ?? true;
         var firstPageFiles = await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, 0, CurseForgePageSize) ?? [];
@@ -244,9 +244,9 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         return await _curseForgeService.GetModFilesAsync(curseForgeModId, null, null, index, pageSize) ?? [];
     }
 
-    private async Task<string> GetModrinthTranslatedDescriptionAsync(string modId, string? passedDescription)
+    private async Task<string> GetModrinthTranslatedDescriptionAsync(string modId)
     {
-        if (!string.IsNullOrWhiteSpace(passedDescription) || !_translationService.ShouldUseTranslation())
+        if (!_translationService.ShouldUseTranslation())
         {
             return string.Empty;
         }
@@ -262,9 +262,9 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
         }
     }
 
-    private async Task<string> GetCurseForgeTranslatedDescriptionAsync(int modId, string? passedDescription)
+    private async Task<string> GetCurseForgeTranslatedDescriptionAsync(int modId)
     {
-        if (!string.IsNullOrWhiteSpace(passedDescription) || !_translationService.ShouldUseTranslation())
+        if (!_translationService.ShouldUseTranslation())
         {
             return string.Empty;
         }
