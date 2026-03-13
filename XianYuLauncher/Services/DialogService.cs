@@ -352,21 +352,29 @@ public class DialogService : IDialogService
         string title,
         string placeholder = "",
         string primaryButtonText = "确认",
-        string closeButtonText = "取消")
+        string closeButtonText = "取消",
+        bool acceptsReturn = false)
     {
         var textBox = new TextBox
         {
             PlaceholderText = placeholder,
-            Width = 300,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0)
+            MinWidth = 380,
+            Width = 380,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0),
+            AcceptsReturn = acceptsReturn,
+            TextWrapping = acceptsReturn ? TextWrapping.Wrap : TextWrapping.NoWrap
         };
+        if (acceptsReturn)
+        {
+            textBox.MinHeight = 120;
+        }
 
         var result = await ShowCustomDialogAsync(
             title,
             textBox,
             primaryButtonText,
             closeButtonText: closeButtonText,
-            defaultButton: ContentDialogButton.None);
+            defaultButton: ContentDialogButton.Primary);
 
         if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(textBox.Text))
         {
