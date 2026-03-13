@@ -1044,7 +1044,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     // 设置文件名称
-    private const string SettingsFileName = "XianYuL.cfg";
+    private const string SettingsFileName = MinecraftFileConsts.VersionConfig;
     
     // 属性变化时自动保存设置
     partial void OnUseGlobalSettingsChanged(bool value)

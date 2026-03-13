@@ -330,9 +330,9 @@ public class IconMetadataPipelineService : IIconMetadataPipelineService
     private static string BuildIconCacheFilePath(string filePath, string iconDir, string sourcePrefix)
     {
         var fileName = Path.GetFileName(filePath);
-        if (fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        if (fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase))
         {
-            fileName = fileName.Substring(0, fileName.Length - ".disabled".Length);
+            fileName = fileName.Substring(0, fileName.Length - FileExtensionConsts.Disabled.Length);
         }
 
         var fileBaseName = Path.GetFileNameWithoutExtension(fileName);

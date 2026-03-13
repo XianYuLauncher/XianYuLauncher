@@ -589,7 +589,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             await File.WriteAllTextAsync(jsonPath, versionInfoJson);
             
             // 创建XianYuL.cfg配置文件
-            string settingsFileName = "XianYuL.cfg";
+            string settingsFileName = MinecraftFileConsts.VersionConfig;
             string settingsFilePath = Path.Combine(targetDirectory, settingsFileName);
             var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionIconPath);
             
@@ -2109,7 +2109,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         try
         {
             // 构建launcher_profiles.json文件路径
-            string launcherProfilePath = Path.Combine(minecraftDirectory, "launcher_profiles.json");
+            string launcherProfilePath = Path.Combine(minecraftDirectory, MinecraftFileConsts.LauncherProfilesJson);
             
             // 检查文件是否已存在
             if (File.Exists(launcherProfilePath))

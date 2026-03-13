@@ -488,7 +488,7 @@ public partial class LaunchViewModel : ObservableRecipient
             try
             {
                 var minecraftPath = _fileService.GetMinecraftDataPath();
-                var versionsPath = Path.Combine(minecraftPath, "versions");
+                var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
                 return versionsPath;
             }
             catch (Exception ex)
@@ -1152,7 +1152,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <summary>
     /// 角色数据文件路径
     /// </summary>
-    private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+    private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
 
     /// <summary>
     /// 加载角色列表
@@ -1258,7 +1258,7 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             // 获取正确的Minecraft游戏文件夹路径
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var versionsPath = Path.Combine(minecraftPath, "versions");
+            var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             if (Directory.Exists(versionsPath))
             {
                 InstalledVersions.Clear();
@@ -1309,7 +1309,7 @@ public partial class LaunchViewModel : ObservableRecipient
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var versionsPath = Path.Combine(minecraftPath, "versions");
+            var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             
             // 更新启动状态显示路径信息
             SetLaunchStatusThreadSafe($"当前Minecraft版本路径: {versionsPath}");
@@ -1840,7 +1840,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 // 获取版本目录
                 var minecraftPath = _fileService.GetMinecraftDataPath();
-                string versionDir = Path.Combine(minecraftPath, "versions", versionName);
+                string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
                 
                 return (javaPath, arguments, versionDir);
             }

@@ -344,7 +344,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             _context.StatusMessage = $"正在准备转移...";
 
             var targetVersion = _context.SelectedTargetVersion.VersionName;
-            var targetBaseDir = Path.Combine(_context.GetMinecraftDataPath(), "versions", targetVersion);
+            var targetBaseDir = Path.Combine(_context.GetMinecraftDataPath(), MinecraftPathConsts.Versions, targetVersion);
 
             if (!Directory.Exists(targetBaseDir))
                 throw new Exception($"无法找到目标版本: {targetVersion}");
@@ -612,9 +612,9 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     protected static string NormalizeDuplicateKey(string fileName)
     {
         var normalized = fileName;
-        if (normalized.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+        if (normalized.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase))
         {
-            normalized = normalized.Substring(0, normalized.Length - ".disabled".Length);
+            normalized = normalized.Substring(0, normalized.Length - FileExtensionConsts.Disabled.Length);
         }
         return Path.GetFileNameWithoutExtension(normalized);
     }

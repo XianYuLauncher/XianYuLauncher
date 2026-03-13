@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -139,8 +140,8 @@ public class JavaDownloadService : IJavaDownloadService
 
         // 5. 确定安装目录
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string minecraftPath = Path.Combine(appData, ".minecraft");
-        string installDir = Path.Combine(minecraftPath, "runtime", component, platformKey);
+        string minecraftPath = Path.Combine(appData, MinecraftPathConsts.MinecraftFolder);
+        string installDir = Path.Combine(minecraftPath, MinecraftPathConsts.Runtime, component, platformKey);
         
         statusCallback?.Invoke("正在准备下载文件...");
         

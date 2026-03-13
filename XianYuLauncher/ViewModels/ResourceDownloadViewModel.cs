@@ -1226,8 +1226,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         try
         {
             string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
-            string savesDir = Path.Combine(versionDir, "saves");
+            string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, gameVersion.OriginalVersionName);
+            string savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
             _fileService.CreateDirectory(savesDir);
 
             string fileName;
@@ -1464,14 +1464,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private string GetTargetDirectory(string projectType, InstalledGameVersionViewModel gameVersion)
     {
         string minecraftPath = _fileService.GetMinecraftDataPath();
-        string versionDir = Path.Combine(minecraftPath, "versions", gameVersion.OriginalVersionName);
+        string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, gameVersion.OriginalVersionName);
 
         string targetFolder = projectType switch
         {
-            "resourcepack" => "resourcepacks",
-            "shader" => "shaderpacks",
-            "datapack" => "datapacks",
-            _ => "mods"
+            "resourcepack" => MinecraftPathConsts.ResourcePacks,
+            "shader" => MinecraftPathConsts.ShaderPacks,
+            "datapack" => MinecraftPathConsts.Datapacks,
+            _ => MinecraftPathConsts.Mods
         };
 
         return Path.Combine(versionDir, targetFolder);
@@ -2633,7 +2633,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
             var savePicker = new Windows.Storage.Pickers.FileSavePicker();
             savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
-            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { ".jar" });
+            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { FileExtensionConsts.Jar });
             savePicker.SuggestedFileName = $"client-{versionId}.jar";
 
             var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
@@ -2693,7 +2693,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 2. 选择保存位置
             var savePicker = new Windows.Storage.Pickers.FileSavePicker();
             savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
-            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { ".jar" });
+            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { FileExtensionConsts.Jar });
             savePicker.SuggestedFileName = $"server-{versionId}.jar";
 
             // WinUI 3 Window handle 

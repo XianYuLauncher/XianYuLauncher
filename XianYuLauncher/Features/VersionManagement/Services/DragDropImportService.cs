@@ -62,7 +62,7 @@ public sealed class DragDropImportService : IDragDropImportService
     private static async Task<bool> ImportFileAsync(StorageFile file, string targetFolderPath)
     {
         var extension = file.FileType.ToLowerInvariant();
-        if (extension != ".jar" && extension != ".zip")
+        if (extension != FileExtensionConsts.Jar && extension != FileExtensionConsts.Zip)
         {
             return false;
         }
@@ -83,12 +83,12 @@ public sealed class DragDropImportService : IDragDropImportService
     {
         return selectedTabIndex switch
         {
-            2 => "mods",
-            3 => "shaderpacks",
-            4 => "resourcepacks",
-            5 => "screenshots",
-            6 => "saves",
-            _ => "mods"
+            2 => MinecraftPathConsts.Mods,
+            3 => MinecraftPathConsts.ShaderPacks,
+            4 => MinecraftPathConsts.ResourcePacks,
+            5 => MinecraftPathConsts.Screenshots,
+            6 => MinecraftPathConsts.Saves,
+            _ => MinecraftPathConsts.Mods
         };
     }
 

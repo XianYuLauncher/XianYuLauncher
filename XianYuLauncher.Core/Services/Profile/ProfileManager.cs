@@ -25,7 +25,7 @@ public class ProfileManager : IProfileManager
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var profilesPath = Path.Combine(minecraftPath, "profiles.json");
+            var profilesPath = Path.Combine(minecraftPath, MinecraftFileConsts.ProfilesJson);
             
             if (!File.Exists(profilesPath))
             {
@@ -60,7 +60,7 @@ public class ProfileManager : IProfileManager
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var profilesPath = Path.Combine(minecraftPath, "profiles.json");
+            var profilesPath = Path.Combine(minecraftPath, MinecraftFileConsts.ProfilesJson);
             
             // 🔒 克隆并加密token后再保存
             var profilesToSave = EncryptProfilesForSave(profiles);

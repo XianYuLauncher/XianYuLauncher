@@ -32,7 +32,7 @@ public sealed partial class LaunchPage : Page
     private readonly HttpClient _httpClient = new HttpClient();
     private readonly IUiDispatcher _uiDispatcher;
     private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
-    private const string AvatarCacheFolder = "AvatarCache";
+    private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
     private readonly INavigationService _navigationService;
     private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
     private int _versionIconLoadRequestId;
