@@ -73,12 +73,36 @@ public interface IDialogService
         TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null);
 
     /// <summary>
+    /// 显示收藏夹导入结果弹窗（不支持版本列表）。
+    /// </summary>
+    Task ShowFavoritesImportResultDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.ViewModels.FavoriteImportResult> results);
+
+    /// <summary>
+    /// 显示文本输入弹窗。
+    /// </summary>
+    /// <returns>用户点击主按钮时返回输入的文本，取消返回 null。</returns>
+    Task<string?> ShowTextInputDialogAsync(
+        string title,
+        string placeholder = "",
+        string primaryButtonText = "确认",
+        string closeButtonText = "取消");
+
+    /// <summary>
     /// 显示带进度的操作弹窗
     /// </summary>
     /// <param name="title">标题</param>
     /// <param name="message">提示信息</param>
     /// <param name="workCallback">执行的异步任务，参数为(progress, status, token)</param>
     Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback);
+
+    /// <summary>
+    /// 显示带进度回调的弹窗，执行异步任务并返回结果。
+    /// </summary>
+    /// <param name="title">标题</param>
+    /// <param name="message">提示信息</param>
+    /// <param name="workCallback">执行的异步任务，参数为 IProgress&lt;double&gt; 用于报告进度</param>
+    /// <returns>任务完成后的返回值</returns>
+    Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback);
 
     /// <summary>
     /// 显示外置登录角色选择弹窗
