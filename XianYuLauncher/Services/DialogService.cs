@@ -16,6 +16,7 @@ using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher.Services;
 
@@ -577,23 +578,28 @@ public class DialogService : IDialogService
         }
 
         // 2. 启动异步加载头像任务
+        Log.Information("[Avatar.DialogService] 外置角色选择对话框，AuthServer: {AuthServer}, 角色数: {Count}", authServer ?? "(null)", profiles.Count);
         _ = Task.Run(async () => 
         {
+            if (string.IsNullOrEmpty(authServer))
+            {
+                Log.Warning("[Avatar.DialogService] AuthServer 为空，跳过头像加载");
+                return;
+            }
             foreach (var item in items)
             {
                 try
                 {
-                    // 构建 Session Server URL
                     var server = authServer;
                     if (!server.EndsWith("/")) server += "/";
                     var sessionUrl = $"{server}sessionserver/session/minecraft/profile/{item.Id}";
+                    Log.Information("[Avatar.DialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
                     
-                    // 获取皮肤数据
                     var response = await _httpClient.GetStringAsync(sessionUrl);
                     dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
                     
                     string textureProperty = null;
-                    if (data.properties != null)
+                    if (data?.properties != null)
                     {
                         foreach(var prop in data.properties)
                         {
@@ -603,6 +609,10 @@ public class DialogService : IDialogService
                                break;
                            }
                         }
+                    }
+                    if (string.IsNullOrEmpty(textureProperty))
+                    {
+                        Log.Warning("[Avatar.DialogService] 角色 {Name} Session API 无 textures，URL: {Url}", item.Name, sessionUrl);
                     }
 
                     if (!string.IsNullOrEmpty(textureProperty))
@@ -619,7 +629,7 @@ public class DialogService : IDialogService
 
                         if (!string.IsNullOrEmpty(skinUrl))
                         {
-                            // 下载并在 UI 线程使用 Win2D 处理
+                            Log.Debug("[Avatar.DialogService] 角色 {Name} 皮肤 URL: {SkinUrl}", item.Name, skinUrl);
                             var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
                             
                             _uiDispatcher.EnqueueAsync(async () =>
@@ -639,7 +649,7 @@ public class DialogService : IDialogService
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DialogService] 加载头像失败 {item.Name}: {ex.Message}");
+                    Log.Warning(ex, "[Avatar.DialogService] 加载角色 {Name} 头像失败，AuthServer: {AuthServer}", item.Name, authServer);
                 }
             }
         });
