@@ -412,10 +412,8 @@ namespace XianYuLauncher.Views
                 
                 Log.Information("[Avatar.CharacterManagementPage] 外置登录 Session URL: {Url}", sessionUrl);
 
-                // 2. 发送请求获取profile.properties
-                var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                var response = await httpClient.GetAsync(sessionUrl);
+                // 2. 发送请求获取profile.properties（复用页面 _httpClient，避免连接泄漏）
+                using var response = await _httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
                     Log.Warning("[Avatar.CharacterManagementPage] 外置登录 Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUrl, response.StatusCode);

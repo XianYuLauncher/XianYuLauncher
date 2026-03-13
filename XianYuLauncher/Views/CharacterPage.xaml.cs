@@ -1714,7 +1714,7 @@ namespace XianYuLauncher.Views
                 if (string.IsNullOrEmpty(authServer))
                 {
                     Log.Warning("[Avatar.CharacterPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);
-                    return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                    return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
                 }
                 // 确保认证服务器URL以/结尾
                 if (!authServer.EndsWith("/"))
@@ -1730,7 +1730,7 @@ namespace XianYuLauncher.Views
             catch (Exception ex)
             {
                 Log.Error(ex, "[Avatar.CharacterPage] 加载外置角色头像异常，角色: {Name}, AuthServer: {AuthServer}", profile.Name, profile.AuthServer ?? "(null)");
-                return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
             }
         }
 
