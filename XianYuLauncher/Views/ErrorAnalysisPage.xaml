@@ -125,7 +125,7 @@
                                 VerticalAlignment="Center"
                                 Orientation="Horizontal"
                                 Spacing="8"
-                                Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <FontIcon Glyph="&#xE7FC;" FontSize="14" Foreground="{ThemeResource TextFillColorDisabledBrush}" />
                         <TextBlock x:Uid="ErrorAnalysis_NoCrashPlaceholder" 
                                    Text="没有崩溃内容，因为游戏还没崩溃..." 

@@ -14,6 +14,7 @@
     <UserControl.Resources>
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
         <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
         
@@ -111,7 +112,7 @@
                                     
                                     <ListView x:Name="LoaderVersionListView" ItemsSource="{x:Bind Versions, Mode=OneWay}" SelectedItem="{x:Bind SelectedVersion, Mode=TwoWay}"
                                               SelectionMode="Single" SelectionChanged="LoaderVersionListView_SelectionChanged"
-                                              Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                              Visibility="{x:Bind IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                               Background="Transparent" BorderThickness="0" MaxHeight="200" Tag="{x:Bind Mode=OneWay}">
                                         <ListView.ItemTemplate>
                                             <DataTemplate x:DataType="x:String">
@@ -160,7 +161,7 @@
                                 <appControls:VersionHierarchySelector
                                     ItemsSource="{Binding ModpackUpdateStructure}"
                                     SelectedVersion="{Binding SelectedModpackHierarchyVersion, Mode=TwoWay}"
-                                    Visibility="{Binding IsModpackVersionStructureLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                    Visibility="{Binding IsModpackVersionStructureLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             </Grid>
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>

@@ -291,7 +291,7 @@
                                     Margin="10,0,0,0"
                                     Command="{Binding RefreshVersionsCommand}">
                                     <Grid>
-                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                                         <ProgressRing IsActive="{Binding IsRefreshing, Mode=OneWay}" Width="20" Height="20" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                                     </Grid>
                                 </Button>
@@ -311,7 +311,7 @@
                                     SelectionMode="None"
                                     Background="Transparent"
                                     BorderThickness="0"
-                                    Visibility="{Binding IsVersionLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                    Visibility="{Binding IsVersionLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                     ShowsScrollingPlaceholders="True">
                                     <ListView.Resources>
                                         <Style TargetType="ScrollViewer">
@@ -506,7 +506,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ModListView_ItemClick"
-                                        Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -711,7 +711,7 @@
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
                                         ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
-                                        Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
                                                 <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -933,7 +933,7 @@
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
                                         ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
-                                        Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
                                                 <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -1151,7 +1151,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="DatapackListView_ItemClick"
-                                        Visibility="{Binding IsDatapackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsDatapackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -1352,7 +1352,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ModpackListView_ItemClick"
-                                        Visibility="{Binding IsModpackLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsModpackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -1555,7 +1555,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="WorldListView_ItemClick"
-                                        Visibility="{Binding IsWorldLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        Visibility="{Binding IsWorldLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
