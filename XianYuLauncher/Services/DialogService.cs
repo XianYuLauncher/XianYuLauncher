@@ -330,21 +330,45 @@ public class DialogService : IDialogService
         return await ShowSafeAsync(dialog);
     }
 
-    public async Task ShowFavoritesImportResultDialogAsync(IEnumerable<XianYuLauncher.ViewModels.FavoriteImportResult> results)
+    public async Task ShowFavoritesImportResultDialogAsync(IEnumerable<XianYuLauncher.Models.FavoritesImportResultItem> results)
     {
+        var resultList = results.ToList();
         var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(new TextBlock { Text = "以下资源不支持所选版本：", FontSize = 14 });
-        var scrollViewer = new ScrollViewer { MaxHeight = 400, VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto };
-        var itemsPanel = new StackPanel { Spacing = 4 };
-        foreach (var item in results)
+
+        var listView = new ListView
         {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Microsoft.UI.Xaml.Thickness(8, 4, 8, 4) };
-            row.Children.Add(new TextBlock { Text = item.ItemName, VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center, Opacity = item.IsGrayedOut ? 0.5 : 1.0 });
-            row.Children.Add(new TextBlock { Text = item.StatusText, VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center, Opacity = item.IsGrayedOut ? 0.5 : 1.0, Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"] });
-            itemsPanel.Children.Add(row);
-        }
-        scrollViewer.Content = itemsPanel;
-        panel.Children.Add(scrollViewer);
+            MaxHeight = 400,
+            ItemsSource = resultList,
+            SelectionMode = ListViewSelectionMode.None,
+            IsItemClickEnabled = false,
+        };
+        listView.ContainerContentChanging += (s, args) =>
+        {
+            if (args.Phase != 0)
+                return;
+            args.Handled = true;
+            if (args.Item is not XianYuLauncher.Models.FavoritesImportResultItem item)
+                return;
+            var opacity = item.IsGrayedOut ? 0.5 : 1.0;
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(new TextBlock
+            {
+                Text = item.ItemName,
+                VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
+                Opacity = opacity,
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = item.StatusText,
+                VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
+                Opacity = opacity,
+                Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            });
+            args.ItemContainer.Content = row;
+        };
+
+        panel.Children.Add(listView);
         await ShowCustomDialogAsync("部分资源不支持此版本", panel, primaryButtonText: "确定", closeButtonText: null);
     }
 
@@ -485,25 +509,34 @@ public class DialogService : IDialogService
             });
         });
 
-        T? result = default;
-        dialog.Opened += async (s, e) =>
+        Task<T>? backgroundWork = null;
+        dialog.Opened += (s, e) =>
         {
-            try
+            backgroundWork = Task.Run(async () =>
             {
-                result = await workCallback(progress);
-            }
-            finally
-            {
-                dialog.DispatcherQueue?.TryEnqueue(() =>
+                try
                 {
-                    try { dialog.Hide(); }
-                    catch { }
-                });
-            }
+                    return await workCallback(progress);
+                }
+                finally
+                {
+                    dialog.DispatcherQueue?.TryEnqueue(() =>
+                    {
+                        try { dialog.Hide(); }
+                        catch { }
+                    });
+                }
+            });
         };
 
         await ShowSafeAsync(dialog);
-        return result!;
+
+        // 等待后台任务完成，异常由调用方通过 await 观察
+        if (backgroundWork != null)
+            return await backgroundWork;
+
+        // Opened 事件未触发（极少数情况），对话框可能立即被关闭
+        throw new InvalidOperationException("ShowProgressCallbackDialogAsync: dialog was closed before Opened event fired.");
     }
 
     public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
