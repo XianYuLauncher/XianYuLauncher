@@ -22,6 +22,7 @@ using Microsoft.Graphics.Canvas;
 using System;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
+using Serilog;
 
 namespace XianYuLauncher.Views
 {
@@ -392,12 +393,16 @@ namespace XianYuLauncher.Views
             try
             {
                 // 1. 构建profile.properties URL
-                // 通常格式：https://authserver.example.com/session/minecraft/profile/{uuid}
                 string authServer = ViewModel.CurrentProfile.AuthServer;
                 string uuid = ViewModel.CurrentProfile.Id;
                 
-                // 添加debug输出，显示基础URL
-                Debug.WriteLine($"[角色管理Page] 外置登录基础URL: {authServer}");
+                if (string.IsNullOrEmpty(authServer))
+                {
+                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 AuthServer 为空，角色: {Name}", ViewModel.CurrentProfile.Name);
+                    return (string.Empty, string.Empty);
+                }
+                
+                Log.Information("[Avatar.CharacterManagementPage] 外置登录获取皮肤，AuthServer: {AuthServer}, UUID: {Uuid}", authServer, uuid);
                 
                 // 确保authServer以/结尾，否则添加/
                 string baseUrl = authServer.TrimEnd('/') + "/";
@@ -405,17 +410,13 @@ namespace XianYuLauncher.Views
                 // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
                 string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
                 
-                // 添加debug输出，显示完整的请求URL
-                Debug.WriteLine($"[角色管理Page] 构建的session URL: {sessionUrl}");
+                Log.Information("[Avatar.CharacterManagementPage] 外置登录 Session URL: {Url}", sessionUrl);
 
-                // 2. 发送请求获取profile.properties
-                var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                Debug.WriteLine($"[角色管理Page] 正在发送请求到: {sessionUrl}");
-                var response = await httpClient.GetAsync(sessionUrl);
+                // 2. 发送请求获取profile.properties（复用页面 _httpClient，避免连接泄漏）
+                using var response = await _httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[角色管理Page] 获取外置登录profile.properties失败，状态码: {response.StatusCode}, URL: {sessionUrl}");
+                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUrl, response.StatusCode);
                     return (string.Empty, string.Empty);
                 }
 
@@ -426,7 +427,7 @@ namespace XianYuLauncher.Views
                 // 4. 检查properties
                 if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
                 {
-                    Debug.WriteLine($"[角色管理Page] profile.properties为空");
+                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 profile.properties 为空，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
@@ -443,7 +444,7 @@ namespace XianYuLauncher.Views
 
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
-                    Debug.WriteLine($"[角色管理Page] 未找到textures属性");
+                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录未找到 textures 属性，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
@@ -468,11 +469,13 @@ namespace XianYuLauncher.Views
                     }
                 }
 
+                Log.Information("[Avatar.CharacterManagementPage] 外置登录解析到皮肤 URL: {SkinUrl}, 披风: {CapeUrl}",
+                    string.IsNullOrEmpty(skinUrl) ? "(空)" : skinUrl, string.IsNullOrEmpty(capeUrl) ? "(空)" : capeUrl);
                 return (skinUrl, capeUrl);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 解析外置登录皮肤失败: {ex.Message}");
+                Log.Error(ex, "[Avatar.CharacterManagementPage] 解析外置登录皮肤失败");
                 return (string.Empty, string.Empty);
             }
         }
@@ -576,11 +579,13 @@ namespace XianYuLauncher.Views
         {
             if (ViewModel.CurrentProfile == null)
             {
-                Debug.WriteLine("[角色管理Page] CurrentProfile为null，跳过头像加载");
+                Log.Debug("[Avatar.CharacterManagementPage] CurrentProfile 为 null，跳过头像加载");
                 return;
             }
             
-            Debug.WriteLine($"[角色管理Page] 开始加载角色 {ViewModel.CurrentProfile.Name} 的头像，离线状态: {ViewModel.CurrentProfile.IsOffline}，强制刷新: {forceRefresh}");
+            var p = ViewModel.CurrentProfile;
+            Log.Information("[Avatar.CharacterManagementPage] 开始加载头像，角色: {Name}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 强制刷新: {ForceRefresh}",
+                p.Name, p.IsOffline, p.TokenType ?? "(null)", p.AuthServer ?? "(null)", forceRefresh);
             
             // 异步加载头像
             _ = LoadAvatarAsync(forceRefresh);
@@ -641,15 +646,15 @@ namespace XianYuLauncher.Views
 
                         if (!string.IsNullOrEmpty(currentSkinUrl))
                         {
-                             Debug.WriteLine($"[角色管理Page] 使用 ViewModel.CurrentSkin.Url 加载头像: {currentSkinUrl}");
+                             Log.Information("[Avatar.CharacterManagementPage] 使用 CurrentSkin.Url 加载头像: {Url}", currentSkinUrl);
                              networkAvatar = await CropAvatarFromSkinAsync(currentSkinUrl, ViewModel.CurrentProfile.Id);
                         }
                         
                         // 如果从 CurrentSkin 获取失败（例如 CurrentSkin 为空），则回退到从网络 Profile 获取
                         if (networkAvatar == null)
                         {
-                             Debug.WriteLine($"[角色管理Page] ViewModel.CurrentSkin.Url 为空或加载失败，尝试从 Mojang Session API 获取...");
-                             networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile.Id);
+                             Log.Information("[Avatar.CharacterManagementPage] CurrentSkin.Url 为空或加载失败，回退到 Session API，TokenType: {TokenType}", ViewModel.CurrentProfile.TokenType ?? "(null)");
+                             networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile);
                         }
 
                         if (networkAvatar != null)
@@ -701,20 +706,39 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 从网络加载头像
         /// </summary>
-        private async Task<BitmapImage> LoadAvatarFromNetworkAsync(string uuid)
+        private async Task<BitmapImage> LoadAvatarFromNetworkAsync(MinecraftProfile profile)
         {
+            if (profile == null) return null;
+            string uuid = profile.Id;
             try
             {
-                // 从Mojang API获取皮肤URL
-                var mojangUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
-                var response = await _httpClient.GetAsync(mojangUri);
+                Uri sessionUri;
+                if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
+                {
+                    string authServer = profile.AuthServer;
+                    if (!authServer.EndsWith("/")) authServer += "/";
+                    sessionUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{uuid}");
+                    Log.Information("[Avatar.CharacterManagementPage] 外置登录回退到 Session API，URL: {Url}", sessionUri.ToString());
+                }
+                else
+                {
+                    sessionUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
+                    Log.Debug("[Avatar.CharacterManagementPage] 微软登录 Session API，URL: {Url}", sessionUri.ToString());
+                }
+                var response = await _httpClient.GetAsync(sessionUri);
                 if (!response.IsSuccessStatusCode)
+                {
+                    Log.Warning("[Avatar.CharacterManagementPage] Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUri.ToString(), response.StatusCode);
                     return null;
+                }
                 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
                 dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
                 if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                {
+                    Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无 properties，URL: {Url}", sessionUri.ToString());
                     return null;
+                }
                 
                 string texturesBase64 = null;
                 foreach (var property in profileData.properties)
@@ -738,14 +762,16 @@ namespace XianYuLauncher.Views
                     skinUrl = texturesData.textures.SKIN.url;
                 }
                 if (string.IsNullOrEmpty(skinUrl))
+                {
+                    Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无皮肤 URL，URL: {Url}", sessionUri.ToString());
                     return null;
-                
-                // 下载皮肤并裁剪头像
+                }
+                Log.Information("[Avatar.CharacterManagementPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
                 return await CropAvatarFromSkinAsync(skinUrl, uuid);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 从网络加载头像失败: {ex.Message}");
+                Log.Error(ex, "[Avatar.CharacterManagementPage] 从网络加载头像失败，UUID: {Uuid}, TokenType: {TokenType}", uuid, profile.TokenType ?? "(null)");
                 return null;
             }
         }

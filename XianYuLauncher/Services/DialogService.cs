@@ -16,6 +16,7 @@ using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher.Services;
 
@@ -576,24 +577,31 @@ public class DialogService : IDialogService
             items.Add(item);
         }
 
-        // 2. 启动异步加载头像任务
+        // 2. 启动异步加载头像任务（对话框关闭时取消，避免后台继续请求）
+        Log.Information("[Avatar.DialogService] 外置角色选择对话框，AuthServer: {AuthServer}, 角色数: {Count}", authServer ?? "(null)", profiles.Count);
+        var avatarLoadCts = new CancellationTokenSource();
         _ = Task.Run(async () => 
         {
+            if (string.IsNullOrEmpty(authServer))
+            {
+                Log.Warning("[Avatar.DialogService] AuthServer 为空，跳过头像加载");
+                return;
+            }
             foreach (var item in items)
             {
+                avatarLoadCts.Token.ThrowIfCancellationRequested();
                 try
                 {
-                    // 构建 Session Server URL
                     var server = authServer;
                     if (!server.EndsWith("/")) server += "/";
                     var sessionUrl = $"{server}sessionserver/session/minecraft/profile/{item.Id}";
+                    Log.Information("[Avatar.DialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
                     
-                    // 获取皮肤数据
-                    var response = await _httpClient.GetStringAsync(sessionUrl);
+                    var response = await _httpClient.GetStringAsync(sessionUrl, avatarLoadCts.Token);
                     dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
                     
                     string textureProperty = null;
-                    if (data.properties != null)
+                    if (data?.properties != null)
                     {
                         foreach(var prop in data.properties)
                         {
@@ -603,6 +611,10 @@ public class DialogService : IDialogService
                                break;
                            }
                         }
+                    }
+                    if (string.IsNullOrEmpty(textureProperty))
+                    {
+                        Log.Warning("[Avatar.DialogService] 角色 {Name} Session API 无 textures，URL: {Url}", item.Name, sessionUrl);
                     }
 
                     if (!string.IsNullOrEmpty(textureProperty))
@@ -619,8 +631,8 @@ public class DialogService : IDialogService
 
                         if (!string.IsNullOrEmpty(skinUrl))
                         {
-                            // 下载并在 UI 线程使用 Win2D 处理
-                            var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
+                            Log.Debug("[Avatar.DialogService] 角色 {Name} 皮肤 URL: {SkinUrl}", item.Name, skinUrl);
+                            var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl, avatarLoadCts.Token);
                             
                             _uiDispatcher.EnqueueAsync(async () =>
                             {
@@ -637,9 +649,14 @@ public class DialogService : IDialogService
                         }
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("[Avatar.DialogService] 头像加载任务已取消");
+                    break;
+                }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DialogService] 加载头像失败 {item.Name}: {ex.Message}");
+                    Log.Warning(ex, "[Avatar.DialogService] 加载角色 {Name} 头像失败，AuthServer: {AuthServer}", item.Name, authServer);
                 }
             }
         });
@@ -667,6 +684,7 @@ public class DialogService : IDialogService
             Content = listView,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
+        dialog.Closed += (_, _) => avatarLoadCts.Cancel();
 
         var result = await ShowSafeAsync(dialog);
         if (result == ContentDialogResult.Primary)
