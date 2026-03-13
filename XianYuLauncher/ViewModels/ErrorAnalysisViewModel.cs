@@ -1272,10 +1272,31 @@ namespace XianYuLauncher.ViewModels
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
-                var altName = enabled
-                    ? fileName + FileExtensionConsts.Disabled
-                    : (fileName.EndsWith(FileExtensionConsts.Disabled) ? fileName : fileName);
-                filePath = await FindModFileByIdAsync(altName);
+                var candidateNames = new List<string>();
+                if (enabled)
+                {
+                    candidateNames.Add(fileName + FileExtensionConsts.Disabled);
+                }
+                else
+                {
+                    if (fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase))
+                    {
+                        candidateNames.Add(fileName[..^FileExtensionConsts.Disabled.Length]);
+                    }
+                    else
+                    {
+                        candidateNames.Add(fileName + FileExtensionConsts.Disabled);
+                    }
+                }
+
+                foreach (var candidateName in candidateNames)
+                {
+                    filePath = await FindModFileByIdAsync(candidateName);
+                    if (!string.IsNullOrWhiteSpace(filePath))
+                    {
+                        break;
+                    }
+                }
             }
 
             if (string.IsNullOrWhiteSpace(filePath))
