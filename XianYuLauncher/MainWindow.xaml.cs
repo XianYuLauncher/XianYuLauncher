@@ -172,29 +172,6 @@ public sealed partial class MainWindow : WindowEx
     }
     
     /// <summary>
-    /// 更新TextBlock相关样式
-    /// </summary>
-    private void UpdateTextBlockStyles(Microsoft.UI.Xaml.Media.FontFamily fontFamily)
-    {
-        // 更新默认的TextBlockStyle
-        var textBlockStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
-        textBlockStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
-        App.Current.Resources["TextBlockStyle"] = textBlockStyle;
-        
-        // 更新CaptionTextBlockStyle（用于灰色小字）
-        var captionStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
-        captionStyle.BasedOn = App.Current.Resources["CaptionTextBlockStyle"] as Microsoft.UI.Xaml.Style;
-        captionStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
-        App.Current.Resources["CaptionTextBlockStyle"] = captionStyle;
-        
-        // 更新BodyTextBlockStyle
-        var bodyStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
-        bodyStyle.BasedOn = App.Current.Resources["BodyTextBlockStyle"] as Microsoft.UI.Xaml.Style;
-        bodyStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
-        App.Current.Resources["BodyTextBlockStyle"] = bodyStyle;
-    }
-    
-    /// <summary>
     /// 遍历视觉树，将字体应用到所有控件
     /// </summary>
     private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily fontFamily)
