@@ -75,7 +75,7 @@ public interface IDialogService
     /// <summary>
     /// 显示收藏夹导入结果弹窗（不支持版本列表）。
     /// </summary>
-    Task ShowFavoritesImportResultDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.ViewModels.FavoriteImportResult> results);
+    Task ShowFavoritesImportResultDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.FavoritesImportResultItem> results);
 
     /// <summary>
     /// 显示文本输入弹窗。

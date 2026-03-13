@@ -614,9 +614,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private int _favoritesCompletedItems;
 
     [ObservableProperty]
-    private ObservableCollection<FavoriteImportResult> _favoriteImportResults = new();
-
-    [ObservableProperty]
     private string _shareCodeInput = string.Empty;
 
     public List<ModrinthProject> SelectedFavorites { get; set; } = new List<ModrinthProject>();
@@ -816,7 +813,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             () => FavoritesDownloadProgressText,
             this,
             primaryButtonText: "后台下载",
-            closeButtonText: "后台下载",
+            closeButtonText: "取消",
             autoCloseWhen: downloadTask);
 
         if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
@@ -830,17 +827,19 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         if (unsupported.Count > 0)
         {
             await _dialogService.ShowFavoritesImportResultDialogAsync(
-                unsupported.Select(name => new FavoriteImportResult
-                {
-                    ItemName = name,
-                    StatusText = "不支持此版本",
-                    IsGrayedOut = true
-                }));
+                unsupported.Select(name => new XianYuLauncher.Models.FavoritesImportResultItem(name, "不支持此版本", IsGrayedOut: true)));
         }
     }
 
     private async Task<List<string>> ExecuteFavoritesDownloadCoreAsync(List<ModrinthProject> targets)
     {
+        var installVersion = SelectedFavoritesInstallVersion;
+        if (installVersion is null)
+        {
+            System.Diagnostics.Debug.WriteLine("[FavoritesImport] SelectedFavoritesInstallVersion 为空，跳过下载");
+            return new List<string>();
+        }
+
         int total = targets.Count;
         _favoritesTotalItems = total;
         _favoritesCompletedItems = 0;
@@ -858,7 +857,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             try
             {
                 _favoritesItemProgress.TryAdd(progressKey, 0);
-                var result = await DownloadFavoriteAsync(project, SelectedFavoritesInstallVersion!);
+                var result = await DownloadFavoriteAsync(project, installVersion);
                 if (!result.Success)
                 {
                     if (result.SkippedReason == "未找到兼容版本")
