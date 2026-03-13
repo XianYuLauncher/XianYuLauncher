@@ -57,12 +57,14 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
+    private readonly IDialogService _dialogService;
 
-    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, TerracottaService terracottaService)
+    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, TerracottaService terracottaService, IDialogService dialogService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
         _terracottaService = terracottaService;
+        _dialogService = dialogService;
     }
     
     /// <summary>
@@ -114,46 +116,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         string? port = null;
         string? terracottaPath = null;
         
-        // 创建进度弹窗
-        var progressDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            Title = "联机Page_DownloadingTerracottaTitle".GetLocalized(),
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = "联机Page_DownloadingTerracottaMessage".GetLocalized(), Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 20) },
-                    new ProgressBar { Width = 300, IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Name = "DownloadProgressBar" }
-                }
-            },
-            IsPrimaryButtonEnabled = false,
-            IsSecondaryButtonEnabled = false,
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-        
-        // 显示进度弹窗
-        var dialogTask = progressDialog.ShowAsync();
-        
         try
         {
-            // 使用TerracottaService确保陶瓦插件已下载并安装，传入进度回调
-            double currentProgress = 0;
-            terracottaPath = await _terracottaService.EnsureTerracottaAsync(progress =>
-            {
-                currentProgress = progress;
-                // 更新进度条
-                if (progressDialog.Content is StackPanel stackPanel)
-                {
-                    if (stackPanel.FindName("DownloadProgressBar") is ProgressBar progressBar)
-                    {
-                        progressBar.Value = progress;
-                    }
-                }
-            });
-            
-            // 关闭进度弹窗
-            progressDialog.Hide();
+            terracottaPath = await _dialogService.ShowProgressCallbackDialogAsync(
+                "联机Page_DownloadingTerracottaTitle".GetLocalized(),
+                "联机Page_DownloadingTerracottaMessage".GetLocalized(),
+                async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));
             
             // 检查陶瓦插件是否成功获取
             if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
@@ -216,7 +184,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     Log.Error($"[Multiplayer] 错误：Process.Start 返回 null");
                     isSuccess = false;
                     errorMessage = "无法启动 Terracotta 进程";
-                    progressDialog.Hide();
                     goto ShowResult;
                 }
                 
@@ -346,7 +313,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         _terracottaProcess = null;
                     }
                     
-                    progressDialog.Hide();
                     goto ShowResult;
                 }
             }
@@ -360,8 +326,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         {
             isSuccess = false;
             errorMessage = $"启动联机服务时发生错误：{ex.Message}";
-            // 关闭进度弹窗
-            progressDialog.Hide();
         }
 
         ShowResult: // 标签，用于 goto 跳转
@@ -388,7 +352,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 Content = this, // 绑定到当前ViewModel，以便显示PollingResult
                 ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["PollingContentTemplate"],
                 PrimaryButtonText = "联机Page_StopButton".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot,
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
                 DefaultButton = ContentDialogButton.None
             };
@@ -403,25 +366,17 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             _statusDialog.Closed += (sender, args) =>
             {
                 StopPolling();
-                _statusDialog = null; // 清除引用
+                _statusDialog = null;
             };
             
-            await _statusDialog.ShowAsync();
+            await _dialogService.ShowDialogAsync(_statusDialog);
         }
         else
         {
-            // 显示错误信息
-            var errorDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-            {
-                Title = "Common_ErrorTitle".GetLocalized(),
-                Content = errorMessage,
-                CloseButtonText = "Common_OKButton".GetLocalized(),
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-                DefaultButton = ContentDialogButton.None
-            };
-            
-            await errorDialog.ShowAsync();
+            await _dialogService.ShowMessageDialogAsync(
+                "Common_ErrorTitle".GetLocalized(),
+                errorMessage,
+                "Common_OKButton".GetLocalized());
         }
     }
     
@@ -663,75 +618,25 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     private async Task JoinGame()
     {
         // 1. 弹出输入房间号的弹窗
-        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            Title = "联机Page_InputRoomIdTitle".GetLocalized(),
-            Content = new TextBox 
-            { 
-                PlaceholderText = "联机Page_RoomIdPlaceholder".GetLocalized(),
-                Width = 300,
-                Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0)
-            },
-            PrimaryButtonText = "联机Page_ConfirmButton".GetLocalized(),
-            SecondaryButtonText = "联机Page_CancelButton".GetLocalized(),
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            DefaultButton = ContentDialogButton.None
-        };
+        var roomId = await _dialogService.ShowTextInputDialogAsync(
+            "联机Page_InputRoomIdTitle".GetLocalized(),
+            "联机Page_RoomIdPlaceholder".GetLocalized(),
+            "联机Page_ConfirmButton".GetLocalized(),
+            "联机Page_CancelButton".GetLocalized());
         
-        var result = await dialog.ShowAsync();
-        
-        if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary && 
-            dialog.Content is TextBox textBox && 
-            !string.IsNullOrWhiteSpace(textBox.Text))
+        if (!string.IsNullOrWhiteSpace(roomId))
         {
-            string roomId = textBox.Text;
-            
             // 2. 启动客户端进程
             bool isSuccess = true;
             string? port = null;
             string? terracottaPath = null;
             
-            // 创建进度弹窗
-            var progressDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-            {
-                Title = "联机Page_DownloadingTerracottaTitle".GetLocalized(),
-                Content = new StackPanel
-                {
-                    Children =
-                    {
-                        new TextBlock { Text = "联机Page_DownloadingTerracottaMessage".GetLocalized(), Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 20) },
-                        new ProgressBar { Width = 300, IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Name = "DownloadProgressBar" }
-                    }
-                },
-                IsPrimaryButtonEnabled = false,
-                IsSecondaryButtonEnabled = false,
-                XamlRoot = App.MainWindow.Content.XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-            
-            // 显示进度弹窗
-            var dialogTask = progressDialog.ShowAsync();
-            
             try
             {
-                // 使用TerracottaService确保陶瓦插件已下载并安装，传入进度回调
-                double currentProgress = 0;
-                terracottaPath = await _terracottaService.EnsureTerracottaAsync(progress =>
-                {
-                    currentProgress = progress;
-                    // 更新进度条
-                    if (progressDialog.Content is StackPanel stackPanel)
-                    {
-                        if (stackPanel.FindName("DownloadProgressBar") is ProgressBar progressBar)
-                        {
-                            progressBar.Value = progress;
-                        }
-                    }
-                });
-                
-                // 关闭进度弹窗
-                progressDialog.Hide();
+                terracottaPath = await _dialogService.ShowProgressCallbackDialogAsync(
+                    "联机Page_DownloadingTerracottaTitle".GetLocalized(),
+                    "联机Page_DownloadingTerracottaMessage".GetLocalized(),
+                    async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));
                 
                 // 检查陶瓦插件是否成功获取
                 if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
@@ -886,8 +791,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 isSuccess = false;
                 Log.Error(ex, $"[Multiplayer-Join] 启动联机服务异常: {ex.Message}");
                 await ShowErrorDialogAsync($"启动联机服务时发生错误：{ex.Message}");
-                // 关闭进度弹窗
-                progressDialog.Hide();
             }
             
             if (isSuccess && !string.IsNullOrEmpty(port))
@@ -1017,16 +920,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     /// </summary>
     private async Task ShowErrorDialogAsync(string message)
     {
-        var errorDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            Title = "Common_ErrorTitle".GetLocalized(),
-            Content = message,
-            CloseButtonText = "Common_OKButton".GetLocalized(),
-            XamlRoot = App.MainWindow.Content.XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
-            DefaultButton = ContentDialogButton.None
-        };
-        
-        await errorDialog.ShowAsync();
+        await _dialogService.ShowMessageDialogAsync(
+            "Common_ErrorTitle".GetLocalized(),
+            message,
+            "Common_OKButton".GetLocalized());
     }
 }

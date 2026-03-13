@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
@@ -330,6 +332,84 @@ public class DialogService : IDialogService
         return await ShowSafeAsync(dialog);
     }
 
+    public async Task ShowFavoritesImportResultDialogAsync(IEnumerable<XianYuLauncher.Models.FavoritesImportResultItem> results)
+    {
+        var resultList = results.ToList();
+        var panel = new StackPanel { Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = "以下资源不支持所选版本：", FontSize = 14 });
+
+        var listView = new ListView
+        {
+            MaxHeight = 400,
+            ItemsSource = resultList,
+            SelectionMode = ListViewSelectionMode.None,
+            IsItemClickEnabled = false,
+        };
+        listView.ContainerContentChanging += (s, args) =>
+        {
+            if (args.Phase != 0)
+                return;
+            args.Handled = true;
+            if (args.Item is not XianYuLauncher.Models.FavoritesImportResultItem item)
+                return;
+            var opacity = item.IsGrayedOut ? 0.5 : 1.0;
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(new TextBlock
+            {
+                Text = item.ItemName,
+                VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
+                Opacity = opacity,
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = item.StatusText,
+                VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center,
+                Opacity = opacity,
+                Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            });
+            args.ItemContainer.Content = row;
+        };
+
+        panel.Children.Add(listView);
+        await ShowCustomDialogAsync("部分资源不支持此版本", panel, primaryButtonText: "确定", closeButtonText: null);
+    }
+
+    public async Task<string?> ShowTextInputDialogAsync(
+        string title,
+        string placeholder = "",
+        string primaryButtonText = "确认",
+        string closeButtonText = "取消",
+        bool acceptsReturn = false)
+    {
+        var textBox = new TextBox
+        {
+            PlaceholderText = placeholder,
+            MinWidth = 380,
+            Width = 380,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0),
+            AcceptsReturn = acceptsReturn,
+            TextWrapping = acceptsReturn ? TextWrapping.Wrap : TextWrapping.NoWrap
+        };
+        if (acceptsReturn)
+        {
+            textBox.MinHeight = 120;
+        }
+
+        var result = await ShowCustomDialogAsync(
+            title,
+            textBox,
+            primaryButtonText,
+            closeButtonText: closeButtonText,
+            defaultButton: ContentDialogButton.Primary);
+
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(textBox.Text))
+        {
+            return textBox.Text.Trim();
+        }
+
+        return null;
+    }
+
     public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
     {
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), IsIndeterminate = true };
@@ -404,6 +484,67 @@ public class DialogService : IDialogService
                 // 所有异常已在 Task.Run 内部处理过，这里兜底防止未观察异常
             }
         }
+    }
+
+    public async Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback)
+    {
+        var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), Width = 300 };
+        var statusText = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
+        var contentPanel = new StackPanel();
+        contentPanel.Children.Add(statusText);
+        contentPanel.Children.Add(progressBar);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = contentPanel,
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var progress = new Progress<double>(p =>
+        {
+            dialog.DispatcherQueue?.TryEnqueue(() =>
+            {
+                progressBar.IsIndeterminate = false;
+                progressBar.Value = p;
+            });
+        });
+
+        Task<T>? backgroundWork = null;
+        dialog.Opened += (s, e) =>
+        {
+            backgroundWork = Task.Run(async () =>
+            {
+                try
+                {
+                    return await workCallback(progress);
+                }
+                finally
+                {
+                    dialog.DispatcherQueue?.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            dialog.Hide();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to hide dialog in ShowProgressCallbackDialogAsync: {ex}");
+                        }
+                    });
+                }
+            });
+        };
+
+        await ShowSafeAsync(dialog);
+
+        // 等待后台任务完成，异常由调用方通过 await 观察
+        if (backgroundWork != null)
+            return await backgroundWork;
+
+        // Opened 事件未触发（极少数情况），对话框可能立即被关闭
+        throw new InvalidOperationException("ShowProgressCallbackDialogAsync: dialog was closed before Opened event fired.");
     }
 
     public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
