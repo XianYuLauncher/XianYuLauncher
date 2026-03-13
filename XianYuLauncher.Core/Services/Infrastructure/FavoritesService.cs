@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -9,8 +10,6 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class FavoritesService : IFavoritesService
 {
-    private const string FavoritesFileName = "favorites.json";
-
     private readonly IFileService _fileService;
 
     public FavoritesService(IFileService fileService)
@@ -24,7 +23,7 @@ public class FavoritesService : IFavoritesService
         try
         {
             var folder = _fileService.GetAppDataPath();
-            var data = _fileService.Read<List<ModrinthProject>>(folder, FavoritesFileName);
+            var data = _fileService.Read<List<ModrinthProject>>(folder, AppDataFileConsts.FavoritesJson);
             return data ?? new List<ModrinthProject>();
         }
         catch (System.Exception ex)
@@ -41,7 +40,7 @@ public class FavoritesService : IFavoritesService
         {
             var folder = _fileService.GetAppDataPath();
             var list = items as ICollection<ModrinthProject> ?? new List<ModrinthProject>(items ?? []);
-            _fileService.Save(folder, FavoritesFileName, list);
+            _fileService.Save(folder, AppDataFileConsts.FavoritesJson, list);
         }
         catch (System.Exception ex)
         {

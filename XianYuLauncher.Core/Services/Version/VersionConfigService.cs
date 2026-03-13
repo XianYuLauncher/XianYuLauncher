@@ -70,7 +70,7 @@ public class VersionConfigService : IVersionConfigService
         try
         {
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var configPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName, "XianYuL.cfg");
+            var configPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName, MinecraftFileConsts.VersionConfig);
             
             if (!File.Exists(configPath))
             {
@@ -282,7 +282,7 @@ public class VersionConfigService : IVersionConfigService
                 Directory.CreateDirectory(versionDir);
             }
             
-            var configPath = Path.Combine(versionDir, "XianYuL.cfg");
+            var configPath = Path.Combine(versionDir, MinecraftFileConsts.VersionConfig);
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
             await File.WriteAllTextAsync(configPath, json);
             

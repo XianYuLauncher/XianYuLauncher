@@ -258,7 +258,7 @@ public partial class VersionListViewModel : ObservableRecipient
             // 获取已安装的版本列表
             var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            var versionsPath = Path.Combine(minecraftPath, "versions");
+            var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
 
             // 并行处理版本信息，提高加载速度
             var versionItems = new List<VersionInfoItem>();
@@ -421,8 +421,8 @@ public partial class VersionListViewModel : ObservableRecipient
         {
             // 创建文件选择器
             var filePicker = new FileOpenPicker();
-            filePicker.FileTypeFilter.Add(".mrpack");
-            filePicker.FileTypeFilter.Add(".zip");
+            filePicker.FileTypeFilter.Add(FileExtensionConsts.Mrpack);
+            filePicker.FileTypeFilter.Add(FileExtensionConsts.Zip);
             filePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
 
             // 初始化文件选择器
@@ -437,7 +437,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 string modpackFileName = file.Name;
 
                 // 如果是 .zip 文件，检测整合包类型
-                if (file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                if (file.Name.EndsWith(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase))
                 {
                     var modpackType = await DetectModpackTypeFromZipAsync(file.Path);
                     
@@ -459,13 +459,13 @@ public partial class VersionListViewModel : ObservableRecipient
                         }
                         else
                         {
-                            StatusMessage = "ZIP 文件中未找到 .mrpack 文件";
+                            StatusMessage = $"ZIP 文件中未找到 {FileExtensionConsts.Mrpack} 文件";
                             return;
                         }
                     }
                     else
                     {
-                        StatusMessage = "无法识别的整合包格式：未找到 manifest.json (CurseForge) 或 .mrpack 文件 (Modrinth)";
+                        StatusMessage = $"无法识别的整合包格式：未找到 {MinecraftFileConsts.ManifestJson} (CurseForge) 或 {FileExtensionConsts.Mrpack} 文件 (Modrinth)";
                         return;
                     }
                 }
@@ -514,7 +514,7 @@ public partial class VersionListViewModel : ObservableRecipient
             string modpackFilePath = filePath;
             string modpackFileName = Path.GetFileName(filePath);
 
-            if (modpackFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            if (modpackFileName.EndsWith(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase))
             {
                 var modpackType = await DetectModpackTypeFromZipAsync(filePath);
 
@@ -534,7 +534,7 @@ public partial class VersionListViewModel : ObservableRecipient
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"ImportModpackFromPathAsync: zip does not contain .mrpack: '{filePath}'");
+                        System.Diagnostics.Debug.WriteLine($"ImportModpackFromPathAsync: zip does not contain {FileExtensionConsts.Mrpack}: '{filePath}'");
                         return;
                     }
                 }
@@ -589,7 +589,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 {
                     // 优先检查是否为 CurseForge 整合包 (包含 manifest.json)
                     var manifestEntry = archive.Entries.FirstOrDefault(e =>
-                        e.FullName.Equals("manifest.json", StringComparison.OrdinalIgnoreCase));
+                        e.FullName.Equals(MinecraftFileConsts.ManifestJson, StringComparison.OrdinalIgnoreCase));
                     
                     if (manifestEntry != null)
                     {
@@ -598,7 +598,7 @@ public partial class VersionListViewModel : ObservableRecipient
                     
                     // 检查是否包含 .mrpack 文件 (Modrinth 整合包的包装)
                     var mrpackEntry = archive.Entries.FirstOrDefault(e =>
-                        e.Name.EndsWith(".mrpack", StringComparison.OrdinalIgnoreCase));
+                        e.Name.EndsWith(FileExtensionConsts.Mrpack, StringComparison.OrdinalIgnoreCase));
                     
                     if (mrpackEntry != null)
                     {
@@ -626,7 +626,7 @@ public partial class VersionListViewModel : ObservableRecipient
             {
                 // 查找 .mrpack 文件
                 var mrpackEntry = archive.Entries.FirstOrDefault(e => 
-                    e.Name.EndsWith(".mrpack", StringComparison.OrdinalIgnoreCase));
+                    e.Name.EndsWith(FileExtensionConsts.Mrpack, StringComparison.OrdinalIgnoreCase));
 
                 if (mrpackEntry != null)
                 {
@@ -646,7 +646,7 @@ public partial class VersionListViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            StatusMessage = $"提取 .mrpack 文件失败: {ex.Message}";
+            StatusMessage = $"提取 {FileExtensionConsts.Mrpack} 文件失败: {ex.Message}";
             return null;
         }
     }
@@ -1349,7 +1349,7 @@ public partial class VersionListViewModel : ObservableRecipient
     {
         try
         {
-            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
             if (File.Exists(profilesFilePath))
             {
                 // 🔒 使用安全方法读取（自动解密token）
@@ -1586,7 +1586,7 @@ public partial class VersionListViewModel : ObservableRecipient
         try
         {
             string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionsPath = Path.Combine(minecraftPath, "versions");
+            string versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             string oldVersionPath = SelectedVersion.Path;
             string newVersionPath = Path.Combine(versionsPath, NewVersionName);
             

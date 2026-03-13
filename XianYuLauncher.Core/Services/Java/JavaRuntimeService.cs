@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using System.Diagnostics;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -439,8 +440,8 @@ public class JavaRuntimeService : IJavaRuntimeService
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"), // 用户本地程序
             
             // 官方Minecraft启动器的Java runtime
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "runtime"), // %AppData%\.minecraft\runtime
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", "Microsoft.4297127D64EC6_8wekyb3d8bbwe", "LocalCache", "Local", "runtime"), // 微软商店版
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), MinecraftPathConsts.MinecraftFolder, MinecraftPathConsts.Runtime), // %AppData%\.minecraft\runtime
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", "Microsoft.4297127D64EC6_8wekyb3d8bbwe", "LocalCache", "Local", MinecraftPathConsts.Runtime), // 微软商店版
         };
         
         foreach (var basePath in commonBasePaths)

@@ -100,8 +100,8 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                     var modFiles = Directory
                         .GetFiles(folderPath)
                         .Where(modFile =>
-                            modFile.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
-                            modFile.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase) ||
+                            modFile.EndsWith(FileExtensionConsts.Jar, StringComparison.OrdinalIgnoreCase) ||
+                            modFile.EndsWith(FileExtensionConsts.JarDisabled, StringComparison.OrdinalIgnoreCase) ||
                             modFile.EndsWith(".litemod", StringComparison.OrdinalIgnoreCase) ||
                             modFile.EndsWith(".litemod.disabled", StringComparison.OrdinalIgnoreCase));
 
@@ -194,9 +194,9 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
 
             if (isOn)
             {
-                if (mod.FileName.EndsWith(".disabled"))
+                if (mod.FileName.EndsWith(FileExtensionConsts.Disabled))
                 {
-                    newFileName = mod.FileName.Substring(0, mod.FileName.Length - ".disabled".Length);
+                    newFileName = mod.FileName.Substring(0, mod.FileName.Length - FileExtensionConsts.Disabled.Length);
                     newFilePath = Path.Combine(Path.GetDirectoryName(mod.FilePath)!, newFileName);
                 }
                 else
@@ -206,7 +206,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
             }
             else
             {
-                newFileName = mod.FileName + ".disabled";
+                newFileName = mod.FileName + FileExtensionConsts.Disabled;
                 newFilePath = Path.Combine(Path.GetDirectoryName(mod.FilePath)!, newFileName);
             }
 
@@ -223,7 +223,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         catch (Exception ex)
         {
-            mod.IsEnabled = !mod.FileName.EndsWith(".disabled");
+            mod.IsEnabled = !mod.FileName.EndsWith(FileExtensionConsts.Disabled);
             _context.StatusMessage = $"切换mod状态失败：{ex.Message}";
         }
     }
@@ -252,7 +252,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
             var targetVersionInfo = new VersionListViewModel.VersionInfoItem
             {
                 Name = targetVersion,
-                Path = Path.Combine(_context.GetMinecraftDataPath(), "versions", targetVersion)
+                Path = Path.Combine(_context.GetMinecraftDataPath(), MinecraftPathConsts.Versions, targetVersion)
             };
 
             if (!Directory.Exists(targetVersionInfo.Path))
@@ -260,7 +260,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                 throw new Exception($"无法找到目标版本: {targetVersion}");
             }
 
-            string targetVersionPath = Path.Combine(targetVersionInfo.Path, "mods");
+            string targetVersionPath = Path.Combine(targetVersionInfo.Path, MinecraftPathConsts.Mods);
             Directory.CreateDirectory(targetVersionPath);
 
             // 获取目标版本的 ModLoader 和游戏版本

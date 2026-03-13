@@ -82,8 +82,8 @@ public class ModpackInstallationService : IModpackInstallationService
             Report(progress, 40, "40%", "解压完成，正在解析整合包信息...");
 
             // 3. 检测格式并分派
-            string curseForgeManifestPath = Path.Combine(extractDir, "manifest.json");
-            string modrinthIndexPath = Path.Combine(extractDir, "modrinth.index.json");
+            string curseForgeManifestPath = Path.Combine(extractDir, MinecraftFileConsts.ManifestJson);
+            string modrinthIndexPath = Path.Combine(extractDir, MinecraftFileConsts.ModrinthIndexJson);
 
             if (File.Exists(curseForgeManifestPath))
             {
@@ -99,7 +99,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
             }
 
-            return ModpackInstallResult.Failed("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
+            return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
         }
         catch (OperationCanceledException)
         {
@@ -139,7 +139,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 return ModpackInstallResult.Failed("目标实例不能为空");
             }
 
-            var targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+            var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionId);
             if (!Directory.Exists(targetVersionDir))
             {
                 return ModpackInstallResult.Failed($"目标实例不存在: {targetVersionId}");
@@ -162,8 +162,8 @@ public class ModpackInstallationService : IModpackInstallationService
 
             Report(progress, 40, "40%", "解压完成，正在解析整合包信息...");
 
-            string curseForgeManifestPath = Path.Combine(extractDir, "manifest.json");
-            string modrinthIndexPath = Path.Combine(extractDir, "modrinth.index.json");
+            string curseForgeManifestPath = Path.Combine(extractDir, MinecraftFileConsts.ManifestJson);
+            string modrinthIndexPath = Path.Combine(extractDir, MinecraftFileConsts.ModrinthIndexJson);
 
             if (File.Exists(curseForgeManifestPath))
             {
@@ -195,7 +195,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     cancellationToken);
             }
 
-            return ModpackInstallResult.Failed("整合包格式不支持：未找到manifest.json（CurseForge）或modrinth.index.json（Modrinth）");
+            return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
         }
         catch (OperationCanceledException)
         {
@@ -251,7 +251,7 @@ public class ModpackInstallationService : IModpackInstallationService
             targetVersionId,
             versionIconPath);
 
-        var targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+        var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionId);
         Report(progress, 72, "72%", "正在清理旧整合包文件...");
         await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
 
@@ -315,7 +315,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         Report(progress, 80, "80%", "版本下载完成，正在部署整合包文件...");
 
-        string modpackVersionDir = Path.Combine(minecraftPath, "versions", modpackVersionId);
+        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, modpackVersionId);
 
         // 复制 overrides
         string overridesDir = Path.Combine(extractDir, "overrides");
@@ -469,7 +469,7 @@ public class ModpackInstallationService : IModpackInstallationService
             targetVersionId,
             versionIconPath);
 
-        string targetVersionDir = Path.Combine(minecraftPath, "versions", targetVersionId);
+        string targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionId);
         Report(progress, 66, "66%", "正在清理旧整合包文件...");
         await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
 
@@ -535,7 +535,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         Report(progress, 60, "60%", "版本下载完成，正在部署整合包文件...");
 
-        string modpackVersionDir = Path.Combine(minecraftPath, "versions", modpackVersionId);
+        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, modpackVersionId);
 
         // 复制 overrides
         string overridesFolderName = manifest.Overrides ?? "overrides";
@@ -847,10 +847,10 @@ public class ModpackInstallationService : IModpackInstallationService
         Report(progress, 70, "70%", "正在下载整合包文件...");
 
         // 预先创建目录
-        string modsDir = Path.Combine(modpackVersionDir, "mods");
+        string modsDir = Path.Combine(modpackVersionDir, MinecraftPathConsts.Mods);
         string resourcePacksDir = Path.Combine(modpackVersionDir, "resourcepacks");
         string shaderPacksDir = Path.Combine(modpackVersionDir, "shaderpacks");
-        string dataPacksDir = Path.Combine(modpackVersionDir, "datapacks");
+        string dataPacksDir = Path.Combine(modpackVersionDir, MinecraftPathConsts.Datapacks);
         Directory.CreateDirectory(modsDir);
         Directory.CreateDirectory(resourcePacksDir);
         Directory.CreateDirectory(shaderPacksDir);

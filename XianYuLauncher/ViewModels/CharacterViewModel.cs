@@ -91,7 +91,7 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 角色数据文件路径
         /// </summary>
-        private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+        private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
 
         public CharacterViewModel(
             MicrosoftAuthService microsoftAuthService,

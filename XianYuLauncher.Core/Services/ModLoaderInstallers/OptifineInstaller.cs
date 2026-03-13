@@ -157,8 +157,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Directory.CreateDirectory(tempLibrariesDirectory);
             
             // 复制launcher_profiles.json（Optifine安装器需要）
-            var launcherProfilesPath = Path.Combine(minecraftDirectory, "launcher_profiles.json");
-            var tempLauncherProfilesPath = Path.Combine(tempMinecraftDirectory, "launcher_profiles.json");
+            var launcherProfilesPath = Path.Combine(minecraftDirectory, MinecraftFileConsts.LauncherProfilesJson);
+            var tempLauncherProfilesPath = Path.Combine(tempMinecraftDirectory, MinecraftFileConsts.LauncherProfilesJson);
             if (File.Exists(launcherProfilesPath))
             {
                 File.Copy(launcherProfilesPath, tempLauncherProfilesPath, true);

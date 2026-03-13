@@ -1342,8 +1342,8 @@ public class ModrinthService
             }
 
             var existingFiles = Directory.GetFiles(destinationPath, "*", SearchOption.TopDirectoryOnly)
-                .Where(file => file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ||
-                               file.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
+                .Where(file => file.EndsWith(FileExtensionConsts.Jar, StringComparison.OrdinalIgnoreCase) ||
+                               file.EndsWith(FileExtensionConsts.JarDisabled, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 扫描到候选文件数: {existingFiles.Count}, 路径={destinationPath}");

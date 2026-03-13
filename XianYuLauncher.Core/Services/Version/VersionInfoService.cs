@@ -244,7 +244,7 @@ public class VersionInfoService : IVersionInfoService
         {
             try
             {
-                string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+                string configPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
                 System.Diagnostics.Debug.WriteLine("[VersionInfoService]   检查XianYuL.cfg配置文件");
                 
                 if (File.Exists(configPath))
@@ -454,7 +454,7 @@ public class VersionInfoService : IVersionInfoService
         {
             try
             {
-                string configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+                string configPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
                 
                 // 增加详细的调试日志
                 _logger.LogInformation($"[VersionInfoService]   开始创建/更新XianYuL.cfg文件: {configPath}");

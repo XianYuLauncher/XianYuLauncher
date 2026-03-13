@@ -2,6 +2,7 @@ namespace XianYuLauncher.Core.Helpers;
 
 public static class MinecraftPathConsts
 {
+    public const string MinecraftFolder = ".minecraft";
     public const string Versions = "versions";
     public const string Libraries = "libraries";
     public const string Assets = "assets";
@@ -11,6 +12,8 @@ public static class MinecraftPathConsts
     public const string ResourcePacks = "resourcepacks";
     public const string ShaderPacks = "shaderpacks";
     public const string Screenshots = "screenshots";
+    public const string Datapacks = "datapacks";
+    public const string Runtime = "runtime";
 
     public const string Indexes = "indexes";
     public const string Objects = "objects";

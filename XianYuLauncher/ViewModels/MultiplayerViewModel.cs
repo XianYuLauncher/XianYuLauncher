@@ -76,7 +76,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         try
         {
             // 获取角色数据文件路径
-            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), "profiles.json");
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
             
             if (File.Exists(profilesFilePath))
             {

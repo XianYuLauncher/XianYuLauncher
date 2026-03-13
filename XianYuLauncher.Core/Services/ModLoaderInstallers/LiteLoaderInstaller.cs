@@ -109,7 +109,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         if (isAddonMode)
         {
             // Addon 模式：读取现有配置，保留 ModLoaderType 和 ModLoaderVersion，只添加 LiteLoaderVersion
-            var existingConfigPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+            var existingConfigPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
             if (File.Exists(existingConfigPath))
             {
                 try

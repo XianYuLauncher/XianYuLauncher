@@ -297,7 +297,7 @@ public partial class MapsViewModel : ObservableObject
         {
             var savePicker = new Windows.Storage.Pickers.FileSavePicker();
             savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-            savePicker.FileTypeChoices.Add("ZIP 压缩文件", new List<string>() { ".zip" });
+            savePicker.FileTypeChoices.Add("ZIP 压缩文件", new List<string>() { FileExtensionConsts.Zip });
             savePicker.SuggestedFileName = map.Name;
 
             var window = App.MainWindow;

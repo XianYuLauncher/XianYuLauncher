@@ -46,12 +46,12 @@ public static class ModDownloadPlanningHelper
 
     public static string BuildVersionTargetDirectory(string minecraftPath, string versionName, string projectType)
     {
-        string versionDir = Path.Combine(minecraftPath, "versions", versionName);
+        string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
         string targetFolder = ModResourcePathHelper.NormalizeProjectType(projectType) switch
         {
-            "resourcepack" => "resourcepacks",
-            "shader" => "shaderpacks",
-            _ => "mods"
+            "resourcepack" => MinecraftPathConsts.ResourcePacks,
+            "shader" => MinecraftPathConsts.ShaderPacks,
+            _ => MinecraftPathConsts.Mods
         };
 
         return Path.Combine(versionDir, targetFolder);

@@ -18,7 +18,7 @@ namespace XianYuLauncher.Views
         private readonly IDialogService _dialogService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly HttpClient _httpClient = new HttpClient();
-        private const string AvatarCacheFolder = "AvatarCache";
+        private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
         private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
 
         public CharacterPage()

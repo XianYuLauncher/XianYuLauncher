@@ -33,15 +33,15 @@ public static class ModResourcePathHelper
     {
         string baseDir = string.IsNullOrEmpty(versionName)
             ? minecraftPath
-            : Path.Combine(minecraftPath, "versions", versionName);
+            : Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
 
         string targetFolder = NormalizeProjectType(projectType) switch
         {
-            "resourcepack" => "resourcepacks",
-            "shader" => "shaderpacks",
-            "datapack" => "datapacks",
-            "world" => "mods",
-            _ => "mods"
+            "resourcepack" => MinecraftPathConsts.ResourcePacks,
+            "shader" => MinecraftPathConsts.ShaderPacks,
+            "datapack" => MinecraftPathConsts.Datapacks,
+            "world" => MinecraftPathConsts.Mods,
+            _ => MinecraftPathConsts.Mods
         };
 
         return Path.Combine(baseDir, targetFolder);

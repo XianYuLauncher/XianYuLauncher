@@ -61,7 +61,7 @@ public sealed partial class MainWindow : WindowEx
             foreach (var item in items.OfType<StorageFile>())
             {
                 var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
-                if (ext == ".mrpack" || ext == ".zip")
+                if (ext == FileExtensionConsts.Mrpack || ext == FileExtensionConsts.Zip)
                 {
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     // Navigate to VersionListPage

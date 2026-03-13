@@ -174,7 +174,7 @@ public partial class App : Application
                 // 初始化Mod名称翻译服务
                 var translationService = App.GetService<ITranslationService>();
                 // 使用 AppData 本地缓存路径
-                var localDataPath = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "mod_data.txt");
+                var localDataPath = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, AppDataFileConsts.ModDataFileName);
 
                 // 1. 如果本地存在，先加载旧数据（保证启动速度）
                 if (File.Exists(localDataPath))

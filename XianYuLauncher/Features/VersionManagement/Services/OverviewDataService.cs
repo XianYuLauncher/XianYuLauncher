@@ -39,7 +39,7 @@ public sealed class OverviewDataService : IOverviewDataService
             return new List<SaveInfo>();
         }
 
-        var savesPath = Path.Combine(selectedVersion.Path, "saves");
+        var savesPath = Path.Combine(selectedVersion.Path, MinecraftPathConsts.Saves);
         if (!Directory.Exists(savesPath))
         {
             return new List<SaveInfo>();

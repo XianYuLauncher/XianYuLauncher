@@ -29,11 +29,6 @@ public class VersionInfoManager : IVersionInfoManager
     private const string OfficialVersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
     /// <summary>
-    /// 版本配置文件名
-    /// </summary>
-    private const string VersionConfigFileName = "XianYuL.cfg";
-
-    /// <summary>
     /// 版本清单缓存
     /// </summary>
     private VersionManifest? _cachedManifest;
@@ -214,7 +209,7 @@ public class VersionInfoManager : IVersionInfoManager
     public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory)
     {
         var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
-        var configPath = Path.Combine(versionDirectory, VersionConfigFileName);
+        var configPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
 
         if (!File.Exists(configPath))
         {
@@ -254,7 +249,7 @@ public class VersionInfoManager : IVersionInfoManager
         var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
 
-        var configPath = Path.Combine(versionDirectory, VersionConfigFileName);
+        var configPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
         var jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
 
         await File.WriteAllTextAsync(configPath, jsonContent);

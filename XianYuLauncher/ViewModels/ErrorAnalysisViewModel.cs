@@ -468,7 +468,7 @@ namespace XianYuLauncher.ViewModels
             }
 
             var candidateFiles = new List<string>();
-            var globalModsPath = Path.Combine(_minecraftPath, "mods");
+            var globalModsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Mods);
             if (Directory.Exists(globalModsPath))
             {
                 candidateFiles.AddRange(Directory.GetFiles(globalModsPath, "*.jar*"));
@@ -476,7 +476,7 @@ namespace XianYuLauncher.ViewModels
 
             if (!string.IsNullOrWhiteSpace(_versionId))
             {
-                var versionModsPath = Path.Combine(_minecraftPath, "versions", _versionId, "mods");
+                var versionModsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, MinecraftPathConsts.Mods);
                 if (Directory.Exists(versionModsPath))
                 {
                     candidateFiles.AddRange(Directory.GetFiles(versionModsPath, "*.jar*"));
@@ -613,7 +613,7 @@ namespace XianYuLauncher.ViewModels
 
             try
             {
-                var versionDirectory = Path.Combine(_minecraftPath, "versions", _versionId);
+                var versionDirectory = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId);
                 var versionInfoService = App.GetService<XianYuLauncher.Core.Services.IVersionInfoService>();
                 var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory);
                 return config?.ModLoaderType?.Trim().ToLowerInvariant() ?? string.Empty;
@@ -1031,17 +1031,17 @@ namespace XianYuLauncher.ViewModels
         if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
             return "无法获取版本信息，未设置版本ID或Minecraft路径。";
 
-        var modsPath = Path.Combine(_minecraftPath, "versions", _versionId, "mods");
+        var modsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, MinecraftPathConsts.Mods);
         if (!Directory.Exists(modsPath))
         {
             // 尝试全局 mods 目录
-            modsPath = Path.Combine(_minecraftPath, "mods");
+            modsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Mods);
         }
         if (!Directory.Exists(modsPath))
             return "未找到 mods 目录，当前版本可能没有安装任何 Mod。";
 
-        var files = Directory.GetFiles(modsPath, "*.jar")
-            .Concat(Directory.GetFiles(modsPath, "*.jar.disabled"))
+        var files = Directory.GetFiles(modsPath, $"*{FileExtensionConsts.Jar}")
+            .Concat(Directory.GetFiles(modsPath, $"*{FileExtensionConsts.JarDisabled}"))
             .ToList();
 
         if (files.Count == 0)
@@ -1052,7 +1052,7 @@ namespace XianYuLauncher.ViewModels
         foreach (var file in files)
         {
             var fileName = Path.GetFileName(file);
-            var enabled = !fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+            var enabled = !fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase);
             sb.AppendLine($"- {fileName} [{(enabled ? "启用" : "禁用")}]");
         }
         return sb.ToString();
@@ -1065,7 +1065,7 @@ namespace XianYuLauncher.ViewModels
 
         try
         {
-            var versionDirectory = Path.Combine(_minecraftPath, "versions", _versionId);
+            var versionDirectory = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId);
             var versionInfoService = App.GetService<IVersionInfoService>();
             var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory, preferCache: true);
 
@@ -1273,8 +1273,8 @@ namespace XianYuLauncher.ViewModels
             {
                 // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
                 var altName = enabled
-                    ? fileName + ".disabled"  // 要启用，找 .disabled 文件
-                    : (fileName.EndsWith(".disabled") ? fileName : fileName); // 要禁用，找 .jar 文件
+                    ? fileName + FileExtensionConsts.Disabled
+                    : (fileName.EndsWith(FileExtensionConsts.Disabled) ? fileName : fileName);
                 filePath = await FindModFileByIdAsync(altName);
             }
 
@@ -1294,16 +1294,16 @@ namespace XianYuLauncher.ViewModels
             if (enabled)
             {
                 // 启用：移除 .disabled 后缀
-                newName = currentName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                    ? currentName[..^".disabled".Length]
+                newName = currentName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase)
+                    ? currentName[..^FileExtensionConsts.Disabled.Length]
                     : currentName;
             }
             else
             {
                 // 禁用：添加 .disabled 后缀
-                newName = currentName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                newName = currentName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase)
                     ? currentName
-                    : currentName + ".disabled";
+                    : currentName + FileExtensionConsts.Disabled;
             }
 
             if (newName != currentName)
@@ -1991,7 +1991,7 @@ namespace XianYuLauncher.ViewModels
                 WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
                 
                 // 设置文件类型
-                filePicker.FileTypeChoices.Add("ZIP 压缩文件", new[] { ".zip" });
+                filePicker.FileTypeChoices.Add("ZIP 压缩文件", new[] { FileExtensionConsts.Zip });
                 
                 // 设置默认文件名
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -2076,7 +2076,7 @@ namespace XianYuLauncher.ViewModels
                 {
                     if (!string.IsNullOrEmpty(_versionId) && !string.IsNullOrEmpty(_minecraftPath))
                     {
-                        string versionJsonPath = Path.Combine(_minecraftPath, "versions", _versionId, $"{_versionId}.json");
+                        string versionJsonPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, $"{_versionId}.json");
                         
                         if (File.Exists(versionJsonPath))
                         {
