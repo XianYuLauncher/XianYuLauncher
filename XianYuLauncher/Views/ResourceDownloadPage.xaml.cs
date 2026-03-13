@@ -182,40 +182,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.IsFavoritesDownloadProgressDialogOpen))
-        {
-            if (ViewModel.IsFavoritesDownloadProgressDialogOpen)
-            {
-                await FavoritesDownloadProgressDialog.ShowAsync();
-            }
-            else
-            {
-                FavoritesDownloadProgressDialog.Hide();
-            }
-        }
-        else if (e.PropertyName == nameof(ViewModel.IsFavoritesImportResultDialogOpen))
-        {
-            if (ViewModel.IsFavoritesImportResultDialogOpen)
-            {
-                await FavoritesImportResultDialog.ShowAsync();
-            }
-            else
-            {
-                FavoritesImportResultDialog.Hide();
-            }
-        }
-        else if (e.PropertyName == nameof(ViewModel.IsShareCodeImportDialogOpen))
-        {
-            if (ViewModel.IsShareCodeImportDialogOpen)
-            {
-                await ShareCodeImportDialog.ShowAsync();
-            }
-            else
-            {
-                ShareCodeImportDialog.Hide();
-            }
-        }
-        else if (e.PropertyName == nameof(ViewModel.ModCategories)
+        if (e.PropertyName == nameof(ViewModel.ModCategories)
             || e.PropertyName == nameof(ViewModel.AvailableVersions)
             || e.PropertyName == nameof(ViewModel.SelectedLoader)
             || e.PropertyName == nameof(ViewModel.SelectedVersion)
@@ -225,27 +192,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private void FavoritesDownloadProgressDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        ViewModel.StartFavoritesBackgroundDownload();
-    }
-
-    private void FavoritesImportResultDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        ViewModel.IsFavoritesImportResultDialogOpen = false;
-    }
-
-    private async void ShareCodeImportDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        ViewModel.IsShareCodeImportDialogOpen = false;
-        await ViewModel.ImportShareCodeToFavoritesAsync();
-    }
-
-    private void ShareCodeImportDialog_CloseButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        ViewModel.IsShareCodeImportDialogOpen = false;
-    }
-    
     /// <summary>
     /// TabView选择变化事件处理程序，实现延迟加载
     /// </summary>

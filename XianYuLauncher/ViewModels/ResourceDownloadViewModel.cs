@@ -598,9 +598,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private InstalledGameVersionViewModel _selectedFavoritesInstallVersion;
 
     [ObservableProperty]
-    private bool _isFavoritesDownloadProgressDialogOpen;
-
-    [ObservableProperty]
     private bool _isFavoritesDownloading;
 
     [ObservableProperty]
@@ -618,12 +615,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private ObservableCollection<FavoriteImportResult> _favoriteImportResults = new();
-
-    [ObservableProperty]
-    private bool _isFavoritesImportResultDialogOpen;
-
-    [ObservableProperty]
-    private bool _isShareCodeImportDialogOpen;
 
     [ObservableProperty]
     private string _shareCodeInput = string.Empty;
@@ -703,9 +694,15 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand]
     public async Task OpenShareCodeImportAsync()
     {
-        ShareCodeInput = string.Empty;
-        IsShareCodeImportDialogOpen = true;
-        await Task.CompletedTask;
+        var input = await _dialogService.ShowTextInputDialogAsync(
+            "导入分享码",
+            "请粘贴分享码（支持JSON数组或换行分隔）：",
+            "导入",
+            "取消");
+        if (string.IsNullOrWhiteSpace(input))
+            return;
+        ShareCodeInput = input;
+        await ImportShareCodeToFavoritesAsync();
     }
 
     public async Task ImportShareCodeToFavoritesAsync()
@@ -805,13 +802,44 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        IsFavoritesDownloadProgressDialogOpen = true;
         IsFavoritesDownloading = true;
         FavoritesDownloadProgress = 0;
         FavoritesDownloadProgressText = "0.0%";
         FavoritesDownloadStatus = $"正在下载 (0/{targets.Count})...";
 
-        int completed = 0;
+        var downloadTask = ExecuteFavoritesDownloadCoreAsync(targets);
+        var result = await _dialogService.ShowObservableProgressDialogAsync(
+            "收藏夹下载中",
+            () => FavoritesDownloadStatus,
+            () => FavoritesDownloadProgress,
+            () => FavoritesDownloadProgressText,
+            this,
+            primaryButtonText: "后台下载",
+            closeButtonText: "后台下载",
+            autoCloseWhen: downloadTask);
+
+        if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+        {
+            StartFavoritesBackgroundDownload();
+        }
+
+        var unsupported = await downloadTask;
+        IsFavoritesDownloading = false;
+
+        if (unsupported.Count > 0)
+        {
+            await _dialogService.ShowFavoritesImportResultDialogAsync(
+                unsupported.Select(name => new FavoriteImportResult
+                {
+                    ItemName = name,
+                    StatusText = "不支持此版本",
+                    IsGrayedOut = true
+                }));
+        }
+    }
+
+    private async Task<List<string>> ExecuteFavoritesDownloadCoreAsync(List<ModrinthProject> targets)
+    {
         int total = targets.Count;
         _favoritesTotalItems = total;
         _favoritesCompletedItems = 0;
@@ -829,7 +857,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             try
             {
                 _favoritesItemProgress.TryAdd(progressKey, 0);
-                var result = await DownloadFavoriteAsync(project, SelectedFavoritesInstallVersion);
+                var result = await DownloadFavoriteAsync(project, SelectedFavoritesInstallVersion!);
                 if (!result.Success)
                 {
                     if (result.SkippedReason == "未找到兼容版本")
@@ -850,8 +878,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             finally
             {
                 semaphore.Release();
-                var done = Interlocked.Increment(ref completed);
-                _favoritesCompletedItems = done;
+                var done = Interlocked.Increment(ref _favoritesCompletedItems);
                 _favoritesItemProgress.TryRemove(progressKey, out _);
                 UpdateFavoritesProgress(done, total);
             }
@@ -859,28 +886,16 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         await Task.WhenAll(tasks);
 
-            FavoritesDownloadStatus = "下载完成";
+        FavoritesDownloadStatus = "下载完成";
         FavoritesDownloadProgress = 100;
         FavoritesDownloadProgressText = "100%";
-            App.GetService<IDownloadTaskManager>()?.NotifyProgress(
-                "收藏夹导入",
-                100,
-                "下载完成",
-                DownloadTaskState.Completed);
-        IsFavoritesDownloading = false;
-        IsFavoritesDownloadProgressDialogOpen = false;
+        App.GetService<IDownloadTaskManager>()?.NotifyProgress(
+            "收藏夹导入",
+            100,
+            "下载完成",
+            DownloadTaskState.Completed);
 
-        if (unsupported.Any())
-        {
-            FavoriteImportResults = new ObservableCollection<FavoriteImportResult>(
-                unsupported.Select(name => new FavoriteImportResult
-                {
-                    ItemName = name,
-                    StatusText = "不支持此版本",
-                    IsGrayedOut = true
-                }));
-            IsFavoritesImportResultDialogOpen = true;
-        }
+        return unsupported.ToList();
     }
 
     private async Task LoadFavoritesInstallVersionsAsync()
@@ -1007,8 +1022,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 FavoritesDownloadProgress,
                 string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus);
         }
-
-        IsFavoritesDownloadProgressDialogOpen = false;
 
         var shellViewModel = App.GetService<ShellViewModel>();
         if (shellViewModel != null)

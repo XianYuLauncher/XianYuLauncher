@@ -330,6 +330,52 @@ public class DialogService : IDialogService
         return await ShowSafeAsync(dialog);
     }
 
+    public async Task ShowFavoritesImportResultDialogAsync(IEnumerable<XianYuLauncher.ViewModels.FavoriteImportResult> results)
+    {
+        var panel = new StackPanel { Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = "以下资源不支持所选版本：", FontSize = 14 });
+        var scrollViewer = new ScrollViewer { MaxHeight = 400, VerticalScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility.Auto };
+        var itemsPanel = new StackPanel { Spacing = 4 };
+        foreach (var item in results)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Microsoft.UI.Xaml.Thickness(8, 4, 8, 4) };
+            row.Children.Add(new TextBlock { Text = item.ItemName, VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center, Opacity = item.IsGrayedOut ? 0.5 : 1.0 });
+            row.Children.Add(new TextBlock { Text = item.StatusText, VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center, Opacity = item.IsGrayedOut ? 0.5 : 1.0, Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"] });
+            itemsPanel.Children.Add(row);
+        }
+        scrollViewer.Content = itemsPanel;
+        panel.Children.Add(scrollViewer);
+        await ShowCustomDialogAsync("部分资源不支持此版本", panel, primaryButtonText: "确定", closeButtonText: null);
+    }
+
+    public async Task<string?> ShowTextInputDialogAsync(
+        string title,
+        string placeholder = "",
+        string primaryButtonText = "确认",
+        string closeButtonText = "取消")
+    {
+        var textBox = new TextBox
+        {
+            PlaceholderText = placeholder,
+            Width = 300,
+            Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0)
+        };
+
+        var result = await ShowCustomDialogAsync(
+            title,
+            textBox,
+            primaryButtonText,
+            closeButtonText: closeButtonText,
+            defaultButton: ContentDialogButton.None);
+
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(textBox.Text))
+        {
+            return textBox.Text.Trim();
+        }
+
+        return null;
+    }
+
     public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
     {
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), IsIndeterminate = true };
@@ -404,6 +450,52 @@ public class DialogService : IDialogService
                 // 所有异常已在 Task.Run 内部处理过，这里兜底防止未观察异常
             }
         }
+    }
+
+    public async Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback)
+    {
+        var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), Width = 300 };
+        var statusText = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
+        var contentPanel = new StackPanel();
+        contentPanel.Children.Add(statusText);
+        contentPanel.Children.Add(progressBar);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = contentPanel,
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        var progress = new Progress<double>(p =>
+        {
+            dialog.DispatcherQueue?.TryEnqueue(() =>
+            {
+                progressBar.IsIndeterminate = false;
+                progressBar.Value = p;
+            });
+        });
+
+        T? result = default;
+        dialog.Opened += async (s, e) =>
+        {
+            try
+            {
+                result = await workCallback(progress);
+            }
+            finally
+            {
+                dialog.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    try { dialog.Hide(); }
+                    catch { }
+                });
+            }
+        };
+
+        await ShowSafeAsync(dialog);
+        return result!;
     }
 
     public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
