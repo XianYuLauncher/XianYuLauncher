@@ -1,9 +1,7 @@
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
-using System.ComponentModel;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -12,51 +10,11 @@ namespace XianYuLauncher.Views;
 public sealed partial class ModLoaderSelectorPage : Page
 {
     public ModLoaderSelectorViewModel ViewModel { get; }
-    private readonly DispatcherQueue _dispatcherQueue;
 
     public ModLoaderSelectorPage()
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         InitializeComponent();
-        
-        // 监听ViewModel的IsDownloadDialogOpen属性变化
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-    }
-    
-    /// <summary>
-    /// 监听ViewModel的属性变化，显示或隐藏下载进度弹窗
-    /// </summary>
-    private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ViewModel.IsDownloadDialogOpen))
-        {
-            if (ViewModel.IsDownloadDialogOpen)
-            {
-                try
-                {
-                    await DownloadProgressDialog.ShowAsync();
-                }
-                catch (Exception)
-                {
-                    // 弹窗可能已经打开或被关闭
-                }
-            }
-            else
-            {
-                _dispatcherQueue.TryEnqueue(() =>
-                {
-                    try
-                    {
-                        DownloadProgressDialog.Hide();
-                    }
-                    catch (Exception)
-                    {
-                        // 弹窗可能已经关闭
-                    }
-                });
-            }
-        }
     }
     
     /// <summary>
