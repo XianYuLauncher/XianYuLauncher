@@ -16,6 +16,7 @@ namespace XianYuLauncher.ViewModels;
 public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
+    private readonly IDialogService _dialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IModLoaderVersionLoaderService _versionLoaderService;
@@ -201,118 +202,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     // 用于管理异步加载任务的CancellationTokenSource
     private Dictionary<string, CancellationTokenSource> _ctsMap = new();
 
-    // 下载弹窗相关属性
-    [ObservableProperty]
-    private bool _isDownloadDialogOpen = false;
-    
-    [ObservableProperty]
-    private string _downloadStatus = "准备开始下载...";
-    
-    [ObservableProperty]
-    private double _downloadProgress = 0;
-    
-    [ObservableProperty]
-    private string _downloadProgressText = "0%";
-    
-    [ObservableProperty]
-    private string _downloadSpeed = "";
-    
-    // 是否已切换到后台下载
-    private bool _isBackgroundDownload = false;
-
     public ModLoaderSelectorViewModel()
     {
         _navigationService = App.GetService<INavigationService>();
+        _dialogService = App.GetService<IDialogService>();
         _downloadTaskManager = App.GetService<IDownloadTaskManager>();
         _versionLoaderService = App.GetService<IModLoaderVersionLoaderService>();
         _versionNameService = App.GetService<IModLoaderVersionNameService>();
         _modLoaderIconPresentationService = App.GetService<IModLoaderIconPresentationService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
-        
-        // 订阅下载事件以更新弹窗进度
-        _downloadTaskManager.TaskProgressChanged += OnDownloadProgressChanged;
-        _downloadTaskManager.TaskStateChanged += OnDownloadStateChanged;
-    }
-    
-    private void OnDownloadProgressChanged(object? sender, DownloadTaskInfo taskInfo)
-    {
-        _uiDispatcher.TryEnqueue(() =>
-        {
-            // 只有在弹窗打开时才更新
-            if (IsDownloadDialogOpen)
-            {
-                DownloadProgress = taskInfo.Progress;
-                DownloadProgressText = $"{taskInfo.Progress:F1}%";
-                DownloadSpeed = taskInfo.SpeedText;
-                
-                // 移除 StatusMessage 末尾的百分比（如 "正在下载... 50%" -> "正在下载..."）
-                var status = taskInfo.StatusMessage;
-                var lastSpaceIndex = status.LastIndexOf(' ');
-                if (lastSpaceIndex > 0 && status.EndsWith("%"))
-                {
-                    status = status.Substring(0, lastSpaceIndex);
-                }
-                DownloadStatus = status;
-            }
-        });
-    }
-    
-    private void OnDownloadStateChanged(object? sender, DownloadTaskInfo taskInfo)
-    {
-        _uiDispatcher.TryEnqueue(() =>
-        {
-            // 只有在弹窗打开时才处理
-            if (IsDownloadDialogOpen && !_isBackgroundDownload)
-            {
-                switch (taskInfo.State)
-                {
-                    case DownloadTaskState.Completed:
-                        DownloadStatus = "下载完成！";
-                        DownloadProgress = 100;
-                        // 延迟关闭弹窗
-                        _ = Task.Delay(1000).ContinueWith(_ =>
-                        {
-                            _uiDispatcher.TryEnqueue(() => IsDownloadDialogOpen = false);
-                        });
-                        break;
-                    case DownloadTaskState.Failed:
-                        DownloadStatus = $"下载失败: {taskInfo.ErrorMessage}";
-                        break;
-                    case DownloadTaskState.Cancelled:
-                        DownloadStatus = "下载已取消";
-                        IsDownloadDialogOpen = false;
-                        break;
-                }
-            }
-        });
-    }
-    
-    /// <summary>
-    /// 切换到后台下载
-    /// </summary>
-    [RelayCommand]
-    private void SwitchToBackgroundDownload()
-    {
-        _isBackgroundDownload = true;
-        IsDownloadDialogOpen = false;
-        
-        // 启用 TeachingTip 显示，这样 ShellViewModel 会在收到下载状态时打开 TeachingTip
-        _downloadTaskManager.IsTeachingTipEnabled = true;
-        
-        // 通知 ShellViewModel 打开 TeachingTip（立即打开，不等待下一次状态变化）
-        var shellViewModel = App.GetService<ShellViewModel>();
-        shellViewModel.IsDownloadTeachingTipOpen = true;
-    }
-    
-    /// <summary>
-    /// 取消下载
-    /// </summary>
-    [RelayCommand]
-    private void CancelDownload()
-    {
-        _downloadTaskManager.CancelCurrentDownload();
-        IsDownloadDialogOpen = false;
     }
     
     /// <summary>
@@ -863,9 +762,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 return;
             }
             
-            // 初始化下载状态
-            _isBackgroundDownload = true;
-            
             // 启用 TeachingTip 显示
             _downloadTaskManager.IsTeachingTipEnabled = true;
             
@@ -916,8 +812,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
                 if (isLiteLoaderOptifineNoPrimaryCombination && string.IsNullOrEmpty(SelectedLiteLoaderVersion))
                 {
-                    IsDownloadDialogOpen = false;
-                    await Task.Delay(100);
                     await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     return;
                 }
@@ -925,13 +819,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 // 检查版本是否已选择
                 if (string.IsNullOrEmpty(modLoaderVersionToDownload))
                 {
-                    // 先关闭下载弹窗
-                    IsDownloadDialogOpen = false;
-                    
-                    // 等待一下确保弹窗关闭
-                    await Task.Delay(100);
-                    
-                    // 再显示错误消息
                     await ShowMessageAsync("ModLoaderSelectionPage_PleaseSelectModLoaderVersionText".GetLocalized());
                     return;
                 }
@@ -1042,15 +929,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     
     private async Task ShowMessageAsync(string message)
     {
-        // 创建并显示消息对话框
-        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-        {
-            Title = "ModLoaderSelectionPage_SelectionResultText".GetLocalized(),
-            Content = message,
-            CloseButtonText = "ModLoaderSelectionPage_OKButtonText".GetLocalized(),
-            XamlRoot = App.MainWindow.Content.XamlRoot
-        };
-        
-        await dialog.ShowAsync();
+        await _dialogService.ShowMessageDialogAsync(
+            "ModLoaderSelectionPage_SelectionResultText".GetLocalized(),
+            message,
+            "ModLoaderSelectionPage_OKButtonText".GetLocalized());
     }
 }
