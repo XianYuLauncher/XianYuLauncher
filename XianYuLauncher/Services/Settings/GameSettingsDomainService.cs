@@ -13,6 +13,8 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 	private const string SelectedJavaVersionKey = "SelectedJavaVersion";
 	private const string JavaVersionsKey = "JavaVersions";
 	private const string EnableVersionIsolationKey = "EnableVersionIsolation";
+	private const string GameIsolationModeKey = "GameIsolationMode";
+	private const string CustomGameDirectoryKey = "CustomGameDirectory";
 	private const string EnableRealTimeLogsKey = "EnableRealTimeLogs";
 	private const string JavaSelectionModeKey = "JavaSelectionMode";
 	private const string MinecraftPathKey = "MinecraftPath";
@@ -53,6 +55,26 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 	public Task SaveEnableVersionIsolationAsync(bool value)
 	{
 		return _settingsRepository.SaveAsync(EnableVersionIsolationKey, value);
+	}
+
+	public Task<string?> LoadGameIsolationModeAsync()
+	{
+		return _settingsRepository.ReadAsync<string>(GameIsolationModeKey);
+	}
+
+	public Task SaveGameIsolationModeAsync(string value)
+	{
+		return _settingsRepository.SaveAsync(GameIsolationModeKey, value);
+	}
+
+	public Task<string?> LoadCustomGameDirectoryAsync()
+	{
+		return _settingsRepository.ReadAsync<string>(CustomGameDirectoryKey);
+	}
+
+	public Task SaveCustomGameDirectoryAsync(string value)
+	{
+		return _settingsRepository.SaveAsync(CustomGameDirectoryKey, value);
 	}
 
 	public Task<string?> LoadJavaSelectionModeAsync()

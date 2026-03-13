@@ -346,12 +346,37 @@
                 </controls:SettingsCard>
 
                 <!-- 版本隔离 -->
-                <controls:SettingsCard x:Uid="Settings_VersionIsolation" Header="启用版本隔离" Description="开启后，每个Minecraft版本将使用独立的游戏目录">
-                    <controls:SettingsCard.HeaderIcon>
+                <controls:SettingsExpander x:Uid="Settings_VersionIsolation" Header="版本隔离" Description="选择游戏目录的隔离模式与自定义路径">
+                    <controls:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE74C;" />
-                    </controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.EnableVersionIsolation, Mode=TwoWay}" />
-                </controls:SettingsCard>
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <!-- 预留：实例隔离模式仅提供 UI 入口，后续接入真实 GameDir / InstanceDir 解析逻辑 -->
+                        <ComboBox ItemsSource="{x:Bind ViewModel.GameIsolationModes, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedGameIsolationMode, Mode=TwoWay}"
+                                  MinWidth="200">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                    <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard Header="自定义游戏目录"
+                                               Description="仅在选择“自定义”时生效"
+                                               Visibility="{x:Bind ViewModel.IsCustomGameIsolationMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{x:Bind ViewModel.CustomGameDirectoryPath, Mode=TwoWay}"
+                                         PlaceholderText="请选择自定义游戏目录"
+                                         Width="280"
+                                         IsReadOnly="True" />
+                                <Button Content="浏览..." Command="{x:Bind ViewModel.BrowseCustomGameDirectoryCommand}" />
+                                <Button Content="清除" Command="{x:Bind ViewModel.ClearCustomGameDirectoryCommand}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
                 <!-- 全局内存分配 -->
                 <controls:SettingsExpander x:Uid="Settings_GlobalMemory" Header="全局内存分配" Description="设置所有版本的默认内存分配，版本可单独覆盖">
