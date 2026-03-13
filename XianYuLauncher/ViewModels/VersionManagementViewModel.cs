@@ -1155,17 +1155,26 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 当Minecraft路径变化时触发。
     /// MinecraftPathChanged 由 FileService 在后台线程（Settings 防抖保存）或 UI 线程触发，
     /// 整个处理必须在 UI 线程执行，否则 PropertyChanged（MinecraftPath、IsLoading 等）会引发 COMException (0x8001010E)。
+    /// async void 需包 try/catch，避免调度失败或内部异常以未观察异常形式崩溃进程。
     /// </summary>
     private async void OnMinecraftPathChanged(object? sender, string newPath)
     {
-        await _uiDispatcher.RunOnUiThreadAsync(async () =>
+        try
         {
-            MinecraftPath = newPath;
-            if (SelectedVersion != null)
+            await _uiDispatcher.RunOnUiThreadAsync(async () =>
             {
-                await LoadVersionDataAsync();
-            }
-        });
+                MinecraftPath = newPath;
+                if (SelectedVersion != null)
+                {
+                    await LoadVersionDataAsync();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            var msg = $"Minecraft 路径变化后刷新失败：{ex.Message}";
+            _uiDispatcher.TryEnqueue(() => StatusMessage = msg);
+        }
     }
 
     /// <summary>
