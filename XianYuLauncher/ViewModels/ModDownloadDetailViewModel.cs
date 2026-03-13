@@ -960,7 +960,7 @@ namespace XianYuLauncher.ViewModels
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
             
             filePicker.SuggestedFileName = SelectedModVersion.FileName;
-            filePicker.FileTypeChoices.Add("Mod文件", new[] { ".jar" });
+            filePicker.FileTypeChoices.Add("Mod文件", new[] { FileExtensionConsts.Jar });
             
             var file = await filePicker.PickSaveFileAsync();
             
@@ -1003,12 +1003,12 @@ namespace XianYuLauncher.ViewModels
 
                 if (targetVersion != null)
                 {
-                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
-                    savesPath = Path.Combine(versionDir, "saves");
+                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
+                    savesPath = Path.Combine(versionDir, MinecraftPathConsts.Saves);
                 }
                 else
                 {
-                    savesPath = Path.Combine(minecraftPath, "saves");
+                    savesPath = Path.Combine(minecraftPath, MinecraftPathConsts.Saves);
                 }
                 
                 // 收集存档名称
@@ -1091,16 +1091,16 @@ namespace XianYuLauncher.ViewModels
 
                 if (targetVersion != null)
                 {
-                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
-                    savesDir = Path.Combine(versionDir, "saves");
+                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
+                    savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
                 }
                 else
                 {
-                    savesDir = Path.Combine(minecraftPath, "saves");
+                    savesDir = Path.Combine(minecraftPath, MinecraftPathConsts.Saves);
                 }
                 
                 string selectedSaveDir = Path.Combine(savesDir, SelectedSaveName);
-                string targetDir = Path.Combine(selectedSaveDir, "datapacks");
+                string targetDir = Path.Combine(selectedSaveDir, MinecraftPathConsts.Datapacks);
                 
                 _fileService.CreateDirectory(targetDir);
                 
@@ -1204,7 +1204,7 @@ namespace XianYuLauncher.ViewModels
                     string loaderVersion = "";
                     
                     // 使用统一的版本信息服务获取加载器类型和游戏版本
-                    string versionDir = Path.Combine(minecraftPath, "versions", installedVersion);
+                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, installedVersion);
                     
                     // 使用内置的 Fast Path (preferCache = true)
                     // 这将优先读取 XianYuL.cfg，如果不存在或无效，Service 层会自动回退到深度扫描
@@ -1566,7 +1566,7 @@ namespace XianYuLauncher.ViewModels
                     string minecraftPath = _fileService.GetMinecraftDataPath();
                     
                     // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
-                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
+                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
                     
                     // 根据项目类型选择文件夹名称
                     string targetFolder;
@@ -1776,8 +1776,8 @@ namespace XianYuLauncher.ViewModels
                 {
                     var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
                     string minecraftPath = _fileService.GetMinecraftDataPath();
-                    string versionDir = Path.Combine(minecraftPath, "versions", targetVersion.OriginalVersionName);
-                    savesDir = Path.Combine(versionDir, "saves");
+                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
+                    savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
                 }
 
                 string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);

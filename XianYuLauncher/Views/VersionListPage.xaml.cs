@@ -870,7 +870,7 @@ public sealed partial class VersionListPage : Page
                             var savePicker = new FileSavePicker();
                             
                             // 设置文件选择器的文件类型
-                            savePicker.FileTypeChoices.Add("Modrinth Pack", new List<string> { ".mrpack" });
+                            savePicker.FileTypeChoices.Add("Modrinth Pack", new List<string> { FileExtensionConsts.Mrpack });
                             
                             // 设置默认文件名
                             string defaultFileName = string.IsNullOrEmpty(viewModel.ModpackName) ? "Untitled" : viewModel.ModpackName;
@@ -1009,7 +1009,7 @@ public sealed partial class VersionListPage : Page
                             }
                             
                             // 创建modrinth.index.json文件
-                            string indexJsonPath = Path.Combine(tempDir, "modrinth.index.json");
+                            string indexJsonPath = Path.Combine(tempDir, MinecraftFileConsts.ModrinthIndexJson);
                             string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(indexJson, Newtonsoft.Json.Formatting.Indented);
                             File.WriteAllText(indexJsonPath, jsonContent);
                             
@@ -1173,7 +1173,7 @@ public sealed partial class VersionListPage : Page
                                 }
                                 
                                 // 添加modrinth.index.json文件
-                                archive.CreateEntryFromFile(indexJsonPath, "modrinth.index.json");
+                                archive.CreateEntryFromFile(indexJsonPath, MinecraftFileConsts.ModrinthIndexJson);
                                 
                                 // 添加overrides目录及其内容
                                 AddDirectoryToZip(archive, overridesDir, "overrides");

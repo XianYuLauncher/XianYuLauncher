@@ -61,7 +61,7 @@ public class ModLoaderVersionNameService : IModLoaderVersionNameService
         try
         {
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
-            string versionsDirectory = Path.Combine(minecraftDirectory, "versions");
+            string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
             string versionDirectory = Path.Combine(versionsDirectory, versionName);
 
             if (Directory.Exists(versionDirectory))

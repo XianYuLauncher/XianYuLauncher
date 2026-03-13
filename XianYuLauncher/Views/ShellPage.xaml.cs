@@ -112,7 +112,7 @@ public sealed partial class ShellPage : Page
             foreach (var it in items.OfType<StorageFile>())
             {
                 var ext = System.IO.Path.GetExtension(it.Path ?? string.Empty)?.ToLowerInvariant();
-                if (ext == ".mrpack" || ext == ".zip")
+                if (ext == FileExtensionConsts.Mrpack || ext == FileExtensionConsts.Zip)
                 {
                     anySupported = true;
                     break;
@@ -171,7 +171,7 @@ public sealed partial class ShellPage : Page
             foreach (var item in items.OfType<StorageFile>())
             {
                 var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
-                if (ext == ".mrpack" || ext == ".zip")
+                if (ext == FileExtensionConsts.Mrpack || ext == FileExtensionConsts.Zip)
                 {
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);

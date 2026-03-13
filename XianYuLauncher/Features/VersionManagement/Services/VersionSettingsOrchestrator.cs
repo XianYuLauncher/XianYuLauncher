@@ -9,7 +9,7 @@ namespace XianYuLauncher.Features.VersionManagement.Services;
 
 public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 {
-    private const string SettingsFileName = "XianYuL.cfg";
+    private const string SettingsFileName = MinecraftFileConsts.VersionConfig;
 
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;

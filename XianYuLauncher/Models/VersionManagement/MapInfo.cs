@@ -64,13 +64,13 @@ public partial class MapInfo : ObservableObject
     {
         FilePath = filePath;
         FileName = Path.GetFileName(filePath);
-        IsEnabled = !FileName.EndsWith(".disabled");
+        IsEnabled = !FileName.EndsWith(FileExtensionConsts.Disabled);
         
         // 提取显示名称（去掉.disabled后缀）
         string displayName = FileName;
-        if (displayName.EndsWith(".disabled"))
+        if (displayName.EndsWith(FileExtensionConsts.Disabled))
         {
-            displayName = displayName.Substring(0, displayName.Length - ".disabled".Length);
+            displayName = displayName.Substring(0, displayName.Length - FileExtensionConsts.Disabled.Length);
         }
         Name = displayName;
         

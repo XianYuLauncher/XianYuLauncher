@@ -41,7 +41,7 @@ namespace XianYuLauncher.Views
         
         private readonly HttpClient _httpClient = new HttpClient();
         private readonly IDialogService _dialogService;
-        private const string AvatarCacheFolder = "AvatarCache";
+        private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
 
         /// <summary>
         /// 构造函数

@@ -343,7 +343,7 @@ namespace XianYuLauncher.ViewModels
             // 确保Profiles.json所在的目录存在
             try
             {
-                string profilesFilePath = Path.Combine(MinecraftPath, "profiles.json");
+                string profilesFilePath = Path.Combine(MinecraftPath, MinecraftFileConsts.ProfilesJson);
                 string profilesDirectory = Path.GetDirectoryName(profilesFilePath);
                 if (!string.IsNullOrEmpty(profilesDirectory))
                 {

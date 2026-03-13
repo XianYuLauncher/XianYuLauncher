@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
@@ -22,7 +23,7 @@ public class GameHistoryService : IGameHistoryService
     public GameHistoryService(IFileService fileService)
     {
         _fileService = fileService;
-        _historyFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), "launch_history.json");
+        _historyFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), AppDataFileConsts.LaunchHistoryJson);
         _historyCache = new List<GameLaunchHistory>();
         
         // 初始化时加载历史记录

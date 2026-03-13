@@ -984,7 +984,7 @@ public class GameLaunchService : IGameLaunchService
             processedArg = processedArg.Replace("${library_directory}", librariesPath);
             
             // 只在路径中替换/为\，不在JVM模块参数中替换
-            if (processedArg.Contains(".jar") || processedArg.Contains(".zip"))
+            if (processedArg.Contains(FileExtensionConsts.Jar) || processedArg.Contains(FileExtensionConsts.Zip))
             {
                 processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
             }
@@ -1071,17 +1071,17 @@ public class GameLaunchService : IGameLaunchService
         }
         
         // 确定文件扩展名
-        string extension = ".jar";
+        string extension = FileExtensionConsts.Jar;
         
         // 特殊处理 neoform 文件
         if (artifactId.Equals("neoform", StringComparison.OrdinalIgnoreCase))
         {
-            extension = detectedExtension != null ? "." + detectedExtension : ".zip";
+            extension = detectedExtension != null ? "." + detectedExtension : FileExtensionConsts.Zip;
         }
         // 特殊处理 mcp_config 文件
         else if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
         {
-            extension = ".zip";
+            extension = FileExtensionConsts.Zip;
         }
         // 如果从版本号中提取到了 extension
         else if (detectedExtension != null)
@@ -1090,7 +1090,7 @@ public class GameLaunchService : IGameLaunchService
         }
         
         // 只有当文件名不包含已知扩展名时才添加
-        var knownExtensions = new[] { ".jar", ".zip", ".lzma", ".tsrg" };
+        var knownExtensions = new[] { FileExtensionConsts.Jar, FileExtensionConsts.Zip, ".lzma", ".tsrg" };
         bool hasKnownExtension = knownExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
         
         if (!hasKnownExtension)

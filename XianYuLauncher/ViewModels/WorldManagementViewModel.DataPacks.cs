@@ -44,7 +44,7 @@ public partial class WorldManagementViewModel
         
         try
         {
-            var dataPacksPath = Path.Combine(WorldPath, "datapacks");
+            var dataPacksPath = Path.Combine(WorldPath, MinecraftPathConsts.Datapacks);
             
             if (!Directory.Exists(dataPacksPath))
             {
@@ -206,7 +206,7 @@ public partial class WorldManagementViewModel
                             packFormat = format;
                         }
                     }
-                    else if (File.Exists(dataPack.FilePath) && Path.GetExtension(dataPack.FilePath).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    else if (File.Exists(dataPack.FilePath) && Path.GetExtension(dataPack.FilePath).Equals(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase))
                     {
                         // ZIP 文件形式的数据包
                         using var archive = ZipFile.OpenRead(dataPack.FilePath);
@@ -350,7 +350,7 @@ public partial class WorldManagementViewModel
                             packFormat = format;
                         }
                     }
-                    else if (File.Exists(dataPack.FilePath) && Path.GetExtension(dataPack.FilePath).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    else if (File.Exists(dataPack.FilePath) && Path.GetExtension(dataPack.FilePath).Equals(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase))
                     {
                         // ZIP 文件形式的数据包
                         using var archive = ZipFile.OpenRead(dataPack.FilePath);
@@ -583,7 +583,7 @@ public partial class WorldManagementViewModel
     {
         try
         {
-            var dataPacksPath = Path.Combine(WorldPath, "datapacks");
+            var dataPacksPath = Path.Combine(WorldPath, MinecraftPathConsts.Datapacks);
             
             if (!Directory.Exists(dataPacksPath))
             {

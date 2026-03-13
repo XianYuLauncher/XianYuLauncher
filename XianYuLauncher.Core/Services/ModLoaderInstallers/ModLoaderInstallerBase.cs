@@ -116,7 +116,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string? optifineVersion = null,
         string? liteLoaderVersion = null)
     {
-        var configPath = Path.Combine(versionDirectory, "XianYuL.cfg");
+        var configPath = Path.Combine(versionDirectory, MinecraftFileConsts.VersionConfig);
 
         VersionConfig config;
         if (File.Exists(configPath))

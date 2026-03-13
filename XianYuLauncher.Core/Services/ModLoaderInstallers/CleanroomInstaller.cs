@@ -155,12 +155,12 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             // 7. 读取install_profile.json（与Forge流程相同）
             Logger.LogInformation("读取 install_profile.json");
-            var installProfilePath = Path.Combine(extractedPath, "install_profile.json");
+            var installProfilePath = Path.Combine(extractedPath, MinecraftFileConsts.InstallProfileJson);
             if (!File.Exists(installProfilePath))
             {
-                Logger.LogError("install_profile.json 文件不存在: {Path}", installProfilePath);
+                Logger.LogError("{InstallProfile} 文件不存在: {Path}", MinecraftFileConsts.InstallProfileJson, installProfilePath);
                 throw new ModLoaderInstallException(
-                    "install_profile.json文件不存在",
+                    $"{MinecraftFileConsts.InstallProfileJson}文件不存在",
                     ModLoaderType,
                     modLoaderVersion,
                     minecraftVersionId,

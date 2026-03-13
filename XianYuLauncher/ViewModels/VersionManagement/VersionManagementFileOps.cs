@@ -15,8 +15,8 @@ internal static class VersionManagementFileOps
             Directory.CreateDirectory(iconDirectory);
 
             string fileName = Path.GetFileName(filePath);
-            string normalizedName = fileName.EndsWith(".disabled", StringComparison.Ordinal)
-                ? fileName.Substring(0, fileName.Length - ".disabled".Length)
+            string normalizedName = fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.Ordinal)
+                ? fileName.Substring(0, fileName.Length - FileExtensionConsts.Disabled.Length)
                 : fileName;
 
             string fileBaseName = Path.GetFileNameWithoutExtension(normalizedName);
@@ -56,8 +56,8 @@ internal static class VersionManagementFileOps
 
             bool isResourcePack = resourceType == "resourcepack"
                                   && File.Exists(filePath)
-                                  && (filePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
-                                      || filePath.EndsWith(".mcpack", StringComparison.OrdinalIgnoreCase));
+                                  && (filePath.EndsWith(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase)
+                                      || filePath.EndsWith(FileExtensionConsts.Mcpack, StringComparison.OrdinalIgnoreCase));
 
             if (isResourcePack)
             {
