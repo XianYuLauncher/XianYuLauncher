@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -56,7 +56,7 @@ namespace XianYuLauncher.Views
             // 当角色列表替换时，重新加载所有头像
             if (e.PropertyName == nameof(ViewModel.Profiles))
             {
-                Debug.WriteLine($"[角色Page] 角色列表替换，当前角色数量: {ViewModel.Profiles.Count}");
+                Log.Debug("[Avatar.CharacterPage] 角色列表替换，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
@@ -70,14 +70,14 @@ namespace XianYuLauncher.Views
             // 当添加新角色时，重新加载所有头像
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
             {
-                Debug.WriteLine($"[角色Page] 角色列表添加了新角色，当前角色数量: {ViewModel.Profiles.Count}");
+                Log.Debug("[Avatar.CharacterPage] 角色列表添加了新角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
             // 当删除角色时，也重新加载所有头像，确保UI一致性
             else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
             {
-                Debug.WriteLine($"[角色Page] 角色列表删除了角色，当前角色数量: {ViewModel.Profiles.Count}");
+                Log.Debug("[Avatar.CharacterPage] 角色列表删除了角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
@@ -134,7 +134,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private void LoadAllAvatars()
         {
-            Debug.WriteLine($"[角色Page] 开始加载所有头像，角色数量: {ViewModel.Profiles.Count}");
+            Log.Information("[Avatar.CharacterPage] 开始加载所有头像，角色数量: {Count}", ViewModel.Profiles.Count);
             // 遍历所有角色，加载每个角色的头像
             if (ViewModel.Profiles.Count > 0)
             {
@@ -142,7 +142,8 @@ namespace XianYuLauncher.Views
                 for (int i = 0; i < ViewModel.Profiles.Count; i++)
                 {
                     var profile = ViewModel.Profiles[i];
-                    Debug.WriteLine($"[角色Page] 为角色 {profile.Name} (ID: {profile.Id}, 离线: {profile.IsOffline}, 索引: {i}) 加载头像");
+                    Log.Debug("[Avatar.CharacterPage] 为角色 {Name} (ID: {Id}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 索引: {Index}) 加载头像",
+                        profile.Name, profile.Id, profile.IsOffline, profile.TokenType ?? "(null)", profile.AuthServer ?? "(null)", i);
                     _ = LoadAvatarForProfile(profile, i);
                 }
             }
@@ -161,7 +162,8 @@ namespace XianYuLauncher.Views
                 return;
             }
             
-            Debug.WriteLine($"[角色Page] 开始加载角色 {profile.Name} (索引: {profileIndex}) 的头像，离线状态: {profile.IsOffline}, TokenType: {profile.TokenType}");
+            Log.Information("[Avatar.CharacterPage] 开始加载角色 {Name} 头像，离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}",
+                profile.Name, profile.IsOffline, profile.TokenType ?? "(null)", profile.AuthServer ?? "(null)");
             
             // 1. 离线玩家使用Steve头像
             if (profile.IsOffline)
@@ -285,8 +287,8 @@ namespace XianYuLauncher.Views
                 if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
                 {
                     // 外置登录角色，使用用户提供的认证服务器
-                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是外置登录角色，使用认证服务器: {profile.AuthServer}");
                     string authServer = profile.AuthServer;
+                    Log.Information("[Avatar.CharacterPage] 外置登录角色 {Name}，AuthServer: {AuthServer}", profile.Name, authServer);
                     // 确保认证服务器URL以/结尾
                     if (!authServer.EndsWith("/"))
                     {
@@ -294,14 +296,13 @@ namespace XianYuLauncher.Views
                     }
                     // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
                     sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[角色Page] 构建的外置登录会话服务器URL: {sessionServerUri}");
+                    Log.Information("[Avatar.CharacterPage] 外置登录 Session URL: {Url}", sessionServerUri.ToString());
                 }
                 else
                 {
                     // 微软登录角色，使用Mojang API
-                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是微软登录角色，使用Mojang API");
                     sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[角色Page] Mojang API请求URL: {sessionServerUri}");
+                    Log.Debug("[Avatar.CharacterPage] 微软登录角色 {Name}，Mojang Session URL: {Url}", profile.Name, sessionServerUri.ToString());
                 }
                 
                 var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
@@ -380,15 +381,14 @@ namespace XianYuLauncher.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 开始从Mojang API获取头像，URL: {mojangUri}");
-                Debug.WriteLine($"[角色Page] UUID: {uuid}");
+                Log.Information("[Avatar.CharacterPage] 请求 Session API，URL: {Url}, UUID: {Uuid}", mojangUri.ToString(), uuid);
                 
                 // 1. 请求Mojang API获取profile信息
                 var response = await _httpClient.GetAsync(mojangUri);
-                Debug.WriteLine($"[角色Page] API响应状态码: {response.StatusCode}");
+                Log.Debug("[Avatar.CharacterPage] Session API 响应状态码: {StatusCode}", response.StatusCode);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[角色Page] API请求失败，状态码: {response.StatusCode}，使用默认史蒂夫图标");
+                    Log.Warning("[Avatar.CharacterPage] Session API 请求失败，URL: {Url}, 状态码: {StatusCode}", mojangUri.ToString(), response.StatusCode);
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -398,7 +398,7 @@ namespace XianYuLauncher.Views
                 dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
                 if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
                 {
-                    Debug.WriteLine($"[角色Page] API响应中没有properties数据，使用默认史蒂夫图标");
+                    Log.Warning("[Avatar.CharacterPage] Session API 响应无 properties，URL: {Url}", mojangUri.ToString());
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -430,11 +430,11 @@ namespace XianYuLauncher.Views
                 if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
                 {
                     skinUrl = texturesData.textures.SKIN.url;
-                    Debug.WriteLine($"[角色Page] 提取到皮肤URL: {skinUrl}");
+                    Log.Information("[Avatar.CharacterPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
                 }
                 if (string.IsNullOrEmpty(skinUrl))
                 {
-                    Debug.WriteLine($"[角色Page] 未找到皮肤URL，使用默认史蒂夫图标");
+                    Log.Warning("[Avatar.CharacterPage] 未找到皮肤 URL，Session URL: {Url}", mojangUri.ToString());
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -460,8 +460,7 @@ namespace XianYuLauncher.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 从Mojang API获取头像异常: {ex.Message}");
-                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
+                Log.Error(ex, "[Avatar.CharacterPage] 从 Session API 获取头像异常，URL: {Url}", mojangUri.ToString());
                 return await GetDefaultSteveAvatarAsync();
             }
         }
@@ -1707,10 +1706,16 @@ namespace XianYuLauncher.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 加载外置角色头像，角色ID: {profile.Id}，认证服务器: {profile.AuthServer}");
+                Log.Information("[Avatar.CharacterPage] 加载外置角色头像，角色: {Name}, ID: {Id}, AuthServer: {AuthServer}",
+                    profile.Name, profile.Id, profile.AuthServer ?? "(null)");
                 
                 // 外置登录角色，使用用户提供的认证服务器
                 string authServer = profile.AuthServer;
+                if (string.IsNullOrEmpty(authServer))
+                {
+                    Log.Warning("[Avatar.CharacterPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);
+                    return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                }
                 // 确保认证服务器URL以/结尾
                 if (!authServer.EndsWith("/"))
                 {
@@ -1718,15 +1723,14 @@ namespace XianYuLauncher.Views
                 }
                 // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
                 var sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                Debug.WriteLine($"[角色Page] 构建的外置登录会话服务器URL: {sessionServerUri}");
+                Log.Information("[Avatar.CharacterPage] 外置角色选择对话框 Session URL: {Url}", sessionServerUri.ToString());
                 
                 return await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 加载外置角色头像异常: {ex.Message}");
-                // 返回默认头像
-                return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                Log.Error(ex, "[Avatar.CharacterPage] 加载外置角色头像异常，角色: {Name}, AuthServer: {AuthServer}", profile.Name, profile.AuthServer ?? "(null)");
+                return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
             }
         }
 
