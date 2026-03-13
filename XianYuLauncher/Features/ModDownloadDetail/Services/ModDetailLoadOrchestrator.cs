@@ -168,11 +168,15 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             {
                 try
                 {
-                    var translation = await _translationService.GetModrinthTranslationAsync(dependencyProject.ProjectId);
+                    var task = _translationService.GetModrinthTranslationAsync(dependencyProject.ProjectId);
+                    var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
                     if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                     {
                         dependencyProject.TranslatedDescription = translation.Translated;
                     }
+                }
+                catch (TimeoutException)
+                {
                 }
                 catch
                 {
@@ -220,12 +224,16 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
                 {
                     if (int.TryParse(dependencyProject.ProjectId.Replace("curseforge-", string.Empty, StringComparison.OrdinalIgnoreCase), out int modId))
                     {
-                        var translation = await _translationService.GetCurseForgeTranslationAsync(modId);
+                        var task = _translationService.GetCurseForgeTranslationAsync(modId);
+                        var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
                         if (translation != null && !string.IsNullOrEmpty(translation.Translated))
                         {
                             dependencyProject.TranslatedDescription = translation.Translated;
                         }
                     }
+                }
+                catch (TimeoutException)
+                {
                 }
                 catch
                 {
@@ -253,8 +261,13 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
 
         try
         {
-            var translation = await _translationService.GetModrinthTranslationAsync(modId);
+            var task = _translationService.GetModrinthTranslationAsync(modId);
+            var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
             return translation?.Translated ?? string.Empty;
+        }
+        catch (TimeoutException)
+        {
+            return string.Empty;
         }
         catch
         {
@@ -271,8 +284,13 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
 
         try
         {
-            var translation = await _translationService.GetCurseForgeTranslationAsync(modId);
+            var task = _translationService.GetCurseForgeTranslationAsync(modId);
+            var translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
             return translation?.Translated ?? string.Empty;
+        }
+        catch (TimeoutException)
+        {
+            return string.Empty;
         }
         catch
         {
