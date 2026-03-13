@@ -506,6 +506,7 @@ public sealed partial class LaunchPage : Page
             else
             {
                 sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{ViewModel.SelectedProfile.Id}");
+                Log.Debug("[Avatar.LaunchPage] 后台刷新微软登录 Session URL: {Url}", sessionServerUri.ToString());
             }
             
             var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri);

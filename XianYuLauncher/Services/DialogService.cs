@@ -577,8 +577,9 @@ public class DialogService : IDialogService
             items.Add(item);
         }
 
-        // 2. 启动异步加载头像任务
+        // 2. 启动异步加载头像任务（对话框关闭时取消，避免后台继续请求）
         Log.Information("[Avatar.DialogService] 外置角色选择对话框，AuthServer: {AuthServer}, 角色数: {Count}", authServer ?? "(null)", profiles.Count);
+        var avatarLoadCts = new CancellationTokenSource();
         _ = Task.Run(async () => 
         {
             if (string.IsNullOrEmpty(authServer))
@@ -588,6 +589,7 @@ public class DialogService : IDialogService
             }
             foreach (var item in items)
             {
+                avatarLoadCts.Token.ThrowIfCancellationRequested();
                 try
                 {
                     var server = authServer;
@@ -595,7 +597,7 @@ public class DialogService : IDialogService
                     var sessionUrl = $"{server}sessionserver/session/minecraft/profile/{item.Id}";
                     Log.Information("[Avatar.DialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
                     
-                    var response = await _httpClient.GetStringAsync(sessionUrl);
+                    var response = await _httpClient.GetStringAsync(sessionUrl, avatarLoadCts.Token);
                     dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
                     
                     string textureProperty = null;
@@ -630,7 +632,7 @@ public class DialogService : IDialogService
                         if (!string.IsNullOrEmpty(skinUrl))
                         {
                             Log.Debug("[Avatar.DialogService] 角色 {Name} 皮肤 URL: {SkinUrl}", item.Name, skinUrl);
-                            var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl);
+                            var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl, avatarLoadCts.Token);
                             
                             _uiDispatcher.EnqueueAsync(async () =>
                             {
@@ -646,6 +648,11 @@ public class DialogService : IDialogService
                             }).Observe("DialogService.LoadProfileAvatar");
                         }
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("[Avatar.DialogService] 头像加载任务已取消");
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -677,6 +684,7 @@ public class DialogService : IDialogService
             Content = listView,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
+        dialog.Closed += (_, _) => avatarLoadCts.Cancel();
 
         var result = await ShowSafeAsync(dialog);
         if (result == ContentDialogResult.Primary)
