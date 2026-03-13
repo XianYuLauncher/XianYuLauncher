@@ -351,7 +351,6 @@
                         <FontIcon Glyph="&#xE74C;" />
                     </controls:SettingsExpander.HeaderIcon>
                     <controls:SettingsExpander.Content>
-                        <!-- 预留：实例隔离模式仅提供 UI 入口，后续接入真实 GameDir / InstanceDir 解析逻辑 -->
                         <ComboBox ItemsSource="{x:Bind ViewModel.GameIsolationModes, Mode=OneWay}"
                                   SelectedItem="{x:Bind ViewModel.SelectedGameIsolationMode, Mode=TwoWay}"
                                   MinWidth="200">

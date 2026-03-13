@@ -747,14 +747,12 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
     private const string GameIsolationModeDefaultKey = "Default";
     private const string GameIsolationModeVersionIsolationKey = "VersionIsolation";
-    private const string GameIsolationModeInstanceIsolationKey = "InstanceIsolation";
     private const string GameIsolationModeCustomKey = "Custom";
 
     public IReadOnlyList<GameIsolationModeOption> GameIsolationModes { get; } =
     [
         new GameIsolationModeOption { Key = GameIsolationModeDefaultKey, DisplayName = "禁用" },
         new GameIsolationModeOption { Key = GameIsolationModeVersionIsolationKey, DisplayName = "启用" },
-        new GameIsolationModeOption { Key = GameIsolationModeInstanceIsolationKey, DisplayName = "实例隔离" },
         new GameIsolationModeOption { Key = GameIsolationModeCustomKey, DisplayName = "自定义路径" }
     ];
 
@@ -1977,6 +1975,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private async Task LoadGameIsolationSettingsAsync()
     {
         var savedModeKey = await _gameSettingsDomainService.LoadGameIsolationModeAsync();
+
         if (string.IsNullOrWhiteSpace(savedModeKey))
         {
             var legacyEnableVersionIsolation = await _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
