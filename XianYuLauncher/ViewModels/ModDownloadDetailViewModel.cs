@@ -36,6 +36,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ShellViewModel _shellViewModel;
+        private readonly IGameDirResolver _gameDirResolver;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
 
         [ObservableProperty]
@@ -401,6 +402,7 @@ namespace XianYuLauncher.ViewModels
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
             ShellViewModel shellViewModel,
+            IGameDirResolver gameDirResolver,
             ILogger<ModDownloadDetailViewModel> logger)
         {
             _curseForgeService = curseForgeService;
@@ -415,6 +417,7 @@ namespace XianYuLauncher.ViewModels
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
             _shellViewModel = shellViewModel;
+            _gameDirResolver = gameDirResolver;
             _logger = logger;
         }
         
@@ -1164,9 +1167,11 @@ namespace XianYuLauncher.ViewModels
             string targetDir,
             InstalledGameVersionViewModel? gameVersion)
         {
+            string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(
+                gameVersion?.OriginalVersionName ?? string.Empty);
             await _modResourceDownloadOrchestrator.ProcessDependenciesForResourceAsync(
                 ProjectType,
-                _fileService.GetMinecraftDataPath(),
+                gameDir,
                 modVersion,
                 targetDir,
                 gameVersion,
@@ -1799,7 +1804,8 @@ namespace XianYuLauncher.ViewModels
                 InitializeDownloadTeachingTip();
 
                 // 处理依赖
-                var worldDependencyDir = ModResourcePathHelper.GetDependencyTargetDir(_fileService.GetMinecraftDataPath(), SelectedInstalledVersion?.OriginalVersionName, "world");
+                var worldGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedInstalledVersion?.OriginalVersionName ?? string.Empty);
+                var worldDependencyDir = ModResourcePathHelper.GetDependencyTargetDir(worldGameDir, "world");
                 if (!string.IsNullOrEmpty(worldDependencyDir))
                 {
                     _fileService.CreateDirectory(worldDependencyDir);
@@ -2329,8 +2335,8 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 直接构建下载路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
-                string targetDir = ModDownloadPlanningHelper.BuildVersionTargetDirectory(minecraftPath, gameVersion.OriginalVersionName, ProjectType);
+                string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
+                string targetDir = ModDownloadPlanningHelper.BuildTargetDirectory(gameDir, ProjectType);
                 _fileService.CreateDirectory(targetDir);
                 string savePath = Path.Combine(targetDir, modVersion.FileName);
                 

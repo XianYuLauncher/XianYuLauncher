@@ -68,6 +68,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _minecraftPath = string.Empty;
 
+    /// <summary>
+    /// 当前选中版本解析后的 GameDir（游戏内容目录），供同步方法消费。
+    /// </summary>
+    [ObservableProperty]
+    private string _currentGameDir = string.Empty;
+
     public ResourceTransferStateViewModel ResourceTransferState { get; }
 
     /// <summary>
@@ -743,6 +749,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionPageLoadOrchestrator _versionPageLoadOrchestrator;
     private readonly ILoaderUiOrchestrator _loaderUiOrchestrator;
     private readonly IVersionPathNavigationService _versionPathNavigationService;
+    private readonly IGameDirResolver _gameDirResolver;
     private readonly IScreenshotInteractionService _screenshotInteractionService;
     private readonly IResourceIconLoadCoordinator _resourceIconLoadCoordinator;
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
@@ -822,6 +829,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionPageLoadOrchestrator versionPageLoadOrchestrator,
         ILoaderUiOrchestrator loaderUiOrchestrator,
         IVersionPathNavigationService versionPathNavigationService,
+        IGameDirResolver gameDirResolver,
         IScreenshotInteractionService screenshotInteractionService,
         IResourceIconLoadCoordinator resourceIconLoadCoordinator,
         IModLoaderIconPresentationService modLoaderIconPresentationService,
@@ -848,6 +856,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionPageLoadOrchestrator = versionPageLoadOrchestrator;
         _loaderUiOrchestrator = loaderUiOrchestrator;
         _versionPathNavigationService = versionPathNavigationService;
+        _gameDirResolver = gameDirResolver;
         _screenshotInteractionService = screenshotInteractionService;
         _resourceIconLoadCoordinator = resourceIconLoadCoordinator;
         _modLoaderIconPresentationService = modLoaderIconPresentationService;
@@ -1166,6 +1175,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 MinecraftPath = newPath;
                 if (SelectedVersion != null)
                 {
+                    CurrentGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedVersion.Name);
                     await LoadVersionDataAsync();
                 }
             });
@@ -1200,7 +1210,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             MinecraftPath = _fileService.GetMinecraftDataPath();
             // 触发属性变化通知，确保页面标题更新
             OnPropertyChanged(nameof(SelectedVersion));
-            LoadVersionDataAsync().ConfigureAwait(false);
+            _ = RefreshCurrentGameDirThenLoadAsync();
         }
     }
 
@@ -2316,6 +2326,23 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
+        /// 刷新 CurrentGameDir 后再加载版本数据。
+        /// </summary>
+        private async Task RefreshCurrentGameDirThenLoadAsync()
+        {
+            if (SelectedVersion != null)
+            {
+                CurrentGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedVersion.Name);
+            }
+            else
+            {
+                CurrentGameDir = string.Empty;
+            }
+
+            await LoadVersionDataAsync();
+        }
+
+    /// <summary>
         /// 加载版本数据
         /// </summary>
         private async Task LoadVersionDataAsync()
@@ -2498,7 +2525,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             try
             {
-                var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, cancellationToken);
+                var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, CurrentGameDir, cancellationToken);
                 
                 // 更新UI
                 _uiDispatcher.TryEnqueue(() =>
@@ -2601,7 +2628,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <returns>版本特定的文件夹路径</returns>
     public string GetVersionSpecificPath(string folderType)
     {
-        return _versionPathNavigationService.GetVersionSpecificPath(MinecraftPath, SelectedVersion, folderType);
+        var dir = string.IsNullOrEmpty(CurrentGameDir) ? MinecraftPath : CurrentGameDir;
+        return _versionPathNavigationService.GetVersionSpecificPath(dir, SelectedVersion, folderType);
     }
     
     /// <summary>
@@ -2609,9 +2637,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     /// <param name="fileName">文件名（如 "servers.dat"）</param>
     /// <returns>完整的文件路径</returns>
-    public async Task<string> GetVersionSpecificFilePathAsync(string fileName)
+    public Task<string> GetVersionSpecificFilePathAsync(string fileName)
     {
-        return await _versionPathNavigationService.GetVersionSpecificFilePathAsync(MinecraftPath, SelectedVersion, fileName);
+        var dir = string.IsNullOrEmpty(CurrentGameDir) ? MinecraftPath : CurrentGameDir;
+        return Task.FromResult(_versionPathNavigationService.GetVersionSpecificFilePath(dir, SelectedVersion, fileName));
     }
     
     /// <summary>
@@ -2669,7 +2698,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private async Task RefreshDataAsync()
     {
-        await LoadVersionDataAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
     }
     
     /// <summary>

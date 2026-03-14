@@ -19,9 +19,8 @@ public class GameLaunchService : IGameLaunchService
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoService _versionInfoService;
     private readonly ILaunchSettingsResolver _launchSettingsResolver;
+    private readonly IGameDirResolver _gameDirResolver;
     private readonly ILogger<GameLaunchService> _logger;
-    
-    private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     
     // 默认窗口大小
     private int _windowWidth = 1280;
@@ -37,6 +36,7 @@ public class GameLaunchService : IGameLaunchService
         IMinecraftVersionService minecraftVersionService,
         IVersionInfoService versionInfoService,
         ILaunchSettingsResolver launchSettingsResolver,
+        IGameDirResolver gameDirResolver,
         ILogger<GameLaunchService> logger)
     {
         _javaRuntimeService = javaRuntimeService;
@@ -46,6 +46,7 @@ public class GameLaunchService : IGameLaunchService
         _minecraftVersionService = minecraftVersionService;
         _versionInfoService = versionInfoService;
         _launchSettingsResolver = launchSettingsResolver;
+        _gameDirResolver = gameDirResolver;
         _logger = logger;
     }
     
@@ -87,12 +88,9 @@ public class GameLaunchService : IGameLaunchService
             string librariesPath = Path.Combine(minecraftPath, MinecraftPathConsts.Libraries);
             string assetsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Assets);
             
-            // 3. 检查版本隔离设置
-            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
-            bool enableVersionIsolation = versionIsolationValue ?? true;
-            string gameDir = enableVersionIsolation 
-                ? Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName) 
-                : minecraftPath;
+            // 3. 通过 GameDirResolver 统一解析 GameDir
+            string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(versionName);
+            Directory.CreateDirectory(gameDir);
             
             // 4. 检查必要文件
             if (!File.Exists(jarPath))
@@ -223,20 +221,14 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("JAR 路径: {JarPath}", jarPath);
             _logger.LogInformation("JSON 路径: {JsonPath}", jsonPath);
             
-            // 3. 检查版本隔离设置
-            _logger.LogInformation("步骤 3: 检查版本隔离设置");
-            bool? versionIsolationValue = await _localSettingsService.ReadSettingAsync<bool?>(EnableVersionIsolationKey);
-            bool enableVersionIsolation = versionIsolationValue ?? true;
-            _logger.LogInformation("版本隔离: {EnableVersionIsolation}", enableVersionIsolation);
-            
-            string gameDir = enableVersionIsolation 
-                ? Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName) 
-                : minecraftPath;
+            // 3. 通过 GameDirResolver 统一解析 GameDir
+            _logger.LogInformation("步骤 3: 解析 GameDir");
+            string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(versionName);
             _logger.LogInformation("游戏目录: {GameDir}", gameDir);
             
             // 4. 确保目录存在
             _logger.LogInformation("步骤 4: 确保目录存在");
-            if (enableVersionIsolation && !Directory.Exists(gameDir))
+            if (!Directory.Exists(gameDir))
             {
                 _logger.LogInformation("创建游戏目录: {GameDir}", gameDir);
                 Directory.CreateDirectory(gameDir);

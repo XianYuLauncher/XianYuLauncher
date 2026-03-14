@@ -11,6 +11,7 @@ internal static class LaunchServiceExtensions
 {
     public static IServiceCollection AddLaunchServices(this IServiceCollection services)
     {
+        services.AddSingleton<IGameDirResolver, GameDirResolver>();
         services.AddSingleton<IGameLaunchService, GameLaunchService>();
         services.AddSingleton<ICrashAnalyzer, CrashAnalyzer>();
         services.AddSingleton<IProfileManager, ProfileManager>();

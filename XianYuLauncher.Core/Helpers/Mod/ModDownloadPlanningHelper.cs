@@ -57,6 +57,21 @@ public static class ModDownloadPlanningHelper
         return Path.Combine(versionDir, targetFolder);
     }
 
+    /// <summary>
+    /// 基于已解析的 gameDir 构建下载目标目录（推荐）。
+    /// </summary>
+    public static string BuildTargetDirectory(string gameDir, string projectType)
+    {
+        string targetFolder = ModResourcePathHelper.NormalizeProjectType(projectType) switch
+        {
+            "resourcepack" => MinecraftPathConsts.ResourcePacks,
+            "shader" => MinecraftPathConsts.ShaderPacks,
+            _ => MinecraftPathConsts.Mods
+        };
+
+        return Path.Combine(gameDir, targetFolder);
+    }
+
     public static bool ShouldSkipDependencyProcessing(string projectType, string? loaderType, string? gameVersionId)
     {
         if (ModResourcePathHelper.NormalizeProjectType(projectType) == "mod")

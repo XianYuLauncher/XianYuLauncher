@@ -9,7 +9,7 @@ public interface IModResourceDownloadOrchestrator
 
     Task ProcessDependenciesForResourceAsync(
         string projectType,
-        string minecraftPath,
+        string gameDir,
         ModVersionViewModel modVersion,
         string targetDir,
         InstalledGameVersionViewModel? gameVersion,
