@@ -133,10 +133,13 @@ public class VersionInfoService : IVersionInfoService
         {
             // 迁移用户偏好设置
             result.AutoMemoryAllocation = legacyConfig.AutoMemoryAllocation;
+            result.OverrideMemory = legacyConfig.OverrideMemory;
             result.InitialHeapMemory = legacyConfig.InitialHeapMemory;
             result.MaximumHeapMemory = legacyConfig.MaximumHeapMemory;
             result.JavaPath = legacyConfig.JavaPath;
+            result.CustomJvmArguments = legacyConfig.CustomJvmArguments;
             result.UseGlobalJavaSetting = legacyConfig.UseGlobalJavaSetting; // 修复：保留全局Java设置
+            result.OverrideResolution = legacyConfig.OverrideResolution;
             result.WindowWidth = legacyConfig.WindowWidth;
             result.WindowHeight = legacyConfig.WindowHeight;
             result.LaunchCount = legacyConfig.LaunchCount;

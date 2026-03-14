@@ -1098,6 +1098,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     // 属性变化时自动保存设置
     partial void OnUseGlobalSettingsChanged(bool value)
     {
+        if (_isApplyingConfig)
+        {
+            return;
+        }
+
         // 统一控制全局/自定义模式
         OverrideMemory = !value;
         UseGlobalJavaSetting = value;
@@ -2351,6 +2356,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     private async Task SaveSettingsAsync()
     {
+        if (_isApplyingConfig)
+        {
+            return;
+        }
+
         if (SelectedVersion == null)
         {
             return;
@@ -2402,6 +2412,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     partial void OnSelectedLocalGameDirModeChanged(GameIsolationModeOption? value)
     {
+        if (_isApplyingConfig)
+        {
+            return;
+        }
+
         LocalGameDirMode = string.IsNullOrEmpty(value?.Key) ? null : value.Key;
     }
 
