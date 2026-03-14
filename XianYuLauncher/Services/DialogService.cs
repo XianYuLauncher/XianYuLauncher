@@ -151,6 +151,69 @@ public class DialogService : IDialogService
                 : Windows.UI.Color.FromArgb(0x72, 0x00, 0x00, 0x00));
     }
 
+    /// <summary>
+    /// 弹窗内卡片背景，跟随弹窗主题（避免 ContentDialog reparent 后 ThemeResource 错误解析）。
+    /// Dark #333333，Light #FFFFFF（浅色模式卡片与弹窗背景一致，仅靠边框区分）。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCardBackgroundBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 0x33, 0x33, 0x33)
+                : Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
+    }
+
+    /// <summary>
+    /// 弹窗内卡片边框，跟随弹窗主题。
+    /// Dark #454545，Light #E5E5E5。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCardStrokeBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 0x45, 0x45, 0x45)
+                : Windows.UI.Color.FromArgb(255, 0xE5, 0xE5, 0xE5));
+    }
+
+    /// <summary>
+    /// 弹窗内 SubtleFill 背景（如类型标签），跟随弹窗主题。
+    /// Dark #454545，Light #E8E8E8（浅色模式保持柔和）。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogSubtleFillBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 0x45, 0x45, 0x45)
+                : Windows.UI.Color.FromArgb(255, 0xE8, 0xE8, 0xE8));
+    }
+
+    /// <summary>
+    /// 弹窗内主标题文字颜色，跟随弹窗主题。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogPrimaryTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF)
+                : Windows.UI.Color.FromArgb(255, 0x00, 0x00, 0x00));
+    }
+
+    /// <summary>
+    /// 弹窗内 Accent 背景（如资源类型标签），避免 ThemeResource 错误跟随系统主题。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogAccentFillBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x00, 0x78, 0xD4));
+    }
+
+    /// <summary>
+    /// 弹窗内 Accent 上的文字颜色（白色）。
+    /// </summary>
+    private Microsoft.UI.Xaml.Media.Brush GetDialogTextOnAccentBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
+    }
+
     public async Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定")
     {
         var dialog = new ContentDialog
@@ -766,9 +829,12 @@ public class DialogService : IDialogService
         bool isLoadingDependencies,
         Action<string>? onDependencyClick)
     {
+        var primaryTextBrush = GetDialogPrimaryTextBrush();
         var secondaryTextBrush = GetDialogSecondaryTextBrush();
+        var cardBgBrush = GetDialogCardBackgroundBrush();
+        var cardStrokeBrush = GetDialogCardStrokeBrush();
         var panel = new StackPanel { Spacing = 16 };
-        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, Foreground = primaryTextBrush });
 
         // 前置 Mod 列表
         var deps = dependencyProjects?.ToList();
@@ -810,18 +876,18 @@ public class DialogService : IDialogService
                     cardContent.Children.Add(iconBorder);
 
                     var textPanel = new StackPanel { Orientation = Orientation.Vertical, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Width = 300 };
-                    textPanel.Children.Add(new TextBlock { Text = depTitle, FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+                    textPanel.Children.Add(new TextBlock { Text = depTitle, FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = primaryTextBrush });
                     textPanel.Children.Add(new TextBlock { Text = description, FontSize = 12, Foreground = secondaryTextBrush, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.WrapWholeWords });
                     cardContent.Children.Add(textPanel);
 
                     var btn = new Button
                     {
                         Content = cardContent,
-                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                        Background = cardBgBrush,
                         CornerRadius = new CornerRadius(8),
                         Padding = new Thickness(12),
                         BorderThickness = new Thickness(1),
-                        BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                        BorderBrush = cardStrokeBrush,
                         Width = 380,
                         HorizontalAlignment = HorizontalAlignment.Left
                     };
@@ -857,9 +923,10 @@ public class DialogService : IDialogService
         string primaryButtonText = "确认",
         string closeButtonText = "取消") where T : class
     {
+        var primaryTextBrush = GetDialogPrimaryTextBrush();
         var secondaryTextBrush = GetDialogSecondaryTextBrush();
         var panel = new StackPanel { Spacing = 12 };
-        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, Foreground = primaryTextBrush });
 
         var listView = new ListView
         {
@@ -872,7 +939,7 @@ public class DialogService : IDialogService
         foreach (var item in itemsList)
         {
             var grid = new Grid { Padding = new Thickness(8) };
-            var textBlock = new TextBlock { Text = displayMemberFunc(item) };
+            var textBlock = new TextBlock { Text = displayMemberFunc(item), Foreground = primaryTextBrush };
             if (opacityFunc != null)
                 textBlock.Opacity = opacityFunc(item);
             grid.Children.Add(textBlock);
@@ -927,10 +994,16 @@ public class DialogService : IDialogService
         string primaryButtonText = "安装",
         string closeButtonText = "取消") where T : class
     {
+        var primaryTextBrush = GetDialogPrimaryTextBrush();
         var secondaryTextBrush = GetDialogSecondaryTextBrush();
         var tertiaryTextBrush = GetDialogTertiaryTextBrush();
+        var cardBgBrush = GetDialogCardBackgroundBrush();
+        var cardStrokeBrush = GetDialogCardStrokeBrush();
+        var subtleFillBrush = GetDialogSubtleFillBrush();
+        var accentFillBrush = GetDialogAccentFillBrush();
+        var textOnAccentBrush = GetDialogTextOnAccentBrush();
         var panel = new StackPanel { Spacing = 12 };
-        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, TextWrapping = TextWrapping.WrapWholeWords });
+        panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, TextWrapping = TextWrapping.WrapWholeWords, Foreground = primaryTextBrush });
 
         var listView = new ListView
         {
@@ -942,8 +1015,8 @@ public class DialogService : IDialogService
         {
             var card = new Border
             {
-                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                Background = cardBgBrush,
+                BorderBrush = cardStrokeBrush,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(12),
@@ -954,13 +1027,13 @@ public class DialogService : IDialogService
 
             // 版本号 + 类型标签行
             var headerRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            headerRow.Children.Add(new TextBlock { Text = versionNumberFunc(item), FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            headerRow.Children.Add(new TextBlock { Text = versionNumberFunc(item), FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = primaryTextBrush });
 
             var typeBadge = new Border
             {
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(6, 2, 6, 2),
-                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"]
+                Background = subtleFillBrush
             };
             var vt = versionTypeFunc(item);
             typeBadge.Child = new TextBlock
@@ -981,14 +1054,14 @@ public class DialogService : IDialogService
                     {
                         CornerRadius = new CornerRadius(4),
                         Padding = new Thickness(6, 2, 6, 2),
-                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+                        Background = accentFillBrush
                     };
                     resBadge.Child = new TextBlock
                     {
                         Text = tag,
                         FontSize = 11,
                         FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                        Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"]
+                        Foreground = textOnAccentBrush
                     };
                     headerRow.Children.Add(resBadge);
                 }
@@ -1479,7 +1552,7 @@ public class DialogService : IDialogService
                         Width = 40,
                         Height = 40,
                         CornerRadius = new CornerRadius(20),
-                        Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"]
+                        Background = GetDialogCardBackgroundBrush()
                     };
                     placeholder.Child = new FontIcon
                     {
@@ -1493,7 +1566,7 @@ public class DialogService : IDialogService
 
                 var textPanel = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
                 Grid.SetColumn(textPanel, 1);
-                textPanel.Children.Add(new TextBlock { Text = publisher.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                textPanel.Children.Add(new TextBlock { Text = publisher.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = GetDialogPrimaryTextBrush() });
                 textPanel.Children.Add(new TextBlock
                 {
                     Text = publisher.Role,
@@ -1577,11 +1650,13 @@ public class DialogService : IDialogService
         headerStack.Children.Add(warningTitle);
         warningCardContent.Children.Add(headerStack);
 
+        var hintTextBrush = GetDialogPrimaryTextBrush();
         var hintText = new TextBlock
         {
             Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
             FontSize = 14,
-            TextWrapping = TextWrapping.Wrap
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = hintTextBrush
         };
 
         if (isEasterEggMode)
@@ -1637,8 +1712,14 @@ public class DialogService : IDialogService
             Padding = new Thickness(20, 16, 20, 16)
         };
 
-        instructionCard.SetValue(Border.BackgroundProperty, Application.Current.Resources["CardBackgroundFillColorDefaultBrush"]);
-        instructionCard.SetValue(Border.BorderBrushProperty, Application.Current.Resources["CardStrokeColorDefaultBrush"]);
+        var cardBgBrush = GetDialogCardBackgroundBrush();
+        var cardStrokeBrush = GetDialogCardStrokeBrush();
+        var primaryTextBrush = GetDialogPrimaryTextBrush();
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
+        var tertiaryTextBrush = GetDialogTertiaryTextBrush();
+
+        instructionCard.Background = cardBgBrush;
+        instructionCard.BorderBrush = cardStrokeBrush;
         instructionCard.BorderThickness = new Thickness(1);
 
         var instructionStack = new StackPanel { Spacing = 10 };
@@ -1647,17 +1728,18 @@ public class DialogService : IDialogService
             Text = "正确的求助步骤",
             FontSize = 16,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 4)
+            Margin = new Thickness(0, 0, 0, 4),
+            Foreground = primaryTextBrush
         });
 
-        instructionStack.Children.Add(new TextBlock { Text = "1. 点击下方「导出崩溃日志」按钮", FontSize = 14, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 });
-        instructionStack.Children.Add(new TextBlock { Text = "2. 将导出的 ZIP 文件发送给技术支持", FontSize = 14, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 });
+        instructionStack.Children.Add(new TextBlock { Text = "1. 点击下方「导出崩溃日志」按钮", FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = secondaryTextBrush });
+        instructionStack.Children.Add(new TextBlock { Text = "2. 将导出的 ZIP 文件发送给技术支持", FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = secondaryTextBrush });
         instructionStack.Children.Add(new TextBlock
         {
             Text = "日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
-            Opacity = 0.7,
+            Foreground = tertiaryTextBrush,
             Margin = new Thickness(0, 4, 0, 0)
         });
 
@@ -1678,7 +1760,7 @@ public class DialogService : IDialogService
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
-            Opacity = 0.7
+            Foreground = tertiaryTextBrush
         };
 
         var logScroller = new ScrollViewer
