@@ -187,7 +187,7 @@ public class GameDirResolverTests
         _settingsMock.Setup(s => s.ReadSettingAsync<string>("GameIsolationMode")).ReturnsAsync("VersionIsolation");
         // 版本级覆盖为"禁用"
         _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
-            .ReturnsAsync(new VersionConfig { GameDirMode = "Default" });
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Default", UseGlobalJavaSetting = false });
 
         var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
 
@@ -203,7 +203,7 @@ public class GameDirResolverTests
         _settingsMock.Setup(s => s.ReadSettingAsync<string>("GameIsolationMode")).ReturnsAsync("Default");
         // 版本级覆盖为版本隔离
         _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
-            .ReturnsAsync(new VersionConfig { GameDirMode = "VersionIsolation" });
+            .ReturnsAsync(new VersionConfig { GameDirMode = "VersionIsolation", UseGlobalJavaSetting = false });
 
         var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
 
@@ -216,7 +216,7 @@ public class GameDirResolverTests
     public async Task VersionOverride_Custom_WithValidPath_ReturnsCustomPath()
     {
         _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
-            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = @"E:\GameData" });
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = @"E:\GameData", UseGlobalJavaSetting = false });
 
         var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
 
@@ -229,7 +229,7 @@ public class GameDirResolverTests
     public async Task VersionOverride_Custom_WithInvalidPath_FallsBackToVersionIsolation()
     {
         _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
-            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = "" });
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = "", UseGlobalJavaSetting = false });
 
         var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
 

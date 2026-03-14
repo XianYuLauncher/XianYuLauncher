@@ -1108,6 +1108,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         UseGlobalJavaSetting = value;
         OverrideResolution = !value;
         SaveSettingsAsync().ConfigureAwait(false);
+        _ = RefreshCurrentGameDirThenLoadAsync();
     }
     
     partial void OnAutoMemoryAllocationChanged(bool value)

@@ -36,8 +36,27 @@ public sealed class GameDirResolver : IGameDirResolver
     {
         var minecraftPath = _fileService.GetMinecraftDataPath();
 
-        // 版本级覆盖（非 null 表示用户显式设置过）
         var config = await _versionConfigService.LoadConfigAsync(versionName);
+
+        // 与 VersionManagement 的“使用全局设置”语义保持一致：
+        // 开启后 GameDir 也应跟随全局，而不是继续使用版本级覆盖。
+        bool useGlobalSettings = config.UseGlobalJavaSetting
+            && !config.OverrideMemory
+            && !config.OverrideResolution;
+
+        if (useGlobalSettings)
+        {
+            var effectiveGlobalMode = await ResolveEffectiveModeAsync();
+            return effectiveGlobalMode switch
+            {
+                ModeDefault => minecraftPath,
+                ModeVersionIsolation => Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName),
+                ModeCustom => await ResolveCustomDirAsync(minecraftPath, versionName),
+                _ => Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName),
+            };
+        }
+
+        // 版本级覆盖（非 null 表示用户显式设置过）
         if (!string.IsNullOrEmpty(config.GameDirMode))
         {
             return ResolveMode(config.GameDirMode, config.GameDirCustomPath, minecraftPath, versionName);
