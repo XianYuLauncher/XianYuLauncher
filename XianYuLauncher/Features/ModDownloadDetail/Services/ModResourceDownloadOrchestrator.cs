@@ -49,7 +49,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
 
     public async Task ProcessDependenciesForResourceAsync(
         string projectType,
-        string minecraftPath,
+        string gameDir,
         ModVersionViewModel modVersion,
         string targetDir,
         InstalledGameVersionViewModel? gameVersion,
@@ -77,6 +77,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         }
 
         // 当用户选择「自定义安装位置」时，targetDir 不在 minecraftPath 下，依赖应下载到同一目录
+        string minecraftPath = _fileService.GetMinecraftDataPath();
         bool useTargetDirForAllDependencies = !ModDownloadPlanningHelper.IsTargetUnderMinecraftVersions(targetDir, minecraftPath);
 
         Func<string, Task<string>> resolveModrinthDependencyTargetAsync = async projectId =>
@@ -90,11 +91,11 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             {
                 var detail = await _modrinthService.GetProjectDetailAsync(projectId);
                 string dependencyProjectType = ModResourcePathHelper.NormalizeProjectType(detail?.ProjectType);
-                return ModResourcePathHelper.GetDependencyTargetDir(minecraftPath, gameVersion?.OriginalVersionName, dependencyProjectType);
+                return ModResourcePathHelper.GetDependencyTargetDir(gameDir, dependencyProjectType);
             }
             catch
             {
-                return ModResourcePathHelper.GetDependencyTargetDir(minecraftPath, gameVersion?.OriginalVersionName, "mod");
+                return ModResourcePathHelper.GetDependencyTargetDir(gameDir, "mod");
             }
         };
 
@@ -106,7 +107,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             }
 
             string dependencyProjectType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(depMod?.ClassId);
-            return Task.FromResult(ModResourcePathHelper.GetDependencyTargetDir(minecraftPath, gameVersion?.OriginalVersionName, dependencyProjectType));
+            return Task.FromResult(ModResourcePathHelper.GetDependencyTargetDir(gameDir, dependencyProjectType));
         };
 
         if (modVersion.OriginalVersion?.Dependencies != null && modVersion.OriginalVersion.Dependencies.Count > 0)

@@ -68,6 +68,47 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _minecraftPath = string.Empty;
 
+    /// <summary>
+    /// 当前选中版本解析后的 GameDir（游戏内容目录），供同步方法消费。
+    /// </summary>
+    [ObservableProperty]
+    private string _currentGameDir = string.Empty;
+
+    /// <summary>
+    /// 版本级 GameDir 模式。null = 跟随全局设置。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLocalCustomGameDirMode))]
+    private string? _localGameDirMode;
+
+    /// <summary>
+    /// 版本级自定义游戏内容目录路径。
+    /// </summary>
+    [ObservableProperty]
+    private string _localGameDirCustomPath = string.Empty;
+
+    /// <summary>
+    /// 当前选中的版本级 GameDir 模式选项（ComboBox 绑定用）。
+    /// </summary>
+    [ObservableProperty]
+    private GameIsolationModeOption? _selectedLocalGameDirMode;
+
+    /// <summary>
+    /// 是否为版本级自定义路径模式。
+    /// </summary>
+    public bool IsLocalCustomGameDirMode =>
+        string.Equals(LocalGameDirMode, "Custom", StringComparison.Ordinal);
+
+    /// <summary>
+    /// 版本级 GameDir 模式选项列表。
+    /// </summary>
+    public IReadOnlyList<GameIsolationModeOption> LocalGameDirModes { get; } =
+    [
+        new() { Key = "Default", DisplayName = "Settings_GameDirMode_Default".GetLocalized() },
+        new() { Key = "VersionIsolation", DisplayName = "Settings_GameDirMode_VersionIsolation".GetLocalized() },
+        new() { Key = "Custom", DisplayName = "Settings_GameDirMode_Custom".GetLocalized() },
+    ];
+
     public ResourceTransferStateViewModel ResourceTransferState { get; }
 
     /// <summary>
@@ -549,6 +590,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private bool _isLoading = false;
+
+    /// <summary>
+    /// 标记是否正在应用 VersionConfig → ViewModel 映射（抑制触发副作用）。
+    /// </summary>
+    private bool _isApplyingConfig;
+    private bool _isSwitchingUseGlobalSettings;
     
     public bool IsDownloading
     {
@@ -743,6 +790,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionPageLoadOrchestrator _versionPageLoadOrchestrator;
     private readonly ILoaderUiOrchestrator _loaderUiOrchestrator;
     private readonly IVersionPathNavigationService _versionPathNavigationService;
+    private readonly IGameDirResolver _gameDirResolver;
     private readonly IScreenshotInteractionService _screenshotInteractionService;
     private readonly IResourceIconLoadCoordinator _resourceIconLoadCoordinator;
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
@@ -822,6 +870,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionPageLoadOrchestrator versionPageLoadOrchestrator,
         ILoaderUiOrchestrator loaderUiOrchestrator,
         IVersionPathNavigationService versionPathNavigationService,
+        IGameDirResolver gameDirResolver,
         IScreenshotInteractionService screenshotInteractionService,
         IResourceIconLoadCoordinator resourceIconLoadCoordinator,
         IModLoaderIconPresentationService modLoaderIconPresentationService,
@@ -848,6 +897,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionPageLoadOrchestrator = versionPageLoadOrchestrator;
         _loaderUiOrchestrator = loaderUiOrchestrator;
         _versionPathNavigationService = versionPathNavigationService;
+        _gameDirResolver = gameDirResolver;
         _screenshotInteractionService = screenshotInteractionService;
         _resourceIconLoadCoordinator = resourceIconLoadCoordinator;
         _modLoaderIconPresentationService = modLoaderIconPresentationService;
@@ -1047,13 +1097,35 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private const string SettingsFileName = MinecraftFileConsts.VersionConfig;
     
     // 属性变化时自动保存设置
-    partial void OnUseGlobalSettingsChanged(bool value)
+    async partial void OnUseGlobalSettingsChanged(bool value)
     {
-        // 统一控制全局/自定义模式
-        OverrideMemory = !value;
-        UseGlobalJavaSetting = value;
-        OverrideResolution = !value;
-        SaveSettingsAsync().ConfigureAwait(false);
+        if (_isApplyingConfig || _isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
+        _isSwitchingUseGlobalSettings = true;
+        try
+        {
+            // 统一控制全局/自定义模式
+            OverrideMemory = !value;
+            UseGlobalJavaSetting = value;
+            OverrideResolution = !value;
+        }
+        finally
+        {
+            _isSwitchingUseGlobalSettings = false;
+        }
+
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换全局设置失败：{ex.Message}";
+        }
     }
     
     partial void OnAutoMemoryAllocationChanged(bool value)
@@ -1063,6 +1135,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnOverrideMemoryChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
@@ -1095,6 +1172,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnOverrideResolutionChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
@@ -1110,6 +1192,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnUseGlobalJavaSettingChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
@@ -1166,6 +1253,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 MinecraftPath = newPath;
                 if (SelectedVersion != null)
                 {
+                    CurrentGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedVersion.Name);
                     await LoadVersionDataAsync();
                 }
             });
@@ -1200,7 +1288,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             MinecraftPath = _fileService.GetMinecraftDataPath();
             // 触发属性变化通知，确保页面标题更新
             OnPropertyChanged(nameof(SelectedVersion));
-            LoadVersionDataAsync().ConfigureAwait(false);
+            _ = RefreshCurrentGameDirThenLoadAsync();
         }
     }
 
@@ -1356,6 +1444,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     private void ApplyVersionConfigToViewModel(Core.Models.VersionConfig versionConfig, bool includeCustomJvmArguments)
     {
+        _isApplyingConfig = true;
+        try
+        {
         IsCurrentVersionModpack = IsModpackVersion(versionConfig);
         _currentModpackPlatform = versionConfig.ModpackPlatform;
         _currentModpackProjectId = versionConfig.ModpackProjectId;
@@ -1409,6 +1500,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
         LastLaunchTime = versionConfig.LastLaunchTime;
 
+        // 版本级 GameDir 设置
+        LocalGameDirMode = versionConfig.GameDirMode;
+        LocalGameDirCustomPath = versionConfig.GameDirCustomPath ?? string.Empty;
+        SelectedLocalGameDirMode = string.IsNullOrEmpty(LocalGameDirMode)
+            ? LocalGameDirModes[0]  // null 时默认显示"禁用"，而非空占位符
+            : LocalGameDirModes.FirstOrDefault(m =>
+                string.Equals(m.Key, LocalGameDirMode, StringComparison.Ordinal)) ?? LocalGameDirModes[0];
+
         var uiSettings = new VersionSettings
         {
             MinecraftVersion = versionConfig.MinecraftVersion,
@@ -1419,6 +1518,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
 
         UpdateCurrentLoaderInfo(uiSettings);
+        }
+        finally
+        {
+            _isApplyingConfig = false;
+        }
     }
 
     private void ResetModpackUpdateState()
@@ -2285,6 +2389,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     private async Task SaveSettingsAsync()
     {
+        if (_isApplyingConfig)
+        {
+            return;
+        }
+
         if (SelectedVersion == null)
         {
             return;
@@ -2304,7 +2413,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 OverrideResolution = OverrideResolution,
                 WindowWidth = WindowWidth,
                 WindowHeight = WindowHeight,
-                UseGlobalJavaSetting = UseGlobalJavaSetting
+                UseGlobalJavaSetting = UseGlobalJavaSetting,
+                GameDirMode = string.IsNullOrEmpty(LocalGameDirMode) ? null : LocalGameDirMode,
+                GameDirCustomPath = string.IsNullOrWhiteSpace(LocalGameDirCustomPath) ? null : LocalGameDirCustomPath
             };
 
             await _versionSettingsOrchestrator.SaveVersionSettingsAsync(SelectedVersion, settingsToSave);
@@ -2316,9 +2427,105 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-        /// 加载版本数据
+        /// 刷新 CurrentGameDir 后再加载版本数据。
         /// </summary>
-        private async Task LoadVersionDataAsync()
+        private async Task RefreshCurrentGameDirThenLoadAsync()
+        {
+            if (SelectedVersion != null)
+            {
+                CurrentGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedVersion.Name);
+            }
+            else
+            {
+                CurrentGameDir = string.Empty;
+            }
+
+            await LoadVersionDataAsync();
+        }
+
+    partial void OnSelectedLocalGameDirModeChanged(GameIsolationModeOption? value)
+    {
+        if (_isApplyingConfig)
+        {
+            return;
+        }
+
+        LocalGameDirMode = string.IsNullOrEmpty(value?.Key) ? null : value.Key;
+    }
+
+    async partial void OnLocalGameDirModeChanged(string? value)
+    {
+        if (_isApplyingConfig || SelectedVersion == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换目录模式失败：{ex.Message}";
+        }
+    }
+
+    async partial void OnLocalGameDirCustomPathChanged(string value)
+    {
+        if (_isApplyingConfig || SelectedVersion == null || !IsLocalCustomGameDirMode)
+        {
+            return;
+        }
+
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换自定义目录失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseLocalGameDirAsync()
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FolderPicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
+            picker.FileTypeFilter.Add("*");
+
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder != null)
+            {
+                LocalGameDirCustomPath = folder.Path;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"浏览自定义目录失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearLocalGameDirAsync()
+    {
+        LocalGameDirCustomPath = string.Empty;
+        await SaveSettingsAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
+    }
+
+    /// <summary>
+    /// 加载版本数据
+    /// </summary>
+    private async Task LoadVersionDataAsync()
         {
             if (SelectedVersion == null)
             {
@@ -2498,7 +2705,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             
             try
             {
-                var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, cancellationToken);
+                var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, CurrentGameDir, cancellationToken);
                 
                 // 更新UI
                 _uiDispatcher.TryEnqueue(() =>
@@ -2601,7 +2808,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// <returns>版本特定的文件夹路径</returns>
     public string GetVersionSpecificPath(string folderType)
     {
-        return _versionPathNavigationService.GetVersionSpecificPath(MinecraftPath, SelectedVersion, folderType);
+        var dir = string.IsNullOrEmpty(CurrentGameDir) ? MinecraftPath : CurrentGameDir;
+        return _versionPathNavigationService.GetVersionSpecificPath(dir, SelectedVersion, folderType);
     }
     
     /// <summary>
@@ -2609,9 +2817,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     /// <param name="fileName">文件名（如 "servers.dat"）</param>
     /// <returns>完整的文件路径</returns>
-    public async Task<string> GetVersionSpecificFilePathAsync(string fileName)
+    public Task<string> GetVersionSpecificFilePathAsync(string fileName)
     {
-        return await _versionPathNavigationService.GetVersionSpecificFilePathAsync(MinecraftPath, SelectedVersion, fileName);
+        var dir = string.IsNullOrEmpty(CurrentGameDir) ? MinecraftPath : CurrentGameDir;
+        return Task.FromResult(_versionPathNavigationService.GetVersionSpecificFilePath(dir, SelectedVersion, fileName));
     }
     
     /// <summary>
@@ -2669,7 +2878,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private async Task RefreshDataAsync()
     {
-        await LoadVersionDataAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
     }
     
     /// <summary>

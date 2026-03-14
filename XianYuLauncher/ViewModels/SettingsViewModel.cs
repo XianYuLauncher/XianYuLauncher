@@ -84,6 +84,18 @@ public partial class MinecraftPathItem : ObservableObject
     private bool _isActive;
 }
 
+public class GameIsolationModeOption
+{
+    public string Key { get; init; } = string.Empty;
+
+    public string DisplayName { get; init; } = string.Empty;
+
+    public override string ToString()
+    {
+        return DisplayName;
+    }
+}
+
 public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         private readonly IFileService _fileService;
@@ -727,10 +739,31 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     
 
     /// <summary>
-    /// 是否开启版本隔离
+    /// 旧版版本隔离兼容状态。
+    /// 仍然写回旧布尔键，避免现有运行逻辑在 UI 先行阶段失效。
     /// </summary>
     [ObservableProperty]
     private bool _enableVersionIsolation = true;
+
+    private const string GameIsolationModeDefaultKey = "Default";
+    private const string GameIsolationModeVersionIsolationKey = "VersionIsolation";
+    private const string GameIsolationModeCustomKey = "Custom";
+
+    public IReadOnlyList<GameIsolationModeOption> GameIsolationModes { get; } =
+    [
+        new GameIsolationModeOption { Key = GameIsolationModeDefaultKey, DisplayName = "Settings_GameDirMode_Default".GetLocalized() },
+        new GameIsolationModeOption { Key = GameIsolationModeVersionIsolationKey, DisplayName = "Settings_GameDirMode_VersionIsolation".GetLocalized() },
+        new GameIsolationModeOption { Key = GameIsolationModeCustomKey, DisplayName = "Settings_GameDirMode_Custom".GetLocalized() }
+    ];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCustomGameIsolationMode))]
+    private GameIsolationModeOption? _selectedGameIsolationMode;
+
+    [ObservableProperty]
+    private string _customGameDirectoryPath = string.Empty;
+
+    public bool IsCustomGameIsolationMode => string.Equals(SelectedGameIsolationMode?.Key, GameIsolationModeCustomKey, StringComparison.Ordinal);
 
     [ObservableProperty]
     private ElementTheme _elementTheme;
@@ -1155,7 +1188,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         await LoadAfdianSponsorsAsync();
         await LoadJavaPathAsync();
         await LoadJavaVersionsAsync();
-        await LoadEnableVersionIsolationAsync();
+        await LoadGameIsolationSettingsAsync();
         await LoadJavaSelectionModeAsync();
         await LoadMinecraftPathsAsync();
         await LoadAISettingsAsync();
@@ -1939,12 +1972,22 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         }
     }
     
-    /// <summary>
-    /// 加载版本隔离设置
-    /// </summary>
-    private async Task LoadEnableVersionIsolationAsync()
+    private async Task LoadGameIsolationSettingsAsync()
     {
-        EnableVersionIsolation = await _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
+        var savedModeKey = await _gameSettingsDomainService.LoadGameIsolationModeAsync();
+
+        if (string.IsNullOrWhiteSpace(savedModeKey))
+        {
+            var legacyEnableVersionIsolation = await _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
+            savedModeKey = legacyEnableVersionIsolation
+                ? GameIsolationModeVersionIsolationKey
+                : GameIsolationModeDefaultKey;
+        }
+
+        SelectedGameIsolationMode = GameIsolationModes.FirstOrDefault(option => option.Key == savedModeKey)
+            ?? GameIsolationModes[0];
+        CustomGameDirectoryPath = await _gameSettingsDomainService.LoadCustomGameDirectoryAsync() ?? string.Empty;
+        EnableVersionIsolation = ShouldUseLegacyVersionIsolation(SelectedGameIsolationMode);
     }
     
     /// <summary>
@@ -1953,6 +1996,43 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     partial void OnEnableVersionIsolationChanged(bool value)
     {
         QueueSettingWrite("EnableVersionIsolation", () => _gameSettingsDomainService.SaveEnableVersionIsolationAsync(value));
+    }
+
+    partial void OnSelectedGameIsolationModeChanged(GameIsolationModeOption? value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+
+        QueueSettingWrite("GameIsolationMode", () => _gameSettingsDomainService.SaveGameIsolationModeAsync(value.Key));
+        EnableVersionIsolation = ShouldUseLegacyVersionIsolation(value);
+    }
+
+    partial void OnCustomGameDirectoryPathChanged(string value)
+    {
+        QueueSettingWrite("CustomGameDirectoryPath", () => _gameSettingsDomainService.SaveCustomGameDirectoryAsync(value));
+    }
+
+    private static bool ShouldUseLegacyVersionIsolation(GameIsolationModeOption? mode)
+    {
+        return !string.Equals(mode?.Key, GameIsolationModeDefaultKey, StringComparison.Ordinal);
+    }
+
+    [RelayCommand]
+    private async Task BrowseCustomGameDirectoryAsync()
+    {
+        var selectedPath = await _filePickerService.PickSingleFolderPathAsync(PickerLocationId.ComputerFolder);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
+        {
+            CustomGameDirectoryPath = selectedPath;
+        }
+    }
+
+    [RelayCommand]
+    private void ClearCustomGameDirectory()
+    {
+        CustomGameDirectoryPath = string.Empty;
     }
     
     /// <summary>

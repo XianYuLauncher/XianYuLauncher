@@ -182,6 +182,8 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         settings.WindowWidth = inputSettings.WindowWidth;
         settings.WindowHeight = inputSettings.WindowHeight;
         settings.UseGlobalJavaSetting = inputSettings.UseGlobalJavaSetting;
+        settings.GameDirMode = inputSettings.GameDirMode;
+        settings.GameDirCustomPath = inputSettings.GameDirCustomPath;
 
         var jsonContent = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
 

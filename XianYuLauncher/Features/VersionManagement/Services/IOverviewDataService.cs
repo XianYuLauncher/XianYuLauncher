@@ -12,6 +12,7 @@ public interface IOverviewDataService
 
     Task<List<SaveInfo>> LoadSavesAsync(
         VersionListViewModel.VersionInfoItem? selectedVersion,
+        string? gameDir = null,
         CancellationToken cancellationToken = default);
 
     Task LoadSaveIconsAsync(

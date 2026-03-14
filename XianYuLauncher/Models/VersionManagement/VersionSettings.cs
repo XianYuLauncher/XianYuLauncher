@@ -124,4 +124,15 @@ public class VersionSettings
     /// 整合包版本 ID（来自整合包清单）
     /// </summary>
     public string? ModpackVersionId { get; set; }
+
+    /// <summary>
+    /// 版本级 GameDir 模式。null = 跟随全局设置（默认行为）。
+    /// 可选值："Default" / "VersionIsolation" / "Custom"
+    /// </summary>
+    public string? GameDirMode { get; set; }
+
+    /// <summary>
+    /// 版本级自定义游戏内容目录。仅 GameDirMode == "Custom" 时生效。
+    /// </summary>
+    public string? GameDirCustomPath { get; set; }
 }
