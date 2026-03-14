@@ -751,9 +751,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
     public IReadOnlyList<GameIsolationModeOption> GameIsolationModes { get; } =
     [
-        new GameIsolationModeOption { Key = GameIsolationModeDefaultKey, DisplayName = "禁用" },
-        new GameIsolationModeOption { Key = GameIsolationModeVersionIsolationKey, DisplayName = "启用" },
-        new GameIsolationModeOption { Key = GameIsolationModeCustomKey, DisplayName = "自定义路径" }
+        new GameIsolationModeOption { Key = GameIsolationModeDefaultKey, DisplayName = "Settings_GameDirMode_Default".GetLocalized() },
+        new GameIsolationModeOption { Key = GameIsolationModeVersionIsolationKey, DisplayName = "Settings_GameDirMode_VersionIsolation".GetLocalized() },
+        new GameIsolationModeOption { Key = GameIsolationModeCustomKey, DisplayName = "Settings_GameDirMode_Custom".GetLocalized() }
     ];
 
     [ObservableProperty]

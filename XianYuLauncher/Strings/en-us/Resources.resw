@@ -2644,7 +2644,7 @@ Continue downloading?</value>
     <value>Global Game Directory Isolation</value>
   </data>
   <data name="Settings_VersionIsolation.Description" xml:space="preserve">
-    <value>Specify the game content directory to use</value>
+    <value>Select the isolation mode and custom game directory path</value>
   </data>
   <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
     <value>Real-time Game Logs</value>
@@ -3287,6 +3287,15 @@ Continue downloading?</value>
   </data>
   <data name="Settings_GlobalCustomGameDirectoryClearButton.Content" xml:space="preserve">
     <value>Clear</value>
+  </data>
+  <data name="Settings_GameDirMode_Default" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="Settings_GameDirMode_VersionIsolation" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="Settings_GameDirMode_Custom" xml:space="preserve">
+    <value>Custom Path</value>
   </data>
   <data name="VersionSettings_LocalVersionIsolation.Header" xml:space="preserve">
     <value>Game Directory Isolation</value>
