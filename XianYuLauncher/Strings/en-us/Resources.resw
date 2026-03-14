@@ -2644,7 +2644,7 @@ Continue downloading?</value>
     <value>Global Game Directory Isolation</value>
   </data>
   <data name="Settings_VersionIsolation.Description" xml:space="preserve">
-    <value>Select the isolation mode and custom game directory path</value>
+    <value>Select the isolation mode for game directories</value>
   </data>
   <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
     <value>Real-time Game Logs</value>
