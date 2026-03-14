@@ -988,6 +988,22 @@ namespace XianYuLauncher.ViewModels
         // 当前正在下载的游戏版本上下文（用于解决跨流程/弹窗操作时 SelectedInstalledVersion 可能丢失的问题）
         private InstalledGameVersionViewModel _currentDownloadingGameVersion;
 
+        private async Task<string> ResolveTargetGameDirAsync(InstalledGameVersionViewModel? targetVersion)
+        {
+            if (targetVersion == null || string.IsNullOrWhiteSpace(targetVersion.OriginalVersionName))
+            {
+                return _fileService.GetMinecraftDataPath();
+            }
+
+            return await _gameDirResolver.GetGameDirForVersionAsync(targetVersion.OriginalVersionName);
+        }
+
+        private async Task<string> ResolveSavesDirectoryAsync(InstalledGameVersionViewModel? targetVersion)
+        {
+            string gameDir = await ResolveTargetGameDirAsync(targetVersion);
+            return Path.Combine(gameDir, MinecraftPathConsts.Saves);
+        }
+
         // 显示存档选择弹窗
         private async Task ShowSaveSelectionDialog()
         {
@@ -996,22 +1012,17 @@ namespace XianYuLauncher.ViewModels
                 // 清空之前的存档列表
                 SaveNames.Clear();
                 
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
-                
-                // 构建saves目录路径
                 string savesPath;
                 
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
                 if (targetVersion != null)
                 {
-                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
-                    savesPath = Path.Combine(versionDir, MinecraftPathConsts.Saves);
+                    savesPath = await ResolveSavesDirectoryAsync(targetVersion);
                 }
                 else
                 {
-                    savesPath = Path.Combine(minecraftPath, MinecraftPathConsts.Saves);
+                    savesPath = await ResolveSavesDirectoryAsync(null);
                 }
                 
                 // 收集存档名称
@@ -1085,21 +1096,16 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
-                // 获取Minecraft数据路径
-                string minecraftPath = _fileService.GetMinecraftDataPath();
-                
-                // 构建存档文件夹路径
                 string savesDir;
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
                 if (targetVersion != null)
                 {
-                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
-                    savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
+                    savesDir = await ResolveSavesDirectoryAsync(targetVersion);
                 }
                 else
                 {
-                    savesDir = Path.Combine(minecraftPath, MinecraftPathConsts.Saves);
+                    savesDir = await ResolveSavesDirectoryAsync(null);
                 }
                 
                 string selectedSaveDir = Path.Combine(savesDir, SelectedSaveName);
@@ -1567,11 +1573,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 else
                 {
-                    // 获取Minecraft数据路径
-                    string minecraftPath = _fileService.GetMinecraftDataPath();
-                    
-                    // 构建游戏版本文件夹路径 - 直接使用选择版本的原始目录名
-                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
+                    string gameDir = await ResolveTargetGameDirAsync(targetVersion);
                     
                     // 根据项目类型选择文件夹名称
                     string targetFolder;
@@ -1591,7 +1593,7 @@ namespace XianYuLauncher.ViewModels
                     }
                     
                     // 构建目标文件夹路径
-                    string targetDir = Path.Combine(versionDir, targetFolder);
+                    string targetDir = Path.Combine(gameDir, targetFolder);
                     
                     // 创建目标文件夹（如果不存在）
                     _fileService.CreateDirectory(targetDir);
@@ -1780,9 +1782,7 @@ namespace XianYuLauncher.ViewModels
                 else
                 {
                     var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
-                    string minecraftPath = _fileService.GetMinecraftDataPath();
-                    string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersion.OriginalVersionName);
-                    savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
+                    savesDir = await ResolveSavesDirectoryAsync(targetVersion);
                 }
 
                 string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
@@ -1804,12 +1804,13 @@ namespace XianYuLauncher.ViewModels
                 InitializeDownloadTeachingTip();
 
                 // 处理依赖
-                var worldGameDir = await _gameDirResolver.GetGameDirForVersionAsync(SelectedInstalledVersion?.OriginalVersionName ?? string.Empty);
+                var targetWorldVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
+                var worldGameDir = await ResolveTargetGameDirAsync(targetWorldVersion);
                 var worldDependencyDir = ModResourcePathHelper.GetDependencyTargetDir(worldGameDir, "world");
                 if (!string.IsNullOrEmpty(worldDependencyDir))
                 {
                     _fileService.CreateDirectory(worldDependencyDir);
-                    await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, SelectedInstalledVersion);
+                    await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, targetWorldVersion);
                 }
 
                 await _downloadTaskManager.StartWorldDownloadAsync(
