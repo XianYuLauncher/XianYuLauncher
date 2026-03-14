@@ -201,13 +201,22 @@
                     <ToggleSwitch IsOn="{Binding UseGlobalSettings, Mode=TwoWay}" />
                 </controls:SettingsCard>
 
-                <!-- 版本级版本隔离 -->
-                <controls:SettingsExpander x:Uid="VersionSettings_LocalVersionIsolation" Header="版本隔离" Description="选择游戏目录的隔离模式与自定义路径"
-                                           IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
-                    <controls:SettingsExpander.HeaderIcon>
-                        <FontIcon Glyph="&#xE838;" />
-                    </controls:SettingsExpander.HeaderIcon>
-                    <controls:SettingsExpander.Content>
+                <!-- 版本级版本隔离：非自定义时用 SettingsCard（无 chevron），自定义时用 SettingsExpander（可展开） -->
+                <Grid>
+                    <animations:Implicit.ShowAnimations>
+                        <!-- 空集合，避免切换时「从天而降」 -->
+                    </animations:Implicit.ShowAnimations>
+                    <animations:Implicit.HideAnimations>
+                        <!-- 空集合 -->
+                    </animations:Implicit.HideAnimations>
+                    <controls:SettingsCard x:Uid="VersionSettings_LocalVersionIsolation"
+                                          Header="版本隔离"
+                                          Description="选择游戏目录的隔离模式与自定义路径"
+                                          IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                                          Visibility="{Binding IsLocalCustomGameDirMode, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <controls:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE838;" />
+                        </controls:SettingsCard.HeaderIcon>
                         <ComboBox ItemsSource="{Binding LocalGameDirModes}"
                                   SelectedItem="{Binding SelectedLocalGameDirMode, Mode=TwoWay}"
                                   MinWidth="180"
@@ -218,28 +227,49 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </controls:SettingsExpander.Content>
-                    <controls:SettingsExpander.Items>
-                        <controls:SettingsCard x:Uid="VersionSettings_LocalCustomGameDirectoryCard"
-                                               Header="自定义游戏目录"
-                                               Description="指定使用的游戏内容目录"
+                    </controls:SettingsCard>
+                    <controls:SettingsExpander x:Uid="VersionSettings_LocalVersionIsolation"
+                                               Header="版本隔离"
+                                               Description="选择游戏目录的隔离模式与自定义路径"
+                                               IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                                               IsExpanded="{Binding IsLocalCustomGameDirMode, Mode=OneWay}"
                                                Visibility="{Binding IsLocalCustomGameDirMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox x:Uid="VersionSettings_LocalCustomGameDirectoryPathBox"
-                                         Text="{Binding LocalGameDirCustomPath, Mode=TwoWay}"
-                                         IsReadOnly="True"
-                                         MinWidth="280"
-                                         PlaceholderText="选择自定义目录路径" />
-                                <Button x:Uid="VersionSettings_LocalCustomGameDirectoryBrowseButton"
-                                        Content="浏览..."
-                                        Command="{Binding BrowseLocalGameDirCommand}" />
-                                <Button x:Uid="VersionSettings_LocalCustomGameDirectoryClearButton"
-                                        Content="清除"
-                                        Command="{Binding ClearLocalGameDirCommand}" />
-                            </StackPanel>
-                        </controls:SettingsCard>
-                    </controls:SettingsExpander.Items>
-                </controls:SettingsExpander>
+                        <controls:SettingsExpander.HeaderIcon>
+                            <FontIcon Glyph="&#xE838;" />
+                        </controls:SettingsExpander.HeaderIcon>
+                        <controls:SettingsExpander.Content>
+                            <ComboBox ItemsSource="{Binding LocalGameDirModes}"
+                                      SelectedItem="{Binding SelectedLocalGameDirMode, Mode=TwoWay}"
+                                      MinWidth="180"
+                                      PlaceholderText="跟随全局设置">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                        <TextBlock Text="{x:Bind DisplayName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </controls:SettingsExpander.Content>
+                        <controls:SettingsExpander.Items>
+                            <controls:SettingsCard x:Uid="VersionSettings_LocalCustomGameDirectoryCard"
+                                                   Header="自定义游戏目录"
+                                                   Description="指定使用的游戏内容目录">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox x:Uid="VersionSettings_LocalCustomGameDirectoryPathBox"
+                                             Text="{Binding LocalGameDirCustomPath, Mode=TwoWay}"
+                                             IsReadOnly="True"
+                                             MinWidth="280"
+                                             PlaceholderText="选择自定义目录路径" />
+                                    <Button x:Uid="VersionSettings_LocalCustomGameDirectoryBrowseButton"
+                                            Content="浏览..."
+                                            Command="{Binding BrowseLocalGameDirCommand}" />
+                                    <Button x:Uid="VersionSettings_LocalCustomGameDirectoryClearButton"
+                                            Content="清除"
+                                            Command="{Binding ClearLocalGameDirCommand}" />
+                                </StackPanel>
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+                </Grid>
                 
                 <!-- 内存设置 -->
                 <controls:SettingsExpander x:Uid="Settings_MemoryAllocation" Header="内存分配" Description="设置游戏运行时的内存配置"

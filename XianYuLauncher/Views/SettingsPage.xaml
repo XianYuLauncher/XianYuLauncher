@@ -21,6 +21,7 @@
         <helpers:ColorToBrushConverter x:Key="ColorToBrushConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
         <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
     </Page.Resources>
     <Grid x:Name="ContentArea" Padding="20">
         <Grid.RowDefinitions>
@@ -345,12 +346,22 @@
                     </ComboBox>
                 </controls:SettingsCard>
 
-                <!-- 版本隔离 -->
-                <controls:SettingsExpander x:Uid="Settings_VersionIsolation" Header="全局版本隔离" Description="选择游戏目录的隔离模式与自定义路径">
-                    <controls:SettingsExpander.HeaderIcon>
-                        <FontIcon Glyph="&#xE74C;" />
-                    </controls:SettingsExpander.HeaderIcon>
-                    <controls:SettingsExpander.Content>
+                <!-- 版本隔离：非自定义时用 SettingsCard（无 chevron），自定义时用 SettingsExpander（可展开）
+                     包在 Grid 内并禁用 Implicit 动画，避免切换时 RepositionThemeTransition 导致 Expander「从天而降」 -->
+                <Grid>
+                    <animations:Implicit.ShowAnimations>
+                        <!-- 空集合，阻止继承自父级的 TranslationAnimation，避免切换时「从天而降」 -->
+                    </animations:Implicit.ShowAnimations>
+                    <animations:Implicit.HideAnimations>
+                        <!-- 空集合 -->
+                    </animations:Implicit.HideAnimations>
+                    <controls:SettingsCard x:Uid="Settings_VersionIsolation"
+                                          Header="全局版本隔离"
+                                          Description="选择游戏目录的隔离模式与自定义路径"
+                                          Visibility="{x:Bind ViewModel.IsCustomGameIsolationMode, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <controls:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE74C;" />
+                        </controls:SettingsCard.HeaderIcon>
                         <ComboBox ItemsSource="{x:Bind ViewModel.GameIsolationModes, Mode=OneWay}"
                                   SelectedItem="{x:Bind ViewModel.SelectedGameIsolationMode, Mode=TwoWay}"
                                   MinWidth="200">
@@ -360,28 +371,47 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </controls:SettingsExpander.Content>
-                    <controls:SettingsExpander.Items>
-                        <controls:SettingsCard x:Uid="Settings_GlobalCustomGameDirectoryCard"
-                                               Header="自定义游戏目录"
-                                               Description="指定使用的游戏内容目录"
+                    </controls:SettingsCard>
+                    <controls:SettingsExpander x:Uid="Settings_VersionIsolation"
+                                               Header="全局版本隔离"
+                                               Description="选择游戏目录的隔离模式与自定义路径"
+                                               IsExpanded="{x:Bind ViewModel.IsCustomGameIsolationMode, Mode=OneWay}"
                                                Visibility="{x:Bind ViewModel.IsCustomGameIsolationMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox x:Uid="Settings_GlobalCustomGameDirectoryPathBox"
-                                         Text="{x:Bind ViewModel.CustomGameDirectoryPath, Mode=TwoWay}"
-                                         PlaceholderText="请选择自定义游戏目录"
-                                         Width="280"
-                                         IsReadOnly="True" />
-                                <Button x:Uid="Settings_GlobalCustomGameDirectoryBrowseButton"
-                                        Content="浏览..."
-                                        Command="{x:Bind ViewModel.BrowseCustomGameDirectoryCommand}" />
-                                <Button x:Uid="Settings_GlobalCustomGameDirectoryClearButton"
-                                        Content="清除"
-                                        Command="{x:Bind ViewModel.ClearCustomGameDirectoryCommand}" />
-                            </StackPanel>
-                        </controls:SettingsCard>
-                    </controls:SettingsExpander.Items>
-                </controls:SettingsExpander>
+                        <controls:SettingsExpander.HeaderIcon>
+                            <FontIcon Glyph="&#xE74C;" />
+                        </controls:SettingsExpander.HeaderIcon>
+                        <controls:SettingsExpander.Content>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.GameIsolationModes, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedGameIsolationMode, Mode=TwoWay}"
+                                      MinWidth="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </controls:SettingsExpander.Content>
+                        <controls:SettingsExpander.Items>
+                            <controls:SettingsCard x:Uid="Settings_GlobalCustomGameDirectoryCard"
+                                                   Header="自定义游戏目录"
+                                                   Description="指定使用的游戏内容目录">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox x:Uid="Settings_GlobalCustomGameDirectoryPathBox"
+                                             Text="{x:Bind ViewModel.CustomGameDirectoryPath, Mode=TwoWay}"
+                                             PlaceholderText="请选择自定义游戏目录"
+                                             Width="280"
+                                             IsReadOnly="True" />
+                                    <Button x:Uid="Settings_GlobalCustomGameDirectoryBrowseButton"
+                                            Content="浏览..."
+                                            Command="{x:Bind ViewModel.BrowseCustomGameDirectoryCommand}" />
+                                    <Button x:Uid="Settings_GlobalCustomGameDirectoryClearButton"
+                                            Content="清除"
+                                            Command="{x:Bind ViewModel.ClearCustomGameDirectoryCommand}" />
+                                </StackPanel>
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+                </Grid>
 
                 <!-- 全局内存分配 -->
                 <controls:SettingsExpander x:Uid="Settings_GlobalMemory" Header="全局内存分配" Description="设置所有版本的默认内存分配，版本可单独覆盖">
@@ -450,12 +480,21 @@
                     </StackPanel>
                 </controls:SettingsCard>
 
-                <!-- 窗口材质 -->
-                <controls:SettingsExpander x:Uid="Settings_WindowMaterial" Header="窗口材质" Description="选择窗口背景效果">
-                    <controls:SettingsExpander.HeaderIcon>
-                        <FontIcon Glyph="&#xE771;" />
-                    </controls:SettingsExpander.HeaderIcon>
-                    <controls:SettingsExpander.Content>
+                <!-- 窗口材质：无扩展内容时用 SettingsCard，有（自定义/流光）时用 SettingsExpander（可展开） -->
+                <Grid>
+                    <animations:Implicit.ShowAnimations>
+                        <!-- 空集合，避免切换时「从天而降」 -->
+                    </animations:Implicit.ShowAnimations>
+                    <animations:Implicit.HideAnimations>
+                        <!-- 空集合 -->
+                    </animations:Implicit.HideAnimations>
+                    <controls:SettingsCard x:Uid="Settings_WindowMaterial"
+                                          Header="窗口材质"
+                                          Description="选择窗口背景效果"
+                                          Visibility="{x:Bind ViewModel.HasMaterialExpandableContent, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <controls:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE771;" />
+                        </controls:SettingsCard.HeaderIcon>
                         <ComboBox ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}" MinWidth="200">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
@@ -463,57 +502,74 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </controls:SettingsExpander.Content>
-                    <controls:SettingsExpander.Items>
-                        <!-- 自定义背景图片 -->
-                        <controls:SettingsCard x:Uid="Settings_BackgroundImage" Header="背景图片" Description="选择自定义背景图片"
-                                               Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" PlaceholderText="请选择背景图片" Width="250" IsReadOnly="True" />
-                                <Button Content="浏览..." Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
-                                <Button Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
-                            </StackPanel>
-                        </controls:SettingsCard>
-                        <!-- 背景模糊强度 -->
-                        <controls:SettingsCard Header="模糊强度" Description="调整背景图片的模糊程度"
-                                               Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <Slider Minimum="0" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.BackgroundBlurAmount, Mode=TwoWay}" Width="200" />
-                                <TextBlock Text="{x:Bind ViewModel.BackgroundBlurAmount, Mode=OneWay}" VerticalAlignment="Center" MinWidth="30" />
-                            </StackPanel>
-                        </controls:SettingsCard>
-                        <!-- 流光设置 -->
-                        <controls:SettingsCard Header="流光速度" Description="调整流光背景的移动速度"
-                                               Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Slider Minimum="0.1" Maximum="3.0" StepFrequency="0.1" Value="{x:Bind ViewModel.MotionSpeed, Mode=TwoWay}" Width="200" />
-                        </controls:SettingsCard>
-                        <controls:SettingsCard Header="流光颜色" Description="自定义流光背景的颜色"
-                                               Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
-                                    <Border Background="{x:Bind ViewModel.MotionColor1, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
-                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor1, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
-                                </Button>
-                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
-                                    <Border Background="{x:Bind ViewModel.MotionColor2, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
-                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor2, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
-                                </Button>
-                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
-                                    <Border Background="{x:Bind ViewModel.MotionColor3, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
-                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor3, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
-                                </Button>
-                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
-                                    <Border Background="{x:Bind ViewModel.MotionColor4, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
-                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor4, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
-                                </Button>
-                                <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
-                                    <Border Background="{x:Bind ViewModel.MotionColor5, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
-                                    <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor5, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
-                                </Button>
-                            </StackPanel>
-                        </controls:SettingsCard>
-                    </controls:SettingsExpander.Items>
-                </controls:SettingsExpander>
+                    </controls:SettingsCard>
+                    <controls:SettingsExpander x:Uid="Settings_WindowMaterial"
+                                               Header="窗口材质"
+                                               Description="选择窗口背景效果"
+                                               Visibility="{x:Bind ViewModel.HasMaterialExpandableContent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <controls:SettingsExpander.HeaderIcon>
+                            <FontIcon Glyph="&#xE771;" />
+                        </controls:SettingsExpander.HeaderIcon>
+                        <controls:SettingsExpander.Content>
+                            <ComboBox ItemsSource="{x:Bind ViewModel.MaterialTypes, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.MaterialType, Mode=TwoWay}" MinWidth="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={StaticResource MaterialTypeToLocalizedStringConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </controls:SettingsExpander.Content>
+                        <controls:SettingsExpander.Items>
+                            <!-- 自定义背景图片 -->
+                            <controls:SettingsCard x:Uid="Settings_BackgroundImage" Header="背景图片" Description="选择自定义背景图片"
+                                                   Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" PlaceholderText="请选择背景图片" Width="250" IsReadOnly="True" />
+                                    <Button Content="浏览..." Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
+                                    <Button Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
+                                </StackPanel>
+                            </controls:SettingsCard>
+                            <!-- 背景模糊强度 -->
+                            <controls:SettingsCard Header="模糊强度" Description="调整背景图片的模糊程度"
+                                                   Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Slider Minimum="0" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.BackgroundBlurAmount, Mode=TwoWay}" Width="200" />
+                                    <TextBlock Text="{x:Bind ViewModel.BackgroundBlurAmount, Mode=OneWay}" VerticalAlignment="Center" MinWidth="30" />
+                                </StackPanel>
+                            </controls:SettingsCard>
+                            <!-- 流光设置 -->
+                            <controls:SettingsCard Header="流光速度" Description="调整流光背景的移动速度"
+                                                   Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Slider Minimum="0.1" Maximum="3.0" StepFrequency="0.1" Value="{x:Bind ViewModel.MotionSpeed, Mode=TwoWay}" Width="200" />
+                            </controls:SettingsCard>
+                            <controls:SettingsCard Header="流光颜色" Description="自定义流光背景的颜色"
+                                                   Visibility="{x:Bind ViewModel.IsMotionBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                        <Border Background="{x:Bind ViewModel.MotionColor1, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                        <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor1, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                    </Button>
+                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                        <Border Background="{x:Bind ViewModel.MotionColor2, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                        <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor2, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                    </Button>
+                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                        <Border Background="{x:Bind ViewModel.MotionColor3, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                        <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor3, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                    </Button>
+                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                        <Border Background="{x:Bind ViewModel.MotionColor4, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                        <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor4, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                    </Button>
+                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0" BorderThickness="2" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+                                        <Border Background="{x:Bind ViewModel.MotionColor5, Mode=OneWay, Converter={StaticResource ColorToBrushConverter}}" CornerRadius="16" Width="28" Height="28" />
+                                        <Button.Flyout><Flyout><ColorPicker Color="{x:Bind ViewModel.MotionColor5, Mode=TwoWay}" IsMoreButtonVisible="False" IsColorSliderVisible="True" /></Flyout></Button.Flyout>
+                                    </Button>
+                                </StackPanel>
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+                </Grid>
 
                 <!-- 语言 -->
                 <controls:SettingsCard x:Uid="Settings_Language" Header="语言" Description="选择应用语言，更改后需要重启应用">
@@ -870,33 +926,51 @@
                 <!-- ==================== AI 分析 ==================== -->
                 <TextBlock x:Name="AiSectionHeader" x:Uid="Settings_AISection" Text="AI 分析" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
-                <!-- AI 分析设置 -->
-                <controls:SettingsExpander x:Uid="Settings_AI_CrashAnalysis" Header="AI 崩溃分析" Description="启用后可使用第三方 AI 服务分析崩溃日志" IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}">
-                    <controls:SettingsExpander.HeaderIcon>
-                        <FontIcon Glyph="&#xE945;" />
-                    </controls:SettingsExpander.HeaderIcon>
-                    <controls:SettingsExpander.Content>
+                <!-- AI 分析设置：未启用时用 SettingsCard，启用时用 SettingsExpander（可展开） -->
+                <Grid>
+                    <animations:Implicit.ShowAnimations>
+                        <!-- 空集合，避免切换时「从天而降」 -->
+                    </animations:Implicit.ShowAnimations>
+                    <animations:Implicit.HideAnimations>
+                        <!-- 空集合 -->
+                    </animations:Implicit.HideAnimations>
+                    <controls:SettingsCard x:Uid="Settings_AI_CrashAnalysis"
+                                          Header="AI 崩溃分析"
+                                          Description="启用后可使用第三方 AI 服务分析崩溃日志"
+                                          Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <controls:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE945;" />
+                        </controls:SettingsCard.HeaderIcon>
                         <ToggleSwitch IsOn="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=TwoWay}" />
-                    </controls:SettingsExpander.Content>
-                    <controls:SettingsExpander.Items>
-                        <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock x:Uid="Settings_AI_Disclaimer" Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务。"
-                                       Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
-                        </controls:SettingsCard>
-                        <controls:SettingsCard x:Uid="Settings_AI_ApiEndpoint" Header="API 端点" Description="OpenAI 兼容的 API 基础 URL"
+                    </controls:SettingsCard>
+                    <controls:SettingsExpander x:Uid="Settings_AI_CrashAnalysis"
+                                               Header="AI 崩溃分析"
+                                               Description="启用后可使用第三方 AI 服务分析崩溃日志"
+                                               IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}"
                                                Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBox Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="https://api.openai.com" Width="300" />
-                        </controls:SettingsCard>
-                        <controls:SettingsCard x:Uid="Settings_AI_ApiKey" Header="API 密钥" Description="您的 API 密钥"
-                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <PasswordBox Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="sk-..." Width="300" />
-                        </controls:SettingsCard>
-                        <controls:SettingsCard x:Uid="Settings_AI_ModelName" Header="模型名称" Description="使用的 AI 模型"
-                                               Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBox Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="gpt-3.5-turbo" Width="300" />
-                        </controls:SettingsCard>
-                    </controls:SettingsExpander.Items>
-                </controls:SettingsExpander>
+                        <controls:SettingsExpander.HeaderIcon>
+                            <FontIcon Glyph="&#xE945;" />
+                        </controls:SettingsExpander.HeaderIcon>
+                        <controls:SettingsExpander.Content>
+                            <ToggleSwitch IsOn="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=TwoWay}" />
+                        </controls:SettingsExpander.Content>
+                        <controls:SettingsExpander.Items>
+                            <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch">
+                                <TextBlock x:Uid="Settings_AI_Disclaimer" Text="XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务。"
+                                           Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
+                            </controls:SettingsCard>
+                            <controls:SettingsCard x:Uid="Settings_AI_ApiEndpoint" Header="API 端点" Description="OpenAI 兼容的 API 基础 URL">
+                                <TextBox Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="https://api.openai.com" Width="300" />
+                            </controls:SettingsCard>
+                            <controls:SettingsCard x:Uid="Settings_AI_ApiKey" Header="API 密钥" Description="您的 API 密钥">
+                                <PasswordBox Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="sk-..." Width="300" />
+                            </controls:SettingsCard>
+                            <controls:SettingsCard x:Uid="Settings_AI_ModelName" Header="模型名称" Description="使用的 AI 模型">
+                                <TextBox Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="gpt-3.5-turbo" Width="300" />
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+                </Grid>
 
 
                 <!-- ==================== 关于 ==================== -->

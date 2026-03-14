@@ -549,6 +549,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     public bool IsMotionBackground => MaterialType == XianYuLauncher.Core.Services.MaterialType.Motion;
 
+    /// <summary>
+    /// 窗口材质是否有可展开内容（自定义背景或流光）
+    /// </summary>
+    public bool HasMaterialExpandableContent => IsCustomBackground || IsMotionBackground;
+
     [ObservableProperty]
     private double _motionSpeed = 1.0;
     
@@ -1695,6 +1700,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             // 通知 IsCustomBackground 属性变化
             OnPropertyChanged(nameof(IsCustomBackground));
             OnPropertyChanged(nameof(IsMotionBackground));
+            OnPropertyChanged(nameof(HasMaterialExpandableContent));
             
             // 只有当不是初始化加载材质时，才应用材质到主窗口
             // 避免设置页打开时窗口闪烁
