@@ -213,7 +213,7 @@ public class FallbackDownloadManagerTests : IDisposable
     {
         // Arrange
         var targetPath = Path.Combine(_testDirectory, "curseforge-test.zip");
-        var originalUrl = "REDACTED_URL";
+        var originalUrl = "https://edge.forgecdn.net/files/7396/228/example-mod.zip";
         var capturedUrls = new List<string>();
         var callCount = 0;
 
@@ -241,8 +241,8 @@ public class FallbackDownloadManagerTests : IDisposable
         result.AttemptedSources.Should().ContainInOrder("official", "mcim");
         result.AttemptedSources.Should().NotContain("bmclapi");
         capturedUrls.Should().HaveCount(2);
-        capturedUrls[0].Should().Be("REDACTED_URL");
-        capturedUrls[1].Should().Be("REDACTED_URL");
+        capturedUrls[0].Should().Be("https://edge.forgecdn.net/files/7396/228/example-mod.zip");
+        capturedUrls[1].Should().Be("https://mod.mcimirror.top/files/7396/228/example-mod.zip");
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public class FallbackDownloadManagerTests : IDisposable
     {
         // Arrange
         var targetPath = Path.Combine(_testDirectory, "curseforge-404-fast-fallback.zip");
-        var originalUrl = "REDACTED_URL";
+        var originalUrl = "https://edge.forgecdn.net/files/7396/228/example-mod.zip";
         var capturedUrls = new List<string>();
         var callCount = 0;
 
