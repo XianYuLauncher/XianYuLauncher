@@ -9,7 +9,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $ScriptDir
+$ProjectRoot = Split-Path $ScriptDir -Parent
+Set-Location $ProjectRoot
 
 $ProjectPath = "XianYuLauncher\XianYuLauncher.csproj"
 $CsprojPath = "XianYuLauncher\XianYuLauncher.csproj"
@@ -19,7 +20,7 @@ $LayoutDir = "AppPackages\XianYuLauncher_Layout"
 $CertPath = "XianYuLauncher\XianYuLauncher_Dev.pfx"
 
 # 1. Switch to Sideload (dev cert needs Publisher=CN=XianYuLauncher)
-& "$ScriptDir\XianYuLauncher\switch-publish-mode.ps1" -Mode Sideload | Out-Null
+& "$ProjectRoot\XianYuLauncher\switch-publish-mode.ps1" -Mode Sideload | Out-Null
 
 # 2. Create dev cert if not exists
 if (-not (Test-Path $CertPath)) {
@@ -68,6 +69,13 @@ try {
 
     Write-Host ""
     Write-Host "[3/4] Registering (VS-style loose file)..." -ForegroundColor Yellow
+    # 若应用在运行，先结束进程，否则 Remove-Item 会因文件被占用而失败
+    $running = Get-Process -Name "XianYuLauncher" -ErrorAction SilentlyContinue
+    if ($running) {
+        Write-Host "  Stopping running app..." -ForegroundColor Gray
+        $running | Stop-Process -Force
+        Start-Sleep -Seconds 2
+    }
     # Extract MSIX to layout folder (MSIX is ZIP-based)
     $layoutPath = Join-Path $PWD $LayoutDir
     if (Test-Path $layoutPath) { Remove-Item $layoutPath -Recurse -Force }
@@ -140,5 +148,5 @@ try {
     Write-Host "Done!" -ForegroundColor Cyan
 } finally {
     # Restore Store mode (for release builds)
-    & "$ScriptDir\XianYuLauncher\switch-publish-mode.ps1" -Mode Store | Out-Null
+    & "$ProjectRoot\XianYuLauncher\switch-publish-mode.ps1" -Mode Store | Out-Null
 }
