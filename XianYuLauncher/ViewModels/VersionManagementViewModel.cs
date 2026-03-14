@@ -1466,9 +1466,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         LocalGameDirMode = versionConfig.GameDirMode;
         LocalGameDirCustomPath = versionConfig.GameDirCustomPath ?? string.Empty;
         SelectedLocalGameDirMode = string.IsNullOrEmpty(LocalGameDirMode)
-            ? null
+            ? LocalGameDirModes[0]  // null 时默认显示"禁用"，而非空占位符
             : LocalGameDirModes.FirstOrDefault(m =>
-                string.Equals(m.Key, LocalGameDirMode, StringComparison.Ordinal));
+                string.Equals(m.Key, LocalGameDirMode, StringComparison.Ordinal)) ?? LocalGameDirModes[0];
 
         var uiSettings = new VersionSettings
         {

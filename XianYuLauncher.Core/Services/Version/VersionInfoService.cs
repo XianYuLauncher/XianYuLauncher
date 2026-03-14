@@ -524,15 +524,20 @@ public class VersionInfoService : IVersionInfoService
 
                     ModpackPlatform = config.ModpackPlatform ?? existingConfig?.ModpackPlatform,
                     ModpackProjectId = config.ModpackProjectId ?? existingConfig?.ModpackProjectId,
-                    ModpackVersionId = config.ModpackVersionId ?? existingConfig?.ModpackVersionId
+                    ModpackVersionId = config.ModpackVersionId ?? existingConfig?.ModpackVersionId,
+
+                    // 用户版本级设置 — 必须保留，否则写回时会覆盖为 null / 默认值
+                    OverrideMemory = config.OverrideMemory,
+                    OverrideResolution = config.OverrideResolution,
+                    CustomJvmArguments = config.CustomJvmArguments ?? existingConfig?.CustomJvmArguments,
+                    GameDirMode = config.GameDirMode ?? existingConfig?.GameDirMode,
+                    GameDirCustomPath = config.GameDirCustomPath ?? existingConfig?.GameDirCustomPath,
                 };
 
                 _logger.LogInformation($"[VersionInfoService]   >> 最终写入文件的内存设置: Initial={standardConfig.InitialHeapMemory}GB, Max={standardConfig.MaximumHeapMemory}GB");
                 
-                // 序列化配置为JSON格式
-                
-                // 序列化配置为JSON格式
-                string jsonContent = JsonConvert.SerializeObject(standardConfig, Formatting.Indented);
+                // 统一使用 System.Text.Json（避免与 VersionSettingsOrchestrator 混用导致 double 格式不一致）
+                string jsonContent = System.Text.Json.JsonSerializer.Serialize(standardConfig, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 
                 // 写入文件
                 await File.WriteAllTextAsync(configPath, jsonContent);
