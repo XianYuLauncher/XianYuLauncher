@@ -82,7 +82,7 @@ jobs:
             if [ -f "$file" ]; then
               echo "----------------------------------------"
               echo "Processing $file ..."
-              python3 .github/scripts/upload_123pan.py \
+              python3 scripts/upload_123pan.py \
                 --file "$file" \
                 --client_id "$PAN123_CLIENT_ID" \
                 --client_secret "$PAN123_CLIENT_SECRET" \
