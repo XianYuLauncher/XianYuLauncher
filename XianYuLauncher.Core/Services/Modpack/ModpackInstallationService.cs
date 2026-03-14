@@ -15,6 +15,15 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class ModpackInstallationService : IModpackInstallationService
 {
+    private const string JavaPathKey = "JavaPath";
+    private const string GlobalAutoMemoryKey = "GlobalAutoMemoryAllocation";
+    private const string GlobalInitialHeapKey = "GlobalInitialHeapMemory";
+    private const string GlobalMaxHeapKey = "GlobalMaximumHeapMemory";
+    private const string GlobalCustomJvmArgumentsKey = "GlobalCustomJvmArguments";
+    private const string GlobalGarbageCollectorModeKey = "GlobalGarbageCollectorMode";
+    private const string GlobalWindowWidthKey = "GlobalWindowWidth";
+    private const string GlobalWindowHeightKey = "GlobalWindowHeight";
+
     private readonly IDownloadManager _downloadManager;
     private readonly FallbackDownloadManager _fallbackDownloadManager;
     private readonly IMinecraftVersionService _minecraftVersionService;
@@ -271,7 +280,13 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
-        await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(
+            targetVersionId,
+            minecraftPath,
+            "modrinth",
+            normalizedProjectId,
+            modpackManifestVersionId,
+            initializeLocalOverrides: false);
 
         Report(progress, 100, "100%", "整合包更新完成！");
         return ModpackInstallResult.Succeeded(modpackDisplayName, targetVersionId);
@@ -334,7 +349,13 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
-        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(
+            modpackVersionId,
+            minecraftPath,
+            "modrinth",
+            normalizedProjectId,
+            modpackManifestVersionId,
+            initializeLocalOverrides: true);
 
         Report(progress, 100, "100%", "整合包安装完成！");
         return ModpackInstallResult.Succeeded(modpackDisplayName, modpackVersionId);
@@ -489,7 +510,13 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
-        await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(
+            targetVersionId,
+            minecraftPath,
+            "curseforge",
+            normalizedProjectId,
+            modpackManifestVersionId,
+            initializeLocalOverrides: false);
 
         Report(progress, 100, "100%", "整合包更新完成！");
         return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, targetVersionId);
@@ -557,7 +584,13 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
-        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(
+            modpackVersionId,
+            minecraftPath,
+            "curseforge",
+            normalizedProjectId,
+            modpackManifestVersionId,
+            initializeLocalOverrides: true);
 
         Report(progress, 100, "100%", "整合包安装完成！");
         return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, modpackVersionId);
@@ -568,14 +601,42 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftPath,
         string platform,
         string? projectId,
-        string? versionId)
+        string? versionId,
+        bool initializeLocalOverrides)
     {
         var config = await _versionInfoManager.GetVersionConfigAsync(installedVersionId, minecraftPath) ?? new VersionConfig();
         config.ModpackPlatform = string.IsNullOrWhiteSpace(platform) ? null : platform.Trim().ToLowerInvariant();
         config.ModpackProjectId = NormalizeExternalProjectId(platform, projectId);
         config.ModpackVersionId = NormalizeModpackVersionId(versionId);
 
+        // 新安装整合包时：按当前全局设置初始化版本级局部设置，并强制版本隔离。
+        // 仅做一次性初始化，不在后续全局变更时自动追随。
+        if (initializeLocalOverrides)
+        {
+            await ApplyGlobalSettingsToLocalOverridesAsync(config);
+            config.GameDirMode = "VersionIsolation";
+            config.GameDirCustomPath = null;
+        }
+
         await _versionInfoManager.SaveVersionConfigAsync(installedVersionId, minecraftPath, config);
+    }
+
+    private async Task ApplyGlobalSettingsToLocalOverridesAsync(VersionConfig config)
+    {
+        config.OverrideMemory = true;
+        config.OverrideResolution = true;
+        config.UseGlobalJavaSetting = false;
+
+        config.AutoMemoryAllocation = await _localSettingsService.ReadSettingAsync<bool?>(GlobalAutoMemoryKey) ?? true;
+        config.InitialHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalInitialHeapKey) ?? 6.0;
+        config.MaximumHeapMemory = await _localSettingsService.ReadSettingAsync<double?>(GlobalMaxHeapKey) ?? 12.0;
+        config.CustomJvmArguments = await _localSettingsService.ReadSettingAsync<string>(GlobalCustomJvmArgumentsKey) ?? string.Empty;
+        config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(
+            await _localSettingsService.ReadSettingAsync<string>(GlobalGarbageCollectorModeKey));
+
+        config.WindowWidth = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowWidthKey) ?? 1280;
+        config.WindowHeight = await _localSettingsService.ReadSettingAsync<int?>(GlobalWindowHeightKey) ?? 720;
+        config.JavaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey) ?? string.Empty;
     }
 
     private static string? NormalizeModpackVersionId(string? rawVersionId)
