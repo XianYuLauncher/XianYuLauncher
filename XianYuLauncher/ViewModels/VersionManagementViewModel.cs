@@ -595,6 +595,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// 标记是否正在应用 VersionConfig → ViewModel 映射（抑制触发副作用）。
     /// </summary>
     private bool _isApplyingConfig;
+    private bool _isSwitchingUseGlobalSettings;
     
     public bool IsDownloading
     {
@@ -1096,19 +1097,28 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private const string SettingsFileName = MinecraftFileConsts.VersionConfig;
     
     // 属性变化时自动保存设置
-    partial void OnUseGlobalSettingsChanged(bool value)
+    async partial void OnUseGlobalSettingsChanged(bool value)
     {
-        if (_isApplyingConfig)
+        if (_isApplyingConfig || _isSwitchingUseGlobalSettings)
         {
             return;
         }
 
-        // 统一控制全局/自定义模式
-        OverrideMemory = !value;
-        UseGlobalJavaSetting = value;
-        OverrideResolution = !value;
-        SaveSettingsAsync().ConfigureAwait(false);
-        _ = RefreshCurrentGameDirThenLoadAsync();
+        _isSwitchingUseGlobalSettings = true;
+        try
+        {
+            // 统一控制全局/自定义模式
+            OverrideMemory = !value;
+            UseGlobalJavaSetting = value;
+            OverrideResolution = !value;
+        }
+        finally
+        {
+            _isSwitchingUseGlobalSettings = false;
+        }
+
+        await SaveSettingsAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
     }
     
     partial void OnAutoMemoryAllocationChanged(bool value)
@@ -1118,6 +1128,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnOverrideMemoryChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
@@ -1150,6 +1165,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnOverrideResolutionChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
@@ -1165,6 +1185,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     partial void OnUseGlobalJavaSettingChanged(bool value)
     {
+        if (_isSwitchingUseGlobalSettings)
+        {
+            return;
+        }
+
         SaveSettingsAsync().ConfigureAwait(false);
     }
     
