@@ -538,59 +538,7 @@ namespace XianYuLauncher.Views
                 }
                 
                 Debug.WriteLine($"[角色Page] 成功加载皮肤图片，大小: {canvasBitmap.Size.Width}x{canvasBitmap.Size.Height}");
-                
-                // 3. 创建CanvasRenderTarget用于裁剪，使用更高的分辨率（48x48）以便清晰显示像素
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    48, // 显示宽度
-                    48, // 显示高度
-                    96 // DPI
-                );
-                
-                // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                        new Windows.Foundation.Rect(8, 8, 8, 8)); // 源位置和大小
-                }
-                
-                // 5. 如果提供了UUID，保存头像到缓存
-                if (!string.IsNullOrEmpty(uuid))
-                {
-                    try
-                    {
-                        Debug.WriteLine($"[角色Page] 保存头像到缓存，UUID: {uuid}");
-                        var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-                        var avatarFile = await cacheFolder.CreateFileAsync($"{uuid}.png", CreationCollisionOption.ReplaceExisting);
-                        
-                        using (var fileStream = await avatarFile.OpenAsync(FileAccessMode.ReadWrite))
-                        {
-                            await renderTarget.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
-                        }
-                        Debug.WriteLine($"[角色Page] 成功保存头像到缓存");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[角色Page] 保存头像到缓存失败: {ex.Message}");
-                        // 保存缓存失败，不影响主流程
-                    }
-                }
-                
-                // 6. 转换为BitmapImage
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    Debug.WriteLine($"[角色Page] 成功创建裁剪后的头像BitmapImage");
-                    return bitmapImage;
-                }
+                return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 48, includeOverlay: false, uuid);
             }
             catch (Exception ex)
             {

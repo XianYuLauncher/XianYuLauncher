@@ -688,55 +688,7 @@ public sealed partial class LaunchPage : Page
                 }
             }
 
-            // 3. 生成 48x48，避免在 32x32 UI 上发生上采样模糊。
-            var renderTarget = new CanvasRenderTarget(
-                device,
-                48, // 显示宽度
-                48, // 显示高度
-                96 // DPI
-            );
-
-            // 4. 执行裁剪和放大，使用最近邻插值保持像素锐利
-            using (var ds = renderTarget.CreateDrawingSession())
-            {
-                // 从源图片的(8,8)位置裁剪8x8区域，并放大到48x48
-                // 在Win2D 1.0.4中，插值模式作为DrawImage方法的参数传递
-                PixelArtRenderHelper.DrawNearestNeighbor(
-                    ds,
-                    canvasBitmap,
-                    new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小（放大6倍）
-                    new Windows.Foundation.Rect(8, 8, 8, 8)); // 源位置和大小
-            }
-
-            // 5. 如果提供了UUID，保存头像到缓存
-            if (!string.IsNullOrEmpty(uuid))
-            {
-                try
-                {
-                    var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-                    var avatarFile = await cacheFolder.CreateFileAsync($"{uuid}.png", CreationCollisionOption.ReplaceExisting);
-                    
-                    using (var fileStream = await avatarFile.OpenAsync(FileAccessMode.ReadWrite))
-                    {
-                        await renderTarget.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
-                    }
-                }
-                catch (Exception)
-                {
-                    // 保存缓存失败，不影响主流程
-                }
-            }
-
-            // 6. 转换为BitmapImage
-            using (var outputStream = new InMemoryRandomAccessStream())
-            {
-                await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                outputStream.Seek(0);
-                
-                var bitmapImage = new BitmapImage();
-                await bitmapImage.SetSourceAsync(outputStream);
-                return bitmapImage;
-            }
+            return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 48, includeOverlay: false, uuid);
         }
         catch (Exception)
         {

@@ -104,35 +104,7 @@ namespace XianYuLauncher.ViewModels
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
                 }
 
-                // 创建 RenderTarget (32x32 显示)
-                var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
-
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    // 头部区域通常是 (8, 8, 8, 8)
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 32, 32), // 目标：放大到32x32
-                        new Windows.Foundation.Rect(8, 8, 8, 8)); // 源：头部区域
-                    
-                    // 绘制头部外层 (Hat) - 如果有
-                    // 外层通常在 (40, 8, 8, 8)
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 32, 32),
-                        new Windows.Foundation.Rect(40, 8, 8, 8));
-                }
-
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
-                    await bitmap.SetSourceAsync(outputStream);
-                    return bitmap;
-                }
+                return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 32, includeOverlay: true);
             }
             catch (Exception ex)
             {

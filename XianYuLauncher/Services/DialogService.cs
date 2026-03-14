@@ -748,35 +748,7 @@ public class DialogService : IDialogService
             {
                 var originalBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 
-                var renderTarget = new CanvasRenderTarget(device, 32, 32, 96); // 弹窗使用32x32即可
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    PixelArtRenderHelper.SetAliased(ds);
-                    
-                    // 绘制头部 (Source: 8,8, 8,8) -> Target: 0,0, 32,32 (放大4倍)
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        originalBitmap,
-                        new Windows.Foundation.Rect(0, 0, 32, 32),
-                        new Windows.Foundation.Rect(8, 8, 8, 8));
-                                 
-                    // 绘制第二层头部 (Source: 40,8, 8,8) if exists
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        originalBitmap,
-                        new Windows.Foundation.Rect(0, 0, 32, 32),
-                        new Windows.Foundation.Rect(40, 8, 8, 8));
-                }
-
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    return bitmapImage;
-                }
+                return await SkinAvatarHelper.CropHeadFromSkinAsync(originalBitmap, outputSize: 32, includeOverlay: true);
             }
         }
         catch (Exception) // 移除了未使用的 ex

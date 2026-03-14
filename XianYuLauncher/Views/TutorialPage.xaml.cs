@@ -385,27 +385,7 @@ namespace XianYuLauncher.Views
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 }
 
-                var renderTarget = new CanvasRenderTarget(device, 48, 48, 96);
-
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    PixelArtRenderHelper.SetAliased(ds);
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48),
-                        new Windows.Foundation.Rect(8, 8, 8, 8));
-                }
-
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    return bitmapImage;
-                }
+                return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 48, includeOverlay: false);
             }
             catch
             {
