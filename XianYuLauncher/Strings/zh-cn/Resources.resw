@@ -2656,10 +2656,10 @@
     <value>手动指定 Java 可执行文件路径</value>
   </data>
   <data name="Settings_VersionIsolation.Header" xml:space="preserve">
-    <value>启用版本隔离</value>
+    <value>全局版本隔离</value>
   </data>
   <data name="Settings_VersionIsolation.Description" xml:space="preserve">
-    <value>开启后，每个Minecraft版本将使用独立的游戏目录</value>
+    <value>选择游戏目录的隔离模式</value>
   </data>
   <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
     <value>启动游戏实时日志</value>
@@ -3287,5 +3287,50 @@
   </data>
   <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
     <value>整合包自动更新即将上线，已选择目标版本：{0}</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryCard.Header" xml:space="preserve">
+    <value>自定义游戏目录</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryCard.Description" xml:space="preserve">
+    <value>仅在选择“自定义路径”时生效</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryPathBox.PlaceholderText" xml:space="preserve">
+    <value>请选择自定义游戏目录</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryBrowseButton.Content" xml:space="preserve">
+    <value>浏览...</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryClearButton.Content" xml:space="preserve">
+    <value>清除</value>
+  </data>
+  <data name="Settings_GameDirMode_Default" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="Settings_GameDirMode_VersionIsolation" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="Settings_GameDirMode_Custom" xml:space="preserve">
+    <value>自定义路径</value>
+  </data>
+  <data name="VersionSettings_LocalVersionIsolation.Header" xml:space="preserve">
+    <value>版本隔离</value>
+  </data>
+  <data name="VersionSettings_LocalVersionIsolation.Description" xml:space="preserve">
+    <value>选择游戏目录的隔离模式与自定义路径</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryCard.Header" xml:space="preserve">
+    <value>自定义游戏目录</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryCard.Description" xml:space="preserve">
+    <value>仅在选择“自定义路径”时生效</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryPathBox.PlaceholderText" xml:space="preserve">
+    <value>选择自定义目录路径</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryBrowseButton.Content" xml:space="preserve">
+    <value>浏览...</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryClearButton.Content" xml:space="preserve">
+    <value>清除</value>
   </data>
 </root>

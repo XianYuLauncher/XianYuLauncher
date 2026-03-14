@@ -47,6 +47,23 @@ public static class ModResourcePathHelper
         return Path.Combine(baseDir, targetFolder);
     }
 
+    /// <summary>
+    /// 基于已解析的 gameDir 获取依赖目标目录（推荐）。
+    /// </summary>
+    public static string GetDependencyTargetDir(string gameDir, string projectType)
+    {
+        string targetFolder = NormalizeProjectType(projectType) switch
+        {
+            "resourcepack" => MinecraftPathConsts.ResourcePacks,
+            "shader" => MinecraftPathConsts.ShaderPacks,
+            "datapack" => MinecraftPathConsts.Datapacks,
+            "world" => MinecraftPathConsts.Mods,
+            _ => MinecraftPathConsts.Mods
+        };
+
+        return Path.Combine(gameDir, targetFolder);
+    }
+
     public static string GetUniqueDirectoryPath(string parentDir, string baseName)
     {
         string targetPath = Path.Combine(parentDir, baseName);

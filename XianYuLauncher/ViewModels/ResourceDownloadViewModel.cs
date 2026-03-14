@@ -34,6 +34,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IDialogService _dialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly IGameDirResolver _gameDirResolver;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -1052,7 +1053,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return await DownloadWorldFavoriteAsync(project, gameVersion);
         }
 
-        string targetDir = GetTargetDirectory(projectType, gameVersion);
+        string targetDir = await GetTargetDirectoryAsync(projectType, gameVersion);
         _fileService.CreateDirectory(targetDir);
 
         if (IsCurseForgeProject(project.ProjectId))
@@ -1225,14 +1226,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         try
         {
-            string minecraftPath = _fileService.GetMinecraftDataPath();
-            string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, gameVersion.OriginalVersionName);
-            string savesDir = Path.Combine(versionDir, MinecraftPathConsts.Saves);
+            string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
+            string savesDir = Path.Combine(gameDir, MinecraftPathConsts.Saves);
             _fileService.CreateDirectory(savesDir);
 
             string fileName;
             string downloadUrl;
-            string dependencyDir = GetTargetDirectory("world", gameVersion);
+            string dependencyDir = await GetTargetDirectoryAsync("world", gameVersion);
             _fileService.CreateDirectory(dependencyDir);
 
             if (IsCurseForgeProject(project.ProjectId))
@@ -1461,10 +1461,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
     }
 
-    private string GetTargetDirectory(string projectType, InstalledGameVersionViewModel gameVersion)
+    private async Task<string> GetTargetDirectoryAsync(string projectType, InstalledGameVersionViewModel gameVersion)
     {
-        string minecraftPath = _fileService.GetMinecraftDataPath();
-        string versionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, gameVersion.OriginalVersionName);
+        string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
 
         string targetFolder = projectType switch
         {
@@ -1474,7 +1473,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             _ => MinecraftPathConsts.Mods
         };
 
-        return Path.Combine(versionDir, targetFolder);
+        return Path.Combine(gameDir, targetFolder);
     }
 
     private async Task<string> ResolveModrinthDependencyTargetDirAsync(string projectId, InstalledGameVersionViewModel gameVersion)
@@ -1483,18 +1482,18 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             var detail = await _modrinthService.GetProjectDetailAsync(projectId);
             string projectType = NormalizeProjectType(detail?.ProjectType);
-            return GetTargetDirectory(projectType, gameVersion);
+            return await GetTargetDirectoryAsync(projectType, gameVersion);
         }
         catch
         {
-            return GetTargetDirectory("mod", gameVersion);
+            return await GetTargetDirectoryAsync("mod", gameVersion);
         }
     }
 
-    private Task<string> ResolveCurseForgeDependencyTargetDirAsync(CurseForgeModDetail modDetail, InstalledGameVersionViewModel gameVersion)
+    private async Task<string> ResolveCurseForgeDependencyTargetDirAsync(CurseForgeModDetail modDetail, InstalledGameVersionViewModel gameVersion)
     {
         string projectType = MapCurseForgeClassIdToProjectType(modDetail?.ClassId);
-        return Task.FromResult(GetTargetDirectory(projectType, gameVersion));
+        return await GetTargetDirectoryAsync(projectType, gameVersion);
     }
 
     private static string? GetFavoritesProgressKey(ModrinthProject project)
@@ -1707,7 +1706,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         ITranslationService translationService,
         IDialogService dialogService,
         IDownloadTaskManager downloadTaskManager,
-        IUiDispatcher uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        IGameDirResolver gameDirResolver)
     {
         _minecraftVersionService = minecraftVersionService;
         _navigationService = navigationService;
@@ -1723,6 +1723,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _dialogService = dialogService;
         _downloadTaskManager = downloadTaskManager;
         _uiDispatcher = uiDispatcher;
+        _gameDirResolver = gameDirResolver;
 
         // Load saved favorites
         foreach (var item in _favoritesService.Load())

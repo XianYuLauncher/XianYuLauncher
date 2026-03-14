@@ -32,6 +32,7 @@ public sealed class OverviewDataService : IOverviewDataService
 
     public async Task<List<SaveInfo>> LoadSavesAsync(
         VersionListViewModel.VersionInfoItem? selectedVersion,
+        string? gameDir = null,
         CancellationToken cancellationToken = default)
     {
         if (selectedVersion == null || cancellationToken.IsCancellationRequested)
@@ -39,7 +40,8 @@ public sealed class OverviewDataService : IOverviewDataService
             return new List<SaveInfo>();
         }
 
-        var savesPath = Path.Combine(selectedVersion.Path, MinecraftPathConsts.Saves);
+        var basePath = !string.IsNullOrEmpty(gameDir) ? gameDir : selectedVersion.Path;
+        var savesPath = Path.Combine(basePath, MinecraftPathConsts.Saves);
         if (!Directory.Exists(savesPath))
         {
             return new List<SaveInfo>();

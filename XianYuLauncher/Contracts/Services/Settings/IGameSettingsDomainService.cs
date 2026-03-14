@@ -33,6 +33,14 @@ public interface IGameSettingsDomainService
 
 	Task SaveEnableVersionIsolationAsync(bool value);
 
+	Task<string?> LoadGameIsolationModeAsync();
+
+	Task SaveGameIsolationModeAsync(string value);
+
+	Task<string?> LoadCustomGameDirectoryAsync();
+
+	Task SaveCustomGameDirectoryAsync(string value);
+
 	Task<string?> LoadJavaSelectionModeAsync();
 
 	Task SaveJavaSelectionModeAsync(string value);

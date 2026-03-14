@@ -211,6 +211,12 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["ModpackVersionId"] != null)
                     config.ModpackVersionId = jObject["ModpackVersionId"]?.ToString();
 
+                if (jObject["GameDirMode"] != null)
+                    config.GameDirMode = jObject["GameDirMode"]?.ToString();
+
+                if (jObject["GameDirCustomPath"] != null)
+                    config.GameDirCustomPath = jObject["GameDirCustomPath"]?.ToString();
+
                 config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(config.GarbageCollectorMode);
 
                 var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(config.Icon);
