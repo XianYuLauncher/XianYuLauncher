@@ -170,6 +170,10 @@ public class VersionInfoService : IVersionInfoService
             result.ModpackPlatform = legacyConfig.ModpackPlatform;
             result.ModpackProjectId = legacyConfig.ModpackProjectId;
             result.ModpackVersionId = legacyConfig.ModpackVersionId;
+
+            // 保留版本级 GameDir 设置，避免深度扫描写回时覆盖用户配置
+            result.GameDirMode = legacyConfig.GameDirMode;
+            result.GameDirCustomPath = legacyConfig.GameDirCustomPath;
         }
         else
         {

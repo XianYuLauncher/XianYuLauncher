@@ -2,6 +2,7 @@ using FluentAssertions;
 using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Tests.Services;
@@ -13,6 +14,7 @@ public class GameDirResolverTests
 
     private readonly Mock<IFileService> _fileServiceMock;
     private readonly Mock<ILocalSettingsService> _settingsMock;
+    private readonly Mock<IVersionConfigService> _versionConfigMock;
 
     public GameDirResolverTests()
     {
@@ -20,9 +22,16 @@ public class GameDirResolverTests
         _fileServiceMock.Setup(f => f.GetMinecraftDataPath()).Returns(MinecraftPath);
 
         _settingsMock = new Mock<ILocalSettingsService>();
+
+        _versionConfigMock = new Mock<IVersionConfigService>();
+        // 默认返回无版本级覆盖的空配置（走全局）
+        _versionConfigMock
+            .Setup(v => v.LoadConfigAsync(It.IsAny<string>()))
+            .ReturnsAsync(new VersionConfig());
     }
 
-    private GameDirResolver CreateResolver() => new(_fileServiceMock.Object, _settingsMock.Object);
+    private GameDirResolver CreateResolver() =>
+        new(_fileServiceMock.Object, _settingsMock.Object, _versionConfigMock.Object);
 
     // ── 全局模式：Default ───────────────────────────────────
 
@@ -167,5 +176,77 @@ public class GameDirResolverTests
         var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
 
         result.Should().Be(Path.Combine(MinecraftPath, "versions", VersionName));
+    }
+
+    // ── 版本级覆盖：Default ─────────────────────────────────
+
+    [Fact]
+    public async Task VersionOverride_Default_ReturnsMinecraftPath()
+    {
+        // 全局设为版本隔离
+        _settingsMock.Setup(s => s.ReadSettingAsync<string>("GameIsolationMode")).ReturnsAsync("VersionIsolation");
+        // 版本级覆盖为"禁用"
+        _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Default" });
+
+        var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
+
+        result.Should().Be(MinecraftPath);
+    }
+
+    // ── 版本级覆盖：VersionIsolation ────────────────────────
+
+    [Fact]
+    public async Task VersionOverride_VersionIsolation_ReturnsVersionsSubDir()
+    {
+        // 全局设为禁用
+        _settingsMock.Setup(s => s.ReadSettingAsync<string>("GameIsolationMode")).ReturnsAsync("Default");
+        // 版本级覆盖为版本隔离
+        _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
+            .ReturnsAsync(new VersionConfig { GameDirMode = "VersionIsolation" });
+
+        var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
+
+        result.Should().Be(Path.Combine(MinecraftPath, "versions", VersionName));
+    }
+
+    // ── 版本级覆盖：Custom（路径合法）───────────────────────
+
+    [Fact]
+    public async Task VersionOverride_Custom_WithValidPath_ReturnsCustomPath()
+    {
+        _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = @"E:\GameData" });
+
+        var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
+
+        result.Should().Be(@"E:\GameData");
+    }
+
+    // ── 版本级覆盖：Custom（路径非法 → 降级版本隔离）───────
+
+    [Fact]
+    public async Task VersionOverride_Custom_WithInvalidPath_FallsBackToVersionIsolation()
+    {
+        _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
+            .ReturnsAsync(new VersionConfig { GameDirMode = "Custom", GameDirCustomPath = "" });
+
+        var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
+
+        result.Should().Be(Path.Combine(MinecraftPath, "versions", VersionName));
+    }
+
+    // ── 版本级未设置（null）→ 走全局 ───────────────────────
+
+    [Fact]
+    public async Task VersionOverride_Null_FallsThroughToGlobal()
+    {
+        _settingsMock.Setup(s => s.ReadSettingAsync<string>("GameIsolationMode")).ReturnsAsync("Default");
+        _versionConfigMock.Setup(v => v.LoadConfigAsync(VersionName))
+            .ReturnsAsync(new VersionConfig { GameDirMode = null });
+
+        var result = await CreateResolver().GetGameDirForVersionAsync(VersionName);
+
+        result.Should().Be(MinecraftPath);
     }
 }

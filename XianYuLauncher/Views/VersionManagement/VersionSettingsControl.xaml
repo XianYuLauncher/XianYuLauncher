@@ -9,6 +9,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:viewModels="using:XianYuLauncher.ViewModels"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -191,7 +192,7 @@
                         </DropDownButton.Flyout>
                     </DropDownButton>
                 </controls:SettingsCard>
-                
+
                 <!-- 全局设置模式切换 -->
                 <controls:SettingsCard x:Uid="Settings_UseGlobalSettings" Header="使用全局设置" Description="启用后，此版本将使用全局设置中的配置">
                     <controls:SettingsCard.HeaderIcon>
@@ -199,6 +200,40 @@
                     </controls:SettingsCard.HeaderIcon>
                     <ToggleSwitch IsOn="{Binding UseGlobalSettings, Mode=TwoWay}" />
                 </controls:SettingsCard>
+
+                <!-- 版本级版本隔离 -->
+                <controls:SettingsExpander x:Uid="Settings_VersionIsolation" Header="版本隔离" Description="选择游戏目录的隔离模式与自定义路径"
+                                           IsEnabled="{Binding UseGlobalSettings, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
+                    <controls:SettingsExpander.HeaderIcon>
+                        <FontIcon Glyph="&#xE838;" />
+                    </controls:SettingsExpander.HeaderIcon>
+                    <controls:SettingsExpander.Content>
+                        <ComboBox ItemsSource="{Binding LocalGameDirModes}"
+                                  SelectedItem="{Binding SelectedLocalGameDirMode, Mode=TwoWay}"
+                                  MinWidth="180"
+                                  PlaceholderText="跟随全局设置">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                    <TextBlock Text="{x:Bind DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </controls:SettingsExpander.Content>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard Header="自定义游戏目录"
+                                               Description="指定此版本使用的游戏内容目录"
+                                               Visibility="{Binding IsLocalCustomGameDirMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{Binding LocalGameDirCustomPath, Mode=TwoWay}"
+                                         IsReadOnly="True"
+                                         MinWidth="280"
+                                         PlaceholderText="选择自定义目录路径" />
+                                <Button Content="浏览..." Command="{Binding BrowseLocalGameDirCommand}" />
+                                <Button Content="清除" Command="{Binding ClearLocalGameDirCommand}" />
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
                 
                 <!-- 内存设置 -->
                 <controls:SettingsExpander x:Uid="Settings_MemoryAllocation" Header="内存分配" Description="设置游戏运行时的内存配置"

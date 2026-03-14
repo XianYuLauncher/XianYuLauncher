@@ -74,6 +74,41 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [ObservableProperty]
     private string _currentGameDir = string.Empty;
 
+    /// <summary>
+    /// 版本级 GameDir 模式。null = 跟随全局设置。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLocalCustomGameDirMode))]
+    private string? _localGameDirMode;
+
+    /// <summary>
+    /// 版本级自定义游戏内容目录路径。
+    /// </summary>
+    [ObservableProperty]
+    private string _localGameDirCustomPath = string.Empty;
+
+    /// <summary>
+    /// 当前选中的版本级 GameDir 模式选项（ComboBox 绑定用）。
+    /// </summary>
+    [ObservableProperty]
+    private GameIsolationModeOption? _selectedLocalGameDirMode;
+
+    /// <summary>
+    /// 是否为版本级自定义路径模式。
+    /// </summary>
+    public bool IsLocalCustomGameDirMode =>
+        string.Equals(LocalGameDirMode, "Custom", StringComparison.Ordinal);
+
+    /// <summary>
+    /// 版本级 GameDir 模式选项列表（含"跟随全局"）。
+    /// </summary>
+    public IReadOnlyList<GameIsolationModeOption> LocalGameDirModes { get; } =
+    [
+        new() { Key = "Default", DisplayName = "禁用" },
+        new() { Key = "VersionIsolation", DisplayName = "启用" },
+        new() { Key = "Custom", DisplayName = "自定义路径" },
+    ];
+
     public ResourceTransferStateViewModel ResourceTransferState { get; }
 
     /// <summary>
@@ -555,6 +590,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     /// </summary>
     [ObservableProperty]
     private bool _isLoading = false;
+
+    /// <summary>
+    /// 标记是否正在应用 VersionConfig → ViewModel 映射（抑制触发副作用）。
+    /// </summary>
+    private bool _isApplyingConfig;
     
     public bool IsDownloading
     {
@@ -1366,6 +1406,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     private void ApplyVersionConfigToViewModel(Core.Models.VersionConfig versionConfig, bool includeCustomJvmArguments)
     {
+        _isApplyingConfig = true;
+        try
+        {
         IsCurrentVersionModpack = IsModpackVersion(versionConfig);
         _currentModpackPlatform = versionConfig.ModpackPlatform;
         _currentModpackProjectId = versionConfig.ModpackProjectId;
@@ -1419,6 +1462,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         TotalPlayTimeSeconds = versionConfig.TotalPlayTimeSeconds;
         LastLaunchTime = versionConfig.LastLaunchTime;
 
+        // 版本级 GameDir 设置
+        LocalGameDirMode = versionConfig.GameDirMode;
+        LocalGameDirCustomPath = versionConfig.GameDirCustomPath ?? string.Empty;
+        SelectedLocalGameDirMode = string.IsNullOrEmpty(LocalGameDirMode)
+            ? null
+            : LocalGameDirModes.FirstOrDefault(m =>
+                string.Equals(m.Key, LocalGameDirMode, StringComparison.Ordinal));
+
         var uiSettings = new VersionSettings
         {
             MinecraftVersion = versionConfig.MinecraftVersion,
@@ -1429,6 +1480,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         };
 
         UpdateCurrentLoaderInfo(uiSettings);
+        }
+        finally
+        {
+            _isApplyingConfig = false;
+        }
     }
 
     private void ResetModpackUpdateState()
@@ -2314,7 +2370,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 OverrideResolution = OverrideResolution,
                 WindowWidth = WindowWidth,
                 WindowHeight = WindowHeight,
-                UseGlobalJavaSetting = UseGlobalJavaSetting
+                UseGlobalJavaSetting = UseGlobalJavaSetting,
+                GameDirMode = string.IsNullOrEmpty(LocalGameDirMode) ? null : LocalGameDirMode,
+                GameDirCustomPath = string.IsNullOrWhiteSpace(LocalGameDirCustomPath) ? null : LocalGameDirCustomPath
             };
 
             await _versionSettingsOrchestrator.SaveVersionSettingsAsync(SelectedVersion, settingsToSave);
@@ -2342,10 +2400,70 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             await LoadVersionDataAsync();
         }
 
+    partial void OnSelectedLocalGameDirModeChanged(GameIsolationModeOption? value)
+    {
+        LocalGameDirMode = string.IsNullOrEmpty(value?.Key) ? null : value.Key;
+    }
+
+    async partial void OnLocalGameDirModeChanged(string? value)
+    {
+        if (_isApplyingConfig || SelectedVersion == null)
+        {
+            return;
+        }
+
+        await SaveSettingsAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
+    }
+
+    async partial void OnLocalGameDirCustomPathChanged(string value)
+    {
+        if (_isApplyingConfig || SelectedVersion == null || !IsLocalCustomGameDirMode)
+        {
+            return;
+        }
+
+        await SaveSettingsAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
+    }
+
+    [RelayCommand]
+    private async Task BrowseLocalGameDirAsync()
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FolderPicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
+            picker.FileTypeFilter.Add("*");
+
+            var window = App.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder != null)
+            {
+                LocalGameDirCustomPath = folder.Path;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"浏览自定义目录失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearLocalGameDirAsync()
+    {
+        LocalGameDirCustomPath = string.Empty;
+        await SaveSettingsAsync();
+        await RefreshCurrentGameDirThenLoadAsync();
+    }
+
     /// <summary>
-        /// 加载版本数据
-        /// </summary>
-        private async Task LoadVersionDataAsync()
+    /// 加载版本数据
+    /// </summary>
+    private async Task LoadVersionDataAsync()
         {
             if (SelectedVersion == null)
             {
