@@ -10,7 +10,7 @@ public class ModDownloadPlanningHelperTests
     public void ShouldForceDirectDownload_ShouldReturnTrue_ForEdgeForgeCdnUrl()
     {
         bool shouldForceDirect = ModDownloadPlanningHelper.ShouldForceDirectDownload(
-            "REDACTED_URL");
+            "https://edge.forgecdn.net/files/1234/example.jar");
 
         shouldForceDirect.Should().BeTrue();
     }
