@@ -2641,10 +2641,10 @@ Continue downloading?</value>
     <value>Manually specify Java executable path</value>
   </data>
   <data name="Settings_VersionIsolation.Header" xml:space="preserve">
-    <value>Game Directory Isolation</value>
+    <value>Global Game Directory Isolation</value>
   </data>
   <data name="Settings_VersionIsolation.Description" xml:space="preserve">
-    <value>Select the isolation mode and custom game directory path</value>
+    <value>Specify the game content directory to use</value>
   </data>
   <data name="Settings_RealTimeLogs.Header" xml:space="preserve">
     <value>Real-time Game Logs</value>
@@ -3272,5 +3272,41 @@ Continue downloading?</value>
   </data>
   <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
     <value>Automatic modpack update is coming soon. Selected target version: {0}</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryCard.Header" xml:space="preserve">
+    <value>Custom Game Directory</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryCard.Description" xml:space="preserve">
+    <value>Only effective when "Custom Path" is selected</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryPathBox.PlaceholderText" xml:space="preserve">
+    <value>Select a custom game directory</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryBrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="Settings_GlobalCustomGameDirectoryClearButton.Content" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="VersionSettings_LocalVersionIsolation.Header" xml:space="preserve">
+    <value>Game Directory Isolation</value>
+  </data>
+  <data name="VersionSettings_LocalVersionIsolation.Description" xml:space="preserve">
+    <value>Select the isolation mode and custom game directory path</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryCard.Header" xml:space="preserve">
+    <value>Custom Game Directory</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryCard.Description" xml:space="preserve">
+    <value>Only effective when "Custom Path" is selected</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryPathBox.PlaceholderText" xml:space="preserve">
+    <value>Select a custom directory path</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryBrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="VersionSettings_LocalCustomGameDirectoryClearButton.Content" xml:space="preserve">
+    <value>Clear</value>
   </data>
 </root>
