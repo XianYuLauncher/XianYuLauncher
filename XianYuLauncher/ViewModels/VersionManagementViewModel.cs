@@ -100,13 +100,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         string.Equals(LocalGameDirMode, "Custom", StringComparison.Ordinal);
 
     /// <summary>
-    /// 版本级 GameDir 模式选项列表（含"跟随全局"）。
+    /// 版本级 GameDir 模式选项列表。
     /// </summary>
     public IReadOnlyList<GameIsolationModeOption> LocalGameDirModes { get; } =
     [
-        new() { Key = "Default", DisplayName = "禁用" },
-        new() { Key = "VersionIsolation", DisplayName = "启用" },
-        new() { Key = "Custom", DisplayName = "自定义路径" },
+        new() { Key = "Default", DisplayName = "Settings_GameDirMode_Default".GetLocalized() },
+        new() { Key = "VersionIsolation", DisplayName = "Settings_GameDirMode_VersionIsolation".GetLocalized() },
+        new() { Key = "Custom", DisplayName = "Settings_GameDirMode_Custom".GetLocalized() },
     ];
 
     public ResourceTransferStateViewModel ResourceTransferState { get; }
@@ -1117,8 +1117,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             _isSwitchingUseGlobalSettings = false;
         }
 
-        await SaveSettingsAsync();
-        await RefreshCurrentGameDirThenLoadAsync();
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换全局设置失败：{ex.Message}";
+        }
     }
     
     partial void OnAutoMemoryAllocationChanged(bool value)
@@ -2453,8 +2460,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        await SaveSettingsAsync();
-        await RefreshCurrentGameDirThenLoadAsync();
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换目录模式失败：{ex.Message}";
+        }
     }
 
     async partial void OnLocalGameDirCustomPathChanged(string value)
@@ -2464,8 +2478,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        await SaveSettingsAsync();
-        await RefreshCurrentGameDirThenLoadAsync();
+        try
+        {
+            await SaveSettingsAsync();
+            await RefreshCurrentGameDirThenLoadAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"切换自定义目录失败：{ex.Message}";
+        }
     }
 
     [RelayCommand]
