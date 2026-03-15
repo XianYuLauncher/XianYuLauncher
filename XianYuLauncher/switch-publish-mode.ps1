@@ -21,7 +21,27 @@ Write-Host "  切换发布模式: $Mode"
 Write-Host "========================================"
 
 $utf8 = [System.Text.Encoding]::UTF8
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+
+function Get-HasUtf8Bom {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return $false }
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+}
+
+function Write-TextPreserveBom {
+    param(
+        [string]$Path,
+        [string]$Content,
+        [bool]$UseBom
+    )
+    $encoding = [System.Text.UTF8Encoding]::new($UseBom)
+    [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+}
+
+$csprojHasBom = Get-HasUtf8Bom -Path $csprojPath
+$manifestHasBom = Get-HasUtf8Bom -Path $manifestPath
+
 $csproj = [System.IO.File]::ReadAllText($csprojPath, $utf8)
 $manifest = [System.IO.File]::ReadAllText($manifestPath, $utf8)
 $originalCsproj = $csproj
@@ -55,7 +75,7 @@ else
 }
 
 if ($originalCsproj -ne $csproj) {
-    [System.IO.File]::WriteAllText($csprojPath, $csproj, $utf8NoBom)
+    Write-TextPreserveBom -Path $csprojPath -Content $csproj -UseBom $csprojHasBom
     Write-Host "(csproj) 已写入变更"
 }
 else {
@@ -63,7 +83,7 @@ else {
 }
 
 if ($originalManifest -ne $manifest) {
-    [System.IO.File]::WriteAllText($manifestPath, $manifest, $utf8NoBom)
+    Write-TextPreserveBom -Path $manifestPath -Content $manifest -UseBom $manifestHasBom
     Write-Host "(manifest) 已写入变更"
 }
 else {
