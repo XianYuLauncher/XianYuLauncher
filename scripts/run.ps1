@@ -15,8 +15,6 @@ $ProjectRoot = Split-Path $ScriptDir -Parent
 Set-Location $ProjectRoot
 
 $ProjectPath = "XianYuLauncher\XianYuLauncher.csproj"
-$CsprojPath = "XianYuLauncher\XianYuLauncher.csproj"
-$ManifestPath = "XianYuLauncher\Package.appxmanifest"
 $AppPackagesDir = "AppPackages"
 $LayoutDir = "AppPackages\XianYuLauncher_Layout"
 $CertPath = "XianYuLauncher\XianYuLauncher_Dev.pfx"
@@ -73,7 +71,8 @@ try {
 
     Write-Host ""
     Write-Host "[2/4] Finding MSIX..." -ForegroundColor Yellow
-    $msixFile = Get-ChildItem -Path . -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match "_Test" } | Select-Object -First 1
+    $appPackagesPath = Join-Path $PWD $AppPackagesDir
+    $msixFile = Get-ChildItem -Path $appPackagesPath -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match "_Test" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $msixFile) {
         Write-Host "No .msix file found in *_Test folder" -ForegroundColor Red
         exit 1

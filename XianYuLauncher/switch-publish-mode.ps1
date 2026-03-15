@@ -1,4 +1,4 @@
-﻿# 切换到商店模式: .\switch-publish-mode.ps1 -Mode Store
+# 切换到商店模式: .\switch-publish-mode.ps1 -Mode Store
 # 切换到侧载模式: .\switch-publish-mode.ps1 -Mode Sideload
 
 param(
@@ -21,8 +21,11 @@ Write-Host "  切换发布模式: $Mode"
 Write-Host "========================================"
 
 $utf8 = [System.Text.Encoding]::UTF8
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $csproj = [System.IO.File]::ReadAllText($csprojPath, $utf8)
 $manifest = [System.IO.File]::ReadAllText($manifestPath, $utf8)
+$originalCsproj = $csproj
+$originalManifest = $manifest
 
 if ($Mode -eq 'Store')
 {
@@ -50,10 +53,6 @@ else
 
     Write-Host "侧载模式配置完成!"
 }
-
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$originalCsproj = [System.IO.File]::ReadAllText($csprojPath, $utf8)
-$originalManifest = [System.IO.File]::ReadAllText($manifestPath, $utf8)
 
 if ($originalCsproj -ne $csproj) {
     [System.IO.File]::WriteAllText($csprojPath, $csproj, $utf8NoBom)
