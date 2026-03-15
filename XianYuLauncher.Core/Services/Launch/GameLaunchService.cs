@@ -875,6 +875,7 @@ public class GameLaunchService : IGameLaunchService
             
             bool hasClassifier = library.Name.Count(c => c == ':') > 2;
 
+            // TODO(version-merge): 第二批策略层落地后，移除这段针对历史错误清单的兼容跳过逻辑。
             // 跳过 neoforge-universal 和 installertools
             if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
                 (library.Name.Contains("universal", StringComparison.OrdinalIgnoreCase) || 
