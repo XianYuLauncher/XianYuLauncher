@@ -23,6 +23,10 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
     public override string ModLoaderType => "LiteLoader";
 
+    protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.LiteLoader;
+
+    protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSourceFactory.GetLiteLoaderSource();
+
     public LiteLoaderInstaller(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
@@ -245,7 +249,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             var modLoaderLibraries = artifact.Libraries.Select(lib => new ModLoaderLibrary
             {
                 Name = lib.Name,
-                Url = lib.Url ?? "https://libraries.minecraft.net/",
+                Url = lib.Url,
                 Sha1 = null
             }).ToList();
 
@@ -332,33 +336,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(liteLoaderLibraries, baseVersion.Libraries);
 
-        // 为所有库添加 downloads 信息
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    // LiteLoader 的所有库都用 Minecraft 官方库
-                    string baseUrl = "https://libraries.minecraft.net/";
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.LiteLoader);
 
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 合并后总依赖库数量: {merged.Libraries.Count}");
 

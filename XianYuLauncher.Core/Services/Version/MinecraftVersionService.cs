@@ -268,25 +268,16 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         {
                             if (library.Downloads?.Artifact?.Url != null)
                             {
-                                // 检查URL是否是完整的下载URL（是否以.jar结尾）
-                                if (!library.Downloads.Artifact.Url.EndsWith(".jar"))
+                                string? fixedUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                                    library.Name,
+                                    library.Downloads.Artifact.Url);
+
+                                if (!string.IsNullOrEmpty(fixedUrl) && fixedUrl != library.Downloads.Artifact.Url)
                                 {
-                                    // 这是一个基础URL，需要构建完整的下载URL
-                                    string[] parts = library.Name.Split(':');
-                                    if (parts.Length == 3)
-                                    {
-                                        string groupId = parts[0];
-                                        string artifactId = parts[1];
-                                        string version = parts[2];
-                                        string fileName = $"{artifactId}-{version}.jar";
-                                        string baseUrl = library.Downloads.Artifact.Url;
-                                        string fullUrl = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-                                        
-                                        _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}", 
-                                            modLoaderType, 
-                                            library.Downloads.Artifact.Url, fullUrl);
-                                        library.Downloads.Artifact.Url = fullUrl;
-                                    }
+                                    _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}", 
+                                        modLoaderType, 
+                                        library.Downloads.Artifact.Url, fixedUrl);
+                                    library.Downloads.Artifact.Url = fixedUrl;
                                 }
                             }
                         }

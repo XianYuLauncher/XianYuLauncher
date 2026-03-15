@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
@@ -56,11 +58,26 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
         jsonObject["mainClass"]!.Value<string>().Should().Be("net.minecraft.client.main.Main");
     }
 
+    [Fact]
+    public void BuildLibraryDownloadUrl_ShouldUseUnifiedResolverAndDownloadSourceMapping()
+    {
+        var installer = new TestInstaller(new BmclapiDownloadSource());
+
+        var downloadUrl = installer.BuildLibraryDownloadUrlPublic(new ModLoaderLibrary
+        {
+            Name = "net.fabricmc:fabric-loader:0.15.0"
+        });
+
+        downloadUrl.Should().Be("https://bmclapi2.bangbang93.com/maven/net/fabricmc/fabric-loader/0.15.0/fabric-loader-0.15.0.jar");
+    }
+
     private sealed class TestInstaller : ModLoaderInstallerBase
     {
+        private readonly IDownloadSource? _downloadSource;
+
         public override string ModLoaderType => "Test";
 
-        public TestInstaller()
+        public TestInstaller(IDownloadSource? downloadSource = null)
             : base(
                 Mock.Of<IDownloadManager>(),
                 Mock.Of<ILibraryManager>(),
@@ -68,11 +85,21 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
                 Mock.Of<IJavaRuntimeService>(),
                 Mock.Of<ILogger>())
         {
+            _downloadSource = downloadSource;
         }
+
+        protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.Fabric;
+
+        protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSource;
 
         public Task SaveVersionJsonPublicAsync(string versionDirectory, string versionId, object versionInfo)
         {
             return SaveVersionJsonAsync(versionDirectory, versionId, versionInfo);
+        }
+
+        public string? BuildLibraryDownloadUrlPublic(ModLoaderLibrary library)
+        {
+            return BuildLibraryDownloadUrl(library);
         }
 
         public override Task<string> InstallAsync(

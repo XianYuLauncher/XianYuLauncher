@@ -10,6 +10,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -82,6 +83,10 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         var jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
         return File.Exists(jsonPath);
     }
+
+    protected virtual LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.Default;
+
+    protected virtual IDownloadSource? GetLibraryDownloadSource() => null;
 
     #region 受保护的辅助方法
 
@@ -346,27 +351,20 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     /// </summary>
     protected virtual string? BuildLibraryDownloadUrl(ModLoaderLibrary library)
     {
-        if (!string.IsNullOrEmpty(library.Url))
-        {
-            // 如果URL已经是完整的，直接返回
-            if (library.Url.EndsWith(".jar"))
-            {
-                return library.Url;
-            }
+        var originalUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+            library.Name,
+            library.Url,
+            GetLibraryRepositoryProfile());
 
-            // 否则构建完整URL
-            var parts = library.Name.Split(':');
-            if (parts.Length >= 3)
-            {
-                var groupId = parts[0];
-                var artifactId = parts[1];
-                var version = parts[2];
-                var fileName = $"{artifactId}-{version}.jar";
-                return $"{library.Url.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-            }
+        if (string.IsNullOrWhiteSpace(originalUrl))
+        {
+            return null;
         }
 
-        return null;
+        var downloadSource = GetLibraryDownloadSource();
+        return downloadSource != null
+            ? downloadSource.GetLibraryUrl(library.Name, originalUrl)
+            : originalUrl;
     }
 
     /// <summary>

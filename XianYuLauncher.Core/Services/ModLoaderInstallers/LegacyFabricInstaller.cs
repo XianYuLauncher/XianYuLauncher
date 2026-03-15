@@ -31,6 +31,10 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     /// <inheritdoc/>
     public override string ModLoaderType => "LegacyFabric";
 
+    protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.LegacyFabric;
+
+    protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSourceFactory.GetLegacyFabricSource();
+
     public LegacyFabricInstaller(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
@@ -265,7 +269,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             libraries.Add(new ModLoaderLibrary
             {
                 Name = name,
-                Url = lib["url"]?.ToString() ?? "https://maven.fabricmc.net/", // Fallback might need adjustment if Legacy Fabric has specific maven
+                Url = lib["url"]?.ToString(),
                 Sha1 = lib["sha1"]?.ToString()
             });
         }
@@ -311,96 +315,76 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
         foreach (var library in merged.Libraries)
         {
-            if (library.Downloads == null)
+            library.Downloads ??= new LibraryDownloads();
+
+            var parts = library.Name?.Split(':');
+            if (parts == null || parts.Length < 3)
             {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
+                continue;
+            }
+
+            string artifactId = parts[1];
+            string? baseUrl = LibraryDownloadUrlHelper.ResolveRepositoryBaseUrl(
+                library.Name,
+                library.Url,
+                LibraryRepositoryProfile.LegacyFabric);
+
+            bool isNativeOnly = artifactId.EndsWith("-platform", StringComparison.OrdinalIgnoreCase) ||
+                                artifactId.Contains("natives", StringComparison.OrdinalIgnoreCase);
+
+            if (!isNativeOnly)
+            {
+                string? artifactUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                    library.Name,
+                    library.Url,
+                    LibraryRepositoryProfile.LegacyFabric);
+
+                if (!string.IsNullOrEmpty(artifactUrl))
                 {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    // Default to Fabric Maven; override for known special cases such as Legacy Fabric
-                    // (https://repo.legacyfabric.net/repository/legacyfabric/) and core Minecraft libraries.
-                    // This mirrors the repository selection logic below based on groupId and explicit library.Url.
-                    string baseUrl = "https://maven.fabricmc.net/";
-                    if (!string.IsNullOrEmpty(library.Url))
+                    library.Downloads.Artifact = new DownloadFile
                     {
-                        baseUrl = library.Url;
-                    }
-                    else if (groupId.StartsWith("net.legacyfabric"))
-                    {
-                         baseUrl = "https://repo.legacyfabric.net/repository/legacyfabric/";
-                    }
-                    else if (groupId.StartsWith("org.ow2") || groupId.StartsWith("net.java") || groupId.StartsWith("org.apache"))
-                    {
-                        baseUrl = "https://libraries.minecraft.net/";
-                    }
-                    
-                    if (!baseUrl.EndsWith("/"))
-                    {
-                        baseUrl += "/";
-                    }
-                    
-                    // Determine if this is a native-only library (like lwjgl-platform) which typically doesn't have a main jar
-                    // but only classifier jars.
-                    bool isNativeOnly = artifactId.EndsWith("-platform") || artifactId.Contains("natives");
-                    
-                    if (!isNativeOnly)
-                    {
-                        string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                        library.Downloads.Artifact = new DownloadFile
-                        {
-                            Url = downloadUrl,
-                            Sha1 = null,
-                            Size = 0
-                        };
-                    }
-                    else
-                    {
-                        // Ensure artifact is explicitly nulled out for native-only libraries
-                        // so GameLaunchService doesn't try to add a non-existent jar to classpath
-                        library.Downloads.Artifact = null;
-                    }
-                    
-                    // Handle Natives / Classifiers
-                    if (library.Natives != null)
-                    {
-                        if (library.Downloads.Classifiers == null)
-                        {
-                            library.Downloads.Classifiers = new Dictionary<string, DownloadFile>();
-                        }
-                        
-                        // Collect all unique classifiers used in Natives
-                        var classifiers = new HashSet<string>();
-                        if (!string.IsNullOrEmpty(library.Natives.Linux)) classifiers.Add(library.Natives.Linux);
-                        if (!string.IsNullOrEmpty(library.Natives.Windows)) classifiers.Add(library.Natives.Windows);
-                        if (!string.IsNullOrEmpty(library.Natives.Osx)) classifiers.Add(library.Natives.Osx);
-                        
-                        foreach (var classifier in classifiers)
-                        {
-                            // Construct URL with classifier
-                            // Format: name-version-classifier.jar
-                            string nativeUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}-{classifier}.jar";
-                            
-                            // Map existing classifier key? Or just add if missing?
-                            // Logic: check all keys in Natives block, map them to this URL
-                            
-                            // Simplest: Add entry for the classifier string itself
-                            if (!library.Downloads.Classifiers.ContainsKey(classifier))
-                            {
-                                library.Downloads.Classifiers[classifier] = new DownloadFile
-                                {
-                                    Url = nativeUrl,
-                                    Sha1 = null,
-                                    Size = 0
-                                };
-                            }
-                        }
-                    }
+                        Url = artifactUrl,
+                        Sha1 = null,
+                        Size = 0
+                    };
                 }
+            }
+            else
+            {
+                library.Downloads.Artifact = null;
+            }
+
+            if (library.Natives == null || string.IsNullOrEmpty(baseUrl))
+            {
+                continue;
+            }
+
+            library.Downloads.Classifiers ??= new Dictionary<string, DownloadFile>();
+
+            var classifiers = new HashSet<string>();
+            if (!string.IsNullOrEmpty(library.Natives.Linux)) classifiers.Add(library.Natives.Linux);
+            if (!string.IsNullOrEmpty(library.Natives.Windows)) classifiers.Add(library.Natives.Windows);
+            if (!string.IsNullOrEmpty(library.Natives.Osx)) classifiers.Add(library.Natives.Osx);
+
+            foreach (var classifier in classifiers)
+            {
+                if (library.Downloads.Classifiers.ContainsKey(classifier))
+                {
+                    continue;
+                }
+
+                string? nativeUrl = LibraryDownloadUrlHelper.BuildArtifactUrl(library.Name, baseUrl, classifier);
+                if (string.IsNullOrEmpty(nativeUrl))
+                {
+                    continue;
+                }
+
+                library.Downloads.Classifiers[classifier] = new DownloadFile
+                {
+                    Url = nativeUrl,
+                    Sha1 = null,
+                    Size = 0
+                };
             }
         }
 

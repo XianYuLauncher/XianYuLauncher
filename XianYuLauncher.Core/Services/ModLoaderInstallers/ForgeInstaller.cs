@@ -458,25 +458,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var libraryPath = LibraryManager.GetLibraryPath(library.Name, librariesDirectory);
             if (File.Exists(libraryPath)) continue;
 
-            string? originalUrl = null;
-            string? sha1 = null;
-
-            // 优先使用 Downloads.Artifact
-            if (library.Downloads?.Artifact != null && !string.IsNullOrEmpty(library.Downloads.Artifact.Url))
-            {
-                originalUrl = library.Downloads.Artifact.Url;
-                sha1 = library.Downloads.Artifact.Sha1;
-            }
-            // 其次使用 library.Url 构建下载地址（旧版 Forge 格式）
-            else if (!string.IsNullOrEmpty(library.Url))
-            {
-                originalUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
-            }
-            // 最后使用默认 Maven 仓库
-            else
-            {
-                originalUrl = BuildLibraryDownloadUrl(library.Name, "https://libraries.minecraft.net/");
-            }
+            string? sha1 = library.Downloads?.Artifact?.Sha1;
+            string? originalUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                library.Name,
+                library.Downloads?.Artifact?.Url ?? library.Url,
+                LibraryRepositoryProfile.Forge);
 
             if (string.IsNullOrEmpty(originalUrl)) continue;
 
@@ -503,26 +489,6 @@ public class ForgeInstaller : ModLoaderInstallerBase
         }
 
         await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
-    }
-
-    /// <summary>
-    /// 根据库名和基础URL构建下载地址
-    /// </summary>
-    private string? BuildLibraryDownloadUrl(string libraryName, string baseUrl)
-    {
-        var parts = libraryName.Split(':');
-        if (parts.Length < 3) return null;
-
-        var groupId = parts[0];
-        var artifactId = parts[1];
-        var version = parts[2];
-        var classifier = parts.Length > 3 ? parts[3] : null;
-
-        var fileName = string.IsNullOrEmpty(classifier)
-            ? $"{artifactId}-{version}.jar"
-            : $"{artifactId}-{version}-{classifier}.jar";
-
-        return $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
     }
 
     private async Task<VersionInfo> ProcessOldForgeAsync(
@@ -643,37 +609,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(forge?.Libraries, original.Libraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge?.Libraries?.Count ?? 0);
 
-        // 为所有库处理downloads字段，确保它们有正确的downloads信息
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    string baseUrl = "https://libraries.minecraft.net/";
-                    if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = "https://maven.minecraftforge.net/";
-                    }
-                    
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Forge);
 
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 

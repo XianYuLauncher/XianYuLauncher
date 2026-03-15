@@ -380,6 +380,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         CancellationToken cancellationToken)
     {
         var downloadTasks = new List<DownloadTask>();
+        var downloadSource = _sourceFactory.GetCleanroomSource();
 
         Logger.LogInformation("开始处理 {Count} 个依赖库", libraries.Count);
 
@@ -407,46 +408,20 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 continue;
             }
 
-            string? downloadUrl = null;
             string? sha1 = null;
 
-            // 优先使用 Downloads.Artifact
             if (library.Downloads?.Artifact != null && !string.IsNullOrEmpty(library.Downloads.Artifact.Url))
             {
-                downloadUrl = library.Downloads.Artifact.Url;
                 sha1 = library.Downloads.Artifact.Sha1;
-                Logger.LogDebug("使用 Downloads.Artifact URL: {Url}", downloadUrl);
             }
-            // 其次使用 library.Url 构建下载地址
-            else if (!string.IsNullOrEmpty(library.Url))
-            {
-                downloadUrl = BuildLibraryDownloadUrl(library.Name, library.Url);
-                Logger.LogDebug("使用 library.Url 构建下载地址: {Url}", downloadUrl);
-            }
-            // 最后根据库名判断使用哪个 Maven 仓库（从下载源接口获取）
-            else
-            {
-                var source = _sourceFactory.GetCleanroomSource();
-                string baseUrl;
-                if (library.Name.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase))
-                {
-                    baseUrl = source.GetCleanroomMavenBaseUrl();
-                    Logger.LogDebug("检测到 Cleanroom 库，使用 Cleanroom Maven 仓库");
-                }
-                else if (library.Name.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase))
-                {
-                    baseUrl = source.GetForgeMavenBaseUrl();
-                    Logger.LogDebug("检测到 Forge 库，使用 Forge Maven 仓库");
-                }
-                else
-                {
-                    baseUrl = source.GetDefaultLibraryBaseUrl();
-                    Logger.LogDebug("使用默认 Maven 仓库");
-                }
 
-                downloadUrl = BuildLibraryDownloadUrl(library.Name, baseUrl);
-                Logger.LogDebug("构建的下载地址: {Url}", downloadUrl);
-            }
+            string? originalUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                library.Name,
+                library.Downloads?.Artifact?.Url ?? library.Url,
+                LibraryRepositoryProfile.Cleanroom);
+            string? downloadUrl = string.IsNullOrEmpty(originalUrl)
+                ? null
+                : downloadSource.GetLibraryUrl(library.Name, originalUrl);
 
             if (string.IsNullOrEmpty(downloadUrl))
             {
@@ -524,36 +499,6 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 根据库名和基础URL构建下载地址
-    /// </summary>
-    private string? BuildLibraryDownloadUrl(string libraryName, string baseUrl)
-    {
-        Logger.LogDebug("构建库下载URL: {LibraryName}, BaseUrl: {BaseUrl}", libraryName, baseUrl);
-        
-        var parts = libraryName.Split(':');
-        if (parts.Length < 3)
-        {
-            Logger.LogWarning("库名格式不正确: {LibraryName}", libraryName);
-            return null;
-        }
-
-        var groupId = parts[0];
-        var artifactId = parts[1];
-        var version = parts[2];
-        var classifier = parts.Length > 3 ? parts[3] : null;
-
-        var fileName = string.IsNullOrEmpty(classifier)
-            ? $"{artifactId}-{version}.jar"
-            : $"{artifactId}-{version}-{classifier}.jar";
-
-        var url = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-        
-        Logger.LogDebug("构建的完整URL: {Url}", url);
-        
-        return url;
-    }
-
-    /// <summary>
     /// 合并版本信息
     /// </summary>
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? cleanroom, List<Library> additionalLibraries)
@@ -596,42 +541,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, baseLibraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom?.Libraries?.Count ?? 0);
 
-        // 为所有库处理downloads字段（从下载源接口获取 baseUrl）
-        var source = _sourceFactory.GetCleanroomSource();
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-
-                    string baseUrl = source.GetDefaultLibraryBaseUrl();
-                    if (library.Name?.StartsWith("com.cleanroommc:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = source.GetCleanroomMavenBaseUrl();
-                    }
-                    else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = source.GetForgeMavenBaseUrl();
-                    }
-
-                    string downloadUrl = $"{baseUrl.TrimEnd('/')}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Cleanroom);
 
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 

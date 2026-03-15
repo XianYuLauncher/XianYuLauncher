@@ -393,8 +393,10 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var libraryPath = LibraryManager.GetLibraryPath(library.Name, librariesDirectory);
             if (File.Exists(libraryPath)) continue;
 
-            // 使用下载源转换URL
-            var originalUrl = library.Downloads.Artifact.Url ?? string.Empty;
+            var originalUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                library.Name,
+                library.Downloads.Artifact.Url,
+                LibraryRepositoryProfile.NeoForge) ?? string.Empty;
             var downloadUrl = downloadSource.GetLibraryUrl(library.Name, originalUrl);
             
             Logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {LibraryName}", downloadSource.Name, library.Name);
@@ -421,60 +423,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
     private void EnsureLibraryUrls(List<Library> libraries)
     {
-        foreach (var library in libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-            }
-
-            if (library.Downloads.Artifact == null)
-            {
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    string? classifier = parts.Length > 3 ? parts[3] : null;
-
-                    // 处理@jar后缀
-                    string extension = "jar";
-                    if (classifier != null && classifier.Contains("@"))
-                    {
-                        var classifierParts = classifier.Split('@');
-                        classifier = classifierParts[0];
-                        if (classifierParts.Length > 1) extension = classifierParts[1];
-                    }
-
-                    string baseUrl = "https://libraries.minecraft.net/";
-                    if (library.Name?.StartsWith("net.neoforged:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = "https://maven.neoforged.net/releases/";
-                    }
-                    else if (library.Name?.StartsWith("net.minecraftforge:", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        baseUrl = "https://maven.minecraftforge.net/";
-                    }
-
-                    string fileName = $"{artifactId}-{version}";
-                    if (!string.IsNullOrEmpty(classifier))
-                    {
-                        fileName += $"-{classifier}";
-                    }
-                    fileName += $".{extension}";
-
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(libraries, LibraryRepositoryProfile.NeoForge);
     }
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)

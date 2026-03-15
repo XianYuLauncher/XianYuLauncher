@@ -31,6 +31,10 @@ public class QuiltInstaller : ModLoaderInstallerBase
     /// <inheritdoc/>
     public override string ModLoaderType => "Quilt";
 
+    protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.Quilt;
+
+    protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSourceFactory.GetQuiltSource();
+
     public QuiltInstaller(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
@@ -257,7 +261,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
             libraries.Add(new ModLoaderLibrary
             {
                 Name = name,
-                Url = lib["url"]?.ToString() ?? "https://maven.quiltmc.org/repository/release/",
+                Url = lib["url"]?.ToString(),
                 Sha1 = lib["sha1"]?.ToString()
             });
         }
@@ -303,41 +307,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(quiltLibraries, original.Libraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Quilt依赖库", quiltLibraries.Count);
 
-        // 为缺少downloads的库添加下载信息
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    string baseUrl = "https://maven.quiltmc.org/repository/release/";
-                    if (groupId.StartsWith("org.ow2") || groupId.StartsWith("net.java") || groupId.StartsWith("org.apache"))
-                    {
-                        baseUrl = "https://libraries.minecraft.net/";
-                    }
-                    else if (groupId.StartsWith("net.fabricmc"))
-                    {
-                        baseUrl = "https://maven.fabricmc.net/";
-                    }
-                    
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Quilt);
 
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 

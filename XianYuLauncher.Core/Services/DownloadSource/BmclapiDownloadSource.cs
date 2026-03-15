@@ -1,6 +1,6 @@
-namespace XianYuLauncher.Core.Services.DownloadSource;
-
 using XianYuLauncher.Core.Helpers;
+
+namespace XianYuLauncher.Core.Services.DownloadSource;
 
 /// <summary>
 /// BMCLAPI下载源实现
@@ -249,7 +249,7 @@ public class BmclapiDownloadSource : IDownloadSource
         {
             fileName += $"-{classifier}";
         }
-        fileName += $".$extension";
+        fileName += $".{extension}";
         
         // 构建完整BMCLAPI URL，注意不添加/releases/
         string baseUrl = "https://bmclapi2.bangbang93.com/maven";

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 
@@ -486,33 +487,22 @@ public class ProcessorExecutor : IProcessorExecutor
         }
 
         string groupId = parts[0];
-        string artifactId = parts[1];
-        string version = parts[2];
-        string classifier = parts.Length >= 4 ? parts[3] : "";
-
-        string fileName = string.IsNullOrEmpty(classifier)
-            ? $"{artifactId}-{version}.jar"
-            : $"{artifactId}-{version}-{classifier}.jar";
-
         // 根据 groupId 上下文选择合适的下载源
         IDownloadSource downloadSource;
+        LibraryRepositoryProfile repositoryProfile;
         if (groupId.StartsWith("net.neoforged", StringComparison.OrdinalIgnoreCase))
         {
             downloadSource = _downloadSourceFactory.GetNeoForgeSource();
+            repositoryProfile = LibraryRepositoryProfile.NeoForge;
         }
         else
         {
             downloadSource = _downloadSourceFactory.GetForgeSource();
+            repositoryProfile = LibraryRepositoryProfile.Forge;
         }
-        
-        // 构建官方源URL
-        string officialUrl = $"https://maven.minecraftforge.net/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-        
-        // 如果是NeoForge相关的库，使用NeoForge Maven
-        if (groupId.StartsWith("net.neoforged", StringComparison.OrdinalIgnoreCase))
-        {
-            officialUrl = $"https://maven.neoforged.net/releases/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
-        }
+
+        string officialUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(processedJarName, null, repositoryProfile)
+            ?? throw new ProcessorExecutionException($"无法构建处理器库下载地址: {processedJarName}", jarName);
         
         // 使用下载源获取URL
         string downloadUrl = downloadSource.GetLibraryUrl(processedJarName, officialUrl);
