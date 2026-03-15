@@ -6,20 +6,6 @@
 public static class JvmArgumentsHelper
 {
     /// <summary>
-    /// 需要将"标志 + 下一个 token"视为一对进行去重的 JVM 参数名。
-    /// 这些参数可在同一命令行中多次出现（针对不同模块），不能按标志名去重。
-    /// </summary>
-    private static readonly HashSet<string> PairedFlags = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "--add-opens",
-        "--add-exports",
-        "--add-reads",
-        "--add-modules",
-        "-p",
-        "--module-path",
-    };
-
-    /// <summary>
     /// 解析自定义 JVM 参数字符串（支持空格和换行分隔）
     /// </summary>
     private static string[] ParseCustomArguments(string? input)
@@ -41,75 +27,86 @@ public static class JvmArgumentsHelper
     public static List<string> MergeAndDeduplicateArguments(List<string> launcherArgs, string? customArgs)
     {
         var customArgArray = ParseCustomArguments(customArgs);
-        var combined = new List<string>(launcherArgs.Count + customArgArray.Length);
-        combined.AddRange(launcherArgs);
-        combined.AddRange(customArgArray);
-
-        if (combined.Count == 0)
+        if (launcherArgs.Count == 0 && customArgArray.Length == 0)
         {
-            return combined;
+            return [];
         }
 
-        // 将参数列表分组为"逻辑单元"：
-        //   - 成对参数（PairedFlags）：flag + 下一个 token 视为一组，key = "pair:flag:value"
-        //   - 其它参数：单个 token，key 由 GetArgumentKey 计算
-        // 同 key 仅保留最后一个逻辑单元（后者覆盖前者）。
-        var groups = new List<(string Key, int Start, int Length)>(combined.Count);
-        int i = 0;
-        while (i < combined.Count)
+        // 分两套策略：
+        // 1) 启动器/Loader 原始参数不做全局去重，避免破坏成对参数（如 --add-opens + value）。
+        // 2) 仅在“用户覆盖域”（内存/GC/-D属性）做覆盖，用户参数优先。
+        var filteredCustom = FilterCustomArgumentsForOverrides(customArgArray);
+
+        var overrideKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < filteredCustom.Count; i++)
         {
-            string token = combined[i];
-            if (PairedFlags.Contains(token) && i + 1 < combined.Count)
+            var key = GetOverrideKey(filteredCustom[i]);
+            if (key != null)
             {
-                string value = combined[i + 1];
-                string pairKey = $"pair:{token}:{value}";
-                groups.Add((pairKey, i, 2));
-                i += 2;
-            }
-            else
-            {
-                groups.Add((GetArgumentKey(token), i, 1));
-                i++;
+                overrideKeys.Add(key);
             }
         }
 
-        // 统一按"最终参数集"做去重：同 key 仅保留最后一项
-        var lastIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (int g = 0; g < groups.Count; g++)
+        var result = new List<string>(launcherArgs.Count + filteredCustom.Count);
+        for (int i = 0; i < launcherArgs.Count; i++)
         {
-            lastIndexByKey[groups[g].Key] = g;
+            var launcherKey = GetOverrideKey(launcherArgs[i]);
+            if (launcherKey == null || !overrideKeys.Contains(launcherKey))
+            {
+                result.Add(launcherArgs[i]);
+            }
         }
 
-        var result = new List<string>(combined.Count);
-        for (int g = 0; g < groups.Count; g++)
+        result.AddRange(filteredCustom);
+        return result;
+    }
+
+    private static List<string> FilterCustomArgumentsForOverrides(string[] customArgs)
+    {
+        var lastIndexByOverrideKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < customArgs.Length; i++)
         {
-            if (lastIndexByKey.TryGetValue(groups[g].Key, out var lastIndex) && lastIndex == g)
+            var key = GetOverrideKey(customArgs[i]);
+            if (key != null)
             {
-                for (int t = groups[g].Start; t < groups[g].Start + groups[g].Length; t++)
-                {
-                    result.Add(combined[t]);
-                }
+                lastIndexByOverrideKey[key] = i;
+            }
+        }
+
+        var result = new List<string>(customArgs.Length);
+        for (int i = 0; i < customArgs.Length; i++)
+        {
+            var key = GetOverrideKey(customArgs[i]);
+            if (key == null)
+            {
+                result.Add(customArgs[i]);
+                continue;
+            }
+
+            if (lastIndexByOverrideKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            {
+                result.Add(customArgs[i]);
             }
         }
 
         return result;
     }
 
-    private static string GetArgumentKey(string arg)
+    private static string? GetOverrideKey(string arg)
     {
         if (arg.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase))
         {
-            return "mem:xms";
+            return "override:mem:xms";
         }
 
         if (arg.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase))
         {
-            return "mem:xmx";
+            return "override:mem:xmx";
         }
 
         if (IsGcArgument(arg))
         {
-            return "gc";
+            return "override:gc";
         }
 
         if (arg.StartsWith("-D", StringComparison.OrdinalIgnoreCase))
@@ -117,12 +114,11 @@ public static class JvmArgumentsHelper
             int equalsIndex = arg.IndexOf('=');
             if (equalsIndex > 2)
             {
-                return "prop:" + arg.Substring(2, equalsIndex - 2);
+                return "override:prop:" + arg.Substring(2, equalsIndex - 2);
             }
         }
 
-        // 其它参数按文本完全相同去重
-        return "arg:" + arg;
+        return null;
     }
 
     private static bool IsGcArgument(string arg)

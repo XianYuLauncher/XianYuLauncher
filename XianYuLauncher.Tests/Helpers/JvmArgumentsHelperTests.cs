@@ -33,25 +33,20 @@ public class JvmArgumentsHelperTests
     }
 
     [Fact]
-    public void MergeAndDeduplicateArguments_ShouldDeduplicateExactDuplicates_AndPreserveLastOccurrenceOrder()
+    public void MergeAndDeduplicateArguments_ShouldKeepNonOverrideDuplicates_Unchanged()
     {
         var launcherArgs = new List<string>
         {
-            "-Dfoo=1",
-            "-Dfoo=1",
-            "-Xmx2G",
-            "-Xmx2G",
-            "-XX:+UseG1GC"
+            "--add-opens",
+            "java.base/java.util.jar=cpw.mods.securejarhandler",
+            "--add-opens",
+            "java.base/java.lang.invoke=cpw.mods.securejarhandler"
         };
 
         var result = JvmArgumentsHelper.MergeAndDeduplicateArguments(launcherArgs, null);
 
-        result.Should().Equal(new[]
-        {
-            "-Dfoo=1",
-            "-Xmx2G",
-            "-XX:+UseG1GC"
-        });
+        // 非覆盖域参数不做全局去重，必须保持原样
+        result.Should().Equal(launcherArgs);
     }
 
     /// <summary>
@@ -96,9 +91,9 @@ public class JvmArgumentsHelperTests
     }
 
     [Fact]
-    public void MergeAndDeduplicateArguments_ShouldDeduplicateIdenticalPairedFlags()
+    public void MergeAndDeduplicateArguments_ShouldNotDeduplicateIdenticalPairedFlagsAcrossSources()
     {
-        // 同一 --add-opens 出现两次（来自 launcher 和自定义参数），只保留最后一个
+        // 同一 --add-opens 成对参数来自 launcher + 自定义参数时，不做全局去重
         var launcherArgs = new List<string>
         {
             "--add-opens",
@@ -109,7 +104,36 @@ public class JvmArgumentsHelperTests
 
         var result = JvmArgumentsHelper.MergeAndDeduplicateArguments(launcherArgs, customArgs);
 
-        result.Should().HaveCount(2);
-        result.Should().Equal("--add-opens", "java.base/java.util.jar=cpw.mods.securejarhandler");
+        result.Should().HaveCount(4);
+        result.Should().Equal(
+            "--add-opens",
+            "java.base/java.util.jar=cpw.mods.securejarhandler",
+            "--add-opens",
+            "java.base/java.util.jar=cpw.mods.securejarhandler");
+    }
+
+    [Fact]
+    public void MergeAndDeduplicateArguments_ShouldKeepLastOverrideWithinCustomArgs()
+    {
+        var launcherArgs = new List<string>
+        {
+            "-Xmx2G",
+            "-XX:+UseG1GC",
+            "-Dfoo=1"
+        };
+
+        var customArgs = "-Xmx4G -Xmx6G -XX:+UseZGC -XX:+UseG1GC -Dfoo=2 -Dfoo=3";
+
+        var result = JvmArgumentsHelper.MergeAndDeduplicateArguments(launcherArgs, customArgs);
+
+        result.Should().Contain("-Xmx6G");
+        result.Should().Contain("-XX:+UseG1GC");
+        result.Should().Contain("-Dfoo=3");
+
+        result.Should().NotContain("-Xmx2G");
+        result.Should().NotContain("-Xmx4G");
+        result.Should().NotContain("-XX:+UseZGC");
+        result.Should().NotContain("-Dfoo=1");
+        result.Should().NotContain("-Dfoo=2");
     }
 }
