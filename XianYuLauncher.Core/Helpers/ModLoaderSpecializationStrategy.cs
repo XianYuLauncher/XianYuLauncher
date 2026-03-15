@@ -83,7 +83,7 @@ public static class ModLoaderSpecializationStrategyFactory
     {
         public override IReadOnlyList<Library> FilterLibrariesForClasspath(IReadOnlyList<Library> libraries)
         {
-            string latestAsmVersion = "0.0";
+            string? latestAsmVersion = null;
 
             foreach (var library in libraries)
             {
@@ -98,13 +98,13 @@ public static class ModLoaderSpecializationStrategyFactory
                     continue;
                 }
 
-                if (string.Compare(parts[2], latestAsmVersion, StringComparison.Ordinal) > 0)
+                if (latestAsmVersion == null || CompareAsmVersions(parts[2], latestAsmVersion) > 0)
                 {
                     latestAsmVersion = parts[2];
                 }
             }
 
-            if (latestAsmVersion == "0.0")
+            if (string.IsNullOrEmpty(latestAsmVersion))
             {
                 return base.FilterLibrariesForClasspath(libraries);
             }
@@ -125,6 +125,50 @@ public static class ModLoaderSpecializationStrategyFactory
             }
 
             return filteredLibraries;
+        }
+
+        private static int CompareAsmVersions(string left, string right)
+        {
+            if (TryParseNumericVersion(left, out var leftParts) && TryParseNumericVersion(right, out var rightParts))
+            {
+                int length = Math.Max(leftParts.Length, rightParts.Length);
+                for (int index = 0; index < length; index++)
+                {
+                    int leftPart = index < leftParts.Length ? leftParts[index] : 0;
+                    int rightPart = index < rightParts.Length ? rightParts[index] : 0;
+                    int comparison = leftPart.CompareTo(rightPart);
+                    if (comparison != 0)
+                    {
+                        return comparison;
+                    }
+                }
+
+                return 0;
+            }
+
+            return string.Compare(left, right, StringComparison.Ordinal);
+        }
+
+        private static bool TryParseNumericVersion(string version, out int[] parts)
+        {
+            var segments = version.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 0)
+            {
+                parts = Array.Empty<int>();
+                return false;
+            }
+
+            parts = new int[segments.Length];
+            for (int index = 0; index < segments.Length; index++)
+            {
+                if (!int.TryParse(segments[index], out parts[index]))
+                {
+                    parts = Array.Empty<int>();
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 

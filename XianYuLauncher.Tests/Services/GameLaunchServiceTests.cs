@@ -168,6 +168,39 @@ public class GameLaunchServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task BuildClasspathAsync_FabricStrategy_PrefersSemanticallyNewestAsmVersion()
+    {
+        _mockVersionInfoService.Reset();
+        _mockVersionInfoService
+            .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync(new VersionConfig { ModLoaderType = "fabric" });
+
+        var librariesPath = Path.Combine(_testDirectory, "libraries");
+        var jarPath = Path.Combine(_testDirectory, "versions", "fabric-1.20.1", "fabric-1.20.1.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jarPath)!);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+
+        var asmNineSeven = new Library { Name = "org.ow2.asm:asm:9.7" };
+        var asmNineTen = new Library { Name = "org.ow2.asm:asm:9.10" };
+        var loaderLibrary = new Library { Name = "net.fabricmc:fabric-loader:0.15.0" };
+
+        CreateLibraryFile(librariesPath, asmNineSeven.Name);
+        var asmNineTenPath = CreateLibraryFile(librariesPath, asmNineTen.Name);
+        var loaderLibraryPath = CreateLibraryFile(librariesPath, loaderLibrary.Name);
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library> { asmNineSeven, loaderLibrary, asmNineTen }
+        };
+
+        var classpath = await InvokeBuildClasspathAsync(versionInfo, "fabric-1.20.1", jarPath, librariesPath, _testDirectory);
+
+        Assert.Equal(
+            new[] { loaderLibraryPath, asmNineTenPath, jarPath },
+            classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
     public async Task BuildClasspathAsync_NeoForgeStrategy_SkipsUniversalAndInstallertoolsLibraries()
     {
         _mockVersionInfoService.Reset();

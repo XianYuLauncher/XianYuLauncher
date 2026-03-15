@@ -334,20 +334,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
             if (!isNativeOnly)
             {
-                string? artifactUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
-                    library.Name,
-                    library.Url,
-                    LibraryRepositoryProfile.LegacyFabric);
-
-                if (!string.IsNullOrEmpty(artifactUrl))
-                {
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = artifactUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
+                LibraryDownloadUrlHelper.EnsureArtifactDownload(library, LibraryRepositoryProfile.LegacyFabric);
             }
             else
             {
