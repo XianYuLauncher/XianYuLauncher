@@ -6,6 +6,20 @@
 public static class JvmArgumentsHelper
 {
     /// <summary>
+    /// 需要将"标志 + 下一个 token"视为一对进行去重的 JVM 参数名。
+    /// 这些参数可在同一命令行中多次出现（针对不同模块），不能按标志名去重。
+    /// </summary>
+    private static readonly HashSet<string> PairedFlags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "--add-opens",
+        "--add-exports",
+        "--add-reads",
+        "--add-modules",
+        "-p",
+        "--module-path",
+    };
+
+    /// <summary>
     /// 解析自定义 JVM 参数字符串（支持空格和换行分隔）
     /// </summary>
     private static string[] ParseCustomArguments(string? input)
@@ -36,22 +50,45 @@ public static class JvmArgumentsHelper
             return combined;
         }
 
-        // 统一按“最终参数集”做去重：同 key 仅保留最后一项（后者覆盖前者）
-        var lastIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < combined.Count; i++)
+        // 将参数列表分组为"逻辑单元"：
+        //   - 成对参数（PairedFlags）：flag + 下一个 token 视为一组，key = "pair:flag:value"
+        //   - 其它参数：单个 token，key 由 GetArgumentKey 计算
+        // 同 key 仅保留最后一个逻辑单元（后者覆盖前者）。
+        var groups = new List<(string Key, int Start, int Length)>(combined.Count);
+        int i = 0;
+        while (i < combined.Count)
         {
-            var key = GetArgumentKey(combined[i]);
-            lastIndexByKey[key] = i;
+            string token = combined[i];
+            if (PairedFlags.Contains(token) && i + 1 < combined.Count)
+            {
+                string value = combined[i + 1];
+                string pairKey = $"pair:{token}:{value}";
+                groups.Add((pairKey, i, 2));
+                i += 2;
+            }
+            else
+            {
+                groups.Add((GetArgumentKey(token), i, 1));
+                i++;
+            }
+        }
+
+        // 统一按"最终参数集"做去重：同 key 仅保留最后一项
+        var lastIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int g = 0; g < groups.Count; g++)
+        {
+            lastIndexByKey[groups[g].Key] = g;
         }
 
         var result = new List<string>(combined.Count);
-        for (int i = 0; i < combined.Count; i++)
+        for (int g = 0; g < groups.Count; g++)
         {
-            var arg = combined[i];
-            var key = GetArgumentKey(arg);
-            if (lastIndexByKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            if (lastIndexByKey.TryGetValue(groups[g].Key, out var lastIndex) && lastIndex == g)
             {
-                result.Add(arg);
+                for (int t = groups[g].Start; t < groups[g].Start + groups[g].Length; t++)
+                {
+                    result.Add(combined[t]);
+                }
             }
         }
 
