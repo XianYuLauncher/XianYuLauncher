@@ -7,15 +7,14 @@ namespace XianYuLauncher.Core.Helpers;
 public static class VersionLibraryMergeHelper
 {
     public static List<Library> MergeLibraries(
-        params IEnumerable<Library>?[] libraryGroups)
+        IEnumerable<Library>? preferredLibraries,
+        IEnumerable<Library>? fallbackLibraries)
     {
         var mergedLibraries = new List<Library>();
         var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var libraryGroup in libraryGroups)
-        {
-            AddLibraries(mergedLibraries, seenKeys, libraryGroup);
-        }
+        AddLibraries(mergedLibraries, seenKeys, preferredLibraries);
+        AddLibraries(mergedLibraries, seenKeys, fallbackLibraries);
 
         return mergedLibraries;
     }

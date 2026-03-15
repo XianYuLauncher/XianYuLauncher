@@ -509,11 +509,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(neoforge?.Libraries, additionalLibraries, original.Libraries);
-        Logger.LogInformation(
-            "合并了 {NeoForgeLibraryCount} 个NeoForge version.json依赖库和 {InstallProfileLibraryCount} 个install_profile依赖库",
-            neoforge?.Libraries?.Count ?? 0,
-            additionalLibraries.Count);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(neoforge?.Libraries, original.Libraries);
+        Logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge?.Libraries?.Count ?? 0);
 
         // 为所有库处理downloads字段，确保它们有正确的downloads信息
         EnsureLibraryUrls(merged.Libraries);

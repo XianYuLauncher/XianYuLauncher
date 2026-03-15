@@ -62,7 +62,7 @@ public class CleanroomInstallerTests
     }
 
     [Fact]
-    public void MergeVersionInfo_IncludesInstallProfileLibrariesBetweenLoaderAndOriginal()
+    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
     {
         var installer = new CleanroomInstaller(
             Mock.Of<IDownloadManager>(),
@@ -105,7 +105,8 @@ public class CleanroomInstallerTests
         Assert.Collection(
             merged.Libraries!,
             library => Assert.Equal("com.cleanroommc:cleanroom:0.4.2-alpha", library.Name),
-            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
+            library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
     }
 }

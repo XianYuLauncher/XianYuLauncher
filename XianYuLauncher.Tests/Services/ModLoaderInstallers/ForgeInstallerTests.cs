@@ -142,7 +142,7 @@ public class ForgeInstallerTests : IDisposable
     }
 
     [Fact]
-    public void MergeVersionInfo_IncludesInstallProfileLibrariesBetweenLoaderAndOriginal()
+    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
     {
         var original = new VersionInfo
         {
@@ -176,8 +176,9 @@ public class ForgeInstallerTests : IDisposable
         Assert.Collection(
             merged.Libraries!,
             library => Assert.Equal("net.minecraftforge:forge:49.0.30", library.Name),
-            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
+            library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
     }
 
     #endregion
