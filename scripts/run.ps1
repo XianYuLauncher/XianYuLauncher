@@ -148,20 +148,41 @@ try {
     }
 
     $targetName = if ($Channel -eq 'Dev') { "SpiritStudio.XianYuLauncher.Dev" } else { "SpiritStudio.XianYuLauncher" }
-    $localPackages = Get-AppxPackage -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.Name -eq $targetName -and
-            $_.InstallLocation -and
-            ($_.InstallLocation -like "$($PWD.Path)*" -or $_.InstallLocation -like "*$LayoutDir*")
-        }
+    $existing = Get-AppxPackage -Name $targetName -ErrorAction SilentlyContinue |
+        Where-Object { $_.Publisher -eq "CN=XianYuLauncher" } |
+        Select-Object -First 1
 
-    foreach ($pkg in $localPackages) {
-        Write-Host "  Removing old local package: $($pkg.PackageFullName)" -ForegroundColor Gray
-        Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction SilentlyContinue
+    $configBackup = $null
+    if ($existing) {
+        $isLayoutRegistered = $existing.InstallLocation -and $existing.InstallLocation -like "*XianYuLauncher_Layout*"
+        if (-not $isLayoutRegistered) {
+            # 非 Layout 安装场景：迁移前备份数据，避免 Remove-AppxPackage 造成数据丢失
+            $appDataPath = "$env:LOCALAPPDATA\Packages\$($existing.PackageFamilyName)"
+            if (Test-Path $appDataPath) {
+                $configBackup = "$env:TEMP\XianYuLauncher_ConfigBackup_$([DateTime]::Now.Ticks)"
+                Copy-Item -Path $appDataPath -Destination $configBackup -Recurse -Force
+                Write-Host "  Backed up config (migrating from installed package)" -ForegroundColor Gray
+            }
+
+            Write-Host "  Removing installed package for migration: $($existing.PackageFullName)" -ForegroundColor Gray
+            Remove-AppxPackage -Package $existing.PackageFullName -ErrorAction SilentlyContinue
+        }
     }
 
     Add-AppxPackage -Register $layoutManifestPath -ForceApplicationShutdown
     Write-Host "  Registered" -ForegroundColor Green
+
+    if ($configBackup -and (Test-Path $configBackup)) {
+        $pkgNew = Get-AppxPackage -Name $targetName -ErrorAction SilentlyContinue |
+            Where-Object { $_.Publisher -eq "CN=XianYuLauncher" } |
+            Select-Object -First 1
+        if ($pkgNew) {
+            $appDataNew = "$env:LOCALAPPDATA\Packages\$($pkgNew.PackageFamilyName)"
+            Copy-Item -Path "$configBackup\*" -Destination $appDataNew -Recurse -Force
+            Remove-Item $configBackup -Recurse -Force
+            Write-Host "  Restored config" -ForegroundColor Gray
+        }
+    }
 
     if (-not $NoLaunch) {
         Write-Host ""
