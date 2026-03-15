@@ -239,6 +239,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     /// </summary>
     private List<ModLoaderLibrary> ParseLegacyFabricLibraries(JObject fabricProfile)
     {
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
         var libraries = new List<ModLoaderLibrary>();
         var librariesArray = fabricProfile["libraries"] as JArray;
 
@@ -255,22 +256,9 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
                 continue;
             }
             
-            // Check for native-only libraries in the initial download phase
-            // Just like in MergeVersionInfo, we should skip downloading the main jar if it's a native-only lib
-            if (name.Contains(":lwjgl-platform:") || name.Contains(":jinput-platform:") || name.Contains(":natives-"))
+            // Legacy Fabric 的 native-only 库只在 classifier 下载路径中消费，不进入主 JAR 下载列表。
+            if (!specializationStrategy.ShouldIncludePrimaryDownloadArtifact(name))
             {
-                // These libraries are handled by the natives extraction logic (which reads from Classifiers in the merged JSON)
-                // We should NOT add them to the basic ModLoaderLibrary list, because that list assumes a main jar exists.
-                // Or, if we do add them, ModLoaderInstallerBase needs to know they are special.
-                // Since ModLoaderInstallerBase just blindly downloads "Name/Url", we should skip them here.
-                
-                // Wait, if we skip them here, they won't be downloaded during the "ModLoader Library Download" phase.
-                // But will they be downloaded later?
-                // Yes, LibraryManager handles native extraction separately using the merged JSON.
-                // BUT, LibraryManager downloads only what is in the JSON.
-                // So if we merge correctly, LibraryManager will download the correct classifier jars later.
-                
-                // Therefore, it IS correct to skip adding them to this list which is purely for the initial "download jars" step.
                 continue;
             }
 

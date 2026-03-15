@@ -563,6 +563,9 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
+        var specializationContext = new ModLoaderSpecializationContext(original, cleanroom);
+
         var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
             original.Arguments,
             original.MinecraftArguments,
@@ -582,34 +585,13 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
             Downloads = original.Downloads,
-            // 关键字段：Cleanroom 强制要求 Java 21+，原版 1.12.2 默认为 8
-            // 我们手动指定 majorVersion 为 21，component 留空或使用标识符，让启动器去匹配本地的 Java 21
-            JavaVersion = new MinecraftJavaVersion 
-            {
-                Component = "java-runtime-delta", 
-                MajorVersion = 21
-            },
+            JavaVersion = specializationStrategy.ResolveJavaVersion(cleanroom?.JavaVersion ?? original.JavaVersion, specializationContext),
             Arguments = mergedLaunchArguments.Arguments,
             MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
-        var baseLibraries = new List<Library>();
-        bool shouldUseLwjgl3 = cleanroom?.Libraries?.Any(l => l.Name.StartsWith("org.lwjgl", StringComparison.OrdinalIgnoreCase) && !l.Name.Contains("2.9")) ?? false;
-        
-        if (original.Libraries != null)
-        {
-            foreach (var lib in original.Libraries)
-            {
-                if (shouldUseLwjgl3 && IsLwjgl2Library(lib.Name))
-                {
-                    Logger.LogInformation("Cleanroom使用LWJGL 3，移除原版LWJGL 2库: {LibName}", lib.Name);
-                    continue;
-                }
-
-                baseLibraries.Add(lib);
-            }
-        }
+        var baseLibraries = specializationStrategy.PrepareBaseLibraries(specializationContext);
 
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, baseLibraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom?.Libraries?.Count ?? 0);
@@ -654,14 +636,6 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
-    }
-
-    private bool IsLwjgl2Library(string libraryName)
-    {
-        return libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl") || 
-               libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl_util") || 
-               libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl-platform") ||
-               libraryName.StartsWith("net.java.jinput:jinput");
     }
 
     private void CleanupTempFiles(string? extractedPath)

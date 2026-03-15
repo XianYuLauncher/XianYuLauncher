@@ -282,6 +282,8 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     {
         const string tweakClass = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
         const string mainClass = "net.minecraft.launchwrapper.Launch";
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
+        var specializationContext = new ModLoaderSpecializationContext(baseVersion, isAddonMode: isAddonMode);
         
         // 构建 LiteLoader 库列表
         var liteLoaderLibraries = new List<Library>();
@@ -318,7 +320,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = baseVersion.ReleaseTime,
             Url = baseVersion.Url,
-            MainClass = isAddonMode ? baseVersion.MainClass : mainClass, // Addon 模式保持原 mainClass
+            MainClass = specializationStrategy.ResolveMainClass(mainClass, specializationContext),
             AssetIndex = baseVersion.AssetIndex,
             Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,
             Downloads = baseVersion.Downloads,

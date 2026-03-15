@@ -812,42 +812,12 @@ public class GameLaunchService : IGameLaunchService
             return string.Join(";", classpathEntries);
         }
         
-        // 判断是否为 Fabric 版本
-        bool isFabricVersion = await IsFabricVersionAsync(versionName, versionInfo, minecraftPath);
-        
-        // 收集 ASM 库版本（用于 Fabric 版本冲突处理）
-        var asmLibraryVersions = new Dictionary<string, string>();
-        if (isFabricVersion)
-        {
-            foreach (var library in versionInfo.Libraries)
-            {
-                if (library.Name.StartsWith("org.ow2.asm:asm:"))
-                {
-                    string[] parts = library.Name.Split(':');
-                    if (parts.Length >= 3)
-                    {
-                        asmLibraryVersions[library.Name] = parts[2];
-                    }
-                }
-            }
-        }
-        
-        // 找出最新的 ASM 版本
-        string latestAsmVersion = "0.0";
-        if (isFabricVersion && asmLibraryVersions.Count > 0)
-        {
-            foreach (var kvp in asmLibraryVersions)
-            {
-                if (string.Compare(kvp.Value, latestAsmVersion, StringComparison.Ordinal) > 0)
-                {
-                    latestAsmVersion = kvp.Value;
-                }
-            }
-            System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 检测到Fabric版本，最新ASM版本: {latestAsmVersion}");
-        }
+        string? modLoaderType = await ResolveModLoaderTypeAsync(versionName, versionInfo, minecraftPath);
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(modLoaderType);
+        var classpathLibraries = specializationStrategy.FilterLibrariesForClasspath(versionInfo.Libraries);
         
         // 添加库到 classpath
-        foreach (var library in versionInfo.Libraries)
+        foreach (var library in classpathLibraries)
         {
             // 检查规则
             bool isAllowed = true;
@@ -862,27 +832,7 @@ public class GameLaunchService : IGameLaunchService
             
             if (!isAllowed) continue;
             
-            // Fabric ASM 版本冲突处理：跳过旧版 ASM 库
-            if (isFabricVersion && library.Name.StartsWith("org.ow2.asm:asm:"))
-            {
-                string[] parts = library.Name.Split(':');
-                if (parts.Length >= 3 && parts[2] != latestAsmVersion)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 跳过旧版ASM库: {library.Name}");
-                    continue;
-                }
-            }
-            
             bool hasClassifier = library.Name.Count(c => c == ':') > 2;
-
-            // TODO(version-merge): 第二批策略层落地后，移除这段针对历史错误清单的兼容跳过逻辑。
-            // 跳过 neoforge-universal 和 installertools
-            if (library.Name.Contains("neoforge", StringComparison.OrdinalIgnoreCase) && 
-                (library.Name.Contains("universal", StringComparison.OrdinalIgnoreCase) || 
-                 library.Name.Contains("installertools", StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
             
             string? classifier = hasClassifier ? library.Name.Split(':')[3] : null;
             string libPath = GetLibraryFilePath(library.Name, librariesPath, classifier);
@@ -907,12 +857,8 @@ public class GameLaunchService : IGameLaunchService
         return string.Join(";", classpathEntries);
     }
     
-    /// <summary>
-    /// 判断是否为 Fabric 版本
-    /// </summary>
-    private async Task<bool> IsFabricVersionAsync(string versionName, VersionInfo versionInfo, string minecraftPath)
+    private async Task<string?> ResolveModLoaderTypeAsync(string versionName, VersionInfo versionInfo, string minecraftPath)
     {
-        // 1. 优先使用统一版本信息服务判断
         try
         {
             string versionDirectory = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionName);
@@ -920,20 +866,55 @@ public class GameLaunchService : IGameLaunchService
             
             if (versionConfig != null && !string.IsNullOrEmpty(versionConfig.ModLoaderType))
             {
-                return versionConfig.ModLoaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase);
+                return versionConfig.ModLoaderType;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 使用统一版本信息服务判断Fabric版本失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[GameLaunchService] 解析 ModLoaderType 失败: {ex.Message}");
         }
-        
-        // 2. 回退到旧的判断逻辑
-        return versionName.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) || 
-               (versionName.IndexOf("-fabric", StringComparison.OrdinalIgnoreCase) >= 0 && 
-                !versionName.StartsWith("fabric-", StringComparison.OrdinalIgnoreCase) && 
-                versionInfo.Libraries != null && 
-                versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:")));
+
+        if (versionInfo.Libraries == null)
+        {
+            return null;
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("net.fabricmc:fabric-loader:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "fabric";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("org.quiltmc:quilt-loader:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "quilt";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("net.neoforged:neoforge:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "neoforge";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("net.minecraftforge:forge:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "forge";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("com.cleanroommc:cleanroom:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "cleanroom";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("com.mumfrey:liteloader:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "liteloader";
+        }
+
+        if (versionInfo.Libraries.Any(l => l.Name.StartsWith("optifine:OptiFine:", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "optifine";
+        }
+
+        return null;
     }
 
     /// <summary>
