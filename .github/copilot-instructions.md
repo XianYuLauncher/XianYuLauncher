@@ -54,4 +54,4 @@ feat(protocol): 将 xianyulauncher:// URI 协议激活抽离为可扩展 Protoco
 ### Build & Test
 - 主项目：`pwsh scripts/run.ps1 -BuildOnly`（编译验证）；用户要求运行时用 `pwsh scripts/run.ps1`。
 - Core：`dotnet build XianYuLauncher.Core/XianYuLauncher.Core.csproj` 快速验证。
-- 测试：`dotnet test <测试项目.csproj>`，禁止 `runTest` 和 `--no-build`。
+- 测试：`dotnet test <测试项目.csproj>`，禁止 `runTest` 和 `--no-build`，但必须带忽略警告参数，否则会立刻占满上下文窗口。
