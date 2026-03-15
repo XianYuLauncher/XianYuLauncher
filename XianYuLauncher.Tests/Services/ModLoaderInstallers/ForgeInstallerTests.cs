@@ -181,5 +181,46 @@ public class ForgeInstallerTests : IDisposable
         Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
     }
 
+    [Fact]
+    public void MergeVersionInfo_OverrideSections_PreservesBaseDefaultUserJvmWhenForgeOmitsIt()
+    {
+        var original = new VersionInfo
+        {
+            Id = "1.20.4",
+            AssetIndex = new AssetIndex { Id = "1.20" },
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--username", "Steve" },
+                Jvm = new List<object> { "-Dbase=true" },
+                DefaultUserJvm = new List<object> { "-XX:+UseG1GC" }
+            },
+            Libraries = new List<Library>()
+        };
+        var forge = new VersionInfo
+        {
+            Id = "forge-1.20.4-49.0.30",
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--fml.mcVersion", "1.20.4" }
+            },
+            Libraries = new List<Library>()
+        };
+
+        var method = typeof(ForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var merged = Assert.IsType<VersionInfo>(method!.Invoke(_forgeInstaller, new object[] { original, forge, new List<Library>() }));
+
+        Assert.NotNull(merged.Arguments);
+        Assert.Null(merged.MinecraftArguments);
+        Assert.Collection(
+            merged.Arguments!.Game!,
+            argument => Assert.Equal("--fml.mcVersion", argument),
+            argument => Assert.Equal("1.20.4", argument));
+        Assert.Collection(merged.Arguments.Jvm!, argument => Assert.Equal("-Dbase=true", argument));
+        Assert.Collection(merged.Arguments.DefaultUserJvm!, argument => Assert.Equal("-XX:+UseG1GC", argument));
+    }
+
     #endregion
 }

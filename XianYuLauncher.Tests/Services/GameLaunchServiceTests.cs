@@ -134,6 +134,105 @@ public class GameLaunchServiceTests : IDisposable
         Assert.Equal(jarPath, classpath);
     }
 
+    [Fact]
+    public async Task BuildClasspathAsync_FabricStrategy_SkipsOlderAsmLibraries()
+    {
+        _mockVersionInfoService.Reset();
+        _mockVersionInfoService
+            .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync(new VersionConfig { ModLoaderType = "fabric" });
+
+        var librariesPath = Path.Combine(_testDirectory, "libraries");
+        var jarPath = Path.Combine(_testDirectory, "versions", "fabric-1.20.1", "fabric-1.20.1.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jarPath)!);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+
+        var oldAsm = new Library { Name = "org.ow2.asm:asm:9.5" };
+        var newAsm = new Library { Name = "org.ow2.asm:asm:9.7" };
+        var loaderLibrary = new Library { Name = "net.fabricmc:fabric-loader:0.15.0" };
+
+        var newAsmPath = CreateLibraryFile(librariesPath, newAsm.Name);
+        var loaderLibraryPath = CreateLibraryFile(librariesPath, loaderLibrary.Name);
+        CreateLibraryFile(librariesPath, oldAsm.Name);
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library> { oldAsm, loaderLibrary, newAsm }
+        };
+
+        var classpath = await InvokeBuildClasspathAsync(versionInfo, "fabric-1.20.1", jarPath, librariesPath, _testDirectory);
+
+        Assert.Equal(
+            new[] { loaderLibraryPath, newAsmPath, jarPath },
+            classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public async Task BuildClasspathAsync_FabricStrategy_PrefersSemanticallyNewestAsmVersion()
+    {
+        _mockVersionInfoService.Reset();
+        _mockVersionInfoService
+            .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync(new VersionConfig { ModLoaderType = "fabric" });
+
+        var librariesPath = Path.Combine(_testDirectory, "libraries");
+        var jarPath = Path.Combine(_testDirectory, "versions", "fabric-1.20.1", "fabric-1.20.1.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jarPath)!);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+
+        var asmNineSeven = new Library { Name = "org.ow2.asm:asm:9.7" };
+        var asmNineTen = new Library { Name = "org.ow2.asm:asm:9.10" };
+        var loaderLibrary = new Library { Name = "net.fabricmc:fabric-loader:0.15.0" };
+
+        CreateLibraryFile(librariesPath, asmNineSeven.Name);
+        var asmNineTenPath = CreateLibraryFile(librariesPath, asmNineTen.Name);
+        var loaderLibraryPath = CreateLibraryFile(librariesPath, loaderLibrary.Name);
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library> { asmNineSeven, loaderLibrary, asmNineTen }
+        };
+
+        var classpath = await InvokeBuildClasspathAsync(versionInfo, "fabric-1.20.1", jarPath, librariesPath, _testDirectory);
+
+        Assert.Equal(
+            new[] { loaderLibraryPath, asmNineTenPath, jarPath },
+            classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public async Task BuildClasspathAsync_NeoForgeStrategy_SkipsUniversalAndInstallertoolsLibraries()
+    {
+        _mockVersionInfoService.Reset();
+        _mockVersionInfoService
+            .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync(new VersionConfig { ModLoaderType = "neoforge" });
+
+        var librariesPath = Path.Combine(_testDirectory, "libraries");
+        var jarPath = Path.Combine(_testDirectory, "versions", "neoforge-1.20.4", "neoforge-1.20.4.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jarPath)!);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+
+        var runtimeLibrary = new Library { Name = "net.neoforged:neoforge:20.4.200" };
+        var universalLibrary = new Library { Name = "net.neoforged:neoforge-universal:20.4.200" };
+        var installertoolsLibrary = new Library { Name = "net.neoforged:installertools:2.1.3" };
+
+        var runtimeLibraryPath = CreateLibraryFile(librariesPath, runtimeLibrary.Name);
+        CreateLibraryFile(librariesPath, universalLibrary.Name);
+        CreateLibraryFile(librariesPath, installertoolsLibrary.Name);
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library> { runtimeLibrary, universalLibrary, installertoolsLibrary }
+        };
+
+        var classpath = await InvokeBuildClasspathAsync(versionInfo, "neoforge-1.20.4", jarPath, librariesPath, _testDirectory);
+
+        Assert.Equal(
+            new[] { runtimeLibraryPath, jarPath },
+            classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
+    }
+
     private async Task<string> InvokeBuildClasspathAsync(
         VersionInfo versionInfo,
         string versionName,

@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
@@ -137,6 +139,53 @@ public class FabricInstallerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ModLoaderInstallException>(() =>
             _fabricInstaller.InstallAsync("nonexistent", "0.15.0", _testDirectory));
+    }
+
+    [Fact]
+    public void MergeVersionInfo_MergesModernArgumentsAndRetainsDefaultUserJvm()
+    {
+        var original = new VersionInfo
+        {
+            Id = "1.20.4",
+            AssetIndex = new AssetIndex { Id = "1.20" },
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--username", "Steve" },
+                DefaultUserJvm = new List<object> { "-XX:+UseG1GC" }
+            }
+        };
+
+        var fabricProfile = JObject.Parse("""
+        {
+          "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+          "arguments": {
+            "game": ["--quickPlaySingleplayer", "World"],
+            "jvm": ["-Dfabric=true"],
+            "default-user-jvm": ["-XX:+UseZGC"]
+          },
+          "libraries": []
+        }
+        """);
+
+        var method = typeof(FabricInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var merged = Assert.IsType<VersionInfo>(method!.Invoke(_fabricInstaller, new object[] { original, fabricProfile, "fabric-1.20.4-0.15.0" }));
+
+        Assert.NotNull(merged.Arguments);
+        Assert.Null(merged.MinecraftArguments);
+        Assert.Collection(
+            merged.Arguments!.Game!,
+            argument => Assert.Equal("--username", argument),
+            argument => Assert.Equal("Steve", argument),
+            argument => Assert.Equal("--quickPlaySingleplayer", argument),
+            argument => Assert.Equal("World", argument));
+        Assert.Collection(merged.Arguments.Jvm!, argument => Assert.Equal("-Dfabric=true", argument));
+        Assert.Collection(
+            merged.Arguments.DefaultUserJvm!,
+            argument => Assert.Equal("-XX:+UseG1GC", argument),
+            argument => Assert.Equal("-XX:+UseZGC", argument));
     }
 
     #endregion

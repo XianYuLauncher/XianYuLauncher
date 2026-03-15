@@ -31,6 +31,10 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     /// <inheritdoc/>
     public override string ModLoaderType => "LegacyFabric";
 
+    protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.LegacyFabric;
+
+    protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSourceFactory.GetLegacyFabricSource();
+
     public LegacyFabricInstaller(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
@@ -239,6 +243,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     /// </summary>
     private List<ModLoaderLibrary> ParseLegacyFabricLibraries(JObject fabricProfile)
     {
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
         var libraries = new List<ModLoaderLibrary>();
         var librariesArray = fabricProfile["libraries"] as JArray;
 
@@ -255,29 +260,16 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
                 continue;
             }
             
-            // Check for native-only libraries in the initial download phase
-            // Just like in MergeVersionInfo, we should skip downloading the main jar if it's a native-only lib
-            if (name.Contains(":lwjgl-platform:") || name.Contains(":jinput-platform:") || name.Contains(":natives-"))
+            // Legacy Fabric 的 native-only 库只在 classifier 下载路径中消费，不进入主 JAR 下载列表。
+            if (!specializationStrategy.ShouldIncludePrimaryDownloadArtifact(name))
             {
-                // These libraries are handled by the natives extraction logic (which reads from Classifiers in the merged JSON)
-                // We should NOT add them to the basic ModLoaderLibrary list, because that list assumes a main jar exists.
-                // Or, if we do add them, ModLoaderInstallerBase needs to know they are special.
-                // Since ModLoaderInstallerBase just blindly downloads "Name/Url", we should skip them here.
-                
-                // Wait, if we skip them here, they won't be downloaded during the "ModLoader Library Download" phase.
-                // But will they be downloaded later?
-                // Yes, LibraryManager handles native extraction separately using the merged JSON.
-                // BUT, LibraryManager downloads only what is in the JSON.
-                // So if we merge correctly, LibraryManager will download the correct classifier jars later.
-                
-                // Therefore, it IS correct to skip adding them to this list which is purely for the initial "download jars" step.
                 continue;
             }
 
             libraries.Add(new ModLoaderLibrary
             {
                 Name = name,
-                Url = lib["url"]?.ToString() ?? "https://maven.fabricmc.net/", // Fallback might need adjustment if Legacy Fabric has specific maven
+                Url = lib["url"]?.ToString(),
                 Sha1 = lib["sha1"]?.ToString()
             });
         }
@@ -293,20 +285,13 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         var mainClass = fabricProfile["mainClass"]?.ToString() ?? "net.fabricmc.loader.impl.launch.knot.KnotClient";
         var fabricArguments = fabricProfile["arguments"]?.ToObject<Arguments>();
         var fabricLibraries = fabricProfile["libraries"]?.ToObject<List<Library>>() ?? new List<Library>();
-
-        // 参数合并逻辑
-        Arguments? mergedArguments = null;
-        string? mergedMinecraftArguments = null;
-
-        if (!string.IsNullOrEmpty(original.MinecraftArguments))
-        {
-            mergedMinecraftArguments = original.MinecraftArguments;
-            mergedArguments = null;
-        }
-        else
-        {
-            mergedArguments = MergeArguments(original.Arguments, fabricArguments);
-        }
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            fabricArguments,
+            null,
+            LegacyArgumentMergeMode.PreferBaseIfPresent,
+            ModernArgumentMergeMode.MergeLists);
 
         var merged = new VersionInfo
         {
@@ -320,8 +305,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
             Downloads = original.Downloads,
             JavaVersion = original.JavaVersion,
-            Arguments = mergedArguments,
-            MinecraftArguments = mergedMinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
@@ -330,151 +315,69 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
         foreach (var library in merged.Libraries)
         {
-            if (library.Downloads == null)
+            library.Downloads ??= new LibraryDownloads();
+
+            var parts = library.Name?.Split(':');
+            if (parts == null || parts.Length < 3)
             {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
+                continue;
+            }
+
+            string artifactId = parts[1];
+            string? baseUrl = LibraryDownloadUrlHelper.ResolveRepositoryBaseUrl(
+                library.Name,
+                library.Url,
+                LibraryRepositoryProfile.LegacyFabric);
+
+            bool isNativeOnly = artifactId.EndsWith("-platform", StringComparison.OrdinalIgnoreCase) ||
+                                artifactId.Contains("natives", StringComparison.OrdinalIgnoreCase);
+
+            if (!isNativeOnly)
+            {
+                LibraryDownloadUrlHelper.EnsureArtifactDownload(library, LibraryRepositoryProfile.LegacyFabric);
+            }
+            else
+            {
+                library.Downloads.Artifact = null;
+            }
+
+            if (library.Natives == null || string.IsNullOrEmpty(baseUrl))
+            {
+                continue;
+            }
+
+            library.Downloads.Classifiers ??= new Dictionary<string, DownloadFile>();
+
+            var classifiers = new HashSet<string>();
+            if (!string.IsNullOrEmpty(library.Natives.Linux)) classifiers.Add(library.Natives.Linux);
+            if (!string.IsNullOrEmpty(library.Natives.Windows)) classifiers.Add(library.Natives.Windows);
+            if (!string.IsNullOrEmpty(library.Natives.Osx)) classifiers.Add(library.Natives.Osx);
+
+            foreach (var classifier in classifiers)
+            {
+                if (library.Downloads.Classifiers.ContainsKey(classifier))
                 {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    // Default to Fabric Maven; override for known special cases such as Legacy Fabric
-                    // (https://repo.legacyfabric.net/repository/legacyfabric/) and core Minecraft libraries.
-                    // This mirrors the repository selection logic below based on groupId and explicit library.Url.
-                    string baseUrl = "https://maven.fabricmc.net/";
-                    if (!string.IsNullOrEmpty(library.Url))
-                    {
-                        baseUrl = library.Url;
-                    }
-                    else if (groupId.StartsWith("net.legacyfabric"))
-                    {
-                         baseUrl = "https://repo.legacyfabric.net/repository/legacyfabric/";
-                    }
-                    else if (groupId.StartsWith("org.ow2") || groupId.StartsWith("net.java") || groupId.StartsWith("org.apache"))
-                    {
-                        baseUrl = "https://libraries.minecraft.net/";
-                    }
-                    
-                    if (!baseUrl.EndsWith("/"))
-                    {
-                        baseUrl += "/";
-                    }
-                    
-                    // Determine if this is a native-only library (like lwjgl-platform) which typically doesn't have a main jar
-                    // but only classifier jars.
-                    bool isNativeOnly = artifactId.EndsWith("-platform") || artifactId.Contains("natives");
-                    
-                    if (!isNativeOnly)
-                    {
-                        string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                        library.Downloads.Artifact = new DownloadFile
-                        {
-                            Url = downloadUrl,
-                            Sha1 = null,
-                            Size = 0
-                        };
-                    }
-                    else
-                    {
-                        // Ensure artifact is explicitly nulled out for native-only libraries
-                        // so GameLaunchService doesn't try to add a non-existent jar to classpath
-                        library.Downloads.Artifact = null;
-                    }
-                    
-                    // Handle Natives / Classifiers
-                    if (library.Natives != null)
-                    {
-                        if (library.Downloads.Classifiers == null)
-                        {
-                            library.Downloads.Classifiers = new Dictionary<string, DownloadFile>();
-                        }
-                        
-                        // Collect all unique classifiers used in Natives
-                        var classifiers = new HashSet<string>();
-                        if (!string.IsNullOrEmpty(library.Natives.Linux)) classifiers.Add(library.Natives.Linux);
-                        if (!string.IsNullOrEmpty(library.Natives.Windows)) classifiers.Add(library.Natives.Windows);
-                        if (!string.IsNullOrEmpty(library.Natives.Osx)) classifiers.Add(library.Natives.Osx);
-                        
-                        foreach (var classifier in classifiers)
-                        {
-                            // Construct URL with classifier
-                            // Format: name-version-classifier.jar
-                            string nativeUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}-{classifier}.jar";
-                            
-                            // Map existing classifier key? Or just add if missing?
-                            // Logic: check all keys in Natives block, map them to this URL
-                            
-                            // Simplest: Add entry for the classifier string itself
-                            if (!library.Downloads.Classifiers.ContainsKey(classifier))
-                            {
-                                library.Downloads.Classifiers[classifier] = new DownloadFile
-                                {
-                                    Url = nativeUrl,
-                                    Sha1 = null,
-                                    Size = 0
-                                };
-                            }
-                        }
-                    }
+                    continue;
                 }
+
+                string? nativeUrl = LibraryDownloadUrlHelper.BuildArtifactUrl(library.Name, baseUrl, classifier);
+                if (string.IsNullOrEmpty(nativeUrl))
+                {
+                    continue;
+                }
+
+                library.Downloads.Classifiers[classifier] = new DownloadFile
+                {
+                    Url = nativeUrl,
+                    Sha1 = null,
+                    Size = 0
+                };
             }
         }
 
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
-    }
-
-    /// <summary>
-    /// 合并Arguments对象
-    /// </summary>
-    private Arguments? MergeArguments(Arguments? original, Arguments? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        if (original == null)
-            return modLoader;
-        
-        if (modLoader == null)
-            return original;
-
-        return new Arguments
-        {
-            Game = MergeArgumentList(original.Game, modLoader.Game),
-            Jvm = MergeArgumentList(original.Jvm, modLoader.Jvm)
-        };
-    }
-
-    /// <summary>
-    /// 合并参数列表
-    /// </summary>
-    private List<object>? MergeArgumentList(List<object>? original, List<object>? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        var merged = new List<object>();
-        
-        if (original != null)
-            merged.AddRange(original);
-        
-        if (modLoader != null)
-        {
-            foreach (var arg in modLoader)
-            {
-                var argStr = arg?.ToString();
-                if (!string.IsNullOrEmpty(argStr) && !merged.Any(m => m?.ToString() == argStr))
-                {
-                    merged.Add(arg);
-                }
-            }
-        }
-
-        return merged.Count > 0 ? merged : null;
     }
 
     #endregion

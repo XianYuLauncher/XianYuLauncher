@@ -439,23 +439,13 @@ public class OptifineInstaller : ModLoaderInstallerBase
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? optifine, string versionId)
     {
-        // 参数合并逻辑：
-        // 如果Optifine或原版使用minecraftArguments（旧版格式），则使用minecraftArguments
-        // 否则合并arguments
-        Arguments? mergedArguments = null;
-        string? mergedMinecraftArguments = null;
-
-        if (!string.IsNullOrEmpty(optifine?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments))
-        {
-            // 使用旧版格式
-            mergedMinecraftArguments = optifine?.MinecraftArguments ?? original.MinecraftArguments;
-            mergedArguments = null;
-        }
-        else
-        {
-            // 合并arguments
-            mergedArguments = MergeArguments(original.Arguments, optifine?.Arguments);
-        }
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            optifine?.Arguments,
+            optifine?.MinecraftArguments,
+            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+            ModernArgumentMergeMode.MergeLists);
 
         var merged = new VersionInfo
         {
@@ -471,8 +461,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Downloads = original.Downloads,
             JavaVersion = original.JavaVersion,
             // 参数处理
-            Arguments = mergedArguments,
-            MinecraftArguments = mergedMinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
@@ -481,57 +471,6 @@ public class OptifineInstaller : ModLoaderInstallerBase
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
-    }
-
-    /// <summary>
-    /// 合并Arguments对象
-    /// </summary>
-    private Arguments? MergeArguments(Arguments? original, Arguments? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        if (original == null)
-            return modLoader;
-        
-        if (modLoader == null)
-            return original;
-
-        var merged = new Arguments
-        {
-            Game = MergeArgumentList(original.Game, modLoader.Game),
-            Jvm = MergeArgumentList(original.Jvm, modLoader.Jvm)
-        };
-
-        return merged;
-    }
-
-    /// <summary>
-    /// 合并参数列表
-    /// </summary>
-    private List<object>? MergeArgumentList(List<object>? original, List<object>? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        var merged = new List<object>();
-        
-        if (original != null)
-            merged.AddRange(original);
-        
-        if (modLoader != null)
-        {
-            foreach (var arg in modLoader)
-            {
-                // 避免重复添加相同的参数
-                if (!merged.Contains(arg))
-                {
-                    merged.Add(arg);
-                }
-            }
-        }
-
-        return merged.Count > 0 ? merged : null;
     }
 
     private VersionInfo CreateSimpleOptifineVersionInfo(

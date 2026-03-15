@@ -23,6 +23,10 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
     public override string ModLoaderType => "LiteLoader";
 
+    protected override LibraryRepositoryProfile GetLibraryRepositoryProfile() => LibraryRepositoryProfile.LiteLoader;
+
+    protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSourceFactory.GetLiteLoaderSource();
+
     public LiteLoaderInstaller(
         IDownloadManager downloadManager,
         ILibraryManager libraryManager,
@@ -245,7 +249,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             var modLoaderLibraries = artifact.Libraries.Select(lib => new ModLoaderLibrary
             {
                 Name = lib.Name,
-                Url = lib.Url ?? "https://libraries.minecraft.net/",
+                Url = lib.Url,
                 Sha1 = null
             }).ToList();
 
@@ -282,6 +286,8 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     {
         const string tweakClass = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
         const string mainClass = "net.minecraft.launchwrapper.Launch";
+        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
+        var specializationContext = new ModLoaderSpecializationContext(baseVersion, isAddonMode: isAddonMode);
         
         // 构建 LiteLoader 库列表
         var liteLoaderLibraries = new List<Library>();
@@ -305,40 +311,11 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             }
         }
         
-        // 参数合并逻辑：根据基础版本格式决定
-        Arguments? mergedArguments = null;
-        string? mergedMinecraftArguments = null;
-
-        if (!string.IsNullOrEmpty(baseVersion.MinecraftArguments))
-        {
-            // 基础版本使用旧版格式（minecraftArguments）
-            mergedMinecraftArguments = $"{baseVersion.MinecraftArguments} --tweakClass {tweakClass}";
-            mergedArguments = null;
-        }
-        else if (baseVersion.Arguments != null)
-        {
-            // 基础版本使用新版格式（arguments）
-            mergedArguments = new Arguments
-            {
-                Game = new List<object>(baseVersion.Arguments.Game ?? new List<object>()),
-                Jvm = baseVersion.Arguments.Jvm != null ? new List<object>(baseVersion.Arguments.Jvm) : null
-            };
-            
-            // 添加 tweakClass 参数
-            mergedArguments.Game.Add("--tweakClass");
-            mergedArguments.Game.Add(tweakClass);
-            
-            mergedMinecraftArguments = null;
-        }
-        else
-        {
-            // 基础版本没有参数，创建新的
-            mergedArguments = new Arguments
-            {
-                Game = new List<object> { "--tweakClass", tweakClass }
-            };
-            mergedMinecraftArguments = null;
-        }
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.AppendGameArgumentsPreservingFormat(
+            baseVersion.Arguments,
+            baseVersion.MinecraftArguments,
+            "--tweakClass",
+            tweakClass);
 
         var merged = new VersionInfo
         {
@@ -347,45 +324,19 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = baseVersion.ReleaseTime,
             Url = baseVersion.Url,
-            MainClass = isAddonMode ? baseVersion.MainClass : mainClass, // Addon 模式保持原 mainClass
+            MainClass = specializationStrategy.ResolveMainClass(mainClass, specializationContext),
             AssetIndex = baseVersion.AssetIndex,
             Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,
             Downloads = baseVersion.Downloads,
             JavaVersion = baseVersion.JavaVersion,
-            Arguments = mergedArguments,
-            MinecraftArguments = mergedMinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
         merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(liteLoaderLibraries, baseVersion.Libraries);
 
-        // 为所有库添加 downloads 信息
-        foreach (var library in merged.Libraries)
-        {
-            if (library.Downloads == null)
-            {
-                library.Downloads = new LibraryDownloads();
-                
-                var parts = library.Name?.Split(':');
-                if (parts != null && parts.Length >= 3)
-                {
-                    string groupId = parts[0];
-                    string artifactId = parts[1];
-                    string version = parts[2];
-                    
-                    // LiteLoader 的所有库都用 Minecraft 官方库
-                    string baseUrl = "https://libraries.minecraft.net/";
-                    string downloadUrl = $"{baseUrl}{groupId.Replace('.', '/')}/{artifactId}/{version}/{artifactId}-{version}.jar";
-                    
-                    library.Downloads.Artifact = new DownloadFile
-                    {
-                        Url = downloadUrl,
-                        Sha1 = null,
-                        Size = 0
-                    };
-                }
-            }
-        }
+        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.LiteLoader);
 
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 合并后总依赖库数量: {merged.Libraries.Count}");
 

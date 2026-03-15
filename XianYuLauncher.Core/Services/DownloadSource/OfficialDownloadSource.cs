@@ -235,7 +235,7 @@ public class OfficialDownloadSource : IDownloadSource
         {
             fileName += $"-{classifier}";
         }
-        fileName += $".$extension";
+        fileName += $".{extension}";
         
         // 构建完整URL
         string baseUrl = "https://repo1.maven.org/maven2";
@@ -256,8 +256,8 @@ public class OfficialDownloadSource : IDownloadSource
         // 官方源直接使用原始URL
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JAR下载URL: {originalUrl}");
         return originalUrl;
-    }
-    
+        }
+
     /// <summary>
     /// 获取客户端JSON下载URL
     /// </summary>
