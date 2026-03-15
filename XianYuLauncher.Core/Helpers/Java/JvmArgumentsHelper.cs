@@ -36,28 +36,36 @@ public static class JvmArgumentsHelper
         // 1) 启动器/Loader 原始参数不做全局去重，避免破坏成对参数（如 --add-opens + value）。
         // 2) 仅在“用户覆盖域”（内存/GC/-D属性）做覆盖，用户参数优先。
         var filteredCustom = FilterCustomArgumentsForOverrides(customArgArray);
+        var combined = new List<string>(launcherArgs.Count + filteredCustom.Count);
+        combined.AddRange(launcherArgs);
+        combined.AddRange(filteredCustom);
 
-        var overrideKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < filteredCustom.Count; i++)
+        var lastIndexByOverrideKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < combined.Count; i++)
         {
-            var key = GetOverrideKey(filteredCustom[i]);
+            var key = GetOverrideKey(combined[i]);
             if (key != null)
             {
-                overrideKeys.Add(key);
+                lastIndexByOverrideKey[key] = i;
             }
         }
 
-        var result = new List<string>(launcherArgs.Count + filteredCustom.Count);
-        for (int i = 0; i < launcherArgs.Count; i++)
+        var result = new List<string>(combined.Count);
+        for (int i = 0; i < combined.Count; i++)
         {
-            var launcherKey = GetOverrideKey(launcherArgs[i]);
-            if (launcherKey == null || !overrideKeys.Contains(launcherKey))
+            var key = GetOverrideKey(combined[i]);
+            if (key == null)
             {
-                result.Add(launcherArgs[i]);
+                result.Add(combined[i]);
+                continue;
+            }
+
+            if (lastIndexByOverrideKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            {
+                result.Add(combined[i]);
             }
         }
 
-        result.AddRange(filteredCustom);
         return result;
     }
 
@@ -115,6 +123,11 @@ public static class JvmArgumentsHelper
             if (equalsIndex > 2)
             {
                 return "override:prop:" + arg.Substring(2, equalsIndex - 2);
+            }
+
+            if (equalsIndex < 0 && arg.Length > 2)
+            {
+                return "override:prop:" + arg.Substring(2);
             }
         }
 

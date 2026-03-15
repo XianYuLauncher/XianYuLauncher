@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.IntegrationTests;
@@ -110,29 +111,36 @@ public class JvmArgumentsMergeIntegrationTests
 
     private static List<string> ExtractModernLauncherJvmArgs(string json)
     {
-        using var document = JsonDocument.Parse(json);
-        var root = document.RootElement;
-
         var result = new List<string>();
-
-        if (!root.TryGetProperty("arguments", out var arguments))
+        var root = JObject.Parse(json);
+        var arguments = root["arguments"] as JObject;
+        if (arguments == null)
         {
             return result;
         }
 
-        if (arguments.TryGetProperty("default-user-jvm", out var defaultUserJvm)
-            && defaultUserJvm.ValueKind == JsonValueKind.Array)
+        // default-user-jvm 复用生产规则解析逻辑（含 rules）。
+        if (arguments["default-user-jvm"] is JArray defaultUserJvm)
         {
-            foreach (var item in defaultUserJvm.EnumerateArray())
+            var entries = new List<object>(defaultUserJvm.Count);
+            foreach (var token in defaultUserJvm)
             {
-                AppendValueTokens(item, result);
+                if (token.Type == JTokenType.String)
+                {
+                    entries.Add(token.ToString());
+                }
+                else if (token is JObject obj)
+                {
+                    entries.Add(obj);
+                }
             }
+
+            result.AddRange(DefaultUserJvmArgumentsHelper.ResolveEffectiveArguments(entries));
         }
 
-        if (arguments.TryGetProperty("jvm", out var jvm)
-            && jvm.ValueKind == JsonValueKind.Array)
+        if (arguments["jvm"] is JArray jvm)
         {
-            foreach (var item in jvm.EnumerateArray())
+            foreach (var item in jvm)
             {
                 AppendValueTokens(item, result);
             }
@@ -141,11 +149,11 @@ public class JvmArgumentsMergeIntegrationTests
         return result;
     }
 
-    private static void AppendValueTokens(JsonElement item, List<string> target)
+    private static void AppendValueTokens(JToken item, List<string> target)
     {
-        if (item.ValueKind == JsonValueKind.String)
+        if (item.Type == JTokenType.String)
         {
-            var value = item.GetString();
+            var value = item.ToString();
             if (!string.IsNullOrWhiteSpace(value))
             {
                 target.Add(value);
@@ -153,26 +161,26 @@ public class JvmArgumentsMergeIntegrationTests
             return;
         }
 
-        if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("value", out var valueElement))
+        if (item is JObject obj && obj.TryGetValue("value", out var valueElement))
         {
-            if (valueElement.ValueKind == JsonValueKind.String)
+            if (valueElement.Type == JTokenType.String)
             {
-                var value = valueElement.GetString();
+                var value = valueElement.ToString();
                 if (!string.IsNullOrWhiteSpace(value))
                 {
                     target.Add(value);
                 }
             }
-            else if (valueElement.ValueKind == JsonValueKind.Array)
+            else if (valueElement is JArray valueArray)
             {
-                foreach (var token in valueElement.EnumerateArray())
+                foreach (var token in valueArray)
                 {
-                    if (token.ValueKind != JsonValueKind.String)
+                    if (token.Type != JTokenType.String)
                     {
                         continue;
                     }
 
-                    var text = token.GetString();
+                    var text = token.ToString();
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         target.Add(text);

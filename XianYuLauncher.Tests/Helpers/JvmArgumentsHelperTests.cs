@@ -80,11 +80,12 @@ public class JvmArgumentsHelperTests
         result.Should().ContainInOrder("--add-exports", "java.base/sun.security.util=cpw.mods.securejarhandler");
         result.Should().ContainInOrder("--add-exports", "jdk.naming.dns/com.sun.jndi.dns=java.naming");
 
-        // 值不能作为孤立 token 出现（每个值前面都必须有对应的标志）
-        int firstAddOpensIdx = result.IndexOf("--add-opens");
-        int secondAddOpensIdx = result.LastIndexOf("--add-opens");
-        firstAddOpensIdx.Should().BeGreaterThanOrEqualTo(0);
-        secondAddOpensIdx.Should().BeGreaterThan(firstAddOpensIdx, "应当保留两个 --add-opens");
+        // 值不能作为孤立 token 出现：必须和对应标志相邻
+        ContainsAdjacentPair(result, "--add-modules", "ALL-MODULE-PATH").Should().BeTrue();
+        ContainsAdjacentPair(result, "--add-opens", "java.base/java.util.jar=cpw.mods.securejarhandler").Should().BeTrue();
+        ContainsAdjacentPair(result, "--add-opens", "java.base/java.lang.invoke=cpw.mods.securejarhandler").Should().BeTrue();
+        ContainsAdjacentPair(result, "--add-exports", "java.base/sun.security.util=cpw.mods.securejarhandler").Should().BeTrue();
+        ContainsAdjacentPair(result, "--add-exports", "jdk.naming.dns/com.sun.jndi.dns=java.naming").Should().BeTrue();
 
         // 5 对参数，每对 2 个 token，共 10 个（5 * 2 = launcherArgs.Count）
         result.Should().HaveCount(launcherArgs.Count);
@@ -135,5 +136,58 @@ public class JvmArgumentsHelperTests
         result.Should().NotContain("-XX:+UseZGC");
         result.Should().NotContain("-Dfoo=1");
         result.Should().NotContain("-Dfoo=2");
+    }
+
+    [Fact]
+    public void MergeAndDeduplicateArguments_ShouldKeepLastOverrideWithinLauncherArgs_WhenCustomArgsIsEmpty()
+    {
+        var launcherArgs = new List<string>
+        {
+            "-Xmx2G",
+            "-Xmx4G",
+            "-XX:+UseZGC",
+            "-XX:+UseG1GC",
+            "-Dfoo=1",
+            "-Dfoo=2"
+        };
+
+        var result = JvmArgumentsHelper.MergeAndDeduplicateArguments(launcherArgs, null);
+
+        result.Should().Contain("-Xmx4G");
+        result.Should().Contain("-XX:+UseG1GC");
+        result.Should().Contain("-Dfoo=2");
+
+        result.Should().NotContain("-Xmx2G");
+        result.Should().NotContain("-XX:+UseZGC");
+        result.Should().NotContain("-Dfoo=1");
+    }
+
+    [Fact]
+    public void MergeAndDeduplicateArguments_ShouldTreatDashDWithoutEqualsAsOverrideKey()
+    {
+        var launcherArgs = new List<string>
+        {
+            "-Dfoo=1"
+        };
+
+        var customArgs = "-Dfoo";
+
+        var result = JvmArgumentsHelper.MergeAndDeduplicateArguments(launcherArgs, customArgs);
+
+        result.Should().ContainSingle(item => item == "-Dfoo");
+        result.Should().NotContain("-Dfoo=1");
+    }
+
+    private static bool ContainsAdjacentPair(List<string> args, string flag, string value)
+    {
+        for (int i = 0; i < args.Count - 1; i++)
+        {
+            if (args[i] == flag && args[i + 1] == value)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
