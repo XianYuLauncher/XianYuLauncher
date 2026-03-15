@@ -1,10 +1,12 @@
 # Packaged WinUI 3 CLI run script (VS-style loose file registration)
-# Usage: .\run.ps1  or  powershell -File run.ps1
-# Mimics VS F5: extracts MSIX to layout folder, uses Add-AppxPackage -Register.
-# No Remove on re-run = config preserved, same-version updates work.
+# Usage:
+#   .\run.ps1 -BuildOnly     # 仅编译验证，最快，适合 AI/CI
+#   .\run.ps1 -NoLaunch      # 打包+注册，不启动
+#   .\run.ps1                # 打包+注册+启动（完整 F5 流程）
 
 param(
-    [switch]$NoLaunch
+    [switch]$BuildOnly,  # 仅 msbuild 编译，不打包/注册/启动
+    [switch]$NoLaunch    # 打包+注册，但不启动
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +20,17 @@ $ManifestPath = "XianYuLauncher\Package.appxmanifest"
 $AppPackagesDir = "AppPackages"
 $LayoutDir = "AppPackages\XianYuLauncher_Layout"
 $CertPath = "XianYuLauncher\XianYuLauncher_Dev.pfx"
+
+if ($BuildOnly) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  XianYuLauncher - Build Only" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    msbuild $ProjectPath -p:Configuration=Debug -p:Platform=x64 -p:WarningLevel=0 -clp:ErrorsOnly
+    if ($LASTEXITCODE -eq 0) { Write-Host "Build succeeded (exit 0)" -ForegroundColor Green }
+    exit $LASTEXITCODE
+}
 
 # 1. Switch to Sideload (dev cert needs Publisher=CN=XianYuLauncher)
 & "$ProjectRoot\XianYuLauncher\switch-publish-mode.ps1" -Mode Sideload | Out-Null
@@ -56,6 +69,7 @@ try {
         Write-Host "Build failed" -ForegroundColor Red
         exit 1
     }
+    Write-Host "  Build succeeded (exit 0)" -ForegroundColor Green
 
     Write-Host ""
     Write-Host "[2/4] Finding MSIX..." -ForegroundColor Yellow
