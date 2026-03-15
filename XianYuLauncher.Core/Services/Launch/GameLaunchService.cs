@@ -789,12 +789,26 @@ public class GameLaunchService : IGameLaunchService
         string minecraftPath)
     {
         await Task.CompletedTask;
-        
-        var classpathEntries = new HashSet<string>();
-        classpathEntries.Add(jarPath);
+
+        var classpathEntries = new List<string>();
+        var seenClasspathEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddClasspathEntry(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            if (seenClasspathEntries.Add(path))
+            {
+                classpathEntries.Add(path);
+            }
+        }
         
         if (versionInfo.Libraries == null)
         {
+            AddClasspathEntry(jarPath);
             return string.Join(";", classpathEntries);
         }
         
@@ -874,7 +888,7 @@ public class GameLaunchService : IGameLaunchService
             
             if (File.Exists(libPath))
             {
-                classpathEntries.Add(libPath);
+                AddClasspathEntry(libPath);
             }
             else
             {
@@ -882,10 +896,12 @@ public class GameLaunchService : IGameLaunchService
                 string libPathWithoutClassifier = GetLibraryFilePath(library.Name, librariesPath, null);
                 if (File.Exists(libPathWithoutClassifier))
                 {
-                    classpathEntries.Add(libPathWithoutClassifier);
+                    AddClasspathEntry(libPathWithoutClassifier);
                 }
             }
         }
+
+        AddClasspathEntry(jarPath);
         
         return string.Join(";", classpathEntries);
     }
