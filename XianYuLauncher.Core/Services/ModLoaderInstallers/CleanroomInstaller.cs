@@ -563,6 +563,14 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            cleanroom?.Arguments,
+            cleanroom?.MinecraftArguments,
+            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+            ModernArgumentMergeMode.OverrideSections);
+
         var merged = new VersionInfo
         {
             Id = cleanroom?.Id ?? original.Id,
@@ -581,10 +589,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 Component = "java-runtime-delta", 
                 MajorVersion = 21
             },
-            Arguments = !string.IsNullOrEmpty(cleanroom?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
-                ? null
-                : (cleanroom?.Arguments != null && (cleanroom.Arguments.Game != null || cleanroom.Arguments.Jvm != null) ? cleanroom.Arguments : original.Arguments),
-            MinecraftArguments = cleanroom?.MinecraftArguments ?? original.MinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 

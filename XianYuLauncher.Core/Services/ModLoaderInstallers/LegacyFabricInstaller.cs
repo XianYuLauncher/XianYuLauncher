@@ -293,20 +293,13 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         var mainClass = fabricProfile["mainClass"]?.ToString() ?? "net.fabricmc.loader.impl.launch.knot.KnotClient";
         var fabricArguments = fabricProfile["arguments"]?.ToObject<Arguments>();
         var fabricLibraries = fabricProfile["libraries"]?.ToObject<List<Library>>() ?? new List<Library>();
-
-        // 参数合并逻辑
-        Arguments? mergedArguments = null;
-        string? mergedMinecraftArguments = null;
-
-        if (!string.IsNullOrEmpty(original.MinecraftArguments))
-        {
-            mergedMinecraftArguments = original.MinecraftArguments;
-            mergedArguments = null;
-        }
-        else
-        {
-            mergedArguments = MergeArguments(original.Arguments, fabricArguments);
-        }
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            fabricArguments,
+            null,
+            LegacyArgumentMergeMode.PreferBaseIfPresent,
+            ModernArgumentMergeMode.MergeLists);
 
         var merged = new VersionInfo
         {
@@ -320,8 +313,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
             Downloads = original.Downloads,
             JavaVersion = original.JavaVersion,
-            Arguments = mergedArguments,
-            MinecraftArguments = mergedMinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
@@ -426,55 +419,6 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
-    }
-
-    /// <summary>
-    /// 合并Arguments对象
-    /// </summary>
-    private Arguments? MergeArguments(Arguments? original, Arguments? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        if (original == null)
-            return modLoader;
-        
-        if (modLoader == null)
-            return original;
-
-        return new Arguments
-        {
-            Game = MergeArgumentList(original.Game, modLoader.Game),
-            Jvm = MergeArgumentList(original.Jvm, modLoader.Jvm)
-        };
-    }
-
-    /// <summary>
-    /// 合并参数列表
-    /// </summary>
-    private List<object>? MergeArgumentList(List<object>? original, List<object>? modLoader)
-    {
-        if (original == null && modLoader == null)
-            return null;
-        
-        var merged = new List<object>();
-        
-        if (original != null)
-            merged.AddRange(original);
-        
-        if (modLoader != null)
-        {
-            foreach (var arg in modLoader)
-            {
-                var argStr = arg?.ToString();
-                if (!string.IsNullOrEmpty(argStr) && !merged.Any(m => m?.ToString() == argStr))
-                {
-                    merged.Add(arg);
-                }
-            }
-        }
-
-        return merged.Count > 0 ? merged : null;
     }
 
     #endregion

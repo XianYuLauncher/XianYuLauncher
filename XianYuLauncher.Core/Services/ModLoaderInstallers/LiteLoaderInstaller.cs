@@ -305,40 +305,11 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             }
         }
         
-        // 参数合并逻辑：根据基础版本格式决定
-        Arguments? mergedArguments = null;
-        string? mergedMinecraftArguments = null;
-
-        if (!string.IsNullOrEmpty(baseVersion.MinecraftArguments))
-        {
-            // 基础版本使用旧版格式（minecraftArguments）
-            mergedMinecraftArguments = $"{baseVersion.MinecraftArguments} --tweakClass {tweakClass}";
-            mergedArguments = null;
-        }
-        else if (baseVersion.Arguments != null)
-        {
-            // 基础版本使用新版格式（arguments）
-            mergedArguments = new Arguments
-            {
-                Game = new List<object>(baseVersion.Arguments.Game ?? new List<object>()),
-                Jvm = baseVersion.Arguments.Jvm != null ? new List<object>(baseVersion.Arguments.Jvm) : null
-            };
-            
-            // 添加 tweakClass 参数
-            mergedArguments.Game.Add("--tweakClass");
-            mergedArguments.Game.Add(tweakClass);
-            
-            mergedMinecraftArguments = null;
-        }
-        else
-        {
-            // 基础版本没有参数，创建新的
-            mergedArguments = new Arguments
-            {
-                Game = new List<object> { "--tweakClass", tweakClass }
-            };
-            mergedMinecraftArguments = null;
-        }
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.AppendGameArgumentsPreservingFormat(
+            baseVersion.Arguments,
+            baseVersion.MinecraftArguments,
+            "--tweakClass",
+            tweakClass);
 
         var merged = new VersionInfo
         {
@@ -352,8 +323,8 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,
             Downloads = baseVersion.Downloads,
             JavaVersion = baseVersion.JavaVersion,
-            Arguments = mergedArguments,
-            MinecraftArguments = mergedMinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 

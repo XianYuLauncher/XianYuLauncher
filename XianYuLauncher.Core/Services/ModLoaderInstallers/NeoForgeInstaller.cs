@@ -485,6 +485,14 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            neoforge?.Arguments,
+            neoforge?.MinecraftArguments,
+            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+            ModernArgumentMergeMode.OverrideSections);
+
         // 构建合并后的JSON - 完全合并原版和NeoForge的所有字段
         var merged = new VersionInfo
         {
@@ -501,11 +509,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Downloads = original.Downloads,
             // 关键字段：Java版本信息
             JavaVersion = neoforge?.JavaVersion ?? original.JavaVersion,
-            // 处理参数字段
-            Arguments = !string.IsNullOrEmpty(neoforge?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
-                ? null
-                : (neoforge?.Arguments != null && (neoforge.Arguments.Game != null || neoforge.Arguments.Jvm != null) ? neoforge.Arguments : original.Arguments),
-            MinecraftArguments = neoforge?.MinecraftArguments ?? original.MinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 

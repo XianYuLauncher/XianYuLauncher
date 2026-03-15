@@ -611,6 +611,14 @@ public class ForgeInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
+        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
+            original.Arguments,
+            original.MinecraftArguments,
+            forge?.Arguments,
+            forge?.MinecraftArguments,
+            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+            ModernArgumentMergeMode.OverrideSections);
+
         // 构建合并后的JSON - 完全合并原版和Forge的所有字段
         var merged = new VersionInfo
         {
@@ -627,12 +635,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Downloads = original.Downloads,
             // 关键字段：Java版本信息
             JavaVersion = forge?.JavaVersion ?? original.JavaVersion,
-            // 处理参数字段
-            // 只有当Forge提供了有效的Arguments且没有minecraftArguments时才使用Arguments
-            Arguments = !string.IsNullOrEmpty(forge?.MinecraftArguments) || !string.IsNullOrEmpty(original.MinecraftArguments)
-                ? null
-                : (forge?.Arguments != null && (forge.Arguments.Game != null || forge.Arguments.Jvm != null) ? forge.Arguments : original.Arguments),
-            MinecraftArguments = forge?.MinecraftArguments ?? original.MinecraftArguments,
+            Arguments = mergedLaunchArguments.Arguments,
+            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
             Libraries = new List<Library>()
         };
 
