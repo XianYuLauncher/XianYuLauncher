@@ -233,17 +233,9 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             var parentVersionInfo = await GetVersionInfoAsync(modLoaderVersionInfo.InheritsFrom, minecraftDirectory, allowNetwork: false);
                             
                             // 合并版本信息
-                            if (modLoaderVersionInfo.Libraries == null)
-                            {
-                                modLoaderVersionInfo.Libraries = parentVersionInfo.Libraries;
-                            } else if (parentVersionInfo.Libraries != null)
-                            {
-                                // 创建一个新的库列表，先添加父版本的库，再添加当前版本的库
-                                var mergedLibraries = new List<Library>(parentVersionInfo.Libraries);
-                                mergedLibraries.AddRange(modLoaderVersionInfo.Libraries);
-                                // 去重依赖库，避免重复
-                                modLoaderVersionInfo.Libraries = mergedLibraries.DistinctBy(lib => lib.Name).ToList();
-                            }
+                            modLoaderVersionInfo.Libraries = VersionLibraryMergeHelper.MergeLibraries(
+                                modLoaderVersionInfo.Libraries,
+                                parentVersionInfo.Libraries);
                             
                             // 合并其他必要的属性
                             if (string.IsNullOrEmpty(modLoaderVersionInfo.MainClass))

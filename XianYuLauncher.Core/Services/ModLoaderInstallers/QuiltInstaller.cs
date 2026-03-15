@@ -311,14 +311,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 添加原版库
-        if (original.Libraries != null)
-        {
-            merged.Libraries.AddRange(original.Libraries);
-        }
-
-        // 添加Quilt库
-        merged.Libraries.AddRange(quiltLibraries);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(quiltLibraries, original.Libraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Quilt依赖库", quiltLibraries.Count);
 
         // 为缺少downloads的库添加下载信息
@@ -357,8 +350,6 @@ public class QuiltInstaller : ModLoaderInstallerBase
             }
         }
 
-        // 去重
-        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;

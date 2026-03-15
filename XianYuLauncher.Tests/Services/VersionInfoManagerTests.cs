@@ -264,6 +264,37 @@ public class VersionInfoManagerTests : IDisposable
     }
 
     [Fact]
+    public void MergeVersionInfo_ChildLibrariesStayInFrontAndWinConflicts()
+    {
+        var child = new VersionInfo
+        {
+            Id = "fabric-1.20.4",
+            Libraries = new List<Library>
+            {
+                new() { Name = "net.fabricmc:fabric-loader:0.15.0" },
+                new() { Name = "com.google.guava:guava:32.1.2-jre" }
+            }
+        };
+        var parent = new VersionInfo
+        {
+            Id = "1.20.4",
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.google.guava:guava:21.0" },
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+
+        var result = _versionInfoManager.MergeVersionInfo(child, parent);
+
+        Assert.Collection(
+            result.Libraries!,
+            library => Assert.Equal("net.fabricmc:fabric-loader:0.15.0", library.Name),
+            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+    }
+
+    [Fact]
     public void MergeVersionInfo_ChildOverridesParent()
     {
         // Arrange

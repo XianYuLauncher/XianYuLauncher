@@ -357,14 +357,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 添加基础版本的库
-        if (baseVersion.Libraries != null)
-        {
-            merged.Libraries.AddRange(baseVersion.Libraries);
-        }
-
-        // 添加 LiteLoader 库
-        merged.Libraries.AddRange(liteLoaderLibraries);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(liteLoaderLibraries, baseVersion.Libraries);
 
         // 为所有库添加 downloads 信息
         foreach (var library in merged.Libraries)
@@ -394,9 +387,6 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             }
         }
 
-        // 去重
-        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
-        
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 合并后总依赖库数量: {merged.Libraries.Count}");
 
         return merged;

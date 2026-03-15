@@ -476,21 +476,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 添加原版库
-        if (original.Libraries != null)
-        {
-            merged.Libraries.AddRange(original.Libraries);
-        }
-
-        // 添加Optifine库
-        if (optifine?.Libraries != null)
-        {
-            merged.Libraries.AddRange(optifine.Libraries);
-            Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine.Libraries.Count);
-        }
-
-        // 去重
-        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(optifine?.Libraries, original.Libraries);
+        Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine?.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
