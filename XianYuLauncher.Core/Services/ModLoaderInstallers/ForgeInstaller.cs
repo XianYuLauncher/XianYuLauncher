@@ -636,8 +636,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(forge?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge?.Libraries?.Count ?? 0);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(forge?.Libraries, additionalLibraries, original.Libraries);
+        Logger.LogInformation(
+            "合并了 {ForgeLibraryCount} 个Forge version.json依赖库和 {InstallProfileLibraryCount} 个install_profile依赖库",
+            forge?.Libraries?.Count ?? 0,
+            additionalLibraries.Count);
 
         // 为所有库处理downloads字段，确保它们有正确的downloads信息
         foreach (var library in merged.Libraries)

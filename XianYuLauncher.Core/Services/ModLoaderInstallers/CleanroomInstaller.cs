@@ -605,8 +605,11 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             }
         }
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, baseLibraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom?.Libraries?.Count ?? 0);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, additionalLibraries, baseLibraries);
+        Logger.LogInformation(
+            "合并了 {CleanroomLibraryCount} 个Cleanroom version.json依赖库和 {InstallProfileLibraryCount} 个install_profile依赖库",
+            cleanroom?.Libraries?.Count ?? 0,
+            additionalLibraries.Count);
 
         // 为所有库处理downloads字段（从下载源接口获取 baseUrl）
         var source = _sourceFactory.GetCleanroomSource();

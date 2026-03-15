@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -7,6 +9,7 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 using XianYuLauncher.Core.Contracts.Services;
@@ -136,6 +139,45 @@ public class NeoForgeInstallerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ModLoaderInstallException>(() =>
             _neoForgeInstaller.InstallAsync("nonexistent", "20.4.200", _testDirectory));
+    }
+
+    [Fact]
+    public void MergeVersionInfo_IncludesInstallProfileLibrariesBetweenLoaderAndOriginal()
+    {
+        var original = new VersionInfo
+        {
+            Id = "1.20.4",
+            AssetIndex = new AssetIndex { Id = "1.20" },
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.google.guava:guava:21.0" },
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+        var neoforge = new VersionInfo
+        {
+            Id = "neoforge-1.20.4-20.4.200",
+            Libraries = new List<Library>
+            {
+                new() { Name = "net.neoforged:neoforge:20.4.200" }
+            }
+        };
+        var additionalLibraries = new List<Library>
+        {
+            new() { Name = "com.google.guava:guava:32.1.2-jre" }
+        };
+
+        var method = typeof(NeoForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var merged = Assert.IsType<VersionInfo>(method!.Invoke(_neoForgeInstaller, new object[] { original, neoforge, additionalLibraries }));
+
+        Assert.Collection(
+            merged.Libraries!,
+            library => Assert.Equal("net.neoforged:neoforge:20.4.200", library.Name),
+            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
     }
 
     #endregion

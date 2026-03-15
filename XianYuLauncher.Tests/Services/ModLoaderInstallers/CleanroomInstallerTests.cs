@@ -60,4 +60,52 @@ public class CleanroomInstallerTests
             library => Assert.Equal("org.ow2.asm:asm:9.7", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
     }
+
+    [Fact]
+    public void MergeVersionInfo_IncludesInstallProfileLibrariesBetweenLoaderAndOriginal()
+    {
+        var installer = new CleanroomInstaller(
+            Mock.Of<IDownloadManager>(),
+            Mock.Of<ILibraryManager>(),
+            Mock.Of<IVersionInfoManager>(),
+            Mock.Of<IProcessorExecutor>(),
+            Mock.Of<IJavaRuntimeService>(),
+            new DownloadSourceFactory(),
+            Mock.Of<ILogger<CleanroomInstaller>>());
+
+        var original = new VersionInfo
+        {
+            Id = "1.12.2",
+            AssetIndex = new AssetIndex { Id = "1.12" },
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.google.guava:guava:21.0" },
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+        var cleanroom = new VersionInfo
+        {
+            Id = "cleanroom-0.4.2-alpha",
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.cleanroommc:cleanroom:0.4.2-alpha" }
+            }
+        };
+        var additionalLibraries = new List<Library>
+        {
+            new() { Name = "com.google.guava:guava:32.1.2-jre" }
+        };
+
+        var method = typeof(CleanroomInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var merged = Assert.IsType<VersionInfo>(method!.Invoke(installer, new object[] { original, cleanroom, additionalLibraries }));
+
+        Assert.Collection(
+            merged.Libraries!,
+            library => Assert.Equal("com.cleanroommc:cleanroom:0.4.2-alpha", library.Name),
+            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+    }
 }

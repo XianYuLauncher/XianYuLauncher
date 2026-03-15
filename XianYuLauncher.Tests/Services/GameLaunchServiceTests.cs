@@ -107,6 +107,33 @@ public class GameLaunchServiceTests : IDisposable
             classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
     }
 
+    [Fact]
+    public async Task BuildClasspathAsync_EmptyLibraries_ReturnsJarOnlyWithoutVersionDetection()
+    {
+        _mockVersionInfoService.Reset();
+        _mockVersionInfoService
+            .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ThrowsAsync(new InvalidOperationException("不应在空库列表场景触发版本检测"));
+
+        var jarPath = Path.Combine(_testDirectory, "versions", "vanilla-1.20.1", "vanilla-1.20.1.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jarPath)!);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+
+        var versionInfo = new VersionInfo
+        {
+            Libraries = new List<Library>()
+        };
+
+        var classpath = await InvokeBuildClasspathAsync(
+            versionInfo,
+            "vanilla-1.20.1",
+            jarPath,
+            Path.Combine(_testDirectory, "libraries"),
+            _testDirectory);
+
+        Assert.Equal(jarPath, classpath);
+    }
+
     private async Task<string> InvokeBuildClasspathAsync(
         VersionInfo versionInfo,
         string versionName,

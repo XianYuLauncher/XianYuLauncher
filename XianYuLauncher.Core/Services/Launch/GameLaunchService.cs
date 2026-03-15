@@ -806,7 +806,7 @@ public class GameLaunchService : IGameLaunchService
             }
         }
         
-        if (versionInfo.Libraries == null)
+        if (versionInfo.Libraries == null || versionInfo.Libraries.Count == 0)
         {
             AddClasspathEntry(jarPath);
             return string.Join(";", classpathEntries);
