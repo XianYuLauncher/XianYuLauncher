@@ -27,52 +27,94 @@ public static class JvmArgumentsHelper
     public static List<string> MergeAndDeduplicateArguments(List<string> launcherArgs, string? customArgs)
     {
         var customArgArray = ParseCustomArguments(customArgs);
-        var combined = new List<string>(launcherArgs.Count + customArgArray.Length);
-        combined.AddRange(launcherArgs);
-        combined.AddRange(customArgArray);
-
-        if (combined.Count == 0)
+        if (launcherArgs.Count == 0 && customArgArray.Length == 0)
         {
-            return combined;
+            return [];
         }
 
-        // 统一按“最终参数集”做去重：同 key 仅保留最后一项（后者覆盖前者）
-        var lastIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // 分两套策略：
+        // 1) 启动器/Loader 原始参数不做全局去重，避免破坏成对参数（如 --add-opens + value）。
+        // 2) 仅在“用户覆盖域”（内存/GC/-D属性）做覆盖，用户参数优先。
+        var filteredCustom = FilterCustomArgumentsForOverrides(customArgArray);
+        var combined = new List<string>(launcherArgs.Count + filteredCustom.Count);
+        combined.AddRange(launcherArgs);
+        combined.AddRange(filteredCustom);
+
+        var lastIndexByOverrideKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < combined.Count; i++)
         {
-            var key = GetArgumentKey(combined[i]);
-            lastIndexByKey[key] = i;
+            var key = GetOverrideKey(combined[i]);
+            if (key != null)
+            {
+                lastIndexByOverrideKey[key] = i;
+            }
         }
 
         var result = new List<string>(combined.Count);
         for (int i = 0; i < combined.Count; i++)
         {
-            var arg = combined[i];
-            var key = GetArgumentKey(arg);
-            if (lastIndexByKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            var key = GetOverrideKey(combined[i]);
+            if (key == null)
             {
-                result.Add(arg);
+                result.Add(combined[i]);
+                continue;
+            }
+
+            if (lastIndexByOverrideKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            {
+                result.Add(combined[i]);
             }
         }
 
         return result;
     }
 
-    private static string GetArgumentKey(string arg)
+    private static List<string> FilterCustomArgumentsForOverrides(string[] customArgs)
+    {
+        var lastIndexByOverrideKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < customArgs.Length; i++)
+        {
+            var key = GetOverrideKey(customArgs[i]);
+            if (key != null)
+            {
+                lastIndexByOverrideKey[key] = i;
+            }
+        }
+
+        var result = new List<string>(customArgs.Length);
+        for (int i = 0; i < customArgs.Length; i++)
+        {
+            var key = GetOverrideKey(customArgs[i]);
+            if (key == null)
+            {
+                result.Add(customArgs[i]);
+                continue;
+            }
+
+            if (lastIndexByOverrideKey.TryGetValue(key, out var lastIndex) && lastIndex == i)
+            {
+                result.Add(customArgs[i]);
+            }
+        }
+
+        return result;
+    }
+
+    private static string? GetOverrideKey(string arg)
     {
         if (arg.StartsWith("-Xms", StringComparison.OrdinalIgnoreCase))
         {
-            return "mem:xms";
+            return "override:mem:xms";
         }
 
         if (arg.StartsWith("-Xmx", StringComparison.OrdinalIgnoreCase))
         {
-            return "mem:xmx";
+            return "override:mem:xmx";
         }
 
         if (IsGcArgument(arg))
         {
-            return "gc";
+            return "override:gc";
         }
 
         if (arg.StartsWith("-D", StringComparison.OrdinalIgnoreCase))
@@ -80,12 +122,16 @@ public static class JvmArgumentsHelper
             int equalsIndex = arg.IndexOf('=');
             if (equalsIndex > 2)
             {
-                return "prop:" + arg.Substring(2, equalsIndex - 2);
+                return "override:prop:" + arg.Substring(2, equalsIndex - 2);
+            }
+
+            if (equalsIndex < 0 && arg.Length > 2)
+            {
+                return "override:prop:" + arg.Substring(2);
             }
         }
 
-        // 其它参数按文本完全相同去重
-        return "arg:" + arg;
+        return null;
     }
 
     private static bool IsGcArgument(string arg)
