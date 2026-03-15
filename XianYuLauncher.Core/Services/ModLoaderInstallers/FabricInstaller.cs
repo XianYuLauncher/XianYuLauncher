@@ -300,8 +300,6 @@ public class FabricInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
-            // 关键字段：设置继承关系，兼容其他启动器
-            InheritsFrom = original.Id,
             MainClass = mainClass,
             // 关键字段：从原版复制
             AssetIndex = original.AssetIndex,

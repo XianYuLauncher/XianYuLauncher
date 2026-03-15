@@ -347,7 +347,6 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = baseVersion.ReleaseTime,
             Url = baseVersion.Url,
-            InheritsFrom = baseVersion.InheritsFrom ?? baseVersion.Id, // 保持继承链
             MainClass = isAddonMode ? baseVersion.MainClass : mainClass, // Addon 模式保持原 mainClass
             AssetIndex = baseVersion.AssetIndex,
             Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,

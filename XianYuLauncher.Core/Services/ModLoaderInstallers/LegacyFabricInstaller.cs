@@ -315,7 +315,6 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
-            InheritsFrom = original.Id,
             MainClass = mainClass,
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
