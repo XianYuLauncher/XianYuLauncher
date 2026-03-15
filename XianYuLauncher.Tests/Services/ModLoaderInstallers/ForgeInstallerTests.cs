@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -9,7 +7,6 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
-using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 using XianYuLauncher.Core.Contracts.Services;
@@ -139,46 +136,6 @@ public class ForgeInstallerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ModLoaderInstallException>(() =>
             _forgeInstaller.InstallAsync("nonexistent", "49.0.30", _testDirectory));
-    }
-
-    [Fact]
-    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
-    {
-        var original = new VersionInfo
-        {
-            Id = "1.20.4",
-            AssetIndex = new AssetIndex { Id = "1.20" },
-            Libraries = new List<Library>
-            {
-                new() { Name = "com.google.guava:guava:21.0" },
-                new() { Name = "com.mojang:brigadier:1.0.18" }
-            }
-        };
-        var forge = new VersionInfo
-        {
-            Id = "forge-1.20.4-49.0.30",
-            Libraries = new List<Library>
-            {
-                new() { Name = "net.minecraftforge:forge:49.0.30" }
-            }
-        };
-        var additionalLibraries = new List<Library>
-        {
-            new() { Name = "com.google.guava:guava:32.1.2-jre" }
-        };
-
-        var method = typeof(ForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
-
-        Assert.NotNull(method);
-
-        var merged = Assert.IsType<VersionInfo>(method!.Invoke(_forgeInstaller, new object[] { original, forge, additionalLibraries }));
-
-        Assert.Collection(
-            merged.Libraries!,
-            library => Assert.Equal("net.minecraftforge:forge:49.0.30", library.Name),
-            library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
-            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
-        Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
     }
 
     #endregion

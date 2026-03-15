@@ -315,6 +315,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
+            InheritsFrom = original.Id,
             MainClass = mainClass,
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
@@ -325,7 +326,36 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(fabricLibraries, original.Libraries);
+        // 构建 Legacy Fabric 库的查找表 (Group:Artifact)
+        // 用于过滤原版中被 Legacy Fabric 替换的库（主要是 LWJGL 相关）
+        var fabricLibKeys = new HashSet<string>();
+        foreach (var lib in fabricLibraries)
+        {
+            var key = GetLibraryKey(lib.Name);
+            if (!string.IsNullOrEmpty(key))
+            {
+                fabricLibKeys.Add(key);
+            }
+        }
+
+        if (original.Libraries != null)
+        {
+            foreach (var lib in original.Libraries)
+            {
+                // 过滤被 Legacy Fabric 覆盖的库
+                // 逻辑：如果 Fabric 提供了同一个包含 Group 和 Artifact 的库（不同版本），则使用 Fabric 的版本
+                // 这对于 lwjgl 尤为重要
+                var key = GetLibraryKey(lib.Name);
+                if (!string.IsNullOrEmpty(key) && fabricLibKeys.Contains(key))
+                {
+                    Logger.LogInformation("Legacy Fabric 提供了更新/修补版本的库，移除原版库: {LibName}", lib.Name);
+                    continue;
+                }
+                merged.Libraries.Add(lib);
+            }
+        }
+
+        merged.Libraries.AddRange(fabricLibraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Legacy Fabric依赖库", fabricLibraries.Count);
 
         foreach (var library in merged.Libraries)
@@ -423,6 +453,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             }
         }
 
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
@@ -475,6 +506,21 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         }
 
         return merged.Count > 0 ? merged : null;
+    }
+
+    /// <summary>
+    /// 获取库的唯一标识 Key (Group:Artifact)
+    /// </summary>
+    private string? GetLibraryKey(string? libraryName)
+    {
+        if (string.IsNullOrEmpty(libraryName)) return null;
+        
+        var parts = libraryName.Split(':');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0]}:{parts[1]}";
+        }
+        return null;
     }
 
     #endregion

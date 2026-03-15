@@ -464,6 +464,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = optifine?.MainClass ?? original.MainClass,
             // 关键字段：从原版复制
             AssetIndex = original.AssetIndex,
@@ -476,8 +478,21 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(optifine?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine?.Libraries?.Count ?? 0);
+        // 添加原版库
+        if (original.Libraries != null)
+        {
+            merged.Libraries.AddRange(original.Libraries);
+        }
+
+        // 添加Optifine库
+        if (optifine?.Libraries != null)
+        {
+            merged.Libraries.AddRange(optifine.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine.Libraries.Count);
+        }
+
+        // 去重
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
@@ -549,6 +564,8 @@ public class OptifineInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = originalVersionInfo.ReleaseTime,
             Url = originalVersionInfo.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = originalVersionInfo.Id,
             MainClass = "net.minecraft.client.main.Main",
             AssetIndex = originalVersionInfo.AssetIndex,
             Assets = originalVersionInfo.Assets ?? originalVersionInfo.AssetIndex?.Id ?? originalVersionInfo.Id,

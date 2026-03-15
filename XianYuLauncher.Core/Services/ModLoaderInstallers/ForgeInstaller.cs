@@ -619,6 +619,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Time = forge?.Time ?? original.Time,
             ReleaseTime = forge?.ReleaseTime ?? original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = forge?.MainClass ?? original.MainClass,
             // 关键字段：从原版复制资源索引信息
             AssetIndex = original.AssetIndex,
@@ -636,8 +638,18 @@ public class ForgeInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(forge?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge?.Libraries?.Count ?? 0);
+        // 添加原版库
+        if (original.Libraries != null)
+        {
+            merged.Libraries.AddRange(original.Libraries);
+        }
+
+        // 添加Forge库
+        if (forge?.Libraries != null)
+        {
+            merged.Libraries.AddRange(forge.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge.Libraries.Count);
+        }
 
         // 为所有库处理downloads字段，确保它们有正确的downloads信息
         foreach (var library in merged.Libraries)
@@ -671,6 +683,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             }
         }
 
+        // 去重依赖库
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;

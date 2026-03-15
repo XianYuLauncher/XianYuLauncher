@@ -493,6 +493,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Time = neoforge?.Time ?? original.Time,
             ReleaseTime = neoforge?.ReleaseTime ?? original.ReleaseTime,
             Url = original.Url,
+            // 关键字段：设置继承关系，兼容其他启动器
+            InheritsFrom = original.Id,
             MainClass = neoforge?.MainClass ?? original.MainClass,
             // 关键字段：从原版复制资源索引信息
             AssetIndex = original.AssetIndex,
@@ -509,12 +511,24 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(neoforge?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge?.Libraries?.Count ?? 0);
+        // 添加原版库
+        if (original.Libraries != null)
+        {
+            merged.Libraries.AddRange(original.Libraries);
+        }
+
+        // 添加NeoForge库
+        if (neoforge?.Libraries != null)
+        {
+            merged.Libraries.AddRange(neoforge.Libraries);
+            Logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge.Libraries.Count);
+        }
 
         // 为所有库处理downloads字段，确保它们有正确的downloads信息
         EnsureLibraryUrls(merged.Libraries);
 
+        // 去重依赖库
+        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;

@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Helpers;
@@ -166,18 +165,10 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     protected async Task SaveVersionJsonAsync(string versionDirectory, string versionId, object versionInfo)
     {
         var jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
-        var serializer = JsonSerializer.Create(new JsonSerializerSettings
+        var jsonContent = JsonConvert.SerializeObject(versionInfo, Formatting.Indented, new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore
         });
-        var jsonToken = JToken.FromObject(versionInfo, serializer);
-
-        if (jsonToken is JObject jsonObject)
-        {
-            jsonObject.Remove("inheritsFrom");
-        }
-
-        var jsonContent = jsonToken.ToString(Formatting.Indented);
         await File.WriteAllTextAsync(jsonPath, jsonContent);
 
         Logger.LogInformation("已保存版本JSON: {JsonPath}", jsonPath);
