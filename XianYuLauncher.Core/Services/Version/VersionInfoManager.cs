@@ -270,21 +270,9 @@ public class VersionInfoManager : IVersionInfoManager
             return childVersion;
         }
 
-        // 合并库列表
-        if (childVersion.Libraries == null)
-        {
-            childVersion.Libraries = parentVersion.Libraries;
-        }
-        else if (parentVersion.Libraries != null)
-        {
-            var mergedLibraries = new List<Library>(parentVersion.Libraries);
-            mergedLibraries.AddRange(childVersion.Libraries);
-            // 去重，保留子版本的库
-            childVersion.Libraries = mergedLibraries
-                .GroupBy(lib => lib.Name)
-                .Select(g => g.Last())
-                .ToList();
-        }
+        childVersion.Libraries = VersionLibraryMergeHelper.MergeLibraries(
+            childVersion.Libraries,
+            parentVersion.Libraries);
 
         // 合并其他属性（子版本优先）
         if (string.IsNullOrEmpty(childVersion.MainClass))

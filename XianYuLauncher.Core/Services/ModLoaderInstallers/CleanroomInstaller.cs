@@ -570,8 +570,6 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Time = cleanroom?.Time ?? original.Time,
             ReleaseTime = cleanroom?.ReleaseTime ?? original.ReleaseTime,
             Url = original.Url,
-            // 关键字段：设置继承关系，兼容其他启动器
-            InheritsFrom = original.Id,
             MainClass = cleanroom?.MainClass ?? original.MainClass,
             AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
@@ -590,54 +588,25 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 构建Cleanroom库的查找表 (Group:Artifact)
-        var cleanroomLibKeys = new HashSet<string>();
-        if (cleanroom?.Libraries != null)
-        {
-            foreach (var lib in cleanroom.Libraries)
-            {
-                var key = GetLibraryKey(lib.Name);
-                if (!string.IsNullOrEmpty(key))
-                {
-                    cleanroomLibKeys.Add(key);
-                }
-            }
-        }
-
-        // 添加原版库，但过滤掉与LWJGL相关的旧版库以及Cleanroom已提供更新版本的库
+        var baseLibraries = new List<Library>();
         bool shouldUseLwjgl3 = cleanroom?.Libraries?.Any(l => l.Name.StartsWith("org.lwjgl", StringComparison.OrdinalIgnoreCase) && !l.Name.Contains("2.9")) ?? false;
         
         if (original.Libraries != null)
         {
             foreach (var lib in original.Libraries)
             {
-                // 1. 过滤 LWJGL 2
                 if (shouldUseLwjgl3 && IsLwjgl2Library(lib.Name))
                 {
                     Logger.LogInformation("Cleanroom使用LWJGL 3，移除原版LWJGL 2库: {LibName}", lib.Name);
                     continue;
                 }
 
-                // 2. 过滤被Cleanroom覆盖的库 (例如 Gson, Guava, ASM等)
-                var key = GetLibraryKey(lib.Name);
-                if (!string.IsNullOrEmpty(key) && cleanroomLibKeys.Contains(key))
-                {
-                     // 特殊情况：如果是Cleanroom核心库自己，当然不跳过原版（原版也没这个）
-                     // 但如果是 Gson 2.8.0 (Original) vs Gson 2.8.9 (Cleanroom)，则跳过Original
-                     Logger.LogInformation("Cleanroom提供了更新版本的库，移除原版库: {LibName}", lib.Name);
-                     continue;
-                }
-
-                merged.Libraries.Add(lib);
+                baseLibraries.Add(lib);
             }
         }
 
-        // 添加Cleanroom库
-        if (cleanroom?.Libraries != null)
-        {
-            merged.Libraries.AddRange(cleanroom.Libraries);
-            Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom.Libraries.Count);
-        }
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, baseLibraries);
+        Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom?.Libraries?.Count ?? 0);
 
         // 为所有库处理downloads字段（从下载源接口获取 baseUrl）
         var source = _sourceFactory.GetCleanroomSource();
@@ -676,8 +645,6 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             }
         }
 
-        // 去重依赖库
-        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
@@ -688,20 +655,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         return libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl") || 
                libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl_util") || 
                libraryName.StartsWith("org.lwjgl.lwjgl:lwjgl-platform") ||
-               libraryName.StartsWith("net.java.jinput:jinput") ||
-               // 这个库如果不移除会导致 java.lang.NoSuchFieldError: Class com.sun.jna.Pointer does not have member field 'int SIZE'
-               libraryName.StartsWith("net.java.dev.jna:jna") || 
-               libraryName.StartsWith("net.java.dev.jna:platform");
-    }
-
-    private string? GetLibraryKey(string libraryName)
-    {
-        var parts = libraryName.Split(':');
-        if (parts.Length >= 2)
-        {
-            return $"{parts[0]}:{parts[1]}";
-        }
-        return null;
+               libraryName.StartsWith("net.java.jinput:jinput");
     }
 
     private void CleanupTempFiles(string? extractedPath)

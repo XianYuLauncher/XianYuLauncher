@@ -300,8 +300,6 @@ public class FabricInstaller : ModLoaderInstallerBase
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             ReleaseTime = original.ReleaseTime,
             Url = original.Url,
-            // 关键字段：设置继承关系，兼容其他启动器
-            InheritsFrom = original.Id,
             MainClass = mainClass,
             // 关键字段：从原版复制
             AssetIndex = original.AssetIndex,
@@ -314,14 +312,7 @@ public class FabricInstaller : ModLoaderInstallerBase
             Libraries = new List<Library>()
         };
 
-        // 添加原版库
-        if (original.Libraries != null)
-        {
-            merged.Libraries.AddRange(original.Libraries);
-        }
-
-        // 添加Fabric库
-        merged.Libraries.AddRange(fabricLibraries);
+        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(fabricLibraries, original.Libraries);
         Logger.LogInformation("合并了 {LibraryCount} 个Fabric依赖库", fabricLibraries.Count);
 
         // 为缺少downloads的库添加下载信息
@@ -356,8 +347,6 @@ public class FabricInstaller : ModLoaderInstallerBase
             }
         }
 
-        // 去重
-        merged.Libraries = merged.Libraries.DistinctBy(lib => lib.Name).ToList();
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
 
         return merged;
