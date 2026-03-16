@@ -381,7 +381,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         Action<double>? progressCallback,
         CancellationToken cancellationToken)
     {
-        var downloadTasks = new List<DownloadTask>();
+        var downloadPlans = new List<LibraryDownloadPlan>();
 
         // 使用 NeoForge 专用下载源
         var downloadSource = _downloadSourceFactory.GetNeoForgeSource();
@@ -403,22 +403,21 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {library.Name}");
             System.Diagnostics.Debug.WriteLine($"[DEBUG]   URL: {downloadUrl}");
 
-            downloadTasks.Add(new DownloadTask
-            {
-                Url = downloadUrl,
-                TargetPath = libraryPath,
-                ExpectedSha1 = library.Downloads.Artifact.Sha1,
-                Description = $"库文件: {library.Name}"
-            });
+            downloadPlans.Add(new LibraryDownloadPlan(
+                library.Name,
+                downloadUrl,
+                originalUrl,
+                libraryPath,
+                library.Downloads.Artifact.Sha1));
         }
 
-        if (downloadTasks.Count == 0)
+        if (downloadPlans.Count == 0)
         {
             progressCallback?.Invoke(100);
             return;
         }
 
-        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
+        await DownloadLibraryPlansAsync(downloadPlans, progressCallback, cancellationToken);
     }
 
     private void EnsureLibraryUrls(List<Library> libraries)

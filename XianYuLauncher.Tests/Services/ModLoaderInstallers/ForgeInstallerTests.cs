@@ -9,6 +9,7 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
@@ -139,6 +140,114 @@ public class ForgeInstallerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ModLoaderInstallException>(() =>
             _forgeInstaller.InstallAsync("nonexistent", "49.0.30", _testDirectory));
+    }
+
+    [Fact]
+    public async Task DownloadInstallProfileLibrariesAsync_PrimaryMirrorFails_FallsBackToOfficial()
+    {
+        _downloadSourceFactory.SetForgeSource("bmclapi");
+
+        var librariesDirectory = Path.Combine(_testDirectory, "libraries");
+        var library = new Library
+        {
+            Name = "com.google.code.gson:gson:2.8.7",
+            Downloads = new LibraryDownloads
+            {
+                Artifact = new DownloadFile
+                {
+                    Url = "https://libraries.minecraft.net/com/google/code/gson/gson/2.8.7/gson-2.8.7.jar",
+                    Sha1 = "sha1"
+                }
+            }
+        };
+
+        var targetPath = Path.Combine(librariesDirectory, "com", "google", "code", "gson", "gson", "2.8.7", "gson-2.8.7.jar");
+        _mockLibraryManager
+            .Setup(manager => manager.GetLibraryPath(library.Name, librariesDirectory))
+            .Returns(targetPath);
+
+        string officialUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+            library.Name,
+            library.Downloads.Artifact.Url,
+            LibraryRepositoryProfile.Forge)!;
+        string primaryUrl = _downloadSourceFactory.GetForgeSource().GetLibraryUrl(library.Name, officialUrl);
+
+        _mockDownloadManager
+            .Setup(manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DownloadResult.Failed(primaryUrl, "HTTP 500"));
+        _mockDownloadManager
+            .Setup(manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DownloadResult.Succeeded(targetPath, officialUrl));
+
+        var method = typeof(ForgeInstaller).GetMethod("DownloadInstallProfileLibrariesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var task = Assert.IsAssignableFrom<Task>(method!.Invoke(_forgeInstaller, new object?[]
+        {
+            new List<Library> { library },
+            librariesDirectory,
+            null,
+            CancellationToken.None
+        }));
+
+        await task;
+
+        _mockDownloadManager.Verify(
+            manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockDownloadManager.Verify(
+            manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DownloadInstallProfileLibrariesAsync_AllSourcesFail_ThrowsException()
+    {
+        _downloadSourceFactory.SetForgeSource("bmclapi");
+
+        var librariesDirectory = Path.Combine(_testDirectory, "libraries");
+        var library = new Library
+        {
+            Name = "com.google.code.gson:gson:2.8.7",
+            Downloads = new LibraryDownloads
+            {
+                Artifact = new DownloadFile
+                {
+                    Url = "https://libraries.minecraft.net/com/google/code/gson/gson/2.8.7/gson-2.8.7.jar",
+                    Sha1 = "sha1"
+                }
+            }
+        };
+
+        var targetPath = Path.Combine(librariesDirectory, "com", "google", "code", "gson", "gson", "2.8.7", "gson-2.8.7.jar");
+        _mockLibraryManager
+            .Setup(manager => manager.GetLibraryPath(library.Name, librariesDirectory))
+            .Returns(targetPath);
+
+        string officialUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+            library.Name,
+            library.Downloads.Artifact.Url,
+            LibraryRepositoryProfile.Forge)!;
+        string primaryUrl = _downloadSourceFactory.GetForgeSource().GetLibraryUrl(library.Name, officialUrl);
+
+        _mockDownloadManager
+            .Setup(manager => manager.DownloadFileAsync(It.IsAny<string>(), targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DownloadResult.Failed(primaryUrl, "HTTP 500"));
+
+        var method = typeof(ForgeInstaller).GetMethod("DownloadInstallProfileLibrariesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var task = Assert.IsAssignableFrom<Task>(method!.Invoke(_forgeInstaller, new object?[]
+        {
+            new List<Library> { library },
+            librariesDirectory,
+            null,
+            CancellationToken.None
+        }));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await task);
     }
 
     [Fact]

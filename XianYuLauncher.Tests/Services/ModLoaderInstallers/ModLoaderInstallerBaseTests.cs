@@ -59,16 +59,19 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
     }
 
     [Fact]
-    public void BuildLibraryDownloadUrl_ShouldUseUnifiedResolverAndDownloadSourceMapping()
+    public void BuildLibraryDownloadPlan_ShouldUseUnifiedResolverAndDownloadSourceMapping()
     {
         var installer = new TestInstaller(new BmclapiDownloadSource());
 
-        var downloadUrl = installer.BuildLibraryDownloadUrlPublic(new ModLoaderLibrary
+        var downloadPlan = installer.BuildLibraryDownloadPlanPublic(new ModLoaderLibrary
         {
             Name = "net.fabricmc:fabric-loader:0.15.0"
-        });
+        }, Path.Combine(_testDirectory, "fabric-loader-0.15.0.jar"));
 
-        downloadUrl.Should().Be("https://bmclapi2.bangbang93.com/maven/net/fabricmc/fabric-loader/0.15.0/fabric-loader-0.15.0.jar");
+        downloadPlan.Should().NotBeNull();
+        var resolvedPlan = downloadPlan!.Value;
+        resolvedPlan.PrimaryUrl.Should().Be("https://bmclapi2.bangbang93.com/maven/net/fabricmc/fabric-loader/0.15.0/fabric-loader-0.15.0.jar");
+        resolvedPlan.FallbackUrl.Should().Be("https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.15.0/fabric-loader-0.15.0.jar");
     }
 
     private sealed class TestInstaller : ModLoaderInstallerBase
@@ -97,9 +100,10 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
             return SaveVersionJsonAsync(versionDirectory, versionId, versionInfo);
         }
 
-        public string? BuildLibraryDownloadUrlPublic(ModLoaderLibrary library)
+        public (string PrimaryUrl, string? FallbackUrl)? BuildLibraryDownloadPlanPublic(ModLoaderLibrary library, string targetPath)
         {
-            return BuildLibraryDownloadUrl(library);
+            var plan = BuildLibraryDownloadPlan(library, targetPath);
+            return plan == null ? null : (plan.PrimaryUrl, plan.FallbackUrl);
         }
 
         public override Task<string> InstallAsync(

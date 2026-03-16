@@ -379,7 +379,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         Action<double>? progressCallback,
         CancellationToken cancellationToken)
     {
-        var downloadTasks = new List<DownloadTask>();
+        var downloadPlans = new List<LibraryDownloadPlan>();
         var downloadSource = _sourceFactory.GetCleanroomSource();
 
         Logger.LogInformation("开始处理 {Count} 个依赖库", libraries.Count);
@@ -431,24 +431,23 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             Logger.LogInformation("添加下载任务: {LibraryName} -> {Url}", library.Name, downloadUrl);
 
-            downloadTasks.Add(new DownloadTask
-            {
-                Url = downloadUrl,
-                TargetPath = libraryPath,
-                ExpectedSha1 = sha1,
-                Description = $"库文件: {library.Name}"
-            });
+            downloadPlans.Add(new LibraryDownloadPlan(
+                library.Name,
+                downloadUrl,
+                originalUrl,
+                libraryPath,
+                sha1));
         }
 
-        if (downloadTasks.Count == 0)
+        if (downloadPlans.Count == 0)
         {
             Logger.LogInformation("没有需要下载的依赖库");
             progressCallback?.Invoke(100);
             return;
         }
 
-        Logger.LogInformation("开始下载 {Count} 个依赖库", downloadTasks.Count);
-        await DownloadManager.DownloadFilesAsync(downloadTasks, 4, status => progressCallback?.Invoke(status.Percent), cancellationToken);
+        Logger.LogInformation("开始下载 {Count} 个依赖库", downloadPlans.Count);
+        await DownloadLibraryPlansAsync(downloadPlans, progressCallback, cancellationToken);
         Logger.LogInformation("依赖库下载完成");
     }
 
