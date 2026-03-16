@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
@@ -381,6 +382,43 @@ public class VersionInfoManagerTests : IDisposable
         Assert.NotNull(result);
         Assert.Equal(versionId, result.Id);
         Assert.Equal("net.minecraft.client.main.Main", result.MainClass);
+    }
+
+    [Fact]
+    public async Task GetVersionInfoAsync_PreMergedLocalManifestWithoutInheritsFrom_RemainsCompatibleOffline()
+    {
+        var versionId = "fabric-1.20.4-premerged";
+        var versionDir = Path.Combine(_testDirectory, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+
+        var versionInfo = new VersionInfo
+        {
+            Id = versionId,
+            MainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient",
+            Libraries = new List<Library>
+            {
+                new() { Name = "net.fabricmc:fabric-loader:0.15.0" },
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(versionDir, $"{versionId}.json"),
+            VersionManifestJsonHelper.SerializeVersionJson(versionInfo));
+
+        var result = await _versionInfoManager.GetVersionInfoAsync(versionId, _testDirectory, allowNetwork: false);
+
+        Assert.NotNull(result);
+        Assert.Equal(versionId, result.Id);
+        Assert.Null(result.InheritsFrom);
+        Assert.Equal("net.fabricmc.loader.impl.launch.knot.KnotClient", result.MainClass);
+        Assert.Collection(
+            result.Libraries!,
+            library => Assert.Equal("net.fabricmc:fabric-loader:0.15.0", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        _mockDownloadManager.Verify(
+            manager => manager.DownloadStringAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
