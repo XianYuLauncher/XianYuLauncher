@@ -20,6 +20,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     private readonly LiteLoaderService _liteLoaderService;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
 
     public override string ModLoaderType => "LiteLoader";
 
@@ -35,12 +36,14 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
         IJavaRuntimeService javaRuntimeService,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<LiteLoaderInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _liteLoaderService = liteLoaderService;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _manifestResolver = manifestResolver;
     }
 
     public override async Task<List<string>> GetAvailableVersionsAsync(
@@ -264,7 +267,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         // 9. 生成/合并版本JSON
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 生成版本JSON");
-        var mergedVersionInfo = MergeLiteLoaderVersionInfo(baseVersionInfo, artifact, versionId, isAddonMode);
+        var mergedVersionInfo = ResolveVersionInfo(baseVersionInfo, artifact, versionId, isAddonMode);
         
         var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
         await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
@@ -275,19 +278,36 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         return versionId;
     }
     
-    /// <summary>
-    /// 合并基础版本（原版或 Forge 等）和 LiteLoader 版本信息
-    /// </summary>
-    private VersionInfo MergeLiteLoaderVersionInfo(
+    private VersionInfo ResolveVersionInfo(
         VersionInfo baseVersion, 
         LiteLoaderArtifact artifact, 
         string versionId,
         bool isAddonMode)
     {
+        var manifestPatch = CreateManifestPatch(baseVersion, artifact, versionId);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            baseVersion,
+            manifestPatch,
+            new ManifestResolutionOptions
+            {
+                ArgumentResolutionMode = ManifestArgumentResolutionMode.InheritIfMissing,
+                ModLoaderType = ModLoaderType,
+                IsAddonMode = isAddonMode,
+                LibraryRepositoryProfile = LibraryRepositoryProfile.LiteLoader
+            });
+
+        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 通过ManifestPatch解析后总依赖库数量: {resolutionResult.ResolvedManifest.Libraries?.Count ?? 0}");
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(
+        VersionInfo baseVersion,
+        LiteLoaderArtifact artifact,
+        string versionId)
+    {
         const string tweakClass = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
         const string mainClass = "net.minecraft.launchwrapper.Launch";
-        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
-        var specializationContext = new ModLoaderSpecializationContext(baseVersion, isAddonMode: isAddonMode);
         
         // 构建 LiteLoader 库列表
         var liteLoaderLibraries = new List<Library>();
@@ -317,30 +337,16 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             "--tweakClass",
             tweakClass);
 
-        var merged = new VersionInfo
+        return new ManifestPatch
         {
             Id = versionId,
-            Type = baseVersion.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = baseVersion.ReleaseTime,
-            Url = baseVersion.Url,
-            MainClass = specializationStrategy.ResolveMainClass(mainClass, specializationContext),
-            AssetIndex = baseVersion.AssetIndex,
             Assets = baseVersion.Assets ?? baseVersion.AssetIndex?.Id ?? baseVersion.Id,
-            Downloads = baseVersion.Downloads,
-            JavaVersion = baseVersion.JavaVersion,
+            MainClass = mainClass,
             Arguments = mergedLaunchArguments.Arguments,
             MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            Libraries = liteLoaderLibraries
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(liteLoaderLibraries, baseVersion.Libraries);
-
-        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.LiteLoader);
-
-        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 合并后总依赖库数量: {merged.Libraries.Count}");
-
-        return merged;
     }
     
     /// <summary>

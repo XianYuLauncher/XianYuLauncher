@@ -22,6 +22,7 @@ public class FabricInstaller : ModLoaderInstallerBase
 {
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
     /// Fabric Meta API基础URL（官方源备用）
@@ -42,11 +43,13 @@ public class FabricInstaller : ModLoaderInstallerBase
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
         IJavaRuntimeService javaRuntimeService,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<FabricInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -132,7 +135,7 @@ public class FabricInstaller : ModLoaderInstallerBase
 
             // 7. 生成Fabric版本JSON（与原版合并）
             Logger.LogInformation("生成Fabric版本JSON");
-            var fabricVersionJson = MergeVersionInfo(originalVersionInfo, fabricProfile, versionId);
+            var fabricVersionJson = ResolveVersionInfo(originalVersionInfo, fabricProfile, versionId);
             await SaveVersionJsonAsync(versionDirectory, versionId, fabricVersionJson);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
@@ -270,49 +273,39 @@ public class FabricInstaller : ModLoaderInstallerBase
         return libraries;
     }
 
-    /// <summary>
-    /// 合并原版和Fabric版本信息
-    /// </summary>
-    private VersionInfo MergeVersionInfo(VersionInfo original, JObject fabricProfile, string versionId)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, JObject fabricProfile, string versionId)
+    {
+        var manifestPatch = CreateManifestPatch(original, fabricProfile, versionId);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                LibraryRepositoryProfile.Fabric,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferBaseIfPresent,
+                modernArgumentMergeMode: ModernArgumentMergeMode.MergeLists));
+
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Fabric依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(VersionInfo original, JObject fabricProfile, string versionId)
     {
         var mainClass = fabricProfile["mainClass"]?.ToString() ?? "net.fabricmc.loader.impl.launch.knot.KnotClient";
         var fabricArguments = fabricProfile["arguments"]?.ToObject<Arguments>();
         var fabricLibraries = fabricProfile["libraries"]?.ToObject<List<Library>>() ?? new List<Library>();
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            fabricArguments,
-            null,
-            LegacyArgumentMergeMode.PreferBaseIfPresent,
-            ModernArgumentMergeMode.MergeLists);
 
-        var merged = new VersionInfo
+        return new ManifestPatch
         {
             Id = versionId,
-            Type = original.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = original.ReleaseTime,
-            Url = original.Url,
             MainClass = mainClass,
-            // 关键字段：从原版复制
-            AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            Downloads = original.Downloads,
-            JavaVersion = original.JavaVersion,
-            // 参数处理
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            Arguments = fabricArguments,
+            Libraries = fabricLibraries
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(fabricLibraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Fabric依赖库", fabricLibraries.Count);
-
-        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Fabric);
-
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     #endregion

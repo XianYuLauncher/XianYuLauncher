@@ -22,6 +22,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
 {
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
     /// Quilt Meta API基础URL（官方源备用）
@@ -42,11 +43,13 @@ public class QuiltInstaller : ModLoaderInstallerBase
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
         IJavaRuntimeService javaRuntimeService,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<QuiltInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -132,7 +135,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
 
             // 7. 生成Quilt版本JSON（与原版合并）
             Logger.LogInformation("生成Quilt版本JSON");
-            var quiltVersionJson = MergeVersionInfo(originalVersionInfo, quiltProfile, versionId);
+            var quiltVersionJson = ResolveVersionInfo(originalVersionInfo, quiltProfile, versionId);
             await SaveVersionJsonAsync(versionDirectory, versionId, quiltVersionJson);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
@@ -269,49 +272,39 @@ public class QuiltInstaller : ModLoaderInstallerBase
         return libraries;
     }
 
-    /// <summary>
-    /// 合并原版和Quilt版本信息
-    /// </summary>
-    private VersionInfo MergeVersionInfo(VersionInfo original, JObject quiltProfile, string versionId)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, JObject quiltProfile, string versionId)
+    {
+        var manifestPatch = CreateManifestPatch(original, quiltProfile, versionId);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                LibraryRepositoryProfile.Quilt,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferBaseIfPresent,
+                modernArgumentMergeMode: ModernArgumentMergeMode.MergeLists));
+
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Quilt依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(VersionInfo original, JObject quiltProfile, string versionId)
     {
         var mainClass = quiltProfile["mainClass"]?.ToString() ?? "org.quiltmc.loader.impl.launch.knot.KnotClient";
         var quiltArguments = quiltProfile["arguments"]?.ToObject<Arguments>();
         var quiltLibraries = quiltProfile["libraries"]?.ToObject<List<Library>>() ?? new List<Library>();
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            quiltArguments,
-            null,
-            LegacyArgumentMergeMode.PreferBaseIfPresent,
-            ModernArgumentMergeMode.MergeLists);
 
-        var merged = new VersionInfo
+        return new ManifestPatch
         {
             Id = versionId,
-            Type = original.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = original.ReleaseTime,
-            Url = original.Url,
             MainClass = mainClass,
-            // 关键字段：从原版复制
-            AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            Downloads = original.Downloads,
-            JavaVersion = original.JavaVersion,
-            // 参数处理
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            Arguments = quiltArguments,
+            Libraries = quiltLibraries
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(quiltLibraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Quilt依赖库", quiltLibraries.Count);
-
-        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Quilt);
-
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     #endregion
